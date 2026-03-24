@@ -4,6 +4,58 @@ function renderResult(result) {
     return result && result.message !== undefined ? String(result.message) : String(result);
 }
 
+function hflEntryToTarget(key, entry) {
+    if (entry === null || typeof entry !== 'object') {
+        return { key, moduleName: null, offsetHex: null, target: null };
+    }
+    return {
+        key,
+        moduleName: entry.moduleName === undefined ? null : entry.moduleName,
+        offsetHex: entry.offsetHex === undefined ? null : entry.offsetHex,
+        target: entry.target === undefined ? null : entry.target,
+    };
+}
+
+function objcHookEntryToTarget(key, entry) {
+    if (entry === null || typeof entry !== 'object') {
+        return {
+            key,
+            className: null,
+            selectorName: null,
+            isClassMethod: null,
+            target: null,
+        };
+    }
+    return {
+        key,
+        className: entry.className === undefined ? null : entry.className,
+        selectorName: entry.selectorName === undefined ? null : entry.selectorName,
+        isClassMethod: entry.isClassMethod === undefined ? null : !!entry.isClassMethod,
+        target: entry.target === undefined ? null : entry.target,
+    };
+}
+
+function swiftHookEntryToTarget(key, entry) {
+    if (entry === null || typeof entry !== 'object') {
+        return {
+            key,
+            moduleName: null,
+            typeName: null,
+            methodQuery: null,
+            count: 0,
+            targets: [],
+        };
+    }
+    return {
+        key,
+        moduleName: entry.moduleName === undefined ? null : entry.moduleName,
+        typeName: entry.typeName === undefined ? null : entry.typeName,
+        methodQuery: entry.methodQuery === undefined ? null : entry.methodQuery,
+        count: Array.isArray(entry.targets) ? entry.targets.length : 0,
+        targets: Array.isArray(entry.targets) ? entry.targets : [],
+    };
+}
+
 function installHflResult(moduleName, offsetHex) {
     globalThis.__iosRustFridaHfl = globalThis.__iosRustFridaHfl || {};
     const key = moduleName + '+' + offsetHex;
@@ -13,8 +65,8 @@ function installHflResult(moduleName, offsetHex) {
     }
     const target = base.add(offsetHex);
     const existing = globalThis.__iosRustFridaHfl[key];
-    if (existing && typeof existing.detach === 'function') {
-        try { existing.detach(); } catch (_) {}
+    if (existing && existing.handle && typeof existing.handle.detach === 'function') {
+        try { existing.handle.detach(); } catch (_) {}
     }
     const handle = Interceptor.attach(target, {
         onEnter(ctx) {
@@ -24,7 +76,7 @@ function installHflResult(moduleName, offsetHex) {
             console.log('[hfl] ret ' + key + ' x0=' + ctx.x0.toString());
         }
     });
-    globalThis.__iosRustFridaHfl[key] = handle;
+    globalThis.__iosRustFridaHfl[key] = { handle, moduleName, offsetHex, target: target.toString() };
     return {
         kind: 'hfl.install',
         action: 'install',
@@ -43,13 +95,14 @@ function installHfl(moduleName, offsetHex) {
 function currentHflHooksResult() {
     const state = globalThis.__iosRustFridaHfl || {};
     const keys = Object.keys(state);
+    const targets = keys.map((key) => hflEntryToTarget(key, state[key]));
     return {
         kind: 'hfl.status',
         action: 'status',
         active: keys.length !== 0,
         count: keys.length,
         keys,
-        targets: keys.map((key) => ({ key })),
+        targets,
         message: keys.length === 0 ? 'hfl inactive' : ('hfl active: ' + keys.length),
     };
 }
@@ -58,7 +111,8 @@ function detachHflHooksResult() {
     const state = globalThis.__iosRustFridaHfl || {};
     let count = 0;
     for (const key of Object.keys(state)) {
-        const handle = state[key];
+        const entry = state[key];
+        const handle = entry && typeof entry === 'object' ? entry.handle : entry;
         if (handle && typeof handle.detach === 'function') {
             try { handle.detach(); count++; } catch (_) {}
         }
@@ -89,8 +143,8 @@ function installObjcHookResult(className, selectorName, isClassMethod) {
     globalThis.__iosRustFridaObjcHooks = globalThis.__iosRustFridaObjcHooks || {};
     const key = prefix + '[' + className + ' ' + selectorName + ']';
     const existing = globalThis.__iosRustFridaObjcHooks[key];
-    if (existing && typeof existing.detach === 'function') {
-        try { existing.detach(); } catch (_) {}
+    if (existing && existing.handle && typeof existing.handle.detach === 'function') {
+        try { existing.handle.detach(); } catch (_) {}
     }
     const handle = Interceptor.attach(imp, {
         onEnter(ctx) {
@@ -100,7 +154,13 @@ function installObjcHookResult(className, selectorName, isClassMethod) {
             console.log('[jhook] leave ' + key + ' ret=' + ctx.x0.toString());
         }
     });
-    globalThis.__iosRustFridaObjcHooks[key] = handle;
+    globalThis.__iosRustFridaObjcHooks[key] = {
+        handle,
+        className,
+        selectorName,
+        isClassMethod: !!isClassMethod,
+        target: imp.toString(),
+    };
     return {
         kind: 'objc.hook.install',
         action: 'install',
@@ -120,13 +180,14 @@ function installObjcHook(className, selectorName, isClassMethod) {
 function currentObjcHooksResult() {
     const state = globalThis.__iosRustFridaObjcHooks || {};
     const keys = Object.keys(state);
+    const targets = keys.map((key) => objcHookEntryToTarget(key, state[key]));
     return {
         kind: 'objc.hook.status',
         action: 'status',
         active: keys.length !== 0,
         count: keys.length,
         keys,
-        targets: keys.map((key) => ({ key })),
+        targets,
         message: keys.length === 0 ? 'jhook inactive' : ('jhook active: ' + keys.length),
     };
 }
@@ -135,7 +196,8 @@ function detachObjcHooksResult() {
     const state = globalThis.__iosRustFridaObjcHooks || {};
     let count = 0;
     for (const key of Object.keys(state)) {
-        const handle = state[key];
+        const entry = state[key];
+        const handle = entry && typeof entry === 'object' ? entry.handle : entry;
         if (handle && typeof handle.detach === 'function') {
             try { handle.detach(); count++; } catch (_) {}
         }
@@ -316,8 +378,8 @@ function installSwiftHookResult(typeName, methodQuery, moduleName) {
     globalThis.__iosRustFridaSwiftHooks = globalThis.__iosRustFridaSwiftHooks || {};
     const key = (moduleName || '*') + '::' + typeName + '::' + methodQuery;
     const existing = globalThis.__iosRustFridaSwiftHooks[key];
-    if (Array.isArray(existing)) {
-        for (const handle of existing) {
+    if (existing && Array.isArray(existing.handles)) {
+        for (const handle of existing.handles) {
             if (handle && typeof handle.detach === 'function') {
                 try { handle.detach(); } catch (_) {}
             }
@@ -339,7 +401,19 @@ function installSwiftHookResult(typeName, methodQuery, moduleName) {
         handles.push(handle);
     }
 
-    globalThis.__iosRustFridaSwiftHooks[key] = handles;
+    const targets = matches.map((match) => ({
+        address: match.address.toString(),
+        name: match.name === undefined ? null : match.name,
+        demangledName: match.demangledName === undefined ? null : match.demangledName,
+        moduleName: match.moduleName === undefined ? null : match.moduleName,
+    }));
+    globalThis.__iosRustFridaSwiftHooks[key] = {
+        handles,
+        moduleName: moduleName === null || moduleName === undefined ? null : moduleName,
+        typeName,
+        methodQuery,
+        targets,
+    };
     return {
         kind: 'swift.hook.install',
         action: 'install',
@@ -348,12 +422,7 @@ function installSwiftHookResult(typeName, methodQuery, moduleName) {
         methodQuery,
         key,
         count: matches.length,
-        targets: matches.map((match) => ({
-            address: match.address.toString(),
-            name: match.name === undefined ? null : match.name,
-            demangledName: match.demangledName === undefined ? null : match.demangledName,
-            moduleName: match.moduleName === undefined ? null : match.moduleName,
-        })),
+        targets,
         message: 'shook installed: ' + key + ' count=' + matches.length + ' (hook logs flush on the next JS command)',
     };
 }
@@ -365,11 +434,7 @@ function installSwiftHook(typeName, methodQuery, moduleName) {
 function currentSwiftHooksResult() {
     const state = globalThis.__iosRustFridaSwiftHooks || {};
     const keys = Object.keys(state);
-    const targets = [];
-    for (const key of keys) {
-        const handles = Array.isArray(state[key]) ? state[key] : [];
-        targets.push({ key, count: handles.length });
-    }
+    const targets = keys.map((key) => swiftHookEntryToTarget(key, state[key]));
     return {
         kind: 'swift.hook.status',
         action: 'status',
@@ -385,8 +450,9 @@ function detachSwiftHooksResult() {
     const state = globalThis.__iosRustFridaSwiftHooks || {};
     let count = 0;
     for (const key of Object.keys(state)) {
-        const handles = state[key];
-        if (!Array.isArray(handles)) {
+        const entry = state[key];
+        const handles = entry && Array.isArray(entry.handles) ? entry.handles : [];
+        if (handles.length === 0) {
             continue;
         }
         for (const handle of handles) {
