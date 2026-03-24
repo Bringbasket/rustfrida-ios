@@ -1,23 +1,6 @@
 name: ios-rustfrida-ci
 
 on:
-  push:
-    branches:
-      - main
-      - master
-    paths:
-      - "ios-rustfrida/**"
-      - ".github/workflows/ios-rustfrida-ci.yml"
-      - ".github/workflows/ios-rustfrida-package.yml"
-      - ".github/workflows/ios-rustfrida-release.yml"
-      - "README.md"
-  pull_request:
-    paths:
-      - "ios-rustfrida/**"
-      - ".github/workflows/ios-rustfrida-ci.yml"
-      - ".github/workflows/ios-rustfrida-package.yml"
-      - ".github/workflows/ios-rustfrida-release.yml"
-      - "README.md"
   workflow_dispatch:
 
 permissions:

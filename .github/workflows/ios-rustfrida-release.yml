@@ -1,10 +1,6 @@
 name: ios-rustfrida-release
 
 on:
-  push:
-    tags:
-      - "v*"
-      - "ios-rustfrida-v*"
   workflow_dispatch:
 
 permissions:
