@@ -156,6 +156,9 @@ cat <<EOF
 
 package installed successfully.
 
-Suggested next step from your macOS host:
+Host platform note:
+  Linux hosts can use install/deploy/doctor/package helpers, but controller preflight/inject/command for iOS targets currently requires an Apple host.
+
+Suggested next step from your Apple host:
   ./target/\$(rustc -vV | sed -n 's/^host: //p')/release/ios-rustfrida --pid <pid> --preflight-only
 EOF

@@ -15,17 +15,13 @@
 
 ```bash
 cd ios-rustfrida
+
+# Linux / 通用主机：单测、打包、doctor、部署
 cargo test -p native-api --target x86_64-unknown-linux-gnu
 cargo test -p objc-api --target x86_64-unknown-linux-gnu
 cargo test -p quickjs-runtime --target x86_64-unknown-linux-gnu
 cargo test -p agent --target x86_64-unknown-linux-gnu
 cargo test -p controller --target x86_64-unknown-linux-gnu
-cargo run -p controller -- --pid 1234 --preflight-only
-cargo run -p controller -- --pid 1234 --preflight-only --preflight-json
-cargo run -p controller -- --list-images --list-images-json
-cargo run -p controller -- --pid 1234 --inject-json
-cargo run -p controller -- --pid 1234 --command "objc.classes UIView"
-cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-json
 scripts/doctor-jailbreak.sh root@iphone.local
 scripts/doctor-jailbreak.sh --json root@iphone.local
 scripts/deploy-agent-jailbreak.sh root@iphone.local
@@ -34,7 +30,22 @@ scripts/package-agent-deb.sh rootless
 scripts/package-agent-deb.sh rootful
 scripts/install-agent-deb-jailbreak.sh root@iphone.local
 BUILD_DEB=1 scripts/package-artifacts.sh
+
+# Apple host 才能跑：controller dyld / preflight / inject / command
+cargo run -p controller -- --pid 1234 --preflight-only
+cargo run -p controller -- --pid 1234 --preflight-only --preflight-json
+cargo run -p controller -- --list-images --list-images-json
+cargo run -p controller -- --pid 1234 --inject-json
+cargo run -p controller -- --pid 1234 --command "objc.classes UIView"
+cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-json
 ```
+
+主机平台要求：
+
+- Linux 主机目前可做：`cargo test`、agent 打包、`.deb` 安装包生成、`doctor-jailbreak.sh`、`deploy-agent-jailbreak.sh`、`install-agent-deb-jailbreak.sh`。
+- Linux 主机目前不能做：controller 的 `--list-images`、`--preflight-only`、`--inject-json`、`--command-json`。这些路径底层依赖 dyld / Mach 注入实现，当前代码只在 Apple targets 上启用。
+- 也就是说，真机注入前体检、真正注入、一次性执行 runtime 命令这三类 controller 能力，目前都需要 Apple host。
+- 上面命令块里凡是 controller 直接对 iOS 目标做事的命令，都应在 macOS / Apple host 上运行；Linux 上即使能把 CLI 编出来，也会返回 `unsupported`。
 
 最近补上的 iOS 运行时能力：
 
