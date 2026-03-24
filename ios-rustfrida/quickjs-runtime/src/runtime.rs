@@ -983,7 +983,7 @@ undefined;
                 runtime
                     .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'hfl.stop' }))")
                     .expect("controller hfl stop result"),
-                "{\"kind\":\"hfl.stop\",\"action\":\"stop\",\"scope\":\"hfl\",\"count\":0,\"message\":\"hfl detached: 0\"}"
+                "{\"kind\":\"hfl.stop\",\"action\":\"stop\",\"scope\":\"hfl\",\"active\":false,\"count\":0,\"keys\":[],\"targets\":[],\"message\":\"hfl detached: 0\"}"
             );
             assert_eq!(
                 runtime
@@ -1035,6 +1035,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { globalThis.__iosRustFridaHfl = { 'libobjc.A.dylib+0x1234': { moduleName: 'libobjc.A.dylib', offsetHex: '0x1234', target: '0x180001234' } }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'hfl.stop' })); })()")
+                    .expect("controller populated hfl stop result"),
+                "{\"kind\":\"hfl.stop\",\"action\":\"stop\",\"scope\":\"hfl\",\"active\":true,\"count\":0,\"keys\":[\"libobjc.A.dylib+0x1234\"],\"targets\":[{\"key\":\"libobjc.A.dylib+0x1234\",\"moduleName\":\"libobjc.A.dylib\",\"offsetHex\":\"0x1234\",\"target\":\"0x180001234\"}],\"message\":\"hfl detached: 0\"}"
+            );
+            assert_eq!(
+                runtime
                     .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'trace.stop' }))")
                     .expect("controller trace stop result"),
                 "{\"active\":false,\"count\":0,\"label\":null,\"filter\":null,\"targetAddress\":null,\"targetKind\":null,\"targetSymbol\":null,\"moduleName\":null,\"symbolName\":null,\"objcMode\":null,\"message\":\"trace stopped\",\"kind\":\"trace.stop\",\"action\":\"stop\",\"scope\":\"trace\"}"
@@ -1044,6 +1050,18 @@ undefined;
                     .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'stalker.stop' }))")
                     .expect("controller stalker stop result"),
                 "{\"active\":false,\"count\":0,\"label\":null,\"filter\":null,\"targetAddress\":null,\"secondaryTargetAddress\":null,\"targetKind\":null,\"targetSymbol\":null,\"moduleName\":null,\"symbolName\":null,\"objcMode\":null,\"superEnabled\":false,\"message\":\"stalker stopped\",\"kind\":\"stalker.stop\",\"action\":\"stop\",\"scope\":\"stalker\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { globalThis.__iosRustFridaObjcHooks = { '-[UIViewController viewDidLoad]': { className: 'UIViewController', selectorName: 'viewDidLoad', isClassMethod: false, target: '0x18000abcd' } }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'objc.hook.stop' })); })()")
+                    .expect("controller populated objc hook stop result"),
+                "{\"kind\":\"objc.hook.stop\",\"action\":\"stop\",\"scope\":\"objc-hook\",\"active\":true,\"count\":0,\"keys\":[\"-[UIViewController viewDidLoad]\"],\"targets\":[{\"key\":\"-[UIViewController viewDidLoad]\",\"className\":\"UIViewController\",\"selectorName\":\"viewDidLoad\",\"isClassMethod\":false,\"target\":\"0x18000abcd\"}],\"message\":\"jhook detached: 0\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { globalThis.__iosRustFridaSwiftHooks = { 'MyApp::ViewController::viewDidLoad': { moduleName: 'MyApp', typeName: 'ViewController', methodQuery: 'viewDidLoad', targets: [{ address: '0x18000beef', name: '$s4MyApp14ViewControllerC11viewDidLoadyyF', demangledName: 'MyApp.ViewController.viewDidLoad()', moduleName: 'MyApp' }] } }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'swift.hook.stop' })); })()")
+                    .expect("controller populated swift hook stop result"),
+                "{\"kind\":\"swift.hook.stop\",\"action\":\"stop\",\"scope\":\"swift-hook\",\"active\":true,\"count\":0,\"keys\":[\"MyApp::ViewController::viewDidLoad\"],\"targets\":[{\"key\":\"MyApp::ViewController::viewDidLoad\",\"moduleName\":\"MyApp\",\"typeName\":\"ViewController\",\"methodQuery\":\"viewDidLoad\",\"count\":1,\"targets\":[{\"address\":\"0x18000beef\",\"name\":\"$s4MyApp14ViewControllerC11viewDidLoadyyF\",\"demangledName\":\"MyApp.ViewController.viewDidLoad()\",\"moduleName\":\"MyApp\"}]}],\"message\":\"shook detached: 0\"}"
             );
         }
 

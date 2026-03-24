@@ -109,8 +109,10 @@ function currentHflHooksResult() {
 
 function detachHflHooksResult() {
     const state = globalThis.__iosRustFridaHfl || {};
+    const keys = Object.keys(state);
+    const targets = keys.map((key) => hflEntryToTarget(key, state[key]));
     let count = 0;
-    for (const key of Object.keys(state)) {
+    for (const key of keys) {
         const entry = state[key];
         const handle = entry && typeof entry === 'object' ? entry.handle : entry;
         if (handle && typeof handle.detach === 'function') {
@@ -122,7 +124,10 @@ function detachHflHooksResult() {
         kind: 'hfl.stop',
         action: 'stop',
         scope: 'hfl',
+        active: keys.length !== 0,
         count,
+        keys,
+        targets,
         message: 'hfl detached: ' + count,
     };
 }
@@ -194,8 +199,10 @@ function currentObjcHooksResult() {
 
 function detachObjcHooksResult() {
     const state = globalThis.__iosRustFridaObjcHooks || {};
+    const keys = Object.keys(state);
+    const targets = keys.map((key) => objcHookEntryToTarget(key, state[key]));
     let count = 0;
-    for (const key of Object.keys(state)) {
+    for (const key of keys) {
         const entry = state[key];
         const handle = entry && typeof entry === 'object' ? entry.handle : entry;
         if (handle && typeof handle.detach === 'function') {
@@ -207,7 +214,10 @@ function detachObjcHooksResult() {
         kind: 'objc.hook.stop',
         action: 'stop',
         scope: 'objc-hook',
+        active: keys.length !== 0,
         count,
+        keys,
+        targets,
         message: 'jhook detached: ' + count,
     };
 }
@@ -448,8 +458,10 @@ function currentSwiftHooksResult() {
 
 function detachSwiftHooksResult() {
     const state = globalThis.__iosRustFridaSwiftHooks || {};
+    const keys = Object.keys(state);
+    const targets = keys.map((key) => swiftHookEntryToTarget(key, state[key]));
     let count = 0;
-    for (const key of Object.keys(state)) {
+    for (const key of keys) {
         const entry = state[key];
         const handles = entry && Array.isArray(entry.handles) ? entry.handles : [];
         if (handles.length === 0) {
@@ -466,7 +478,10 @@ function detachSwiftHooksResult() {
         kind: 'swift.hook.stop',
         action: 'stop',
         scope: 'swift-hook',
+        active: keys.length !== 0,
         count,
+        keys,
+        targets,
         message: 'shook detached: ' + count,
     };
 }
