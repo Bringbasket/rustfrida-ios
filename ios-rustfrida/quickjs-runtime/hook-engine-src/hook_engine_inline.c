@@ -390,7 +390,7 @@ void* hook_replace(void* target, HookCallback on_enter, void* user_data, int ste
 __attribute__((naked))
 uint64_t hook_invoke_trampoline(HookContext* ctx, void* trampoline) {
     __asm__ volatile(
-#if defined(__APPLE__) && defined(__aarch64__)
+#if defined(__APPLE__) && defined(__arm64e__)
         /* Match arm64e function entry/exit so helper returns survive PAC-ret. */
         "paciasp\n"
 #endif
@@ -426,7 +426,7 @@ uint64_t hook_invoke_trampoline(HookContext* ctx, void* trampoline) {
         /* x0 now contains the return value from the original function */
         /* Restore frame and return */
         "ldp    x29, x30, [sp], #16\n"
-#if defined(__APPLE__) && defined(__aarch64__)
+#if defined(__APPLE__) && defined(__arm64e__)
         "retaa\n"
 #else
         "ret\n"
