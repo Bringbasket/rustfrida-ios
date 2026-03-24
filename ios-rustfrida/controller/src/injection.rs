@@ -3407,6 +3407,7 @@ fn render_command_outcome_json(outcome: &CommandOutcome) -> Value {
 }
 
 #[cfg(unix)]
+#[cfg_attr(not(test), allow(dead_code))]
 fn render_command_error_json(command: &str, err: &Error, logs: &[String]) -> Value {
     json!({
         "ok": false,
