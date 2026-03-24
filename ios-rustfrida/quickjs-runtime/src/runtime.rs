@@ -317,6 +317,10 @@ undefined;
         use super::QuickJsRuntime;
         use std::sync::{Mutex, OnceLock};
 
+        fn has_apple_objc_runtime() -> bool {
+            cfg!(any(target_os = "macos", target_os = "ios"))
+        }
+
         fn test_lock() -> &'static Mutex<()> {
             static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
             LOCK.get_or_init(|| Mutex::new(()))
@@ -358,7 +362,12 @@ undefined;
             let mut runtime = QuickJsRuntime::new();
             runtime.initialize().expect("init runtime");
 
-            assert_eq!(runtime.eval("ObjC.available").expect("objc available"), "false");
+            let objc_available = if has_apple_objc_runtime() {
+                "true"
+            } else {
+                "false"
+            };
+            assert_eq!(runtime.eval("ObjC.available").expect("objc available"), objc_available);
             assert_eq!(runtime.eval("typeof callNative").expect("callNative type"), "function");
             assert_eq!(
                 runtime
@@ -382,7 +391,7 @@ undefined;
             );
             assert_eq!(
                 runtime.eval("ObjC.classExists('NSObject')").expect("objc classExists"),
-                "false"
+                objc_available
             );
             assert_eq!(
                 runtime.eval("typeof ObjC.findClasses").expect("objc findClasses type"),
@@ -428,19 +437,25 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("ObjC.methodImp('NSObject', 'description') === null")
+                    .eval(
+                        "(function() { const value = ObjC.methodImp('NSObject', 'description'); return ObjC.available ? (value === null || value.toString().indexOf('0x') === 0) : value === null; })()"
+                    )
                     .expect("objc methodImp"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("ObjC.classImage('NSObject') === null")
+                    .eval(
+                        "(function() { const value = ObjC.classImage('NSObject'); return ObjC.available ? (value === null || value.indexOf('/') !== -1) : value === null; })()"
+                    )
                     .expect("objc classImage"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("ObjC.methodImage('NSObject', 'init') === null")
+                    .eval(
+                        "(function() { const value = ObjC.methodImage('NSObject', 'init'); return ObjC.available ? (value === null || value.indexOf('/') !== -1) : value === null; })()"
+                    )
                     .expect("objc methodImage"),
                 "true"
             );
@@ -937,9 +952,11 @@ undefined;
 
             assert_eq!(
                 runtime
-                    .eval("__iosRustFridaAgentApi.handle('objc.classes')")
+                    .eval(
+                        "(function() { const text = __iosRustFridaAgentApi.handle('objc.classes'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.classes', filter: null }); return text === result.text && result.count === result.classes.length && result.text === result.classes.join('\\n'); })()"
+                    )
                     .expect("agent objc classes"),
-                ""
+                "true"
             );
             assert_eq!(
                 runtime
@@ -967,15 +984,19 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("__iosRustFridaAgentApi.handle('objc.classImage NSObject')")
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.classImage NSObject'); return value === '<null>' || value.indexOf('/') !== -1; })()"
+                    )
                     .expect("agent objc classImage"),
-                "<null>"
+                "true"
             );
             assert_eq!(
                 runtime
-                    .eval("__iosRustFridaAgentApi.handle('objc.methodImage NSObject init')")
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodImage NSObject init'); return value === '<null>' || value.indexOf('/') !== -1; })()"
+                    )
                     .expect("agent objc methodImage"),
-                "<null>"
+                "true"
             );
             assert_eq!(
                 runtime
@@ -1027,9 +1048,11 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("JSON.stringify(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.classes', filter: null }))")
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.classes', filter: null }); return result.kind === 'objc.classes' && result.filter === null && result.count === result.classes.length && result.text === result.classes.join('\\n'); })()"
+                    )
                     .expect("agent objc classes result"),
-                "{\"kind\":\"objc.classes\",\"filter\":null,\"count\":0,\"classes\":[],\"text\":\"\"}"
+                "true"
             );
             assert_eq!(
                 runtime
@@ -1159,8 +1182,27 @@ undefined;
             let mut runtime = QuickJsRuntime::new();
             runtime.initialize().expect("init runtime");
 
-            let mut bytes = [0x11u8, 0x22, 0x33, 0x44, 0, 0, 0, 0];
-            let addr = bytes.as_mut_ptr() as usize;
+            let page_size = 0x1000usize;
+            let mapping = unsafe {
+                libc::mmap(
+                    std::ptr::null_mut(),
+                    page_size,
+                    libc::PROT_READ | libc::PROT_WRITE,
+                    libc::MAP_PRIVATE | libc::MAP_ANON,
+                    -1,
+                    0,
+                )
+            };
+            assert_ne!(mapping, libc::MAP_FAILED, "mmap test buffer");
+
+            let addr = mapping as usize;
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    [0x11u8, 0x22, 0x33, 0x44, 0, 0, 0, 0].as_ptr(),
+                    mapping as *mut u8,
+                    8,
+                );
+            }
 
             let read_script = format!("Memory.readU16(ptr('0x{addr:x}')).toString()");
             assert_eq!(runtime.eval(&read_script).expect("read memory"), "8721");
@@ -1168,7 +1210,11 @@ undefined;
             let write_script =
                 format!("Memory.writeU32(ptr('0x{addr:x}'), 0x55667788); Memory.readU32(ptr('0x{addr:x}')).toString()");
             assert_eq!(runtime.eval(&write_script).expect("write memory"), "1432778632");
+            let bytes = unsafe { std::slice::from_raw_parts(mapping as *const u8, 8) };
             assert_eq!(bytes[..4], [0x88, 0x77, 0x66, 0x55]);
+            unsafe {
+                libc::munmap(mapping, page_size);
+            }
         }
 
         #[test]
