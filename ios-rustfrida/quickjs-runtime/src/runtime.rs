@@ -939,6 +939,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof __iosRustFridaControllerApi.traceStatus")
+                    .expect("controller trace status helper type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof __iosRustFridaNativeHooks.stopTraceResult")
                     .expect("native hook stop trace result helper type"),
                 "function"
@@ -947,6 +953,12 @@ undefined;
                 runtime
                     .eval("typeof __iosRustFridaControllerApi.stopStalker")
                     .expect("controller stop stalker helper type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof __iosRustFridaControllerApi.stalkerStatus")
+                    .expect("controller stalker status helper type"),
                 "function"
             );
             assert_eq!(
@@ -972,6 +984,36 @@ undefined;
                     .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'hfl.stop' }))")
                     .expect("controller hfl stop result"),
                 "{\"kind\":\"hfl.stop\",\"action\":\"stop\",\"scope\":\"hfl\",\"count\":0,\"message\":\"hfl detached: 0\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'hfl.status' }))")
+                    .expect("controller hfl status result"),
+                "{\"kind\":\"hfl.status\",\"action\":\"status\",\"active\":false,\"count\":0,\"keys\":[],\"targets\":[],\"message\":\"hfl inactive\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'objc.hook.status' }))")
+                    .expect("controller objc hook status result"),
+                "{\"kind\":\"objc.hook.status\",\"action\":\"status\",\"active\":false,\"count\":0,\"keys\":[],\"targets\":[],\"message\":\"jhook inactive\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'trace.status' }))")
+                    .expect("controller trace status result"),
+                "{\"active\":false,\"count\":0,\"label\":null,\"filter\":null,\"targetAddress\":null,\"targetKind\":null,\"targetSymbol\":null,\"moduleName\":null,\"symbolName\":null,\"objcMode\":null,\"message\":\"trace inactive\",\"kind\":\"trace.status\",\"action\":\"status\",\"scope\":\"trace\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'stalker.status' }))")
+                    .expect("controller stalker status result"),
+                "{\"active\":false,\"count\":0,\"label\":null,\"filter\":null,\"targetAddress\":null,\"secondaryTargetAddress\":null,\"targetKind\":null,\"targetSymbol\":null,\"moduleName\":null,\"symbolName\":null,\"objcMode\":null,\"superEnabled\":false,\"message\":\"stalker inactive\",\"kind\":\"stalker.status\",\"action\":\"status\",\"scope\":\"stalker\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'swift.hook.status' }))")
+                    .expect("controller swift hook status result"),
+                "{\"kind\":\"swift.hook.status\",\"action\":\"status\",\"active\":false,\"count\":0,\"keys\":[],\"targets\":[],\"message\":\"shook inactive\"}"
             );
             assert_eq!(
                 runtime

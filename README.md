@@ -57,8 +57,10 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Swift.findMethods(typeName, methodQuery[, moduleName])`
 - agent / controller CLI:
   - `hfl <module> <offset>`
+  - `hfl status`
   - `hfl stop`
   - `jhook <class> <selector> [meta]`
+  - `jhook status`
   - `jhook stop`
   - `objc.methodImp <class> <selector> [meta]`
   - `objc.classImage <class>`
@@ -90,7 +92,10 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `pac.stripdata <address>`
   - `shook <type> <method>`
   - `shook <module> -- <type> <method>`
+  - `shook status`
   - `shook stop`
+  - `trace status`
+  - `stalker status`
   - `swift.types <query>`
   - `swift.types <module> -- <query>`
   - `swift.typeKinds`
@@ -178,7 +183,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - 旧文本命令的兼容解析现在也集中到了 `common::AgentCommand::from_legacy(...)`，controller / agent 不再各自维护一份 `ping/jsinit/runtime-handle` 的识别分支。
 - controller / bootstrap 失败摘要现在会补齐代码段/数据段保护模式、线程 bootstrap 符号来源，以及失败/提前返回时远程线程是否已尝试终止。
 - controller 在注入前会打印注入环境摘要：`IOS_RUSTFRIDA_DRY_RUN`、bootstrap 等待时间、hook policy / strategy、已探测到的越狱 hook backend。
-- `IOS_RUSTFRIDA_HOOK_POLICY` 现在除了 `warn` / `deny-external-loaded`，还支持 `query-only-external-loaded`（可简写 `query-only`）；命中外部 backend 时，这个策略会继续允许注入和查询命令，但会显式禁止 `trace/stalker/jhook/shook/hfl` 这类 inline hook 路径。
+- `IOS_RUSTFRIDA_HOOK_POLICY` 现在除了 `warn` / `deny-external-loaded`，还支持 `query-only-external-loaded`（可简写 `query-only`）；命中外部 backend 时，这个策略会继续允许注入、查询命令和 `status/stop` 这类非安装控制命令，但会显式禁止 `trace/stalker/jhook/shook/hfl` 的安装路径。
 - 如果当前 `IOS_RUSTFRIDA_HOOK_POLICY=deny-external-loaded` 且进程里已加载 ElleKit/Substrate/Substitute/libhooker 一类外部 backend，注入会在启动前直接拒绝并给出原因。
 - preflight 现在也会探测“目标进程”自身已加载的 hook backend，并打印 target hook strategy / backend 摘要；`deny-external-loaded` 不再只看 controller 当前进程，也会对目标进程生效。
 - hook strategy 被本地或目标进程的外部 backend 阻断时，错误信息现在会直接附带 hook environment 摘要：active backend、各 backend 的 loaded image / filesystem path 计数、warning 数量，减少真机上只看到 `blocked` 但不知道是谁在挡路的情况。

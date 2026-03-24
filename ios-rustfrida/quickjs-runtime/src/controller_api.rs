@@ -40,6 +40,20 @@ function installHfl(moduleName, offsetHex) {
     return renderResult(installHflResult(moduleName, offsetHex));
 }
 
+function currentHflHooksResult() {
+    const state = globalThis.__iosRustFridaHfl || {};
+    const keys = Object.keys(state);
+    return {
+        kind: 'hfl.status',
+        action: 'status',
+        active: keys.length !== 0,
+        count: keys.length,
+        keys,
+        targets: keys.map((key) => ({ key })),
+        message: keys.length === 0 ? 'hfl inactive' : ('hfl active: ' + keys.length),
+    };
+}
+
 function detachHflHooksResult() {
     const state = globalThis.__iosRustFridaHfl || {};
     let count = 0;
@@ -103,6 +117,20 @@ function installObjcHook(className, selectorName, isClassMethod) {
     return renderResult(installObjcHookResult(className, selectorName, isClassMethod));
 }
 
+function currentObjcHooksResult() {
+    const state = globalThis.__iosRustFridaObjcHooks || {};
+    const keys = Object.keys(state);
+    return {
+        kind: 'objc.hook.status',
+        action: 'status',
+        active: keys.length !== 0,
+        count: keys.length,
+        keys,
+        targets: keys.map((key) => ({ key })),
+        message: keys.length === 0 ? 'jhook inactive' : ('jhook active: ' + keys.length),
+    };
+}
+
 function detachObjcHooksResult() {
     const state = globalThis.__iosRustFridaObjcHooks || {};
     let count = 0;
@@ -154,6 +182,14 @@ function installObjcTrace(filter) {
     return renderResult(installObjcTraceResult(filter));
 }
 
+function currentObjcTraceResult() {
+    const result = requireNativeHookHelpers().currentTraceStateResult();
+    result.kind = 'trace.status';
+    result.action = 'status';
+    result.scope = 'trace';
+    return result;
+}
+
 function installObjcStalkerResult(filter) {
     const helper = requireNativeHookHelpers();
     const spec = {
@@ -172,6 +208,14 @@ function installObjcStalkerResult(filter) {
 
 function installObjcStalker(filter) {
     return renderResult(installObjcStalkerResult(filter));
+}
+
+function currentObjcStalkerResult() {
+    const result = requireNativeHookHelpers().currentStalkerStateResult();
+    result.kind = 'stalker.status';
+    result.action = 'status';
+    result.scope = 'stalker';
+    return result;
 }
 
 function buildNativeSpec(kind, moduleName, symbolName, address, templateArgs, templateRet) {
@@ -243,6 +287,10 @@ function stopTrace() {
     return renderResult(stopTraceResult());
 }
 
+function traceStatus() {
+    return renderResult(currentObjcTraceResult());
+}
+
 function stopStalkerResult() {
     const result = requireNativeHookHelpers().stopStalkerResult();
     result.kind = 'stalker.stop';
@@ -253,6 +301,10 @@ function stopStalkerResult() {
 
 function stopStalker() {
     return renderResult(stopStalkerResult());
+}
+
+function stalkerStatus() {
+    return renderResult(currentObjcStalkerResult());
 }
 
 function installSwiftHookResult(typeName, methodQuery, moduleName) {
@@ -310,6 +362,25 @@ function installSwiftHook(typeName, methodQuery, moduleName) {
     return renderResult(installSwiftHookResult(typeName, methodQuery, moduleName));
 }
 
+function currentSwiftHooksResult() {
+    const state = globalThis.__iosRustFridaSwiftHooks || {};
+    const keys = Object.keys(state);
+    const targets = [];
+    for (const key of keys) {
+        const handles = Array.isArray(state[key]) ? state[key] : [];
+        targets.push({ key, count: handles.length });
+    }
+    return {
+        kind: 'swift.hook.status',
+        action: 'status',
+        active: keys.length !== 0,
+        count: targets.reduce((sum, item) => sum + item.count, 0),
+        keys,
+        targets,
+        message: keys.length === 0 ? 'shook inactive' : ('shook active: ' + keys.length),
+    };
+}
+
 function detachSwiftHooksResult() {
     const state = globalThis.__iosRustFridaSwiftHooks || {};
     let count = 0;
@@ -346,16 +417,24 @@ function dispatchResult(command) {
     switch (String(command.kind || '')) {
     case 'hfl.install':
         return installHflResult(String(command.moduleName), String(command.offsetHex));
+    case 'hfl.status':
+        return currentHflHooksResult();
     case 'hfl.stop':
         return detachHflHooksResult();
     case 'objc.hook.install':
         return installObjcHookResult(String(command.className), String(command.selectorName), !!command.isClassMethod);
+    case 'objc.hook.status':
+        return currentObjcHooksResult();
     case 'objc.hook.stop':
         return detachObjcHooksResult();
     case 'objc.trace.install':
         return installObjcTraceResult(command.filter === undefined ? '' : String(command.filter));
+    case 'trace.status':
+        return currentObjcTraceResult();
     case 'objc.stalker.install':
         return installObjcStalkerResult(command.filter === undefined ? '' : String(command.filter));
+    case 'stalker.status':
+        return currentObjcStalkerResult();
     case 'native.trace.install':
         return installNativeTraceResult(command.target);
     case 'native.stalker.install':
@@ -370,6 +449,8 @@ function dispatchResult(command) {
             String(command.methodQuery),
             command.moduleName === null || command.moduleName === undefined ? null : String(command.moduleName)
         );
+    case 'swift.hook.status':
+        return currentSwiftHooksResult();
     case 'swift.hook.stop':
         return detachSwiftHooksResult();
     default:
@@ -397,7 +478,9 @@ return {
     installNativeStalkerExport,
     installNativeStalkerAddress,
     stopTrace,
+    traceStatus,
     stopStalker,
+    stalkerStatus,
     installSwiftHook,
     detachSwiftHooks,
 };

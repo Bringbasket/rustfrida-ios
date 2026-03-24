@@ -117,6 +117,23 @@ function stopTraceResult() {
 function stopTrace() {
     return stopTraceResult().message;
 }
+function currentTraceStateResult() {
+    const state = globalThis.__iosRustFridaTrace || {};
+    const active = !!state.label || !!state.targetAddress || !!state.objcMode;
+    return {
+        active,
+        count: active ? 1 : 0,
+        label: state.label === undefined ? null : state.label,
+        filter: typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null,
+        targetAddress: state.targetAddress === undefined ? null : state.targetAddress,
+        targetKind: state.targetKind === undefined ? null : state.targetKind,
+        targetSymbol: state.targetSymbol === undefined ? null : state.targetSymbol,
+        moduleName: state.moduleName === undefined ? null : state.moduleName,
+        symbolName: state.symbolName === undefined ? null : state.symbolName,
+        objcMode: state.objcMode === undefined ? null : state.objcMode,
+        message: active ? ('trace active: ' + (state.label || '<unknown>')) : 'trace inactive',
+    };
+}
 function stopStalkerResult() {
     const detached = detachStalkerState();
     return {
@@ -137,6 +154,26 @@ function stopStalkerResult() {
 }
 function stopStalker() {
     return stopStalkerResult().message;
+}
+function currentStalkerStateResult() {
+    const state = globalThis.__iosRustFridaStalker || {};
+    const handleCount = Array.isArray(state.handles) ? state.handles.length : 0;
+    const active = handleCount > 0 || !!state.label || !!state.targetAddress || !!state.objcMode;
+    return {
+        active,
+        count: handleCount,
+        label: state.label === undefined ? null : state.label,
+        filter: typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null,
+        targetAddress: state.targetAddress === undefined ? null : state.targetAddress,
+        secondaryTargetAddress: state.secondaryTargetAddress === undefined ? null : state.secondaryTargetAddress,
+        targetKind: state.targetKind === undefined ? null : state.targetKind,
+        targetSymbol: state.targetSymbol === undefined ? null : state.targetSymbol,
+        moduleName: state.moduleName === undefined ? null : state.moduleName,
+        symbolName: state.symbolName === undefined ? null : state.symbolName,
+        objcMode: state.objcMode === undefined ? null : state.objcMode,
+        superEnabled: !!state.superEnabled,
+        message: active ? ('stalker active: ' + (state.label || '<unknown>')) : 'stalker inactive',
+    };
 }
 function installTraceResult(spec) {
     const objcFilter = spec && typeof spec.objcFilter === 'string' ? spec.objcFilter : '';
@@ -410,6 +447,8 @@ return {
     formatTypedValue,
     installTraceResult,
     installStalkerResult,
+    currentTraceStateResult,
+    currentStalkerStateResult,
     stopTraceResult,
     stopStalkerResult,
     installTrace,

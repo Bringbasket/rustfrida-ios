@@ -2598,12 +2598,44 @@ fn command_requires_inline_hooks(command: &str) -> bool {
 }
 
 #[cfg(unix)]
+fn command_requests_inline_hook_install(command: &str) -> Result<bool> {
+    if is_stalker_command(command) {
+        return Ok(matches!(
+            parse_stalker_command(command)?,
+            StalkerCommand::InstallObjc { .. } | StalkerCommand::InstallNative { .. }
+        ));
+    }
+    if is_trace_command(command) {
+        return Ok(matches!(
+            parse_trace_command(command)?,
+            TraceCommand::InstallObjc { .. } | TraceCommand::InstallNative { .. }
+        ));
+    }
+    if is_jhook_command(command) {
+        return Ok(matches!(parse_jhook_command(command)?, ObjcHookCommand::Install(_)));
+    }
+    if is_shook_command(command) {
+        return Ok(matches!(
+            parse_shook_command(command)?,
+            SwiftHookCommand::Install { .. }
+        ));
+    }
+    if is_hfl_command(command) {
+        return Ok(matches!(parse_hfl_command(command)?, HflCommand::Install { .. }));
+    }
+    Ok(false)
+}
+
+#[cfg(unix)]
 fn ensure_inline_hooks_allowed_for_command(
     command: &str,
     injection_environment: &InjectionEnvironmentReport,
     preflight: &InjectionTargetPreflightReport,
 ) -> Result<()> {
     if !command_requires_inline_hooks(command) {
+        return Ok(());
+    }
+    if !command_requests_inline_hook_install(command)? {
         return Ok(());
     }
 
@@ -2764,7 +2796,7 @@ fn execute_hfl_command(stream: &mut UnixStream, command: &str, capture_logs: boo
 
 #[cfg(unix)]
 fn parse_hfl_command(command: &str) -> Result<HflCommand> {
-    const USAGE: &str = "hfl usage: hfl <module> <offset>|hfl stop";
+    const USAGE: &str = "hfl usage: hfl <module> <offset>|hfl status|hfl stop";
     let mut parts = command.split_whitespace();
     match parts.next() {
         Some("hfl") => {}
@@ -2774,6 +2806,9 @@ fn parse_hfl_command(command: &str) -> Result<HflCommand> {
     let rest = parts.collect::<Vec<_>>();
     if rest.is_empty() {
         return Err(Error::InvalidArgument(USAGE.into()));
+    }
+    if rest.len() == 1 && matches!(rest[0], "status" | "state" | "show") {
+        return Ok(HflCommand::Status);
     }
     if rest.len() == 1 && matches!(rest[0], "stop" | "off" | "disable") {
         return Ok(HflCommand::Stop);
@@ -2810,6 +2845,7 @@ fn parse_offset_value(raw: &str) -> Result<u64> {
 enum TraceCommand {
     InstallObjc { filter: Option<String> },
     InstallNative { target: NativeHookTarget },
+    Status,
     Stop,
 }
 
@@ -2818,6 +2854,7 @@ enum TraceCommand {
 enum StalkerCommand {
     InstallObjc { filter: Option<String> },
     InstallNative { target: NativeHookTarget },
+    Status,
     Stop,
 }
 
@@ -2833,6 +2870,7 @@ struct ObjcHookSpec {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ObjcHookCommand {
     Install(ObjcHookSpec),
+    Status,
     Stop,
 }
 
@@ -2840,6 +2878,7 @@ enum ObjcHookCommand {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum HflCommand {
     Install { module_name: String, offset: u64 },
+    Status,
     Stop,
 }
 
@@ -2851,6 +2890,7 @@ enum SwiftHookCommand {
         type_name: String,
         method_query: String,
     },
+    Status,
     Stop,
 }
 
@@ -2941,7 +2981,7 @@ fn parse_stalker_command(command: &str) -> Result<StalkerCommand> {
         .strip_prefix("stalker")
         .ok_or_else(|| {
             Error::InvalidArgument(
-                "stalker usage: stalker [filter]|stalker native [module] <symbol> [-- template]|stalker addr <address> [-- template]|stalker stop"
+                "stalker usage: stalker [filter]|stalker native [module] <symbol> [-- template]|stalker addr <address> [-- template]|stalker status|stalker stop"
                     .into(),
             )
         })?
@@ -2949,6 +2989,10 @@ fn parse_stalker_command(command: &str) -> Result<StalkerCommand> {
 
     if rest.is_empty() {
         return Ok(StalkerCommand::InstallObjc { filter: None });
+    }
+
+    if matches!(rest, "status" | "state" | "show") {
+        return Ok(StalkerCommand::Status);
     }
 
     if matches!(rest, "stop" | "off" | "disable") {
@@ -2978,13 +3022,17 @@ fn parse_trace_command(command: &str) -> Result<TraceCommand> {
         .strip_prefix("trace")
         .ok_or_else(|| {
             Error::InvalidArgument(
-                "trace usage: trace [filter]|trace native [module] <symbol> [-- template]|trace addr <address> [-- template]|trace stop".into(),
+                "trace usage: trace [filter]|trace native [module] <symbol> [-- template]|trace addr <address> [-- template]|trace status|trace stop".into(),
             )
         })?
         .trim();
 
     if rest.is_empty() {
         return Ok(TraceCommand::InstallObjc { filter: None });
+    }
+
+    if matches!(rest, "status" | "state" | "show") {
+        return Ok(TraceCommand::Status);
     }
 
     if matches!(rest, "stop" | "off" | "disable") {
@@ -3123,7 +3171,7 @@ fn parse_native_value_format(raw: &str) -> Result<NativeValueFormat> {
 
 #[cfg(unix)]
 fn parse_jhook_command(command: &str) -> Result<ObjcHookCommand> {
-    const USAGE: &str = "jhook usage: jhook <class> <selector> [meta]|jhook stop";
+    const USAGE: &str = "jhook usage: jhook <class> <selector> [meta]|jhook status|jhook stop";
     let mut parts = command.split_whitespace();
     match parts.next() {
         Some("jhook") => {}
@@ -3133,6 +3181,9 @@ fn parse_jhook_command(command: &str) -> Result<ObjcHookCommand> {
     let rest = parts.collect::<Vec<_>>();
     if rest.is_empty() {
         return Err(Error::InvalidArgument(USAGE.into()));
+    }
+    if rest.len() == 1 && matches!(rest[0], "status" | "state" | "show") {
+        return Ok(ObjcHookCommand::Status);
     }
     if rest.len() == 1 && matches!(rest[0], "stop" | "off" | "disable") {
         return Ok(ObjcHookCommand::Stop);
@@ -3161,7 +3212,7 @@ fn parse_jhook_command(command: &str) -> Result<ObjcHookCommand> {
 
 #[cfg(unix)]
 fn parse_shook_command(command: &str) -> Result<SwiftHookCommand> {
-    const USAGE: &str = "shook usage: shook <type> <method>|shook <module> -- <type> <method>|shook stop";
+    const USAGE: &str = "shook usage: shook <type> <method>|shook <module> -- <type> <method>|shook status|shook stop";
 
     let mut parts = command.split_whitespace();
     match parts.next() {
@@ -3172,6 +3223,9 @@ fn parse_shook_command(command: &str) -> Result<SwiftHookCommand> {
     let rest = parts.collect::<Vec<_>>();
     if rest.is_empty() {
         return Err(Error::InvalidArgument(USAGE.into()));
+    }
+    if rest.len() == 1 && matches!(rest[0], "status" | "state" | "show") {
+        return Ok(SwiftHookCommand::Status);
     }
     if rest.len() == 1 && rest[0] == "stop" {
         return Ok(SwiftHookCommand::Stop);
@@ -3203,6 +3257,7 @@ fn parse_shook_command(command: &str) -> Result<SwiftHookCommand> {
 #[cfg(unix)]
 fn build_stalker_spec(stalker_command: &StalkerCommand) -> Value {
     match stalker_command {
+        StalkerCommand::Status => json!({ "kind": "stalker.status" }),
         StalkerCommand::Stop => json!({ "kind": "stalker.stop" }),
         StalkerCommand::InstallObjc { filter } => json!({
             "kind": "objc.stalker.install",
@@ -3218,6 +3273,7 @@ fn build_stalker_spec(stalker_command: &StalkerCommand) -> Value {
 #[cfg(unix)]
 fn build_trace_spec(trace_command: &TraceCommand) -> Value {
     match trace_command {
+        TraceCommand::Status => json!({ "kind": "trace.status" }),
         TraceCommand::Stop => json!({ "kind": "trace.stop" }),
         TraceCommand::InstallObjc { filter } => json!({
             "kind": "objc.trace.install",
@@ -3285,6 +3341,7 @@ fn build_hfl_spec(command: &HflCommand) -> Value {
             "moduleName": module_name,
             "offsetHex": format!("0x{offset:x}"),
         }),
+        HflCommand::Status => json!({ "kind": "hfl.status" }),
         HflCommand::Stop => json!({ "kind": "hfl.stop" }),
     }
 }
@@ -3298,6 +3355,7 @@ fn build_jhook_spec(command: &ObjcHookCommand) -> Value {
             "selectorName": spec.selector_name,
             "isClassMethod": spec.is_class_method,
         }),
+        ObjcHookCommand::Status => json!({ "kind": "objc.hook.status" }),
         ObjcHookCommand::Stop => json!({ "kind": "objc.hook.stop" }),
     }
 }
@@ -3315,6 +3373,7 @@ fn build_shook_spec(command: &SwiftHookCommand) -> Value {
             "typeName": type_name,
             "methodQuery": method_query,
         }),
+        SwiftHookCommand::Status => json!({ "kind": "swift.hook.status" }),
         SwiftHookCommand::Stop => json!({ "kind": "swift.hook.stop" }),
     }
 }
@@ -3362,13 +3421,13 @@ fn print_controller_help() {
     println!("commands:");
     println!("  help");
     println!("  ping");
-    println!("  stalker [filter]|stalker native [module] <symbol> [-- template]|stalker addr <address> [-- template]|stalker stop");
+    println!("  stalker [filter]|stalker native [module] <symbol> [-- template]|stalker addr <address> [-- template]|stalker status|stalker stop");
     println!(
-        "  trace [filter]|trace native [module] <symbol> [-- template]|trace addr <address> [-- template]|trace stop"
+        "  trace [filter]|trace native [module] <symbol> [-- template]|trace addr <address> [-- template]|trace status|trace stop"
     );
-    println!("  hfl <module> <offset>|hfl stop");
-    println!("  jhook <class> <selector> [meta]|jhook stop");
-    println!("  shook <type> <method>|shook <module> -- <type> <method>|shook stop");
+    println!("  hfl <module> <offset>|hfl status|hfl stop");
+    println!("  jhook <class> <selector> [meta]|jhook status|jhook stop");
+    println!("  shook <type> <method>|shook <module> -- <type> <method>|shook status|shook stop");
     println!("  jsinit");
     println!("  jsclean");
     println!("  loadjs <script>");
@@ -3580,14 +3639,15 @@ fn event_name(event: &AgentEvent) -> &'static str {
 mod tests {
     use super::{
         analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
-        build_trace_spec, command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command,
-        hook_environment_requires_notice, parse_hfl_command, parse_jhook_command, parse_shook_command,
-        parse_stalker_command, parse_trace_command, print_injection_preflight, quote_js_string,
-        render_bootstrap_summary, render_command_error_json, render_command_error_json_with_context,
-        render_command_outcome_json, render_image_list_json, render_injection_environment,
-        render_injection_result_json, render_loader_symbol, render_preflight_json, CommandJsonContext, CommandOutcome,
-        CommandOutcomeKind, HflCommand, NativeHookTarget, NativeLogArgument, NativeLogReturn, NativeLogTemplate,
-        NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
+        build_trace_spec, command_requests_inline_hook_install, command_requires_inline_hooks,
+        ensure_inline_hooks_allowed_for_command, hook_environment_requires_notice, parse_hfl_command,
+        parse_jhook_command, parse_shook_command, parse_stalker_command, parse_trace_command,
+        print_injection_preflight, quote_js_string, render_bootstrap_summary, render_command_error_json,
+        render_command_error_json_with_context, render_command_outcome_json, render_image_list_json,
+        render_injection_environment, render_injection_result_json, render_loader_symbol, render_preflight_json,
+        CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, NativeHookTarget, NativeLogArgument,
+        NativeLogReturn, NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand,
+        TraceCommand,
     };
     use common::{
         AgentCommand, ControllerConfig, Error, Hello, InjectionMode, DEFAULT_AGENT_PATH, DEFAULT_AGENT_PATH_ROOTFUL,
@@ -3611,6 +3671,11 @@ mod tests {
                 offset: 0x1234,
             }
         );
+    }
+
+    #[test]
+    fn parse_hfl_status() {
+        assert_eq!(parse_hfl_command("hfl status").expect("parse hfl"), HflCommand::Status);
     }
 
     #[test]
@@ -3690,6 +3755,21 @@ mod tests {
     }
 
     #[test]
+    fn command_requests_inline_hook_install_distinguishes_install_from_stop_and_status() {
+        assert!(command_requests_inline_hook_install("trace UIViewController").expect("trace install"));
+        assert!(command_requests_inline_hook_install("stalker native malloc").expect("stalker install"));
+        assert!(command_requests_inline_hook_install("jhook UIViewController viewDidLoad").expect("jhook install"));
+        assert!(command_requests_inline_hook_install("shook ViewController viewDidLoad").expect("shook install"));
+        assert!(command_requests_inline_hook_install("hfl libobjc.A.dylib 0x1234").expect("hfl install"));
+        assert!(!command_requests_inline_hook_install("trace stop").expect("trace stop"));
+        assert!(!command_requests_inline_hook_install("trace status").expect("trace status"));
+        assert!(!command_requests_inline_hook_install("stalker status").expect("stalker status"));
+        assert!(!command_requests_inline_hook_install("jhook status").expect("jhook status"));
+        assert!(!command_requests_inline_hook_install("shook stop").expect("shook stop"));
+        assert!(!command_requests_inline_hook_install("hfl status").expect("hfl status"));
+    }
+
+    #[test]
     fn query_only_hook_policy_still_allows_runtime_query_commands() {
         let environment = InjectionEnvironmentReport {
             dry_run: false,
@@ -3740,6 +3820,10 @@ mod tests {
 
         ensure_inline_hooks_allowed_for_command("objc.classes UIView", &environment, &preflight)
             .expect("query command should stay allowed");
+        ensure_inline_hooks_allowed_for_command("trace status", &environment, &preflight)
+            .expect("status command should stay allowed");
+        ensure_inline_hooks_allowed_for_command("trace stop", &environment, &preflight)
+            .expect("stop command should stay allowed");
     }
 
     #[test]
@@ -5040,6 +5124,8 @@ mod tests {
 
         let stop_spec = build_hfl_spec(&HflCommand::Stop);
         assert_eq!(stop_spec, json!({ "kind": "hfl.stop" }));
+        let status_spec = build_hfl_spec(&HflCommand::Status);
+        assert_eq!(status_spec, json!({ "kind": "hfl.status" }));
     }
 
     #[test]
@@ -5172,6 +5258,14 @@ mod tests {
     }
 
     #[test]
+    fn parse_trace_status() {
+        assert_eq!(
+            parse_trace_command("trace status").expect("parse trace"),
+            TraceCommand::Status
+        );
+    }
+
+    #[test]
     fn build_trace_spec_contains_objc_msgsend_flow() {
         let spec = build_trace_spec(&TraceCommand::InstallObjc {
             filter: Some("viewDidLoad".into()),
@@ -5183,6 +5277,8 @@ mod tests {
                 "filter": "viewDidLoad",
             })
         );
+        let status_spec = build_trace_spec(&TraceCommand::Status);
+        assert_eq!(status_spec, json!({ "kind": "trace.status" }));
     }
 
     #[test]
@@ -5336,6 +5432,14 @@ mod tests {
     }
 
     #[test]
+    fn parse_stalker_status() {
+        assert_eq!(
+            parse_stalker_command("stalker status").expect("parse stalker"),
+            StalkerCommand::Status
+        );
+    }
+
+    #[test]
     fn build_stalker_spec_contains_message_flow() {
         let spec = build_stalker_spec(&StalkerCommand::InstallObjc {
             filter: Some("viewDidLoad".into()),
@@ -5347,6 +5451,8 @@ mod tests {
                 "filter": "viewDidLoad",
             })
         );
+        let status_spec = build_stalker_spec(&StalkerCommand::Status);
+        assert_eq!(status_spec, json!({ "kind": "stalker.status" }));
     }
 
     #[test]
@@ -5404,6 +5510,14 @@ mod tests {
     }
 
     #[test]
+    fn parse_jhook_status() {
+        assert_eq!(
+            parse_jhook_command("jhook status").expect("parse jhook"),
+            ObjcHookCommand::Status
+        );
+    }
+
+    #[test]
     fn build_jhook_spec_contains_objc_hook_flow() {
         let command = parse_jhook_command("jhook UIViewController viewDidLoad").expect("parse jhook");
         let spec = build_jhook_spec(&command);
@@ -5419,6 +5533,8 @@ mod tests {
 
         let stop_spec = build_jhook_spec(&ObjcHookCommand::Stop);
         assert_eq!(stop_spec, json!({ "kind": "objc.hook.stop" }));
+        let status_spec = build_jhook_spec(&ObjcHookCommand::Status);
+        assert_eq!(status_spec, json!({ "kind": "objc.hook.status" }));
     }
 
     #[test]
@@ -5454,6 +5570,14 @@ mod tests {
     }
 
     #[test]
+    fn parse_shook_status() {
+        assert_eq!(
+            parse_shook_command("shook status").expect("parse shook"),
+            SwiftHookCommand::Status
+        );
+    }
+
+    #[test]
     fn build_shook_spec_contains_swift_hook_flow() {
         let spec = build_shook_spec(&SwiftHookCommand::Install {
             module_name: Some("MyAppBinary".into()),
@@ -5472,6 +5596,8 @@ mod tests {
 
         let stop_spec = build_shook_spec(&SwiftHookCommand::Stop);
         assert_eq!(stop_spec, json!({ "kind": "swift.hook.stop" }));
+        let status_spec = build_shook_spec(&SwiftHookCommand::Status);
+        assert_eq!(status_spec, json!({ "kind": "swift.hook.status" }));
     }
 
     #[test]
