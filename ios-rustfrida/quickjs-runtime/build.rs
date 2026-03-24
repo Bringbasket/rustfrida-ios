@@ -91,6 +91,10 @@ fn build_quickjs(manifest_dir: &Path, quickjs_src: &Path, target: &str) {
         build.flag("-DANDROID");
     }
 
+    if let Some(flag) = apple_min_version_flag(target) {
+        build.flag(&flag);
+    }
+
     build.compile("quickjs_runtime_native");
 
     let mut bindings = bindgen::Builder::default()
@@ -116,9 +120,7 @@ fn build_quickjs(manifest_dir: &Path, quickjs_src: &Path, target: &str) {
         }
     }
 
-    let bindings = bindings
-        .generate()
-        .expect("Unable to generate QuickJS bindings");
+    let bindings = bindings.generate().expect("Unable to generate QuickJS bindings");
 
     bindings
         .write_to_file(out_dir.join("quickjs_bindings.rs"))
@@ -180,6 +182,10 @@ fn build_hook_engine(manifest_dir: &Path, target: &str) {
     if target.contains("apple") {
         println!("cargo:rerun-if-changed={}", include_dir.join("sys/prctl.h").display());
         build.include(&include_dir);
+    }
+
+    if let Some(flag) = apple_min_version_flag(target) {
+        build.flag(&flag);
     }
 
     build.compile("quickjs_runtime_hook_engine");
@@ -298,11 +304,20 @@ fn apple_bindgen_clang_args(target: &str) -> Option<Vec<String>> {
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| xcrun_sdk_path(sdk));
 
-    Some(vec![
-        format!("--target={clang_target}"),
-        "-isysroot".into(),
-        sdk_path,
-    ])
+    Some(vec![format!("--target={clang_target}"), "-isysroot".into(), sdk_path])
+}
+
+fn apple_min_version_flag(target: &str) -> Option<String> {
+    match target {
+        "aarch64-apple-ios" => Some(format!("-miphoneos-version-min={}", ios_deployment_target())),
+        "aarch64-apple-ios-sim" | "x86_64-apple-ios" => {
+            Some(format!("-mios-simulator-version-min={}", ios_deployment_target()))
+        }
+        "aarch64-apple-darwin" | "x86_64-apple-darwin" => {
+            Some(format!("-mmacosx-version-min={}", macos_deployment_target()))
+        }
+        _ => None,
+    }
 }
 
 fn ios_deployment_target() -> String {

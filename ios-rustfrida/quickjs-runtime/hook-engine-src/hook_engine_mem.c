@@ -8,6 +8,10 @@
 
 #include "hook_engine_internal.h"
 
+#if defined(__APPLE__)
+#include <libkern/OSCacheControl.h>
+#endif
+
 /* --- Page permission helpers --- */
 
 /*
@@ -115,7 +119,12 @@ void free_entry(HookEntry* entry) {
 /* --- Cache flush --- */
 
 void hook_flush_cache(void* start, size_t size) {
+#if defined(__APPLE__)
+    sys_dcache_flush(start, size);
+    sys_icache_invalidate(start, size);
+#else
     __builtin___clear_cache((char*)start, (char*)start + size);
+#endif
 }
 
 /* --- wxshadow (two-step shadow page patching) --- */

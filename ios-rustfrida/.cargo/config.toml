@@ -8,3 +8,5 @@ check-ios-sim = "check --target aarch64-apple-ios-sim"
 
 [env]
 BINDGEN_EXTRA_CLANG_ARGS = ""
+IPHONEOS_DEPLOYMENT_TARGET = "13.0"
+MACOSX_DEPLOYMENT_TARGET = "11.0"
