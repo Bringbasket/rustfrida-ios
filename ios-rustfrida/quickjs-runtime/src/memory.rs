@@ -272,8 +272,18 @@ unsafe fn write_with_perm(addr: u64, size: usize, write_fn: impl FnOnce()) -> bo
         return true;
     }
 
-    let prot = libc::PROT_READ | libc::PROT_WRITE | libc::PROT_EXEC;
-    if libc::mprotect(start_page as *mut libc::c_void, mprotect_len, prot) != 0 {
+    let writable_prots = [
+        libc::PROT_READ | libc::PROT_WRITE,
+        libc::PROT_READ | libc::PROT_WRITE | libc::PROT_EXEC,
+    ];
+    let mut changed = false;
+    for prot in writable_prots {
+        if libc::mprotect(start_page as *mut libc::c_void, mprotect_len, prot) == 0 {
+            changed = true;
+            break;
+        }
+    }
+    if !changed {
         return false;
     }
     write_fn();

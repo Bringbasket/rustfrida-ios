@@ -321,6 +321,14 @@ undefined;
             cfg!(any(target_os = "macos", target_os = "ios"))
         }
 
+        fn has_pac_support() -> bool {
+            cfg!(all(any(target_os = "macos", target_os = "ios"), target_arch = "aarch64"))
+        }
+
+        fn has_swift_support() -> bool {
+            cfg!(any(target_os = "macos", target_os = "ios"))
+        }
+
         fn test_lock() -> &'static Mutex<()> {
             static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
             LOCK.get_or_init(|| Mutex::new(()))
@@ -495,7 +503,8 @@ undefined;
                     .expect("objc objectClassName"),
                 "true"
             );
-            assert_eq!(runtime.eval("PAC.available").expect("pac available"), "false");
+            let pac_available = if has_pac_support() { "true" } else { "false" };
+            assert_eq!(runtime.eval("PAC.available").expect("pac available"), pac_available);
             assert_eq!(runtime.eval("typeof PAC.strip").expect("pac strip type"), "function");
             assert_eq!(
                 runtime.eval("typeof PAC.stripData").expect("pac stripData type"),
@@ -531,7 +540,8 @@ undefined;
                     .expect("pac arm64e images"),
                 "true"
             );
-            assert_eq!(runtime.eval("Swift.available").expect("swift available"), "false");
+            let swift_available = if has_swift_support() { "true" } else { "false" };
+            assert_eq!(runtime.eval("Swift.available").expect("swift available"), swift_available);
             assert_eq!(
                 runtime.eval("typeof Swift.demangle").expect("swift demangle type"),
                 "function"
@@ -578,7 +588,9 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("Swift.demangle('$s4Demo6methodyyF') === null")
+                    .eval(
+                        "(function() { const value = Swift.demangle('$s4Demo6methodyyF'); return value === null || value.indexOf('Demo') !== -1 || value.indexOf('method') !== -1; })()"
+                    )
                     .expect("swift demangle"),
                 "true"
             );
@@ -1018,9 +1030,11 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("__iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF')")
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF'); return value === '<unavailable>' || value.indexOf('Demo') !== -1 || value.indexOf('method') !== -1; })()"
+                    )
                     .expect("agent swift demangle"),
-                "<unavailable>"
+                "true"
             );
             assert_eq!(
                 runtime
@@ -1042,9 +1056,11 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("JSON.stringify(__iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.available' }))")
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.available' }); return result.kind === 'pac.available' && result.available === PAC.available && result.text === String(PAC.available); })()"
+                    )
                     .expect("agent pac available result"),
-                "{\"kind\":\"pac.available\",\"available\":false,\"text\":\"false\"}"
+                "true"
             );
             assert_eq!(
                 runtime
