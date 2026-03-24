@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = [
+    "common",
+    "controller",
+    "agent",
+    "quickjs-runtime",
+    "objc-api",
+    "native-api",
+]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+authors = ["Codex"]
+license = "MIT"
+
+[workspace.dependencies]
+clap = { version = "4.5.37", features = ["derive"] }
+libc = "0.2"
+

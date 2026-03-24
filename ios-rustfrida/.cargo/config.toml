@@ -1,0 +1,10 @@
+[build]
+target = "aarch64-apple-ios"
+
+[alias]
+check-host = "check --target x86_64-unknown-linux-gnu"
+check-ios = "check --target aarch64-apple-ios"
+check-ios-sim = "check --target aarch64-apple-ios-sim"
+
+[env]
+BINDGEN_EXTRA_CLANG_ARGS = ""

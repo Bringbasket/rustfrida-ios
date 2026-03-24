@@ -1,0 +1,18 @@
+[package]
+name = "agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+common = { path = "../common" }
+native-api = { path = "../native-api" }
+objc-api = { path = "../objc-api" }
+quickjs-runtime = { path = "../quickjs-runtime" }
+libc = { workspace = true }
+serde_json = "1.0"
+
+[lib]
+name = "agent"
+crate-type = ["cdylib"]
+path = "src/lib.rs"

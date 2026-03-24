@@ -1,0 +1,94 @@
+name: ios-rustfrida-package
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_deb:
+        description: "Build rootless/rootful .deb packages"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    working-directory: ios-rustfrida
+
+jobs:
+  package:
+    name: Package Artifacts (macOS)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy, rust-src
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ios-rustfrida -> ios-rustfrida/target
+
+      - name: Detect host target
+        id: host
+        shell: bash
+        run: |
+          echo "triple=$(rustc -vV | sed -n 's/^host: //p')" >> "$GITHUB_OUTPUT"
+
+      - name: Pre-package verification
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cargo test -p native-api --target "${{ steps.host.outputs.triple }}"
+          cargo test -p quickjs-runtime --target "${{ steps.host.outputs.triple }}" -- --test-threads=1
+          cargo check --target aarch64-apple-ios-sim
+
+      - name: Build release artifacts
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cargo build -p agent --release --target aarch64-apple-ios
+          cargo build -p controller --release --bin ios-rustfrida --target "${{ steps.host.outputs.triple }}"
+
+      - name: Install dpkg tooling
+        if: ${{ inputs.build_deb }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if ! command -v dpkg-deb >/dev/null 2>&1; then
+            brew update
+            brew install dpkg
+          fi
+
+      - name: Package artifacts
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [[ "${{ inputs.build_deb }}" == "true" ]]; then
+            HOST_TRIPLE="${{ steps.host.outputs.triple }}" BUILD_DEB=1 scripts/package-artifacts.sh
+          else
+            HOST_TRIPLE="${{ steps.host.outputs.triple }}" BUILD_DEB=0 scripts/package-artifacts.sh
+          fi
+
+      - name: Upload packaged artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-rustfrida-package-bundles
+          path: |
+            ios-rustfrida/dist/ios-rustfrida-agent-aarch64-apple-ios.tar.gz
+            ios-rustfrida/dist/ios-rustfrida-controller-${{ steps.host.outputs.triple }}.tar.gz
+            ios-rustfrida/dist/ios-rustfrida-agent_*_rootless.deb
+            ios-rustfrida/dist/ios-rustfrida-agent_*_rootful.deb
+          if-no-files-found: error
+          retention-days: 14

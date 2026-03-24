@@ -1,0 +1,262 @@
+pub(crate) fn bootstrap_native_hooks() -> &'static str {
+    r#"globalThis.__iosRustFridaNativeHooks = globalThis.__iosRustFridaNativeHooks || (function() {
+const MAX_PREVIEW_STRING = 96;
+const IOSRF_O_ACCMODE = 0x3;
+const IOSRF_O_FLAG_BITS = [['O_WRONLY', 0x1], ['O_RDWR', 0x2], ['O_NONBLOCK', 0x4], ['O_APPEND', 0x8], ['O_SHLOCK', 0x10], ['O_EXLOCK', 0x20], ['O_ASYNC', 0x40], ['O_FSYNC', 0x80], ['O_NOFOLLOW', 0x100], ['O_CREAT', 0x200], ['O_TRUNC', 0x400], ['O_EXCL', 0x800], ['O_EVTONLY', 0x8000], ['O_NOCTTY', 0x20000], ['O_DIRECTORY', 0x100000], ['O_SYMLINK', 0x200000], ['O_CLOEXEC', 0x1000000]];
+const IOSRF_ACCESS_MODE_BITS = [['R_OK', 4], ['W_OK', 2], ['X_OK', 1]];
+const IOSRF_RTLD_BITS = [['RTLD_LAZY', 0x1], ['RTLD_NOW', 0x2], ['RTLD_LOCAL', 0x4], ['RTLD_GLOBAL', 0x8], ['RTLD_NOLOAD', 0x10], ['RTLD_NODELETE', 0x80], ['RTLD_FIRST', 0x100]];
+function ptrValue(value) { return ptr(value); }
+function normalizeSymbolName(name) { if (name === null || name === undefined) { return ''; } let normalized = String(name); while (normalized.startsWith('_')) { normalized = normalized.slice(1); } return normalized; }
+function ptrToBigInt(value) { try { const numeric = ptrValue(value).toNumber(); return typeof numeric === 'bigint' ? numeric : BigInt(numeric); } catch (_) { return 0n; } }
+function signed(value) { const raw = ptrToBigInt(value) & 0xffffffffffffffffn; return raw > 0x7fffffffffffffffn ? raw - 0x10000000000000000n : raw; }
+function hex(value) { return '0x' + ptrToBigInt(value).toString(16); }
+function dec(value) { return ptrToBigInt(value).toString(10); }
+function symbolLabel(value) { try { const symbol = DebugSymbol.fromAddress(ptrValue(value)); if (symbol === null || symbol.name === null) { return null; } const offset = typeof symbol.offset === 'bigint' ? symbol.offset : BigInt(symbol.offset || 0); const suffix = offset === 0n ? '' : ('+0x' + offset.toString(16)); return symbol.moduleName + '!' + symbol.name + suffix; } catch (_) { return null; } }
+function escapeString(value) { return JSON.stringify(value.length > MAX_PREVIEW_STRING ? value.slice(0, MAX_PREVIEW_STRING) + '...' : value); }
+function cstringPreview(value) { try { const target = ptrValue(value); if (target.toString() === '0x0') { return null; } const text = Memory.readCString(target); if (text.length === 0) { return '\"\"'; } if (!/^[\x09\x0a\x0d\x20-\x7e]+$/.test(text)) { return null; } return escapeString(text); } catch (_) { return null; } }
+function cstringOrPointer(value) { const text = cstringPreview(value); return text !== null ? text : ptrValue(value).toString(); }
+function formatMode(value) { return '0o' + (ptrToBigInt(value) & 0xfffn).toString(8); }
+function formatFd(value) { const fd = signed(value); if (fd === -2n) { return 'AT_FDCWD'; } return fd.toString(); }
+function formatOpenFlags(value) { const raw = Number(ptrToBigInt(value) & 0xffffffffn); const access = ['O_RDONLY', 'O_WRONLY', 'O_RDWR'][raw & IOSRF_O_ACCMODE] || ('ACC=' + String(raw & IOSRF_O_ACCMODE)); const parts = [access]; for (const entry of IOSRF_O_FLAG_BITS) { if ((raw & entry[1]) !== 0 && !(entry[0] === 'O_WRONLY' && (raw & IOSRF_O_ACCMODE) === 1) && !(entry[0] === 'O_RDWR' && (raw & IOSRF_O_ACCMODE) === 2)) { parts.push(entry[0]); } } return parts.join('|') + ' (' + '0x' + raw.toString(16) + ')'; }
+function formatAccessMode(value) { const raw = Number(ptrToBigInt(value) & 0xffffffffn); if (raw === 0) { return 'F_OK'; } const parts = []; for (const entry of IOSRF_ACCESS_MODE_BITS) { if ((raw & entry[1]) !== 0) { parts.push(entry[0]); } } return (parts.length === 0 ? String(raw) : parts.join('|')) + ' (' + '0x' + raw.toString(16) + ')'; }
+function formatDlopenMode(value) { const raw = Number(ptrToBigInt(value) & 0xffffffffn); const parts = []; for (const entry of IOSRF_RTLD_BITS) { if ((raw & entry[1]) !== 0) { parts.push(entry[0]); } } return (parts.length === 0 ? String(raw) : parts.join('|')) + ' (' + '0x' + raw.toString(16) + ')'; }
+function describePointerValue(value) { const target = ptrValue(value); let rendered = target.toString(); const label = symbolLabel(value); if (label !== null) { rendered += '<' + label + '>'; } const cstring = cstringPreview(value); if (cstring !== null) { rendered += ' str=' + cstring; } return rendered; }
+function formatTypedValue(kind, value) { switch (kind) { case 'ptr': return describePointerValue(value); case 'cstr': return cstringOrPointer(value); case 'fd': return formatFd(value); case 'openflags': return formatOpenFlags(value); case 'access': return formatAccessMode(value); case 'mode': return formatMode(value); case 'int': case 'ssize': return signed(value).toString(); case 'uint': case 'size': return dec(value); case 'hex': return hex(value); default: return describePointerValue(value); } }
+function formatRegister(name, value) { return name + '=' + describePointerValue(value); }
+function formatRegisters(ctx, names) { const parts = []; for (const name of names) { parts.push(formatRegister(name, ctx[name])); } return parts.join(' '); }
+function formatTemplateArgs(ctx, template) { if (!Array.isArray(template) || template.length === 0) { return null; } const parts = []; for (let i = 0; i < template.length; i++) { const spec = template[i]; const label = spec && typeof spec.label === 'string' && spec.label.length !== 0 ? spec.label : ('x' + i); const kind = spec && typeof spec.kind === 'string' ? spec.kind : 'ptr'; parts.push(label + '=' + formatTypedValue(kind, ctx['x' + i])); } return parts; }
+function formatTemplateReturn(ctx, spec) { if (!spec || typeof spec !== 'object') { return null; } const label = typeof spec.label === 'string' && spec.label.length !== 0 ? spec.label : 'result'; const kind = typeof spec.kind === 'string' ? spec.kind : 'ptr'; return label + '=' + formatTypedValue(kind, ctx.x0); }
+function describeCall(symbolName, ctx) { switch (normalizeSymbolName(symbolName)) { case 'open': case 'open$NOCANCEL': return ['path=' + cstringOrPointer(ctx.x0), 'flags=' + formatOpenFlags(ctx.x1), 'mode=' + formatMode(ctx.x2)]; case 'openat': case 'openat$NOCANCEL': return ['dirfd=' + formatFd(ctx.x0), 'path=' + cstringOrPointer(ctx.x1), 'flags=' + formatOpenFlags(ctx.x2), 'mode=' + formatMode(ctx.x3)]; case 'access': case 'faccessat': return ['path=' + cstringOrPointer(ctx.x0), 'mode=' + formatAccessMode(ctx.x1)]; case 'chdir': case 'mkdir': case 'rmdir': case 'unlink': case 'remove': return ['path=' + cstringOrPointer(ctx.x0)]; case 'rename': return ['old=' + cstringOrPointer(ctx.x0), 'new=' + cstringOrPointer(ctx.x1)]; case 'chmod': return ['path=' + cstringOrPointer(ctx.x0), 'mode=' + formatMode(ctx.x1)]; case 'stat': case 'lstat': return ['path=' + cstringOrPointer(ctx.x0), 'buf=' + formatRegister('x1', ctx.x1)]; case 'read': return ['fd=' + formatFd(ctx.x0), 'buf=' + formatRegister('x1', ctx.x1), 'count=' + dec(ctx.x2)]; case 'write': return ['fd=' + formatFd(ctx.x0), 'buf=' + formatRegister('x1', ctx.x1), 'count=' + dec(ctx.x2)]; case 'dlopen': return ['path=' + cstringOrPointer(ctx.x0), 'mode=' + formatDlopenMode(ctx.x1)]; case 'dlsym': return ['handle=' + formatRegister('x0', ctx.x0), 'symbol=' + cstringOrPointer(ctx.x1)]; case 'objc_getClass': case 'objc_lookUpClass': case 'sel_registerName': return ['name=' + cstringOrPointer(ctx.x0)]; case 'malloc': return ['size=' + dec(ctx.x0)]; case 'calloc': return ['count=' + dec(ctx.x0), 'size=' + dec(ctx.x1), 'total=' + (ptrToBigInt(ctx.x0) * ptrToBigInt(ctx.x1)).toString(10)]; case 'realloc': return ['ptr=' + formatRegister('x0', ctx.x0), 'size=' + dec(ctx.x1)]; case 'free': return ['ptr=' + formatRegister('x0', ctx.x0)]; case 'memcpy': case 'memmove': return ['dst=' + formatRegister('x0', ctx.x0), 'src=' + formatRegister('x1', ctx.x1), 'n=' + dec(ctx.x2)]; case 'memset': return ['dst=' + formatRegister('x0', ctx.x0), 'value=' + hex(ctx.x1), 'n=' + dec(ctx.x2)]; case 'strlen': case 'strdup': return ['s=' + cstringOrPointer(ctx.x0)]; case 'strcmp': case 'strncmp': return ['left=' + cstringOrPointer(ctx.x0), 'right=' + cstringOrPointer(ctx.x1)]; default: return null; } }
+function describeReturn(symbolName, ctx) { switch (normalizeSymbolName(symbolName)) { case 'open': case 'open$NOCANCEL': case 'openat': case 'openat$NOCANCEL': case 'access': case 'chmod': case 'mkdir': case 'rmdir': case 'unlink': case 'remove': case 'rename': case 'chdir': case 'stat': case 'lstat': case 'read': case 'write': case 'strcmp': case 'strncmp': return 'result=' + signed(ctx.x0).toString(); case 'strlen': return 'result=' + dec(ctx.x0); case 'malloc': case 'calloc': case 'realloc': case 'strdup': case 'dlopen': case 'dlsym': case 'objc_getClass': case 'objc_lookUpClass': case 'sel_registerName': return 'result=' + formatRegister('x0', ctx.x0); case 'free': return 'result=void'; default: return null; } }
+function resolveTarget(spec) {
+    if (!spec || typeof spec !== 'object') {
+        throw new Error('native hook target spec must be an object');
+    }
+    if (spec.kind === 'export') {
+        const moduleName = spec.moduleName === undefined ? null : spec.moduleName;
+        const symbolName = String(spec.symbolName || '');
+        const target = Module.findExportByName(moduleName, symbolName);
+        if (target === null) {
+            throw new Error('export not found: ' + symbolName);
+        }
+        const targetLabel = (moduleName !== null ? moduleName + '!' : '') + symbolName;
+        const targetSymbol = DebugSymbol.fromAddress(target);
+        const resolvedLabel = targetSymbol && targetSymbol.name !== null ? targetLabel + ' => ' + targetSymbol.name : targetLabel;
+        return { target, targetName: targetSymbol && targetSymbol.name !== null ? targetSymbol.name : symbolName, resolvedLabel };
+    }
+    if (spec.kind === 'address') {
+        const target = ptr(spec.address);
+        const targetSymbol = DebugSymbol.fromAddress(target);
+        const resolvedLabel = targetSymbol && targetSymbol.name !== null ? (targetSymbol.moduleName + '!' + targetSymbol.name + '+0x' + targetSymbol.offset.toString(16)) : ('address ' + target.toString());
+        return { target, targetName: targetSymbol && targetSymbol.name !== null ? targetSymbol.name : null, resolvedLabel };
+    }
+    throw new Error('unsupported native hook target kind: ' + String(spec.kind));
+}
+function stopTrace() {
+    const state = globalThis.__iosRustFridaTrace;
+    if (state && state.handle && typeof state.handle.detach === 'function') {
+        try { state.handle.detach(); } catch (_) {}
+    }
+    globalThis.__iosRustFridaTrace = {};
+    return 'trace stopped';
+}
+function stopStalker() {
+    const state = globalThis.__iosRustFridaStalker;
+    if (state && Array.isArray(state.handles)) {
+        for (const handle of state.handles) {
+            if (handle && typeof handle.detach === 'function') {
+                try { handle.detach(); } catch (_) {}
+            }
+        }
+    }
+    globalThis.__iosRustFridaStalker = {};
+    return 'stalker stopped';
+}
+function installTrace(spec) {
+    const objcFilter = spec && typeof spec.objcFilter === 'string' ? spec.objcFilter : '';
+    if (spec && spec.objcMode === 'trace') {
+        const target = Module.findExportByName(null, 'objc_msgSend');
+        if (target === null) {
+            throw new Error('objc_msgSend export not found');
+        }
+        globalThis.__iosRustFridaTrace = globalThis.__iosRustFridaTrace || {};
+        if (globalThis.__iosRustFridaTrace.handle && typeof globalThis.__iosRustFridaTrace.handle.detach === 'function') {
+            try { globalThis.__iosRustFridaTrace.handle.detach(); } catch (_) {}
+        }
+        const handle = Interceptor.attach(target, {
+            onEnter(ctx) {
+                try {
+                    const selfPtr = ptr(ctx.x0);
+                    const selPtr = ptr(ctx.x1);
+                    const className = ObjC.objectClassName(selfPtr) || '<nil>';
+                    const selectorName = ObjC.selectorName(selPtr) || '<unknown>';
+                    const summary = className + ' ' + selectorName;
+                    if (objcFilter.length !== 0 && summary.indexOf(objcFilter) === -1) {
+                        return;
+                    }
+                    console.log('[trace] ' + summary + ' self=' + selfPtr.toString() + ' x2=' + ptr(ctx.x2).toString() + ' x3=' + ptr(ctx.x3).toString());
+                } catch (e) {
+                    console.log('[trace] error ' + String(e));
+                }
+            }
+        });
+        globalThis.__iosRustFridaTrace = { handle, filter: objcFilter, label: 'objc_msgSend' };
+        return 'trace installed: objc_msgSend' + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)';
+    }
+
+    const resolved = resolveTarget(spec);
+    const templateArgs = spec && spec.templateArgs ? spec.templateArgs : null;
+    const templateRet = spec && spec.templateRet ? spec.templateRet : null;
+    globalThis.__iosRustFridaTrace = globalThis.__iosRustFridaTrace || {};
+    if (globalThis.__iosRustFridaTrace.handle && typeof globalThis.__iosRustFridaTrace.handle.detach === 'function') {
+        try { globalThis.__iosRustFridaTrace.handle.detach(); } catch (_) {}
+    }
+    const handle = Interceptor.attach(resolved.target, {
+        onEnter(ctx) {
+            try {
+                const callDetails = formatTemplateArgs(ctx, templateArgs) || describeCall(resolved.targetName, ctx);
+                const detailText = callDetails !== null ? ' args: ' + callDetails.join(' ') : '';
+                console.log('[trace] ' + resolved.resolvedLabel + detailText + ' ' + formatRegisters(ctx, ['x0', 'x1', 'x2', 'x3', 'x4', 'x5']));
+            } catch (e) {
+                console.log('[trace] error ' + String(e));
+            }
+        },
+        onLeave(ctx) {
+            try {
+                const retDetails = formatTemplateReturn(ctx, templateRet) || describeReturn(resolved.targetName, ctx);
+                const detailText = retDetails !== null ? ' ' + retDetails : '';
+                console.log('[trace] ret ' + resolved.resolvedLabel + detailText + ' ' + formatRegister('x0', ctx.x0));
+            } catch (e) {
+                console.log('[trace] error ' + String(e));
+            }
+        }
+    });
+    globalThis.__iosRustFridaTrace = { handle, label: resolved.resolvedLabel };
+    return 'trace installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)';
+}
+function installStalker(spec) {
+    const objcFilter = spec && typeof spec.objcFilter === 'string' ? spec.objcFilter : '';
+    if (spec && spec.objcMode === 'stalker') {
+        const msgSend = Module.findExportByName(null, 'objc_msgSend');
+        if (msgSend === null) {
+            throw new Error('objc_msgSend export not found');
+        }
+        const msgSendSuper = Module.findExportByName(null, 'objc_msgSendSuper2');
+        const pthreadSelf = Module.findExportByName(null, 'pthread_self');
+        const state = globalThis.__iosRustFridaStalker || {};
+        if (Array.isArray(state.handles)) {
+            for (const handle of state.handles) {
+                if (handle && typeof handle.detach === 'function') {
+                    try { handle.detach(); } catch (_) {}
+                }
+            }
+        }
+        const depths = {};
+        const stacks = {};
+        function currentThreadKey() { try { if (pthreadSelf === null) { return '0'; } return callNative(pthreadSelf).toString(); } catch (_) { return '0'; } }
+        function indent(depth) { let s = ''; const capped = Math.min(depth, 32); for (let i = 0; i < capped; i++) s += '  '; return s; }
+        function pushStack(tid, summary) { const stack = stacks[tid] || []; stack.push(summary); stacks[tid] = stack; const depth = depths[tid] || 0; depths[tid] = depth + 1; return depth; }
+        function popStack(tid) { const stack = stacks[tid] || []; const depth = Math.max((depths[tid] || 1) - 1, 0); depths[tid] = depth; const summary = stack.length > 0 ? stack.pop() : '<unknown>'; stacks[tid] = stack; return { depth, summary }; }
+        function install(target, isSuper) {
+            return Interceptor.attach(target, {
+                onEnter(ctx) {
+                    try {
+                        const tid = currentThreadKey();
+                        const receiver = isSuper ? Memory.readPointer(ptr(ctx.x0)) : ptr(ctx.x0);
+                        const selector = ptr(ctx.x1);
+                        const className = ObjC.objectClassName(receiver) || '<nil>';
+                        const selectorName = ObjC.selectorName(selector) || '<unknown>';
+                        const summary = className + ' ' + selectorName + (isSuper ? ' [super]' : '');
+                        if (objcFilter.length !== 0 && summary.indexOf(objcFilter) === -1) {
+                            return;
+                        }
+                        const depth = pushStack(tid, summary);
+                        console.log('[stalker] ' + indent(depth) + '-> ' + summary + ' self=' + receiver.toString());
+                    } catch (e) {
+                        console.log('[stalker] error ' + String(e));
+                    }
+                },
+                onLeave(ctx) {
+                    try {
+                        const tid = currentThreadKey();
+                        const result = popStack(tid);
+                        if (objcFilter.length !== 0 && result.summary.indexOf(objcFilter) === -1) {
+                            return;
+                        }
+                        console.log('[stalker] ' + indent(result.depth) + '<- ' + result.summary + ' ret=' + ptr(ctx.x0).toString());
+                    } catch (e) {
+                        console.log('[stalker] error ' + String(e));
+                    }
+                }
+            });
+        }
+        const handles = [install(msgSend, false)];
+        if (msgSendSuper !== null) {
+            handles.push(install(msgSendSuper, true));
+        }
+        globalThis.__iosRustFridaStalker = { handles, filter: objcFilter, depths, stacks };
+        return 'stalker installed: objc_msgSend' + (msgSendSuper !== null ? ' + objc_msgSendSuper2' : '') + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)';
+    }
+
+    const resolved = resolveTarget(spec);
+    const templateArgs = spec && spec.templateArgs ? spec.templateArgs : null;
+    const templateRet = spec && spec.templateRet ? spec.templateRet : null;
+    const pthreadSelf = Module.findExportByName(null, 'pthread_self');
+    const state = globalThis.__iosRustFridaStalker || {};
+    if (Array.isArray(state.handles)) {
+        for (const handle of state.handles) {
+            if (handle && typeof handle.detach === 'function') {
+                try { handle.detach(); } catch (_) {}
+            }
+        }
+    }
+    const depths = {};
+    function currentThreadKey() { try { if (pthreadSelf === null) { return '0'; } return callNative(pthreadSelf).toString(); } catch (_) { return '0'; } }
+    function indent(depth) { let s = ''; const capped = Math.min(depth, 32); for (let i = 0; i < capped; i++) s += '  '; return s; }
+    const handle = Interceptor.attach(resolved.target, {
+        onEnter(ctx) {
+            try {
+                const tid = currentThreadKey();
+                const depth = depths[tid] || 0;
+                depths[tid] = depth + 1;
+                const callDetails = formatTemplateArgs(ctx, templateArgs) || describeCall(resolved.targetName, ctx);
+                const detailText = callDetails !== null ? ' args: ' + callDetails.join(' ') : '';
+                console.log('[stalker] ' + indent(depth) + '-> ' + resolved.resolvedLabel + detailText + ' ' + formatRegisters(ctx, ['x0', 'x1', 'x2', 'x3']));
+            } catch (e) {
+                console.log('[stalker] error ' + String(e));
+            }
+        },
+        onLeave(ctx) {
+            try {
+                const tid = currentThreadKey();
+                const depth = Math.max((depths[tid] || 1) - 1, 0);
+                depths[tid] = depth;
+                const retDetails = formatTemplateReturn(ctx, templateRet) || describeReturn(resolved.targetName, ctx);
+                const detailText = retDetails !== null ? ' ' + retDetails : '';
+                console.log('[stalker] ' + indent(depth) + '<- ' + resolved.resolvedLabel + detailText + ' ret=' + formatRegister('x0', ctx.x0));
+            } catch (e) {
+                console.log('[stalker] error ' + String(e));
+            }
+        }
+    });
+    globalThis.__iosRustFridaStalker = { handles: [handle], label: resolved.resolvedLabel, depths };
+    return 'stalker installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)';
+}
+return {
+    cstringPreview,
+    cstringOrPointer,
+    describeCall,
+    describeReturn,
+    formatRegister,
+    formatRegisters,
+    formatTemplateArgs,
+    formatTemplateReturn,
+    formatTypedValue,
+    installTrace,
+    installStalker,
+    stopTrace,
+    stopStalker,
+};
+})();
+"#
+}

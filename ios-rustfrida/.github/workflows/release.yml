@@ -1,0 +1,88 @@
+name: ios-rustfrida-release
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "ios-rustfrida-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release-build:
+    name: Release Build (macOS)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy, rust-src
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+
+      - name: Detect host target
+        id: host
+        shell: bash
+        run: |
+          echo "triple=$(rustc -vV | sed -n 's/^host: //p')" >> "$GITHUB_OUTPUT"
+
+      - name: Pre-release verification
+        run: |
+          cargo test -p native-api --target "${{ steps.host.outputs.triple }}"
+          cargo test -p quickjs-runtime --target "${{ steps.host.outputs.triple }}" -- --test-threads=1
+          cargo check --target aarch64-apple-ios-sim
+
+      - name: Build release artifacts
+        run: |
+          cargo build -p agent --release --target aarch64-apple-ios
+          cargo build -p controller --release --bin ios-rustfrida --target "${{ steps.host.outputs.triple }}"
+
+      - name: Install dpkg tooling
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if ! command -v dpkg-deb >/dev/null 2>&1; then
+            brew update
+            brew install dpkg
+          fi
+
+      - name: Package release artifacts
+        shell: bash
+        run: |
+          set -euxo pipefail
+          HOST_TRIPLE="${{ steps.host.outputs.triple }}" BUILD_DEB=1 scripts/package-artifacts.sh
+
+      - name: Upload packaged artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-rustfrida-release-bundles
+          path: |
+            dist/ios-rustfrida-agent-aarch64-apple-ios.tar.gz
+            dist/ios-rustfrida-controller-${{ steps.host.outputs.triple }}.tar.gz
+            dist/ios-rustfrida-agent_*_rootless.deb
+            dist/ios-rustfrida-agent_*_rootful.deb
+          if-no-files-found: error
+
+      - name: Publish GitHub Release Assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/ios-rustfrida-agent-aarch64-apple-ios.tar.gz
+            dist/ios-rustfrida-controller-${{ steps.host.outputs.triple }}.tar.gz
+            dist/ios-rustfrida-agent_*_rootless.deb
+            dist/ios-rustfrida-agent_*_rootful.deb

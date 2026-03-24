@@ -1,0 +1,102 @@
+name: ios-rustfrida-ci
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  host-checks:
+    name: Host Checks (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libclang-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy, rust-src
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+
+      - name: Format check
+        run: cargo fmt --all --check
+
+      - name: Host unit tests
+        run: |
+          cargo test -p native-api --target x86_64-unknown-linux-gnu
+          cargo test -p quickjs-runtime --target x86_64-unknown-linux-gnu -- --test-threads=1
+          cargo test -p controller --target x86_64-unknown-linux-gnu
+          cargo test -p agent --target x86_64-unknown-linux-gnu
+
+      - name: Host cargo check
+        run: cargo check --target x86_64-unknown-linux-gnu
+
+  apple-build:
+    name: Apple Build (macOS)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy, rust-src
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+
+      - name: Detect host target
+        id: host
+        shell: bash
+        run: |
+          echo "triple=$(rustc -vV | sed -n 's/^host: //p')" >> "$GITHUB_OUTPUT"
+
+      - name: Host tests on macOS
+        run: |
+          cargo test -p native-api --target "${{ steps.host.outputs.triple }}"
+          cargo test -p quickjs-runtime --target "${{ steps.host.outputs.triple }}" -- --test-threads=1
+
+      - name: iOS simulator check
+        run: cargo check --target aarch64-apple-ios-sim
+
+      - name: Build agent dylib for device
+        run: cargo build -p agent --release --target aarch64-apple-ios
+
+      - name: Build controller binary for macOS host
+        run: cargo build -p controller --release --bin ios-rustfrida --target "${{ steps.host.outputs.triple }}"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-rustfrida-artifacts
+          path: |
+            target/aarch64-apple-ios/release/libagent.dylib
+            target/${{ steps.host.outputs.triple }}/release/ios-rustfrida
+          if-no-files-found: error
