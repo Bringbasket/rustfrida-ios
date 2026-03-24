@@ -128,7 +128,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - iOS 功能目前仍是持续迁移状态，不应视为和 Android 版完全对齐。
 - 当前已经补到可做 ObjC 类/selector/IMP/方法枚举、Swift 符号查找、PAC 查询、dyld 镜像枚举、基础 hook 环境探测。
 - hook backend filesystem 探测现在同时覆盖 rootful 和 rootless 常见路径前缀；像 ElleKit / Substrate / Substitute / libhooker 这类生态，不再只认 `/usr/lib`，也会扫描 `/var/jb/...`。
-- `native.hookenv` / `Native.detectHookEnvironment()` 现在除了 backend / warning，还会补出面向当前 `hook_policy` 的建议动作，便于真机上快速判断该走 query-only、fail-fast 还是继续冒险装 inline hook。
+- `native.hookenv` / `Native.detectHookEnvironment()` 现在除了 backend / warning，还会补出面向当前 `hook_policy` 的建议动作，便于真机上快速判断该走 query-only、fail-fast 还是继续冒险装 inline hook；返回里也会区分 `allowed` 和 `inlineHooksAllowed`，不再把“允许注入做查询”和“允许安装 inline hook”混成一个布尔值。
 - `PAC.isImageArm64e(moduleName)` / `pac.image <module>` 现在可以直接判断单个镜像是否是 `arm64e`，比只看当前进程主镜像更适合排查某个目标 dylib 是否已经进入 PAC 风险面。
 - `PAC.arm64eImages([query])` / `pac.images [filter]` 现在可以直接列出当前进程里的 `arm64e` 镜像，适合先收敛 PAC 风险面，再决定具体看哪个模块。
 - `quickjs-runtime` 里的 `callNative()` 现在明确沿用 canonical code pointer 路径，避免 PAC 场景下把已规范化的入口又当成 raw 指针处理。
@@ -178,6 +178,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - 旧文本命令的兼容解析现在也集中到了 `common::AgentCommand::from_legacy(...)`，controller / agent 不再各自维护一份 `ping/jsinit/runtime-handle` 的识别分支。
 - controller / bootstrap 失败摘要现在会补齐代码段/数据段保护模式、线程 bootstrap 符号来源，以及失败/提前返回时远程线程是否已尝试终止。
 - controller 在注入前会打印注入环境摘要：`IOS_RUSTFRIDA_DRY_RUN`、bootstrap 等待时间、hook policy / strategy、已探测到的越狱 hook backend。
+- `IOS_RUSTFRIDA_HOOK_POLICY` 现在除了 `warn` / `deny-external-loaded`，还支持 `query-only-external-loaded`（可简写 `query-only`）；命中外部 backend 时，这个策略会继续允许注入和查询命令，但会显式禁止 `trace/stalker/jhook/shook/hfl` 这类 inline hook 路径。
 - 如果当前 `IOS_RUSTFRIDA_HOOK_POLICY=deny-external-loaded` 且进程里已加载 ElleKit/Substrate/Substitute/libhooker 一类外部 backend，注入会在启动前直接拒绝并给出原因。
 - preflight 现在也会探测“目标进程”自身已加载的 hook backend，并打印 target hook strategy / backend 摘要；`deny-external-loaded` 不再只看 controller 当前进程，也会对目标进程生效。
 - hook strategy 被本地或目标进程的外部 backend 阻断时，错误信息现在会直接附带 hook environment 摘要：active backend、各 backend 的 loaded image / filesystem path 计数、warning 数量，减少真机上只看到 `blocked` 但不知道是谁在挡路的情况。

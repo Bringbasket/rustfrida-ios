@@ -31,6 +31,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         result.set_property(ctx, "policy", JSValue::string(ctx, decision.policy.as_str()));
         result.set_property(ctx, "strategy", JSValue::string(ctx, &decision.strategy));
         result.set_property(ctx, "allowed", JSValue::bool(decision.allowed));
+        result.set_property(ctx, "inlineHooksAllowed", JSValue::bool(decision.inline_hooks_allowed));
         match &decision.reason {
             Some(reason) => result.set_property(ctx, "reason", JSValue::string(ctx, reason)),
             None => result.set_property(ctx, "reason", JSValue::null()),
@@ -39,6 +40,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         result.set_property(ctx, "policy", JSValue::string(ctx, "warn"));
         result.set_property(ctx, "strategy", JSValue::null());
         result.set_property(ctx, "allowed", JSValue::bool(true));
+        result.set_property(ctx, "inlineHooksAllowed", JSValue::bool(true));
         result.set_property(ctx, "reason", JSValue::null());
     }
 

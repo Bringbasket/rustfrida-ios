@@ -233,6 +233,7 @@ function formatHookEnvironmentReport(report) {
     lines.push('policy=' + String(report.policy));
     lines.push('strategy=' + String(report.strategy));
     lines.push('allowed=' + String(!!report.allowed));
+    lines.push('inline_hooks_allowed=' + String(!!report.inlineHooksAllowed));
     if (report.reason !== null && report.reason !== undefined) {
         lines.push('reason=' + String(report.reason));
     }

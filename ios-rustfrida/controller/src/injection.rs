@@ -307,6 +307,7 @@ fn hook_strategy_to_json(strategy: &native_api::HookStrategyDecision) -> Value {
         "policy": strategy.policy.as_str(),
         "strategy": strategy.strategy,
         "allowed": strategy.allowed,
+        "inlineHooksAllowed": strategy.inline_hooks_allowed,
         "reason": strategy.reason,
     })
 }
@@ -631,6 +632,7 @@ fn analyze_doctor_report(
     checks.push(if injection_environment.hook_strategy.allowed {
         let status = if injection_environment.hook_environment.backends.is_empty()
             && injection_environment.hook_environment.warnings.is_empty()
+            && injection_environment.hook_strategy.inline_hooks_allowed
         {
             "pass"
         } else {
@@ -641,10 +643,10 @@ fn analyze_doctor_report(
             status,
             format!(
                 "controller hook strategy is {} ({})",
-                if injection_environment.hook_strategy.allowed {
+                if injection_environment.hook_strategy.inline_hooks_allowed {
                     "allowed"
                 } else {
-                    "blocked"
+                    "query-only"
                 },
                 injection_environment.hook_strategy.strategy
             ),
@@ -665,6 +667,7 @@ fn analyze_doctor_report(
     checks.push(if preflight.target_hook_strategy.allowed {
         let status = if preflight.target_hook_environment.backends.is_empty()
             && preflight.target_hook_environment.warnings.is_empty()
+            && preflight.target_hook_strategy.inline_hooks_allowed
         {
             "pass"
         } else {
@@ -676,10 +679,10 @@ fn analyze_doctor_report(
             format!(
                 "target hook strategy for pid {} is {} ({})",
                 pid,
-                if preflight.target_hook_strategy.allowed {
+                if preflight.target_hook_strategy.inline_hooks_allowed {
                     "allowed"
                 } else {
-                    "blocked"
+                    "query-only"
                 },
                 preflight.target_hook_strategy.strategy
             ),
@@ -1961,10 +1964,11 @@ fn print_injection_preflight(report: &InjectionTargetPreflightReport) {
         report.thread_bootstrap_canonicalized
     );
     println!(
-        "target hook strategy: policy={} strategy={} allowed={}",
+        "target hook strategy: policy={} strategy={} allowed={} inline_hooks_allowed={}",
         report.target_hook_strategy.policy.as_str(),
         report.target_hook_strategy.strategy,
-        report.target_hook_strategy.allowed
+        report.target_hook_strategy.allowed,
+        report.target_hook_strategy.inline_hooks_allowed
     );
     if let Some(reason) = &report.target_hook_strategy.reason {
         println!("target hook strategy reason: {reason}");
@@ -2001,12 +2005,13 @@ fn render_injection_environment(report: &InjectionEnvironmentReport) -> Vec<Stri
         .map(|value| format!("{value}ms"))
         .unwrap_or_else(|| "disabled".into());
     let mut lines = vec![format!(
-        "injection environment: dry_run={} bootstrap_wait={} hook_policy={} strategy={} allowed={}",
+        "injection environment: dry_run={} bootstrap_wait={} hook_policy={} strategy={} allowed={} inline_hooks_allowed={}",
         report.dry_run,
         bootstrap_wait,
         report.hook_policy.as_str(),
         report.hook_strategy.strategy,
-        report.hook_strategy.allowed
+        report.hook_strategy.allowed,
+        report.hook_strategy.inline_hooks_allowed
     )];
     if let Some(reason) = &report.hook_strategy.reason {
         lines.push(format!("hook strategy reason: {reason}"));
@@ -3679,6 +3684,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline-risky".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: Some("external hook backend is already loaded".into()),
             },
             resolved_loader_symbols: vec![],
@@ -3720,6 +3726,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline-risky".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: Some("external hook backend is already loaded".into()),
             },
             hook_environment: HookEnvironmentReport {
@@ -3885,6 +3892,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             hook_environment: HookEnvironmentReport {
@@ -3912,6 +3920,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             resolved_loader_symbols: vec![],
@@ -3984,6 +3993,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline-risky".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             hook_environment: HookEnvironmentReport {
@@ -4020,6 +4030,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline-safe".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             resolved_loader_symbols: vec![],
@@ -4138,6 +4149,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             hook_environment: HookEnvironmentReport {
@@ -4173,6 +4185,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             resolved_loader_symbols: vec![],
@@ -4245,6 +4258,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             hook_environment: HookEnvironmentReport {
@@ -4280,6 +4294,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             resolved_loader_symbols: vec![],
@@ -4339,6 +4354,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             hook_environment: HookEnvironmentReport {
@@ -4374,6 +4390,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             resolved_loader_symbols: vec![],
@@ -4433,6 +4450,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             hook_environment: HookEnvironmentReport {
@@ -4468,6 +4486,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             resolved_loader_symbols: vec![],
@@ -4527,6 +4546,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             hook_environment: HookEnvironmentReport {
@@ -4562,6 +4582,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             resolved_loader_symbols: vec![],
@@ -4671,6 +4692,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             hook_environment: HookEnvironmentReport {
@@ -4706,6 +4728,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: None,
             },
             resolved_loader_symbols: vec![],
@@ -5277,6 +5300,7 @@ mod tests {
                 policy: HookPolicy::Warn,
                 strategy: "internal-inline-risky".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: Some("external hook backend is already loaded".into()),
             },
             hook_environment: HookEnvironmentReport {
@@ -5294,6 +5318,7 @@ mod tests {
         assert!(lines[0].contains("dry_run=true"));
         assert!(lines[0].contains("bootstrap_wait=1500ms"));
         assert!(lines[0].contains("strategy=internal-inline-risky"));
+        assert!(lines[0].contains("inline_hooks_allowed=true"));
         assert!(lines
             .iter()
             .any(|line| line.contains("hook strategy reason: external hook backend is already loaded")));

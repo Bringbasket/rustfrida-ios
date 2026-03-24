@@ -19,6 +19,7 @@ pub struct HookEnvironmentReport {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HookPolicy {
     Warn,
+    QueryOnlyExternalLoaded,
     DenyExternalLoaded,
 }
 
@@ -27,6 +28,7 @@ pub struct HookStrategyDecision {
     pub policy: HookPolicy,
     pub strategy: String,
     pub allowed: bool,
+    pub inline_hooks_allowed: bool,
     pub reason: Option<String>,
 }
 
@@ -212,6 +214,7 @@ impl HookPolicy {
     pub fn as_str(self) -> &'static str {
         match self {
             HookPolicy::Warn => "warn",
+            HookPolicy::QueryOnlyExternalLoaded => "query-only-external-loaded",
             HookPolicy::DenyExternalLoaded => "deny-external-loaded",
         }
     }
@@ -219,6 +222,9 @@ impl HookPolicy {
     fn parse(raw: &str) -> Option<Self> {
         match raw.trim().to_ascii_lowercase().as_str() {
             "" | "warn" => Some(HookPolicy::Warn),
+            "query-only-external-loaded" | "query_only_external_loaded" | "query-only" | "query_only" => {
+                Some(HookPolicy::QueryOnlyExternalLoaded)
+            }
             "deny-external-loaded" | "deny_external_loaded" | "deny" => Some(HookPolicy::DenyExternalLoaded),
             _ => None,
         }
@@ -234,14 +240,25 @@ fn resolve_hook_strategy_with_report(report: &HookEnvironmentReport, policy: Hoo
                 policy,
                 strategy: "internal-inline-risky".into(),
                 allowed: true,
+                inline_hooks_allowed: true,
                 reason: Some(
                     "external hook backend is already loaded; ios-rustfrida will still use its internal inline hook engine, but coexistence is not implemented".into(),
+                ),
+            },
+            HookPolicy::QueryOnlyExternalLoaded => HookStrategyDecision {
+                policy,
+                strategy: "query-only-external-loaded".into(),
+                allowed: true,
+                inline_hooks_allowed: false,
+                reason: Some(
+                    "external hook backend is already loaded; query-only injection remains allowed, but ios-rustfrida inline hooks are disabled under the current policy".into(),
                 ),
             },
             HookPolicy::DenyExternalLoaded => HookStrategyDecision {
                 policy,
                 strategy: "blocked-external-loaded".into(),
                 allowed: false,
+                inline_hooks_allowed: false,
                 reason: Some(
                     "external hook backend is already loaded and current policy denies installing ios-rustfrida inline hooks in this state".into(),
                 ),
@@ -258,6 +275,7 @@ fn resolve_hook_strategy_with_report(report: &HookEnvironmentReport, policy: Hoo
             policy,
             strategy: "internal-inline-cautious".into(),
             allowed: true,
+            inline_hooks_allowed: true,
             reason: Some(
                 "hook ecosystem files are present on disk, but no known backend image is loaded in the current process"
                     .into(),
@@ -269,6 +287,7 @@ fn resolve_hook_strategy_with_report(report: &HookEnvironmentReport, policy: Hoo
         policy,
         strategy: "internal-inline".into(),
         allowed: true,
+        inline_hooks_allowed: true,
         reason: None,
     }
 }
@@ -297,6 +316,10 @@ fn recommendations_for_report(report: &HookEnvironmentReport, decision: Option<&
         if !decision.allowed {
             recommendations.push(
                 "current hook policy blocks inline hooks in this process; use query-only commands or explicitly relax IOS_RUSTFRIDA_HOOK_POLICY if you accept coexistence risk".into(),
+            );
+        } else if !decision.inline_hooks_allowed {
+            recommendations.push(
+                "injection/query-only commands remain allowed, but inline hooks are disabled under the current policy; avoid trace/stalker/jhook/shook unless you relax IOS_RUSTFRIDA_HOOK_POLICY".into(),
             );
         } else if loaded_backend_count > 0 {
             recommendations.push(
@@ -407,8 +430,29 @@ mod tests {
 
         let decision = resolve_hook_strategy_with_report(&report, HookPolicy::Warn);
         assert!(decision.allowed);
+        assert!(decision.inline_hooks_allowed);
         assert_eq!(decision.strategy, "internal-inline-risky");
         assert_eq!(decision.policy, HookPolicy::Warn);
+    }
+
+    #[test]
+    fn strategy_allows_query_only_when_external_backend_is_loaded_under_query_only_policy() {
+        let report = HookEnvironmentReport {
+            active_backend: Some("substrate".into()),
+            backends: vec![super::HookBackendInfo {
+                id: "substrate".into(),
+                display_name: "Cydia Substrate".into(),
+                loaded_images: vec!["/usr/lib/libsubstrate.dylib".into()],
+                filesystem_paths: Vec::new(),
+            }],
+            warnings: Vec::new(),
+        };
+
+        let decision = resolve_hook_strategy_with_report(&report, HookPolicy::QueryOnlyExternalLoaded);
+        assert!(decision.allowed);
+        assert!(!decision.inline_hooks_allowed);
+        assert_eq!(decision.strategy, "query-only-external-loaded");
+        assert_eq!(decision.policy, HookPolicy::QueryOnlyExternalLoaded);
     }
 
     #[test]
@@ -426,6 +470,7 @@ mod tests {
 
         let decision = resolve_hook_strategy_with_report(&report, HookPolicy::DenyExternalLoaded);
         assert!(!decision.allowed);
+        assert!(!decision.inline_hooks_allowed);
         assert_eq!(decision.strategy, "blocked-external-loaded");
         assert_eq!(decision.policy, HookPolicy::DenyExternalLoaded);
     }
@@ -445,6 +490,23 @@ mod tests {
         let decision = resolve_hook_strategy_with_report(&report, HookPolicy::DenyExternalLoaded);
         let recommendations = hook_environment_recommendations(&report, Some(&decision));
         assert!(recommendations.iter().any(|line| line.contains("query-only commands")));
+    }
+
+    #[test]
+    fn recommendations_cover_query_only_policy() {
+        let report = HookEnvironmentReport {
+            active_backend: Some("ellekit".into()),
+            backends: vec![super::HookBackendInfo {
+                id: "ellekit".into(),
+                display_name: "ElleKit".into(),
+                loaded_images: vec!["/usr/lib/libellekit.dylib".into()],
+                filesystem_paths: Vec::new(),
+            }],
+            warnings: Vec::new(),
+        };
+        let decision = resolve_hook_strategy_with_report(&report, HookPolicy::QueryOnlyExternalLoaded);
+        let recommendations = hook_environment_recommendations(&report, Some(&decision));
+        assert!(recommendations.iter().any(|line| line.contains("inline hooks are disabled")));
     }
 
     #[test]
