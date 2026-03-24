@@ -106,6 +106,7 @@ mod platform {
 
     use crate::{query_matches_class_name, query_matches_method_name, ObjcMethodInfo};
 
+    #[link(name = "objc")]
     extern "C" {
         fn objc_getClass(name: *const c_char) -> *mut c_void;
         fn object_getClass(obj: *const c_void) -> *mut c_void;

@@ -108,14 +108,14 @@ enum AttachPhase {
 
 #[cfg(quickjs_hook_engine)]
 enum RuntimeJsGuardInner {
-    Locked(MutexGuard<'static, ()>),
+    Locked { _guard: MutexGuard<'static, ()> },
     Reentrant,
 }
 
 #[cfg(quickjs_hook_engine)]
 impl Drop for RuntimeJsGuardInner {
     fn drop(&mut self) {
-        if matches!(self, Self::Locked(_)) {
+        if matches!(self, Self::Locked { .. }) {
             clear_runtime_owner_current_thread();
         }
     }
@@ -147,7 +147,7 @@ pub(crate) fn enter_runtime_js(ctx: *mut ffi::JSContext) -> RuntimeJsGuard {
     }
 
     RuntimeJsGuard {
-        _inner: RuntimeJsGuardInner::Locked(guard),
+        _inner: RuntimeJsGuardInner::Locked { _guard: guard },
     }
 }
 

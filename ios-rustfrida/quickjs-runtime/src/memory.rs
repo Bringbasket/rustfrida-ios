@@ -280,6 +280,7 @@ unsafe fn write_with_perm(addr: u64, size: usize, write_fn: impl FnOnce()) -> bo
     true
 }
 
+#[cfg_attr(not(any(target_os = "linux", target_os = "android")), allow(dead_code))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct ProcMapEntry<'a> {
     start: u64,
@@ -288,6 +289,7 @@ struct ProcMapEntry<'a> {
     path: Option<&'a str>,
 }
 
+#[cfg_attr(not(any(target_os = "linux", target_os = "android")), allow(dead_code))]
 impl ProcMapEntry<'_> {
     fn contains(&self, addr: u64) -> bool {
         addr >= self.start && addr < self.end
@@ -309,11 +311,13 @@ impl ProcMapEntry<'_> {
     }
 }
 
+#[cfg_attr(not(any(target_os = "linux", target_os = "android")), allow(dead_code))]
 fn read_proc_self_maps() -> Option<String> {
     let bytes = std::fs::read("/proc/self/maps").ok()?;
     Some(String::from_utf8(bytes).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned()))
 }
 
+#[cfg_attr(not(any(target_os = "linux", target_os = "android")), allow(dead_code))]
 fn parse_proc_map_line(line: &str) -> Option<ProcMapEntry<'_>> {
     let mut fields = line.split_whitespace();
     let range = fields.next()?;
@@ -335,6 +339,7 @@ fn parse_proc_map_line(line: &str) -> Option<ProcMapEntry<'_>> {
     })
 }
 
+#[cfg_attr(not(any(target_os = "linux", target_os = "android")), allow(dead_code))]
 fn proc_maps_entries(maps: &str) -> impl Iterator<Item = ProcMapEntry<'_>> + '_ {
     maps.lines().filter_map(parse_proc_map_line)
 }
