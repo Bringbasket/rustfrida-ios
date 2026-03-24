@@ -388,6 +388,25 @@ static Arm64Reg arm64_writer_pick_store_address_scratch_reg(Arm64Reg src, Arm64R
     return ARM64_REG_NONE;
 }
 
+static Arm64Reg arm64_writer_pick_store_pair_address_scratch_reg(Arm64Reg a, Arm64Reg b, Arm64Reg base) {
+    uint32_t a_num = ARM64_REG_NUM(a);
+    uint32_t b_num = ARM64_REG_NUM(b);
+    uint32_t base_num = ARM64_REG_NUM(base);
+
+    if (a_num != ARM64_REG_NUM(ARM64_REG_X16) &&
+        b_num != ARM64_REG_NUM(ARM64_REG_X16) &&
+        base_num != ARM64_REG_NUM(ARM64_REG_X16)) {
+        return ARM64_REG_X16;
+    }
+    if (a_num != ARM64_REG_NUM(ARM64_REG_X17) &&
+        b_num != ARM64_REG_NUM(ARM64_REG_X17) &&
+        base_num != ARM64_REG_NUM(ARM64_REG_X17)) {
+        return ARM64_REG_X17;
+    }
+
+    return ARM64_REG_NONE;
+}
+
 static void arm64_writer_put_large_offset_address(Arm64Writer* w, Arm64Reg scratch, Arm64Reg src, int64_t offset) {
     Arm64Reg base = arm64_writer_reg_as_x(src);
     uint64_t magnitude = (offset < 0) ? (uint64_t)(-(offset + 1)) + 1 : (uint64_t)offset;
@@ -466,7 +485,16 @@ void arm64_writer_put_ldp_reg_reg_reg_offset(Arm64Writer* w, Arm64Reg a, Arm64Re
     uint32_t scale = sf ? 3 : 2;
     int64_t scaled = offset >> scale;
 
-    if (!fits_signed(scaled, 7)) return;
+    if (!fits_signed(scaled, 7)) {
+        if (mode != ARM64_INDEX_SIGNED_OFFSET) return;
+
+        Arm64Reg scratch = arm64_writer_pick_address_scratch_reg(a, base);
+        if (scratch == ARM64_REG_NONE || ARM64_REG_NUM(scratch) == ARM64_REG_NUM(b)) abort();
+
+        arm64_writer_put_large_offset_address(w, scratch, base, offset);
+        arm64_writer_put_ldp_reg_reg_reg_offset(w, a, b, scratch, 0, ARM64_INDEX_SIGNED_OFFSET);
+        return;
+    }
 
     uint32_t imm7 = (uint32_t)scaled & 0x7F;
     uint32_t opc = sf ? 0x2 : 0x0;
@@ -553,7 +581,16 @@ void arm64_writer_put_stp_reg_reg_reg_offset(Arm64Writer* w, Arm64Reg a, Arm64Re
     uint32_t scale = sf ? 3 : 2;
     int64_t scaled = offset >> scale;
 
-    if (!fits_signed(scaled, 7)) return;
+    if (!fits_signed(scaled, 7)) {
+        if (mode != ARM64_INDEX_SIGNED_OFFSET) return;
+
+        Arm64Reg scratch = arm64_writer_pick_store_pair_address_scratch_reg(a, b, base);
+        if (scratch == ARM64_REG_NONE) abort();
+
+        arm64_writer_put_large_offset_address(w, scratch, base, offset);
+        arm64_writer_put_stp_reg_reg_reg_offset(w, a, b, scratch, 0, ARM64_INDEX_SIGNED_OFFSET);
+        return;
+    }
 
     uint32_t imm7 = (uint32_t)scaled & 0x7F;
     uint32_t opc = sf ? 0x2 : 0x0;
