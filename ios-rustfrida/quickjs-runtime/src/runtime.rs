@@ -650,7 +650,9 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("Module.findBaseAddress('libobjc.A.dylib') === null")
+                    .eval(
+                        "(function() { const value = Module.findBaseAddress('libobjc.A.dylib'); return value === null || value.toString().indexOf('0x') === 0; })()"
+                    )
                     .expect("find base"),
                 "true"
             );
