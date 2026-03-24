@@ -11,6 +11,7 @@ Environment overrides:
   REMOTE_SUDO  1 to install via sudo on the device, default 0
   SUDO_PASSWORD sudo password used when REMOTE_SUDO=1
   ROOTLESS     auto to probe /var/jb, 1 to force rootless package, 0 to force rootful package
+  DEVICE_ARCH  package architecture override when deb-path is omitted; default probes remote dpkg arch
   DIST_DIR     local dist dir used when deb-path is omitted, default <workspace>/dist
   REMOTE_TMP   remote upload path for the deb, default /tmp/ios-rustfrida-agent.deb
   RUN_DOCTOR   1 to run doctor after install, 0 to skip, default 1
@@ -40,6 +41,7 @@ SSH_PASSWORD="${SSH_PASSWORD:-}"
 REMOTE_SUDO="${REMOTE_SUDO:-0}"
 SUDO_PASSWORD="${SUDO_PASSWORD:-}"
 ROOTLESS="${ROOTLESS:-auto}"
+DEVICE_ARCH="${DEVICE_ARCH:-auto}"
 DIST_DIR="${DIST_DIR:-$ROOT_DIR/dist}"
 REMOTE_TMP="${REMOTE_TMP:-/tmp/ios-rustfrida-agent.deb}"
 RUN_DOCTOR="${RUN_DOCTOR:-1}"
@@ -98,10 +100,25 @@ detect_layout() {
   esac
 }
 
+detect_device_arch() {
+  case "$DEVICE_ARCH" in
+    auto|'')
+      remote_shell "dpkg --print-architecture 2>/dev/null || uname -m"
+      ;;
+    *)
+      printf '%s\n' "$DEVICE_ARCH"
+      ;;
+  esac
+}
+
 resolve_latest_deb() {
   local layout="$1"
+  local device_arch="$2"
   local match
-  match="$(find "$DIST_DIR" -maxdepth 1 -type f -name "ios-rustfrida-agent_*_${layout}.deb" | sort | tail -n 1)"
+  match="$(find "$DIST_DIR" -maxdepth 1 -type f -name "ios-rustfrida-agent_*_${device_arch}_${layout}.deb" | sort | tail -n 1)"
+  if [[ -z "$match" ]]; then
+    match="$(find "$DIST_DIR" -maxdepth 1 -type f -name "ios-rustfrida-agent_*_${layout}.deb" | sort | tail -n 1)"
+  fi
   if [[ -z "$match" ]]; then
     echo "missing ${layout} deb under $DIST_DIR" >&2
     echo "build it first: scripts/package-agent-deb.sh $layout" >&2
@@ -111,7 +128,8 @@ resolve_latest_deb() {
 }
 
 LAYOUT="$(detect_layout)"
-DEB_PATH="${2:-$(resolve_latest_deb "$LAYOUT")}"
+DETECTED_DEVICE_ARCH="$(detect_device_arch)"
+DEB_PATH="${2:-$(resolve_latest_deb "$LAYOUT" "$DETECTED_DEVICE_ARCH")}"
 
 if [[ ! -f "$DEB_PATH" ]]; then
   echo "missing deb artifact: $DEB_PATH" >&2
@@ -121,6 +139,7 @@ fi
 echo "installing agent deb:"
 echo "  device:  $DEVICE"
 echo "  layout:  $LAYOUT"
+echo "  arch:    $DETECTED_DEVICE_ARCH"
 echo "  local:   $DEB_PATH"
 echo "  remote:  $REMOTE_TMP"
 

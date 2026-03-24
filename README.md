@@ -104,11 +104,13 @@ BUILD_DEB=1 scripts/package-artifacts.sh
 - `scripts/package-artifacts.sh` 现在在 `dpkg-deb` 可用时会顺手产出 `rootless/rootful` 两份 `.deb`；如果要显式控制，可用 `BUILD_DEB=1` 或 `BUILD_DEB=0`。
 - 根目录 release workflow 现在也会在 macOS runner 上补装 `dpkg`，把 tarball 和 `.deb` 一起作为 GitHub Release asset 输出。
 - `.deb` 产物拿到手后，rootless 设备装 `..._iphoneos-arm64_rootless.deb`，rootful 设备装 `..._iphoneos-arm_rootful.deb`；常见安装方式就是设备上执行 `dpkg -i <package>.deb`，装完后 controller 默认会去对应路径找 `libagent.dylib`。
+- 对 `dpkg --print-architecture` 是 `iphoneos-arm64e` 的 rootless 设备，现在也会额外产出并优先选择 `..._iphoneos-arm64e_rootless.deb`；如果不手动给包路径，`scripts/install-agent-deb-jailbreak.sh` 会先探测远端架构，再从 `dist/` 自动挑最匹配的 rootless/rootful 包。
 - 如果不想打 tag，GitHub Actions 里现在可以直接手动运行 `ios-rustfrida-package` workflow；它会在 macOS runner 上构建 agent/controller，并把 tarball 和 `.deb` 作为 `ios-rustfrida-package-bundles` artifact 上传。
 - 手动包工作流的默认产物里会包含：
   - `ios-rustfrida-agent-aarch64-apple-ios.tar.gz`
   - `ios-rustfrida-controller-<host-triple>.tar.gz`
   - `ios-rustfrida-agent_<version>_iphoneos-arm64_rootless.deb`
+  - `ios-rustfrida-agent_<version>_iphoneos-arm64e_rootless.deb`
   - `ios-rustfrida-agent_<version>_iphoneos-arm_rootful.deb`
 - GitHub Actions 需要放在仓库根目录 `.github/workflows/`；`ios-rustfrida/.github/workflows/` 里的文件仅作子 workspace 镜像参考，真正触发以根目录 workflow 为准。
 - `quickjs-runtime` 需要的 ARM64 hook engine 已 vendored 到 `ios-rustfrida/quickjs-runtime/hook-engine-src/`。

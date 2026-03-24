@@ -52,6 +52,8 @@ esac
 
 if [[ "$build_deb_now" -eq 1 ]]; then
   DIST_DIR="$DIST_DIR" DEVICE_TARGET="$DEVICE_TARGET" "$ROOT_DIR/scripts/package-agent-deb.sh" rootless
+  DIST_DIR="$DIST_DIR" DEVICE_TARGET="$DEVICE_TARGET" PACKAGE_ARCH=iphoneos-arm64e \
+    "$ROOT_DIR/scripts/package-agent-deb.sh" rootless
   DIST_DIR="$DIST_DIR" DEVICE_TARGET="$DEVICE_TARGET" "$ROOT_DIR/scripts/package-agent-deb.sh" rootful
 fi
 
