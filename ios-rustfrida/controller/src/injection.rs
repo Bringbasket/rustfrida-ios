@@ -1799,7 +1799,7 @@ pub fn run_controller(config: &ControllerConfig, list_images: bool) -> Result<()
                 );
             }
 
-            let mut outcome = execute_single_command(&mut stream, command, true)?;
+            let mut outcome = execute_single_command(&mut stream, command, true, &injection_environment, &preflight)?;
             if !agent_logs.is_empty() {
                 let mut combined_logs = std::mem::take(&mut agent_logs);
                 combined_logs.extend(outcome.logs);
@@ -1865,7 +1865,7 @@ pub fn run_controller(config: &ControllerConfig, list_images: bool) -> Result<()
     }
 
     if let Some(command) = config.command.as_deref() {
-        run_single_command(&mut stream, command)?;
+        run_single_command(&mut stream, command, &injection_environment, &preflight)?;
         let _ = send_command_json(&mut stream, &AgentCommand::Exit);
         println!(
             "controller completed injection for pid {} using {}::{}",
@@ -1876,7 +1876,7 @@ pub fn run_controller(config: &ControllerConfig, list_images: bool) -> Result<()
 
     if io::stdin().is_terminal() {
         println!("interactive controller ready; type `help` for commands");
-        run_controller_repl(&mut stream)?;
+        run_controller_repl(&mut stream, &injection_environment, &preflight)?;
     } else {
         let _ = send_command_json(&mut stream, &AgentCommand::Exit);
     }
@@ -2393,7 +2393,11 @@ fn read_complete_reply_with_logs(
 }
 
 #[cfg(unix)]
-fn run_controller_repl(stream: &mut UnixStream) -> Result<()> {
+fn run_controller_repl(
+    stream: &mut UnixStream,
+    injection_environment: &InjectionEnvironmentReport,
+    preflight: &InjectionTargetPreflightReport,
+) -> Result<()> {
     print_controller_help();
 
     loop {
@@ -2416,7 +2420,7 @@ fn run_controller_repl(stream: &mut UnixStream) -> Result<()> {
                 return Ok(());
             }
             "jsrepl" => run_js_repl(stream)?,
-            _ => run_single_command(stream, command)?,
+            _ => run_single_command(stream, command, injection_environment, preflight)?,
         }
     }
 }
@@ -2448,14 +2452,25 @@ fn run_js_repl(stream: &mut UnixStream) -> Result<()> {
 }
 
 #[cfg(unix)]
-fn run_single_command(stream: &mut UnixStream, command: &str) -> Result<()> {
-    let outcome = execute_single_command(stream, command, false)?;
+fn run_single_command(
+    stream: &mut UnixStream,
+    command: &str,
+    injection_environment: &InjectionEnvironmentReport,
+    preflight: &InjectionTargetPreflightReport,
+) -> Result<()> {
+    let outcome = execute_single_command(stream, command, false, injection_environment, preflight)?;
     print_command_outcome(&outcome);
     Ok(())
 }
 
 #[cfg(unix)]
-fn execute_single_command(stream: &mut UnixStream, command: &str, capture_logs: bool) -> Result<CommandOutcome> {
+fn execute_single_command(
+    stream: &mut UnixStream,
+    command: &str,
+    capture_logs: bool,
+    injection_environment: &InjectionEnvironmentReport,
+    preflight: &InjectionTargetPreflightReport,
+) -> Result<CommandOutcome> {
     match command {
         "help" => {
             return Err(Error::InvalidArgument(
@@ -2469,6 +2484,8 @@ fn execute_single_command(stream: &mut UnixStream, command: &str, capture_logs: 
         }
         _ => {}
     }
+
+    ensure_inline_hooks_allowed_for_command(command, injection_environment, preflight)?;
 
     if is_stalker_command(command) {
         return execute_stalker_command(stream, command, capture_logs);
@@ -2569,6 +2586,63 @@ fn is_jhook_command(command: &str) -> bool {
 #[cfg(unix)]
 fn is_shook_command(command: &str) -> bool {
     matches!(command.split_whitespace().next(), Some("shook"))
+}
+
+#[cfg(unix)]
+fn command_requires_inline_hooks(command: &str) -> bool {
+    is_stalker_command(command)
+        || is_trace_command(command)
+        || is_jhook_command(command)
+        || is_shook_command(command)
+        || is_hfl_command(command)
+}
+
+#[cfg(unix)]
+fn ensure_inline_hooks_allowed_for_command(
+    command: &str,
+    injection_environment: &InjectionEnvironmentReport,
+    preflight: &InjectionTargetPreflightReport,
+) -> Result<()> {
+    if !command_requires_inline_hooks(command) {
+        return Ok(());
+    }
+
+    let mut blocked_by = Vec::new();
+    if !injection_environment.hook_strategy.inline_hooks_allowed {
+        let reason = injection_environment
+            .hook_strategy
+            .reason
+            .clone()
+            .unwrap_or_else(|| "controller hook strategy disables ios-rustfrida inline hooks".into());
+        blocked_by.push(format!(
+            "controller policy={} strategy={}: {}",
+            injection_environment.hook_strategy.policy.as_str(),
+            injection_environment.hook_strategy.strategy,
+            reason
+        ));
+    }
+    if !preflight.target_hook_strategy.inline_hooks_allowed {
+        let reason = preflight
+            .target_hook_strategy
+            .reason
+            .clone()
+            .unwrap_or_else(|| "target hook strategy disables ios-rustfrida inline hooks".into());
+        blocked_by.push(format!(
+            "target policy={} strategy={}: {}",
+            preflight.target_hook_strategy.policy.as_str(),
+            preflight.target_hook_strategy.strategy,
+            reason
+        ));
+    }
+
+    if blocked_by.is_empty() {
+        return Ok(());
+    }
+
+    Err(Error::State(format!(
+        "`{command}` requires inline hooks, but the current hook policy is query-only: {}",
+        blocked_by.join("; ")
+    )))
 }
 
 #[cfg(unix)]
@@ -3506,8 +3580,9 @@ fn event_name(event: &AgentEvent) -> &'static str {
 mod tests {
     use super::{
         analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
-        build_trace_spec, hook_environment_requires_notice, parse_hfl_command, parse_jhook_command,
-        parse_shook_command, parse_stalker_command, parse_trace_command, print_injection_preflight, quote_js_string,
+        build_trace_spec, command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command,
+        hook_environment_requires_notice, parse_hfl_command, parse_jhook_command, parse_shook_command,
+        parse_stalker_command, parse_trace_command, print_injection_preflight, quote_js_string,
         render_bootstrap_summary, render_command_error_json, render_command_error_json_with_context,
         render_command_outcome_json, render_image_list_json, render_injection_environment,
         render_injection_result_json, render_loader_symbol, render_preflight_json, CommandJsonContext, CommandOutcome,
@@ -3600,6 +3675,134 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert_eq!(AgentCommand::from_legacy("trace UIViewController"), None);
+    }
+
+    #[test]
+    fn command_requires_inline_hooks_only_for_hook_commands() {
+        assert!(command_requires_inline_hooks("trace UIViewController"));
+        assert!(command_requires_inline_hooks("stalker stop"));
+        assert!(command_requires_inline_hooks("jhook UIViewController viewDidLoad"));
+        assert!(command_requires_inline_hooks("shook Demo -- Foo bar"));
+        assert!(command_requires_inline_hooks("hfl libobjc.A.dylib 0x1234"));
+        assert!(!command_requires_inline_hooks("objc.classes UIView"));
+        assert!(!command_requires_inline_hooks("native.images UIKit"));
+        assert!(!command_requires_inline_hooks("swift.types ViewController"));
+    }
+
+    #[test]
+    fn query_only_hook_policy_still_allows_runtime_query_commands() {
+        let environment = InjectionEnvironmentReport {
+            dry_run: false,
+            bootstrap_wait_ms: Some(3000),
+            hook_policy: HookPolicy::QueryOnlyExternalLoaded,
+            hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::QueryOnlyExternalLoaded,
+                strategy: "query-only-external-loaded".into(),
+                allowed: true,
+                inline_hooks_allowed: false,
+                reason: Some("controller query-only".into()),
+            },
+            hook_environment: HookEnvironmentReport {
+                active_backend: Some("ellekit".into()),
+                backends: vec![HookBackendInfo {
+                    id: "ellekit".into(),
+                    display_name: "ElleKit".into(),
+                    loaded_images: vec!["/usr/lib/libellekit.dylib".into()],
+                    filesystem_paths: vec![],
+                }],
+                warnings: vec!["external hook ecosystem detected".into()],
+            },
+        };
+        let preflight = InjectionTargetPreflightReport {
+            main_image: None,
+            target_images: vec![],
+            target_image_count: 0,
+            target_uses_arm64e: Some(false),
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFromMachThread,
+            thread_bootstrap_label: "pthread_create_from_mach_thread".into(),
+            thread_bootstrap_address: 0,
+            thread_bootstrap_raw_address: 0,
+            thread_bootstrap_canonicalized: false,
+            target_hook_environment: HookEnvironmentReport {
+                active_backend: None,
+                backends: vec![],
+                warnings: vec![],
+            },
+            target_hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: None,
+            },
+            resolved_loader_symbols: vec![],
+        };
+
+        ensure_inline_hooks_allowed_for_command("objc.classes UIView", &environment, &preflight)
+            .expect("query command should stay allowed");
+    }
+
+    #[test]
+    fn query_only_hook_policy_blocks_hook_commands_before_dispatch() {
+        let environment = InjectionEnvironmentReport {
+            dry_run: false,
+            bootstrap_wait_ms: Some(3000),
+            hook_policy: HookPolicy::QueryOnlyExternalLoaded,
+            hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::QueryOnlyExternalLoaded,
+                strategy: "query-only-external-loaded".into(),
+                allowed: true,
+                inline_hooks_allowed: false,
+                reason: Some("external backend already loaded in controller".into()),
+            },
+            hook_environment: HookEnvironmentReport {
+                active_backend: Some("ellekit".into()),
+                backends: vec![HookBackendInfo {
+                    id: "ellekit".into(),
+                    display_name: "ElleKit".into(),
+                    loaded_images: vec!["/usr/lib/libellekit.dylib".into()],
+                    filesystem_paths: vec![],
+                }],
+                warnings: vec!["external hook ecosystem detected".into()],
+            },
+        };
+        let preflight = InjectionTargetPreflightReport {
+            main_image: None,
+            target_images: vec![],
+            target_image_count: 0,
+            target_uses_arm64e: Some(false),
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFromMachThread,
+            thread_bootstrap_label: "pthread_create_from_mach_thread".into(),
+            thread_bootstrap_address: 0,
+            thread_bootstrap_raw_address: 0,
+            thread_bootstrap_canonicalized: false,
+            target_hook_environment: HookEnvironmentReport {
+                active_backend: Some("substrate".into()),
+                backends: vec![HookBackendInfo {
+                    id: "substrate".into(),
+                    display_name: "Cydia Substrate".into(),
+                    loaded_images: vec!["/Library/MobileSubstrate/MobileSubstrate.dylib".into()],
+                    filesystem_paths: vec![],
+                }],
+                warnings: vec!["external hook ecosystem detected".into()],
+            },
+            target_hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::QueryOnlyExternalLoaded,
+                strategy: "query-only-external-loaded".into(),
+                allowed: true,
+                inline_hooks_allowed: false,
+                reason: Some("external backend already loaded in target".into()),
+            },
+            resolved_loader_symbols: vec![],
+        };
+
+        let err = ensure_inline_hooks_allowed_for_command("trace UIViewController", &environment, &preflight)
+            .expect_err("hook command must be rejected before dispatch");
+        let rendered = err.to_string();
+        assert!(rendered.contains("requires inline hooks"));
+        assert!(rendered.contains("query-only"));
+        assert!(rendered.contains("controller policy=query-only-external-loaded"));
+        assert!(rendered.contains("target policy=query-only-external-loaded"));
     }
 
     #[test]
