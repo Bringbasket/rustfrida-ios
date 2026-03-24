@@ -349,6 +349,43 @@ void arm64_writer_put_ldr_reg_address(Arm64Writer* w, Arm64Reg reg, uint64_t add
     arm64_writer_put_ldr_reg_u64(w, reg, addr);
 }
 
+static Arm64Reg arm64_writer_reg_as_x(Arm64Reg reg) {
+    uint32_t reg_num = ARM64_REG_NUM(reg);
+    if (reg_num == 31) {
+        return ARM64_REG_SP;
+    }
+    return (Arm64Reg)reg_num;
+}
+
+static Arm64Reg arm64_writer_pick_address_scratch_reg(Arm64Reg dst, Arm64Reg src) {
+    uint32_t dst_num = ARM64_REG_NUM(dst);
+    uint32_t src_num = ARM64_REG_NUM(src);
+
+    if (dst_num != 31 && dst_num != src_num) {
+        return arm64_writer_reg_as_x(dst);
+    }
+    if (src_num != ARM64_REG_NUM(ARM64_REG_X16) && dst_num != ARM64_REG_NUM(ARM64_REG_X16)) {
+        return ARM64_REG_X16;
+    }
+    if (src_num != ARM64_REG_NUM(ARM64_REG_X17) && dst_num != ARM64_REG_NUM(ARM64_REG_X17)) {
+        return ARM64_REG_X17;
+    }
+
+    return ARM64_REG_NONE;
+}
+
+static void arm64_writer_put_large_offset_address(Arm64Writer* w, Arm64Reg scratch, Arm64Reg src, int64_t offset) {
+    Arm64Reg base = arm64_writer_reg_as_x(src);
+    uint64_t magnitude = (offset < 0) ? (uint64_t)(-(offset + 1)) + 1 : (uint64_t)offset;
+
+    arm64_writer_put_mov_reg_imm(w, scratch, magnitude);
+    if (offset < 0) {
+        arm64_writer_put_sub_reg_reg_reg(w, scratch, base, scratch);
+    } else {
+        arm64_writer_put_add_reg_reg_reg(w, scratch, base, scratch);
+    }
+}
+
 void arm64_writer_put_ldr_reg_reg_offset(Arm64Writer* w, Arm64Reg dst, Arm64Reg src, int64_t offset) {
     uint32_t rt = ARM64_REG_NUM(dst);
     uint32_t rn = ARM64_REG_NUM(src);
@@ -369,8 +406,13 @@ void arm64_writer_put_ldr_reg_reg_offset(Arm64Writer* w, Arm64Reg dst, Arm64Reg 
         uint32_t imm9 = (uint32_t)offset & 0x1FF;
         uint32_t insn = (size << 30) | 0x38400000 | (imm9 << 12) | (rn << 5) | rt;
         arm64_writer_put_insn(w, insn);
+    } else {
+        Arm64Reg scratch = arm64_writer_pick_address_scratch_reg(dst, src);
+        if (scratch == ARM64_REG_NONE) abort();
+
+        arm64_writer_put_large_offset_address(w, scratch, src, offset);
+        arm64_writer_put_ldr_reg_reg_offset(w, dst, scratch, 0);
     }
-    /* TODO: Handle larger offsets with scratch register */
 }
 
 void arm64_writer_put_ldrsw_reg_reg_offset(Arm64Writer* w, Arm64Reg dst, Arm64Reg src, int64_t offset) {
@@ -389,6 +431,12 @@ void arm64_writer_put_ldrsw_reg_reg_offset(Arm64Writer* w, Arm64Reg dst, Arm64Re
         uint32_t imm9 = (uint32_t)offset & 0x1FF;
         uint32_t insn = 0xB8800000 | (imm9 << 12) | (rn << 5) | rt;
         arm64_writer_put_insn(w, insn);
+    } else {
+        Arm64Reg scratch = arm64_writer_pick_address_scratch_reg(dst, src);
+        if (scratch == ARM64_REG_NONE) abort();
+
+        arm64_writer_put_large_offset_address(w, scratch, src, offset);
+        arm64_writer_put_ldrsw_reg_reg_offset(w, dst, scratch, 0);
     }
 }
 
