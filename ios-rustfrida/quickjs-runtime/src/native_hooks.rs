@@ -52,37 +52,100 @@ function resolveTarget(spec) {
     }
     throw new Error('unsupported native hook target kind: ' + String(spec.kind));
 }
-function stopTrace() {
-    const state = globalThis.__iosRustFridaTrace;
-    if (state && state.handle && typeof state.handle.detach === 'function') {
-        try { state.handle.detach(); } catch (_) {}
+function detachTraceState() {
+    const state = globalThis.__iosRustFridaTrace || {};
+    let count = 0;
+    if (state.handle && typeof state.handle.detach === 'function') {
+        try { state.handle.detach(); count++; } catch (_) {}
     }
     globalThis.__iosRustFridaTrace = {};
-    return 'trace stopped';
+    return {
+        active: count > 0 || !!state.label || !!state.targetAddress || !!state.objcMode,
+        count,
+        label: state.label === undefined ? null : state.label,
+        filter: typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null,
+        targetAddress: state.targetAddress === undefined ? null : state.targetAddress,
+        targetKind: state.targetKind === undefined ? null : state.targetKind,
+        targetSymbol: state.targetSymbol === undefined ? null : state.targetSymbol,
+        moduleName: state.moduleName === undefined ? null : state.moduleName,
+        symbolName: state.symbolName === undefined ? null : state.symbolName,
+        objcMode: state.objcMode === undefined ? null : state.objcMode,
+    };
 }
-function stopStalker() {
-    const state = globalThis.__iosRustFridaStalker;
-    if (state && Array.isArray(state.handles)) {
+function detachStalkerState() {
+    const state = globalThis.__iosRustFridaStalker || {};
+    let count = 0;
+    if (Array.isArray(state.handles)) {
         for (const handle of state.handles) {
             if (handle && typeof handle.detach === 'function') {
-                try { handle.detach(); } catch (_) {}
+                try { handle.detach(); count++; } catch (_) {}
             }
         }
     }
     globalThis.__iosRustFridaStalker = {};
-    return 'stalker stopped';
+    return {
+        active: count > 0 || !!state.label || !!state.targetAddress || !!state.objcMode,
+        count,
+        label: state.label === undefined ? null : state.label,
+        filter: typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null,
+        targetAddress: state.targetAddress === undefined ? null : state.targetAddress,
+        secondaryTargetAddress: state.secondaryTargetAddress === undefined ? null : state.secondaryTargetAddress,
+        targetKind: state.targetKind === undefined ? null : state.targetKind,
+        targetSymbol: state.targetSymbol === undefined ? null : state.targetSymbol,
+        moduleName: state.moduleName === undefined ? null : state.moduleName,
+        symbolName: state.symbolName === undefined ? null : state.symbolName,
+        objcMode: state.objcMode === undefined ? null : state.objcMode,
+        superEnabled: !!state.superEnabled,
+    };
 }
-function installTrace(spec) {
+function stopTraceResult() {
+    const detached = detachTraceState();
+    return {
+        active: detached.active,
+        count: detached.count,
+        label: detached.label,
+        filter: detached.filter,
+        targetAddress: detached.targetAddress,
+        targetKind: detached.targetKind,
+        targetSymbol: detached.targetSymbol,
+        moduleName: detached.moduleName,
+        symbolName: detached.symbolName,
+        objcMode: detached.objcMode,
+        message: detached.active ? ('trace stopped: ' + (detached.label || '<unknown>') + ' detached=' + detached.count) : 'trace stopped',
+    };
+}
+function stopTrace() {
+    return stopTraceResult().message;
+}
+function stopStalkerResult() {
+    const detached = detachStalkerState();
+    return {
+        active: detached.active,
+        count: detached.count,
+        label: detached.label,
+        filter: detached.filter,
+        targetAddress: detached.targetAddress,
+        secondaryTargetAddress: detached.secondaryTargetAddress,
+        targetKind: detached.targetKind,
+        targetSymbol: detached.targetSymbol,
+        moduleName: detached.moduleName,
+        symbolName: detached.symbolName,
+        objcMode: detached.objcMode,
+        superEnabled: detached.superEnabled,
+        message: detached.active ? ('stalker stopped: ' + (detached.label || '<unknown>') + ' detached=' + detached.count) : 'stalker stopped',
+    };
+}
+function stopStalker() {
+    return stopStalkerResult().message;
+}
+function installTraceResult(spec) {
     const objcFilter = spec && typeof spec.objcFilter === 'string' ? spec.objcFilter : '';
     if (spec && spec.objcMode === 'trace') {
         const target = Module.findExportByName(null, 'objc_msgSend');
         if (target === null) {
             throw new Error('objc_msgSend export not found');
         }
-        globalThis.__iosRustFridaTrace = globalThis.__iosRustFridaTrace || {};
-        if (globalThis.__iosRustFridaTrace.handle && typeof globalThis.__iosRustFridaTrace.handle.detach === 'function') {
-            try { globalThis.__iosRustFridaTrace.handle.detach(); } catch (_) {}
-        }
+        const replaced = detachTraceState();
         const handle = Interceptor.attach(target, {
             onEnter(ctx) {
                 try {
@@ -100,17 +163,37 @@ function installTrace(spec) {
                 }
             }
         });
-        globalThis.__iosRustFridaTrace = { handle, filter: objcFilter, label: 'objc_msgSend' };
-        return 'trace installed: objc_msgSend' + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)';
+        globalThis.__iosRustFridaTrace = {
+            handle,
+            filter: objcFilter,
+            label: 'objc_msgSend',
+            targetAddress: target.toString(),
+            targetKind: 'export',
+            targetSymbol: 'objc_msgSend',
+            moduleName: null,
+            symbolName: 'objc_msgSend',
+            objcMode: 'trace',
+        };
+        return {
+            action: 'install',
+            targetKind: 'export',
+            targetAddress: target.toString(),
+            targetSymbol: 'objc_msgSend',
+            moduleName: null,
+            symbolName: 'objc_msgSend',
+            resolvedLabel: 'objc_msgSend',
+            objcMode: 'trace',
+            filter: objcFilter.length !== 0 ? objcFilter : null,
+            replacedCount: replaced.count,
+            replacedLabel: replaced.label,
+            message: 'trace installed: objc_msgSend' + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)',
+        };
     }
 
     const resolved = resolveTarget(spec);
     const templateArgs = spec && spec.templateArgs ? spec.templateArgs : null;
     const templateRet = spec && spec.templateRet ? spec.templateRet : null;
-    globalThis.__iosRustFridaTrace = globalThis.__iosRustFridaTrace || {};
-    if (globalThis.__iosRustFridaTrace.handle && typeof globalThis.__iosRustFridaTrace.handle.detach === 'function') {
-        try { globalThis.__iosRustFridaTrace.handle.detach(); } catch (_) {}
-    }
+    const replaced = detachTraceState();
     const handle = Interceptor.attach(resolved.target, {
         onEnter(ctx) {
             try {
@@ -131,10 +214,36 @@ function installTrace(spec) {
             }
         }
     });
-    globalThis.__iosRustFridaTrace = { handle, label: resolved.resolvedLabel };
-    return 'trace installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)';
+    globalThis.__iosRustFridaTrace = {
+        handle,
+        label: resolved.resolvedLabel,
+        targetAddress: resolved.target.toString(),
+        targetKind: spec.kind === undefined ? null : spec.kind,
+        targetSymbol: resolved.targetName === undefined ? null : resolved.targetName,
+        moduleName: spec && spec.moduleName === undefined ? null : spec.moduleName,
+        symbolName: spec && spec.symbolName === undefined ? null : spec.symbolName,
+        objcMode: null,
+    };
+    return {
+        action: 'install',
+        targetKind: spec.kind === undefined ? null : spec.kind,
+        targetAddress: resolved.target.toString(),
+        targetSymbol: resolved.targetName === undefined ? null : resolved.targetName,
+        moduleName: spec && spec.moduleName === undefined ? null : spec.moduleName,
+        symbolName: spec && spec.symbolName === undefined ? null : spec.symbolName,
+        address: spec && spec.address === undefined ? null : spec.address,
+        resolvedLabel: resolved.resolvedLabel,
+        templateArgs,
+        templateRet,
+        replacedCount: replaced.count,
+        replacedLabel: replaced.label,
+        message: 'trace installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)',
+    };
 }
-function installStalker(spec) {
+function installTrace(spec) {
+    return installTraceResult(spec).message;
+}
+function installStalkerResult(spec) {
     const objcFilter = spec && typeof spec.objcFilter === 'string' ? spec.objcFilter : '';
     if (spec && spec.objcMode === 'stalker') {
         const msgSend = Module.findExportByName(null, 'objc_msgSend');
@@ -143,14 +252,7 @@ function installStalker(spec) {
         }
         const msgSendSuper = Module.findExportByName(null, 'objc_msgSendSuper2');
         const pthreadSelf = Module.findExportByName(null, 'pthread_self');
-        const state = globalThis.__iosRustFridaStalker || {};
-        if (Array.isArray(state.handles)) {
-            for (const handle of state.handles) {
-                if (handle && typeof handle.detach === 'function') {
-                    try { handle.detach(); } catch (_) {}
-                }
-            }
-        }
+        const replaced = detachStalkerState();
         const depths = {};
         const stacks = {};
         function currentThreadKey() { try { if (pthreadSelf === null) { return '0'; } return callNative(pthreadSelf).toString(); } catch (_) { return '0'; } }
@@ -194,22 +296,45 @@ function installStalker(spec) {
         if (msgSendSuper !== null) {
             handles.push(install(msgSendSuper, true));
         }
-        globalThis.__iosRustFridaStalker = { handles, filter: objcFilter, depths, stacks };
-        return 'stalker installed: objc_msgSend' + (msgSendSuper !== null ? ' + objc_msgSendSuper2' : '') + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)';
+        globalThis.__iosRustFridaStalker = {
+            handles,
+            filter: objcFilter,
+            depths,
+            stacks,
+            label: msgSendSuper !== null ? 'objc_msgSend + objc_msgSendSuper2' : 'objc_msgSend',
+            targetAddress: msgSend.toString(),
+            secondaryTargetAddress: msgSendSuper === null ? null : msgSendSuper.toString(),
+            targetKind: 'export',
+            targetSymbol: 'objc_msgSend',
+            moduleName: null,
+            symbolName: 'objc_msgSend',
+            objcMode: 'stalker',
+            superEnabled: msgSendSuper !== null,
+        };
+        return {
+            action: 'install',
+            targetKind: 'export',
+            targetAddress: msgSend.toString(),
+            secondaryTargetAddress: msgSendSuper === null ? null : msgSendSuper.toString(),
+            targetSymbol: 'objc_msgSend',
+            moduleName: null,
+            symbolName: 'objc_msgSend',
+            resolvedLabel: msgSendSuper !== null ? 'objc_msgSend + objc_msgSendSuper2' : 'objc_msgSend',
+            objcMode: 'stalker',
+            superEnabled: msgSendSuper !== null,
+            filter: objcFilter.length !== 0 ? objcFilter : null,
+            count: handles.length,
+            replacedCount: replaced.count,
+            replacedLabel: replaced.label,
+            message: 'stalker installed: objc_msgSend' + (msgSendSuper !== null ? ' + objc_msgSendSuper2' : '') + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)',
+        };
     }
 
     const resolved = resolveTarget(spec);
     const templateArgs = spec && spec.templateArgs ? spec.templateArgs : null;
     const templateRet = spec && spec.templateRet ? spec.templateRet : null;
     const pthreadSelf = Module.findExportByName(null, 'pthread_self');
-    const state = globalThis.__iosRustFridaStalker || {};
-    if (Array.isArray(state.handles)) {
-        for (const handle of state.handles) {
-            if (handle && typeof handle.detach === 'function') {
-                try { handle.detach(); } catch (_) {}
-            }
-        }
-    }
+    const replaced = detachStalkerState();
     const depths = {};
     function currentThreadKey() { try { if (pthreadSelf === null) { return '0'; } return callNative(pthreadSelf).toString(); } catch (_) { return '0'; } }
     function indent(depth) { let s = ''; const capped = Math.min(depth, 32); for (let i = 0; i < capped; i++) s += '  '; return s; }
@@ -239,8 +364,39 @@ function installStalker(spec) {
             }
         }
     });
-    globalThis.__iosRustFridaStalker = { handles: [handle], label: resolved.resolvedLabel, depths };
-    return 'stalker installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)';
+    globalThis.__iosRustFridaStalker = {
+        handles: [handle],
+        label: resolved.resolvedLabel,
+        depths,
+        targetAddress: resolved.target.toString(),
+        secondaryTargetAddress: null,
+        targetKind: spec.kind === undefined ? null : spec.kind,
+        targetSymbol: resolved.targetName === undefined ? null : resolved.targetName,
+        moduleName: spec && spec.moduleName === undefined ? null : spec.moduleName,
+        symbolName: spec && spec.symbolName === undefined ? null : spec.symbolName,
+        objcMode: null,
+        superEnabled: false,
+    };
+    return {
+        action: 'install',
+        targetKind: spec.kind === undefined ? null : spec.kind,
+        targetAddress: resolved.target.toString(),
+        secondaryTargetAddress: null,
+        targetSymbol: resolved.targetName === undefined ? null : resolved.targetName,
+        moduleName: spec && spec.moduleName === undefined ? null : spec.moduleName,
+        symbolName: spec && spec.symbolName === undefined ? null : spec.symbolName,
+        address: spec && spec.address === undefined ? null : spec.address,
+        resolvedLabel: resolved.resolvedLabel,
+        templateArgs,
+        templateRet,
+        count: 1,
+        replacedCount: replaced.count,
+        replacedLabel: replaced.label,
+        message: 'stalker installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)',
+    };
+}
+function installStalker(spec) {
+    return installStalkerResult(spec).message;
 }
 return {
     cstringPreview,
@@ -252,6 +408,10 @@ return {
     formatTemplateArgs,
     formatTemplateReturn,
     formatTypedValue,
+    installTraceResult,
+    installStalkerResult,
+    stopTraceResult,
+    stopStalkerResult,
     installTrace,
     installStalker,
     stopTrace,

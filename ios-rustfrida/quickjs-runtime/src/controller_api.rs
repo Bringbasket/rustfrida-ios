@@ -145,14 +145,9 @@ function installObjcTraceResult(filter) {
         objcFilter: String(filter || ''),
         objcMode: 'trace',
     };
-    return {
-        kind: 'objc.trace.install',
-        action: 'install',
-        targetKind: 'export',
-        targetSymbol: 'objc_msgSend',
-        filter: String(filter || ''),
-        message: helper.installTrace(spec),
-    };
+    const result = helper.installTraceResult(spec);
+    result.kind = 'objc.trace.install';
+    return result;
 }
 
 function installObjcTrace(filter) {
@@ -170,14 +165,9 @@ function installObjcStalkerResult(filter) {
         objcFilter: String(filter || ''),
         objcMode: 'stalker',
     };
-    return {
-        kind: 'objc.stalker.install',
-        action: 'install',
-        targetKind: 'export',
-        targetSymbol: 'objc_msgSend',
-        filter: String(filter || ''),
-        message: helper.installStalker(spec),
-    };
+    const result = helper.installStalkerResult(spec);
+    result.kind = 'objc.stalker.install';
+    return result;
 }
 
 function installObjcStalker(filter) {
@@ -203,12 +193,10 @@ function buildNativeSpec(kind, moduleName, symbolName, address, templateArgs, te
 
 function installNativeTraceResult(spec) {
     const helper = requireNativeHookHelpers();
-    return {
-        kind: 'native.trace.install',
-        action: 'install',
-        target: spec,
-        message: helper.installTrace(spec),
-    };
+    const result = helper.installTraceResult(spec);
+    result.kind = 'native.trace.install';
+    result.target = spec;
+    return result;
 }
 
 function installNativeTrace(spec) {
@@ -225,12 +213,10 @@ function installNativeTraceAddress(address, templateArgs, templateRet) {
 
 function installNativeStalkerResult(spec) {
     const helper = requireNativeHookHelpers();
-    return {
-        kind: 'native.stalker.install',
-        action: 'install',
-        target: spec,
-        message: helper.installStalker(spec),
-    };
+    const result = helper.installStalkerResult(spec);
+    result.kind = 'native.stalker.install';
+    result.target = spec;
+    return result;
 }
 
 function installNativeStalker(spec) {
@@ -246,12 +232,11 @@ function installNativeStalkerAddress(address, templateArgs, templateRet) {
 }
 
 function stopTraceResult() {
-    return {
-        kind: 'trace.stop',
-        action: 'stop',
-        scope: 'trace',
-        message: requireNativeHookHelpers().stopTrace(),
-    };
+    const result = requireNativeHookHelpers().stopTraceResult();
+    result.kind = 'trace.stop';
+    result.action = 'stop';
+    result.scope = 'trace';
+    return result;
 }
 
 function stopTrace() {
@@ -259,12 +244,11 @@ function stopTrace() {
 }
 
 function stopStalkerResult() {
-    return {
-        kind: 'stalker.stop',
-        action: 'stop',
-        scope: 'stalker',
-        message: requireNativeHookHelpers().stopStalker(),
-    };
+    const result = requireNativeHookHelpers().stopStalkerResult();
+    result.kind = 'stalker.stop';
+    result.action = 'stop';
+    result.scope = 'stalker';
+    return result;
 }
 
 function stopStalker() {

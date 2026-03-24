@@ -322,7 +322,10 @@ undefined;
         }
 
         fn has_pac_support() -> bool {
-            cfg!(all(any(target_os = "macos", target_os = "ios"), target_arch = "aarch64"))
+            cfg!(all(
+                any(target_os = "macos", target_os = "ios"),
+                target_arch = "aarch64"
+            ))
         }
 
         fn has_swift_support() -> bool {
@@ -370,11 +373,7 @@ undefined;
             let mut runtime = QuickJsRuntime::new();
             runtime.initialize().expect("init runtime");
 
-            let objc_available = if has_apple_objc_runtime() {
-                "true"
-            } else {
-                "false"
-            };
+            let objc_available = if has_apple_objc_runtime() { "true" } else { "false" };
             assert_eq!(runtime.eval("ObjC.available").expect("objc available"), objc_available);
             assert_eq!(runtime.eval("typeof callNative").expect("callNative type"), "function");
             assert_eq!(
@@ -541,7 +540,10 @@ undefined;
                 "true"
             );
             let swift_available = if has_swift_support() { "true" } else { "false" };
-            assert_eq!(runtime.eval("Swift.available").expect("swift available"), swift_available);
+            assert_eq!(
+                runtime.eval("Swift.available").expect("swift available"),
+                swift_available
+            );
             assert_eq!(
                 runtime.eval("typeof Swift.demangle").expect("swift demangle type"),
                 "function"
@@ -937,8 +939,20 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof __iosRustFridaNativeHooks.stopTraceResult")
+                    .expect("native hook stop trace result helper type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof __iosRustFridaControllerApi.stopStalker")
                     .expect("controller stop stalker helper type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof __iosRustFridaNativeHooks.stopStalkerResult")
+                    .expect("native hook stop stalker result helper type"),
                 "function"
             );
             assert_eq!(
@@ -963,7 +977,13 @@ undefined;
                 runtime
                     .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'trace.stop' }))")
                     .expect("controller trace stop result"),
-                "{\"kind\":\"trace.stop\",\"action\":\"stop\",\"scope\":\"trace\",\"message\":\"trace stopped\"}"
+                "{\"active\":false,\"count\":0,\"label\":null,\"filter\":null,\"targetAddress\":null,\"targetKind\":null,\"targetSymbol\":null,\"moduleName\":null,\"symbolName\":null,\"objcMode\":null,\"message\":\"trace stopped\",\"kind\":\"trace.stop\",\"action\":\"stop\",\"scope\":\"trace\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'stalker.stop' }))")
+                    .expect("controller stalker stop result"),
+                "{\"active\":false,\"count\":0,\"label\":null,\"filter\":null,\"targetAddress\":null,\"secondaryTargetAddress\":null,\"targetKind\":null,\"targetSymbol\":null,\"moduleName\":null,\"symbolName\":null,\"objcMode\":null,\"superEnabled\":false,\"message\":\"stalker stopped\",\"kind\":\"stalker.stop\",\"action\":\"stop\",\"scope\":\"stalker\"}"
             );
         }
 
@@ -1224,11 +1244,7 @@ undefined;
 
             let addr = mapping as usize;
             unsafe {
-                std::ptr::copy_nonoverlapping(
-                    [0x11u8, 0x22, 0x33, 0x44, 0, 0, 0, 0].as_ptr(),
-                    mapping as *mut u8,
-                    8,
-                );
+                std::ptr::copy_nonoverlapping([0x11u8, 0x22, 0x33, 0x44, 0, 0, 0, 0].as_ptr(), mapping as *mut u8, 8);
             }
 
             let read_script = format!("Memory.readU16(ptr('0x{addr:x}')).toString()");
