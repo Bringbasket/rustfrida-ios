@@ -1,11 +1,15 @@
 use std::env;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 fn main() {
     println!("cargo:rustc-check-cfg=cfg(quickjs_runtime_stub)");
     println!("cargo:rustc-check-cfg=cfg(quickjs_hook_engine)");
     println!("cargo:rerun-if-env-changed=QUICKJS_SRC_DIR");
     println!("cargo:rerun-if-env-changed=QUICKJS_RUNTIME_FORCE_STUB");
+    println!("cargo:rerun-if-env-changed=SDKROOT");
+    println!("cargo:rerun-if-env-changed=IPHONEOS_DEPLOYMENT_TARGET");
+    println!("cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET");
     println!("cargo:rerun-if-changed=src/quickjs_wrapper.c");
     println!("cargo:rerun-if-changed=src/quickjs_wrapper.h");
     println!("cargo:rerun-if-changed=build.rs");
@@ -89,7 +93,7 @@ fn build_quickjs(manifest_dir: &Path, quickjs_src: &Path, target: &str) {
 
     build.compile("quickjs_runtime_native");
 
-    let bindings = bindgen::Builder::default()
+    let mut bindings = bindgen::Builder::default()
         .header(quickjs_src.join("quickjs.h").to_string_lossy().to_string())
         .header(src_dir.join("quickjs_wrapper.h").to_string_lossy().to_string())
         .clang_arg(format!("-I{}", quickjs_src.display()))
@@ -104,7 +108,15 @@ fn build_quickjs(manifest_dir: &Path, quickjs_src: &Path, target: &str) {
         .derive_debug(true)
         .derive_default(true)
         .generate_comments(true)
-        .layout_tests(false)
+        .layout_tests(false);
+
+    if let Some(args) = apple_bindgen_clang_args(target) {
+        for arg in args {
+            bindings = bindings.clang_arg(arg);
+        }
+    }
+
+    let bindings = bindings
         .generate()
         .expect("Unable to generate QuickJS bindings");
 
@@ -193,6 +205,12 @@ fn build_hook_engine(manifest_dir: &Path, target: &str) {
         bindings = bindings.clang_arg(format!("-I{}", include_dir.display()));
     }
 
+    if let Some(args) = apple_bindgen_clang_args(target) {
+        for arg in args {
+            bindings = bindings.clang_arg(arg);
+        }
+    }
+
     bindings
         .generate()
         .expect("Unable to generate hook engine bindings")
@@ -257,6 +275,66 @@ fn should_use_stub(target: &str, host: &str) -> Option<String> {
     }
 
     None
+}
+
+fn apple_bindgen_clang_args(target: &str) -> Option<Vec<String>> {
+    let (sdk, clang_target) = match target {
+        "aarch64-apple-ios" => ("iphoneos", format!("arm64-apple-ios{}", ios_deployment_target())),
+        "aarch64-apple-ios-sim" => (
+            "iphonesimulator",
+            format!("arm64-apple-ios{}-simulator", ios_deployment_target()),
+        ),
+        "x86_64-apple-ios" => (
+            "iphonesimulator",
+            format!("x86_64-apple-ios{}-simulator", ios_deployment_target()),
+        ),
+        "aarch64-apple-darwin" => ("macosx", format!("arm64-apple-macos{}", macos_deployment_target())),
+        "x86_64-apple-darwin" => ("macosx", format!("x86_64-apple-macos{}", macos_deployment_target())),
+        _ => return None,
+    };
+
+    let sdk_path = env::var("SDKROOT")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| xcrun_sdk_path(sdk));
+
+    Some(vec![
+        format!("--target={clang_target}"),
+        "-isysroot".into(),
+        sdk_path,
+    ])
+}
+
+fn ios_deployment_target() -> String {
+    env::var("IPHONEOS_DEPLOYMENT_TARGET")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| "13.0".into())
+}
+
+fn macos_deployment_target() -> String {
+    env::var("MACOSX_DEPLOYMENT_TARGET")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| "11.0".into())
+}
+
+fn xcrun_sdk_path(sdk: &str) -> String {
+    let output = Command::new("xcrun")
+        .args(["--sdk", sdk, "--show-sdk-path"])
+        .output()
+        .unwrap_or_else(|err| panic!("failed to run xcrun for sdk `{sdk}`: {err}"));
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        panic!("xcrun --sdk {sdk} --show-sdk-path failed: {stderr}");
+    }
+
+    let path = String::from_utf8(output.stdout).expect("xcrun sdk path is not valid UTF-8");
+    let path = path.trim();
+    if path.is_empty() {
+        panic!("xcrun returned an empty SDK path for `{sdk}`");
+    }
+    path.to_owned()
 }
 
 fn emit_stub(manifest_dir: &Path, reason: &str) {
