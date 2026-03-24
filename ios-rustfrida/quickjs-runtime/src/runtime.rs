@@ -212,10 +212,10 @@ globalThis.Interceptor.revert = globalThis.Interceptor.revert || function(target
     return unhook(target);
 };
 globalThis.Interceptor.attach = globalThis.Interceptor.attach || function() {
-    throw new Error('Interceptor.attach() is not implemented on iOS yet; use hook()/Interceptor.replace() for replace-style hooks');
+    throw new Error('Interceptor.attach() is unavailable in this build; build quickjs-runtime with the native ARM64 hook engine enabled');
 };
 globalThis.Interceptor.detachAll = globalThis.Interceptor.detachAll || function() {
-    throw new Error('Interceptor.detachAll() is not implemented on iOS yet');
+    throw new Error('Interceptor.detachAll() is unavailable in this build; build quickjs-runtime with the native ARM64 hook engine enabled');
 };
 __IOSRF_NATIVE_HOOKS__
 __IOSRF_CONTROLLER_API__
@@ -688,6 +688,15 @@ undefined;
                     .expect("debug symbol module name"),
                 "true"
             );
+        }
+
+        #[test]
+        fn bootstrap_script_uses_unavailable_interceptor_fallback_messages() {
+            let runtime = QuickJsRuntime::new();
+            let bootstrap = runtime.bootstrap_script();
+            assert!(!bootstrap.contains("not implemented on iOS yet"));
+            assert!(bootstrap.contains("Interceptor.attach() is unavailable in this build"));
+            assert!(bootstrap.contains("Interceptor.detachAll() is unavailable in this build"));
         }
 
         #[test]
