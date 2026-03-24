@@ -564,22 +564,34 @@ static void arm64_writer_put_addsub_reg_reg_imm(Arm64Writer* w, Arm64Reg dst, Ar
     uint32_t rd = ARM64_REG_NUM(dst);
     uint32_t rn = ARM64_REG_NUM(src);
     uint32_t sf = ARM64_REG_SF(dst);
+    uint32_t current_rn = rn;
 
-    if (imm <= 0xFFF) {
-        uint32_t insn = (sf << 31) | op_base | ((uint32_t)imm << 10) | (rn << 5) | rd;
+    if (imm == 0) {
+        uint32_t insn = (sf << 31) | op_base | (current_rn << 5) | rd;
         arm64_writer_put_insn(w, insn);
-    } else if ((imm & 0xFFF) == 0 && (imm >> 12) <= 0xFFF) {
-        uint32_t insn = (sf << 31) | op_shift | ((uint32_t)(imm >> 12) << 10) | (rn << 5) | rd;
-        arm64_writer_put_insn(w, insn);
-    } else if ((imm >> 12) <= 0xFFF) {
-        uint32_t hi12 = (uint32_t)(imm >> 12) & 0xFFF;
-        uint32_t lo12 = (uint32_t)(imm & 0xFFF);
-        uint32_t insn1 = (sf << 31) | op_shift | (hi12 << 10) | (rn << 5) | rd;
-        uint32_t insn2 = (sf << 31) | op_base  | (lo12 << 10) | (rd << 5) | rd;
-        arm64_writer_put_insn(w, insn1);
-        arm64_writer_put_insn(w, insn2);
+        return;
     }
-    /* Immediates > 24 bits are not handled; callers must use register form. */
+
+    while (imm != 0) {
+        uint64_t chunk;
+        uint32_t insn;
+
+        if ((imm & 0xFFF) != 0) {
+            chunk = imm & 0xFFF;
+            insn = (sf << 31) | op_base | ((uint32_t)chunk << 10) | (current_rn << 5) | rd;
+        } else {
+            chunk = imm;
+            if (chunk > 0xFFF000) {
+                chunk = 0xFFF000;
+            }
+            chunk &= ~0xFFFULL;
+            insn = (sf << 31) | op_shift | ((uint32_t)(chunk >> 12) << 10) | (current_rn << 5) | rd;
+        }
+
+        arm64_writer_put_insn(w, insn);
+        imm -= chunk;
+        current_rn = rd;
+    }
 }
 
 void arm64_writer_put_add_reg_reg_imm(Arm64Writer* w, Arm64Reg dst, Arm64Reg src, uint64_t imm) {
