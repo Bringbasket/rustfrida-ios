@@ -374,6 +374,20 @@ static Arm64Reg arm64_writer_pick_address_scratch_reg(Arm64Reg dst, Arm64Reg src
     return ARM64_REG_NONE;
 }
 
+static Arm64Reg arm64_writer_pick_store_address_scratch_reg(Arm64Reg src, Arm64Reg dst) {
+    uint32_t src_num = ARM64_REG_NUM(src);
+    uint32_t dst_num = ARM64_REG_NUM(dst);
+
+    if (src_num != ARM64_REG_NUM(ARM64_REG_X16) && dst_num != ARM64_REG_NUM(ARM64_REG_X16)) {
+        return ARM64_REG_X16;
+    }
+    if (src_num != ARM64_REG_NUM(ARM64_REG_X17) && dst_num != ARM64_REG_NUM(ARM64_REG_X17)) {
+        return ARM64_REG_X17;
+    }
+
+    return ARM64_REG_NONE;
+}
+
 static void arm64_writer_put_large_offset_address(Arm64Writer* w, Arm64Reg scratch, Arm64Reg src, int64_t offset) {
     Arm64Reg base = arm64_writer_reg_as_x(src);
     uint64_t magnitude = (offset < 0) ? (uint64_t)(-(offset + 1)) + 1 : (uint64_t)offset;
@@ -519,6 +533,12 @@ void arm64_writer_put_str_reg_reg_offset(Arm64Writer* w, Arm64Reg src, Arm64Reg 
         uint32_t imm9 = (uint32_t)offset & 0x1FF;
         uint32_t insn = (size << 30) | 0x38000000 | (imm9 << 12) | (rn << 5) | rt;
         arm64_writer_put_insn(w, insn);
+    } else {
+        Arm64Reg scratch = arm64_writer_pick_store_address_scratch_reg(src, dst);
+        if (scratch == ARM64_REG_NONE) abort();
+
+        arm64_writer_put_large_offset_address(w, scratch, dst, offset);
+        arm64_writer_put_str_reg_reg_offset(w, src, scratch, 0);
     }
 }
 
