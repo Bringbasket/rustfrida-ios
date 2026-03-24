@@ -693,7 +693,7 @@ fn try_enter_runtime_js_for_callback(
                     ffi::qjs_update_stack_top(ctx);
                 }
                 return Some(RuntimeJsGuard {
-                    _inner: RuntimeJsGuardInner::Locked(guard),
+                    _inner: RuntimeJsGuardInner::Locked { _guard: guard },
                 });
             }
             Err(std::sync::TryLockError::WouldBlock) => {
@@ -727,7 +727,9 @@ fn try_enter_runtime_js_for_callback(
                     ffi::qjs_update_stack_top(ctx);
                 }
                 return Some(RuntimeJsGuard {
-                    _inner: RuntimeJsGuardInner::Locked(error.into_inner()),
+                    _inner: RuntimeJsGuardInner::Locked {
+                        _guard: error.into_inner(),
+                    },
                 });
             }
         }
