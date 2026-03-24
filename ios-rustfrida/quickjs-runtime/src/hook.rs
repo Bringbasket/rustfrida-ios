@@ -84,6 +84,9 @@ struct HookEnginePool {
 }
 
 #[cfg(quickjs_hook_engine)]
+unsafe impl Send for HookEnginePool {}
+
+#[cfg(quickjs_hook_engine)]
 #[derive(Clone, Copy)]
 enum HookMode {
     Replace {
