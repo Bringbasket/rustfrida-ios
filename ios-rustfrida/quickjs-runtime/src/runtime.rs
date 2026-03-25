@@ -1504,6 +1504,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.data_in_code', moduleName: main.image.name }); return result.kind === 'native.data_in_code' && (result.dataInCode === null || (typeof result.dataInCode.dataoffHex === 'string' && typeof result.dataInCode.count === 'number' && Array.isArray(result.dataInCode.entries))); })()"
+                    )
+                    .expect("agent native data in code result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.build_version', moduleName: main.image.name }); return result.kind === 'native.build_version' && (result.buildVersion === null || (typeof result.buildVersion.platform === 'string' && Array.isArray(result.buildVersion.tools))); })()"
                     )
                     .expect("agent native build version result"),
@@ -1669,6 +1677,12 @@ undefined;
                 runtime
                     .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.codeSignature ' + base); return value === '<null>' || value.indexOf('dataoff=') !== -1; })()")
                     .expect("agent native code signature"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.dataInCode ' + base); return value === '<null>' || value.indexOf('count=') !== -1; })()")
+                    .expect("agent native data in code"),
                 "true"
             );
             assert_eq!(

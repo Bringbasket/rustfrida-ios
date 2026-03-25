@@ -258,6 +258,29 @@ function formatCodeSignature(codeSignature) {
     ].join(' ');
 }
 
+function formatDataInCodeEntry(entry) {
+    return [
+        '+0x' + BigInt(entry.offset || 0).toString(16),
+        entry.address.toString(),
+        'length=' + String(entry.length || 0),
+        'kind=' + String(entry.kindName || entry.kind || 'unknown'),
+    ].join(' ');
+}
+
+function formatDataInCode(dataInCode) {
+    const entries = Array.isArray(dataInCode.entries) ? dataInCode.entries : [];
+    const summary = [
+        'dataoff=0x' + BigInt(dataInCode.dataoff || 0).toString(16),
+        'datasize=0x' + BigInt(dataInCode.datasize || 0).toString(16),
+        'linkeditBase=' + dataInCode.linkeditBase.toString(),
+        'dataAddress=' + dataInCode.dataAddress.toString(),
+        'count=' + String(entries.length),
+    ].join(' ');
+    return entries.length === 0
+        ? summary
+        : summary + '\n' + entries.map((entry) => formatDataInCodeEntry(entry)).join('\n');
+}
+
 function formatSourceVersion(sourceVersion) {
     return 'version=' + String(sourceVersion.version || '');
 }
@@ -595,6 +618,34 @@ function normalizeCodeSignature(codeSignature) {
         lengthHex: codeSignature.length === null || codeSignature.length === undefined ? null : '0x' + BigInt(codeSignature.length).toString(16),
         count: codeSignature.count === null || codeSignature.count === undefined ? null : Number(codeSignature.count),
         text: formatCodeSignature(codeSignature),
+    };
+}
+
+function normalizeDataInCodeEntry(entry) {
+    return {
+        offsetHex: '0x' + BigInt(entry.offset || 0).toString(16),
+        address: entry.address.toString(),
+        length: Number(entry.length || 0),
+        kind: Number(entry.kind || 0),
+        kindName: String(entry.kindName || 'DICE_KIND_UNKNOWN'),
+        text: formatDataInCodeEntry(entry),
+    };
+}
+
+function normalizeDataInCode(dataInCode) {
+    const entries = Array.isArray(dataInCode.entries)
+        ? dataInCode.entries.map((entry) => normalizeDataInCodeEntry(entry))
+        : [];
+    return {
+        moduleName: String(dataInCode.moduleName || ''),
+        moduleBase: dataInCode.moduleBase ? dataInCode.moduleBase.toString() : null,
+        dataoffHex: '0x' + BigInt(dataInCode.dataoff || 0).toString(16),
+        datasizeHex: '0x' + BigInt(dataInCode.datasize || 0).toString(16),
+        linkeditBase: dataInCode.linkeditBase.toString(),
+        dataAddress: dataInCode.dataAddress.toString(),
+        count: entries.length,
+        entries,
+        text: formatDataInCode(dataInCode),
     };
 }
 
@@ -961,6 +1012,12 @@ function handleSpecResult(spec) {
         const normalized = codeSignature === null ? null : normalizeCodeSignature(codeSignature);
         return { kind: 'native.code_signature', moduleName, codeSignature: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
+    case 'native.data_in_code': {
+        const moduleName = String(spec.moduleName || '');
+        const dataInCode = Native.findDataInCode(moduleName);
+        const normalized = dataInCode === null ? null : normalizeDataInCode(dataInCode);
+        return { kind: 'native.data_in_code', moduleName, dataInCode: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
     case 'native.source_version': {
         const moduleName = String(spec.moduleName || '');
         const sourceVersion = Native.findSourceVersion(moduleName);
@@ -1325,6 +1382,17 @@ function legacyToSpec(command) {
         }
         return {
             kind: 'native.code_signature',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.dataInCode ')) {
+        const moduleName = trimmed.slice('native.dataInCode '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.dataInCode usage: native.dataInCode <module>');
+        }
+        return {
+            kind: 'native.data_in_code',
             moduleName,
         };
     }

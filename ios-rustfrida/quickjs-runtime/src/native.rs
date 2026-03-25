@@ -5,12 +5,13 @@ use crate::util::{add_cfunction_to_object, js_throw_internal_error};
 use crate::value::JSValue;
 use native_api::{
     detect_hook_environment, find_image_build_version, find_image_code_signature, find_image_dependencies,
-    find_image_dyld_info, find_image_dylinker, find_image_encryption_info, find_image_entry_point,
-    find_image_exports, find_image_function_starts, find_image_imports, find_image_install_name,
-    find_image_linkedit_info, find_image_load_commands, find_image_rpaths, find_image_sections,
-    find_image_segments, find_image_source_version, find_image_uuid, find_native_symbols,
+    find_image_data_in_code, find_image_dyld_info, find_image_dylinker, find_image_encryption_info,
+    find_image_entry_point, find_image_exports, find_image_function_starts, find_image_imports,
+    find_image_install_name, find_image_linkedit_info, find_image_load_commands, find_image_rpaths,
+    find_image_sections, find_image_segments, find_image_source_version, find_image_uuid, find_native_symbols,
     hook_environment_recommendations, image_build_version_support_available,
     image_code_signature_support_available, image_dependency_support_available,
+    image_data_in_code_support_available,
     image_dyld_info_support_available, image_dylinker_support_available,
     image_encryption_info_support_available, image_entry_point_support_available,
     image_function_starts_support_available, image_import_support_available,
@@ -476,6 +477,50 @@ unsafe fn image_code_signature_to_js(
         Some(value) => result.set_property(ctx, "count", JSValue(ffi::qjs_new_uint32(ctx, value))),
         None => result.set_property(ctx, "count", JSValue::null()),
     };
+    result.raw()
+}
+
+unsafe fn image_data_in_code_entry_to_js(
+    ctx: *mut ffi::JSContext,
+    entry: &native_api::ImageDataInCodeEntry,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "offset", JSValue(ffi::qjs_new_uint32(ctx, entry.offset)));
+    result.set_property(ctx, "address", create_native_pointer(ctx, entry.address as u64));
+    result.set_property(ctx, "length", JSValue::int(entry.length as i32));
+    result.set_property(ctx, "kind", JSValue::int(entry.kind as i32));
+    result.set_property(ctx, "kindName", JSValue::string(ctx, &entry.kind_name));
+    result.raw()
+}
+
+unsafe fn image_data_in_code_to_js(
+    ctx: *mut ffi::JSContext,
+    data_in_code: &native_api::ImageDataInCode,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "moduleName", JSValue::string(ctx, &data_in_code.module_name));
+    result.set_property(
+        ctx,
+        "moduleBase",
+        create_native_pointer(ctx, data_in_code.module_base as u64),
+    );
+    result.set_property(ctx, "dataoff", JSValue(ffi::qjs_new_uint32(ctx, data_in_code.dataoff)));
+    result.set_property(ctx, "datasize", JSValue(ffi::qjs_new_uint32(ctx, data_in_code.datasize)));
+    result.set_property(
+        ctx,
+        "linkeditBase",
+        create_native_pointer(ctx, data_in_code.linkedit_base as u64),
+    );
+    result.set_property(
+        ctx,
+        "dataAddress",
+        create_native_pointer(ctx, data_in_code.data_address as u64),
+    );
+    let entries = ffi::JS_NewArray(ctx);
+    for (index, item) in data_in_code.entries.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, entries, index as u32, image_data_in_code_entry_to_js(ctx, item));
+    }
+    result.set_property(ctx, "entries", JSValue(entries));
     result.raw()
 }
 
@@ -1098,6 +1143,37 @@ unsafe extern "C" fn js_native_find_code_signature(
     }
 }
 
+unsafe extern "C" fn js_native_find_data_in_code(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.findDataInCode(moduleName) requires 1 string argument",
+        );
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.findDataInCode(moduleName) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    match find_image_data_in_code(&module_name) {
+        Ok(Some(data_in_code)) => image_data_in_code_to_js(ctx, &data_in_code),
+        Ok(None) | Err(common::Error::Unsupported(_)) => JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
+}
+
 unsafe extern "C" fn js_native_find_uuid(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -1357,6 +1433,11 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
     );
     native.set_property(
         ctx.as_ptr(),
+        "dataInCodeSupportAvailable",
+        JSValue::bool(image_data_in_code_support_available()),
+    );
+    native.set_property(
+        ctx.as_ptr(),
         "uuidSupportAvailable",
         JSValue::bool(image_uuid_support_available()),
     );
@@ -1460,6 +1541,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             native.raw(),
             "findCodeSignature",
             js_native_find_code_signature,
+            1,
+        );
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "findDataInCode",
+            js_native_find_data_in_code,
             1,
         );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findUuid", js_native_find_uuid, 1);

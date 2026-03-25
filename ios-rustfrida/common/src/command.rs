@@ -101,6 +101,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.linkedit ")
         || command.starts_with("native.functionStarts ")
         || command.starts_with("native.codeSignature ")
+        || command.starts_with("native.dataInCode ")
         || command.starts_with("native.sourceVersion ")
         || command.starts_with("native.buildVersion ")
         || command.starts_with("native.dylinker ")
@@ -349,6 +350,17 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }
         return Some(json!({
             "kind": "native.code_signature",
+            "moduleName": module_name,
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.dataInCode ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.data_in_code",
             "moduleName": module_name,
         }));
     }
@@ -773,6 +785,15 @@ mod tests {
                 })
             })
         );
+        assert_eq!(
+            AgentCommand::from_legacy("native.dataInCode libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.data_in_code",
+                    "moduleName": "libsystem_malloc.dylib",
+                })
+            })
+        );
         assert!(matches!(
             AgentCommand::from_legacy("native.sourceVersion libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
@@ -932,6 +953,12 @@ mod tests {
             AgentCommand::from_legacy("native.codeSignature  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.codeSignature  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.dataInCode  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.dataInCode  ".into(),
             })
         );
         assert_eq!(

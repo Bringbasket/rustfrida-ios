@@ -221,6 +221,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.dataInCode libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.sourceVersion libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

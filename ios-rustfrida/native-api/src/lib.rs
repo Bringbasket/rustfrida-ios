@@ -1,5 +1,6 @@
 mod build_version;
 mod code_signature;
+mod data_in_code;
 mod deps;
 mod dyld_info;
 mod dylinker;
@@ -32,6 +33,9 @@ pub use build_version::{
 };
 pub use code_signature::{
     find_image_code_signature, image_code_signature_support_available, ImageCodeSignature,
+};
+pub use data_in_code::{
+    find_image_data_in_code, image_data_in_code_support_available, ImageDataInCode, ImageDataInCodeEntry,
 };
 pub use deps::{find_image_dependencies, image_dependency_support_available, ImageDependency};
 pub use dyld_info::{find_image_dyld_info, image_dyld_info_support_available, ImageDyldInfo};

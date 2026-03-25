@@ -85,6 +85,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.linkedit <module>`
   - `native.functionStarts <module>`
   - `native.codeSignature <module>`
+  - `native.dataInCode <module>`
   - `native.sourceVersion <module>`
   - `native.buildVersion <module>`
   - `native.dylinker <module>`
@@ -210,6 +211,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.linkedit <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `linkedit / vmaddr / vmsize / fileoff / filesize / computedBase`，并尽量补 `symtab / strtab / indirectsym` 偏移信息，适合给后续 `functionStarts / codeSignature / exportsTrie / chainedFixups` 这类查询先打基础。
 - `native.functionStarts <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `functionStarts / dataoff / datasize / linkeditBase / dataAddress / count / starts`，其中 `starts` 会给出解码后的函数起点偏移和运行时地址，适合快速确认 `LC_FUNCTION_STARTS` 记录的函数边界分布。
 - `native.codeSignature <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `codeSignature / dataoff / datasize / linkeditBase / dataAddress / magic / length / count`，其中会尽量把 code signing blob 头部解析成稳定字段，适合快速确认目标镜像是否带 embedded signature，以及当前看到的是 superblob 还是单个 blob。
+- `native.dataInCode <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dataInCode / dataoff / datasize / linkeditBase / dataAddress / count / entries`，其中每条 entry 会补 `offset / address / length / kind / kindName`，适合快速确认 `LC_DATA_IN_CODE` 标出来的常量区、jump table 区和其它非指令片段。
 - `native.sourceVersion <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `sourceVersion / version`，适合快速对齐 Mach-O 自带的 source version 字段。
 - `native.buildVersion <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `buildVersion / platform / minOs / sdk / tools`，适合直接确认目标镜像的 build platform 和工具链版本。
 - `native.dylinker <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dylinker / path / kind`，适合直接确认某个 Mach-O 记录的 dyld linker 路径。
