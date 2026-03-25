@@ -168,6 +168,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `--command-json` 在命令真正执行前就失败时，现在也会附带 `environment / doctor / plan / preflight / trace / diagnostics / handshake` 上下文，方便脚本直接区分是注入前配置问题、bootstrap 问题，还是命令本身失败。
 - 对 `objc.* / native.* / pac.* / swift.*` 这类 runtime 查询命令，`--command-json` 现在也会尽量回传稳定的 `payloadJson` 字段，里面直接带 `count / classes / methods / images / symbols / types / report / text` 等结构化内容，不再只能从换行文本里二次解析。
 - 对 `hfl / jhook / shook / trace / stalker` 这类 controller dispatch 命令，`--command-json` 现在也会尽量回传结构化 `payloadJson`，包含 `action / kind / target / count / key / moduleName / selectorName / resolvedLabel / targetAddress / filter / replacedCount` 等字段；对应的 `*.status` 结果也会补出当前 active state 和 target 元数据，像 `hfl/jhook/shook` 不再只有 key/count；`*.stop` 结果现在也会把被回收的 key/target 一并带回，`trace.stop / stalker.stop` 也会继续带上实际 detach 计数。
+- 对同一批 `*.status` 控制命令，普通文本模式的 `--command` / REPL 输出现在也不再只回一行 `active: N`；会附带当前 target / filter / symbol / Swift 命中项摘要，真机交互排查时不必每次都切到 `--command-json`。
 - loader symbol 解析现在会优先使用 canonical code pointer 计算模块偏移，减少 arm64e/PAC 场景下本地 `dlsym` 地址高位污染远端 rebasing 的风险。
 - 如果某个 loader symbol 的 raw 地址与 canonical 地址不同，controller 会在注入计划里同时打印两者，便于直接判断 PAC 是否介入了本地符号解析结果。
 - controller 里的 `hfl/jhook/shook/trace/stalker` 指令现在统一下沉到 `quickjs-runtime` 的 `__iosRustFridaControllerApi.dispatch(...)`，controller 只负责构造结构化 spec，后续继续迁移 runtime 能力时改动面会小很多。

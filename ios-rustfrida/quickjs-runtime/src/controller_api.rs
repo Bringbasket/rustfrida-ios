@@ -1,7 +1,130 @@
 pub(crate) fn bootstrap_controller_api() -> &'static str {
     r#"globalThis.__iosRustFridaControllerApi = globalThis.__iosRustFridaControllerApi || (function() {
 function renderResult(result) {
+    if (result && typeof result === 'object') {
+        switch (String(result.kind || '')) {
+        case 'hfl.status':
+            return renderHflStatus(result);
+        case 'objc.hook.status':
+            return renderObjcHookStatus(result);
+        case 'trace.status':
+            return renderTraceStatus(result);
+        case 'stalker.status':
+            return renderStalkerStatus(result);
+        case 'swift.hook.status':
+            return renderSwiftHookStatus(result);
+        default:
+            break;
+        }
+    }
     return result && result.message !== undefined ? String(result.message) : String(result);
+}
+
+function appendDetail(parts, label, value) {
+    if (value === null || value === undefined || value === '') {
+        return;
+    }
+    parts.push(label + '=' + String(value));
+}
+
+function renderTargetListStatus(result, entries) {
+    if (!result || !result.active) {
+        return result && result.message !== undefined ? String(result.message) : String(result);
+    }
+    const lines = [String(result.message)];
+    for (const entry of entries) {
+        lines.push(' - ' + entry);
+    }
+    return lines.join('\n');
+}
+
+function renderHflStatus(result) {
+    return renderTargetListStatus(
+        result,
+        Array.isArray(result.targets)
+            ? result.targets.map((target) => {
+                const parts = [String(target && target.key !== undefined ? target.key : '<unknown>')];
+                appendDetail(parts, 'target', target ? target.target : null);
+                return parts.join(' ');
+            })
+            : []
+    );
+}
+
+function renderObjcHookStatus(result) {
+    return renderTargetListStatus(
+        result,
+        Array.isArray(result.targets)
+            ? result.targets.map((target) => {
+                const parts = [String(target && target.key !== undefined ? target.key : '<unknown>')];
+                appendDetail(parts, 'target', target ? target.target : null);
+                return parts.join(' ');
+            })
+            : []
+    );
+}
+
+function renderTraceLikeStatus(result, includeSecondaryTarget, includeSuperEnabled) {
+    if (!result || !result.active) {
+        return result && result.message !== undefined ? String(result.message) : String(result);
+    }
+    const detailParts = [];
+    appendDetail(detailParts, 'target', result.targetAddress);
+    if (includeSecondaryTarget) {
+        appendDetail(detailParts, 'secondary', result.secondaryTargetAddress);
+    }
+    appendDetail(detailParts, 'kind', result.targetKind);
+    appendDetail(detailParts, 'symbol', result.targetSymbol);
+    appendDetail(detailParts, 'module', result.moduleName);
+    appendDetail(detailParts, 'filter', result.filter);
+    appendDetail(detailParts, 'objcMode', result.objcMode);
+    if (includeSuperEnabled) {
+        detailParts.push('super=' + (result.superEnabled ? 'on' : 'off'));
+    }
+    if (detailParts.length === 0) {
+        return String(result.message);
+    }
+    return String(result.message) + '\n - ' + detailParts.join(' ');
+}
+
+function renderTraceStatus(result) {
+    return renderTraceLikeStatus(result, false, false);
+}
+
+function renderStalkerStatus(result) {
+    return renderTraceLikeStatus(result, true, true);
+}
+
+function renderSwiftHookStatus(result) {
+    if (!result || !result.active) {
+        return result && result.message !== undefined ? String(result.message) : String(result);
+    }
+    const lines = [String(result.message)];
+    const entries = Array.isArray(result.targets) ? result.targets : [];
+    for (const entry of entries) {
+        const parts = [String(entry && entry.key !== undefined ? entry.key : '<unknown>')];
+        appendDetail(parts, 'count', entry ? entry.count : null);
+        lines.push(' - ' + parts.join(' '));
+        const targets = entry && Array.isArray(entry.targets) ? entry.targets : [];
+        for (const target of targets) {
+            const targetParts = [];
+            appendDetail(targetParts, 'address', target ? target.address : null);
+            appendDetail(
+                targetParts,
+                'name',
+                target && target.demangledName !== null && target.demangledName !== undefined
+                    ? target.demangledName
+                    : target
+                        ? target.name
+                        : null
+            );
+            appendDetail(targetParts, 'module', target ? target.moduleName : null);
+            if (targetParts.length !== 0) {
+                lines.push('   - ' + targetParts.join(' '));
+            }
+        }
+    }
+    return lines.join('\n');
 }
 
 function hflEntryToTarget(key, entry) {

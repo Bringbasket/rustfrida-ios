@@ -1017,9 +1017,45 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("__iosRustFridaControllerApi.dispatch({ kind: 'hfl.status' })")
+                    .expect("controller hfl status text"),
+                "hfl inactive"
+            );
+            assert_eq!(
+                runtime
+                    .eval("__iosRustFridaControllerApi.dispatch({ kind: 'objc.hook.status' })")
+                    .expect("controller objc hook status text"),
+                "jhook inactive"
+            );
+            assert_eq!(
+                runtime
+                    .eval("__iosRustFridaControllerApi.dispatch({ kind: 'trace.status' })")
+                    .expect("controller trace status text"),
+                "trace inactive"
+            );
+            assert_eq!(
+                runtime
+                    .eval("__iosRustFridaControllerApi.dispatch({ kind: 'stalker.status' })")
+                    .expect("controller stalker status text"),
+                "stalker inactive"
+            );
+            assert_eq!(
+                runtime
+                    .eval("__iosRustFridaControllerApi.dispatch({ kind: 'swift.hook.status' })")
+                    .expect("controller swift hook status text"),
+                "shook inactive"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { globalThis.__iosRustFridaHfl = { 'libobjc.A.dylib+0x1234': { moduleName: 'libobjc.A.dylib', offsetHex: '0x1234', target: '0x180001234' } }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'hfl.status' })); })()")
                     .expect("controller populated hfl status result"),
                 "{\"kind\":\"hfl.status\",\"action\":\"status\",\"active\":true,\"count\":1,\"keys\":[\"libobjc.A.dylib+0x1234\"],\"targets\":[{\"key\":\"libobjc.A.dylib+0x1234\",\"moduleName\":\"libobjc.A.dylib\",\"offsetHex\":\"0x1234\",\"target\":\"0x180001234\"}],\"message\":\"hfl active: 1\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { globalThis.__iosRustFridaHfl = { 'libobjc.A.dylib+0x1234': { moduleName: 'libobjc.A.dylib', offsetHex: '0x1234', target: '0x180001234' } }; return __iosRustFridaControllerApi.dispatch({ kind: 'hfl.status' }); })()")
+                    .expect("controller populated hfl status text"),
+                "hfl active: 1\n - libobjc.A.dylib+0x1234 target=0x180001234"
             );
             assert_eq!(
                 runtime
@@ -1029,9 +1065,33 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { globalThis.__iosRustFridaObjcHooks = { '-[UIViewController viewDidLoad]': { className: 'UIViewController', selectorName: 'viewDidLoad', isClassMethod: false, target: '0x18000abcd' } }; return __iosRustFridaControllerApi.dispatch({ kind: 'objc.hook.status' }); })()")
+                    .expect("controller populated objc hook status text"),
+                "jhook active: 1\n - -[UIViewController viewDidLoad] target=0x18000abcd"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { globalThis.__iosRustFridaTrace = { label: 'objc_msgSend', targetAddress: '0x180004000', targetKind: 'export', targetSymbol: 'objc_msgSend', filter: 'UIView', objcMode: 'trace' }; return __iosRustFridaControllerApi.dispatch({ kind: 'trace.status' }); })()")
+                    .expect("controller populated trace status text"),
+                "trace active: objc_msgSend\n - target=0x180004000 kind=export symbol=objc_msgSend filter=UIView objcMode=trace"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { globalThis.__iosRustFridaStalker = { handles: [{}, {}], label: 'objc_msgSend + objc_msgSendSuper2', targetAddress: '0x180005000', secondaryTargetAddress: '0x180005100', targetKind: 'export', targetSymbol: 'objc_msgSend', filter: 'UIView', objcMode: 'stalker', superEnabled: true }; return __iosRustFridaControllerApi.dispatch({ kind: 'stalker.status' }); })()")
+                    .expect("controller populated stalker status text"),
+                "stalker active: objc_msgSend + objc_msgSendSuper2\n - target=0x180005000 secondary=0x180005100 kind=export symbol=objc_msgSend filter=UIView objcMode=stalker super=on"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { globalThis.__iosRustFridaSwiftHooks = { 'MyApp::ViewController::viewDidLoad': { moduleName: 'MyApp', typeName: 'ViewController', methodQuery: 'viewDidLoad', targets: [{ address: '0x18000beef', name: '$s4MyApp14ViewControllerC11viewDidLoadyyF', demangledName: 'MyApp.ViewController.viewDidLoad()', moduleName: 'MyApp' }] } }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'swift.hook.status' })); })()")
                     .expect("controller populated swift hook status result"),
                 "{\"kind\":\"swift.hook.status\",\"action\":\"status\",\"active\":true,\"count\":1,\"keys\":[\"MyApp::ViewController::viewDidLoad\"],\"targets\":[{\"key\":\"MyApp::ViewController::viewDidLoad\",\"moduleName\":\"MyApp\",\"typeName\":\"ViewController\",\"methodQuery\":\"viewDidLoad\",\"count\":1,\"targets\":[{\"address\":\"0x18000beef\",\"name\":\"$s4MyApp14ViewControllerC11viewDidLoadyyF\",\"demangledName\":\"MyApp.ViewController.viewDidLoad()\",\"moduleName\":\"MyApp\"}]}],\"message\":\"shook active: 1\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { globalThis.__iosRustFridaSwiftHooks = { 'MyApp::ViewController::viewDidLoad': { moduleName: 'MyApp', typeName: 'ViewController', methodQuery: 'viewDidLoad', targets: [{ address: '0x18000beef', name: '$s4MyApp14ViewControllerC11viewDidLoadyyF', demangledName: 'MyApp.ViewController.viewDidLoad()', moduleName: 'MyApp' }] } }; return __iosRustFridaControllerApi.dispatch({ kind: 'swift.hook.status' }); })()")
+                    .expect("controller populated swift hook status text"),
+                "shook active: 1\n - MyApp::ViewController::viewDidLoad count=1\n   - address=0x18000beef name=MyApp.ViewController.viewDidLoad() module=MyApp"
             );
             assert_eq!(
                 runtime
@@ -1041,13 +1101,13 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'trace.stop' }))")
+                    .eval("(function() { globalThis.__iosRustFridaTrace = {}; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'trace.stop' })); })()")
                     .expect("controller trace stop result"),
                 "{\"active\":false,\"count\":0,\"label\":null,\"filter\":null,\"targetAddress\":null,\"targetKind\":null,\"targetSymbol\":null,\"moduleName\":null,\"symbolName\":null,\"objcMode\":null,\"message\":\"trace stopped\",\"kind\":\"trace.stop\",\"action\":\"stop\",\"scope\":\"trace\"}"
             );
             assert_eq!(
                 runtime
-                    .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'stalker.stop' }))")
+                    .eval("(function() { globalThis.__iosRustFridaStalker = {}; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'stalker.stop' })); })()")
                     .expect("controller stalker stop result"),
                 "{\"active\":false,\"count\":0,\"label\":null,\"filter\":null,\"targetAddress\":null,\"secondaryTargetAddress\":null,\"targetKind\":null,\"targetSymbol\":null,\"moduleName\":null,\"symbolName\":null,\"objcMode\":null,\"superEnabled\":false,\"message\":\"stalker stopped\",\"kind\":\"stalker.stop\",\"action\":\"stop\",\"scope\":\"stalker\"}"
             );
