@@ -189,6 +189,17 @@ function formatEntryPoint(entryPoint) {
     ].join(' ');
 }
 
+function formatDyldInfo(dyldInfo) {
+    return [
+        String(dyldInfo.commandName || 'LC_DYLD_INFO'),
+        'rebase=0x' + BigInt(dyldInfo.rebaseOff || 0).toString(16) + '/0x' + BigInt(dyldInfo.rebaseSize || 0).toString(16),
+        'bind=0x' + BigInt(dyldInfo.bindOff || 0).toString(16) + '/0x' + BigInt(dyldInfo.bindSize || 0).toString(16),
+        'weak=0x' + BigInt(dyldInfo.weakBindOff || 0).toString(16) + '/0x' + BigInt(dyldInfo.weakBindSize || 0).toString(16),
+        'lazy=0x' + BigInt(dyldInfo.lazyBindOff || 0).toString(16) + '/0x' + BigInt(dyldInfo.lazyBindSize || 0).toString(16),
+        'export=0x' + BigInt(dyldInfo.exportOff || 0).toString(16) + '/0x' + BigInt(dyldInfo.exportSize || 0).toString(16),
+    ].join(' ');
+}
+
 function formatSourceVersion(sourceVersion) {
     return 'version=' + String(sourceVersion.version || '');
 }
@@ -446,6 +457,26 @@ function normalizeEntryPoint(entryPoint) {
         entryoffHex: '0x' + BigInt(entryPoint.entryoff || 0).toString(16),
         stacksizeHex: '0x' + BigInt(entryPoint.stacksize || 0).toString(16),
         text: formatEntryPoint(entryPoint),
+    };
+}
+
+function normalizeDyldInfo(dyldInfo) {
+    return {
+        moduleName: String(dyldInfo.moduleName || ''),
+        moduleBase: dyldInfo.moduleBase ? dyldInfo.moduleBase.toString() : null,
+        commandHex: '0x' + BigInt(dyldInfo.command || 0).toString(16),
+        commandName: String(dyldInfo.commandName || 'LC_DYLD_INFO'),
+        rebaseOffHex: '0x' + BigInt(dyldInfo.rebaseOff || 0).toString(16),
+        rebaseSizeHex: '0x' + BigInt(dyldInfo.rebaseSize || 0).toString(16),
+        bindOffHex: '0x' + BigInt(dyldInfo.bindOff || 0).toString(16),
+        bindSizeHex: '0x' + BigInt(dyldInfo.bindSize || 0).toString(16),
+        weakBindOffHex: '0x' + BigInt(dyldInfo.weakBindOff || 0).toString(16),
+        weakBindSizeHex: '0x' + BigInt(dyldInfo.weakBindSize || 0).toString(16),
+        lazyBindOffHex: '0x' + BigInt(dyldInfo.lazyBindOff || 0).toString(16),
+        lazyBindSizeHex: '0x' + BigInt(dyldInfo.lazyBindSize || 0).toString(16),
+        exportOffHex: '0x' + BigInt(dyldInfo.exportOff || 0).toString(16),
+        exportSizeHex: '0x' + BigInt(dyldInfo.exportSize || 0).toString(16),
+        text: formatDyldInfo(dyldInfo),
     };
 }
 
@@ -788,6 +819,12 @@ function handleSpecResult(spec) {
         const normalized = entryPoint === null ? null : normalizeEntryPoint(entryPoint);
         return { kind: 'native.entry_point', moduleName, entryPoint: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
+    case 'native.dyld_info': {
+        const moduleName = String(spec.moduleName || '');
+        const dyldInfo = Native.findDyldInfo(moduleName);
+        const normalized = dyldInfo === null ? null : normalizeDyldInfo(dyldInfo);
+        return { kind: 'native.dyld_info', moduleName, dyldInfo: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
     case 'native.source_version': {
         const moduleName = String(spec.moduleName || '');
         const sourceVersion = Native.findSourceVersion(moduleName);
@@ -1108,6 +1145,17 @@ function legacyToSpec(command) {
         }
         return {
             kind: 'native.entry_point',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.dyldInfo ')) {
+        const moduleName = trimmed.slice('native.dyldInfo '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.dyldInfo usage: native.dyldInfo <module>');
+        }
+        return {
+            kind: 'native.dyld_info',
             moduleName,
         };
     }

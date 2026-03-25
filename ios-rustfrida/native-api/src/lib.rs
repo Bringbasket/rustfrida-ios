@@ -1,5 +1,6 @@
 mod build_version;
 mod deps;
+mod dyld_info;
 mod dylinker;
 mod encryption_info;
 mod entry_point;
@@ -27,6 +28,7 @@ pub use build_version::{
     find_image_build_version, image_build_version_support_available, ImageBuildTool, ImageBuildVersion,
 };
 pub use deps::{find_image_dependencies, image_dependency_support_available, ImageDependency};
+pub use dyld_info::{find_image_dyld_info, image_dyld_info_support_available, ImageDyldInfo};
 pub use dylinker::{find_image_dylinker, image_dylinker_support_available, ImageDylinker};
 pub use encryption_info::{find_image_encryption_info, image_encryption_info_support_available, ImageEncryptionInfo};
 pub use entry_point::{find_image_entry_point, image_entry_point_support_available, ImageEntryPoint};

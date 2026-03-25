@@ -81,6 +81,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.dependencies <module> -- <query>`
   - `native.encryptionInfo <module>`
   - `native.entryPoint <module>`
+  - `native.dyldInfo <module>`
   - `native.sourceVersion <module>`
   - `native.buildVersion <module>`
   - `native.dylinker <module>`
@@ -202,6 +203,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.dependencies <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dependencies / ordinal / kind / path / currentVersion / compatibilityVersion / timestamp`，适合先看一个镜像依赖树，再结合 `native.imports` 缩小目标符号来源。
 - `native.encryptionInfo <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `encryptionInfo / cryptoff / cryptsize / cryptid`，适合快速确认目标 Mach-O 是否声明了加密区以及范围。
 - `native.entryPoint <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `entryPoint / entryoff / stacksize`，适合快速确认 `LC_MAIN` 指向的主入口偏移。
+- `native.dyldInfo <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dyldInfo / rebaseOff / bindOff / weakBindOff / lazyBindOff / exportOff` 等字段，适合快速确认 `LC_DYLD_INFO(_ONLY)` 记录的 dyld info 区间布局。
 - `native.sourceVersion <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `sourceVersion / version`，适合快速对齐 Mach-O 自带的 source version 字段。
 - `native.buildVersion <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `buildVersion / platform / minOs / sdk / tools`，适合直接确认目标镜像的 build platform 和工具链版本。
 - `native.dylinker <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dylinker / path / kind`，适合直接确认某个 Mach-O 记录的 dyld linker 路径。
