@@ -405,6 +405,14 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof ObjC.protocols").expect("objc protocols type"),
+                "function"
+            );
+            assert_eq!(
+                runtime.eval("typeof ObjC.findProtocols").expect("objc findProtocols type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof ObjC.methodImp").expect("objc methodImp type"),
                 "function"
             );
@@ -476,6 +484,18 @@ undefined;
                 runtime
                     .eval("Array.isArray(ObjC.findClasses('NSObject'))")
                     .expect("objc findClasses"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.protocols())")
+                    .expect("objc protocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.findProtocols('NS'))")
+                    .expect("objc findProtocols"),
                 "true"
             );
             assert_eq!(
@@ -1317,8 +1337,22 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() { const text = __iosRustFridaAgentApi.handle('objc.protocols'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocols', filter: null }); return text === result.text && result.count === result.protocols.length && result.text === result.protocols.join('\\n'); })()"
+                    )
+                    .expect("agent objc protocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('objc.classes NSObject'); return value === '' || value.indexOf('NSObject') !== -1; })()")
                     .expect("agent objc classes filtered"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('objc.protocols NS'); return value === '' || value.indexOf('NS') !== -1; })()")
+                    .expect("agent objc protocols filtered"),
                 "true"
             );
             assert_eq!(
@@ -1413,6 +1447,14 @@ undefined;
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.classes', filter: null }); return result.kind === 'objc.classes' && result.filter === null && result.count === result.classes.length && result.text === result.classes.join('\\n'); })()"
                     )
                     .expect("agent objc classes result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocols', filter: null }); return result.kind === 'objc.protocols' && result.filter === null && result.count === result.protocols.length && result.text === result.protocols.join('\\n'); })()"
+                    )
+                    .expect("agent objc protocols result"),
                 "true"
             );
             assert_eq!(
@@ -1789,6 +1831,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.classes', filter: 'NSObject' }); return value === '' || value.indexOf('NSObject') !== -1; })()")
                     .expect("agent spec objc classes filtered"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.protocols', filter: 'NS' }); return value === '' || value.indexOf('NS') !== -1; })()")
+                    .expect("agent spec objc protocols filtered"),
                 "true"
             );
             assert_eq!(

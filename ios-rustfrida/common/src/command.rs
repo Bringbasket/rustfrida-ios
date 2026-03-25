@@ -73,6 +73,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
     matches!(
         command,
         "objc.classes"
+            | "objc.protocols"
             | "native.images"
             | "native.mainImage"
             | "native.hookenv"
@@ -91,6 +92,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.methods ")
         || command.starts_with("objc.methodOwners ")
         || command.starts_with("objc.classes ")
+        || command.starts_with("objc.protocols ")
         || command.starts_with("native.base ")
         || command.starts_with("native.export ")
         || command.starts_with("native.exports ")
@@ -134,6 +136,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
 fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     match command {
         "objc.classes" => return Some(json!({ "kind": "objc.classes", "filter": null })),
+        "objc.protocols" => return Some(json!({ "kind": "objc.protocols", "filter": null })),
         "native.images" => return Some(json!({ "kind": "native.images", "filter": null })),
         "native.mainImage" => return Some(json!({ "kind": "native.main_image" })),
         "native.hookenv" => return Some(json!({ "kind": "native.hook_environment" })),
@@ -148,6 +151,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     if let Some(filter) = command.strip_prefix("objc.classes ") {
         return Some(json!({
             "kind": "objc.classes",
+            "filter": filter.trim(),
+        }));
+    }
+
+    if let Some(filter) = command.strip_prefix("objc.protocols ") {
+        return Some(json!({
+            "kind": "objc.protocols",
             "filter": filter.trim(),
         }));
     }
@@ -754,6 +764,12 @@ mod tests {
                 spec: json!({ "kind": "objc.classes", "filter": null })
             })
         );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocols"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({ "kind": "objc.protocols", "filter": null })
+            })
+        );
         assert!(matches!(
             AgentCommand::from_legacy("native.base libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
@@ -886,6 +902,10 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("objc.classes NSObject"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.protocols NS"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(

@@ -3587,6 +3587,8 @@ fn print_controller_help() {
     println!("  jsrepl");
     println!("  objc.classes");
     println!("  objc.classes [filter]");
+    println!("  objc.protocols");
+    println!("  objc.protocols [filter]");
     println!("  objc.classExists <name>");
     println!("  objc.selector <name>");
     println!("  objc.classImage <class>");
@@ -3874,8 +3876,18 @@ mod tests {
                 spec: json!({ "kind": "objc.classes", "filter": null })
             })
         );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocols"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({ "kind": "objc.protocols", "filter": null })
+            })
+        );
         assert!(matches!(
             AgentCommand::from_legacy("swift.types ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.protocols NS"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -3997,6 +4009,7 @@ mod tests {
         assert!(command_requires_inline_hooks("shook Demo -- Foo bar"));
         assert!(command_requires_inline_hooks("hfl libobjc.A.dylib 0x1234"));
         assert!(!command_requires_inline_hooks("objc.classes UIView"));
+        assert!(!command_requires_inline_hooks("objc.protocols NS"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
         assert!(!command_requires_inline_hooks("native.encryptionInfo UIKit"));

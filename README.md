@@ -52,6 +52,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.methods(className[, isClassMethod])`
 - `ObjC.findMethods(className, query[, isClassMethod])`
 - `ObjC.findMethodOwners(query[, isClassMethod])`
+- `ObjC.protocols([query])`
 - `ObjC.classImage(className)`
 - `ObjC.methodImage(className, selectorName[, isClassMethod])`
 - `Swift.findMethods(typeName, methodQuery[, moduleName])`
@@ -69,6 +70,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `objc.methodImage <class> <selector> [meta]`
   - `objc.methodOwners <selector> [meta]`
   - `objc.methods <class> [meta] [filter]`
+  - `objc.protocols [filter]`
   - `objc.classes [filter]`
   - `objc.selectorName <selector>`
   - `objc.objectClassName <object>`
