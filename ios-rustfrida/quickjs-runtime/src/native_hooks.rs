@@ -52,18 +52,184 @@ function resolveTarget(spec) {
     }
     throw new Error('unsupported native hook target kind: ' + String(spec.kind));
 }
-function detachTraceState() {
-    const state = globalThis.__iosRustFridaTrace || {};
-    let count = 0;
-    if (state.handle && typeof state.handle.detach === 'function') {
-        try { state.handle.detach(); count++; } catch (_) {}
+function isTraceStateLike(state) {
+    return !!state && typeof state === 'object' && (!!state.label || !!state.targetAddress || !!state.objcMode || state.handle !== undefined);
+}
+function isStalkerStateLike(state) {
+    return !!state && typeof state === 'object' && (
+        !!state.label
+        || !!state.targetAddress
+        || !!state.objcMode
+        || (Array.isArray(state.handles) && state.handles.length !== 0)
+    );
+}
+function traceStateFilter(state) {
+    return typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null;
+}
+function traceStateKey(state) {
+    const targetKind = normalizeNullableString(state.targetKind);
+    const objcMode = normalizeNullableString(state.objcMode);
+    const filter = traceStateFilter(state);
+    if (objcMode === 'trace') {
+        return 'objc-trace:' + (filter === null ? '*' : filter);
     }
-    globalThis.__iosRustFridaTrace = {};
+    if (targetKind === 'export') {
+        return 'trace-export:' + (normalizeModuleName(state.moduleName) || '*') + ':' + (normalizeNullableString(state.symbolName) || '?');
+    }
+    if (targetKind === 'address') {
+        return 'trace-address:' + (normalizeAddress(state.targetAddress) || '0x0');
+    }
+    return 'trace-state:' + (normalizeNullableString(state.label) || '<unknown>');
+}
+function stalkerStateKey(state) {
+    const targetKind = normalizeNullableString(state.targetKind);
+    const objcMode = normalizeNullableString(state.objcMode);
+    const filter = traceStateFilter(state);
+    if (objcMode === 'stalker') {
+        return 'objc-stalker:' + (filter === null ? '*' : filter);
+    }
+    if (targetKind === 'export') {
+        return 'stalker-export:' + (normalizeModuleName(state.moduleName) || '*') + ':' + (normalizeNullableString(state.symbolName) || '?');
+    }
+    if (targetKind === 'address') {
+        return 'stalker-address:' + (normalizeAddress(state.targetAddress) || '0x0');
+    }
+    return 'stalker-state:' + (normalizeNullableString(state.label) || '<unknown>');
+}
+function ensureTraceRegistry() {
+    if (!globalThis.__iosRustFridaTraceRegistry || typeof globalThis.__iosRustFridaTraceRegistry !== 'object') {
+        globalThis.__iosRustFridaTraceRegistry = {};
+    }
+    return globalThis.__iosRustFridaTraceRegistry;
+}
+function ensureStalkerRegistry() {
+    if (!globalThis.__iosRustFridaStalkerRegistry || typeof globalThis.__iosRustFridaStalkerRegistry !== 'object') {
+        globalThis.__iosRustFridaStalkerRegistry = {};
+    }
+    return globalThis.__iosRustFridaStalkerRegistry;
+}
+function listTraceEntries() {
+    const registry = globalThis.__iosRustFridaTraceRegistry;
+    if (registry && typeof registry === 'object' && Object.keys(registry).length !== 0) {
+        return Object.keys(registry).map((key) => ({ key, state: registry[key] }));
+    }
+    const legacy = globalThis.__iosRustFridaTrace;
+    if (isTraceStateLike(legacy)) {
+        return [{ key: traceStateKey(legacy), state: legacy }];
+    }
+    return [];
+}
+function listStalkerEntries() {
+    const registry = globalThis.__iosRustFridaStalkerRegistry;
+    if (registry && typeof registry === 'object' && Object.keys(registry).length !== 0) {
+        return Object.keys(registry).map((key) => ({ key, state: registry[key] }));
+    }
+    const legacy = globalThis.__iosRustFridaStalker;
+    if (isStalkerStateLike(legacy)) {
+        return [{ key: stalkerStateKey(legacy), state: legacy }];
+    }
+    return [];
+}
+function syncCurrentTraceState(preferredKey) {
+    const entries = listTraceEntries();
+    const activeKey = preferredKey && entries.some((entry) => entry.key === preferredKey)
+        ? preferredKey
+        : (entries.length === 0 ? null : entries[entries.length - 1].key);
+    globalThis.__iosRustFridaTraceCurrentKey = activeKey;
+    if (activeKey === null) {
+        globalThis.__iosRustFridaTrace = {};
+        return null;
+    }
+    const current = entries.find((entry) => entry.key === activeKey);
+    globalThis.__iosRustFridaTrace = current ? current.state : {};
+    return current || null;
+}
+function syncCurrentStalkerState(preferredKey) {
+    const entries = listStalkerEntries();
+    const activeKey = preferredKey && entries.some((entry) => entry.key === preferredKey)
+        ? preferredKey
+        : (entries.length === 0 ? null : entries[entries.length - 1].key);
+    globalThis.__iosRustFridaStalkerCurrentKey = activeKey;
+    if (activeKey === null) {
+        globalThis.__iosRustFridaStalker = {};
+        return null;
+    }
+    const current = entries.find((entry) => entry.key === activeKey);
+    globalThis.__iosRustFridaStalker = current ? current.state : {};
+    return current || null;
+}
+function removeTraceEntries(keys) {
+    const registry = ensureTraceRegistry();
+    const removed = [];
+    let handleCount = 0;
+    for (const key of keys) {
+        const state = registry[key];
+        if (!isTraceStateLike(state)) {
+            continue;
+        }
+        if (state.handle && typeof state.handle.detach === 'function') {
+            try { state.handle.detach(); handleCount++; } catch (_) {}
+        }
+        removed.push({ key, state });
+        delete registry[key];
+    }
+    if (removed.length === 0 && isTraceStateLike(globalThis.__iosRustFridaTrace)) {
+        const legacyKey = traceStateKey(globalThis.__iosRustFridaTrace);
+        if (keys.indexOf(legacyKey) !== -1) {
+            const legacy = globalThis.__iosRustFridaTrace;
+            if (legacy.handle && typeof legacy.handle.detach === 'function') {
+                try { legacy.handle.detach(); handleCount++; } catch (_) {}
+            }
+            removed.push({ key: legacyKey, state: legacy });
+            globalThis.__iosRustFridaTrace = {};
+        }
+    }
+    syncCurrentTraceState(null);
+    return { removed, count: handleCount };
+}
+function removeStalkerEntries(keys) {
+    const registry = ensureStalkerRegistry();
+    const removed = [];
+    let handleCount = 0;
+    for (const key of keys) {
+        const state = registry[key];
+        if (!isStalkerStateLike(state)) {
+            continue;
+        }
+        if (Array.isArray(state.handles)) {
+            for (const handle of state.handles) {
+                if (handle && typeof handle.detach === 'function') {
+                    try { handle.detach(); handleCount++; } catch (_) {}
+                }
+            }
+        }
+        removed.push({ key, state });
+        delete registry[key];
+    }
+    if (removed.length === 0 && isStalkerStateLike(globalThis.__iosRustFridaStalker)) {
+        const legacyKey = stalkerStateKey(globalThis.__iosRustFridaStalker);
+        if (keys.indexOf(legacyKey) !== -1) {
+            const legacy = globalThis.__iosRustFridaStalker;
+            if (Array.isArray(legacy.handles)) {
+                for (const handle of legacy.handles) {
+                    if (handle && typeof handle.detach === 'function') {
+                        try { handle.detach(); handleCount++; } catch (_) {}
+                    }
+                }
+            }
+            removed.push({ key: legacyKey, state: legacy });
+            globalThis.__iosRustFridaStalker = {};
+        }
+    }
+    syncCurrentStalkerState(null);
+    return { removed, count: handleCount };
+}
+function traceSessionResult(entry) {
+    const state = entry.state;
     return {
-        active: count > 0 || !!state.label || !!state.targetAddress || !!state.objcMode,
-        count,
+        key: entry.key,
         label: state.label === undefined ? null : state.label,
-        filter: typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null,
+        filter: traceStateFilter(state),
         targetAddress: state.targetAddress === undefined ? null : state.targetAddress,
         targetKind: state.targetKind === undefined ? null : state.targetKind,
         targetSymbol: state.targetSymbol === undefined ? null : state.targetSymbol,
@@ -72,22 +238,12 @@ function detachTraceState() {
         objcMode: state.objcMode === undefined ? null : state.objcMode,
     };
 }
-function detachStalkerState() {
-    const state = globalThis.__iosRustFridaStalker || {};
-    let count = 0;
-    if (Array.isArray(state.handles)) {
-        for (const handle of state.handles) {
-            if (handle && typeof handle.detach === 'function') {
-                try { handle.detach(); count++; } catch (_) {}
-            }
-        }
-    }
-    globalThis.__iosRustFridaStalker = {};
+function stalkerSessionResult(entry) {
+    const state = entry.state;
     return {
-        active: count > 0 || !!state.label || !!state.targetAddress || !!state.objcMode,
-        count,
+        key: entry.key,
         label: state.label === undefined ? null : state.label,
-        filter: typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null,
+        filter: traceStateFilter(state),
         targetAddress: state.targetAddress === undefined ? null : state.targetAddress,
         secondaryTargetAddress: state.secondaryTargetAddress === undefined ? null : state.secondaryTargetAddress,
         targetKind: state.targetKind === undefined ? null : state.targetKind,
@@ -96,6 +252,45 @@ function detachStalkerState() {
         symbolName: state.symbolName === undefined ? null : state.symbolName,
         objcMode: state.objcMode === undefined ? null : state.objcMode,
         superEnabled: !!state.superEnabled,
+        count: Array.isArray(state.handles) ? state.handles.length : 0,
+    };
+}
+function detachTraceState() {
+    const entries = listTraceEntries();
+    const removed = removeTraceEntries(entries.map((entry) => entry.key));
+    return {
+        active: removed.removed.length !== 0,
+        count: removed.count,
+        sessionCount: removed.removed.length,
+        sessions: removed.removed.map(traceSessionResult),
+        label: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.label === undefined ? null : removed.removed[removed.removed.length - 1].state.label),
+        filter: removed.removed.length === 0 ? null : traceStateFilter(removed.removed[removed.removed.length - 1].state),
+        targetAddress: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetAddress === undefined ? null : removed.removed[removed.removed.length - 1].state.targetAddress),
+        targetKind: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetKind === undefined ? null : removed.removed[removed.removed.length - 1].state.targetKind),
+        targetSymbol: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetSymbol === undefined ? null : removed.removed[removed.removed.length - 1].state.targetSymbol),
+        moduleName: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.moduleName === undefined ? null : removed.removed[removed.removed.length - 1].state.moduleName),
+        symbolName: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.symbolName === undefined ? null : removed.removed[removed.removed.length - 1].state.symbolName),
+        objcMode: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.objcMode === undefined ? null : removed.removed[removed.removed.length - 1].state.objcMode),
+    };
+}
+function detachStalkerState() {
+    const entries = listStalkerEntries();
+    const removed = removeStalkerEntries(entries.map((entry) => entry.key));
+    return {
+        active: removed.removed.length !== 0,
+        count: removed.count,
+        sessionCount: removed.removed.length,
+        sessions: removed.removed.map(stalkerSessionResult),
+        label: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.label === undefined ? null : removed.removed[removed.removed.length - 1].state.label),
+        filter: removed.removed.length === 0 ? null : traceStateFilter(removed.removed[removed.removed.length - 1].state),
+        targetAddress: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetAddress === undefined ? null : removed.removed[removed.removed.length - 1].state.targetAddress),
+        secondaryTargetAddress: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.secondaryTargetAddress === undefined ? null : removed.removed[removed.removed.length - 1].state.secondaryTargetAddress),
+        targetKind: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetKind === undefined ? null : removed.removed[removed.removed.length - 1].state.targetKind),
+        targetSymbol: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetSymbol === undefined ? null : removed.removed[removed.removed.length - 1].state.targetSymbol),
+        moduleName: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.moduleName === undefined ? null : removed.removed[removed.removed.length - 1].state.moduleName),
+        symbolName: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.symbolName === undefined ? null : removed.removed[removed.removed.length - 1].state.symbolName),
+        objcMode: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.objcMode === undefined ? null : removed.removed[removed.removed.length - 1].state.objcMode),
+        superEnabled: removed.removed.length === 0 ? false : !!removed.removed[removed.removed.length - 1].state.superEnabled,
     };
 }
 function normalizeNullableString(value) {
@@ -157,17 +352,37 @@ function requestedSelectorMatchesState(state, target, filter) {
     return stateMatchesTarget(state, target);
 }
 function stopTraceResult(target, filter) {
-    const state = globalThis.__iosRustFridaTrace || {};
-    const active = !!state.label || !!state.targetAddress || !!state.objcMode;
-    if (active && !requestedSelectorMatchesState(state, target, filter)) {
+    const entries = listTraceEntries();
+    const matched = entries.filter((entry) => requestedSelectorMatchesState(entry.state, target, filter));
+    if (entries.length !== 0 && matched.length === 0) {
         const current = currentTraceStateResult();
         current.message = 'trace stop skipped: selector mismatch';
         return current;
     }
-    const detached = detachTraceState();
+    const detached = matched.length === entries.length
+        ? detachTraceState()
+        : (function() {
+            const removed = removeTraceEntries(matched.map((entry) => entry.key));
+            return {
+                active: removed.removed.length !== 0,
+                count: removed.count,
+                sessionCount: removed.removed.length,
+                sessions: removed.removed.map(traceSessionResult),
+                label: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.label === undefined ? null : removed.removed[removed.removed.length - 1].state.label),
+                filter: removed.removed.length === 0 ? null : traceStateFilter(removed.removed[removed.removed.length - 1].state),
+                targetAddress: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetAddress === undefined ? null : removed.removed[removed.removed.length - 1].state.targetAddress),
+                targetKind: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetKind === undefined ? null : removed.removed[removed.removed.length - 1].state.targetKind),
+                targetSymbol: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetSymbol === undefined ? null : removed.removed[removed.removed.length - 1].state.targetSymbol),
+                moduleName: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.moduleName === undefined ? null : removed.removed[removed.removed.length - 1].state.moduleName),
+                symbolName: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.symbolName === undefined ? null : removed.removed[removed.removed.length - 1].state.symbolName),
+                objcMode: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.objcMode === undefined ? null : removed.removed[removed.removed.length - 1].state.objcMode),
+            };
+        })();
     return {
         active: detached.active,
         count: detached.count,
+        sessionCount: detached.sessionCount === undefined ? detached.active ? 1 : 0 : detached.sessionCount,
+        sessions: detached.sessions === undefined ? [] : detached.sessions,
         label: detached.label,
         filter: detached.filter,
         targetAddress: detached.targetAddress,
@@ -183,11 +398,15 @@ function stopTrace() {
     return stopTraceResult().message;
 }
 function currentTraceStateResult() {
-    const state = globalThis.__iosRustFridaTrace || {};
-    const active = !!state.label || !!state.targetAddress || !!state.objcMode;
+    const entries = listTraceEntries();
+    const current = syncCurrentTraceState(globalThis.__iosRustFridaTraceCurrentKey);
+    const state = current ? current.state : {};
+    const active = entries.length !== 0;
     return {
         active,
-        count: active ? 1 : 0,
+        count: entries.length,
+        sessionCount: entries.length,
+        sessions: entries.map(traceSessionResult),
         label: state.label === undefined ? null : state.label,
         filter: typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null,
         targetAddress: state.targetAddress === undefined ? null : state.targetAddress,
@@ -196,21 +415,56 @@ function currentTraceStateResult() {
         moduleName: state.moduleName === undefined ? null : state.moduleName,
         symbolName: state.symbolName === undefined ? null : state.symbolName,
         objcMode: state.objcMode === undefined ? null : state.objcMode,
-        message: active ? ('trace active: ' + (state.label || '<unknown>')) : 'trace inactive',
+        message: !active ? 'trace inactive' : (entries.length === 1 ? ('trace active: ' + (state.label || '<unknown>')) : ('trace active: ' + entries.length)),
+    };
+}
+function replaceTraceEntry(state) {
+    const key = traceStateKey(state);
+    const removed = removeTraceEntries([key]);
+    const registry = ensureTraceRegistry();
+    registry[key] = state;
+    syncCurrentTraceState(key);
+    return {
+        key,
+        replacedCount: removed.count,
+        replacedSessionCount: removed.removed.length,
+        replacedLabel: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.label === undefined ? null : removed.removed[removed.removed.length - 1].state.label),
     };
 }
 function stopStalkerResult(target, filter) {
-    const state = globalThis.__iosRustFridaStalker || {};
-    const active = (Array.isArray(state.handles) && state.handles.length > 0) || !!state.label || !!state.targetAddress || !!state.objcMode;
-    if (active && !requestedSelectorMatchesState(state, target, filter)) {
+    const entries = listStalkerEntries();
+    const matched = entries.filter((entry) => requestedSelectorMatchesState(entry.state, target, filter));
+    if (entries.length !== 0 && matched.length === 0) {
         const current = currentStalkerStateResult();
         current.message = 'stalker stop skipped: selector mismatch';
         return current;
     }
-    const detached = detachStalkerState();
+    const detached = matched.length === entries.length
+        ? detachStalkerState()
+        : (function() {
+            const removed = removeStalkerEntries(matched.map((entry) => entry.key));
+            return {
+                active: removed.removed.length !== 0,
+                count: removed.count,
+                sessionCount: removed.removed.length,
+                sessions: removed.removed.map(stalkerSessionResult),
+                label: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.label === undefined ? null : removed.removed[removed.removed.length - 1].state.label),
+                filter: removed.removed.length === 0 ? null : traceStateFilter(removed.removed[removed.removed.length - 1].state),
+                targetAddress: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetAddress === undefined ? null : removed.removed[removed.removed.length - 1].state.targetAddress),
+                secondaryTargetAddress: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.secondaryTargetAddress === undefined ? null : removed.removed[removed.removed.length - 1].state.secondaryTargetAddress),
+                targetKind: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetKind === undefined ? null : removed.removed[removed.removed.length - 1].state.targetKind),
+                targetSymbol: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.targetSymbol === undefined ? null : removed.removed[removed.removed.length - 1].state.targetSymbol),
+                moduleName: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.moduleName === undefined ? null : removed.removed[removed.removed.length - 1].state.moduleName),
+                symbolName: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.symbolName === undefined ? null : removed.removed[removed.removed.length - 1].state.symbolName),
+                objcMode: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.objcMode === undefined ? null : removed.removed[removed.removed.length - 1].state.objcMode),
+                superEnabled: removed.removed.length === 0 ? false : !!removed.removed[removed.removed.length - 1].state.superEnabled,
+            };
+        })();
     return {
         active: detached.active,
         count: detached.count,
+        sessionCount: detached.sessionCount === undefined ? detached.active ? 1 : 0 : detached.sessionCount,
+        sessions: detached.sessions === undefined ? [] : detached.sessions,
         label: detached.label,
         filter: detached.filter,
         targetAddress: detached.targetAddress,
@@ -228,12 +482,16 @@ function stopStalker() {
     return stopStalkerResult().message;
 }
 function currentStalkerStateResult() {
-    const state = globalThis.__iosRustFridaStalker || {};
-    const handleCount = Array.isArray(state.handles) ? state.handles.length : 0;
-    const active = handleCount > 0 || !!state.label || !!state.targetAddress || !!state.objcMode;
+    const entries = listStalkerEntries();
+    const current = syncCurrentStalkerState(globalThis.__iosRustFridaStalkerCurrentKey);
+    const state = current ? current.state : {};
+    const handleCount = entries.reduce((sum, entry) => sum + (Array.isArray(entry.state.handles) ? entry.state.handles.length : 0), 0);
+    const active = entries.length !== 0;
     return {
         active,
         count: handleCount,
+        sessionCount: entries.length,
+        sessions: entries.map(stalkerSessionResult),
         label: state.label === undefined ? null : state.label,
         filter: typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null,
         targetAddress: state.targetAddress === undefined ? null : state.targetAddress,
@@ -244,7 +502,20 @@ function currentStalkerStateResult() {
         symbolName: state.symbolName === undefined ? null : state.symbolName,
         objcMode: state.objcMode === undefined ? null : state.objcMode,
         superEnabled: !!state.superEnabled,
-        message: active ? ('stalker active: ' + (state.label || '<unknown>')) : 'stalker inactive',
+        message: !active ? 'stalker inactive' : (entries.length === 1 ? ('stalker active: ' + (state.label || '<unknown>')) : ('stalker active: ' + entries.length)),
+    };
+}
+function replaceStalkerEntry(state) {
+    const key = stalkerStateKey(state);
+    const removed = removeStalkerEntries([key]);
+    const registry = ensureStalkerRegistry();
+    registry[key] = state;
+    syncCurrentStalkerState(key);
+    return {
+        key,
+        replacedCount: removed.count,
+        replacedSessionCount: removed.removed.length,
+        replacedLabel: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.label === undefined ? null : removed.removed[removed.removed.length - 1].state.label),
     };
 }
 function installTraceResult(spec) {
@@ -254,7 +525,6 @@ function installTraceResult(spec) {
         if (target === null) {
             throw new Error('objc_msgSend export not found');
         }
-        const replaced = detachTraceState();
         const handle = Interceptor.attach(target, {
             onEnter(ctx) {
                 try {
@@ -272,7 +542,7 @@ function installTraceResult(spec) {
                 }
             }
         });
-        globalThis.__iosRustFridaTrace = {
+        const state = {
             handle,
             filter: objcFilter,
             label: 'objc_msgSend',
@@ -283,6 +553,7 @@ function installTraceResult(spec) {
             symbolName: 'objc_msgSend',
             objcMode: 'trace',
         };
+        const replaced = replaceTraceEntry(state);
         return {
             action: 'install',
             targetKind: 'export',
@@ -293,8 +564,10 @@ function installTraceResult(spec) {
             resolvedLabel: 'objc_msgSend',
             objcMode: 'trace',
             filter: objcFilter.length !== 0 ? objcFilter : null,
-            replacedCount: replaced.count,
-            replacedLabel: replaced.label,
+            key: replaced.key,
+            replacedCount: replaced.replacedCount,
+            replacedLabel: replaced.replacedLabel,
+            replacedSessionCount: replaced.replacedSessionCount,
             message: 'trace installed: objc_msgSend' + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)',
         };
     }
@@ -302,7 +575,6 @@ function installTraceResult(spec) {
     const resolved = resolveTarget(spec);
     const templateArgs = spec && spec.templateArgs ? spec.templateArgs : null;
     const templateRet = spec && spec.templateRet ? spec.templateRet : null;
-    const replaced = detachTraceState();
     const handle = Interceptor.attach(resolved.target, {
         onEnter(ctx) {
             try {
@@ -323,7 +595,7 @@ function installTraceResult(spec) {
             }
         }
     });
-    globalThis.__iosRustFridaTrace = {
+    const state = {
         handle,
         label: resolved.resolvedLabel,
         targetAddress: resolved.target.toString(),
@@ -333,6 +605,7 @@ function installTraceResult(spec) {
         symbolName: spec && spec.symbolName === undefined ? null : spec.symbolName,
         objcMode: null,
     };
+    const replaced = replaceTraceEntry(state);
     return {
         action: 'install',
         targetKind: spec.kind === undefined ? null : spec.kind,
@@ -344,8 +617,10 @@ function installTraceResult(spec) {
         resolvedLabel: resolved.resolvedLabel,
         templateArgs,
         templateRet,
-        replacedCount: replaced.count,
-        replacedLabel: replaced.label,
+        key: replaced.key,
+        replacedCount: replaced.replacedCount,
+        replacedLabel: replaced.replacedLabel,
+        replacedSessionCount: replaced.replacedSessionCount,
         message: 'trace installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)',
     };
 }
@@ -361,7 +636,6 @@ function installStalkerResult(spec) {
         }
         const msgSendSuper = Module.findExportByName(null, 'objc_msgSendSuper2');
         const pthreadSelf = Module.findExportByName(null, 'pthread_self');
-        const replaced = detachStalkerState();
         const depths = {};
         const stacks = {};
         function currentThreadKey() { try { if (pthreadSelf === null) { return '0'; } return callNative(pthreadSelf).toString(); } catch (_) { return '0'; } }
@@ -405,7 +679,7 @@ function installStalkerResult(spec) {
         if (msgSendSuper !== null) {
             handles.push(install(msgSendSuper, true));
         }
-        globalThis.__iosRustFridaStalker = {
+        const state = {
             handles,
             filter: objcFilter,
             depths,
@@ -420,6 +694,7 @@ function installStalkerResult(spec) {
             objcMode: 'stalker',
             superEnabled: msgSendSuper !== null,
         };
+        const replaced = replaceStalkerEntry(state);
         return {
             action: 'install',
             targetKind: 'export',
@@ -433,8 +708,11 @@ function installStalkerResult(spec) {
             superEnabled: msgSendSuper !== null,
             filter: objcFilter.length !== 0 ? objcFilter : null,
             count: handles.length,
-            replacedCount: replaced.count,
-            replacedLabel: replaced.label,
+            sessionCount: currentStalkerStateResult().sessionCount,
+            key: replaced.key,
+            replacedCount: replaced.replacedCount,
+            replacedLabel: replaced.replacedLabel,
+            replacedSessionCount: replaced.replacedSessionCount,
             message: 'stalker installed: objc_msgSend' + (msgSendSuper !== null ? ' + objc_msgSendSuper2' : '') + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)',
         };
     }
@@ -443,7 +721,6 @@ function installStalkerResult(spec) {
     const templateArgs = spec && spec.templateArgs ? spec.templateArgs : null;
     const templateRet = spec && spec.templateRet ? spec.templateRet : null;
     const pthreadSelf = Module.findExportByName(null, 'pthread_self');
-    const replaced = detachStalkerState();
     const depths = {};
     function currentThreadKey() { try { if (pthreadSelf === null) { return '0'; } return callNative(pthreadSelf).toString(); } catch (_) { return '0'; } }
     function indent(depth) { let s = ''; const capped = Math.min(depth, 32); for (let i = 0; i < capped; i++) s += '  '; return s; }
@@ -473,7 +750,7 @@ function installStalkerResult(spec) {
             }
         }
     });
-    globalThis.__iosRustFridaStalker = {
+    const state = {
         handles: [handle],
         label: resolved.resolvedLabel,
         depths,
@@ -486,6 +763,7 @@ function installStalkerResult(spec) {
         objcMode: null,
         superEnabled: false,
     };
+    const replaced = replaceStalkerEntry(state);
     return {
         action: 'install',
         targetKind: spec.kind === undefined ? null : spec.kind,
@@ -499,8 +777,11 @@ function installStalkerResult(spec) {
         templateArgs,
         templateRet,
         count: 1,
-        replacedCount: replaced.count,
-        replacedLabel: replaced.label,
+        sessionCount: currentStalkerStateResult().sessionCount,
+        key: replaced.key,
+        replacedCount: replaced.replacedCount,
+        replacedLabel: replaced.replacedLabel,
+        replacedSessionCount: replaced.replacedSessionCount,
         message: 'stalker installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)',
     };
 }

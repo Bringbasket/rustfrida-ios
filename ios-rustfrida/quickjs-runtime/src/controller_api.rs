@@ -70,7 +70,32 @@ function renderObjcHookEvent(result) {
 }
 
 function renderTraceLikeStatus(result, includeSecondaryTarget, includeSuperEnabled) {
-    if (!result || !result.active) {
+    if (!result) {
+        return result && result.message !== undefined ? String(result.message) : String(result);
+    }
+    const sessions = Array.isArray(result.sessions) ? result.sessions : [];
+    if (sessions.length !== 0) {
+        const lines = [String(result.message)];
+        for (const session of sessions) {
+            const detailParts = [];
+            appendDetail(detailParts, 'key', session ? session.key : null);
+            appendDetail(detailParts, 'target', session ? session.targetAddress : null);
+            if (includeSecondaryTarget) {
+                appendDetail(detailParts, 'secondary', session ? session.secondaryTargetAddress : null);
+            }
+            appendDetail(detailParts, 'kind', session ? session.targetKind : null);
+            appendDetail(detailParts, 'symbol', session ? session.targetSymbol : null);
+            appendDetail(detailParts, 'module', session ? session.moduleName : null);
+            appendDetail(detailParts, 'filter', session ? session.filter : null);
+            appendDetail(detailParts, 'objcMode', session ? session.objcMode : null);
+            if (includeSuperEnabled) {
+                detailParts.push('super=' + (session && session.superEnabled ? 'on' : 'off'));
+            }
+            lines.push(' - ' + (detailParts.length === 0 ? '<unknown>' : detailParts.join(' ')));
+        }
+        return lines.join('\n');
+    }
+    if (!result.active) {
         return result && result.message !== undefined ? String(result.message) : String(result);
     }
     const detailParts = [];
