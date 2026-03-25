@@ -83,6 +83,9 @@ function renderTraceLikeStatus(result, includeSecondaryTarget, includeSuperEnabl
         for (const session of sessions) {
             const detailParts = [];
             appendDetail(detailParts, 'key', session ? session.key : null);
+            if (result.currentKey !== undefined && result.currentKey !== null && session && session.key === result.currentKey) {
+                detailParts.push('current=on');
+            }
             appendDetail(detailParts, 'target', session ? session.targetAddress : null);
             if (includeSecondaryTarget) {
                 appendDetail(detailParts, 'secondary', session ? session.secondaryTargetAddress : null);

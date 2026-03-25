@@ -189,7 +189,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - 对同一批 `*.status` 控制命令，普通文本模式的 `--command` / REPL 输出现在也不再只回一行 `active: N`；会附带当前 target / filter / symbol / Swift 命中项摘要，真机交互排查时不必每次都切到 `--command-json`。
 - `hfl/jhook/shook` 现在除了 `stop` 全停，也支持按目标定向停止；对应的普通文本模式 `*.stop` 输出也会和 `*.status` 一样附带命中的 target 摘要，适合 REPL 下快速确认到底停掉了哪一个 hook。
 - `trace/stalker` 现在也支持“带选择器”的 `stop`：可以按 objc filter、native export、native address 定向尝试停止；如果当前活动 hook 和选择器不匹配，会保留现有 hook 并返回 `selector mismatch` 提示，避免脚本误停其它 hook。
-- `trace/stalker` 现在按目标 key 维护多会话 registry，不再只有单个活动槽位；`install/status` 的 `--command-json` 都会带回当前 `sessionCount / sessions / currentKey`，重复安装同一个 key 只替换该 key，本体不相关的会话会保留，裸 `stop` 则会一次回收当前全部会话。
+- `trace/stalker` 现在按目标 key 维护多会话 registry，不再只有单个活动槽位；`install/status` 的 `--command-json` 都会带回当前 `sessionCount / sessions / currentKey / currentSession`，其中 install 结果还会补 `replacedSession / replacedSessions`，方便脚本直接判断这次是否覆盖了旧会话；重复安装同一个 key 只替换该 key，本体不相关的会话会保留，裸 `stop` 则会一次回收当前全部会话。
 - loader symbol 解析现在会优先使用 canonical code pointer 计算模块偏移，减少 arm64e/PAC 场景下本地 `dlsym` 地址高位污染远端 rebasing 的风险。
 - 如果某个 loader symbol 的 raw 地址与 canonical 地址不同，controller 会在注入计划里同时打印两者，便于直接判断 PAC 是否介入了本地符号解析结果。
 - controller 里的 `hfl/jhook/shook/trace/stalker` 指令现在统一下沉到 `quickjs-runtime` 的 `__iosRustFridaControllerApi.dispatch(...)`，controller 只负责构造结构化 spec，后续继续迁移 runtime 能力时改动面会小很多。

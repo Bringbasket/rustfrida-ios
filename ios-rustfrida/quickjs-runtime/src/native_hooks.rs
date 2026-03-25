@@ -255,6 +255,17 @@ function stalkerSessionResult(entry) {
         count: Array.isArray(state.handles) ? state.handles.length : 0,
     };
 }
+function findSessionByKey(sessions, key) {
+    if (!Array.isArray(sessions) || key === null || key === undefined) {
+        return null;
+    }
+    for (const session of sessions) {
+        if (session && session.key === key) {
+            return session;
+        }
+    }
+    return null;
+}
 function detachTraceState() {
     const entries = listTraceEntries();
     const removed = removeTraceEntries(entries.map((entry) => entry.key));
@@ -402,11 +413,15 @@ function currentTraceStateResult() {
     const current = syncCurrentTraceState(globalThis.__iosRustFridaTraceCurrentKey);
     const state = current ? current.state : {};
     const active = entries.length !== 0;
+    const currentKey = current ? current.key : null;
+    const sessions = entries.map(traceSessionResult);
     return {
         active,
         count: entries.length,
         sessionCount: entries.length,
-        sessions: entries.map(traceSessionResult),
+        sessions,
+        currentKey,
+        currentSession: findSessionByKey(sessions, currentKey),
         label: state.label === undefined ? null : state.label,
         filter: typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null,
         targetAddress: state.targetAddress === undefined ? null : state.targetAddress,
@@ -429,13 +444,16 @@ function replaceTraceEntry(state) {
         replacedCount: removed.count,
         replacedSessionCount: removed.removed.length,
         replacedLabel: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.label === undefined ? null : removed.removed[removed.removed.length - 1].state.label),
+        replacedSessions: removed.removed.map(traceSessionResult),
+        replacedSession: removed.removed.length === 0 ? null : traceSessionResult(removed.removed[removed.removed.length - 1]),
     };
 }
 function currentTraceInstallSnapshot() {
     const current = currentTraceStateResult();
     return {
         active: current.active,
-        currentKey: globalThis.__iosRustFridaTraceCurrentKey === undefined ? null : globalThis.__iosRustFridaTraceCurrentKey,
+        currentKey: current.currentKey === undefined ? null : current.currentKey,
+        currentSession: current.currentSession === undefined ? null : current.currentSession,
         sessionCount: current.sessionCount,
         sessions: current.sessions,
     };
@@ -496,11 +514,15 @@ function currentStalkerStateResult() {
     const state = current ? current.state : {};
     const handleCount = entries.reduce((sum, entry) => sum + (Array.isArray(entry.state.handles) ? entry.state.handles.length : 0), 0);
     const active = entries.length !== 0;
+    const currentKey = current ? current.key : null;
+    const sessions = entries.map(stalkerSessionResult);
     return {
         active,
         count: handleCount,
         sessionCount: entries.length,
-        sessions: entries.map(stalkerSessionResult),
+        sessions,
+        currentKey,
+        currentSession: findSessionByKey(sessions, currentKey),
         label: state.label === undefined ? null : state.label,
         filter: typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null,
         targetAddress: state.targetAddress === undefined ? null : state.targetAddress,
@@ -525,13 +547,16 @@ function replaceStalkerEntry(state) {
         replacedCount: removed.count,
         replacedSessionCount: removed.removed.length,
         replacedLabel: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.label === undefined ? null : removed.removed[removed.removed.length - 1].state.label),
+        replacedSessions: removed.removed.map(stalkerSessionResult),
+        replacedSession: removed.removed.length === 0 ? null : stalkerSessionResult(removed.removed[removed.removed.length - 1]),
     };
 }
 function currentStalkerInstallSnapshot() {
     const current = currentStalkerStateResult();
     return {
         active: current.active,
-        currentKey: globalThis.__iosRustFridaStalkerCurrentKey === undefined ? null : globalThis.__iosRustFridaStalkerCurrentKey,
+        currentKey: current.currentKey === undefined ? null : current.currentKey,
+        currentSession: current.currentSession === undefined ? null : current.currentSession,
         sessionCount: current.sessionCount,
         sessions: current.sessions,
     };
@@ -588,7 +613,10 @@ function installTraceResult(spec) {
             replacedCount: replaced.replacedCount,
             replacedLabel: replaced.replacedLabel,
             replacedSessionCount: replaced.replacedSessionCount,
+            replacedSession: replaced.replacedSession,
+            replacedSessions: replaced.replacedSessions,
             currentKey: snapshot.currentKey,
+            currentSession: snapshot.currentSession,
             sessionCount: snapshot.sessionCount,
             sessions: snapshot.sessions,
             message: 'trace installed: objc_msgSend' + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)',
@@ -646,7 +674,10 @@ function installTraceResult(spec) {
         replacedCount: replaced.replacedCount,
         replacedLabel: replaced.replacedLabel,
         replacedSessionCount: replaced.replacedSessionCount,
+        replacedSession: replaced.replacedSession,
+        replacedSessions: replaced.replacedSessions,
         currentKey: snapshot.currentKey,
+        currentSession: snapshot.currentSession,
         sessionCount: snapshot.sessionCount,
         sessions: snapshot.sessions,
         message: 'trace installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)',
@@ -742,7 +773,10 @@ function installStalkerResult(spec) {
             replacedCount: replaced.replacedCount,
             replacedLabel: replaced.replacedLabel,
             replacedSessionCount: replaced.replacedSessionCount,
+            replacedSession: replaced.replacedSession,
+            replacedSessions: replaced.replacedSessions,
             currentKey: snapshot.currentKey,
+            currentSession: snapshot.currentSession,
             sessionCount: snapshot.sessionCount,
             sessions: snapshot.sessions,
             message: 'stalker installed: objc_msgSend' + (msgSendSuper !== null ? ' + objc_msgSendSuper2' : '') + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)',
@@ -815,7 +849,10 @@ function installStalkerResult(spec) {
         replacedCount: replaced.replacedCount,
         replacedLabel: replaced.replacedLabel,
         replacedSessionCount: replaced.replacedSessionCount,
+        replacedSession: replaced.replacedSession,
+        replacedSessions: replaced.replacedSessions,
         currentKey: snapshot.currentKey,
+        currentSession: snapshot.currentSession,
         sessionCount: snapshot.sessionCount,
         sessions: snapshot.sessions,
         message: 'stalker installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)',
