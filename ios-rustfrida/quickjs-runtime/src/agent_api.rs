@@ -281,6 +281,43 @@ function formatDataInCode(dataInCode) {
         : summary + '\n' + entries.map((entry) => formatDataInCodeEntry(entry)).join('\n');
 }
 
+function formatExportsTrieEntry(entry) {
+    const parts = [String(entry.name || '')];
+    if (entry.isReexport) {
+        parts.push('reexport');
+        parts.push('ordinal=' + String(entry.other === null || entry.other === undefined ? 0 : Number(entry.other)));
+        parts.push('import=' + String(entry.importName || ''));
+    } else {
+        if (entry.offset !== null && entry.offset !== undefined) {
+            parts.push('offset=0x' + BigInt(entry.offset).toString(16));
+        }
+        if (entry.address !== null && entry.address !== undefined) {
+            parts.push('address=' + entry.address.toString());
+        }
+        if (entry.isStubAndResolver && entry.other !== null && entry.other !== undefined) {
+            parts.push('resolver=0x' + BigInt(entry.other).toString(16));
+        }
+    }
+    parts.push('flags=0x' + BigInt(entry.flags || 0).toString(16));
+    parts.push('kind=' + String(entry.kind || 'unknown'));
+    parts.push('weak=' + String(!!entry.isWeakDefinition));
+    return parts.join(' ');
+}
+
+function formatExportsTrie(exportsTrie) {
+    const entries = Array.isArray(exportsTrie.entries) ? exportsTrie.entries : [];
+    const summary = [
+        'dataoff=0x' + BigInt(exportsTrie.dataoff || 0).toString(16),
+        'datasize=0x' + BigInt(exportsTrie.datasize || 0).toString(16),
+        'linkeditBase=' + exportsTrie.linkeditBase.toString(),
+        'dataAddress=' + exportsTrie.dataAddress.toString(),
+        'count=' + String(entries.length),
+    ].join(' ');
+    return entries.length === 0
+        ? summary
+        : summary + '\n' + entries.map((entry) => formatExportsTrieEntry(entry)).join('\n');
+}
+
 function formatSourceVersion(sourceVersion) {
     return 'version=' + String(sourceVersion.version || '');
 }
@@ -646,6 +683,39 @@ function normalizeDataInCode(dataInCode) {
         count: entries.length,
         entries,
         text: formatDataInCode(dataInCode),
+    };
+}
+
+function normalizeExportsTrieEntry(entry) {
+    return {
+        name: String(entry.name || ''),
+        flagsHex: '0x' + BigInt(entry.flags || 0).toString(16),
+        kind: String(entry.kind || 'unknown'),
+        address: entry.address === null || entry.address === undefined ? null : entry.address.toString(),
+        offsetHex: entry.offset === null || entry.offset === undefined ? null : '0x' + BigInt(entry.offset).toString(16),
+        otherHex: entry.other === null || entry.other === undefined ? null : '0x' + BigInt(entry.other).toString(16),
+        importName: entry.importName === null || entry.importName === undefined ? null : String(entry.importName),
+        isWeakDefinition: !!entry.isWeakDefinition,
+        isReexport: !!entry.isReexport,
+        isStubAndResolver: !!entry.isStubAndResolver,
+        text: formatExportsTrieEntry(entry),
+    };
+}
+
+function normalizeExportsTrie(exportsTrie) {
+    const entries = Array.isArray(exportsTrie.entries)
+        ? exportsTrie.entries.map((entry) => normalizeExportsTrieEntry(entry))
+        : [];
+    return {
+        moduleName: String(exportsTrie.moduleName || ''),
+        moduleBase: exportsTrie.moduleBase ? exportsTrie.moduleBase.toString() : null,
+        dataoffHex: '0x' + BigInt(exportsTrie.dataoff || 0).toString(16),
+        datasizeHex: '0x' + BigInt(exportsTrie.datasize || 0).toString(16),
+        linkeditBase: exportsTrie.linkeditBase.toString(),
+        dataAddress: exportsTrie.dataAddress.toString(),
+        count: entries.length,
+        entries,
+        text: formatExportsTrie(exportsTrie),
     };
 }
 
@@ -1017,6 +1087,12 @@ function handleSpecResult(spec) {
         const dataInCode = Native.findDataInCode(moduleName);
         const normalized = dataInCode === null ? null : normalizeDataInCode(dataInCode);
         return { kind: 'native.data_in_code', moduleName, dataInCode: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
+    case 'native.exports_trie': {
+        const moduleName = String(spec.moduleName || '');
+        const exportsTrie = Native.findExportsTrie(moduleName);
+        const normalized = exportsTrie === null ? null : normalizeExportsTrie(exportsTrie);
+        return { kind: 'native.exports_trie', moduleName, exportsTrie: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.source_version': {
         const moduleName = String(spec.moduleName || '');
@@ -1393,6 +1469,17 @@ function legacyToSpec(command) {
         }
         return {
             kind: 'native.data_in_code',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.exportsTrie ')) {
+        const moduleName = trimmed.slice('native.exportsTrie '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.exportsTrie usage: native.exportsTrie <module>');
+        }
+        return {
+            kind: 'native.exports_trie',
             moduleName,
         };
     }

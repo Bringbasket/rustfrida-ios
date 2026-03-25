@@ -7,6 +7,7 @@ mod dylinker;
 mod encryption_info;
 mod entry_point;
 mod exports;
+mod exports_trie;
 mod imports;
 mod injection;
 mod install_name;
@@ -43,6 +44,9 @@ pub use dylinker::{find_image_dylinker, image_dylinker_support_available, ImageD
 pub use encryption_info::{find_image_encryption_info, image_encryption_info_support_available, ImageEncryptionInfo};
 pub use entry_point::{find_image_entry_point, image_entry_point_support_available, ImageEntryPoint};
 pub use exports::{find_image_exports, native_export_support_available};
+pub use exports_trie::{
+    find_image_exports_trie, image_exports_trie_support_available, ImageExportsTrie, ImageExportsTrieEntry,
+};
 pub use imports::{find_image_imports, image_import_support_available, ImageImport};
 pub use injection::{
     Arm64ThreadLaunch, Arm64ThreadState, BootstrapImage, BootstrapResultReport, BootstrapStatus, InjectionPlan,
