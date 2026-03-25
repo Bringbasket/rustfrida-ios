@@ -1520,6 +1520,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.chained_fixups', moduleName: main.image.name }); return result.kind === 'native.chained_fixups' && (result.chainedFixups === null || (typeof result.chainedFixups.dataoffHex === 'string' && typeof result.chainedFixups.segmentCount === 'number' && Array.isArray(result.chainedFixups.segments) && Array.isArray(result.chainedFixups.imports))); })()"
+                    )
+                    .expect("agent native chained fixups result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.build_version', moduleName: main.image.name }); return result.kind === 'native.build_version' && (result.buildVersion === null || (typeof result.buildVersion.platform === 'string' && Array.isArray(result.buildVersion.tools))); })()"
                     )
                     .expect("agent native build version result"),
@@ -1697,6 +1705,12 @@ undefined;
                 runtime
                     .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.exportsTrie ' + base); return value === '<null>' || value.indexOf('count=') !== -1; })()")
                     .expect("agent native exports trie"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.chainedFixups ' + base); return value === '<null>' || value.indexOf('segmentCount=') !== -1; })()")
+                    .expect("agent native chained fixups"),
                 "true"
             );
             assert_eq!(

@@ -4,15 +4,16 @@ use crate::ptr::create_native_pointer;
 use crate::util::{add_cfunction_to_object, js_throw_internal_error};
 use crate::value::JSValue;
 use native_api::{
-    detect_hook_environment, find_image_build_version, find_image_code_signature, find_image_dependencies,
-    find_image_data_in_code, find_image_dyld_info, find_image_dylinker, find_image_encryption_info,
+    detect_hook_environment, find_image_build_version, find_image_chained_fixups, find_image_code_signature,
+    find_image_dependencies, find_image_data_in_code, find_image_dyld_info, find_image_dylinker,
+    find_image_encryption_info,
     find_image_entry_point, find_image_exports, find_image_exports_trie, find_image_function_starts,
     find_image_imports,
     find_image_install_name, find_image_linkedit_info, find_image_load_commands, find_image_rpaths,
     find_image_sections, find_image_segments, find_image_source_version, find_image_uuid, find_native_symbols,
-    hook_environment_recommendations, image_build_version_support_available,
-    image_code_signature_support_available, image_dependency_support_available,
-    image_data_in_code_support_available, image_exports_trie_support_available,
+    hook_environment_recommendations, image_build_version_support_available, image_chained_fixups_support_available,
+    image_code_signature_support_available, image_dependency_support_available, image_data_in_code_support_available,
+    image_exports_trie_support_available,
     image_dyld_info_support_available, image_dylinker_support_available,
     image_encryption_info_support_available, image_entry_point_support_available,
     image_function_starts_support_available, image_import_support_available,
@@ -603,6 +604,200 @@ unsafe fn image_exports_trie_to_js(
         ffi::JS_SetPropertyUint32(ctx, entries, index as u32, image_exports_trie_entry_to_js(ctx, item));
     }
     result.set_property(ctx, "entries", JSValue(entries));
+    result.raw()
+}
+
+unsafe fn image_chained_fixups_page_to_js(
+    ctx: *mut ffi::JSContext,
+    page: &native_api::ImageChainedFixupsPage,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "pageIndex", JSValue::int(page.page_index as i32));
+    result.set_property(ctx, "hasFixups", JSValue::bool(page.has_fixups));
+    match page.page_start {
+        Some(value) => result.set_property(ctx, "pageStart", JSValue::int(value as i32)),
+        None => result.set_property(ctx, "pageStart", JSValue::null()),
+    };
+    result.set_property(
+        ctx,
+        "usesMultipleStarts",
+        JSValue::bool(page.uses_multiple_starts),
+    );
+    let chain_starts = ffi::JS_NewArray(ctx);
+    for (index, item) in page.chain_starts.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, chain_starts, index as u32, JSValue::int(*item as i32).raw());
+    }
+    result.set_property(ctx, "chainStarts", JSValue(chain_starts));
+    result.raw()
+}
+
+unsafe fn image_chained_fixups_segment_to_js(
+    ctx: *mut ffi::JSContext,
+    segment: &native_api::ImageChainedFixupsSegment,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "segmentIndex", JSValue::int(segment.segment_index as i32));
+    result.set_property(
+        ctx,
+        "offsetInStarts",
+        JSValue(ffi::qjs_new_uint32(ctx, segment.offset_in_starts)),
+    );
+    result.set_property(ctx, "size", JSValue(ffi::qjs_new_uint32(ctx, segment.size)));
+    result.set_property(ctx, "pageSize", JSValue::int(segment.page_size as i32));
+    result.set_property(ctx, "pointerFormat", JSValue::int(segment.pointer_format as i32));
+    result.set_property(
+        ctx,
+        "pointerFormatName",
+        JSValue::string(ctx, &segment.pointer_format_name),
+    );
+    result.set_property(
+        ctx,
+        "segmentOffset",
+        JSValue(ffi::JS_NewBigUint64(ctx, segment.segment_offset)),
+    );
+    result.set_property(
+        ctx,
+        "maxValidPointer",
+        JSValue(ffi::qjs_new_uint32(ctx, segment.max_valid_pointer)),
+    );
+    result.set_property(ctx, "pageCount", JSValue::int(segment.page_count as i32));
+    result.set_property(
+        ctx,
+        "fixupPageCount",
+        JSValue::int(segment.fixup_page_count as i32),
+    );
+    result.set_property(
+        ctx,
+        "multiPageCount",
+        JSValue::int(segment.multi_page_count as i32),
+    );
+    let pages = ffi::JS_NewArray(ctx);
+    for (index, item) in segment.pages.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, pages, index as u32, image_chained_fixups_page_to_js(ctx, item));
+    }
+    result.set_property(ctx, "pages", JSValue(pages));
+    result.raw()
+}
+
+unsafe fn image_chained_fixups_import_to_js(
+    ctx: *mut ffi::JSContext,
+    import: &native_api::ImageChainedFixupsImport,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "index", JSValue::int(import.index as i32));
+    result.set_property(
+        ctx,
+        "libOrdinalRaw",
+        JSValue(ffi::JS_NewBigUint64(ctx, import.lib_ordinal_raw)),
+    );
+    result.set_property(ctx, "libOrdinal", JSValue::int(import.lib_ordinal as i32));
+    result.set_property(ctx, "weakImport", JSValue::bool(import.weak_import));
+    result.set_property(
+        ctx,
+        "nameOffset",
+        JSValue(ffi::qjs_new_uint32(ctx, import.name_offset)),
+    );
+    match &import.name {
+        Some(value) => result.set_property(ctx, "name", JSValue::string(ctx, value)),
+        None => result.set_property(ctx, "name", JSValue::null()),
+    };
+    match import.addend {
+        Some(value) => result.set_property(ctx, "addend", JSValue(ffi::JS_NewBigInt64(ctx, value))),
+        None => result.set_property(ctx, "addend", JSValue::null()),
+    };
+    result.raw()
+}
+
+unsafe fn image_chained_fixups_to_js(
+    ctx: *mut ffi::JSContext,
+    chained_fixups: &native_api::ImageChainedFixups,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(
+        ctx,
+        "moduleName",
+        JSValue::string(ctx, &chained_fixups.module_name),
+    );
+    result.set_property(
+        ctx,
+        "moduleBase",
+        create_native_pointer(ctx, chained_fixups.module_base as u64),
+    );
+    result.set_property(
+        ctx,
+        "dataoff",
+        JSValue(ffi::qjs_new_uint32(ctx, chained_fixups.dataoff)),
+    );
+    result.set_property(
+        ctx,
+        "datasize",
+        JSValue(ffi::qjs_new_uint32(ctx, chained_fixups.datasize)),
+    );
+    result.set_property(
+        ctx,
+        "linkeditBase",
+        create_native_pointer(ctx, chained_fixups.linkedit_base as u64),
+    );
+    result.set_property(
+        ctx,
+        "dataAddress",
+        create_native_pointer(ctx, chained_fixups.data_address as u64),
+    );
+    result.set_property(
+        ctx,
+        "fixupsVersion",
+        JSValue(ffi::qjs_new_uint32(ctx, chained_fixups.fixups_version)),
+    );
+    result.set_property(
+        ctx,
+        "startsOffset",
+        JSValue(ffi::qjs_new_uint32(ctx, chained_fixups.starts_offset)),
+    );
+    result.set_property(
+        ctx,
+        "importsOffset",
+        JSValue(ffi::qjs_new_uint32(ctx, chained_fixups.imports_offset)),
+    );
+    result.set_property(
+        ctx,
+        "symbolsOffset",
+        JSValue(ffi::qjs_new_uint32(ctx, chained_fixups.symbols_offset)),
+    );
+    result.set_property(
+        ctx,
+        "importsCount",
+        JSValue(ffi::qjs_new_uint32(ctx, chained_fixups.imports_count)),
+    );
+    result.set_property(
+        ctx,
+        "importsFormat",
+        JSValue(ffi::qjs_new_uint32(ctx, chained_fixups.imports_format)),
+    );
+    result.set_property(
+        ctx,
+        "importsFormatName",
+        JSValue::string(ctx, &chained_fixups.imports_format_name),
+    );
+    result.set_property(
+        ctx,
+        "symbolsFormat",
+        JSValue(ffi::qjs_new_uint32(ctx, chained_fixups.symbols_format)),
+    );
+    result.set_property(
+        ctx,
+        "symbolsFormatName",
+        JSValue::string(ctx, &chained_fixups.symbols_format_name),
+    );
+    let segments = ffi::JS_NewArray(ctx);
+    for (index, item) in chained_fixups.segments.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, segments, index as u32, image_chained_fixups_segment_to_js(ctx, item));
+    }
+    result.set_property(ctx, "segments", JSValue(segments));
+    let imports = ffi::JS_NewArray(ctx);
+    for (index, item) in chained_fixups.imports.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, imports, index as u32, image_chained_fixups_import_to_js(ctx, item));
+    }
+    result.set_property(ctx, "imports", JSValue(imports));
     result.raw()
 }
 
@@ -1287,6 +1482,37 @@ unsafe extern "C" fn js_native_find_exports_trie(
     }
 }
 
+unsafe extern "C" fn js_native_find_chained_fixups(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.findChainedFixups(moduleName) requires 1 string argument",
+        );
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.findChainedFixups(moduleName) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    match find_image_chained_fixups(&module_name) {
+        Ok(Some(chained_fixups)) => image_chained_fixups_to_js(ctx, &chained_fixups),
+        Ok(None) | Err(common::Error::Unsupported(_)) => JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
+}
+
 unsafe extern "C" fn js_native_find_uuid(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -1556,6 +1782,11 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
     );
     native.set_property(
         ctx.as_ptr(),
+        "chainedFixupsSupportAvailable",
+        JSValue::bool(image_chained_fixups_support_available()),
+    );
+    native.set_property(
+        ctx.as_ptr(),
         "uuidSupportAvailable",
         JSValue::bool(image_uuid_support_available()),
     );
@@ -1673,6 +1904,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             native.raw(),
             "findExportsTrie",
             js_native_find_exports_trie,
+            1,
+        );
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "findChainedFixups",
+            js_native_find_chained_fixups,
             1,
         );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findUuid", js_native_find_uuid, 1);

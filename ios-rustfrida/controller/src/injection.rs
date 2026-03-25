@@ -3608,6 +3608,7 @@ fn print_controller_help() {
     println!("  native.codeSignature <module>");
     println!("  native.dataInCode <module>");
     println!("  native.exportsTrie <module>");
+    println!("  native.chainedFixups <module>");
     println!("  native.sourceVersion <module>");
     println!("  native.buildVersion <module>");
     println!("  native.dylinker <module>");
@@ -3930,6 +3931,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.chainedFixups DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.sourceVersion DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4002,6 +4007,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.codeSignature UIKit"));
         assert!(!command_requires_inline_hooks("native.dataInCode UIKit"));
         assert!(!command_requires_inline_hooks("native.exportsTrie UIKit"));
+        assert!(!command_requires_inline_hooks("native.chainedFixups UIKit"));
         assert!(!command_requires_inline_hooks("native.sourceVersion UIKit"));
         assert!(!command_requires_inline_hooks("native.buildVersion UIKit"));
         assert!(!command_requires_inline_hooks("native.dylinker UIKit"));

@@ -318,6 +318,57 @@ function formatExportsTrie(exportsTrie) {
         : summary + '\n' + entries.map((entry) => formatExportsTrieEntry(entry)).join('\n');
 }
 
+function formatChainedFixupsSegment(segment) {
+    return [
+        'segment[' + String(segment.segmentIndex || 0) + ']',
+        'format=' + String(segment.pointerFormatName || segment.pointerFormat || 'unknown'),
+        'pageSize=0x' + BigInt(segment.pageSize || 0).toString(16),
+        'segmentOffset=0x' + BigInt(segment.segmentOffset || 0).toString(16),
+        'pageCount=' + String(segment.pageCount || 0),
+        'fixupPages=' + String(segment.fixupPageCount || 0),
+        'multiPages=' + String(segment.multiPageCount || 0),
+    ].join(' ');
+}
+
+function formatChainedFixupsImport(imp) {
+    const name = imp.name === null || imp.name === undefined
+        ? '<symbols:' + ('0x' + BigInt(imp.nameOffset || 0).toString(16)) + '>'
+        : String(imp.name);
+    const addend = imp.addend === null || imp.addend === undefined ? '' : ' addend=' + imp.addend.toString();
+    return [
+        'import[' + String(imp.index || 0) + ']',
+        name,
+        'ordinal=' + String(imp.libOrdinal || 0),
+        'weak=' + String(!!imp.weakImport),
+    ].join(' ') + addend;
+}
+
+function formatChainedFixups(chainedFixups) {
+    const segments = Array.isArray(chainedFixups.segments) ? chainedFixups.segments : [];
+    const imports = Array.isArray(chainedFixups.imports) ? chainedFixups.imports : [];
+    const lines = [[
+        'dataoff=0x' + BigInt(chainedFixups.dataoff || 0).toString(16),
+        'datasize=0x' + BigInt(chainedFixups.datasize || 0).toString(16),
+        'linkeditBase=' + chainedFixups.linkeditBase.toString(),
+        'dataAddress=' + chainedFixups.dataAddress.toString(),
+        'version=' + String(chainedFixups.fixupsVersion || 0),
+        'starts=0x' + BigInt(chainedFixups.startsOffset || 0).toString(16),
+        'imports=0x' + BigInt(chainedFixups.importsOffset || 0).toString(16),
+        'symbols=0x' + BigInt(chainedFixups.symbolsOffset || 0).toString(16),
+        'importsFormat=' + String(chainedFixups.importsFormatName || chainedFixups.importsFormat || 'unknown'),
+        'symbolsFormat=' + String(chainedFixups.symbolsFormatName || chainedFixups.symbolsFormat || 'unknown'),
+        'segmentCount=' + String(segments.length),
+        'importCount=' + String(imports.length),
+    ].join(' ')];
+    for (const segment of segments) {
+        lines.push(formatChainedFixupsSegment(segment));
+    }
+    for (const imp of imports) {
+        lines.push(formatChainedFixupsImport(imp));
+    }
+    return lines.join('\n');
+}
+
 function formatSourceVersion(sourceVersion) {
     return 'version=' + String(sourceVersion.version || '');
 }
@@ -719,6 +770,83 @@ function normalizeExportsTrie(exportsTrie) {
     };
 }
 
+function normalizeChainedFixupsPage(page) {
+    const chainStarts = Array.isArray(page.chainStarts)
+        ? page.chainStarts.map((value) => '0x' + BigInt(value || 0).toString(16))
+        : [];
+    return {
+        pageIndex: Number(page.pageIndex || 0),
+        hasFixups: !!page.hasFixups,
+        pageStartHex: page.pageStart === null || page.pageStart === undefined ? null : '0x' + BigInt(page.pageStart).toString(16),
+        usesMultipleStarts: !!page.usesMultipleStarts,
+        chainStarts,
+    };
+}
+
+function normalizeChainedFixupsSegment(segment) {
+    const pages = Array.isArray(segment.pages)
+        ? segment.pages.map((page) => normalizeChainedFixupsPage(page))
+        : [];
+    return {
+        segmentIndex: Number(segment.segmentIndex || 0),
+        offsetInStartsHex: '0x' + BigInt(segment.offsetInStarts || 0).toString(16),
+        sizeHex: '0x' + BigInt(segment.size || 0).toString(16),
+        pageSizeHex: '0x' + BigInt(segment.pageSize || 0).toString(16),
+        pointerFormat: Number(segment.pointerFormat || 0),
+        pointerFormatName: String(segment.pointerFormatName || 'DYLD_CHAINED_PTR_UNKNOWN'),
+        segmentOffsetHex: '0x' + BigInt(segment.segmentOffset || 0).toString(16),
+        maxValidPointerHex: '0x' + BigInt(segment.maxValidPointer || 0).toString(16),
+        pageCount: Number(segment.pageCount || 0),
+        fixupPageCount: Number(segment.fixupPageCount || 0),
+        multiPageCount: Number(segment.multiPageCount || 0),
+        pages,
+        text: formatChainedFixupsSegment(segment),
+    };
+}
+
+function normalizeChainedFixupsImport(imp) {
+    return {
+        index: Number(imp.index || 0),
+        libOrdinalRawHex: '0x' + BigInt(imp.libOrdinalRaw || 0).toString(16),
+        libOrdinal: Number(imp.libOrdinal || 0),
+        weakImport: !!imp.weakImport,
+        nameOffsetHex: '0x' + BigInt(imp.nameOffset || 0).toString(16),
+        name: imp.name === null || imp.name === undefined ? null : String(imp.name),
+        addend: imp.addend === null || imp.addend === undefined ? null : imp.addend.toString(),
+        text: formatChainedFixupsImport(imp),
+    };
+}
+
+function normalizeChainedFixups(chainedFixups) {
+    const segments = Array.isArray(chainedFixups.segments)
+        ? chainedFixups.segments.map((segment) => normalizeChainedFixupsSegment(segment))
+        : [];
+    const imports = Array.isArray(chainedFixups.imports)
+        ? chainedFixups.imports.map((imp) => normalizeChainedFixupsImport(imp))
+        : [];
+    return {
+        moduleName: String(chainedFixups.moduleName || ''),
+        moduleBase: chainedFixups.moduleBase ? chainedFixups.moduleBase.toString() : null,
+        dataoffHex: '0x' + BigInt(chainedFixups.dataoff || 0).toString(16),
+        datasizeHex: '0x' + BigInt(chainedFixups.datasize || 0).toString(16),
+        linkeditBase: chainedFixups.linkeditBase.toString(),
+        dataAddress: chainedFixups.dataAddress.toString(),
+        fixupsVersion: Number(chainedFixups.fixupsVersion || 0),
+        startsOffsetHex: '0x' + BigInt(chainedFixups.startsOffset || 0).toString(16),
+        importsOffsetHex: '0x' + BigInt(chainedFixups.importsOffset || 0).toString(16),
+        symbolsOffsetHex: '0x' + BigInt(chainedFixups.symbolsOffset || 0).toString(16),
+        importsCount: Number(chainedFixups.importsCount || 0),
+        importsFormat: Number(chainedFixups.importsFormat || 0),
+        importsFormatName: String(chainedFixups.importsFormatName || 'DYLD_CHAINED_IMPORT_UNKNOWN'),
+        symbolsFormat: Number(chainedFixups.symbolsFormat || 0),
+        symbolsFormatName: String(chainedFixups.symbolsFormatName || 'unknown'),
+        segmentCount: segments.length,
+        segments,
+        imports,
+        text: formatChainedFixups(chainedFixups),
+    };
+}
+
 function normalizeSourceVersion(sourceVersion) {
     return {
         moduleName: String(sourceVersion.moduleName || ''),
@@ -1093,6 +1221,12 @@ function handleSpecResult(spec) {
         const exportsTrie = Native.findExportsTrie(moduleName);
         const normalized = exportsTrie === null ? null : normalizeExportsTrie(exportsTrie);
         return { kind: 'native.exports_trie', moduleName, exportsTrie: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
+    case 'native.chained_fixups': {
+        const moduleName = String(spec.moduleName || '');
+        const chainedFixups = Native.findChainedFixups(moduleName);
+        const normalized = chainedFixups === null ? null : normalizeChainedFixups(chainedFixups);
+        return { kind: 'native.chained_fixups', moduleName, chainedFixups: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.source_version': {
         const moduleName = String(spec.moduleName || '');
@@ -1480,6 +1614,17 @@ function legacyToSpec(command) {
         }
         return {
             kind: 'native.exports_trie',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.chainedFixups ')) {
+        const moduleName = trimmed.slice('native.chainedFixups '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.chainedFixups usage: native.chainedFixups <module>');
+        }
+        return {
+            kind: 'native.chained_fixups',
             moduleName,
         };
     }

@@ -1,4 +1,5 @@
 mod build_version;
+mod chained_fixups;
 mod code_signature;
 mod data_in_code;
 mod deps;
@@ -31,6 +32,10 @@ use std::path::Path;
 
 pub use build_version::{
     find_image_build_version, image_build_version_support_available, ImageBuildTool, ImageBuildVersion,
+};
+pub use chained_fixups::{
+    find_image_chained_fixups, image_chained_fixups_support_available, ImageChainedFixups,
+    ImageChainedFixupsImport, ImageChainedFixupsPage, ImageChainedFixupsSegment,
 };
 pub use code_signature::{
     find_image_code_signature, image_code_signature_support_available, ImageCodeSignature,
