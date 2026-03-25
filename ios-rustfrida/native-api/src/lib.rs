@@ -7,6 +7,7 @@ mod loadcmds;
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod mach;
 mod pac;
+mod rpaths;
 mod sections;
 mod segments;
 mod swift;
@@ -33,6 +34,7 @@ pub use pac::{
     current_process_uses_arm64e, enumerate_arm64e_images, image_uses_arm64e, normalize_code_pointer,
     pac_support_available, strip_code_pointer, strip_data_pointer,
 };
+pub use rpaths::{find_image_rpaths, image_rpath_support_available, ImageRpath};
 pub use sections::{find_image_sections, image_section_support_available, ImageSection};
 pub use segments::{find_image_segments, image_segment_support_available, ImageSegment};
 pub use swift::{

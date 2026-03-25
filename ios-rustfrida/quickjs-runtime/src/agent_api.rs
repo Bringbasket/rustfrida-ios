@@ -174,6 +174,10 @@ function formatDependency(dep) {
     ].join(' ');
 }
 
+function formatRpath(rpath) {
+    return String(rpath.path || '');
+}
+
 function formatImport(imp) {
     const source = imp.dylibName === null || imp.dylibName === undefined ? ('ordinal=' + String(imp.dylibOrdinal || 0)) : String(imp.dylibName);
     return source + '!' + String(imp.name || '') + (imp.weakImport ? ' weak' : '');
@@ -373,6 +377,16 @@ function normalizeDependency(dep) {
         compatibilityVersion: formatPackedVersion(dep.compatibilityVersion),
         timestamp: Number(dep.timestamp || 0),
         text: formatDependency(dep),
+    };
+}
+
+function normalizeRpath(rpath) {
+    const path = String(rpath.path || '');
+    return {
+        moduleName: String(rpath.moduleName || ''),
+        moduleBase: rpath.moduleBase ? rpath.moduleBase.toString() : null,
+        path,
+        text: formatRpath(rpath),
     };
 }
 
@@ -628,6 +642,12 @@ function handleSpecResult(spec) {
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const dependencies = Native.findDependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
         return { kind: 'native.dependencies', moduleName, query, count: dependencies.length, dependencies, text: dependencies.map((dependency) => dependency.text).join('\n') };
+    }
+    case 'native.rpaths': {
+        const moduleName = String(spec.moduleName || '');
+        const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
+        const rpaths = Native.findRpaths(moduleName, query).map((rpath) => normalizeRpath(rpath));
+        return { kind: 'native.rpaths', moduleName, query, count: rpaths.length, rpaths, text: rpaths.map((rpath) => rpath.text).join('\n') };
     }
     case 'native.imports': {
         const moduleName = String(spec.moduleName || '');
@@ -890,6 +910,15 @@ function legacyToSpec(command) {
         const parsed = parseNativeExports(trimmed.slice('native.dependencies '.length));
         return {
             kind: 'native.dependencies',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.rpaths ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.rpaths '.length));
+        return {
+            kind: 'native.rpaths',
             moduleName: parsed.moduleName,
             query: parsed.query,
         };

@@ -3600,6 +3600,7 @@ fn print_controller_help() {
     println!("  native.export <symbol>|native.export <module> -- <symbol>");
     println!("  native.exports <module>|native.exports <module> -- <query>");
     println!("  native.dependencies <module>|native.dependencies <module> -- <query>");
+    println!("  native.rpaths <module>|native.rpaths <module> -- <query>");
     println!("  native.imports <module>|native.imports <module> -- <query>");
     println!("  native.loadcmds <module>");
     println!("  native.sections <module>");
@@ -3884,6 +3885,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.rpaths DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.imports DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -3924,6 +3929,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.classes UIView"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
+        assert!(!command_requires_inline_hooks("native.rpaths UIKit"));
         assert!(!command_requires_inline_hooks("native.imports UIKit"));
         assert!(!command_requires_inline_hooks("swift.types ViewController"));
     }
