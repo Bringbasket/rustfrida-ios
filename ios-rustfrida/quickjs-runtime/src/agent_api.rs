@@ -159,6 +159,21 @@ function formatNativeSymbol(symbol) {
     return symbol.address.toString() + ' ' + symbol.moduleName + '!' + symbol.name + '+0x' + BigInt(symbol.offset || 0).toString(16);
 }
 
+function formatPackedVersion(value) {
+    const raw = Number(value || 0);
+    return String((raw >>> 16) & 0xffff) + '.' + String((raw >>> 8) & 0xff) + '.' + String(raw & 0xff);
+}
+
+function formatDependency(dep) {
+    return [
+        '#' + String(dep.ordinal || 0),
+        String(dep.kind || 'load'),
+        String(dep.path || ''),
+        'current=' + formatPackedVersion(dep.currentVersion),
+        'compat=' + formatPackedVersion(dep.compatibilityVersion),
+    ].join(' ');
+}
+
 function formatImport(imp) {
     const source = imp.dylibName === null || imp.dylibName === undefined ? ('ordinal=' + String(imp.dylibOrdinal || 0)) : String(imp.dylibName);
     return source + '!' + String(imp.name || '') + (imp.weakImport ? ' weak' : '');
@@ -341,6 +356,23 @@ function normalizeImport(imp) {
         dylibName: imp.dylibName === undefined ? null : imp.dylibName,
         weakImport: !!imp.weakImport,
         text: formatImport(imp),
+    };
+}
+
+function normalizeDependency(dep) {
+    const path = String(dep.path || '');
+    const pathParts = path.split('/').filter(Boolean);
+    return {
+        moduleName: String(dep.moduleName || ''),
+        moduleBase: dep.moduleBase ? dep.moduleBase.toString() : null,
+        ordinal: Number(dep.ordinal || 0),
+        path,
+        name: pathParts.length === 0 ? path : pathParts[pathParts.length - 1],
+        kind: String(dep.kind || 'load'),
+        currentVersion: formatPackedVersion(dep.currentVersion),
+        compatibilityVersion: formatPackedVersion(dep.compatibilityVersion),
+        timestamp: Number(dep.timestamp || 0),
+        text: formatDependency(dep),
     };
 }
 
@@ -590,6 +622,12 @@ function handleSpecResult(spec) {
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const symbols = Native.findExports(moduleName, query).map((symbol) => normalizeNativeSymbol(symbol));
         return { kind: 'native.exports', moduleName, query, count: symbols.length, symbols, text: symbols.map((symbol) => symbol.text).join('\n') };
+    }
+    case 'native.dependencies': {
+        const moduleName = String(spec.moduleName || '');
+        const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
+        const dependencies = Native.findDependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
+        return { kind: 'native.dependencies', moduleName, query, count: dependencies.length, dependencies, text: dependencies.map((dependency) => dependency.text).join('\n') };
     }
     case 'native.imports': {
         const moduleName = String(spec.moduleName || '');
@@ -843,6 +881,15 @@ function legacyToSpec(command) {
         const parsed = parseNativeExports(trimmed.slice('native.exports '.length));
         return {
             kind: 'native.exports',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.dependencies ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.dependencies '.length));
+        return {
+            kind: 'native.dependencies',
             moduleName: parsed.moduleName,
             query: parsed.query,
         };

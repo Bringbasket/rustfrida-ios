@@ -77,6 +77,8 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.export <module> -- <symbol>`
   - `native.exports <module>`
   - `native.exports <module> -- <query>`
+  - `native.dependencies <module>`
+  - `native.dependencies <module> -- <query>`
   - `native.imports <module>`
   - `native.imports <module> -- <query>`
   - `native.loadcmds <module>`
@@ -188,6 +190,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `--command-json` 在命令真正执行前就失败时，现在也会附带 `environment / doctor / plan / preflight / trace / diagnostics / handshake` 上下文，方便脚本直接区分是注入前配置问题、bootstrap 问题，还是命令本身失败。
 - 对 `objc.* / native.* / pac.* / swift.*` 这类 runtime 查询命令，`--command-json` 现在也会尽量回传稳定的 `payloadJson` 字段，里面直接带 `count / classes / methods / images / symbols / types / report / text` 等结构化内容，不再只能从换行文本里二次解析。
 - 其中 `native.symbols / native.exports / native.segments / native.sections / native.loadcmds / swift.symbols / swift.types / swift.methodOwners / swift.typeMethods / swift.methods` 这批结果现在也会补出更稳定的定位字段，例如 `moduleBase / offsetHex / sourceSymbolName / sourceOffsetHex`；`native.images / native.mainImage / pac.images` 里的镜像项也会顺手带 `name`，脚本侧不必再自己拆 basename。
+- `native.dependencies <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dependencies / ordinal / kind / path / currentVersion / compatibilityVersion / timestamp`，适合先看一个镜像依赖树，再结合 `native.imports` 缩小目标符号来源。
 - `native.imports <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；当前实现基于 Mach-O undefined symbol 表，结构化结果会带 `imports / dylibOrdinal / dylibName / weakImport`，适合先看一个镜像依赖了哪些外部符号，再决定后续 trace/hook 目标。
 - 对 `hfl / jhook / shook / trace / stalker` 这类 controller dispatch 命令，`--command-json` 现在也会尽量回传结构化 `payloadJson`，包含 `action / kind / target / count / key / moduleName / selectorName / resolvedLabel / targetAddress / filter / replacedCount` 等字段；对应的 `*.status` 结果也会补出当前 active state 和 target 元数据，像 `hfl/jhook/shook` 不再只有 key/count；`*.stop` 结果现在也会把被回收的 key/target 一并带回，`trace.stop / stalker.stop` 也会继续带上实际 detach 计数。
 - 对同一批 `*.status` 控制命令，普通文本模式的 `--command` / REPL 输出现在也不再只回一行 `active: N`；会附带当前 target / filter / symbol / Swift 命中项摘要，真机交互排查时不必每次都切到 `--command-json`。

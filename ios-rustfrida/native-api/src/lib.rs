@@ -1,3 +1,4 @@
+mod deps;
 mod exports;
 mod imports;
 mod injection;
@@ -14,6 +15,7 @@ mod symbols;
 use common::Result;
 use std::path::Path;
 
+pub use deps::{find_image_dependencies, image_dependency_support_available, ImageDependency};
 pub use exports::{find_image_exports, native_export_support_available};
 pub use imports::{find_image_imports, image_import_support_available, ImageImport};
 pub use injection::{

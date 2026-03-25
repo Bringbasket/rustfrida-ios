@@ -1440,6 +1440,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependencies', moduleName: main.image.name, query: null }); return result.kind === 'native.dependencies' && result.count === result.dependencies.length && (result.dependencies.length === 0 || (typeof result.dependencies[0].ordinal === 'number' && typeof result.dependencies[0].kind === 'string')); })()"
+                    )
+                    .expect("agent native dependencies result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: main.image.name, query: null }); return result.kind === 'native.imports' && result.count === result.imports.length && (result.imports.length === 0 || (typeof result.imports[0].dylibOrdinal === 'number' && typeof result.imports[0].weakImport === 'boolean')); })()"
                     )
                     .expect("agent native imports result"),
@@ -1517,6 +1525,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.exports libsystem_malloc.dylib -- malloc'); return value === '' || value.indexOf('malloc') !== -1; })()")
                     .expect("agent native exports by query"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.dependencies ' + base); return value === '' || value.indexOf('/') !== -1; })()")
+                    .expect("agent native dependencies"),
                 "true"
             );
             assert_eq!(
