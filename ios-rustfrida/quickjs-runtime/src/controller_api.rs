@@ -4,15 +4,20 @@ function renderResult(result) {
     if (result && typeof result === 'object') {
         switch (String(result.kind || '')) {
         case 'hfl.status':
-            return renderHflStatus(result);
+        case 'hfl.stop':
+            return renderHflEvent(result);
         case 'objc.hook.status':
-            return renderObjcHookStatus(result);
+        case 'objc.hook.stop':
+            return renderObjcHookEvent(result);
         case 'trace.status':
+        case 'trace.stop':
             return renderTraceStatus(result);
         case 'stalker.status':
+        case 'stalker.stop':
             return renderStalkerStatus(result);
         case 'swift.hook.status':
-            return renderSwiftHookStatus(result);
+        case 'swift.hook.stop':
+            return renderSwiftHookEvent(result);
         default:
             break;
         }
@@ -27,8 +32,8 @@ function appendDetail(parts, label, value) {
     parts.push(label + '=' + String(value));
 }
 
-function renderTargetListStatus(result, entries) {
-    if (!result || !result.active) {
+function renderTargetListEvent(result, entries) {
+    if (!result || !Array.isArray(entries) || entries.length === 0) {
         return result && result.message !== undefined ? String(result.message) : String(result);
     }
     const lines = [String(result.message)];
@@ -38,8 +43,8 @@ function renderTargetListStatus(result, entries) {
     return lines.join('\n');
 }
 
-function renderHflStatus(result) {
-    return renderTargetListStatus(
+function renderHflEvent(result) {
+    return renderTargetListEvent(
         result,
         Array.isArray(result.targets)
             ? result.targets.map((target) => {
@@ -51,8 +56,8 @@ function renderHflStatus(result) {
     );
 }
 
-function renderObjcHookStatus(result) {
-    return renderTargetListStatus(
+function renderObjcHookEvent(result) {
+    return renderTargetListEvent(
         result,
         Array.isArray(result.targets)
             ? result.targets.map((target) => {
@@ -95,8 +100,8 @@ function renderStalkerStatus(result) {
     return renderTraceLikeStatus(result, true, true);
 }
 
-function renderSwiftHookStatus(result) {
-    if (!result || !result.active) {
+function renderSwiftHookEvent(result) {
+    if (!result || !Array.isArray(result.targets) || result.targets.length === 0) {
         return result && result.message !== undefined ? String(result.message) : String(result);
     }
     const lines = [String(result.message)];
@@ -125,6 +130,40 @@ function renderSwiftHookStatus(result) {
         }
     }
     return lines.join('\n');
+}
+
+function hflKey(moduleName, offsetHex) {
+    return String(moduleName) + '+' + String(offsetHex);
+}
+
+function objcHookKey(className, selectorName, isClassMethod) {
+    const prefix = isClassMethod ? '+' : '-';
+    return prefix + '[' + String(className) + ' ' + String(selectorName) + ']';
+}
+
+function swiftHookKey(typeName, methodQuery, moduleName) {
+    return (moduleName === null || moduleName === undefined || moduleName === '' ? '*' : String(moduleName))
+        + '::' + String(typeName) + '::' + String(methodQuery);
+}
+
+function detachHandle(handle) {
+    if (handle && typeof handle.detach === 'function') {
+        try {
+            handle.detach();
+            return 1;
+        } catch (_) {}
+    }
+    return 0;
+}
+
+function renderStopMessage(prefix, count, requestedKey, matched) {
+    if (requestedKey === null || requestedKey === undefined) {
+        return prefix + ' detached: ' + count;
+    }
+    if (matched) {
+        return prefix + ' detached: ' + count + ' for ' + requestedKey;
+    }
+    return prefix + ' detached: 0 for ' + requestedKey + ' (inactive)';
 }
 
 function hflEntryToTarget(key, entry) {
@@ -181,7 +220,7 @@ function swiftHookEntryToTarget(key, entry) {
 
 function installHflResult(moduleName, offsetHex) {
     globalThis.__iosRustFridaHfl = globalThis.__iosRustFridaHfl || {};
-    const key = moduleName + '+' + offsetHex;
+    const key = hflKey(moduleName, offsetHex);
     const base = Module.findBaseAddress(moduleName);
     if (base === null) {
         throw new Error('module not found: ' + moduleName);
@@ -230,28 +269,33 @@ function currentHflHooksResult() {
     };
 }
 
-function detachHflHooksResult() {
+function detachHflHooksResult(moduleName, offsetHex) {
     const state = globalThis.__iosRustFridaHfl || {};
-    const keys = Object.keys(state);
+    const targeted = moduleName !== null && moduleName !== undefined && offsetHex !== null && offsetHex !== undefined;
+    const requestedKey = targeted ? hflKey(moduleName, offsetHex) : null;
+    const keys = targeted
+        ? (Object.prototype.hasOwnProperty.call(state, requestedKey) ? [requestedKey] : [])
+        : Object.keys(state);
     const targets = keys.map((key) => hflEntryToTarget(key, state[key]));
     let count = 0;
     for (const key of keys) {
         const entry = state[key];
         const handle = entry && typeof entry === 'object' ? entry.handle : entry;
-        if (handle && typeof handle.detach === 'function') {
-            try { handle.detach(); count++; } catch (_) {}
-        }
+        count += detachHandle(handle);
+        delete state[key];
     }
-    globalThis.__iosRustFridaHfl = {};
+    globalThis.__iosRustFridaHfl = targeted ? state : {};
     return {
         kind: 'hfl.stop',
         action: 'stop',
         scope: 'hfl',
         active: keys.length !== 0,
+        targeted,
+        requestedKey,
         count,
         keys,
         targets,
-        message: 'hfl detached: ' + count,
+        message: renderStopMessage('hfl', count, requestedKey, keys.length !== 0),
     };
 }
 
@@ -260,16 +304,15 @@ function detachHflHooks() {
 }
 
 function installObjcHookResult(className, selectorName, isClassMethod) {
-    const prefix = isClassMethod ? '+' : '-';
     if (!ObjC.classExists(className)) {
         throw new Error('class not found: ' + className);
     }
     const imp = ObjC.methodImp(className, selectorName, isClassMethod);
+    const key = objcHookKey(className, selectorName, isClassMethod);
     if (imp === null) {
-        throw new Error('method not found: ' + prefix + '[' + className + ' ' + selectorName + ']');
+        throw new Error('method not found: ' + key);
     }
     globalThis.__iosRustFridaObjcHooks = globalThis.__iosRustFridaObjcHooks || {};
-    const key = prefix + '[' + className + ' ' + selectorName + ']';
     const existing = globalThis.__iosRustFridaObjcHooks[key];
     if (existing && existing.handle && typeof existing.handle.detach === 'function') {
         try { existing.handle.detach(); } catch (_) {}
@@ -320,28 +363,33 @@ function currentObjcHooksResult() {
     };
 }
 
-function detachObjcHooksResult() {
+function detachObjcHooksResult(className, selectorName, isClassMethod) {
     const state = globalThis.__iosRustFridaObjcHooks || {};
-    const keys = Object.keys(state);
+    const targeted = className !== null && className !== undefined && selectorName !== null && selectorName !== undefined;
+    const requestedKey = targeted ? objcHookKey(className, selectorName, !!isClassMethod) : null;
+    const keys = targeted
+        ? (Object.prototype.hasOwnProperty.call(state, requestedKey) ? [requestedKey] : [])
+        : Object.keys(state);
     const targets = keys.map((key) => objcHookEntryToTarget(key, state[key]));
     let count = 0;
     for (const key of keys) {
         const entry = state[key];
         const handle = entry && typeof entry === 'object' ? entry.handle : entry;
-        if (handle && typeof handle.detach === 'function') {
-            try { handle.detach(); count++; } catch (_) {}
-        }
+        count += detachHandle(handle);
+        delete state[key];
     }
-    globalThis.__iosRustFridaObjcHooks = {};
+    globalThis.__iosRustFridaObjcHooks = targeted ? state : {};
     return {
         kind: 'objc.hook.stop',
         action: 'stop',
         scope: 'objc-hook',
         active: keys.length !== 0,
+        targeted,
+        requestedKey,
         count,
         keys,
         targets,
-        message: 'jhook detached: ' + count,
+        message: renderStopMessage('jhook', count, requestedKey, keys.length !== 0),
     };
 }
 
@@ -509,7 +557,7 @@ function installSwiftHookResult(typeName, methodQuery, moduleName) {
         throw new Error('swift method not found: ' + typeName + ' ' + methodQuery + scope);
     }
     globalThis.__iosRustFridaSwiftHooks = globalThis.__iosRustFridaSwiftHooks || {};
-    const key = (moduleName || '*') + '::' + typeName + '::' + methodQuery;
+    const key = swiftHookKey(typeName, methodQuery, moduleName);
     const existing = globalThis.__iosRustFridaSwiftHooks[key];
     if (existing && Array.isArray(existing.handles)) {
         for (const handle of existing.handles) {
@@ -579,33 +627,39 @@ function currentSwiftHooksResult() {
     };
 }
 
-function detachSwiftHooksResult() {
+function detachSwiftHooksResult(typeName, methodQuery, moduleName) {
     const state = globalThis.__iosRustFridaSwiftHooks || {};
-    const keys = Object.keys(state);
+    const targeted = typeName !== null && typeName !== undefined && methodQuery !== null && methodQuery !== undefined;
+    const requestedKey = targeted ? swiftHookKey(typeName, methodQuery, moduleName) : null;
+    const keys = targeted
+        ? (Object.prototype.hasOwnProperty.call(state, requestedKey) ? [requestedKey] : [])
+        : Object.keys(state);
     const targets = keys.map((key) => swiftHookEntryToTarget(key, state[key]));
     let count = 0;
     for (const key of keys) {
         const entry = state[key];
         const handles = entry && Array.isArray(entry.handles) ? entry.handles : [];
         if (handles.length === 0) {
+            delete state[key];
             continue;
         }
         for (const handle of handles) {
-            if (handle && typeof handle.detach === 'function') {
-                try { handle.detach(); count++; } catch (_) {}
-            }
+            count += detachHandle(handle);
         }
+        delete state[key];
     }
-    globalThis.__iosRustFridaSwiftHooks = {};
+    globalThis.__iosRustFridaSwiftHooks = targeted ? state : {};
     return {
         kind: 'swift.hook.stop',
         action: 'stop',
         scope: 'swift-hook',
         active: keys.length !== 0,
+        targeted,
+        requestedKey,
         count,
         keys,
         targets,
-        message: 'shook detached: ' + count,
+        message: renderStopMessage('shook', count, requestedKey, keys.length !== 0),
     };
 }
 
@@ -624,13 +678,13 @@ function dispatchResult(command) {
     case 'hfl.status':
         return currentHflHooksResult();
     case 'hfl.stop':
-        return detachHflHooksResult();
+        return detachHflHooksResult(command.moduleName, command.offsetHex);
     case 'objc.hook.install':
         return installObjcHookResult(String(command.className), String(command.selectorName), !!command.isClassMethod);
     case 'objc.hook.status':
         return currentObjcHooksResult();
     case 'objc.hook.stop':
-        return detachObjcHooksResult();
+        return detachObjcHooksResult(command.className, command.selectorName, command.isClassMethod);
     case 'objc.trace.install':
         return installObjcTraceResult(command.filter === undefined ? '' : String(command.filter));
     case 'trace.status':
@@ -656,7 +710,7 @@ function dispatchResult(command) {
     case 'swift.hook.status':
         return currentSwiftHooksResult();
     case 'swift.hook.stop':
-        return detachSwiftHooksResult();
+        return detachSwiftHooksResult(command.typeName, command.methodQuery, command.moduleName);
     default:
         throw new Error('unsupported controller command kind: ' + String(command.kind));
     }

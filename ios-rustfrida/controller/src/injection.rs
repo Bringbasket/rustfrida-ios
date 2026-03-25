@@ -2796,7 +2796,7 @@ fn execute_hfl_command(stream: &mut UnixStream, command: &str, capture_logs: boo
 
 #[cfg(unix)]
 fn parse_hfl_command(command: &str) -> Result<HflCommand> {
-    const USAGE: &str = "hfl usage: hfl <module> <offset>|hfl status|hfl stop";
+    const USAGE: &str = "hfl usage: hfl <module> <offset>|hfl status|hfl stop|hfl stop <module> <offset>";
     let mut parts = command.split_whitespace();
     match parts.next() {
         Some("hfl") => {}
@@ -2811,7 +2811,13 @@ fn parse_hfl_command(command: &str) -> Result<HflCommand> {
         return Ok(HflCommand::Status);
     }
     if rest.len() == 1 && matches!(rest[0], "stop" | "off" | "disable") {
-        return Ok(HflCommand::Stop);
+        return Ok(HflCommand::StopAll);
+    }
+    if rest.len() == 3 && matches!(rest[0], "stop" | "off" | "disable") {
+        return Ok(HflCommand::Stop {
+            module_name: rest[1].to_string(),
+            offset: parse_offset_value(rest[2])?,
+        });
     }
     if rest.len() != 2 {
         return Err(Error::InvalidArgument(USAGE.into()));
@@ -2871,7 +2877,8 @@ struct ObjcHookSpec {
 enum ObjcHookCommand {
     Install(ObjcHookSpec),
     Status,
-    Stop,
+    StopAll,
+    Stop(ObjcHookSpec),
 }
 
 #[cfg(unix)]
@@ -2879,7 +2886,8 @@ enum ObjcHookCommand {
 enum HflCommand {
     Install { module_name: String, offset: u64 },
     Status,
-    Stop,
+    StopAll,
+    Stop { module_name: String, offset: u64 },
 }
 
 #[cfg(unix)]
@@ -2891,7 +2899,12 @@ enum SwiftHookCommand {
         method_query: String,
     },
     Status,
-    Stop,
+    StopAll,
+    Stop {
+        module_name: Option<String>,
+        type_name: String,
+        method_query: String,
+    },
 }
 
 #[cfg(unix)]
@@ -3171,7 +3184,7 @@ fn parse_native_value_format(raw: &str) -> Result<NativeValueFormat> {
 
 #[cfg(unix)]
 fn parse_jhook_command(command: &str) -> Result<ObjcHookCommand> {
-    const USAGE: &str = "jhook usage: jhook <class> <selector> [meta]|jhook status|jhook stop";
+    const USAGE: &str = "jhook usage: jhook <class> <selector> [meta]|jhook status|jhook stop|jhook stop <class> <selector> [meta]";
     let mut parts = command.split_whitespace();
     match parts.next() {
         Some("jhook") => {}
@@ -3186,7 +3199,24 @@ fn parse_jhook_command(command: &str) -> Result<ObjcHookCommand> {
         return Ok(ObjcHookCommand::Status);
     }
     if rest.len() == 1 && matches!(rest[0], "stop" | "off" | "disable") {
-        return Ok(ObjcHookCommand::Stop);
+        return Ok(ObjcHookCommand::StopAll);
+    }
+    if (3..=4).contains(&rest.len()) && matches!(rest[0], "stop" | "off" | "disable") {
+        let is_class_method = match rest.get(3).copied() {
+            None => false,
+            Some(flag) if matches!(flag, "meta" | "class" | "+" | "cls") => true,
+            Some(flag) if matches!(flag, "instance" | "-" | "inst") => false,
+            Some(flag) => {
+                return Err(Error::InvalidArgument(format!(
+                    "invalid jhook mode `{flag}`; expected meta/class/+ or instance/-"
+                )))
+            }
+        };
+        return Ok(ObjcHookCommand::Stop(ObjcHookSpec {
+            class_name: rest[1].to_string(),
+            selector_name: rest[2].to_string(),
+            is_class_method,
+        }));
     }
     if !(2..=3).contains(&rest.len()) {
         return Err(Error::InvalidArgument(USAGE.into()));
@@ -3212,7 +3242,7 @@ fn parse_jhook_command(command: &str) -> Result<ObjcHookCommand> {
 
 #[cfg(unix)]
 fn parse_shook_command(command: &str) -> Result<SwiftHookCommand> {
-    const USAGE: &str = "shook usage: shook <type> <method>|shook <module> -- <type> <method>|shook status|shook stop";
+    const USAGE: &str = "shook usage: shook <type> <method>|shook <module> -- <type> <method>|shook status|shook stop|shook stop <type> <method>|shook stop <module> -- <type> <method>";
 
     let mut parts = command.split_whitespace();
     match parts.next() {
@@ -3227,8 +3257,35 @@ fn parse_shook_command(command: &str) -> Result<SwiftHookCommand> {
     if rest.len() == 1 && matches!(rest[0], "status" | "state" | "show") {
         return Ok(SwiftHookCommand::Status);
     }
-    if rest.len() == 1 && rest[0] == "stop" {
-        return Ok(SwiftHookCommand::Stop);
+    if rest.len() == 1 && matches!(rest[0], "stop" | "off" | "disable") {
+        return Ok(SwiftHookCommand::StopAll);
+    }
+    if matches!(rest.first().copied(), Some("stop" | "off" | "disable")) {
+        let stop_rest = &rest[1..];
+        if stop_rest.is_empty() {
+            return Err(Error::InvalidArgument(USAGE.into()));
+        }
+        if let Some(separator) = stop_rest.iter().position(|part| *part == "--") {
+            if separator != 1 || stop_rest.len() != 4 {
+                return Err(Error::InvalidArgument(USAGE.into()));
+            }
+
+            return Ok(SwiftHookCommand::Stop {
+                module_name: Some(stop_rest[0].to_string()),
+                type_name: stop_rest[2].to_string(),
+                method_query: stop_rest[3].to_string(),
+            });
+        }
+
+        if stop_rest.len() != 2 {
+            return Err(Error::InvalidArgument(USAGE.into()));
+        }
+
+        return Ok(SwiftHookCommand::Stop {
+            module_name: None,
+            type_name: stop_rest[0].to_string(),
+            method_query: stop_rest[1].to_string(),
+        });
     }
 
     if let Some(separator) = rest.iter().position(|part| *part == "--") {
@@ -3342,7 +3399,12 @@ fn build_hfl_spec(command: &HflCommand) -> Value {
             "offsetHex": format!("0x{offset:x}"),
         }),
         HflCommand::Status => json!({ "kind": "hfl.status" }),
-        HflCommand::Stop => json!({ "kind": "hfl.stop" }),
+        HflCommand::StopAll => json!({ "kind": "hfl.stop" }),
+        HflCommand::Stop { module_name, offset } => json!({
+            "kind": "hfl.stop",
+            "moduleName": module_name,
+            "offsetHex": format!("0x{offset:x}"),
+        }),
     }
 }
 
@@ -3356,7 +3418,13 @@ fn build_jhook_spec(command: &ObjcHookCommand) -> Value {
             "isClassMethod": spec.is_class_method,
         }),
         ObjcHookCommand::Status => json!({ "kind": "objc.hook.status" }),
-        ObjcHookCommand::Stop => json!({ "kind": "objc.hook.stop" }),
+        ObjcHookCommand::StopAll => json!({ "kind": "objc.hook.stop" }),
+        ObjcHookCommand::Stop(spec) => json!({
+            "kind": "objc.hook.stop",
+            "className": spec.class_name,
+            "selectorName": spec.selector_name,
+            "isClassMethod": spec.is_class_method,
+        }),
     }
 }
 
@@ -3374,7 +3442,17 @@ fn build_shook_spec(command: &SwiftHookCommand) -> Value {
             "methodQuery": method_query,
         }),
         SwiftHookCommand::Status => json!({ "kind": "swift.hook.status" }),
-        SwiftHookCommand::Stop => json!({ "kind": "swift.hook.stop" }),
+        SwiftHookCommand::StopAll => json!({ "kind": "swift.hook.stop" }),
+        SwiftHookCommand::Stop {
+            module_name,
+            type_name,
+            method_query,
+        } => json!({
+            "kind": "swift.hook.stop",
+            "moduleName": module_name,
+            "typeName": type_name,
+            "methodQuery": method_query,
+        }),
     }
 }
 
@@ -3425,9 +3503,9 @@ fn print_controller_help() {
     println!(
         "  trace [filter]|trace native [module] <symbol> [-- template]|trace addr <address> [-- template]|trace status|trace stop"
     );
-    println!("  hfl <module> <offset>|hfl status|hfl stop");
-    println!("  jhook <class> <selector> [meta]|jhook status|jhook stop");
-    println!("  shook <type> <method>|shook <module> -- <type> <method>|shook status|shook stop");
+    println!("  hfl <module> <offset>|hfl status|hfl stop|hfl stop <module> <offset>");
+    println!("  jhook <class> <selector> [meta]|jhook status|jhook stop|jhook stop <class> <selector> [meta]");
+    println!("  shook <type> <method>|shook <module> -- <type> <method>|shook status|shook stop|shook stop <type> <method>|shook stop <module> -- <type> <method>");
     println!("  jsinit");
     println!("  jsclean");
     println!("  loadjs <script>");
@@ -3679,6 +3757,17 @@ mod tests {
     }
 
     #[test]
+    fn parse_hfl_targeted_stop() {
+        assert_eq!(
+            parse_hfl_command("hfl stop libobjc.A.dylib 0x1234").expect("parse hfl"),
+            HflCommand::Stop {
+                module_name: "libobjc.A.dylib".into(),
+                offset: 0x1234,
+            }
+        );
+    }
+
+    #[test]
     fn legacy_agent_command_parsing_covers_controller_entrypoints() {
         assert_eq!(AgentCommand::from_legacy("ping"), Some(AgentCommand::Ping));
         assert_eq!(AgentCommand::from_legacy("jsinit"), Some(AgentCommand::JsInit));
@@ -3765,8 +3854,11 @@ mod tests {
         assert!(!command_requests_inline_hook_install("trace status").expect("trace status"));
         assert!(!command_requests_inline_hook_install("stalker status").expect("stalker status"));
         assert!(!command_requests_inline_hook_install("jhook status").expect("jhook status"));
+        assert!(!command_requests_inline_hook_install("jhook stop UIViewController viewDidLoad").expect("jhook targeted stop"));
         assert!(!command_requests_inline_hook_install("shook stop").expect("shook stop"));
+        assert!(!command_requests_inline_hook_install("shook stop Demo -- ViewController viewDidLoad").expect("shook targeted stop"));
         assert!(!command_requests_inline_hook_install("hfl status").expect("hfl status"));
+        assert!(!command_requests_inline_hook_install("hfl stop libobjc.A.dylib 0x1234").expect("hfl targeted stop"));
     }
 
     #[test]
@@ -5122,8 +5214,20 @@ mod tests {
             })
         );
 
-        let stop_spec = build_hfl_spec(&HflCommand::Stop);
+        let stop_spec = build_hfl_spec(&HflCommand::StopAll);
         assert_eq!(stop_spec, json!({ "kind": "hfl.stop" }));
+        let targeted_stop_spec = build_hfl_spec(&HflCommand::Stop {
+            module_name: "libobjc.A.dylib".into(),
+            offset: 0x1234,
+        });
+        assert_eq!(
+            targeted_stop_spec,
+            json!({
+                "kind": "hfl.stop",
+                "moduleName": "libobjc.A.dylib",
+                "offsetHex": "0x1234",
+            })
+        );
         let status_spec = build_hfl_spec(&HflCommand::Status);
         assert_eq!(status_spec, json!({ "kind": "hfl.status" }));
     }
@@ -5505,7 +5609,19 @@ mod tests {
     fn parse_jhook_stop() {
         assert_eq!(
             parse_jhook_command("jhook stop").expect("parse jhook"),
-            ObjcHookCommand::Stop
+            ObjcHookCommand::StopAll
+        );
+    }
+
+    #[test]
+    fn parse_jhook_targeted_stop() {
+        assert_eq!(
+            parse_jhook_command("jhook stop NSString string meta").expect("parse jhook"),
+            ObjcHookCommand::Stop(super::ObjcHookSpec {
+                class_name: "NSString".into(),
+                selector_name: "string".into(),
+                is_class_method: true,
+            })
         );
     }
 
@@ -5531,8 +5647,22 @@ mod tests {
             })
         );
 
-        let stop_spec = build_jhook_spec(&ObjcHookCommand::Stop);
+        let stop_spec = build_jhook_spec(&ObjcHookCommand::StopAll);
         assert_eq!(stop_spec, json!({ "kind": "objc.hook.stop" }));
+        let targeted_stop_spec = build_jhook_spec(&ObjcHookCommand::Stop(super::ObjcHookSpec {
+            class_name: "UIViewController".into(),
+            selector_name: "viewDidLoad".into(),
+            is_class_method: false,
+        }));
+        assert_eq!(
+            targeted_stop_spec,
+            json!({
+                "kind": "objc.hook.stop",
+                "className": "UIViewController",
+                "selectorName": "viewDidLoad",
+                "isClassMethod": false,
+            })
+        );
         let status_spec = build_jhook_spec(&ObjcHookCommand::Status);
         assert_eq!(status_spec, json!({ "kind": "objc.hook.status" }));
     }
@@ -5565,7 +5695,19 @@ mod tests {
     fn parse_shook_stop() {
         assert_eq!(
             parse_shook_command("shook stop").expect("parse shook"),
-            SwiftHookCommand::Stop
+            SwiftHookCommand::StopAll
+        );
+    }
+
+    #[test]
+    fn parse_shook_targeted_stop() {
+        assert_eq!(
+            parse_shook_command("shook stop MyAppBinary -- ViewController viewDidLoad").expect("parse shook"),
+            SwiftHookCommand::Stop {
+                module_name: Some("MyAppBinary".into()),
+                type_name: "ViewController".into(),
+                method_query: "viewDidLoad".into(),
+            }
         );
     }
 
@@ -5594,8 +5736,22 @@ mod tests {
             })
         );
 
-        let stop_spec = build_shook_spec(&SwiftHookCommand::Stop);
+        let stop_spec = build_shook_spec(&SwiftHookCommand::StopAll);
         assert_eq!(stop_spec, json!({ "kind": "swift.hook.stop" }));
+        let targeted_stop_spec = build_shook_spec(&SwiftHookCommand::Stop {
+            module_name: Some("MyAppBinary".into()),
+            type_name: "ViewController".into(),
+            method_query: "viewDidLoad".into(),
+        });
+        assert_eq!(
+            targeted_stop_spec,
+            json!({
+                "kind": "swift.hook.stop",
+                "moduleName": "MyAppBinary",
+                "typeName": "ViewController",
+                "methodQuery": "viewDidLoad",
+            })
+        );
         let status_spec = build_shook_spec(&SwiftHookCommand::Status);
         assert_eq!(status_spec, json!({ "kind": "swift.hook.status" }));
     }
