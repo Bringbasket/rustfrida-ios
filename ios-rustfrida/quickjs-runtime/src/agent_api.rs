@@ -174,6 +174,14 @@ function formatDependency(dep) {
     ].join(' ');
 }
 
+function formatEncryptionInfo(encryptionInfo) {
+    return [
+        'cryptoff=0x' + BigInt(encryptionInfo.cryptoff || 0).toString(16),
+        'cryptsize=0x' + BigInt(encryptionInfo.cryptsize || 0).toString(16),
+        'cryptid=' + String(encryptionInfo.cryptid || 0),
+    ].join(' ');
+}
+
 function formatBuildVersion(buildVersion) {
     const tools = Array.isArray(buildVersion.tools) && buildVersion.tools.length !== 0
         ? buildVersion.tools.map((tool) => String(tool.tool || 'tool') + ':' + String(tool.version || '')).join(',')
@@ -406,6 +414,17 @@ function normalizeDependency(dep) {
         compatibilityVersion: formatPackedVersion(dep.compatibilityVersion),
         timestamp: Number(dep.timestamp || 0),
         text: formatDependency(dep),
+    };
+}
+
+function normalizeEncryptionInfo(encryptionInfo) {
+    return {
+        moduleName: String(encryptionInfo.moduleName || ''),
+        moduleBase: encryptionInfo.moduleBase ? encryptionInfo.moduleBase.toString() : null,
+        cryptoffHex: '0x' + BigInt(encryptionInfo.cryptoff || 0).toString(16),
+        cryptsizeHex: '0x' + BigInt(encryptionInfo.cryptsize || 0).toString(16),
+        cryptid: Number(encryptionInfo.cryptid || 0),
+        text: formatEncryptionInfo(encryptionInfo),
     };
 }
 
@@ -727,6 +746,12 @@ function handleSpecResult(spec) {
         const dependencies = Native.findDependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
         return { kind: 'native.dependencies', moduleName, query, count: dependencies.length, dependencies, text: dependencies.map((dependency) => dependency.text).join('\n') };
     }
+    case 'native.encryption_info': {
+        const moduleName = String(spec.moduleName || '');
+        const encryptionInfo = Native.findEncryptionInfo(moduleName);
+        const normalized = encryptionInfo === null ? null : normalizeEncryptionInfo(encryptionInfo);
+        return { kind: 'native.encryption_info', moduleName, encryptionInfo: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
     case 'native.build_version': {
         const moduleName = String(spec.moduleName || '');
         const buildVersion = Native.findBuildVersion(moduleName);
@@ -1020,6 +1045,17 @@ function legacyToSpec(command) {
             kind: 'native.dependencies',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.encryptionInfo ')) {
+        const moduleName = trimmed.slice('native.encryptionInfo '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.encryptionInfo usage: native.encryptionInfo <module>');
+        }
+        return {
+            kind: 'native.encryption_info',
+            moduleName,
         };
     }
 

@@ -1,6 +1,7 @@
 mod build_version;
 mod deps;
 mod dylinker;
+mod encryption_info;
 mod exports;
 mod imports;
 mod injection;
@@ -25,6 +26,7 @@ pub use build_version::{
 };
 pub use deps::{find_image_dependencies, image_dependency_support_available, ImageDependency};
 pub use dylinker::{find_image_dylinker, image_dylinker_support_available, ImageDylinker};
+pub use encryption_info::{find_image_encryption_info, image_encryption_info_support_available, ImageEncryptionInfo};
 pub use exports::{find_image_exports, native_export_support_available};
 pub use imports::{find_image_imports, image_import_support_available, ImageImport};
 pub use injection::{
