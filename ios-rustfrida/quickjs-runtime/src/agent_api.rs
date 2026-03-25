@@ -268,8 +268,11 @@ function normalizeImage(image) {
     if (image === null || image === undefined) {
         return null;
     }
+    const path = String(image.path || image.name || '');
+    const pathParts = path.split('/').filter(Boolean);
     return {
-        path: String(image.path || image.name || ''),
+        path,
+        name: pathParts.length === 0 ? path : pathParts[pathParts.length - 1],
         base: image.base.toString(),
         slide: formatSlide(image.slide),
         text: formatImage(image),
@@ -316,6 +319,7 @@ function normalizeNativeSymbol(symbol) {
     const offset = typeof symbol.offset === 'bigint' ? symbol.offset : BigInt(symbol.offset || 0);
     return {
         moduleName: String(symbol.moduleName || ''),
+        moduleBase: symbol.moduleBase ? symbol.moduleBase.toString() : null,
         name: String(symbol.name || ''),
         address: symbol.address.toString(),
         offsetHex: '0x' + offset.toString(16),
@@ -325,6 +329,8 @@ function normalizeNativeSymbol(symbol) {
 
 function normalizeSegment(segment) {
     return {
+        moduleName: String(segment.moduleName || ''),
+        moduleBase: segment.moduleBase ? segment.moduleBase.toString() : null,
         name: String(segment.name || ''),
         vmaddr: segment.vmaddr.toString(),
         vmsizeHex: '0x' + BigInt(segment.vmsize || 0).toString(16),
@@ -338,6 +344,8 @@ function normalizeSegment(segment) {
 
 function normalizeSection(section) {
     return {
+        moduleName: String(section.moduleName || ''),
+        moduleBase: section.moduleBase ? section.moduleBase.toString() : null,
         segmentName: String(section.segmentName || ''),
         name: String(section.name || ''),
         addr: section.addr.toString(),
@@ -351,6 +359,8 @@ function normalizeSection(section) {
 
 function normalizeLoadCommand(command) {
     return {
+        moduleName: String(command.moduleName || ''),
+        moduleBase: command.moduleBase ? command.moduleBase.toString() : null,
         index: Number(command.index || 0),
         name: String(command.name || ''),
         cmdHex: '0x' + BigInt(command.cmd || 0).toString(16),
@@ -362,21 +372,28 @@ function normalizeLoadCommand(command) {
 }
 
 function normalizeSwiftSymbol(symbol) {
+    const offset = typeof symbol.offset === 'bigint' ? symbol.offset : BigInt(symbol.offset || 0);
     return {
         moduleName: String(symbol.moduleName || ''),
+        moduleBase: symbol.moduleBase ? symbol.moduleBase.toString() : null,
         name: String(symbol.name || ''),
         demangledName: symbol.demangledName === undefined ? null : symbol.demangledName,
         address: symbol.address.toString(),
+        offsetHex: '0x' + offset.toString(16),
         text: formatSwiftSymbol(symbol),
     };
 }
 
 function normalizeSwiftType(typeInfo) {
+    const sourceOffset = typeof typeInfo.sourceOffset === 'bigint' ? typeInfo.sourceOffset : BigInt(typeInfo.sourceOffset || 0);
     return {
         moduleName: String(typeInfo.moduleName || ''),
+        moduleBase: typeInfo.moduleBase ? typeInfo.moduleBase.toString() : null,
         name: String(typeInfo.name || ''),
+        sourceSymbolName: typeInfo.sourceSymbolName === undefined ? null : String(typeInfo.sourceSymbolName),
         sourceKind: typeInfo.sourceKind === undefined ? null : typeInfo.sourceKind,
         sourceAddress: typeInfo.sourceAddress.toString(),
+        sourceOffsetHex: '0x' + sourceOffset.toString(16),
         sourceDemangledName: typeInfo.sourceDemangledName === undefined ? null : typeInfo.sourceDemangledName,
         text: formatSwiftType(typeInfo),
     };

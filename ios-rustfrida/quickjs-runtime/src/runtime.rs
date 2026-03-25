@@ -1423,8 +1423,32 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); return result.kind === 'native.main_image' && (result.image === null || (typeof result.image.name === 'string' && result.image.name.length !== 0)); })()"
+                    )
+                    .expect("agent native main image result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbols', moduleName: null, query: 'malloc' }); return result.kind === 'native.symbols' && result.count === result.symbols.length && (result.symbols.length === 0 || (typeof result.symbols[0].moduleBase === 'string' && typeof result.symbols[0].offsetHex === 'string')); })()"
+                    )
+                    .expect("agent native symbols result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.methodOwners viewDidLoad'); return value === '' || value.indexOf('[member]') !== -1; })()")
                     .expect("agent swift method owners"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.types' && result.count === result.types.length && (result.types.length === 0 || (typeof result.types[0].moduleBase === 'string' && typeof result.types[0].sourceSymbolName === 'string' && typeof result.types[0].sourceOffsetHex === 'string')); })()"
+                    )
+                    .expect("agent swift types result"),
                 "true"
             );
             assert_eq!(
