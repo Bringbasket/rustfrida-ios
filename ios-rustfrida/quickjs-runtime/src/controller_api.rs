@@ -3,9 +3,11 @@ pub(crate) fn bootstrap_controller_api() -> &'static str {
 function renderResult(result) {
     if (result && typeof result === 'object') {
         switch (String(result.kind || '')) {
+        case 'hfl.install':
         case 'hfl.status':
         case 'hfl.stop':
             return renderHflEvent(result);
+        case 'objc.hook.install':
         case 'objc.hook.status':
         case 'objc.hook.stop':
             return renderObjcHookEvent(result);
@@ -19,6 +21,7 @@ function renderResult(result) {
         case 'objc.stalker.install':
         case 'native.stalker.install':
             return renderStalkerStatus(result);
+        case 'swift.hook.install':
         case 'swift.hook.status':
         case 'swift.hook.stop':
             return renderSwiftHookEvent(result);
@@ -53,6 +56,9 @@ function renderHflEvent(result) {
         Array.isArray(result.targets)
             ? result.targets.map((target) => {
                 const parts = [String(target && target.key !== undefined ? target.key : '<unknown>')];
+                if (result && result.currentKey !== undefined && result.currentKey !== null && target && target.key === result.currentKey) {
+                    parts.push('current=on');
+                }
                 appendDetail(parts, 'target', target ? target.target : null);
                 return parts.join(' ');
             })
@@ -66,6 +72,9 @@ function renderObjcHookEvent(result) {
         Array.isArray(result.targets)
             ? result.targets.map((target) => {
                 const parts = [String(target && target.key !== undefined ? target.key : '<unknown>')];
+                if (result && result.currentKey !== undefined && result.currentKey !== null && target && target.key === result.currentKey) {
+                    parts.push('current=on');
+                }
                 appendDetail(parts, 'target', target ? target.target : null);
                 return parts.join(' ');
             })
@@ -140,6 +149,9 @@ function renderSwiftHookEvent(result) {
     const entries = Array.isArray(result.targets) ? result.targets : [];
     for (const entry of entries) {
         const parts = [String(entry && entry.key !== undefined ? entry.key : '<unknown>')];
+        if (result && result.currentKey !== undefined && result.currentKey !== null && entry && entry.key === result.currentKey) {
+            parts.push('current=on');
+        }
         appendDetail(parts, 'count', entry ? entry.count : null);
         lines.push(' - ' + parts.join(' '));
         const targets = entry && Array.isArray(entry.targets) ? entry.targets : [];
@@ -166,6 +178,15 @@ function renderSwiftHookEvent(result) {
 
 function hflKey(moduleName, offsetHex) {
     return String(moduleName) + '+' + String(offsetHex);
+}
+function resolveCurrentKey(preferredKey, keys) {
+    if (preferredKey !== null && preferredKey !== undefined) {
+        const normalized = String(preferredKey);
+        if (keys.indexOf(normalized) !== -1) {
+            return normalized;
+        }
+    }
+    return keys.length === 0 ? null : keys[keys.length - 1];
 }
 
 function objcHookKey(className, selectorName, isClassMethod) {
@@ -270,14 +291,25 @@ function installHflResult(moduleName, offsetHex) {
             console.log('[hfl] ret ' + key + ' x0=' + ctx.x0.toString());
         }
     });
+    const replacedTarget = existing ? hflEntryToTarget(key, existing) : null;
     globalThis.__iosRustFridaHfl[key] = { handle, moduleName, offsetHex, target: target.toString() };
+    globalThis.__iosRustFridaHflCurrentKey = key;
+    const snapshot = currentHflHooksResult();
     return {
         kind: 'hfl.install',
         action: 'install',
+        active: snapshot.active,
+        count: snapshot.count,
+        keys: snapshot.keys,
+        targets: snapshot.targets,
+        currentKey: snapshot.currentKey,
+        currentTarget: snapshot.currentTarget,
         moduleName,
         offsetHex,
         key,
         target: target.toString(),
+        replacedCount: replacedTarget ? 1 : 0,
+        replacedTarget,
         message: 'hfl installed: ' + key + ' => ' + target.toString() + ' (hook logs flush on the next JS command)',
     };
 }
@@ -290,6 +322,8 @@ function currentHflHooksResult() {
     const state = globalThis.__iosRustFridaHfl || {};
     const keys = Object.keys(state);
     const targets = keys.map((key) => hflEntryToTarget(key, state[key]));
+    const currentKey = resolveCurrentKey(globalThis.__iosRustFridaHflCurrentKey, keys);
+    globalThis.__iosRustFridaHflCurrentKey = currentKey;
     return {
         kind: 'hfl.status',
         action: 'status',
@@ -297,6 +331,8 @@ function currentHflHooksResult() {
         count: keys.length,
         keys,
         targets,
+        currentKey,
+        currentTarget: targets.find((target) => target.key === currentKey) || null,
         message: keys.length === 0 ? 'hfl inactive' : ('hfl active: ' + keys.length),
     };
 }
@@ -317,6 +353,7 @@ function detachHflHooksResult(moduleName, offsetHex) {
         delete state[key];
     }
     globalThis.__iosRustFridaHfl = targeted ? state : {};
+    globalThis.__iosRustFridaHflCurrentKey = resolveCurrentKey(globalThis.__iosRustFridaHflCurrentKey, Object.keys(globalThis.__iosRustFridaHfl || {}));
     return {
         kind: 'hfl.stop',
         action: 'stop',
@@ -357,6 +394,7 @@ function installObjcHookResult(className, selectorName, isClassMethod) {
             console.log('[jhook] leave ' + key + ' ret=' + ctx.x0.toString());
         }
     });
+    const replacedTarget = existing ? objcHookEntryToTarget(key, existing) : null;
     globalThis.__iosRustFridaObjcHooks[key] = {
         handle,
         className,
@@ -364,14 +402,24 @@ function installObjcHookResult(className, selectorName, isClassMethod) {
         isClassMethod: !!isClassMethod,
         target: imp.toString(),
     };
+    globalThis.__iosRustFridaObjcHooksCurrentKey = key;
+    const snapshot = currentObjcHooksResult();
     return {
         kind: 'objc.hook.install',
         action: 'install',
+        active: snapshot.active,
+        count: snapshot.count,
+        keys: snapshot.keys,
+        targets: snapshot.targets,
+        currentKey: snapshot.currentKey,
+        currentTarget: snapshot.currentTarget,
         className,
         selectorName,
         isClassMethod: !!isClassMethod,
         key,
         target: imp.toString(),
+        replacedCount: replacedTarget ? 1 : 0,
+        replacedTarget,
         message: 'jhook installed: ' + key + ' => ' + imp.toString() + ' (hook logs flush on the next JS command)',
     };
 }
@@ -384,6 +432,8 @@ function currentObjcHooksResult() {
     const state = globalThis.__iosRustFridaObjcHooks || {};
     const keys = Object.keys(state);
     const targets = keys.map((key) => objcHookEntryToTarget(key, state[key]));
+    const currentKey = resolveCurrentKey(globalThis.__iosRustFridaObjcHooksCurrentKey, keys);
+    globalThis.__iosRustFridaObjcHooksCurrentKey = currentKey;
     return {
         kind: 'objc.hook.status',
         action: 'status',
@@ -391,6 +441,8 @@ function currentObjcHooksResult() {
         count: keys.length,
         keys,
         targets,
+        currentKey,
+        currentTarget: targets.find((target) => target.key === currentKey) || null,
         message: keys.length === 0 ? 'jhook inactive' : ('jhook active: ' + keys.length),
     };
 }
@@ -411,6 +463,7 @@ function detachObjcHooksResult(className, selectorName, isClassMethod) {
         delete state[key];
     }
     globalThis.__iosRustFridaObjcHooks = targeted ? state : {};
+    globalThis.__iosRustFridaObjcHooksCurrentKey = resolveCurrentKey(globalThis.__iosRustFridaObjcHooksCurrentKey, Object.keys(globalThis.__iosRustFridaObjcHooks || {}));
     return {
         kind: 'objc.hook.stop',
         action: 'stop',
@@ -624,7 +677,7 @@ function installSwiftHookResult(typeName, methodQuery, moduleName) {
         handles.push(handle);
     }
 
-    const targets = matches.map((match) => ({
+    const resolvedTargets = matches.map((match) => ({
         address: match.address.toString(),
         name: match.name === undefined ? null : match.name,
         demangledName: match.demangledName === undefined ? null : match.demangledName,
@@ -635,17 +688,28 @@ function installSwiftHookResult(typeName, methodQuery, moduleName) {
         moduleName: moduleName === null || moduleName === undefined ? null : moduleName,
         typeName,
         methodQuery,
-        targets,
+        targets: resolvedTargets,
     };
+    const replacedTarget = existing ? swiftHookEntryToTarget(key, existing) : null;
+    globalThis.__iosRustFridaSwiftHooksCurrentKey = key;
+    const snapshot = currentSwiftHooksResult();
     return {
         kind: 'swift.hook.install',
         action: 'install',
+        active: snapshot.active,
+        currentKey: snapshot.currentKey,
+        currentTarget: snapshot.currentTarget,
         moduleName: moduleName === null || moduleName === undefined ? null : moduleName,
         typeName,
         methodQuery,
         key,
         count: matches.length,
-        targets,
+        targets: snapshot.targets,
+        keys: snapshot.keys,
+        activeCount: snapshot.count,
+        resolvedTargets,
+        replacedCount: replacedTarget ? 1 : 0,
+        replacedTarget,
         message: 'shook installed: ' + key + ' count=' + matches.length + ' (hook logs flush on the next JS command)',
     };
 }
@@ -658,6 +722,8 @@ function currentSwiftHooksResult() {
     const state = globalThis.__iosRustFridaSwiftHooks || {};
     const keys = Object.keys(state);
     const targets = keys.map((key) => swiftHookEntryToTarget(key, state[key]));
+    const currentKey = resolveCurrentKey(globalThis.__iosRustFridaSwiftHooksCurrentKey, keys);
+    globalThis.__iosRustFridaSwiftHooksCurrentKey = currentKey;
     return {
         kind: 'swift.hook.status',
         action: 'status',
@@ -665,6 +731,8 @@ function currentSwiftHooksResult() {
         count: targets.reduce((sum, item) => sum + item.count, 0),
         keys,
         targets,
+        currentKey,
+        currentTarget: targets.find((target) => target.key === currentKey) || null,
         message: keys.length === 0 ? 'shook inactive' : ('shook active: ' + keys.length),
     };
 }
@@ -691,6 +759,7 @@ function detachSwiftHooksResult(typeName, methodQuery, moduleName) {
         delete state[key];
     }
     globalThis.__iosRustFridaSwiftHooks = targeted ? state : {};
+    globalThis.__iosRustFridaSwiftHooksCurrentKey = resolveCurrentKey(globalThis.__iosRustFridaSwiftHooksCurrentKey, Object.keys(globalThis.__iosRustFridaSwiftHooks || {}));
     return {
         kind: 'swift.hook.stop',
         action: 'stop',

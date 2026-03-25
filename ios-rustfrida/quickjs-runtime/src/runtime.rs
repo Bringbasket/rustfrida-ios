@@ -922,6 +922,54 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const previousBase = Module.findBaseAddress; const previousAttach = Interceptor.attach; Module.findBaseAddress = function() { return ptr('0x180000000'); }; Interceptor.attach = function() { return { detach() {} }; }; try { const result = __iosRustFridaControllerApi.dispatchResult({ kind: 'hfl.install', moduleName: 'UIKit', offsetHex: '0x1234' }); return result.kind === 'hfl.install' && result.currentKey === 'UIKit+0x1234' && result.currentTarget && result.currentTarget.key === 'UIKit+0x1234' && result.count === 1 && result.replacedCount === 0; } finally { Module.findBaseAddress = previousBase; Interceptor.attach = previousAttach; globalThis.__iosRustFridaHfl = {}; globalThis.__iosRustFridaHflCurrentKey = null; } })()"
+                    )
+                    .expect("controller hfl install result includes current target"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const previousBase = Module.findBaseAddress; const previousAttach = Interceptor.attach; Module.findBaseAddress = function() { return ptr('0x180000000'); }; Interceptor.attach = function() { return { detach() {} }; }; try { const text = __iosRustFridaControllerApi.dispatch({ kind: 'hfl.install', moduleName: 'UIKit', offsetHex: '0x1234' }); return text.indexOf('hfl installed: UIKit+0x1234') === 0 && text.indexOf('UIKit+0x1234 current=on') !== -1; } finally { Module.findBaseAddress = previousBase; Interceptor.attach = previousAttach; globalThis.__iosRustFridaHfl = {}; globalThis.__iosRustFridaHflCurrentKey = null; } })()"
+                    )
+                    .expect("controller hfl install text renders current target"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const previousClassExists = ObjC.classExists; const previousMethodImp = ObjC.methodImp; const previousAttach = Interceptor.attach; ObjC.classExists = function() { return true; }; ObjC.methodImp = function() { return ptr('0x18000abcd'); }; Interceptor.attach = function() { return { detach() {} }; }; try { const result = __iosRustFridaControllerApi.dispatchResult({ kind: 'objc.hook.install', className: 'UIViewController', selectorName: 'viewDidLoad', isClassMethod: false }); return result.kind === 'objc.hook.install' && result.currentKey === '-[UIViewController viewDidLoad]' && result.currentTarget && result.currentTarget.key === '-[UIViewController viewDidLoad]' && result.count === 1 && result.replacedCount === 0; } finally { ObjC.classExists = previousClassExists; ObjC.methodImp = previousMethodImp; Interceptor.attach = previousAttach; globalThis.__iosRustFridaObjcHooks = {}; globalThis.__iosRustFridaObjcHooksCurrentKey = null; } })()"
+                    )
+                    .expect("controller objc hook install result includes current target"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const previousClassExists = ObjC.classExists; const previousMethodImp = ObjC.methodImp; const previousAttach = Interceptor.attach; ObjC.classExists = function() { return true; }; ObjC.methodImp = function() { return ptr('0x18000abcd'); }; Interceptor.attach = function() { return { detach() {} }; }; try { const text = __iosRustFridaControllerApi.dispatch({ kind: 'objc.hook.install', className: 'UIViewController', selectorName: 'viewDidLoad', isClassMethod: false }); return text.indexOf('jhook installed: -[UIViewController viewDidLoad]') === 0 && text.indexOf('-[UIViewController viewDidLoad] current=on') !== -1; } finally { ObjC.classExists = previousClassExists; ObjC.methodImp = previousMethodImp; Interceptor.attach = previousAttach; globalThis.__iosRustFridaObjcHooks = {}; globalThis.__iosRustFridaObjcHooksCurrentKey = null; } })()"
+                    )
+                    .expect("controller objc hook install text renders current target"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const previousFindMethods = Swift.findMethods; const previousAttach = Interceptor.attach; Swift.findMethods = function() { return [{ address: ptr('0x18000beef'), name: '$s4MyApp14ViewControllerC11viewDidLoadyyF', demangledName: 'MyApp.ViewController.viewDidLoad()', moduleName: 'MyApp' }]; }; Interceptor.attach = function() { return { detach() {} }; }; try { const result = __iosRustFridaControllerApi.dispatchResult({ kind: 'swift.hook.install', moduleName: 'MyApp', typeName: 'ViewController', methodQuery: 'viewDidLoad' }); return result.kind === 'swift.hook.install' && result.currentKey === 'MyApp::ViewController::viewDidLoad' && result.currentTarget && result.currentTarget.key === 'MyApp::ViewController::viewDidLoad' && result.count === 1 && result.activeCount === 1 && Array.isArray(result.resolvedTargets) && result.resolvedTargets.length === 1 && result.replacedCount === 0; } finally { Swift.findMethods = previousFindMethods; Interceptor.attach = previousAttach; globalThis.__iosRustFridaSwiftHooks = {}; globalThis.__iosRustFridaSwiftHooksCurrentKey = null; } })()"
+                    )
+                    .expect("controller swift hook install result includes current target"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const previousFindMethods = Swift.findMethods; const previousAttach = Interceptor.attach; Swift.findMethods = function() { return [{ address: ptr('0x18000beef'), name: '$s4MyApp14ViewControllerC11viewDidLoadyyF', demangledName: 'MyApp.ViewController.viewDidLoad()', moduleName: 'MyApp' }]; }; Interceptor.attach = function() { return { detach() {} }; }; try { const text = __iosRustFridaControllerApi.dispatch({ kind: 'swift.hook.install', moduleName: 'MyApp', typeName: 'ViewController', methodQuery: 'viewDidLoad' }); return text.indexOf('shook installed: MyApp::ViewController::viewDidLoad') === 0 && text.indexOf('MyApp::ViewController::viewDidLoad current=on count=1') !== -1; } finally { Swift.findMethods = previousFindMethods; Interceptor.attach = previousAttach; globalThis.__iosRustFridaSwiftHooks = {}; globalThis.__iosRustFridaSwiftHooksCurrentKey = null; } })()"
+                    )
+                    .expect("controller swift hook install text renders current target"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const helper = __iosRustFridaNativeHooks; const previous = helper.installTraceResult; helper.installTraceResult = function(spec) { return { action: 'install', active: true, currentKey: 'trace-export:*:malloc', currentSession: { key: 'trace-export:*:malloc', label: '*!malloc', filter: null, targetAddress: '0x180006000', targetKind: 'export', targetSymbol: 'malloc', moduleName: null, symbolName: 'malloc', objcMode: null }, sessionCount: 2, sessions: [{ key: 'objc-trace:UIView', label: 'objc_msgSend', filter: 'UIView', targetAddress: '0x180004000', targetKind: 'export', targetSymbol: 'objc_msgSend', moduleName: null, symbolName: 'objc_msgSend', objcMode: 'trace' }, { key: 'trace-export:*:malloc', label: '*!malloc', filter: null, targetAddress: '0x180006000', targetKind: 'export', targetSymbol: 'malloc', moduleName: null, symbolName: 'malloc', objcMode: null }], targetKind: 'export', targetAddress: '0x180006000', targetSymbol: 'malloc', moduleName: null, symbolName: 'malloc', resolvedLabel: '*!malloc', templateArgs: null, templateRet: null, key: 'trace-export:*:malloc', replacedCount: 0, replacedLabel: null, replacedSessionCount: 0, replacedSession: null, replacedSessions: [], message: 'trace installed: *!malloc (hook logs flush on the next JS command)' }; }; try { const result = __iosRustFridaControllerApi.dispatchResult({ kind: 'native.trace.install', target: { kind: 'export', moduleName: null, symbolName: 'malloc' } }); return result.kind === 'native.trace.install' && result.scope === 'trace' && result.target && result.target.kind === 'export' && result.target.symbolName === 'malloc' && result.currentKey === 'trace-export:*:malloc' && result.currentSession && result.currentSession.key === 'trace-export:*:malloc' && result.sessionCount === 2 && Array.isArray(result.sessions) && result.sessions.length === 2 && result.replacedSession === null && Array.isArray(result.replacedSessions) && result.replacedSessions.length === 0; } finally { helper.installTraceResult = previous; } })()"
                     )
                     .expect("controller trace install result includes registry snapshot"),
@@ -1021,13 +1069,13 @@ undefined;
                 runtime
                     .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'hfl.status' }))")
                     .expect("controller hfl status result"),
-                "{\"kind\":\"hfl.status\",\"action\":\"status\",\"active\":false,\"count\":0,\"keys\":[],\"targets\":[],\"message\":\"hfl inactive\"}"
+                "{\"kind\":\"hfl.status\",\"action\":\"status\",\"active\":false,\"count\":0,\"keys\":[],\"targets\":[],\"currentKey\":null,\"currentTarget\":null,\"message\":\"hfl inactive\"}"
             );
             assert_eq!(
                 runtime
                     .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'objc.hook.status' }))")
                     .expect("controller objc hook status result"),
-                "{\"kind\":\"objc.hook.status\",\"action\":\"status\",\"active\":false,\"count\":0,\"keys\":[],\"targets\":[],\"message\":\"jhook inactive\"}"
+                "{\"kind\":\"objc.hook.status\",\"action\":\"status\",\"active\":false,\"count\":0,\"keys\":[],\"targets\":[],\"currentKey\":null,\"currentTarget\":null,\"message\":\"jhook inactive\"}"
             );
             assert_eq!(
                 runtime
@@ -1045,7 +1093,7 @@ undefined;
                 runtime
                     .eval("JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'swift.hook.status' }))")
                     .expect("controller swift hook status result"),
-                "{\"kind\":\"swift.hook.status\",\"action\":\"status\",\"active\":false,\"count\":0,\"keys\":[],\"targets\":[],\"message\":\"shook inactive\"}"
+                "{\"kind\":\"swift.hook.status\",\"action\":\"status\",\"active\":false,\"count\":0,\"keys\":[],\"targets\":[],\"currentKey\":null,\"currentTarget\":null,\"message\":\"shook inactive\"}"
             );
             assert_eq!(
                 runtime
@@ -1081,25 +1129,25 @@ undefined;
                 runtime
                     .eval("(function() { globalThis.__iosRustFridaHfl = { 'libobjc.A.dylib+0x1234': { moduleName: 'libobjc.A.dylib', offsetHex: '0x1234', target: '0x180001234' } }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'hfl.status' })); })()")
                     .expect("controller populated hfl status result"),
-                "{\"kind\":\"hfl.status\",\"action\":\"status\",\"active\":true,\"count\":1,\"keys\":[\"libobjc.A.dylib+0x1234\"],\"targets\":[{\"key\":\"libobjc.A.dylib+0x1234\",\"moduleName\":\"libobjc.A.dylib\",\"offsetHex\":\"0x1234\",\"target\":\"0x180001234\"}],\"message\":\"hfl active: 1\"}"
+                "{\"kind\":\"hfl.status\",\"action\":\"status\",\"active\":true,\"count\":1,\"keys\":[\"libobjc.A.dylib+0x1234\"],\"targets\":[{\"key\":\"libobjc.A.dylib+0x1234\",\"moduleName\":\"libobjc.A.dylib\",\"offsetHex\":\"0x1234\",\"target\":\"0x180001234\"}],\"currentKey\":\"libobjc.A.dylib+0x1234\",\"currentTarget\":{\"key\":\"libobjc.A.dylib+0x1234\",\"moduleName\":\"libobjc.A.dylib\",\"offsetHex\":\"0x1234\",\"target\":\"0x180001234\"},\"message\":\"hfl active: 1\"}"
             );
             assert_eq!(
                 runtime
                     .eval("(function() { globalThis.__iosRustFridaHfl = { 'libobjc.A.dylib+0x1234': { moduleName: 'libobjc.A.dylib', offsetHex: '0x1234', target: '0x180001234' } }; return __iosRustFridaControllerApi.dispatch({ kind: 'hfl.status' }); })()")
                     .expect("controller populated hfl status text"),
-                "hfl active: 1\n - libobjc.A.dylib+0x1234 target=0x180001234"
+                "hfl active: 1\n - libobjc.A.dylib+0x1234 current=on target=0x180001234"
             );
             assert_eq!(
                 runtime
                     .eval("(function() { globalThis.__iosRustFridaObjcHooks = { '-[UIViewController viewDidLoad]': { className: 'UIViewController', selectorName: 'viewDidLoad', isClassMethod: false, target: '0x18000abcd' } }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'objc.hook.status' })); })()")
                     .expect("controller populated objc hook status result"),
-                "{\"kind\":\"objc.hook.status\",\"action\":\"status\",\"active\":true,\"count\":1,\"keys\":[\"-[UIViewController viewDidLoad]\"],\"targets\":[{\"key\":\"-[UIViewController viewDidLoad]\",\"className\":\"UIViewController\",\"selectorName\":\"viewDidLoad\",\"isClassMethod\":false,\"target\":\"0x18000abcd\"}],\"message\":\"jhook active: 1\"}"
+                "{\"kind\":\"objc.hook.status\",\"action\":\"status\",\"active\":true,\"count\":1,\"keys\":[\"-[UIViewController viewDidLoad]\"],\"targets\":[{\"key\":\"-[UIViewController viewDidLoad]\",\"className\":\"UIViewController\",\"selectorName\":\"viewDidLoad\",\"isClassMethod\":false,\"target\":\"0x18000abcd\"}],\"currentKey\":\"-[UIViewController viewDidLoad]\",\"currentTarget\":{\"key\":\"-[UIViewController viewDidLoad]\",\"className\":\"UIViewController\",\"selectorName\":\"viewDidLoad\",\"isClassMethod\":false,\"target\":\"0x18000abcd\"},\"message\":\"jhook active: 1\"}"
             );
             assert_eq!(
                 runtime
                     .eval("(function() { globalThis.__iosRustFridaObjcHooks = { '-[UIViewController viewDidLoad]': { className: 'UIViewController', selectorName: 'viewDidLoad', isClassMethod: false, target: '0x18000abcd' } }; return __iosRustFridaControllerApi.dispatch({ kind: 'objc.hook.status' }); })()")
                     .expect("controller populated objc hook status text"),
-                "jhook active: 1\n - -[UIViewController viewDidLoad] target=0x18000abcd"
+                "jhook active: 1\n - -[UIViewController viewDidLoad] current=on target=0x18000abcd"
             );
             assert_eq!(
                 runtime
@@ -1123,13 +1171,13 @@ undefined;
                 runtime
                     .eval("(function() { globalThis.__iosRustFridaSwiftHooks = { 'MyApp::ViewController::viewDidLoad': { moduleName: 'MyApp', typeName: 'ViewController', methodQuery: 'viewDidLoad', targets: [{ address: '0x18000beef', name: '$s4MyApp14ViewControllerC11viewDidLoadyyF', demangledName: 'MyApp.ViewController.viewDidLoad()', moduleName: 'MyApp' }] } }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'swift.hook.status' })); })()")
                     .expect("controller populated swift hook status result"),
-                "{\"kind\":\"swift.hook.status\",\"action\":\"status\",\"active\":true,\"count\":1,\"keys\":[\"MyApp::ViewController::viewDidLoad\"],\"targets\":[{\"key\":\"MyApp::ViewController::viewDidLoad\",\"moduleName\":\"MyApp\",\"typeName\":\"ViewController\",\"methodQuery\":\"viewDidLoad\",\"count\":1,\"targets\":[{\"address\":\"0x18000beef\",\"name\":\"$s4MyApp14ViewControllerC11viewDidLoadyyF\",\"demangledName\":\"MyApp.ViewController.viewDidLoad()\",\"moduleName\":\"MyApp\"}]}],\"message\":\"shook active: 1\"}"
+                "{\"kind\":\"swift.hook.status\",\"action\":\"status\",\"active\":true,\"count\":1,\"keys\":[\"MyApp::ViewController::viewDidLoad\"],\"targets\":[{\"key\":\"MyApp::ViewController::viewDidLoad\",\"moduleName\":\"MyApp\",\"typeName\":\"ViewController\",\"methodQuery\":\"viewDidLoad\",\"count\":1,\"targets\":[{\"address\":\"0x18000beef\",\"name\":\"$s4MyApp14ViewControllerC11viewDidLoadyyF\",\"demangledName\":\"MyApp.ViewController.viewDidLoad()\",\"moduleName\":\"MyApp\"}]}],\"currentKey\":\"MyApp::ViewController::viewDidLoad\",\"currentTarget\":{\"key\":\"MyApp::ViewController::viewDidLoad\",\"moduleName\":\"MyApp\",\"typeName\":\"ViewController\",\"methodQuery\":\"viewDidLoad\",\"count\":1,\"targets\":[{\"address\":\"0x18000beef\",\"name\":\"$s4MyApp14ViewControllerC11viewDidLoadyyF\",\"demangledName\":\"MyApp.ViewController.viewDidLoad()\",\"moduleName\":\"MyApp\"}]},\"message\":\"shook active: 1\"}"
             );
             assert_eq!(
                 runtime
                     .eval("(function() { globalThis.__iosRustFridaSwiftHooks = { 'MyApp::ViewController::viewDidLoad': { moduleName: 'MyApp', typeName: 'ViewController', methodQuery: 'viewDidLoad', targets: [{ address: '0x18000beef', name: '$s4MyApp14ViewControllerC11viewDidLoadyyF', demangledName: 'MyApp.ViewController.viewDidLoad()', moduleName: 'MyApp' }] } }; return __iosRustFridaControllerApi.dispatch({ kind: 'swift.hook.status' }); })()")
                     .expect("controller populated swift hook status text"),
-                "shook active: 1\n - MyApp::ViewController::viewDidLoad count=1\n   - address=0x18000beef name=MyApp.ViewController.viewDidLoad() module=MyApp"
+                "shook active: 1\n - MyApp::ViewController::viewDidLoad current=on count=1\n   - address=0x18000beef name=MyApp.ViewController.viewDidLoad() module=MyApp"
             );
             assert_eq!(
                 runtime
