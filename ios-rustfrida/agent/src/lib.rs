@@ -201,6 +201,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.uuid libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.rpaths libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

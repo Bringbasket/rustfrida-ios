@@ -183,6 +183,10 @@ function formatInstallName(installName) {
     ].join(' ');
 }
 
+function formatUuid(imageUuid) {
+    return String(imageUuid.uuid || '');
+}
+
 function formatRpath(rpath) {
     return String(rpath.path || '');
 }
@@ -401,6 +405,15 @@ function normalizeInstallName(installName) {
         compatibilityVersion: formatPackedVersion(installName.compatibilityVersion),
         timestamp: Number(installName.timestamp || 0),
         text: formatInstallName(installName),
+    };
+}
+
+function normalizeUuid(imageUuid) {
+    return {
+        moduleName: String(imageUuid.moduleName || ''),
+        moduleBase: imageUuid.moduleBase ? imageUuid.moduleBase.toString() : null,
+        uuid: String(imageUuid.uuid || ''),
+        text: formatUuid(imageUuid),
     };
 }
 
@@ -672,6 +685,12 @@ function handleSpecResult(spec) {
         const installName = Native.findInstallName(moduleName);
         const normalized = installName === null ? null : normalizeInstallName(installName);
         return { kind: 'native.install_name', moduleName, installName: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
+    case 'native.uuid': {
+        const moduleName = String(spec.moduleName || '');
+        const imageUuid = Native.findUuid(moduleName);
+        const normalized = imageUuid === null ? null : normalizeUuid(imageUuid);
+        return { kind: 'native.uuid', moduleName, imageUuid: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.rpaths': {
         const moduleName = String(spec.moduleName || '');
@@ -952,6 +971,17 @@ function legacyToSpec(command) {
         }
         return {
             kind: 'native.install_name',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.uuid ')) {
+        const moduleName = trimmed.slice('native.uuid '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.uuid usage: native.uuid <module>');
+        }
+        return {
+            kind: 'native.uuid',
             moduleName,
         };
     }

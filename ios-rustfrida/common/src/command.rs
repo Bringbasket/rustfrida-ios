@@ -96,6 +96,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.exports ")
         || command.starts_with("native.dependencies ")
         || command.starts_with("native.installName ")
+        || command.starts_with("native.uuid ")
         || command.starts_with("native.rpaths ")
         || command.starts_with("native.imports ")
         || command.starts_with("native.images ")
@@ -284,6 +285,17 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }
         return Some(json!({
             "kind": "native.install_name",
+            "moduleName": module_name,
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.uuid ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.uuid",
             "moduleName": module_name,
         }));
     }
@@ -619,6 +631,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.uuid libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.rpaths libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -727,6 +743,12 @@ mod tests {
             AgentCommand::from_legacy("native.installName  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.installName  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.uuid  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.uuid  ".into(),
             })
         );
         assert_eq!(

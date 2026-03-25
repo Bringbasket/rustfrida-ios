@@ -3601,6 +3601,7 @@ fn print_controller_help() {
     println!("  native.exports <module>|native.exports <module> -- <query>");
     println!("  native.dependencies <module>|native.dependencies <module> -- <query>");
     println!("  native.installName <module>");
+    println!("  native.uuid <module>");
     println!("  native.rpaths <module>|native.rpaths <module> -- <query>");
     println!("  native.imports <module>|native.imports <module> -- <query>");
     println!("  native.loadcmds <module>");
@@ -3890,6 +3891,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.uuid DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.rpaths DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -3935,6 +3940,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
         assert!(!command_requires_inline_hooks("native.installName UIKit"));
+        assert!(!command_requires_inline_hooks("native.uuid UIKit"));
         assert!(!command_requires_inline_hooks("native.rpaths UIKit"));
         assert!(!command_requires_inline_hooks("native.imports UIKit"));
         assert!(!command_requires_inline_hooks("swift.types ViewController"));

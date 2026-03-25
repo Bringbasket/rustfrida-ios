@@ -13,6 +13,7 @@ mod sections;
 mod segments;
 mod swift;
 mod symbols;
+mod uuid;
 
 use common::Result;
 use std::path::Path;
@@ -45,6 +46,7 @@ pub use swift::{
     SwiftType,
 };
 pub use symbols::{find_native_symbols, native_symbol_support_available, NativeSymbol};
+pub use uuid::{find_image_uuid, image_uuid_support_available, ImageUuid};
 
 pub const DEFAULT_BOOTSTRAP_WAIT_MS: u64 = 3_000;
 

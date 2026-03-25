@@ -1456,6 +1456,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.uuid', moduleName: main.image.name }); return result.kind === 'native.uuid' && (result.imageUuid === null || (typeof result.imageUuid.uuid === 'string' && result.imageUuid.uuid.length !== 0)); })()"
+                    )
+                    .expect("agent native uuid result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.rpaths', moduleName: main.image.name, query: null }); return result.kind === 'native.rpaths' && result.count === result.rpaths.length && (result.rpaths.length === 0 || typeof result.rpaths[0].path === 'string'); })()"
                     )
                     .expect("agent native rpaths result"),
@@ -1553,6 +1561,12 @@ undefined;
                 runtime
                     .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.installName ' + base); return value === '<null>' || value.indexOf('/') !== -1; })()")
                     .expect("agent native install name"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.uuid ' + base); return value === '<null>' || value.indexOf('-') !== -1; })()")
+                    .expect("agent native uuid"),
                 "true"
             );
             assert_eq!(
