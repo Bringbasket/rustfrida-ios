@@ -1,4 +1,5 @@
 mod build_version;
+mod code_signature;
 mod deps;
 mod dyld_info;
 mod dylinker;
@@ -28,6 +29,9 @@ use std::path::Path;
 
 pub use build_version::{
     find_image_build_version, image_build_version_support_available, ImageBuildTool, ImageBuildVersion,
+};
+pub use code_signature::{
+    find_image_code_signature, image_code_signature_support_available, ImageCodeSignature,
 };
 pub use deps::{find_image_dependencies, image_dependency_support_available, ImageDependency};
 pub use dyld_info::{find_image_dyld_info, image_dyld_info_support_available, ImageDyldInfo};

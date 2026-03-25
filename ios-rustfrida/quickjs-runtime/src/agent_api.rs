@@ -240,6 +240,24 @@ function formatFunctionStarts(functionStarts) {
         : summary + '\n' + starts.map((functionStart) => formatFunctionStart(functionStart)).join('\n');
 }
 
+function formatCodeSignature(codeSignature) {
+    return [
+        'dataoff=0x' + BigInt(codeSignature.dataoff || 0).toString(16),
+        'datasize=0x' + BigInt(codeSignature.datasize || 0).toString(16),
+        'linkeditBase=' + codeSignature.linkeditBase.toString(),
+        'dataAddress=' + codeSignature.dataAddress.toString(),
+        'magic=' + (codeSignature.magicName === null || codeSignature.magicName === undefined
+            ? '<none>'
+            : '0x' + BigInt(codeSignature.magic || 0).toString(16) + ':' + String(codeSignature.magicName)),
+        'length=' + (codeSignature.length === null || codeSignature.length === undefined
+            ? '<none>'
+            : '0x' + BigInt(codeSignature.length || 0).toString(16)),
+        'count=' + (codeSignature.count === null || codeSignature.count === undefined
+            ? '<none>'
+            : String(codeSignature.count)),
+    ].join(' ');
+}
+
 function formatSourceVersion(sourceVersion) {
     return 'version=' + String(sourceVersion.version || '');
 }
@@ -561,6 +579,22 @@ function normalizeFunctionStarts(functionStarts) {
         count: starts.length,
         starts,
         text: formatFunctionStarts(functionStarts),
+    };
+}
+
+function normalizeCodeSignature(codeSignature) {
+    return {
+        moduleName: String(codeSignature.moduleName || ''),
+        moduleBase: codeSignature.moduleBase ? codeSignature.moduleBase.toString() : null,
+        dataoffHex: '0x' + BigInt(codeSignature.dataoff || 0).toString(16),
+        datasizeHex: '0x' + BigInt(codeSignature.datasize || 0).toString(16),
+        linkeditBase: codeSignature.linkeditBase.toString(),
+        dataAddress: codeSignature.dataAddress.toString(),
+        magicHex: codeSignature.magic === null || codeSignature.magic === undefined ? null : '0x' + BigInt(codeSignature.magic).toString(16),
+        magicName: codeSignature.magicName === undefined ? null : codeSignature.magicName,
+        lengthHex: codeSignature.length === null || codeSignature.length === undefined ? null : '0x' + BigInt(codeSignature.length).toString(16),
+        count: codeSignature.count === null || codeSignature.count === undefined ? null : Number(codeSignature.count),
+        text: formatCodeSignature(codeSignature),
     };
 }
 
@@ -921,6 +955,12 @@ function handleSpecResult(spec) {
         const normalized = functionStarts === null ? null : normalizeFunctionStarts(functionStarts);
         return { kind: 'native.function_starts', moduleName, functionStarts: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
+    case 'native.code_signature': {
+        const moduleName = String(spec.moduleName || '');
+        const codeSignature = Native.findCodeSignature(moduleName);
+        const normalized = codeSignature === null ? null : normalizeCodeSignature(codeSignature);
+        return { kind: 'native.code_signature', moduleName, codeSignature: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
     case 'native.source_version': {
         const moduleName = String(spec.moduleName || '');
         const sourceVersion = Native.findSourceVersion(moduleName);
@@ -1274,6 +1314,17 @@ function legacyToSpec(command) {
         }
         return {
             kind: 'native.function_starts',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.codeSignature ')) {
+        const moduleName = trimmed.slice('native.codeSignature '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.codeSignature usage: native.codeSignature <module>');
+        }
+        return {
+            kind: 'native.code_signature',
             moduleName,
         };
     }
