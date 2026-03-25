@@ -98,7 +98,72 @@ function detachStalkerState() {
         superEnabled: !!state.superEnabled,
     };
 }
-function stopTraceResult() {
+function normalizeNullableString(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+    return String(value);
+}
+function normalizeModuleName(value) {
+    const normalized = normalizeNullableString(value);
+    if (normalized === null || normalized === '' || normalized === '*' || normalized === 'default' || normalized === 'null') {
+        return null;
+    }
+    return normalized;
+}
+function normalizeAddress(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+    try {
+        return ptrValue(value).toString();
+    } catch (_) {
+        return String(value);
+    }
+}
+function currentFilterValue(state) {
+    return typeof state.filter === 'string' && state.filter.length !== 0 ? state.filter : null;
+}
+function stateMatchesTarget(state, target) {
+    if (target === null || target === undefined) {
+        return true;
+    }
+    if (target === null || typeof target !== 'object') {
+        return false;
+    }
+    const requestedKind = normalizeNullableString(target.kind);
+    const currentKind = normalizeNullableString(state.targetKind);
+    if (requestedKind === null || currentKind === null || requestedKind !== currentKind) {
+        return false;
+    }
+    if (requestedKind === 'export') {
+        return normalizeModuleName(target.moduleName) === normalizeModuleName(state.moduleName)
+            && normalizeNullableString(target.symbolName) === normalizeNullableString(state.symbolName);
+    }
+    if (requestedKind === 'address') {
+        return normalizeAddress(target.address) === normalizeAddress(state.targetAddress);
+    }
+    return false;
+}
+function requestedSelectorMatchesState(state, target, filter) {
+    const requestedFilter = normalizeNullableString(filter);
+    const hasTarget = target !== null && target !== undefined;
+    if (!hasTarget && requestedFilter === null) {
+        return true;
+    }
+    if (requestedFilter !== null && requestedFilter !== currentFilterValue(state)) {
+        return false;
+    }
+    return stateMatchesTarget(state, target);
+}
+function stopTraceResult(target, filter) {
+    const state = globalThis.__iosRustFridaTrace || {};
+    const active = !!state.label || !!state.targetAddress || !!state.objcMode;
+    if (active && !requestedSelectorMatchesState(state, target, filter)) {
+        const current = currentTraceStateResult();
+        current.message = 'trace stop skipped: selector mismatch';
+        return current;
+    }
     const detached = detachTraceState();
     return {
         active: detached.active,
@@ -134,7 +199,14 @@ function currentTraceStateResult() {
         message: active ? ('trace active: ' + (state.label || '<unknown>')) : 'trace inactive',
     };
 }
-function stopStalkerResult() {
+function stopStalkerResult(target, filter) {
+    const state = globalThis.__iosRustFridaStalker || {};
+    const active = (Array.isArray(state.handles) && state.handles.length > 0) || !!state.label || !!state.targetAddress || !!state.objcMode;
+    if (active && !requestedSelectorMatchesState(state, target, filter)) {
+        const current = currentStalkerStateResult();
+        current.message = 'stalker stop skipped: selector mismatch';
+        return current;
+    }
     const detached = detachStalkerState();
     return {
         active: detached.active,

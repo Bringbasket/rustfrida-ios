@@ -98,8 +98,22 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `shook stop`
   - `shook stop <type> <method>`
   - `shook stop <module> -- <type> <method>`
+  - `trace [filter]`
+  - `trace native [module] <symbol> [-- template]`
+  - `trace addr <address> [-- template]`
   - `trace status`
+  - `trace stop`
+  - `trace stop [filter]`
+  - `trace stop native [module] <symbol>`
+  - `trace stop addr <address>`
+  - `stalker [filter]`
+  - `stalker native [module] <symbol> [-- template]`
+  - `stalker addr <address> [-- template]`
   - `stalker status`
+  - `stalker stop`
+  - `stalker stop [filter]`
+  - `stalker stop native [module] <symbol>`
+  - `stalker stop addr <address>`
   - `swift.types <query>`
   - `swift.types <module> -- <query>`
   - `swift.typeKinds`
@@ -174,6 +188,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - 对 `hfl / jhook / shook / trace / stalker` 这类 controller dispatch 命令，`--command-json` 现在也会尽量回传结构化 `payloadJson`，包含 `action / kind / target / count / key / moduleName / selectorName / resolvedLabel / targetAddress / filter / replacedCount` 等字段；对应的 `*.status` 结果也会补出当前 active state 和 target 元数据，像 `hfl/jhook/shook` 不再只有 key/count；`*.stop` 结果现在也会把被回收的 key/target 一并带回，`trace.stop / stalker.stop` 也会继续带上实际 detach 计数。
 - 对同一批 `*.status` 控制命令，普通文本模式的 `--command` / REPL 输出现在也不再只回一行 `active: N`；会附带当前 target / filter / symbol / Swift 命中项摘要，真机交互排查时不必每次都切到 `--command-json`。
 - `hfl/jhook/shook` 现在除了 `stop` 全停，也支持按目标定向停止；对应的普通文本模式 `*.stop` 输出也会和 `*.status` 一样附带命中的 target 摘要，适合 REPL 下快速确认到底停掉了哪一个 hook。
+- `trace/stalker` 现在也支持“带选择器”的 `stop`：可以按 objc filter、native export、native address 定向尝试停止；如果当前活动 hook 和选择器不匹配，会保留现有 hook 并返回 `selector mismatch` 提示，避免脚本误停其它 hook。
 - loader symbol 解析现在会优先使用 canonical code pointer 计算模块偏移，减少 arm64e/PAC 场景下本地 `dlsym` 地址高位污染远端 rebasing 的风险。
 - 如果某个 loader symbol 的 raw 地址与 canonical 地址不同，controller 会在注入计划里同时打印两者，便于直接判断 PAC 是否介入了本地符号解析结果。
 - controller 里的 `hfl/jhook/shook/trace/stalker` 指令现在统一下沉到 `quickjs-runtime` 的 `__iosRustFridaControllerApi.dispatch(...)`，controller 只负责构造结构化 spec，后续继续迁移 runtime 能力时改动面会小很多。

@@ -518,8 +518,11 @@ function installNativeStalkerAddress(address, templateArgs, templateRet) {
     return installNativeStalker(buildNativeSpec('address', null, null, address, templateArgs, templateRet));
 }
 
-function stopTraceResult() {
-    const result = requireNativeHookHelpers().stopTraceResult();
+function stopTraceResult(target, filter) {
+    const result = requireNativeHookHelpers().stopTraceResult(
+        target === undefined ? null : target,
+        filter === undefined ? null : filter
+    );
     result.kind = 'trace.stop';
     result.action = 'stop';
     result.scope = 'trace';
@@ -534,8 +537,11 @@ function traceStatus() {
     return renderResult(currentObjcTraceResult());
 }
 
-function stopStalkerResult() {
-    const result = requireNativeHookHelpers().stopStalkerResult();
+function stopStalkerResult(target, filter) {
+    const result = requireNativeHookHelpers().stopStalkerResult(
+        target === undefined ? null : target,
+        filter === undefined ? null : filter
+    );
     result.kind = 'stalker.stop';
     result.action = 'stop';
     result.scope = 'stalker';
@@ -698,9 +704,9 @@ function dispatchResult(command) {
     case 'native.stalker.install':
         return installNativeStalkerResult(command.target);
     case 'trace.stop':
-        return stopTraceResult();
+        return stopTraceResult(command.target, command.filter);
     case 'stalker.stop':
-        return stopStalkerResult();
+        return stopStalkerResult(command.target, command.filter);
     case 'swift.hook.install':
         return installSwiftHookResult(
             String(command.typeName),

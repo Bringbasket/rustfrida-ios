@@ -1131,6 +1131,18 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { globalThis.__iosRustFridaTrace = { label: 'objc_msgSend', targetAddress: '0x180004000', targetKind: 'export', targetSymbol: 'objc_msgSend', moduleName: null, symbolName: 'objc_msgSend', filter: 'UIView', objcMode: 'trace' }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'trace.stop', target: { kind: 'export', moduleName: null, symbolName: 'malloc' } })); })()")
+                    .expect("controller targeted trace stop mismatch result"),
+                "{\"active\":true,\"count\":1,\"label\":\"objc_msgSend\",\"filter\":\"UIView\",\"targetAddress\":\"0x180004000\",\"targetKind\":\"export\",\"targetSymbol\":\"objc_msgSend\",\"moduleName\":null,\"symbolName\":\"objc_msgSend\",\"objcMode\":\"trace\",\"message\":\"trace stop skipped: selector mismatch\",\"kind\":\"trace.stop\",\"action\":\"stop\",\"scope\":\"trace\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { globalThis.__iosRustFridaTrace = { label: 'objc_msgSend', targetAddress: '0x180004000', targetKind: 'export', targetSymbol: 'objc_msgSend', moduleName: null, symbolName: 'objc_msgSend', filter: 'UIView', objcMode: 'trace' }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'trace.stop', target: { kind: 'export', moduleName: null, symbolName: 'objc_msgSend' }, filter: 'UIView' })); })()")
+                    .expect("controller targeted trace stop match result"),
+                "{\"active\":true,\"count\":0,\"label\":\"objc_msgSend\",\"filter\":\"UIView\",\"targetAddress\":\"0x180004000\",\"targetKind\":\"export\",\"targetSymbol\":\"objc_msgSend\",\"moduleName\":null,\"symbolName\":\"objc_msgSend\",\"objcMode\":\"trace\",\"message\":\"trace stopped: objc_msgSend detached=0\",\"kind\":\"trace.stop\",\"action\":\"stop\",\"scope\":\"trace\"}"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { globalThis.__iosRustFridaStalker = {}; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'stalker.stop' })); })()")
                     .expect("controller stalker stop result"),
                 "{\"active\":false,\"count\":0,\"label\":null,\"filter\":null,\"targetAddress\":null,\"secondaryTargetAddress\":null,\"targetKind\":null,\"targetSymbol\":null,\"moduleName\":null,\"symbolName\":null,\"objcMode\":null,\"superEnabled\":false,\"message\":\"stalker stopped\",\"kind\":\"stalker.stop\",\"action\":\"stop\",\"scope\":\"stalker\"}"
@@ -1140,6 +1152,18 @@ undefined;
                     .eval("(function() { globalThis.__iosRustFridaStalker = { handles: [{}, {}], label: 'objc_msgSend + objc_msgSendSuper2', targetAddress: '0x180005000', secondaryTargetAddress: '0x180005100', targetKind: 'export', targetSymbol: 'objc_msgSend', filter: 'UIView', objcMode: 'stalker', superEnabled: true }; return __iosRustFridaControllerApi.dispatch({ kind: 'stalker.stop' }); })()")
                     .expect("controller populated stalker stop text"),
                 "stalker stopped: objc_msgSend + objc_msgSendSuper2 detached=0\n - target=0x180005000 secondary=0x180005100 kind=export symbol=objc_msgSend filter=UIView objcMode=stalker super=on"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { globalThis.__iosRustFridaStalker = { handles: [{}], label: 'objc_msgSend', targetAddress: '0x180005000', secondaryTargetAddress: null, targetKind: 'export', targetSymbol: 'objc_msgSend', moduleName: null, symbolName: 'objc_msgSend', filter: 'UIView', objcMode: 'stalker', superEnabled: false }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'stalker.stop', target: { kind: 'address', address: '0x180005999' } })); })()")
+                    .expect("controller targeted stalker stop mismatch result"),
+                "{\"active\":true,\"count\":1,\"label\":\"objc_msgSend\",\"filter\":\"UIView\",\"targetAddress\":\"0x180005000\",\"secondaryTargetAddress\":null,\"targetKind\":\"export\",\"targetSymbol\":\"objc_msgSend\",\"moduleName\":null,\"symbolName\":\"objc_msgSend\",\"objcMode\":\"stalker\",\"superEnabled\":false,\"message\":\"stalker stop skipped: selector mismatch\",\"kind\":\"stalker.stop\",\"action\":\"stop\",\"scope\":\"stalker\"}"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { globalThis.__iosRustFridaStalker = { handles: [{}], label: 'objc_msgSend', targetAddress: '0x180005000', secondaryTargetAddress: null, targetKind: 'export', targetSymbol: 'objc_msgSend', moduleName: null, symbolName: 'objc_msgSend', filter: 'UIView', objcMode: 'stalker', superEnabled: false }; return JSON.stringify(__iosRustFridaControllerApi.dispatchResult({ kind: 'stalker.stop', target: { kind: 'export', moduleName: null, symbolName: 'objc_msgSend' }, filter: 'UIView' })); })()")
+                    .expect("controller targeted stalker stop match result"),
+                "{\"active\":true,\"count\":0,\"label\":\"objc_msgSend\",\"filter\":\"UIView\",\"targetAddress\":\"0x180005000\",\"secondaryTargetAddress\":null,\"targetKind\":\"export\",\"targetSymbol\":\"objc_msgSend\",\"moduleName\":null,\"symbolName\":\"objc_msgSend\",\"objcMode\":\"stalker\",\"superEnabled\":false,\"message\":\"stalker stopped: objc_msgSend detached=0\",\"kind\":\"stalker.stop\",\"action\":\"stop\",\"scope\":\"stalker\"}"
             );
             assert_eq!(
                 runtime

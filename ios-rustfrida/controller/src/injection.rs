@@ -2852,7 +2852,9 @@ enum TraceCommand {
     InstallObjc { filter: Option<String> },
     InstallNative { target: NativeHookTarget },
     Status,
-    Stop,
+    StopAll,
+    StopObjc { filter: Option<String> },
+    StopNative { target: NativeHookTarget },
 }
 
 #[cfg(unix)]
@@ -2861,7 +2863,9 @@ enum StalkerCommand {
     InstallObjc { filter: Option<String> },
     InstallNative { target: NativeHookTarget },
     Status,
-    Stop,
+    StopAll,
+    StopObjc { filter: Option<String> },
+    StopNative { target: NativeHookTarget },
 }
 
 #[cfg(unix)]
@@ -2994,7 +2998,7 @@ fn parse_stalker_command(command: &str) -> Result<StalkerCommand> {
         .strip_prefix("stalker")
         .ok_or_else(|| {
             Error::InvalidArgument(
-                "stalker usage: stalker [filter]|stalker native [module] <symbol> [-- template]|stalker addr <address> [-- template]|stalker status|stalker stop"
+                "stalker usage: stalker [filter]|stalker native [module] <symbol> [-- template]|stalker addr <address> [-- template]|stalker status|stalker stop|stalker stop [filter]|stalker stop native [module] <symbol>|stalker stop addr <address>"
                     .into(),
             )
         })?
@@ -3009,7 +3013,31 @@ fn parse_stalker_command(command: &str) -> Result<StalkerCommand> {
     }
 
     if matches!(rest, "stop" | "off" | "disable") {
-        return Ok(StalkerCommand::Stop);
+        return Ok(StalkerCommand::StopAll);
+    }
+    if let Some(stop_rest) = rest
+        .strip_prefix("stop ")
+        .or_else(|| rest.strip_prefix("off "))
+        .or_else(|| rest.strip_prefix("disable "))
+    {
+        let stop_rest = stop_rest.trim();
+        if let Some(native_rest) = stop_rest.strip_prefix("native ") {
+            return Ok(StalkerCommand::StopNative {
+                target: parse_native_target(native_rest)?,
+            });
+        }
+        if let Some(addr_rest) = stop_rest.strip_prefix("addr ") {
+            return Ok(StalkerCommand::StopNative {
+                target: parse_native_address_target(addr_rest)?,
+            });
+        }
+        return Ok(StalkerCommand::StopObjc {
+            filter: if stop_rest.is_empty() {
+                None
+            } else {
+                Some(stop_rest.to_string())
+            },
+        });
     }
 
     if let Some(native_rest) = rest.strip_prefix("native ") {
@@ -3035,7 +3063,7 @@ fn parse_trace_command(command: &str) -> Result<TraceCommand> {
         .strip_prefix("trace")
         .ok_or_else(|| {
             Error::InvalidArgument(
-                "trace usage: trace [filter]|trace native [module] <symbol> [-- template]|trace addr <address> [-- template]|trace status|trace stop".into(),
+                "trace usage: trace [filter]|trace native [module] <symbol> [-- template]|trace addr <address> [-- template]|trace status|trace stop|trace stop [filter]|trace stop native [module] <symbol>|trace stop addr <address>".into(),
             )
         })?
         .trim();
@@ -3049,7 +3077,31 @@ fn parse_trace_command(command: &str) -> Result<TraceCommand> {
     }
 
     if matches!(rest, "stop" | "off" | "disable") {
-        return Ok(TraceCommand::Stop);
+        return Ok(TraceCommand::StopAll);
+    }
+    if let Some(stop_rest) = rest
+        .strip_prefix("stop ")
+        .or_else(|| rest.strip_prefix("off "))
+        .or_else(|| rest.strip_prefix("disable "))
+    {
+        let stop_rest = stop_rest.trim();
+        if let Some(native_rest) = stop_rest.strip_prefix("native ") {
+            return Ok(TraceCommand::StopNative {
+                target: parse_native_target(native_rest)?,
+            });
+        }
+        if let Some(addr_rest) = stop_rest.strip_prefix("addr ") {
+            return Ok(TraceCommand::StopNative {
+                target: parse_native_address_target(addr_rest)?,
+            });
+        }
+        return Ok(TraceCommand::StopObjc {
+            filter: if stop_rest.is_empty() {
+                None
+            } else {
+                Some(stop_rest.to_string())
+            },
+        });
     }
 
     if let Some(native_rest) = rest.strip_prefix("native ") {
@@ -3315,7 +3367,17 @@ fn parse_shook_command(command: &str) -> Result<SwiftHookCommand> {
 fn build_stalker_spec(stalker_command: &StalkerCommand) -> Value {
     match stalker_command {
         StalkerCommand::Status => json!({ "kind": "stalker.status" }),
-        StalkerCommand::Stop => json!({ "kind": "stalker.stop" }),
+        StalkerCommand::StopAll => json!({ "kind": "stalker.stop" }),
+        StalkerCommand::StopObjc { filter } => json!({
+            "kind": "stalker.stop",
+            "target": Value::Null,
+            "filter": filter,
+        }),
+        StalkerCommand::StopNative { target } => json!({
+            "kind": "stalker.stop",
+            "target": build_native_target_spec(target),
+            "filter": Value::Null,
+        }),
         StalkerCommand::InstallObjc { filter } => json!({
             "kind": "objc.stalker.install",
             "filter": filter.as_deref().unwrap_or(""),
@@ -3331,7 +3393,17 @@ fn build_stalker_spec(stalker_command: &StalkerCommand) -> Value {
 fn build_trace_spec(trace_command: &TraceCommand) -> Value {
     match trace_command {
         TraceCommand::Status => json!({ "kind": "trace.status" }),
-        TraceCommand::Stop => json!({ "kind": "trace.stop" }),
+        TraceCommand::StopAll => json!({ "kind": "trace.stop" }),
+        TraceCommand::StopObjc { filter } => json!({
+            "kind": "trace.stop",
+            "target": Value::Null,
+            "filter": filter,
+        }),
+        TraceCommand::StopNative { target } => json!({
+            "kind": "trace.stop",
+            "target": build_native_target_spec(target),
+            "filter": Value::Null,
+        }),
         TraceCommand::InstallObjc { filter } => json!({
             "kind": "objc.trace.install",
             "filter": filter.as_deref().unwrap_or(""),
@@ -3499,9 +3571,9 @@ fn print_controller_help() {
     println!("commands:");
     println!("  help");
     println!("  ping");
-    println!("  stalker [filter]|stalker native [module] <symbol> [-- template]|stalker addr <address> [-- template]|stalker status|stalker stop");
+    println!("  stalker [filter]|stalker native [module] <symbol> [-- template]|stalker addr <address> [-- template]|stalker status|stalker stop|stalker stop [filter]|stalker stop native [module] <symbol>|stalker stop addr <address>");
     println!(
-        "  trace [filter]|trace native [module] <symbol> [-- template]|trace addr <address> [-- template]|trace status|trace stop"
+        "  trace [filter]|trace native [module] <symbol> [-- template]|trace addr <address> [-- template]|trace status|trace stop|trace stop [filter]|trace stop native [module] <symbol>|trace stop addr <address>"
     );
     println!("  hfl <module> <offset>|hfl status|hfl stop|hfl stop <module> <offset>");
     println!("  jhook <class> <selector> [meta]|jhook status|jhook stop|jhook stop <class> <selector> [meta]");
@@ -3851,8 +3923,10 @@ mod tests {
         assert!(command_requests_inline_hook_install("shook ViewController viewDidLoad").expect("shook install"));
         assert!(command_requests_inline_hook_install("hfl libobjc.A.dylib 0x1234").expect("hfl install"));
         assert!(!command_requests_inline_hook_install("trace stop").expect("trace stop"));
+        assert!(!command_requests_inline_hook_install("trace stop native malloc").expect("trace targeted stop"));
         assert!(!command_requests_inline_hook_install("trace status").expect("trace status"));
         assert!(!command_requests_inline_hook_install("stalker status").expect("stalker status"));
+        assert!(!command_requests_inline_hook_install("stalker stop addr 0x1234").expect("stalker targeted stop"));
         assert!(!command_requests_inline_hook_install("jhook status").expect("jhook status"));
         assert!(!command_requests_inline_hook_install("jhook stop UIViewController viewDidLoad").expect("jhook targeted stop"));
         assert!(!command_requests_inline_hook_install("shook stop").expect("shook stop"));
@@ -5357,7 +5431,31 @@ mod tests {
     fn parse_trace_stop() {
         assert_eq!(
             parse_trace_command("trace stop").expect("parse trace"),
-            TraceCommand::Stop
+            TraceCommand::StopAll
+        );
+    }
+
+    #[test]
+    fn parse_trace_targeted_stop_native() {
+        assert_eq!(
+            parse_trace_command("trace stop native libsystem_kernel.dylib open").expect("parse trace"),
+            TraceCommand::StopNative {
+                target: NativeHookTarget::Export {
+                    module_name: Some("libsystem_kernel.dylib".into()),
+                    symbol_name: "open".into(),
+                    log_template: None,
+                }
+            }
+        );
+    }
+
+    #[test]
+    fn parse_trace_targeted_stop_filter() {
+        assert_eq!(
+            parse_trace_command("trace stop UIViewController").expect("parse trace"),
+            TraceCommand::StopObjc {
+                filter: Some("UIViewController".into()),
+            }
         );
     }
 
@@ -5383,6 +5481,17 @@ mod tests {
         );
         let status_spec = build_trace_spec(&TraceCommand::Status);
         assert_eq!(status_spec, json!({ "kind": "trace.status" }));
+        let stop_spec = build_trace_spec(&TraceCommand::StopObjc {
+            filter: Some("viewDidLoad".into()),
+        });
+        assert_eq!(
+            stop_spec,
+            json!({
+                "kind": "trace.stop",
+                "target": null,
+                "filter": "viewDidLoad",
+            })
+        );
     }
 
     #[test]
@@ -5405,6 +5514,27 @@ mod tests {
                     "templateArgs": null,
                     "templateRet": null,
                 }
+            })
+        );
+        let stop_spec = build_trace_spec(&TraceCommand::StopNative {
+            target: NativeHookTarget::Export {
+                module_name: Some("libsystem_kernel.dylib".into()),
+                symbol_name: "open".into(),
+                log_template: None,
+            },
+        });
+        assert_eq!(
+            stop_spec,
+            json!({
+                "kind": "trace.stop",
+                "target": {
+                    "kind": "export",
+                    "moduleName": "libsystem_kernel.dylib",
+                    "symbolName": "open",
+                    "templateArgs": null,
+                    "templateRet": null,
+                },
+                "filter": null,
             })
         );
     }
@@ -5531,7 +5661,30 @@ mod tests {
     fn parse_stalker_stop() {
         assert_eq!(
             parse_stalker_command("stalker stop").expect("parse stalker"),
-            StalkerCommand::Stop
+            StalkerCommand::StopAll
+        );
+    }
+
+    #[test]
+    fn parse_stalker_targeted_stop_native() {
+        assert_eq!(
+            parse_stalker_command("stalker stop addr 0x1234").expect("parse stalker"),
+            StalkerCommand::StopNative {
+                target: NativeHookTarget::Address {
+                    address: 0x1234,
+                    log_template: None,
+                }
+            }
+        );
+    }
+
+    #[test]
+    fn parse_stalker_targeted_stop_filter() {
+        assert_eq!(
+            parse_stalker_command("stalker stop UITableView").expect("parse stalker"),
+            StalkerCommand::StopObjc {
+                filter: Some("UITableView".into()),
+            }
         );
     }
 
@@ -5557,6 +5710,17 @@ mod tests {
         );
         let status_spec = build_stalker_spec(&StalkerCommand::Status);
         assert_eq!(status_spec, json!({ "kind": "stalker.status" }));
+        let stop_spec = build_stalker_spec(&StalkerCommand::StopObjc {
+            filter: Some("viewDidLoad".into()),
+        });
+        assert_eq!(
+            stop_spec,
+            json!({
+                "kind": "stalker.stop",
+                "target": null,
+                "filter": "viewDidLoad",
+            })
+        );
     }
 
     #[test]
@@ -5577,6 +5741,25 @@ mod tests {
                     "templateArgs": null,
                     "templateRet": null,
                 }
+            })
+        );
+        let stop_spec = build_stalker_spec(&StalkerCommand::StopNative {
+            target: NativeHookTarget::Address {
+                address: 0x1234,
+                log_template: None,
+            },
+        });
+        assert_eq!(
+            stop_spec,
+            json!({
+                "kind": "stalker.stop",
+                "target": {
+                    "kind": "address",
+                    "address": "0x1234",
+                    "templateArgs": null,
+                    "templateRet": null,
+                },
+                "filter": null,
             })
         );
     }
