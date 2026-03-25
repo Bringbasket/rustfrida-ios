@@ -344,7 +344,7 @@ function detachHflHooksResult(moduleName, offsetHex) {
     const keys = targeted
         ? (Object.prototype.hasOwnProperty.call(state, requestedKey) ? [requestedKey] : [])
         : Object.keys(state);
-    const targets = keys.map((key) => hflEntryToTarget(key, state[key]));
+    const matched = keys.map((key) => hflEntryToTarget(key, state[key]));
     let count = 0;
     for (const key of keys) {
         const entry = state[key];
@@ -363,7 +363,12 @@ function detachHflHooksResult(moduleName, offsetHex) {
         requestedKey,
         count,
         keys,
-        targets,
+        targets: matched,
+        targetMatched: !targeted || matched.length !== 0,
+        matchedTargetCount: matched.length,
+        matchedTargets: matched,
+        detachedTargetCount: matched.length,
+        detachedTargets: matched,
         message: renderStopMessage('hfl', count, requestedKey, keys.length !== 0),
     };
 }
@@ -454,7 +459,7 @@ function detachObjcHooksResult(className, selectorName, isClassMethod) {
     const keys = targeted
         ? (Object.prototype.hasOwnProperty.call(state, requestedKey) ? [requestedKey] : [])
         : Object.keys(state);
-    const targets = keys.map((key) => objcHookEntryToTarget(key, state[key]));
+    const matched = keys.map((key) => objcHookEntryToTarget(key, state[key]));
     let count = 0;
     for (const key of keys) {
         const entry = state[key];
@@ -473,7 +478,12 @@ function detachObjcHooksResult(className, selectorName, isClassMethod) {
         requestedKey,
         count,
         keys,
-        targets,
+        targets: matched,
+        targetMatched: !targeted || matched.length !== 0,
+        matchedTargetCount: matched.length,
+        matchedTargets: matched,
+        detachedTargetCount: matched.length,
+        detachedTargets: matched,
         message: renderStopMessage('jhook', count, requestedKey, keys.length !== 0),
     };
 }
@@ -744,7 +754,7 @@ function detachSwiftHooksResult(typeName, methodQuery, moduleName) {
     const keys = targeted
         ? (Object.prototype.hasOwnProperty.call(state, requestedKey) ? [requestedKey] : [])
         : Object.keys(state);
-    const targets = keys.map((key) => swiftHookEntryToTarget(key, state[key]));
+    const matched = keys.map((key) => swiftHookEntryToTarget(key, state[key]));
     let count = 0;
     for (const key of keys) {
         const entry = state[key];
@@ -769,7 +779,12 @@ function detachSwiftHooksResult(typeName, methodQuery, moduleName) {
         requestedKey,
         count,
         keys,
-        targets,
+        targets: matched,
+        targetMatched: !targeted || matched.length !== 0,
+        matchedTargetCount: matched.length,
+        matchedTargets: matched,
+        detachedTargetCount: matched.length,
+        detachedTargets: matched,
         message: renderStopMessage('shook', count, requestedKey, keys.length !== 0),
     };
 }
