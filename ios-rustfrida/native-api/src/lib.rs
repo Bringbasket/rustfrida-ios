@@ -9,6 +9,7 @@ mod imports;
 mod injection;
 mod install_name;
 mod jailbreak;
+mod linkedit;
 mod loadcmds;
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod mach;
@@ -45,6 +46,7 @@ pub use jailbreak::{
     current_hook_policy, detect_hook_environment, hook_environment_recommendations, resolve_hook_strategy,
     HookBackendInfo, HookEnvironmentReport, HookPolicy, HookStrategyDecision,
 };
+pub use linkedit::{find_image_linkedit_info, image_linkedit_info_support_available, ImageLinkeditInfo};
 pub use loadcmds::{find_image_load_commands, image_load_command_support_available, ImageLoadCommand};
 pub use pac::{
     current_process_uses_arm64e, enumerate_arm64e_images, image_uses_arm64e, normalize_code_pointer,

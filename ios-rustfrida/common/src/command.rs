@@ -98,6 +98,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.encryptionInfo ")
         || command.starts_with("native.entryPoint ")
         || command.starts_with("native.dyldInfo ")
+        || command.starts_with("native.linkedit ")
         || command.starts_with("native.sourceVersion ")
         || command.starts_with("native.buildVersion ")
         || command.starts_with("native.dylinker ")
@@ -313,6 +314,17 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }
         return Some(json!({
             "kind": "native.dyld_info",
+            "moduleName": module_name,
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.linkedit ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.linkedit",
             "moduleName": module_name,
         }));
     }
@@ -710,6 +722,15 @@ mod tests {
             AgentCommand::from_legacy("native.dyldInfo libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
+        assert_eq!(
+            AgentCommand::from_legacy("native.linkedit libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.linkedit",
+                    "moduleName": "libsystem_malloc.dylib",
+                })
+            })
+        );
         assert!(matches!(
             AgentCommand::from_legacy("native.sourceVersion libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
@@ -851,6 +872,12 @@ mod tests {
             AgentCommand::from_legacy("native.dyldInfo  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.dyldInfo  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.linkedit  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.linkedit  ".into(),
             })
         );
         assert_eq!(

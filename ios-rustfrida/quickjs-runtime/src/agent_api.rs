@@ -200,6 +200,28 @@ function formatDyldInfo(dyldInfo) {
     ].join(' ');
 }
 
+function formatLinkedit(linkedit) {
+    const symtab = linkedit.symoff === null || linkedit.symoff === undefined
+        ? 'symtab=<none>'
+        : 'symtab=0x' + BigInt(linkedit.symoff || 0).toString(16) + '/' + String(linkedit.nsyms === null || linkedit.nsyms === undefined ? 0 : linkedit.nsyms);
+    const strtab = linkedit.stroff === null || linkedit.stroff === undefined
+        ? 'strtab=<none>'
+        : 'strtab=0x' + BigInt(linkedit.stroff || 0).toString(16) + '/0x' + BigInt(linkedit.strsize === null || linkedit.strsize === undefined ? 0 : linkedit.strsize).toString(16);
+    const indirect = linkedit.indirectsymoff === null || linkedit.indirectsymoff === undefined
+        ? 'indirect=<none>'
+        : 'indirect=0x' + BigInt(linkedit.indirectsymoff || 0).toString(16) + '/' + String(linkedit.nindirectsyms === null || linkedit.nindirectsyms === undefined ? 0 : linkedit.nindirectsyms);
+    return [
+        'vmaddr=' + linkedit.vmaddr.toString(),
+        'vmsize=0x' + BigInt(linkedit.vmsize || 0).toString(16),
+        'fileoff=0x' + BigInt(linkedit.fileoff || 0).toString(16),
+        'filesize=0x' + BigInt(linkedit.filesize || 0).toString(16),
+        'base=' + linkedit.computedBase.toString(),
+        symtab,
+        strtab,
+        indirect,
+    ].join(' ');
+}
+
 function formatSourceVersion(sourceVersion) {
     return 'version=' + String(sourceVersion.version || '');
 }
@@ -477,6 +499,25 @@ function normalizeDyldInfo(dyldInfo) {
         exportOffHex: '0x' + BigInt(dyldInfo.exportOff || 0).toString(16),
         exportSizeHex: '0x' + BigInt(dyldInfo.exportSize || 0).toString(16),
         text: formatDyldInfo(dyldInfo),
+    };
+}
+
+function normalizeLinkedit(linkedit) {
+    return {
+        moduleName: String(linkedit.moduleName || ''),
+        moduleBase: linkedit.moduleBase ? linkedit.moduleBase.toString() : null,
+        vmaddr: linkedit.vmaddr.toString(),
+        vmsizeHex: '0x' + BigInt(linkedit.vmsize || 0).toString(16),
+        fileoffHex: '0x' + BigInt(linkedit.fileoff || 0).toString(16),
+        filesizeHex: '0x' + BigInt(linkedit.filesize || 0).toString(16),
+        computedBase: linkedit.computedBase.toString(),
+        symoffHex: linkedit.symoff === null || linkedit.symoff === undefined ? null : '0x' + BigInt(linkedit.symoff).toString(16),
+        nsyms: linkedit.nsyms === null || linkedit.nsyms === undefined ? null : Number(linkedit.nsyms),
+        stroffHex: linkedit.stroff === null || linkedit.stroff === undefined ? null : '0x' + BigInt(linkedit.stroff).toString(16),
+        strsizeHex: linkedit.strsize === null || linkedit.strsize === undefined ? null : '0x' + BigInt(linkedit.strsize).toString(16),
+        indirectsymoffHex: linkedit.indirectsymoff === null || linkedit.indirectsymoff === undefined ? null : '0x' + BigInt(linkedit.indirectsymoff).toString(16),
+        nindirectsyms: linkedit.nindirectsyms === null || linkedit.nindirectsyms === undefined ? null : Number(linkedit.nindirectsyms),
+        text: formatLinkedit(linkedit),
     };
 }
 
@@ -825,6 +866,12 @@ function handleSpecResult(spec) {
         const normalized = dyldInfo === null ? null : normalizeDyldInfo(dyldInfo);
         return { kind: 'native.dyld_info', moduleName, dyldInfo: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
+    case 'native.linkedit': {
+        const moduleName = String(spec.moduleName || '');
+        const linkedit = Native.findLinkedit(moduleName);
+        const normalized = linkedit === null ? null : normalizeLinkedit(linkedit);
+        return { kind: 'native.linkedit', moduleName, linkedit: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
     case 'native.source_version': {
         const moduleName = String(spec.moduleName || '');
         const sourceVersion = Native.findSourceVersion(moduleName);
@@ -1156,6 +1203,17 @@ function legacyToSpec(command) {
         }
         return {
             kind: 'native.dyld_info',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.linkedit ')) {
+        const moduleName = trimmed.slice('native.linkedit '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.linkedit usage: native.linkedit <module>');
+        }
+        return {
+            kind: 'native.linkedit',
             moduleName,
         };
     }
