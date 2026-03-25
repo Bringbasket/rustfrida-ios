@@ -431,6 +431,15 @@ function replaceTraceEntry(state) {
         replacedLabel: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.label === undefined ? null : removed.removed[removed.removed.length - 1].state.label),
     };
 }
+function currentTraceInstallSnapshot() {
+    const current = currentTraceStateResult();
+    return {
+        active: current.active,
+        currentKey: globalThis.__iosRustFridaTraceCurrentKey === undefined ? null : globalThis.__iosRustFridaTraceCurrentKey,
+        sessionCount: current.sessionCount,
+        sessions: current.sessions,
+    };
+}
 function stopStalkerResult(target, filter) {
     const entries = listStalkerEntries();
     const matched = entries.filter((entry) => requestedSelectorMatchesState(entry.state, target, filter));
@@ -518,6 +527,15 @@ function replaceStalkerEntry(state) {
         replacedLabel: removed.removed.length === 0 ? null : (removed.removed[removed.removed.length - 1].state.label === undefined ? null : removed.removed[removed.removed.length - 1].state.label),
     };
 }
+function currentStalkerInstallSnapshot() {
+    const current = currentStalkerStateResult();
+    return {
+        active: current.active,
+        currentKey: globalThis.__iosRustFridaStalkerCurrentKey === undefined ? null : globalThis.__iosRustFridaStalkerCurrentKey,
+        sessionCount: current.sessionCount,
+        sessions: current.sessions,
+    };
+}
 function installTraceResult(spec) {
     const objcFilter = spec && typeof spec.objcFilter === 'string' ? spec.objcFilter : '';
     if (spec && spec.objcMode === 'trace') {
@@ -554,8 +572,10 @@ function installTraceResult(spec) {
             objcMode: 'trace',
         };
         const replaced = replaceTraceEntry(state);
+        const snapshot = currentTraceInstallSnapshot();
         return {
             action: 'install',
+            active: snapshot.active,
             targetKind: 'export',
             targetAddress: target.toString(),
             targetSymbol: 'objc_msgSend',
@@ -568,6 +588,9 @@ function installTraceResult(spec) {
             replacedCount: replaced.replacedCount,
             replacedLabel: replaced.replacedLabel,
             replacedSessionCount: replaced.replacedSessionCount,
+            currentKey: snapshot.currentKey,
+            sessionCount: snapshot.sessionCount,
+            sessions: snapshot.sessions,
             message: 'trace installed: objc_msgSend' + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)',
         };
     }
@@ -606,8 +629,10 @@ function installTraceResult(spec) {
         objcMode: null,
     };
     const replaced = replaceTraceEntry(state);
+    const snapshot = currentTraceInstallSnapshot();
     return {
         action: 'install',
+        active: snapshot.active,
         targetKind: spec.kind === undefined ? null : spec.kind,
         targetAddress: resolved.target.toString(),
         targetSymbol: resolved.targetName === undefined ? null : resolved.targetName,
@@ -621,6 +646,9 @@ function installTraceResult(spec) {
         replacedCount: replaced.replacedCount,
         replacedLabel: replaced.replacedLabel,
         replacedSessionCount: replaced.replacedSessionCount,
+        currentKey: snapshot.currentKey,
+        sessionCount: snapshot.sessionCount,
+        sessions: snapshot.sessions,
         message: 'trace installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)',
     };
 }
@@ -695,8 +723,10 @@ function installStalkerResult(spec) {
             superEnabled: msgSendSuper !== null,
         };
         const replaced = replaceStalkerEntry(state);
+        const snapshot = currentStalkerInstallSnapshot();
         return {
             action: 'install',
+            active: snapshot.active,
             targetKind: 'export',
             targetAddress: msgSend.toString(),
             secondaryTargetAddress: msgSendSuper === null ? null : msgSendSuper.toString(),
@@ -708,11 +738,13 @@ function installStalkerResult(spec) {
             superEnabled: msgSendSuper !== null,
             filter: objcFilter.length !== 0 ? objcFilter : null,
             count: handles.length,
-            sessionCount: currentStalkerStateResult().sessionCount,
             key: replaced.key,
             replacedCount: replaced.replacedCount,
             replacedLabel: replaced.replacedLabel,
             replacedSessionCount: replaced.replacedSessionCount,
+            currentKey: snapshot.currentKey,
+            sessionCount: snapshot.sessionCount,
+            sessions: snapshot.sessions,
             message: 'stalker installed: objc_msgSend' + (msgSendSuper !== null ? ' + objc_msgSendSuper2' : '') + (objcFilter.length !== 0 ? ' filter=' + objcFilter : '') + ' (hook logs flush on the next JS command)',
         };
     }
@@ -764,8 +796,10 @@ function installStalkerResult(spec) {
         superEnabled: false,
     };
     const replaced = replaceStalkerEntry(state);
+    const snapshot = currentStalkerInstallSnapshot();
     return {
         action: 'install',
+        active: snapshot.active,
         targetKind: spec.kind === undefined ? null : spec.kind,
         targetAddress: resolved.target.toString(),
         secondaryTargetAddress: null,
@@ -777,11 +811,13 @@ function installStalkerResult(spec) {
         templateArgs,
         templateRet,
         count: 1,
-        sessionCount: currentStalkerStateResult().sessionCount,
         key: replaced.key,
         replacedCount: replaced.replacedCount,
         replacedLabel: replaced.replacedLabel,
         replacedSessionCount: replaced.replacedSessionCount,
+        currentKey: snapshot.currentKey,
+        sessionCount: snapshot.sessionCount,
+        sessions: snapshot.sessions,
         message: 'stalker installed: ' + resolved.resolvedLabel + ' (hook logs flush on the next JS command)',
     };
 }

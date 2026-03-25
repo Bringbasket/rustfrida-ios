@@ -921,6 +921,38 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() { const helper = __iosRustFridaNativeHooks; const previous = helper.installTraceResult; helper.installTraceResult = function(spec) { return { action: 'install', active: true, currentKey: 'trace-export:*:malloc', sessionCount: 2, sessions: [{ key: 'objc-trace:UIView', label: 'objc_msgSend', filter: 'UIView', targetAddress: '0x180004000', targetKind: 'export', targetSymbol: 'objc_msgSend', moduleName: null, symbolName: 'objc_msgSend', objcMode: 'trace' }, { key: 'trace-export:*:malloc', label: '*!malloc', filter: null, targetAddress: '0x180006000', targetKind: 'export', targetSymbol: 'malloc', moduleName: null, symbolName: 'malloc', objcMode: null }], targetKind: 'export', targetAddress: '0x180006000', targetSymbol: 'malloc', moduleName: null, symbolName: 'malloc', resolvedLabel: '*!malloc', templateArgs: null, templateRet: null, key: 'trace-export:*:malloc', replacedCount: 0, replacedLabel: null, replacedSessionCount: 0, message: 'trace installed: *!malloc (hook logs flush on the next JS command)' }; }; try { const result = __iosRustFridaControllerApi.dispatchResult({ kind: 'native.trace.install', target: { kind: 'export', moduleName: null, symbolName: 'malloc' } }); return result.kind === 'native.trace.install' && result.scope === 'trace' && result.target && result.target.kind === 'export' && result.target.symbolName === 'malloc' && result.currentKey === 'trace-export:*:malloc' && result.sessionCount === 2 && Array.isArray(result.sessions) && result.sessions.length === 2; } finally { helper.installTraceResult = previous; } })()"
+                    )
+                    .expect("controller trace install result includes registry snapshot"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const helper = __iosRustFridaNativeHooks; const previous = helper.installTraceResult; helper.installTraceResult = function(spec) { return { action: 'install', active: true, currentKey: 'trace-export:*:malloc', sessionCount: 2, sessions: [{ key: 'objc-trace:UIView', label: 'objc_msgSend', filter: 'UIView', targetAddress: '0x180004000', targetKind: 'export', targetSymbol: 'objc_msgSend', moduleName: null, symbolName: 'objc_msgSend', objcMode: 'trace' }, { key: 'trace-export:*:malloc', label: '*!malloc', filter: null, targetAddress: '0x180006000', targetKind: 'export', targetSymbol: 'malloc', moduleName: null, symbolName: 'malloc', objcMode: null }], targetKind: 'export', targetAddress: '0x180006000', targetSymbol: 'malloc', moduleName: null, symbolName: 'malloc', resolvedLabel: '*!malloc', templateArgs: null, templateRet: null, key: 'trace-export:*:malloc', replacedCount: 0, replacedLabel: null, replacedSessionCount: 0, message: 'trace installed: *!malloc (hook logs flush on the next JS command)' }; }; try { const text = __iosRustFridaControllerApi.dispatch({ kind: 'native.trace.install', target: { kind: 'export', moduleName: null, symbolName: 'malloc' } }); return text.indexOf('trace installed: *!malloc') === 0 && text.indexOf('key=objc-trace:UIView') !== -1 && text.indexOf('key=trace-export:*:malloc') !== -1; } finally { helper.installTraceResult = previous; } })()"
+                    )
+                    .expect("controller trace install text renders sessions"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const helper = __iosRustFridaNativeHooks; const previous = helper.installStalkerResult; helper.installStalkerResult = function(spec) { return { action: 'install', active: true, currentKey: 'objc-stalker:UIView', sessionCount: 1, sessions: [{ key: 'objc-stalker:UIView', label: 'objc_msgSend + objc_msgSendSuper2', filter: 'UIView', targetAddress: '0x180005000', secondaryTargetAddress: '0x180005100', targetKind: 'export', targetSymbol: 'objc_msgSend', moduleName: null, symbolName: 'objc_msgSend', objcMode: 'stalker', superEnabled: true, count: 2 }], targetKind: 'export', targetAddress: '0x180005000', secondaryTargetAddress: '0x180005100', targetSymbol: 'objc_msgSend', moduleName: null, symbolName: 'objc_msgSend', resolvedLabel: 'objc_msgSend + objc_msgSendSuper2', objcMode: 'stalker', superEnabled: true, filter: 'UIView', count: 2, key: 'objc-stalker:UIView', replacedCount: 0, replacedLabel: null, replacedSessionCount: 0, message: 'stalker installed: objc_msgSend + objc_msgSendSuper2 filter=UIView (hook logs flush on the next JS command)' }; }; try { const result = __iosRustFridaControllerApi.dispatchResult({ kind: 'objc.stalker.install', filter: 'UIView' }); return result.kind === 'objc.stalker.install' && result.scope === 'stalker' && result.currentKey === 'objc-stalker:UIView' && result.sessionCount === 1 && Array.isArray(result.sessions) && result.sessions.length === 1 && result.sessions[0].secondaryTargetAddress === '0x180005100'; } finally { helper.installStalkerResult = previous; } })()"
+                    )
+                    .expect("controller stalker install result includes registry snapshot"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const helper = __iosRustFridaNativeHooks; const previous = helper.installStalkerResult; helper.installStalkerResult = function(spec) { return { action: 'install', active: true, currentKey: 'objc-stalker:UIView', sessionCount: 1, sessions: [{ key: 'objc-stalker:UIView', label: 'objc_msgSend + objc_msgSendSuper2', filter: 'UIView', targetAddress: '0x180005000', secondaryTargetAddress: '0x180005100', targetKind: 'export', targetSymbol: 'objc_msgSend', moduleName: null, symbolName: 'objc_msgSend', objcMode: 'stalker', superEnabled: true, count: 2 }], targetKind: 'export', targetAddress: '0x180005000', secondaryTargetAddress: '0x180005100', targetSymbol: 'objc_msgSend', moduleName: null, symbolName: 'objc_msgSend', resolvedLabel: 'objc_msgSend + objc_msgSendSuper2', objcMode: 'stalker', superEnabled: true, filter: 'UIView', count: 2, key: 'objc-stalker:UIView', replacedCount: 0, replacedLabel: null, replacedSessionCount: 0, message: 'stalker installed: objc_msgSend + objc_msgSendSuper2 filter=UIView (hook logs flush on the next JS command)' }; }; try { const text = __iosRustFridaControllerApi.dispatch({ kind: 'objc.stalker.install', filter: 'UIView' }); return text.indexOf('stalker installed: objc_msgSend + objc_msgSendSuper2 filter=UIView') === 0 && text.indexOf('key=objc-stalker:UIView') !== -1 && text.indexOf('super=on') !== -1; } finally { helper.installStalkerResult = previous; } })()"
+                    )
+                    .expect("controller stalker install text renders sessions"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof __iosRustFridaControllerApi.dispatchResult")
                     .expect("controller dispatch result helper type"),
                 "function"

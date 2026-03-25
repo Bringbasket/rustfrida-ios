@@ -11,9 +11,13 @@ function renderResult(result) {
             return renderObjcHookEvent(result);
         case 'trace.status':
         case 'trace.stop':
+        case 'objc.trace.install':
+        case 'native.trace.install':
             return renderTraceStatus(result);
         case 'stalker.status':
         case 'stalker.stop':
+        case 'objc.stalker.install':
+        case 'native.stalker.install':
             return renderStalkerStatus(result);
         case 'swift.hook.status':
         case 'swift.hook.stop':
@@ -443,6 +447,7 @@ function installObjcTraceResult(filter) {
     };
     const result = helper.installTraceResult(spec);
     result.kind = 'objc.trace.install';
+    result.scope = 'trace';
     return result;
 }
 
@@ -471,6 +476,7 @@ function installObjcStalkerResult(filter) {
     };
     const result = helper.installStalkerResult(spec);
     result.kind = 'objc.stalker.install';
+    result.scope = 'stalker';
     return result;
 }
 
@@ -507,6 +513,7 @@ function installNativeTraceResult(spec) {
     const helper = requireNativeHookHelpers();
     const result = helper.installTraceResult(spec);
     result.kind = 'native.trace.install';
+    result.scope = 'trace';
     result.target = spec;
     return result;
 }
@@ -527,6 +534,7 @@ function installNativeStalkerResult(spec) {
     const helper = requireNativeHookHelpers();
     const result = helper.installStalkerResult(spec);
     result.kind = 'native.stalker.install';
+    result.scope = 'stalker';
     result.target = spec;
     return result;
 }
