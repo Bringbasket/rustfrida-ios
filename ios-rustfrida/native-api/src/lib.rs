@@ -1,4 +1,5 @@
 mod exports;
+mod imports;
 mod injection;
 mod jailbreak;
 mod loadcmds;
@@ -14,6 +15,7 @@ use common::Result;
 use std::path::Path;
 
 pub use exports::{find_image_exports, native_export_support_available};
+pub use imports::{find_image_imports, image_import_support_available, ImageImport};
 pub use injection::{
     Arm64ThreadLaunch, Arm64ThreadState, BootstrapImage, BootstrapResultReport, BootstrapStatus, InjectionPlan,
     InjectionStage, InjectionStep, InjectionTarget, InjectionTrace, LoaderSymbolRole, MachInjector,
@@ -296,12 +298,12 @@ mod platform {
 
     use common::Result;
 
+    use crate::jailbreak::resolve_hook_strategy_for_report;
     use crate::{
         current_hook_policy, dry_run_remote_injection_enabled, image_name_matches,
         injection::{build_injection_plan, LoaderSymbolRole, ResolvedLoaderSymbol},
         mach, normalize_code_pointer, ImageInfo, InjectionPlan, InjectionTarget, InjectionTrace, SymbolInfo,
     };
-    use crate::jailbreak::resolve_hook_strategy_for_report;
 
     extern "C" {
         fn _dyld_image_count() -> u32;

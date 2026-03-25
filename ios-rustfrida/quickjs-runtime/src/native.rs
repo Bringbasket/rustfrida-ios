@@ -4,10 +4,10 @@ use crate::ptr::create_native_pointer;
 use crate::util::{add_cfunction_to_object, js_throw_internal_error};
 use crate::value::JSValue;
 use native_api::{
-    detect_hook_environment, find_image_exports, find_image_load_commands, find_image_sections, find_image_segments,
-    find_native_symbols, hook_environment_recommendations, image_load_command_support_available,
-    image_section_support_available, image_segment_support_available, native_export_support_available,
-    native_symbol_support_available, resolve_hook_strategy,
+    detect_hook_environment, find_image_exports, find_image_imports, find_image_load_commands, find_image_sections,
+    find_image_segments, find_native_symbols, hook_environment_recommendations, image_import_support_available,
+    image_load_command_support_available, image_section_support_available, image_segment_support_available,
+    native_export_support_available, native_symbol_support_available, resolve_hook_strategy,
 };
 
 unsafe fn set_string_array_property(ctx: *mut ffi::JSContext, obj: ffi::JSValue, name: &str, items: &[String]) {
@@ -91,6 +91,20 @@ unsafe fn native_symbol_to_js(ctx: *mut ffi::JSContext, symbol: &native_api::Nat
     result.set_property(ctx, "name", JSValue::string(ctx, &symbol.symbol_name));
     result.set_property(ctx, "address", create_native_pointer(ctx, symbol.address as u64));
     result.set_property(ctx, "offset", JSValue(ffi::JS_NewBigUint64(ctx, symbol.offset as u64)));
+    result.raw()
+}
+
+unsafe fn image_import_to_js(ctx: *mut ffi::JSContext, import: &native_api::ImageImport) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "moduleName", JSValue::string(ctx, &import.module_name));
+    result.set_property(ctx, "moduleBase", create_native_pointer(ctx, import.module_base as u64));
+    result.set_property(ctx, "name", JSValue::string(ctx, &import.symbol_name));
+    result.set_property(ctx, "dylibOrdinal", JSValue::int(import.dylib_ordinal as i32));
+    match &import.dylib_name {
+        Some(name) => result.set_property(ctx, "dylibName", JSValue::string(ctx, name)),
+        None => result.set_property(ctx, "dylibName", JSValue::null()),
+    };
+    result.set_property(ctx, "weakImport", JSValue::bool(import.weak_import));
     result.raw()
 }
 
@@ -287,6 +301,63 @@ unsafe extern "C" fn js_native_find_exports(
     array
 }
 
+unsafe extern "C" fn js_native_find_imports(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.findImports(moduleName[, query]) requires at least 1 string argument",
+        );
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.findImports(moduleName[, query]) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    let query = if argc >= 2 {
+        let value = JSValue(*argv.add(1));
+        if value.is_null() || value.is_undefined() {
+            None
+        } else {
+            match value.to_string(ctx) {
+                Some(query) if !query.trim().is_empty() => Some(query),
+                Some(_) => None,
+                None => {
+                    return crate::util::js_throw_type_error(
+                        ctx,
+                        "Native.findImports(moduleName[, query]) expected query to be a string when provided",
+                    )
+                }
+            }
+        }
+    } else {
+        None
+    };
+
+    let imports = match find_image_imports(&module_name, query.as_deref()) {
+        Ok(imports) => imports,
+        Err(common::Error::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(common::Error::InvalidArgument(message)) => return crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, import) in imports.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, image_import_to_js(ctx, import));
+    }
+    array
+}
+
 unsafe extern "C" fn js_native_find_segments(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -406,6 +477,11 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
     );
     native.set_property(
         ctx.as_ptr(),
+        "importSupportAvailable",
+        JSValue::bool(image_import_support_available()),
+    );
+    native.set_property(
+        ctx.as_ptr(),
         "segmentSupportAvailable",
         JSValue::bool(image_segment_support_available()),
     );
@@ -430,6 +506,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
         );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSymbols", js_native_find_symbols, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findExports", js_native_find_exports, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findImports", js_native_find_imports, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSegments", js_native_find_segments, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSections", js_native_find_sections, 1);
         add_cfunction_to_object(

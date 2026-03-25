@@ -3236,7 +3236,8 @@ fn parse_native_value_format(raw: &str) -> Result<NativeValueFormat> {
 
 #[cfg(unix)]
 fn parse_jhook_command(command: &str) -> Result<ObjcHookCommand> {
-    const USAGE: &str = "jhook usage: jhook <class> <selector> [meta]|jhook status|jhook stop|jhook stop <class> <selector> [meta]";
+    const USAGE: &str =
+        "jhook usage: jhook <class> <selector> [meta]|jhook status|jhook stop|jhook stop <class> <selector> [meta]";
     let mut parts = command.split_whitespace();
     match parts.next() {
         Some("jhook") => {}
@@ -3598,6 +3599,7 @@ fn print_controller_help() {
     println!("  native.base <module>");
     println!("  native.export <symbol>|native.export <module> -- <symbol>");
     println!("  native.exports <module>|native.exports <module> -- <query>");
+    println!("  native.imports <module>|native.imports <module> -- <query>");
     println!("  native.loadcmds <module>");
     println!("  native.sections <module>");
     println!("  native.segments <module>");
@@ -3877,6 +3879,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.imports DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("pac.image DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -3912,6 +3918,7 @@ mod tests {
         assert!(command_requires_inline_hooks("hfl libobjc.A.dylib 0x1234"));
         assert!(!command_requires_inline_hooks("objc.classes UIView"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
+        assert!(!command_requires_inline_hooks("native.imports UIKit"));
         assert!(!command_requires_inline_hooks("swift.types ViewController"));
     }
 
@@ -3928,9 +3935,15 @@ mod tests {
         assert!(!command_requests_inline_hook_install("stalker status").expect("stalker status"));
         assert!(!command_requests_inline_hook_install("stalker stop addr 0x1234").expect("stalker targeted stop"));
         assert!(!command_requests_inline_hook_install("jhook status").expect("jhook status"));
-        assert!(!command_requests_inline_hook_install("jhook stop UIViewController viewDidLoad").expect("jhook targeted stop"));
+        assert!(
+            !command_requests_inline_hook_install("jhook stop UIViewController viewDidLoad")
+                .expect("jhook targeted stop")
+        );
         assert!(!command_requests_inline_hook_install("shook stop").expect("shook stop"));
-        assert!(!command_requests_inline_hook_install("shook stop Demo -- ViewController viewDidLoad").expect("shook targeted stop"));
+        assert!(
+            !command_requests_inline_hook_install("shook stop Demo -- ViewController viewDidLoad")
+                .expect("shook targeted stop")
+        );
         assert!(!command_requests_inline_hook_install("hfl status").expect("hfl status"));
         assert!(!command_requests_inline_hook_install("hfl stop libobjc.A.dylib 0x1234").expect("hfl targeted stop"));
     }

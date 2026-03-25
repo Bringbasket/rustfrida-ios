@@ -159,6 +159,11 @@ function formatNativeSymbol(symbol) {
     return symbol.address.toString() + ' ' + symbol.moduleName + '!' + symbol.name + '+0x' + BigInt(symbol.offset || 0).toString(16);
 }
 
+function formatImport(imp) {
+    const source = imp.dylibName === null || imp.dylibName === undefined ? ('ordinal=' + String(imp.dylibOrdinal || 0)) : String(imp.dylibName);
+    return source + '!' + String(imp.name || '') + (imp.weakImport ? ' weak' : '');
+}
+
 function formatSegment(segment) {
     return [
         segment.name,
@@ -324,6 +329,18 @@ function normalizeNativeSymbol(symbol) {
         address: symbol.address.toString(),
         offsetHex: '0x' + offset.toString(16),
         text: formatNativeSymbol(symbol),
+    };
+}
+
+function normalizeImport(imp) {
+    return {
+        moduleName: String(imp.moduleName || ''),
+        moduleBase: imp.moduleBase ? imp.moduleBase.toString() : null,
+        name: String(imp.name || ''),
+        dylibOrdinal: Number(imp.dylibOrdinal || 0),
+        dylibName: imp.dylibName === undefined ? null : imp.dylibName,
+        weakImport: !!imp.weakImport,
+        text: formatImport(imp),
     };
 }
 
@@ -574,6 +591,12 @@ function handleSpecResult(spec) {
         const symbols = Native.findExports(moduleName, query).map((symbol) => normalizeNativeSymbol(symbol));
         return { kind: 'native.exports', moduleName, query, count: symbols.length, symbols, text: symbols.map((symbol) => symbol.text).join('\n') };
     }
+    case 'native.imports': {
+        const moduleName = String(spec.moduleName || '');
+        const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
+        const imports = Native.findImports(moduleName, query).map((imp) => normalizeImport(imp));
+        return { kind: 'native.imports', moduleName, query, count: imports.length, imports, text: imports.map((imp) => imp.text).join('\n') };
+    }
     case 'native.segments': {
         const moduleName = String(spec.moduleName || '');
         const segments = Native.findSegments(moduleName).map((segment) => normalizeSegment(segment));
@@ -820,6 +843,15 @@ function legacyToSpec(command) {
         const parsed = parseNativeExports(trimmed.slice('native.exports '.length));
         return {
             kind: 'native.exports',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.imports ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.imports '.length));
+        return {
+            kind: 'native.imports',
             moduleName: parsed.moduleName,
             query: parsed.query,
         };
