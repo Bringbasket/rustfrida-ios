@@ -5,14 +5,15 @@ use crate::util::{add_cfunction_to_object, js_throw_internal_error};
 use crate::value::JSValue;
 use native_api::{
     detect_hook_environment, find_image_build_version, find_image_dependencies, find_image_dylinker,
-    find_image_encryption_info, find_image_exports, find_image_imports, find_image_install_name,
-    find_image_load_commands, find_image_rpaths, find_image_sections, find_image_segments, find_image_source_version,
-    find_image_uuid, find_native_symbols, hook_environment_recommendations, image_build_version_support_available,
-    image_dependency_support_available, image_dylinker_support_available, image_encryption_info_support_available,
-    image_import_support_available, image_install_name_support_available, image_load_command_support_available,
-    image_rpath_support_available, image_section_support_available, image_segment_support_available,
-    image_source_version_support_available, image_uuid_support_available, native_export_support_available,
-    native_symbol_support_available, resolve_hook_strategy,
+    find_image_encryption_info, find_image_entry_point, find_image_exports, find_image_imports,
+    find_image_install_name, find_image_load_commands, find_image_rpaths, find_image_sections, find_image_segments,
+    find_image_source_version, find_image_uuid, find_native_symbols, hook_environment_recommendations,
+    image_build_version_support_available, image_dependency_support_available, image_dylinker_support_available,
+    image_encryption_info_support_available, image_entry_point_support_available, image_import_support_available,
+    image_install_name_support_available, image_load_command_support_available, image_rpath_support_available,
+    image_section_support_available, image_segment_support_available, image_source_version_support_available,
+    image_uuid_support_available, native_export_support_available, native_symbol_support_available,
+    resolve_hook_strategy,
 };
 
 unsafe fn set_string_array_property(ctx: *mut ffi::JSContext, obj: ffi::JSValue, name: &str, items: &[String]) {
@@ -167,6 +168,27 @@ unsafe fn image_encryption_info_to_js(
         ctx,
         "cryptid",
         JSValue(ffi::qjs_new_uint32(ctx, encryption_info.cryptid)),
+    );
+    result.raw()
+}
+
+unsafe fn image_entry_point_to_js(ctx: *mut ffi::JSContext, entry_point: &native_api::ImageEntryPoint) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "moduleName", JSValue::string(ctx, &entry_point.module_name));
+    result.set_property(
+        ctx,
+        "moduleBase",
+        create_native_pointer(ctx, entry_point.module_base as u64),
+    );
+    result.set_property(
+        ctx,
+        "entryoff",
+        JSValue(ffi::JS_NewBigUint64(ctx, entry_point.entryoff)),
+    );
+    result.set_property(
+        ctx,
+        "stacksize",
+        JSValue(ffi::JS_NewBigUint64(ctx, entry_point.stacksize)),
     );
     result.raw()
 }
@@ -613,6 +635,34 @@ unsafe extern "C" fn js_native_find_encryption_info(
     }
 }
 
+unsafe extern "C" fn js_native_find_entry_point(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return crate::util::js_throw_type_error(ctx, "Native.findEntryPoint(moduleName) requires 1 string argument");
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.findEntryPoint(moduleName) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    match find_image_entry_point(&module_name) {
+        Ok(Some(entry_point)) => image_entry_point_to_js(ctx, &entry_point),
+        Ok(None) | Err(common::Error::Unsupported(_)) => JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
+}
+
 unsafe extern "C" fn js_native_find_source_version(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -942,6 +992,11 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
     );
     native.set_property(
         ctx.as_ptr(),
+        "entryPointSupportAvailable",
+        JSValue::bool(image_entry_point_support_available()),
+    );
+    native.set_property(
+        ctx.as_ptr(),
         "sourceVersionSupportAvailable",
         JSValue::bool(image_source_version_support_available()),
     );
@@ -1013,6 +1068,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             native.raw(),
             "findEncryptionInfo",
             js_native_find_encryption_info,
+            1,
+        );
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "findEntryPoint",
+            js_native_find_entry_point,
             1,
         );
         add_cfunction_to_object(

@@ -201,6 +201,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.entryPoint libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.sourceVersion libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

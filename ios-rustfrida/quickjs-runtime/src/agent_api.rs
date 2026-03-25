@@ -182,6 +182,13 @@ function formatEncryptionInfo(encryptionInfo) {
     ].join(' ');
 }
 
+function formatEntryPoint(entryPoint) {
+    return [
+        'entryoff=0x' + BigInt(entryPoint.entryoff || 0).toString(16),
+        'stacksize=0x' + BigInt(entryPoint.stacksize || 0).toString(16),
+    ].join(' ');
+}
+
 function formatSourceVersion(sourceVersion) {
     return 'version=' + String(sourceVersion.version || '');
 }
@@ -429,6 +436,16 @@ function normalizeEncryptionInfo(encryptionInfo) {
         cryptsizeHex: '0x' + BigInt(encryptionInfo.cryptsize || 0).toString(16),
         cryptid: Number(encryptionInfo.cryptid || 0),
         text: formatEncryptionInfo(encryptionInfo),
+    };
+}
+
+function normalizeEntryPoint(entryPoint) {
+    return {
+        moduleName: String(entryPoint.moduleName || ''),
+        moduleBase: entryPoint.moduleBase ? entryPoint.moduleBase.toString() : null,
+        entryoffHex: '0x' + BigInt(entryPoint.entryoff || 0).toString(16),
+        stacksizeHex: '0x' + BigInt(entryPoint.stacksize || 0).toString(16),
+        text: formatEntryPoint(entryPoint),
     };
 }
 
@@ -765,6 +782,12 @@ function handleSpecResult(spec) {
         const normalized = encryptionInfo === null ? null : normalizeEncryptionInfo(encryptionInfo);
         return { kind: 'native.encryption_info', moduleName, encryptionInfo: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
+    case 'native.entry_point': {
+        const moduleName = String(spec.moduleName || '');
+        const entryPoint = Native.findEntryPoint(moduleName);
+        const normalized = entryPoint === null ? null : normalizeEntryPoint(entryPoint);
+        return { kind: 'native.entry_point', moduleName, entryPoint: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
     case 'native.source_version': {
         const moduleName = String(spec.moduleName || '');
         const sourceVersion = Native.findSourceVersion(moduleName);
@@ -1074,6 +1097,17 @@ function legacyToSpec(command) {
         }
         return {
             kind: 'native.encryption_info',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.entryPoint ')) {
+        const moduleName = trimmed.slice('native.entryPoint '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.entryPoint usage: native.entryPoint <module>');
+        }
+        return {
+            kind: 'native.entry_point',
             moduleName,
         };
     }

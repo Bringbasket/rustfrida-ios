@@ -3601,6 +3601,7 @@ fn print_controller_help() {
     println!("  native.exports <module>|native.exports <module> -- <query>");
     println!("  native.dependencies <module>|native.dependencies <module> -- <query>");
     println!("  native.encryptionInfo <module>");
+    println!("  native.entryPoint <module>");
     println!("  native.sourceVersion <module>");
     println!("  native.buildVersion <module>");
     println!("  native.dylinker <module>");
@@ -3895,6 +3896,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.entryPoint DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.sourceVersion DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -3960,6 +3965,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
         assert!(!command_requires_inline_hooks("native.encryptionInfo UIKit"));
+        assert!(!command_requires_inline_hooks("native.entryPoint UIKit"));
         assert!(!command_requires_inline_hooks("native.sourceVersion UIKit"));
         assert!(!command_requires_inline_hooks("native.buildVersion UIKit"));
         assert!(!command_requires_inline_hooks("native.dylinker UIKit"));
