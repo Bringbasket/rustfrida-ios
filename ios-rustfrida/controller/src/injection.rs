@@ -3600,6 +3600,7 @@ fn print_controller_help() {
     println!("  native.export <symbol>|native.export <module> -- <symbol>");
     println!("  native.exports <module>|native.exports <module> -- <query>");
     println!("  native.dependencies <module>|native.dependencies <module> -- <query>");
+    println!("  native.dylinker <module>");
     println!("  native.installName <module>");
     println!("  native.uuid <module>");
     println!("  native.rpaths <module>|native.rpaths <module> -- <query>");
@@ -3887,6 +3888,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.dylinker DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.installName DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -3939,6 +3944,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.classes UIView"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
+        assert!(!command_requires_inline_hooks("native.dylinker UIKit"));
         assert!(!command_requires_inline_hooks("native.installName UIKit"));
         assert!(!command_requires_inline_hooks("native.uuid UIKit"));
         assert!(!command_requires_inline_hooks("native.rpaths UIKit"));

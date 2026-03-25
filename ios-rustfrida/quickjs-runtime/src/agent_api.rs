@@ -174,6 +174,10 @@ function formatDependency(dep) {
     ].join(' ');
 }
 
+function formatDylinker(dylinker) {
+    return String(dylinker.kind || 'load') + ' ' + String(dylinker.path || '');
+}
+
 function formatInstallName(installName) {
     return [
         String(installName.path || ''),
@@ -390,6 +394,19 @@ function normalizeDependency(dep) {
         compatibilityVersion: formatPackedVersion(dep.compatibilityVersion),
         timestamp: Number(dep.timestamp || 0),
         text: formatDependency(dep),
+    };
+}
+
+function normalizeDylinker(dylinker) {
+    const path = String(dylinker.path || '');
+    const pathParts = path.split('/').filter(Boolean);
+    return {
+        moduleName: String(dylinker.moduleName || ''),
+        moduleBase: dylinker.moduleBase ? dylinker.moduleBase.toString() : null,
+        path,
+        name: pathParts.length === 0 ? path : pathParts[pathParts.length - 1],
+        kind: String(dylinker.kind || 'load'),
+        text: formatDylinker(dylinker),
     };
 }
 
@@ -680,6 +697,12 @@ function handleSpecResult(spec) {
         const dependencies = Native.findDependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
         return { kind: 'native.dependencies', moduleName, query, count: dependencies.length, dependencies, text: dependencies.map((dependency) => dependency.text).join('\n') };
     }
+    case 'native.dylinker': {
+        const moduleName = String(spec.moduleName || '');
+        const dylinker = Native.findDylinker(moduleName);
+        const normalized = dylinker === null ? null : normalizeDylinker(dylinker);
+        return { kind: 'native.dylinker', moduleName, dylinker: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
     case 'native.install_name': {
         const moduleName = String(spec.moduleName || '');
         const installName = Native.findInstallName(moduleName);
@@ -961,6 +984,17 @@ function legacyToSpec(command) {
             kind: 'native.dependencies',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.dylinker ')) {
+        const moduleName = trimmed.slice('native.dylinker '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.dylinker usage: native.dylinker <module>');
+        }
+        return {
+            kind: 'native.dylinker',
+            moduleName,
         };
     }
 

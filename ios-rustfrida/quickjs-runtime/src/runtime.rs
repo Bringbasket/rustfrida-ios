@@ -1448,6 +1448,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dylinker', moduleName: main.image.name }); return result.kind === 'native.dylinker' && (result.dylinker === null || (typeof result.dylinker.path === 'string' && typeof result.dylinker.kind === 'string')); })()"
+                    )
+                    .expect("agent native dylinker result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.install_name', moduleName: main.image.name }); return result.kind === 'native.install_name' && (result.installName === null || (typeof result.installName.path === 'string' && typeof result.installName.currentVersion === 'string')); })()"
                     )
                     .expect("agent native install name result"),
@@ -1555,6 +1563,12 @@ undefined;
                 runtime
                     .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.dependencies ' + base); return value === '' || value.indexOf('/') !== -1; })()")
                     .expect("agent native dependencies"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.dylinker ' + base); return value === '<null>' || value.indexOf('/') !== -1; })()")
+                    .expect("agent native dylinker"),
                 "true"
             );
             assert_eq!(

@@ -1,4 +1,5 @@
 mod deps;
+mod dylinker;
 mod exports;
 mod imports;
 mod injection;
@@ -19,6 +20,7 @@ use common::Result;
 use std::path::Path;
 
 pub use deps::{find_image_dependencies, image_dependency_support_available, ImageDependency};
+pub use dylinker::{find_image_dylinker, image_dylinker_support_available, ImageDylinker};
 pub use exports::{find_image_exports, native_export_support_available};
 pub use imports::{find_image_imports, image_import_support_available, ImageImport};
 pub use injection::{

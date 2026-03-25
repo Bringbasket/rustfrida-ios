@@ -4,13 +4,13 @@ use crate::ptr::create_native_pointer;
 use crate::util::{add_cfunction_to_object, js_throw_internal_error};
 use crate::value::JSValue;
 use native_api::{
-    detect_hook_environment, find_image_dependencies, find_image_exports, find_image_imports, find_image_install_name,
-    find_image_load_commands, find_image_rpaths, find_image_sections, find_image_segments, find_image_uuid,
-    find_native_symbols, hook_environment_recommendations, image_dependency_support_available,
-    image_import_support_available, image_install_name_support_available, image_load_command_support_available,
-    image_rpath_support_available, image_section_support_available, image_segment_support_available,
-    image_uuid_support_available, native_export_support_available, native_symbol_support_available,
-    resolve_hook_strategy,
+    detect_hook_environment, find_image_dependencies, find_image_dylinker, find_image_exports, find_image_imports,
+    find_image_install_name, find_image_load_commands, find_image_rpaths, find_image_sections, find_image_segments,
+    find_image_uuid, find_native_symbols, hook_environment_recommendations, image_dependency_support_available,
+    image_dylinker_support_available, image_import_support_available, image_install_name_support_available,
+    image_load_command_support_available, image_rpath_support_available, image_section_support_available,
+    image_segment_support_available, image_uuid_support_available, native_export_support_available,
+    native_symbol_support_available, resolve_hook_strategy,
 };
 
 unsafe fn set_string_array_property(ctx: *mut ffi::JSContext, obj: ffi::JSValue, name: &str, items: &[String]) {
@@ -137,6 +137,19 @@ unsafe fn image_dependency_to_js(ctx: *mut ffi::JSContext, dependency: &native_a
         "timestamp",
         JSValue(ffi::qjs_new_uint32(ctx, dependency.timestamp)),
     );
+    result.raw()
+}
+
+unsafe fn image_dylinker_to_js(ctx: *mut ffi::JSContext, dylinker: &native_api::ImageDylinker) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "moduleName", JSValue::string(ctx, &dylinker.module_name));
+    result.set_property(
+        ctx,
+        "moduleBase",
+        create_native_pointer(ctx, dylinker.module_base as u64),
+    );
+    result.set_property(ctx, "path", JSValue::string(ctx, &dylinker.path));
+    result.set_property(ctx, "kind", JSValue::string(ctx, &dylinker.kind));
     result.raw()
 }
 
@@ -497,6 +510,34 @@ unsafe extern "C" fn js_native_find_dependencies(
     array
 }
 
+unsafe extern "C" fn js_native_find_dylinker(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return crate::util::js_throw_type_error(ctx, "Native.findDylinker(moduleName) requires 1 string argument");
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.findDylinker(moduleName) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    match find_image_dylinker(&module_name) {
+        Ok(Some(dylinker)) => image_dylinker_to_js(ctx, &dylinker),
+        Ok(None) | Err(common::Error::Unsupported(_)) => JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
+}
+
 unsafe extern "C" fn js_native_find_install_name(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -734,6 +775,11 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
     );
     native.set_property(
         ctx.as_ptr(),
+        "dylinkerSupportAvailable",
+        JSValue::bool(image_dylinker_support_available()),
+    );
+    native.set_property(
+        ctx.as_ptr(),
         "installNameSupportAvailable",
         JSValue::bool(image_install_name_support_available()),
     );
@@ -785,6 +831,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_dependencies,
             2,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findDylinker", js_native_find_dylinker, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),

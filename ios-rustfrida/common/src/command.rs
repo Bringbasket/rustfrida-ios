@@ -95,6 +95,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.export ")
         || command.starts_with("native.exports ")
         || command.starts_with("native.dependencies ")
+        || command.starts_with("native.dylinker ")
         || command.starts_with("native.installName ")
         || command.starts_with("native.uuid ")
         || command.starts_with("native.rpaths ")
@@ -275,6 +276,17 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "native.dependencies",
             "moduleName": module_name,
             "query": query,
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.dylinker ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.dylinker",
+            "moduleName": module_name,
         }));
     }
 
@@ -627,6 +639,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.dylinker libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.installName libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -737,6 +753,12 @@ mod tests {
             AgentCommand::from_legacy("native.dependencies  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.dependencies  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.dylinker  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.dylinker  ".into(),
             })
         );
         assert_eq!(

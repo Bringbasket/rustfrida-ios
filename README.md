@@ -79,6 +79,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.exports <module> -- <query>`
   - `native.dependencies <module>`
   - `native.dependencies <module> -- <query>`
+  - `native.dylinker <module>`
   - `native.installName <module>`
   - `native.uuid <module>`
   - `native.rpaths <module>`
@@ -195,6 +196,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - 对 `objc.* / native.* / pac.* / swift.*` 这类 runtime 查询命令，`--command-json` 现在也会尽量回传稳定的 `payloadJson` 字段，里面直接带 `count / classes / methods / images / symbols / types / report / text` 等结构化内容，不再只能从换行文本里二次解析。
 - 其中 `native.symbols / native.exports / native.segments / native.sections / native.loadcmds / swift.symbols / swift.types / swift.methodOwners / swift.typeMethods / swift.methods` 这批结果现在也会补出更稳定的定位字段，例如 `moduleBase / offsetHex / sourceSymbolName / sourceOffsetHex`；`native.images / native.mainImage / pac.images` 里的镜像项也会顺手带 `name`，脚本侧不必再自己拆 basename。
 - `native.dependencies <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dependencies / ordinal / kind / path / currentVersion / compatibilityVersion / timestamp`，适合先看一个镜像依赖树，再结合 `native.imports` 缩小目标符号来源。
+- `native.dylinker <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dylinker / path / kind`，适合直接确认某个 Mach-O 记录的 dyld linker 路径。
 - `native.installName <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `installName / path / currentVersion / compatibilityVersion / timestamp`，适合快速确认某个 dylib 自身声明的 install name 和版本信息。
 - `native.uuid <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `imageUuid / uuid`，适合把运行中镜像和 dSYM / 本地 Mach-O 做快速 UUID 对齐。
 - `native.rpaths <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `rpaths / path`，适合和 `native.dependencies` 一起排查运行时 dylib 查找路径。
