@@ -182,6 +182,10 @@ function formatEncryptionInfo(encryptionInfo) {
     ].join(' ');
 }
 
+function formatSourceVersion(sourceVersion) {
+    return 'version=' + String(sourceVersion.version || '');
+}
+
 function formatBuildVersion(buildVersion) {
     const tools = Array.isArray(buildVersion.tools) && buildVersion.tools.length !== 0
         ? buildVersion.tools.map((tool) => String(tool.tool || 'tool') + ':' + String(tool.version || '')).join(',')
@@ -425,6 +429,15 @@ function normalizeEncryptionInfo(encryptionInfo) {
         cryptsizeHex: '0x' + BigInt(encryptionInfo.cryptsize || 0).toString(16),
         cryptid: Number(encryptionInfo.cryptid || 0),
         text: formatEncryptionInfo(encryptionInfo),
+    };
+}
+
+function normalizeSourceVersion(sourceVersion) {
+    return {
+        moduleName: String(sourceVersion.moduleName || ''),
+        moduleBase: sourceVersion.moduleBase ? sourceVersion.moduleBase.toString() : null,
+        version: String(sourceVersion.version || ''),
+        text: formatSourceVersion(sourceVersion),
     };
 }
 
@@ -752,6 +765,12 @@ function handleSpecResult(spec) {
         const normalized = encryptionInfo === null ? null : normalizeEncryptionInfo(encryptionInfo);
         return { kind: 'native.encryption_info', moduleName, encryptionInfo: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
+    case 'native.source_version': {
+        const moduleName = String(spec.moduleName || '');
+        const sourceVersion = Native.findSourceVersion(moduleName);
+        const normalized = sourceVersion === null ? null : normalizeSourceVersion(sourceVersion);
+        return { kind: 'native.source_version', moduleName, sourceVersion: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
     case 'native.build_version': {
         const moduleName = String(spec.moduleName || '');
         const buildVersion = Native.findBuildVersion(moduleName);
@@ -1055,6 +1074,17 @@ function legacyToSpec(command) {
         }
         return {
             kind: 'native.encryption_info',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.sourceVersion ')) {
+        const moduleName = trimmed.slice('native.sourceVersion '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.sourceVersion usage: native.sourceVersion <module>');
+        }
+        return {
+            kind: 'native.source_version',
             moduleName,
         };
     }

@@ -96,6 +96,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.exports ")
         || command.starts_with("native.dependencies ")
         || command.starts_with("native.encryptionInfo ")
+        || command.starts_with("native.sourceVersion ")
         || command.starts_with("native.buildVersion ")
         || command.starts_with("native.dylinker ")
         || command.starts_with("native.installName ")
@@ -288,6 +289,17 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }
         return Some(json!({
             "kind": "native.encryption_info",
+            "moduleName": module_name,
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.sourceVersion ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.source_version",
             "moduleName": module_name,
         }));
     }
@@ -667,6 +679,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.sourceVersion libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.buildVersion libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -791,6 +807,12 @@ mod tests {
             AgentCommand::from_legacy("native.encryptionInfo  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.encryptionInfo  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.sourceVersion  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.sourceVersion  ".into(),
             })
         );
         assert_eq!(

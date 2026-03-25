@@ -14,6 +14,7 @@ mod pac;
 mod rpaths;
 mod sections;
 mod segments;
+mod source_version;
 mod swift;
 mod symbols;
 mod uuid;
@@ -48,6 +49,7 @@ pub use pac::{
 pub use rpaths::{find_image_rpaths, image_rpath_support_available, ImageRpath};
 pub use sections::{find_image_sections, image_section_support_available, ImageSection};
 pub use segments::{find_image_segments, image_segment_support_available, ImageSegment};
+pub use source_version::{find_image_source_version, image_source_version_support_available, ImageSourceVersion};
 pub use swift::{
     find_swift_method_owners, find_swift_methods, find_swift_symbols, find_swift_type_methods, find_swift_types,
     find_swift_types_of_kind, swift_demangle_symbol, swift_support_available, swift_type_source_kinds, SwiftSymbol,
