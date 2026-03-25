@@ -79,6 +79,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.exports <module> -- <query>`
   - `native.dependencies <module>`
   - `native.dependencies <module> -- <query>`
+  - `native.installName <module>`
   - `native.rpaths <module>`
   - `native.rpaths <module> -- <query>`
   - `native.imports <module>`
@@ -193,6 +194,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - 对 `objc.* / native.* / pac.* / swift.*` 这类 runtime 查询命令，`--command-json` 现在也会尽量回传稳定的 `payloadJson` 字段，里面直接带 `count / classes / methods / images / symbols / types / report / text` 等结构化内容，不再只能从换行文本里二次解析。
 - 其中 `native.symbols / native.exports / native.segments / native.sections / native.loadcmds / swift.symbols / swift.types / swift.methodOwners / swift.typeMethods / swift.methods` 这批结果现在也会补出更稳定的定位字段，例如 `moduleBase / offsetHex / sourceSymbolName / sourceOffsetHex`；`native.images / native.mainImage / pac.images` 里的镜像项也会顺手带 `name`，脚本侧不必再自己拆 basename。
 - `native.dependencies <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dependencies / ordinal / kind / path / currentVersion / compatibilityVersion / timestamp`，适合先看一个镜像依赖树，再结合 `native.imports` 缩小目标符号来源。
+- `native.installName <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `installName / path / currentVersion / compatibilityVersion / timestamp`，适合快速确认某个 dylib 自身声明的 install name 和版本信息。
 - `native.rpaths <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `rpaths / path`，适合和 `native.dependencies` 一起排查运行时 dylib 查找路径。
 - `native.imports <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；当前实现基于 Mach-O undefined symbol 表，结构化结果会带 `imports / dylibOrdinal / dylibName / weakImport`，适合先看一个镜像依赖了哪些外部符号，再决定后续 trace/hook 目标。
 - 对 `hfl / jhook / shook / trace / stalker` 这类 controller dispatch 命令，`--command-json` 现在也会尽量回传结构化 `payloadJson`，包含 `action / kind / target / count / key / moduleName / selectorName / resolvedLabel / targetAddress / filter / replacedCount` 等字段；对应的 `*.status` 结果也会补出当前 active state 和 target 元数据，像 `hfl/jhook/shook` 不再只有 key/count；`*.stop` 结果现在也会把被回收的 key/target 一并带回，`trace.stop / stalker.stop` 也会继续带上实际 detach 计数。

@@ -174,6 +174,15 @@ function formatDependency(dep) {
     ].join(' ');
 }
 
+function formatInstallName(installName) {
+    return [
+        String(installName.path || ''),
+        'current=' + formatPackedVersion(installName.currentVersion),
+        'compat=' + formatPackedVersion(installName.compatibilityVersion),
+        'timestamp=' + String(installName.timestamp || 0),
+    ].join(' ');
+}
+
 function formatRpath(rpath) {
     return String(rpath.path || '');
 }
@@ -377,6 +386,21 @@ function normalizeDependency(dep) {
         compatibilityVersion: formatPackedVersion(dep.compatibilityVersion),
         timestamp: Number(dep.timestamp || 0),
         text: formatDependency(dep),
+    };
+}
+
+function normalizeInstallName(installName) {
+    const path = String(installName.path || '');
+    const pathParts = path.split('/').filter(Boolean);
+    return {
+        moduleName: String(installName.moduleName || ''),
+        moduleBase: installName.moduleBase ? installName.moduleBase.toString() : null,
+        path,
+        name: pathParts.length === 0 ? path : pathParts[pathParts.length - 1],
+        currentVersion: formatPackedVersion(installName.currentVersion),
+        compatibilityVersion: formatPackedVersion(installName.compatibilityVersion),
+        timestamp: Number(installName.timestamp || 0),
+        text: formatInstallName(installName),
     };
 }
 
@@ -642,6 +666,12 @@ function handleSpecResult(spec) {
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const dependencies = Native.findDependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
         return { kind: 'native.dependencies', moduleName, query, count: dependencies.length, dependencies, text: dependencies.map((dependency) => dependency.text).join('\n') };
+    }
+    case 'native.install_name': {
+        const moduleName = String(spec.moduleName || '');
+        const installName = Native.findInstallName(moduleName);
+        const normalized = installName === null ? null : normalizeInstallName(installName);
+        return { kind: 'native.install_name', moduleName, installName: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.rpaths': {
         const moduleName = String(spec.moduleName || '');
@@ -912,6 +942,17 @@ function legacyToSpec(command) {
             kind: 'native.dependencies',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.installName ')) {
+        const moduleName = trimmed.slice('native.installName '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.installName usage: native.installName <module>');
+        }
+        return {
+            kind: 'native.install_name',
+            moduleName,
         };
     }
 

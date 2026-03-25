@@ -2,6 +2,7 @@ mod deps;
 mod exports;
 mod imports;
 mod injection;
+mod install_name;
 mod jailbreak;
 mod loadcmds;
 #[cfg(any(target_os = "ios", target_os = "macos"))]
@@ -25,6 +26,7 @@ pub use injection::{
     RemoteProtectionOutcome, RemoteThreadTerminationOutcome, ResolvedLoaderSymbol, ThreadBootstrapKind,
     ThreadCreatePlan,
 };
+pub use install_name::{find_image_install_name, image_install_name_support_available, ImageInstallName};
 pub use jailbreak::{
     current_hook_policy, detect_hook_environment, hook_environment_recommendations, resolve_hook_strategy,
     HookBackendInfo, HookEnvironmentReport, HookPolicy, HookStrategyDecision,
