@@ -1,3 +1,4 @@
+mod build_version;
 mod deps;
 mod dylinker;
 mod exports;
@@ -19,6 +20,9 @@ mod uuid;
 use common::Result;
 use std::path::Path;
 
+pub use build_version::{
+    find_image_build_version, image_build_version_support_available, ImageBuildTool, ImageBuildVersion,
+};
 pub use deps::{find_image_dependencies, image_dependency_support_available, ImageDependency};
 pub use dylinker::{find_image_dylinker, image_dylinker_support_available, ImageDylinker};
 pub use exports::{find_image_exports, native_export_support_available};

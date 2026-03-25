@@ -4,13 +4,14 @@ use crate::ptr::create_native_pointer;
 use crate::util::{add_cfunction_to_object, js_throw_internal_error};
 use crate::value::JSValue;
 use native_api::{
-    detect_hook_environment, find_image_dependencies, find_image_dylinker, find_image_exports, find_image_imports,
-    find_image_install_name, find_image_load_commands, find_image_rpaths, find_image_sections, find_image_segments,
-    find_image_uuid, find_native_symbols, hook_environment_recommendations, image_dependency_support_available,
-    image_dylinker_support_available, image_import_support_available, image_install_name_support_available,
-    image_load_command_support_available, image_rpath_support_available, image_section_support_available,
-    image_segment_support_available, image_uuid_support_available, native_export_support_available,
-    native_symbol_support_available, resolve_hook_strategy,
+    detect_hook_environment, find_image_build_version, find_image_dependencies, find_image_dylinker,
+    find_image_exports, find_image_imports, find_image_install_name, find_image_load_commands, find_image_rpaths,
+    find_image_sections, find_image_segments, find_image_uuid, find_native_symbols, hook_environment_recommendations,
+    image_build_version_support_available, image_dependency_support_available, image_dylinker_support_available,
+    image_import_support_available, image_install_name_support_available, image_load_command_support_available,
+    image_rpath_support_available, image_section_support_available, image_segment_support_available,
+    image_uuid_support_available, native_export_support_available, native_symbol_support_available,
+    resolve_hook_strategy,
 };
 
 unsafe fn set_string_array_property(ctx: *mut ffi::JSContext, obj: ffi::JSValue, name: &str, items: &[String]) {
@@ -137,6 +138,32 @@ unsafe fn image_dependency_to_js(ctx: *mut ffi::JSContext, dependency: &native_a
         "timestamp",
         JSValue(ffi::qjs_new_uint32(ctx, dependency.timestamp)),
     );
+    result.raw()
+}
+
+unsafe fn image_build_version_to_js(
+    ctx: *mut ffi::JSContext,
+    build_version: &native_api::ImageBuildVersion,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "moduleName", JSValue::string(ctx, &build_version.module_name));
+    result.set_property(
+        ctx,
+        "moduleBase",
+        create_native_pointer(ctx, build_version.module_base as u64),
+    );
+    result.set_property(ctx, "platform", JSValue::string(ctx, &build_version.platform));
+    result.set_property(ctx, "minOs", JSValue::string(ctx, &build_version.min_os));
+    result.set_property(ctx, "sdk", JSValue::string(ctx, &build_version.sdk));
+
+    let tools = ffi::JS_NewArray(ctx);
+    for (index, tool) in build_version.tools.iter().enumerate() {
+        let item = JSValue(ffi::JS_NewObject(ctx));
+        item.set_property(ctx, "tool", JSValue::string(ctx, &tool.tool));
+        item.set_property(ctx, "version", JSValue::string(ctx, &tool.version));
+        ffi::JS_SetPropertyUint32(ctx, tools, index as u32, item.raw());
+    }
+    result.set_property(ctx, "tools", JSValue(tools));
     result.raw()
 }
 
@@ -510,6 +537,34 @@ unsafe extern "C" fn js_native_find_dependencies(
     array
 }
 
+unsafe extern "C" fn js_native_find_build_version(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return crate::util::js_throw_type_error(ctx, "Native.findBuildVersion(moduleName) requires 1 string argument");
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.findBuildVersion(moduleName) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    match find_image_build_version(&module_name) {
+        Ok(Some(build_version)) => image_build_version_to_js(ctx, &build_version),
+        Ok(None) | Err(common::Error::Unsupported(_)) => JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
+}
+
 unsafe extern "C" fn js_native_find_dylinker(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -775,6 +830,11 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
     );
     native.set_property(
         ctx.as_ptr(),
+        "buildVersionSupportAvailable",
+        JSValue::bool(image_build_version_support_available()),
+    );
+    native.set_property(
+        ctx.as_ptr(),
         "dylinkerSupportAvailable",
         JSValue::bool(image_dylinker_support_available()),
     );
@@ -830,6 +890,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             "findDependencies",
             js_native_find_dependencies,
             2,
+        );
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "findBuildVersion",
+            js_native_find_build_version,
+            1,
         );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findDylinker", js_native_find_dylinker, 1);
         add_cfunction_to_object(

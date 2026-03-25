@@ -174,6 +174,18 @@ function formatDependency(dep) {
     ].join(' ');
 }
 
+function formatBuildVersion(buildVersion) {
+    const tools = Array.isArray(buildVersion.tools) && buildVersion.tools.length !== 0
+        ? buildVersion.tools.map((tool) => String(tool.tool || 'tool') + ':' + String(tool.version || '')).join(',')
+        : 'none';
+    return [
+        'platform=' + String(buildVersion.platform || 'unknown'),
+        'minos=' + String(buildVersion.minOs || ''),
+        'sdk=' + String(buildVersion.sdk || ''),
+        'tools=' + tools,
+    ].join(' ');
+}
+
 function formatDylinker(dylinker) {
     return String(dylinker.kind || 'load') + ' ' + String(dylinker.path || '');
 }
@@ -394,6 +406,24 @@ function normalizeDependency(dep) {
         compatibilityVersion: formatPackedVersion(dep.compatibilityVersion),
         timestamp: Number(dep.timestamp || 0),
         text: formatDependency(dep),
+    };
+}
+
+function normalizeBuildVersion(buildVersion) {
+    const tools = Array.isArray(buildVersion.tools)
+        ? buildVersion.tools.map((tool) => ({
+            tool: String(tool.tool || 'tool'),
+            version: String(tool.version || ''),
+        }))
+        : [];
+    return {
+        moduleName: String(buildVersion.moduleName || ''),
+        moduleBase: buildVersion.moduleBase ? buildVersion.moduleBase.toString() : null,
+        platform: String(buildVersion.platform || 'unknown'),
+        minOs: String(buildVersion.minOs || ''),
+        sdk: String(buildVersion.sdk || ''),
+        tools,
+        text: formatBuildVersion(buildVersion),
     };
 }
 
@@ -697,6 +727,12 @@ function handleSpecResult(spec) {
         const dependencies = Native.findDependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
         return { kind: 'native.dependencies', moduleName, query, count: dependencies.length, dependencies, text: dependencies.map((dependency) => dependency.text).join('\n') };
     }
+    case 'native.build_version': {
+        const moduleName = String(spec.moduleName || '');
+        const buildVersion = Native.findBuildVersion(moduleName);
+        const normalized = buildVersion === null ? null : normalizeBuildVersion(buildVersion);
+        return { kind: 'native.build_version', moduleName, buildVersion: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
     case 'native.dylinker': {
         const moduleName = String(spec.moduleName || '');
         const dylinker = Native.findDylinker(moduleName);
@@ -984,6 +1020,17 @@ function legacyToSpec(command) {
             kind: 'native.dependencies',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.buildVersion ')) {
+        const moduleName = trimmed.slice('native.buildVersion '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.buildVersion usage: native.buildVersion <module>');
+        }
+        return {
+            kind: 'native.build_version',
+            moduleName,
         };
     }
 
