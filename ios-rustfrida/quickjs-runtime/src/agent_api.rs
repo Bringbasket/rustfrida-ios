@@ -222,6 +222,24 @@ function formatLinkedit(linkedit) {
     ].join(' ');
 }
 
+function formatFunctionStart(functionStart) {
+    return '+0x' + BigInt(functionStart.offset || 0).toString(16) + ' ' + functionStart.address.toString();
+}
+
+function formatFunctionStarts(functionStarts) {
+    const starts = Array.isArray(functionStarts.starts) ? functionStarts.starts : [];
+    const summary = [
+        'dataoff=0x' + BigInt(functionStarts.dataoff || 0).toString(16),
+        'datasize=0x' + BigInt(functionStarts.datasize || 0).toString(16),
+        'linkeditBase=' + functionStarts.linkeditBase.toString(),
+        'dataAddress=' + functionStarts.dataAddress.toString(),
+        'count=' + String(starts.length),
+    ].join(' ');
+    return starts.length === 0
+        ? summary
+        : summary + '\n' + starts.map((functionStart) => formatFunctionStart(functionStart)).join('\n');
+}
+
 function formatSourceVersion(sourceVersion) {
     return 'version=' + String(sourceVersion.version || '');
 }
@@ -518,6 +536,31 @@ function normalizeLinkedit(linkedit) {
         indirectsymoffHex: linkedit.indirectsymoff === null || linkedit.indirectsymoff === undefined ? null : '0x' + BigInt(linkedit.indirectsymoff).toString(16),
         nindirectsyms: linkedit.nindirectsyms === null || linkedit.nindirectsyms === undefined ? null : Number(linkedit.nindirectsyms),
         text: formatLinkedit(linkedit),
+    };
+}
+
+function normalizeFunctionStart(functionStart) {
+    return {
+        offsetHex: '0x' + BigInt(functionStart.offset || 0).toString(16),
+        address: functionStart.address.toString(),
+        text: formatFunctionStart(functionStart),
+    };
+}
+
+function normalizeFunctionStarts(functionStarts) {
+    const starts = Array.isArray(functionStarts.starts)
+        ? functionStarts.starts.map((functionStart) => normalizeFunctionStart(functionStart))
+        : [];
+    return {
+        moduleName: String(functionStarts.moduleName || ''),
+        moduleBase: functionStarts.moduleBase ? functionStarts.moduleBase.toString() : null,
+        dataoffHex: '0x' + BigInt(functionStarts.dataoff || 0).toString(16),
+        datasizeHex: '0x' + BigInt(functionStarts.datasize || 0).toString(16),
+        linkeditBase: functionStarts.linkeditBase.toString(),
+        dataAddress: functionStarts.dataAddress.toString(),
+        count: starts.length,
+        starts,
+        text: formatFunctionStarts(functionStarts),
     };
 }
 
@@ -872,6 +915,12 @@ function handleSpecResult(spec) {
         const normalized = linkedit === null ? null : normalizeLinkedit(linkedit);
         return { kind: 'native.linkedit', moduleName, linkedit: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
+    case 'native.function_starts': {
+        const moduleName = String(spec.moduleName || '');
+        const functionStarts = Native.findFunctionStarts(moduleName);
+        const normalized = functionStarts === null ? null : normalizeFunctionStarts(functionStarts);
+        return { kind: 'native.function_starts', moduleName, functionStarts: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
     case 'native.source_version': {
         const moduleName = String(spec.moduleName || '');
         const sourceVersion = Native.findSourceVersion(moduleName);
@@ -1214,6 +1263,17 @@ function legacyToSpec(command) {
         }
         return {
             kind: 'native.linkedit',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.functionStarts ')) {
+        const moduleName = trimmed.slice('native.functionStarts '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.functionStarts usage: native.functionStarts <module>');
+        }
+        return {
+            kind: 'native.function_starts',
             moduleName,
         };
     }

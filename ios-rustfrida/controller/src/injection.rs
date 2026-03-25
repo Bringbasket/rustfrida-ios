@@ -3604,6 +3604,7 @@ fn print_controller_help() {
     println!("  native.entryPoint <module>");
     println!("  native.dyldInfo <module>");
     println!("  native.linkedit <module>");
+    println!("  native.functionStarts <module>");
     println!("  native.sourceVersion <module>");
     println!("  native.buildVersion <module>");
     println!("  native.dylinker <module>");
@@ -3910,6 +3911,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.functionStarts DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.sourceVersion DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -3978,6 +3983,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.entryPoint UIKit"));
         assert!(!command_requires_inline_hooks("native.dyldInfo UIKit"));
         assert!(!command_requires_inline_hooks("native.linkedit UIKit"));
+        assert!(!command_requires_inline_hooks("native.functionStarts UIKit"));
         assert!(!command_requires_inline_hooks("native.sourceVersion UIKit"));
         assert!(!command_requires_inline_hooks("native.buildVersion UIKit"));
         assert!(!command_requires_inline_hooks("native.dylinker UIKit"));

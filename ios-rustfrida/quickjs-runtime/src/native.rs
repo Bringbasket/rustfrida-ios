@@ -6,15 +6,18 @@ use crate::value::JSValue;
 use native_api::{
     detect_hook_environment, find_image_build_version, find_image_dependencies, find_image_dyld_info,
     find_image_dylinker, find_image_encryption_info, find_image_entry_point, find_image_exports,
-    find_image_imports, find_image_install_name, find_image_linkedit_info, find_image_load_commands,
-    find_image_rpaths, find_image_sections, find_image_segments, find_image_source_version, find_image_uuid,
-    find_native_symbols, hook_environment_recommendations, image_build_version_support_available,
-    image_dependency_support_available, image_dyld_info_support_available, image_dylinker_support_available,
-    image_encryption_info_support_available, image_entry_point_support_available, image_import_support_available,
-    image_install_name_support_available, image_linkedit_info_support_available, image_load_command_support_available,
-    image_rpath_support_available, image_section_support_available, image_segment_support_available,
-    image_source_version_support_available, image_uuid_support_available, native_export_support_available,
-    native_symbol_support_available, resolve_hook_strategy,
+    find_image_function_starts, find_image_imports, find_image_install_name, find_image_linkedit_info,
+    find_image_load_commands, find_image_rpaths, find_image_sections, find_image_segments,
+    find_image_source_version, find_image_uuid, find_native_symbols, hook_environment_recommendations,
+    image_build_version_support_available, image_dependency_support_available,
+    image_dyld_info_support_available, image_dylinker_support_available,
+    image_encryption_info_support_available, image_entry_point_support_available,
+    image_function_starts_support_available, image_import_support_available,
+    image_install_name_support_available, image_linkedit_info_support_available,
+    image_load_command_support_available, image_rpath_support_available,
+    image_section_support_available, image_segment_support_available,
+    image_source_version_support_available, image_uuid_support_available,
+    native_export_support_available, native_symbol_support_available, resolve_hook_strategy,
 };
 
 unsafe fn set_string_array_property(ctx: *mut ffi::JSContext, obj: ffi::JSValue, name: &str, items: &[String]) {
@@ -361,6 +364,63 @@ unsafe fn image_linkedit_info_to_js(
         Some(value) => result.set_property(ctx, "nindirectsyms", JSValue(ffi::qjs_new_uint32(ctx, value))),
         None => result.set_property(ctx, "nindirectsyms", JSValue::null()),
     };
+    result.raw()
+}
+
+unsafe fn image_function_start_to_js(
+    ctx: *mut ffi::JSContext,
+    function_start: &native_api::ImageFunctionStart,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "offset", JSValue(ffi::JS_NewBigUint64(ctx, function_start.offset)));
+    result.set_property(
+        ctx,
+        "address",
+        create_native_pointer(ctx, function_start.address as u64),
+    );
+    result.raw()
+}
+
+unsafe fn image_function_starts_to_js(
+    ctx: *mut ffi::JSContext,
+    function_starts: &native_api::ImageFunctionStarts,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(
+        ctx,
+        "moduleName",
+        JSValue::string(ctx, &function_starts.module_name),
+    );
+    result.set_property(
+        ctx,
+        "moduleBase",
+        create_native_pointer(ctx, function_starts.module_base as u64),
+    );
+    result.set_property(
+        ctx,
+        "dataoff",
+        JSValue(ffi::qjs_new_uint32(ctx, function_starts.dataoff)),
+    );
+    result.set_property(
+        ctx,
+        "datasize",
+        JSValue(ffi::qjs_new_uint32(ctx, function_starts.datasize)),
+    );
+    result.set_property(
+        ctx,
+        "linkeditBase",
+        create_native_pointer(ctx, function_starts.linkedit_base as u64),
+    );
+    result.set_property(
+        ctx,
+        "dataAddress",
+        create_native_pointer(ctx, function_starts.data_address as u64),
+    );
+    let starts = ffi::JS_NewArray(ctx);
+    for (index, item) in function_starts.starts.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, starts, index as u32, image_function_start_to_js(ctx, item));
+    }
+    result.set_property(ctx, "starts", JSValue(starts));
     result.raw()
 }
 
@@ -921,6 +981,37 @@ unsafe extern "C" fn js_native_find_linkedit(
     }
 }
 
+unsafe extern "C" fn js_native_find_function_starts(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.findFunctionStarts(moduleName) requires 1 string argument",
+        );
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.findFunctionStarts(moduleName) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    match find_image_function_starts(&module_name) {
+        Ok(Some(function_starts)) => image_function_starts_to_js(ctx, &function_starts),
+        Ok(None) | Err(common::Error::Unsupported(_)) => JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
+}
+
 unsafe extern "C" fn js_native_find_uuid(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -1170,9 +1261,15 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
     );
     native.set_property(
         ctx.as_ptr(),
+        "functionStartsSupportAvailable",
+        JSValue::bool(image_function_starts_support_available()),
+    );
+    native.set_property(
+        ctx.as_ptr(),
         "uuidSupportAvailable",
         JSValue::bool(image_uuid_support_available()),
     );
+
     native.set_property(
         ctx.as_ptr(),
         "rpathSupportAvailable",
@@ -1260,6 +1357,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             1,
         );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findLinkedit", js_native_find_linkedit, 1);
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "findFunctionStarts",
+            js_native_find_function_starts,
+            1,
+        );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findUuid", js_native_find_uuid, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findRpaths", js_native_find_rpaths, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findImports", js_native_find_imports, 2);

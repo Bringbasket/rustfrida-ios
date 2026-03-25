@@ -9,6 +9,7 @@ mod imports;
 mod injection;
 mod install_name;
 mod jailbreak;
+mod function_starts;
 mod linkedit;
 mod loadcmds;
 #[cfg(any(target_os = "ios", target_os = "macos"))]
@@ -45,6 +46,9 @@ pub use install_name::{find_image_install_name, image_install_name_support_avail
 pub use jailbreak::{
     current_hook_policy, detect_hook_environment, hook_environment_recommendations, resolve_hook_strategy,
     HookBackendInfo, HookEnvironmentReport, HookPolicy, HookStrategyDecision,
+};
+pub use function_starts::{
+    find_image_function_starts, image_function_starts_support_available, ImageFunctionStart, ImageFunctionStarts,
 };
 pub use linkedit::{find_image_linkedit_info, image_linkedit_info_support_available, ImageLinkeditInfo};
 pub use loadcmds::{find_image_load_commands, image_load_command_support_available, ImageLoadCommand};
