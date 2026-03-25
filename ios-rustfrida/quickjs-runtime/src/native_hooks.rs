@@ -365,8 +365,14 @@ function requestedSelectorMatchesState(state, target, filter) {
 function stopTraceResult(target, filter) {
     const entries = listTraceEntries();
     const matched = entries.filter((entry) => requestedSelectorMatchesState(entry.state, target, filter));
+    const matchedSessions = matched.map(traceSessionResult);
     if (entries.length !== 0 && matched.length === 0) {
         const current = currentTraceStateResult();
+        current.selectorMatched = false;
+        current.matchedSessionCount = 0;
+        current.matchedSessions = [];
+        current.detachedSessionCount = 0;
+        current.detachedSessions = [];
         current.message = 'trace stop skipped: selector mismatch';
         return current;
     }
@@ -394,6 +400,11 @@ function stopTraceResult(target, filter) {
         count: detached.count,
         sessionCount: detached.sessionCount === undefined ? detached.active ? 1 : 0 : detached.sessionCount,
         sessions: detached.sessions === undefined ? [] : detached.sessions,
+        selectorMatched: true,
+        matchedSessionCount: matchedSessions.length,
+        matchedSessions,
+        detachedSessionCount: detached.sessionCount === undefined ? detached.active ? 1 : 0 : detached.sessionCount,
+        detachedSessions: detached.sessions === undefined ? [] : detached.sessions,
         label: detached.label,
         filter: detached.filter,
         targetAddress: detached.targetAddress,
@@ -461,8 +472,14 @@ function currentTraceInstallSnapshot() {
 function stopStalkerResult(target, filter) {
     const entries = listStalkerEntries();
     const matched = entries.filter((entry) => requestedSelectorMatchesState(entry.state, target, filter));
+    const matchedSessions = matched.map(stalkerSessionResult);
     if (entries.length !== 0 && matched.length === 0) {
         const current = currentStalkerStateResult();
+        current.selectorMatched = false;
+        current.matchedSessionCount = 0;
+        current.matchedSessions = [];
+        current.detachedSessionCount = 0;
+        current.detachedSessions = [];
         current.message = 'stalker stop skipped: selector mismatch';
         return current;
     }
@@ -492,6 +509,11 @@ function stopStalkerResult(target, filter) {
         count: detached.count,
         sessionCount: detached.sessionCount === undefined ? detached.active ? 1 : 0 : detached.sessionCount,
         sessions: detached.sessions === undefined ? [] : detached.sessions,
+        selectorMatched: true,
+        matchedSessionCount: matchedSessions.length,
+        matchedSessions,
+        detachedSessionCount: detached.sessionCount === undefined ? detached.active ? 1 : 0 : detached.sessionCount,
+        detachedSessions: detached.sessions === undefined ? [] : detached.sessions,
         label: detached.label,
         filter: detached.filter,
         targetAddress: detached.targetAddress,
