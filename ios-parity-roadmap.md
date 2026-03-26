@@ -79,7 +79,7 @@
 - 注入链路：`plan / preflight / inject / --inject-json / --command-json`
 - ObjC 查询：`objc.classes / objc.protocols / objc.classProtocols / objc.protocolMethods / objc.superclass / objc.classChain / objc.properties / objc.ivars / objc.methods / objc.methodOwners / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName`
 - Native 查询：`native.images / native.mainImage / native.image / native.symbol / native.symbols / native.exports / native.dependencies / native.encryptionInfo / native.entryPoint / native.sourceVersion / native.buildVersion / native.dylinker / native.installName / native.uuid / native.rpaths / native.imports / native.loadcmds / native.sections / native.segments`
-- Swift 查询：`swift.demangle / swift.symbols / swift.types / swift.typeKinds / swift.methodOwners / swift.typeMethods / swift.methods / swift.typesOfKind`
+- Swift 查询：`swift.demangle / swift.symbols / swift.protocols / swift.types / swift.typeKinds / swift.methodOwners / swift.typeMethods / swift.methods / swift.typesOfKind`
 - PAC 查询：`pac.available / pac.arm64e / pac.image / pac.images / pac.strip / pac.stripdata`
 - 控制命令：`hfl / jhook / shook / trace / stalker`
 - 自动化：legacy command + structured spec + `payloadJson`
@@ -135,7 +135,6 @@
 
 当前 Swift 查询已经比早期完整很多，但还可以继续增强：
 
-- `swift.protocols [query]`
 - `swift.conformances <type>`
 - `swift.typeLayout <type>`
 - `swift.metadata <type>`
@@ -258,11 +257,10 @@ README 已明确写了还没完成：
 
 建议顺序：
 
-1. `swift.protocols`
-2. `swift.conformances`
-3. `swift.metadata`
-4. `swift.vtable`
-5. `swift.witnessTable`
+1. `swift.conformances`
+2. `swift.metadata`
+3. `swift.vtable`
+4. `swift.witnessTable`
 
 原因：
 
@@ -313,7 +311,6 @@ README 已明确写了还没完成：
 
 ### 第三优先级
 
-- `swift.protocols [query]`
 - `swift.conformances <type>`
 - `swift.metadata <type>`
 - 外部 hook backend 适配层

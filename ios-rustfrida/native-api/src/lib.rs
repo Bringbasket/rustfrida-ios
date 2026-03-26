@@ -9,11 +9,11 @@ mod encryption_info;
 mod entry_point;
 mod exports;
 mod exports_trie;
+mod function_starts;
 mod imports;
 mod injection;
 mod install_name;
 mod jailbreak;
-mod function_starts;
 mod linkedit;
 mod loadcmds;
 #[cfg(any(target_os = "ios", target_os = "macos"))]
@@ -34,12 +34,10 @@ pub use build_version::{
     find_image_build_version, image_build_version_support_available, ImageBuildTool, ImageBuildVersion,
 };
 pub use chained_fixups::{
-    find_image_chained_fixups, image_chained_fixups_support_available, ImageChainedFixups,
-    ImageChainedFixupsImport, ImageChainedFixupsPage, ImageChainedFixupsSegment,
+    find_image_chained_fixups, image_chained_fixups_support_available, ImageChainedFixups, ImageChainedFixupsImport,
+    ImageChainedFixupsPage, ImageChainedFixupsSegment,
 };
-pub use code_signature::{
-    find_image_code_signature, image_code_signature_support_available, ImageCodeSignature,
-};
+pub use code_signature::{find_image_code_signature, image_code_signature_support_available, ImageCodeSignature};
 pub use data_in_code::{
     find_image_data_in_code, image_data_in_code_support_available, ImageDataInCode, ImageDataInCodeEntry,
 };
@@ -51,6 +49,9 @@ pub use entry_point::{find_image_entry_point, image_entry_point_support_availabl
 pub use exports::{find_image_exports, native_export_support_available};
 pub use exports_trie::{
     find_image_exports_trie, image_exports_trie_support_available, ImageExportsTrie, ImageExportsTrieEntry,
+};
+pub use function_starts::{
+    find_image_function_starts, image_function_starts_support_available, ImageFunctionStart, ImageFunctionStarts,
 };
 pub use imports::{find_image_imports, image_import_support_available, ImageImport};
 pub use injection::{
@@ -64,9 +65,6 @@ pub use jailbreak::{
     current_hook_policy, detect_hook_environment, hook_environment_recommendations, resolve_hook_strategy,
     HookBackendInfo, HookEnvironmentReport, HookPolicy, HookStrategyDecision,
 };
-pub use function_starts::{
-    find_image_function_starts, image_function_starts_support_available, ImageFunctionStart, ImageFunctionStarts,
-};
 pub use linkedit::{find_image_linkedit_info, image_linkedit_info_support_available, ImageLinkeditInfo};
 pub use loadcmds::{find_image_load_commands, image_load_command_support_available, ImageLoadCommand};
 pub use pac::{
@@ -78,9 +76,9 @@ pub use sections::{find_image_sections, image_section_support_available, ImageSe
 pub use segments::{find_image_segments, image_segment_support_available, ImageSegment};
 pub use source_version::{find_image_source_version, image_source_version_support_available, ImageSourceVersion};
 pub use swift::{
-    find_swift_method_owners, find_swift_methods, find_swift_symbols, find_swift_type_methods, find_swift_types,
-    find_swift_types_of_kind, swift_demangle_symbol, swift_support_available, swift_type_source_kinds, SwiftSymbol,
-    SwiftType,
+    find_swift_method_owners, find_swift_methods, find_swift_protocols, find_swift_symbols, find_swift_type_methods,
+    find_swift_types, find_swift_types_of_kind, swift_demangle_symbol, swift_support_available,
+    swift_type_source_kinds, SwiftProtocol, SwiftSymbol, SwiftType,
 };
 pub use symbols::{find_native_symbols, native_symbol_support_available, NativeSymbol};
 pub use uuid::{find_image_uuid, image_uuid_support_available, ImageUuid};

@@ -3641,6 +3641,7 @@ fn print_controller_help() {
     println!("  pac.stripdata <address>");
     println!("  swift.available");
     println!("  swift.demangle <mangled-symbol>");
+    println!("  swift.protocols [query]|swift.protocols <module> -- <query>");
     println!("  swift.symbols <query>|swift.symbols <module> -- <query>");
     println!("  swift.typeKinds");
     println!("  swift.methodOwners <method>|swift.methodOwners <module> -- <method>");
@@ -4048,6 +4049,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.protocols"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.typeMethods ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4101,6 +4106,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.uuid UIKit"));
         assert!(!command_requires_inline_hooks("native.rpaths UIKit"));
         assert!(!command_requires_inline_hooks("native.imports UIKit"));
+        assert!(!command_requires_inline_hooks("swift.protocols"));
         assert!(!command_requires_inline_hooks("swift.types ViewController"));
     }
 

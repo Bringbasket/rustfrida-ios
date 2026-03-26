@@ -22,6 +22,18 @@ pub struct SwiftType {
     pub source_offset: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SwiftProtocol {
+    pub module_name: String,
+    pub module_base: usize,
+    pub protocol_name: String,
+    pub source_symbol_name: String,
+    pub source_demangled_name: Option<String>,
+    pub source_kind: String,
+    pub source_address: usize,
+    pub source_offset: usize,
+}
+
 pub fn swift_support_available() -> bool {
     platform::swift_support_available()
 }
@@ -36,6 +48,10 @@ pub fn find_swift_symbols(module_name: Option<&str>, query: &str) -> Result<Vec<
 
 pub fn find_swift_types(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftType>> {
     platform::find_swift_types(module_name, query)
+}
+
+pub fn find_swift_protocols(module_name: Option<&str>, query: Option<&str>) -> Result<Vec<SwiftProtocol>> {
+    platform::find_swift_protocols(module_name, query)
 }
 
 pub fn swift_type_source_kinds() -> &'static [&'static str] {
@@ -145,6 +161,37 @@ fn query_matches_swift_type(type_name: &str, query: &str) -> bool {
         .next()
         .map(|basename| basename.to_ascii_lowercase().contains(&needle))
         .unwrap_or(false)
+}
+
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+fn extract_swift_protocol_name(demangled_name: Option<&str>) -> Option<String> {
+    let demangled = demangled_name?.trim();
+    if demangled.is_empty() {
+        return None;
+    }
+
+    for prefix in ["protocol descriptor for ", "protocol requirements base descriptor for "] {
+        if let Some(rest) = demangled.strip_prefix(prefix) {
+            return sanitize_swift_type_candidate(rest);
+        }
+    }
+
+    None
+}
+
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+fn infer_swift_protocol_source_kind(demangled_name: Option<&str>) -> &'static str {
+    let Some(demangled_name) = demangled_name.map(str::trim) else {
+        return "symbol";
+    };
+
+    if demangled_name.starts_with("protocol descriptor for ") {
+        "protocol-descriptor"
+    } else if demangled_name.starts_with("protocol requirements base descriptor for ") {
+        "protocol-requirements-base-descriptor"
+    } else {
+        "symbol"
+    }
 }
 
 #[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
@@ -388,13 +435,13 @@ mod platform {
 
     use common::{Error, Result};
 
-    use crate::{enumerate_images, image_name_matches, ImageInfo, SwiftSymbol, SwiftType};
+    use crate::{enumerate_images, image_name_matches, ImageInfo, SwiftProtocol, SwiftSymbol, SwiftType};
 
     use super::{
-        extract_swift_member_name, extract_swift_member_owner_type, extract_swift_type_name,
-        infer_swift_type_source_kind, looks_like_swift_symbol, normalize_swift_type_source_kind,
-        query_matches_swift_member_name, query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
-        swift_type_source_kinds,
+        extract_swift_member_name, extract_swift_member_owner_type, extract_swift_protocol_name,
+        extract_swift_type_name, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
+        looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_member_name,
+        query_matches_swift_method, query_matches_swift_type, query_matches_symbol, swift_type_source_kinds,
     };
 
     const LC_SEGMENT_64: u32 = 0x19;
@@ -515,6 +562,35 @@ mod platform {
             })
             .collect::<Vec<_>>();
         dedup_and_sort_types(&mut matches);
+        Ok(matches)
+    }
+
+    pub fn find_swift_protocols(module_name: Option<&str>, query: Option<&str>) -> Result<Vec<SwiftProtocol>> {
+        let trimmed = query.map(str::trim).filter(|value| !value.is_empty());
+        let mut matches = collect_swift_symbols(module_name)?
+            .into_iter()
+            .filter_map(|symbol| {
+                let protocol_name = extract_swift_protocol_name(symbol.demangled_name.as_deref())?;
+                if let Some(query) = trimmed {
+                    if !query_matches_swift_type(&protocol_name, query) {
+                        return None;
+                    }
+                }
+                let source_kind = infer_swift_protocol_source_kind(symbol.demangled_name.as_deref()).to_string();
+
+                Some(SwiftProtocol {
+                    module_name: symbol.module_name,
+                    module_base: symbol.module_base,
+                    protocol_name,
+                    source_symbol_name: symbol.symbol_name,
+                    source_demangled_name: symbol.demangled_name,
+                    source_kind,
+                    source_address: symbol.address,
+                    source_offset: symbol.offset,
+                })
+            })
+            .collect::<Vec<_>>();
+        dedup_and_sort_protocols(&mut matches);
         Ok(matches)
     }
 
@@ -652,6 +728,17 @@ mod platform {
                 .then(left.source_symbol_name.cmp(&right.source_symbol_name))
         });
         matches.dedup_by(|left, right| left.module_name == right.module_name && left.type_name == right.type_name);
+    }
+
+    fn dedup_and_sort_protocols(matches: &mut Vec<SwiftProtocol>) {
+        matches.sort_by(|left, right| {
+            left.module_name
+                .cmp(&right.module_name)
+                .then(left.protocol_name.cmp(&right.protocol_name))
+                .then(left.source_symbol_name.cmp(&right.source_symbol_name))
+        });
+        matches
+            .dedup_by(|left, right| left.module_name == right.module_name && left.protocol_name == right.protocol_name);
     }
 
     fn collect_swift_symbols_in_image(image: &ImageInfo) -> Result<Vec<SwiftSymbol>> {
@@ -823,7 +910,7 @@ mod platform {
 mod platform {
     use common::{Error, Result};
 
-    use crate::{SwiftSymbol, SwiftType};
+    use crate::{SwiftProtocol, SwiftSymbol, SwiftType};
 
     pub fn swift_support_available() -> bool {
         false
@@ -842,6 +929,12 @@ mod platform {
     }
 
     pub fn find_swift_types(_module_name: Option<&str>, _query: &str) -> Result<Vec<SwiftType>> {
+        Err(Error::Unsupported(
+            "Swift symbol lookup is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn find_swift_protocols(_module_name: Option<&str>, _query: Option<&str>) -> Result<Vec<SwiftProtocol>> {
         Err(Error::Unsupported(
             "Swift symbol lookup is only available on Apple targets".into(),
         ))
@@ -883,9 +976,10 @@ mod platform {
 #[cfg(test)]
 mod tests {
     use super::{
-        extract_swift_member_name, extract_swift_member_owner_type, extract_swift_type_name,
-        infer_swift_type_source_kind, looks_like_swift_symbol, normalize_swift_type_source_kind,
-        query_matches_swift_member_name, query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
+        extract_swift_member_name, extract_swift_member_owner_type, extract_swift_protocol_name,
+        extract_swift_type_name, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
+        looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_member_name,
+        query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
     };
 
     #[test]
@@ -964,6 +1058,24 @@ mod tests {
     }
 
     #[test]
+    fn extracts_swift_protocol_names_from_demangled_symbols() {
+        assert_eq!(
+            extract_swift_protocol_name(Some("protocol descriptor for Demo.Renderable")),
+            Some("Demo.Renderable".into())
+        );
+        assert_eq!(
+            extract_swift_protocol_name(Some("protocol requirements base descriptor for Demo.Renderable")),
+            Some("Demo.Renderable".into())
+        );
+        assert_eq!(
+            extract_swift_protocol_name(Some(
+                "protocol conformance descriptor for Demo.ViewController : Demo.Renderable in Demo"
+            )),
+            None
+        );
+    }
+
+    #[test]
     fn matches_swift_type_query_against_full_and_basename() {
         assert!(query_matches_swift_type("Demo.ViewController", "viewcontroller"));
         assert!(query_matches_swift_type("Demo.ViewController", "demo.view"));
@@ -1001,6 +1113,19 @@ mod tests {
             "member"
         );
         assert_eq!(infer_swift_type_source_kind(None), "symbol");
+    }
+
+    #[test]
+    fn infers_swift_protocol_source_kind_from_demangled_names() {
+        assert_eq!(
+            infer_swift_protocol_source_kind(Some("protocol descriptor for Demo.Renderable")),
+            "protocol-descriptor"
+        );
+        assert_eq!(
+            infer_swift_protocol_source_kind(Some("protocol requirements base descriptor for Demo.Renderable")),
+            "protocol-requirements-base-descriptor"
+        );
+        assert_eq!(infer_swift_protocol_source_kind(None), "symbol");
     }
 
     #[test]

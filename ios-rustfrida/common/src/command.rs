@@ -81,6 +81,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
             | "pac.arm64e"
             | "pac.images"
             | "swift.available"
+            | "swift.protocols"
             | "swift.typeKinds"
     ) || command.starts_with("objc.classExists ")
         || command.starts_with("objc.classProtocols ")
@@ -131,6 +132,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("pac.strip ")
         || command.starts_with("pac.stripdata ")
         || command.starts_with("swift.demangle ")
+        || command.starts_with("swift.protocols ")
         || command.starts_with("swift.symbols ")
         || command.starts_with("swift.methodOwners ")
         || command.starts_with("swift.typesOfKind ")
@@ -150,6 +152,7 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         "pac.arm64e" => return Some(json!({ "kind": "pac.arm64e" })),
         "pac.images" => return Some(json!({ "kind": "pac.images", "filter": null })),
         "swift.available" => return Some(json!({ "kind": "swift.available" })),
+        "swift.protocols" => return Some(json!({ "kind": "swift.protocols", "moduleName": null, "query": null })),
         "swift.typeKinds" => return Some(json!({ "kind": "swift.type_kinds" })),
         _ => {}
     }
@@ -581,6 +584,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "swift.demangle",
             "symbol": symbol.trim(),
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.protocols ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.protocols",
+            "moduleName": module_name,
+            "query": query,
         }));
     }
 
@@ -1096,6 +1108,14 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("objc.objectClassName 0x1234"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.protocols"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.protocols Renderable"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(

@@ -653,6 +653,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Swift.findProtocols")
+                    .expect("swift findProtocols type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Swift.findSymbols")
                     .expect("swift findSymbols type"),
                 "function"
@@ -697,6 +703,12 @@ undefined;
                         "(function() { const value = Swift.demangle('$s4Demo6methodyyF'); return value === null || value.indexOf('Demo') !== -1 || value.indexOf('method') !== -1; })()"
                     )
                     .expect("swift demangle"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(Swift.findProtocols())")
+                    .expect("swift findProtocols"),
                 "true"
             );
             assert_eq!(
@@ -1540,6 +1552,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.protocols'); return value === '' || value.indexOf('[protocol-') !== -1; })()")
+                    .expect("agent swift protocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF'); return value === '<unavailable>' || value.indexOf('Demo') !== -1 || value.indexOf('method') !== -1; })()"
                     )
@@ -1802,6 +1820,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null }); return result.kind === 'swift.protocols' && result.query === null && result.count === result.protocols.length && (result.protocols.length === 0 || (typeof result.protocols[0].moduleBase === 'string' && typeof result.protocols[0].sourceSymbolName === 'string' && typeof result.protocols[0].sourceOffsetHex === 'string')); })()")
+                    .expect("agent swift protocols result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.types' && result.count === result.types.length && (result.types.length === 0 || (typeof result.types[0].moduleBase === 'string' && typeof result.types[0].sourceSymbolName === 'string' && typeof result.types[0].sourceOffsetHex === 'string')); })()"
                     )
@@ -2052,6 +2076,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return value === result.text; })()")
                     .expect("agent spec objc ivars"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.protocols', moduleName: null, query: null }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null }); return value === result.text; })()")
+                    .expect("agent spec swift protocols"),
                 "true"
             );
             assert_eq!(

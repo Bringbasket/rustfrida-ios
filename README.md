@@ -63,6 +63,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.findIvars(className, query)`
 - `ObjC.classImage(className)`
 - `ObjC.methodImage(className, selectorName[, isClassMethod])`
+- `Swift.findProtocols([query[, moduleName]])`
 - `Swift.findMethods(typeName, methodQuery[, moduleName])`
 - agent / controller CLI:
   - `hfl <module> <offset>`
@@ -152,6 +153,8 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `stalker stop addr <address>`
   - `swift.types <query>`
   - `swift.types <module> -- <query>`
+  - `swift.protocols [query]`
+  - `swift.protocols <module> -- <query>`
   - `swift.typeKinds`
   - `swift.methodOwners <method>`
   - `swift.methodOwners <module> -- <method>`
