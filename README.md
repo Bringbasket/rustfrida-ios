@@ -66,6 +66,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.ivars(className)`
 - `ObjC.findIvars(className, query)`
 - `ObjC.classImage(className)`
+- `ObjC.methodInfo(className, selectorName[, isClassMethod])`
 - `ObjC.methodImage(className, selectorName[, isClassMethod])`
 - `Swift.findProtocols([query[, moduleName]])`
 - `Swift.findConformances(typeName[, moduleName])`
@@ -84,6 +85,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `jhook stop`
   - `jhook stop <class> <selector> [meta]`
   - `objc.methodImp <class> <selector> [meta]`
+  - `objc.methodInfo <class> <selector> [meta]`
   - `objc.classImage <class>`
   - `objc.methodImage <class> <selector> [meta]`
   - `objc.methodOwners <selector> [meta]`
@@ -217,6 +219,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `objc.methods` / `objc.methodOwners` / `objc.protocolMethods` / `objc.ivars` 这几类查询现在也会在结构化结果里补出解码后的 `returnTypeName / argumentTypeNames / signature / typeName / typeInfo / methodTypeInfo` 等字段，不再只能盯着原始 type encoding 字符串自己拆。
 - `objc.classInfo` 现在可以直接结构化返回 class / metaclass 的 `classPointer / superclassName / superclassPointer / instanceSize / imagePath / isMetaClass`，后续排查 ObjC 类层级和 metaclass 边界时不必再手工拼多个命令。
 - `objc.protocolInfo` 现在可以直接结构化返回协议指针、adopted protocols、required/optional 的 instance/class method 计数、property 数量以及 image 路径，后续排查协议继承和声明面时不必再手工拼多条 `protocol*` 命令。
+- `objc.methodInfo` 现在可以直接结构化返回单个方法的 `methodPointer / imp / typeEncoding / imagePath / isClassMethod`，后续排查某个 selector 时不必再手工拼 `objc.methodImp`、`objc.methodImage` 和 `objc.methods`。
 - hook backend filesystem 探测现在同时覆盖 rootful 和 rootless 常见路径前缀；像 ElleKit / Substrate / Substitute / libhooker 这类生态，不再只认 `/usr/lib`，也会扫描 `/var/jb/...`。
 - `native.hookenv` / `Native.detectHookEnvironment()` 现在除了 backend / warning，还会补出面向当前 `hook_policy` 的建议动作，便于真机上快速判断该走 query-only、fail-fast 还是继续冒险装 inline hook；返回里也会区分 `allowed` 和 `inlineHooksAllowed`，不再把“允许注入做查询”和“允许安装 inline hook”混成一个布尔值。
 - `PAC.isImageArm64e(moduleName)` / `pac.image <module>` 现在可以直接判断单个镜像是否是 `arm64e`，比只看当前进程主镜像更适合排查某个目标 dylib 是否已经进入 PAC 风险面。

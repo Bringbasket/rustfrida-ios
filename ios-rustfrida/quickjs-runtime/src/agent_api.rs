@@ -614,6 +614,21 @@ function formatObjcMethod(method) {
     return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']' + (details.length === 0 ? '' : ' ' + details.join(' '));
 }
 
+function formatObjcMethodInfo(method) {
+    const prefix = method.isClassMethod ? '+' : '-';
+    const details = ['method=' + method.methodPointer];
+    if (method.signature && method.signature.length !== 0) {
+        details.push('sig=' + method.signature);
+    }
+    if (method.typeEncoding.length !== 0) {
+        details.push('types=' + method.typeEncoding);
+    }
+    if (method.imagePath !== null && method.imagePath !== undefined) {
+        details.push('image=' + method.imagePath);
+    }
+    return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']' + ' ' + details.join(' ');
+}
+
 function formatObjcProtocolMethod(method) {
     const prefix = method.isInstanceMethod ? '-' : '+';
     const details = [method.isRequired ? 'required' : 'optional'];
@@ -1194,6 +1209,33 @@ function normalizeObjcMethod(method) {
         methodTypeInfo,
     };
     normalized.text = formatObjcMethod(normalized);
+    return normalized;
+}
+
+function normalizeObjcMethodInfo(method) {
+    const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const normalized = {
+        className: String(method.className || ''),
+        selector: String(method.selector || ''),
+        isClassMethod: !!method.isClassMethod,
+        methodPointer: method.methodPointer.toString(),
+        imp: method.imp.toString(),
+        typeEncoding: String(method.typeEncoding || ''),
+        returnTypeEncoding: methodTypeInfo.returnTypeEncoding,
+        returnTypeName: methodTypeInfo.returnTypeName,
+        returnTypeInfo: methodTypeInfo.returnTypeInfo,
+        frameSize: methodTypeInfo.frameSize,
+        argumentCount: methodTypeInfo.argumentCount,
+        explicitArgumentCount: methodTypeInfo.explicitArgumentCount,
+        argumentTypeEncodings: methodTypeInfo.argumentTypeEncodings,
+        argumentTypeNames: methodTypeInfo.argumentTypeNames,
+        argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
+        hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        signature: methodTypeInfo.signature,
+        methodTypeInfo,
+        imagePath: method.imagePath === undefined || method.imagePath === null ? null : String(method.imagePath),
+    };
+    normalized.text = formatObjcMethodInfo(normalized);
     return normalized;
 }
 
@@ -2045,6 +2087,21 @@ function handleSpecResult(spec) {
             text: pointer === null ? '<null>' : pointer,
         };
     }
+    case 'objc.method_info': {
+        const className = String(spec.className || '');
+        const selectorName = String(spec.selectorName || '');
+        const isClassMethod = !!spec.isClassMethod;
+        const methodInfo = ObjC.methodInfo(className, selectorName, isClassMethod);
+        const normalized = methodInfo === null ? null : normalizeObjcMethodInfo(methodInfo);
+        return {
+            kind: 'objc.method_info',
+            className,
+            selectorName,
+            isClassMethod,
+            methodInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'objc.class_image': {
         const className = String(spec.className || '');
         const imagePath = ObjC.classImage(className);
@@ -2526,6 +2583,16 @@ function legacyToSpec(command) {
         const parsed = parseObjcMethodImp(trimmed.slice('objc.methodImp '.length));
         return {
             kind: 'objc.method_imp',
+            className: parsed.className,
+            selectorName: parsed.selectorName,
+            isClassMethod: parsed.isClassMethod,
+        };
+    }
+
+    if (trimmed.startsWith('objc.methodInfo ')) {
+        const parsed = parseObjcMethodImp(trimmed.slice('objc.methodInfo '.length));
+        return {
+            kind: 'objc.method_info',
             className: parsed.className,
             selectorName: parsed.selectorName,
             isClassMethod: parsed.isClassMethod,

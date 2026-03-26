@@ -95,6 +95,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.selector ")
         || command.starts_with("objc.classImage ")
         || command.starts_with("objc.methodImage ")
+        || command.starts_with("objc.methodInfo ")
         || command.starts_with("objc.selectorName ")
         || command.starts_with("objc.objectClassName ")
         || command.starts_with("objc.methodImp ")
@@ -260,6 +261,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         let (class_name, selector_name, is_class_method) = parse_objc_method_target(raw)?;
         return Some(json!({
             "kind": "objc.method_imp",
+            "className": class_name,
+            "selectorName": selector_name,
+            "isClassMethod": is_class_method,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.methodInfo ") {
+        let (class_name, selector_name, is_class_method) = parse_objc_method_target(raw)?;
+        return Some(json!({
+            "kind": "objc.method_info",
             "className": class_name,
             "selectorName": selector_name,
             "isClassMethod": is_class_method,
@@ -1241,6 +1252,17 @@ mod tests {
             AgentCommand::from_legacy("objc.selectorName 0x1234"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
+        assert_eq!(
+            AgentCommand::from_legacy("objc.methodInfo NSObject init"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.method_info",
+                    "className": "NSObject",
+                    "selectorName": "init",
+                    "isClassMethod": false,
+                })
+            })
+        );
         assert!(matches!(
             AgentCommand::from_legacy("objc.methodOwners init"),
             Some(AgentCommand::RuntimeDispatch { .. })

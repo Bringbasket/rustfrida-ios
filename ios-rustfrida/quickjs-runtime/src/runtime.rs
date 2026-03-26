@@ -461,6 +461,10 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof ObjC.methodInfo").expect("objc methodInfo type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof ObjC.properties").expect("objc properties type"),
                 "function"
             );
@@ -531,6 +535,14 @@ undefined;
                         "(function() { const value = ObjC.methodImage('NSObject', 'init'); return ObjC.available ? (value === null || value.indexOf('/') !== -1) : value === null; })()"
                     )
                     .expect("objc methodImage"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const value = ObjC.methodInfo('NSObject', 'init'); return value === null || (typeof value.selector === 'string' && typeof value.typeEncoding === 'string' && typeof value.isClassMethod === 'boolean'); })()"
+                    )
+                    .expect("objc methodInfo"),
                 "true"
             );
             assert_eq!(
@@ -1700,6 +1712,14 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodInfo NSObject init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_info', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return value === result.text && (result.methodInfo === null || (result.methodInfo.selector === 'init' && typeof result.methodInfo.imp === 'string')); })()"
+                    )
+                    .expect("agent objc methodInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("__iosRustFridaAgentApi.handle('objc.selectorName 0x0')")
                     .expect("agent objc selectorName"),
                 "<null>"
@@ -1824,6 +1844,14 @@ undefined;
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_protocols', className: 'NSObject' }); return result.kind === 'objc.class_protocols' && result.className === 'NSObject' && result.count === result.protocols.length && result.text === result.protocols.join('\\n'); })()"
                     )
                     .expect("agent objc classProtocols result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_info', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return result.kind === 'objc.method_info' && result.className === 'NSObject' && result.selectorName === 'init' && result.isClassMethod === false && ((result.methodInfo === null && result.text === '<null>') || (typeof result.methodInfo.methodPointer === 'string' && typeof result.methodInfo.imp === 'string' && typeof result.methodInfo.typeEncoding === 'string' && result.text === result.methodInfo.text)); })()"
+                    )
+                    .expect("agent objc methodInfo result"),
                 "true"
             );
             assert_eq!(

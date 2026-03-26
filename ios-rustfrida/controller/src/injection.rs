@@ -3603,6 +3603,7 @@ fn print_controller_help() {
     println!("  objc.selectorName <selector>");
     println!("  objc.objectClassName <object>");
     println!("  objc.methodImp <class> <selector> [meta]");
+    println!("  objc.methodInfo <class> <selector> [meta]");
     println!("  objc.methodImage <class> <selector> [meta]");
     println!("  objc.methodOwners <selector> [meta]");
     println!("  objc.methods <class> [meta] [filter]");
@@ -4010,6 +4011,17 @@ mod tests {
             AgentCommand::from_legacy("objc.classImage UIViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
+        assert_eq!(
+            AgentCommand::from_legacy("objc.methodInfo UIViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.method_info",
+                    "className": "UIViewController",
+                    "selectorName": "viewDidLoad",
+                    "isClassMethod": false,
+                })
+            })
+        );
         assert!(matches!(
             AgentCommand::from_legacy("objc.methodImage UIViewController viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch { .. })
@@ -4158,6 +4170,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.classChain UIView"));
         assert!(!command_requires_inline_hooks("objc.properties UIView meta delegate"));
         assert!(!command_requires_inline_hooks("objc.ivars UIView delegate"));
+        assert!(!command_requires_inline_hooks("objc.methodInfo UIView viewDidLoad"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
         assert!(!command_requires_inline_hooks("native.encryptionInfo UIKit"));

@@ -10,6 +10,17 @@ pub struct ObjcMethodInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjcMethodDetail {
+    pub class_name: String,
+    pub selector_name: String,
+    pub method_pointer: usize,
+    pub imp: usize,
+    pub type_encoding: String,
+    pub is_class_method: bool,
+    pub image_path: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjcPropertyInfo {
     pub class_name: String,
     pub property_name: String,
@@ -169,6 +180,15 @@ impl ObjcApi {
         platform::method_imp(class_name, selector_name, is_class_method)
     }
 
+    pub fn method_info(
+        &self,
+        class_name: &str,
+        selector_name: &str,
+        is_class_method: bool,
+    ) -> Result<Option<ObjcMethodDetail>> {
+        platform::method_info(class_name, selector_name, is_class_method)
+    }
+
     pub fn enumerate_methods(&self, class_name: &str, is_class_method: bool) -> Result<Vec<ObjcMethodInfo>> {
         platform::enumerate_methods(class_name, is_class_method)
     }
@@ -251,8 +271,8 @@ mod platform {
 
     use crate::{
         query_matches_class_name, query_matches_ivar_name, query_matches_method_name, query_matches_property_name,
-        ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo,
-        ObjcProtocolPropertyInfo,
+        ObjcClassInfo, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolInfo,
+        ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
     };
 
     #[link(name = "objc")]
@@ -306,6 +326,12 @@ mod platform {
     struct ObjcMethodDescription {
         name: *const c_void,
         types: *const c_char,
+    }
+
+    struct ResolvedMethod {
+        method_pointer: usize,
+        imp: usize,
+        type_encoding: String,
     }
 
     pub fn class_exists(name: &str) -> bool {
@@ -887,7 +913,7 @@ mod platform {
         Ok(ivars)
     }
 
-    pub fn method_imp(class_name: &str, selector_name: &str, is_class_method: bool) -> Result<Option<usize>> {
+    fn resolve_method(class_name: &str, selector_name: &str, is_class_method: bool) -> Result<Option<ResolvedMethod>> {
         let class_name =
             CString::new(class_name).map_err(|_| Error::InvalidArgument("class name contains interior NUL".into()))?;
         let selector_name =
@@ -919,7 +945,51 @@ mod platform {
             return Ok(None);
         }
 
-        Ok(Some(unsafe { method_getImplementation(method) } as usize))
+        let type_encoding = unsafe { method_getTypeEncoding(method as *const c_void) };
+        Ok(Some(ResolvedMethod {
+            method_pointer: method as usize,
+            imp: unsafe { method_getImplementation(method as *const c_void) } as usize,
+            type_encoding: if type_encoding.is_null() {
+                String::new()
+            } else {
+                unsafe { CStr::from_ptr(type_encoding) }.to_string_lossy().into_owned()
+            },
+        }))
+    }
+
+    pub fn method_imp(class_name: &str, selector_name: &str, is_class_method: bool) -> Result<Option<usize>> {
+        Ok(resolve_method(class_name, selector_name, is_class_method)?.map(|method| method.imp))
+    }
+
+    pub fn method_info(
+        class_name: &str,
+        selector_name: &str,
+        is_class_method: bool,
+    ) -> Result<Option<ObjcMethodDetail>> {
+        let class_name = class_name.trim();
+        if class_name.is_empty() {
+            return Err(Error::InvalidArgument("class name must not be empty".into()));
+        }
+
+        let selector_name = selector_name.trim();
+        if selector_name.is_empty() {
+            return Err(Error::InvalidArgument("selector name must not be empty".into()));
+        }
+
+        let Some(method) = resolve_method(class_name, selector_name, is_class_method)? else {
+            return Ok(None);
+        };
+
+        let image_path = image_path_for_address(method.imp as *const c_void)?;
+        Ok(Some(ObjcMethodDetail {
+            class_name: class_name.to_string(),
+            selector_name: selector_name.to_string(),
+            method_pointer: method.method_pointer,
+            imp: method.imp,
+            type_encoding: method.type_encoding,
+            is_class_method,
+            image_path,
+        }))
     }
 
     pub fn class_image(class_name: &str) -> Result<Option<String>> {
@@ -1186,8 +1256,8 @@ mod platform {
     use common::Result;
 
     use crate::{
-        ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo,
-        ObjcProtocolPropertyInfo,
+        ObjcClassInfo, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolInfo,
+        ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
     };
 
     pub fn class_exists(_name: &str) -> bool {
@@ -1301,6 +1371,16 @@ mod platform {
     }
 
     pub fn method_imp(_class_name: &str, _selector_name: &str, _is_class_method: bool) -> Result<Option<usize>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn method_info(
+        _class_name: &str,
+        _selector_name: &str,
+        _is_class_method: bool,
+    ) -> Result<Option<ObjcMethodDetail>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -1543,6 +1623,17 @@ mod tests {
     fn enumerate_methods_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .enumerate_methods("NSObject", false)
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn method_info_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .method_info("NSObject", "init", false)
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()

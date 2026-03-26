@@ -8,8 +8,8 @@ use crate::util::{
 use crate::value::JSValue;
 use common::Error as CommonError;
 use objc_api::{
-    ObjcApi, ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo,
-    ObjcProtocolPropertyInfo,
+    ObjcApi, ObjcClassInfo, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolInfo,
+    ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
 };
 
 unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &str) -> Result<u64, ffi::JSValue> {
@@ -367,6 +367,46 @@ unsafe extern "C" fn js_objc_method_imp(
     }
 }
 
+unsafe extern "C" fn js_objc_method_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.methodInfo(className, selectorName[, isClassMethod]) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let selector_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        1,
+        "ObjC.methodInfo(className, selectorName[, isClassMethod]) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let is_class_method = if argc >= 3 {
+        JSValue(*argv.add(2)).to_bool().unwrap_or(false)
+    } else {
+        false
+    };
+
+    match ObjcApi::new().method_info(&class_name, &selector_name, is_class_method) {
+        Ok(Some(info)) => objc_method_detail_to_js(ctx, &info),
+        Ok(None) | Err(CommonError::Unsupported(_)) => JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
+}
+
 unsafe extern "C" fn js_objc_class_image(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -439,6 +479,25 @@ unsafe fn objc_method_to_js(ctx: *mut ffi::JSContext, method: &ObjcMethodInfo) -
     object.set_property(ctx, "imp", create_native_pointer(ctx, method.imp as u64));
     object.set_property(ctx, "typeEncoding", JSValue::string(ctx, &method.type_encoding));
     object.set_property(ctx, "isClassMethod", JSValue::bool(method.is_class_method));
+    object.raw()
+}
+
+unsafe fn objc_method_detail_to_js(ctx: *mut ffi::JSContext, method: &ObjcMethodDetail) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "className", JSValue::string(ctx, &method.class_name));
+    object.set_property(ctx, "selector", JSValue::string(ctx, &method.selector_name));
+    object.set_property(
+        ctx,
+        "methodPointer",
+        create_native_pointer(ctx, method.method_pointer as u64),
+    );
+    object.set_property(ctx, "imp", create_native_pointer(ctx, method.imp as u64));
+    object.set_property(ctx, "typeEncoding", JSValue::string(ctx, &method.type_encoding));
+    object.set_property(ctx, "isClassMethod", JSValue::bool(method.is_class_method));
+    match &method.image_path {
+        Some(path) => object.set_property(ctx, "imagePath", JSValue::string(ctx, path)),
+        None => object.set_property(ctx, "imagePath", JSValue::null()),
+    };
     object.raw()
 }
 
@@ -990,6 +1049,7 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classExists", js_objc_class_exists, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "selector", js_objc_selector, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methodImp", js_objc_method_imp, 3);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "methodInfo", js_objc_method_info, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classImage", js_objc_class_image, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methodImage", js_objc_method_image, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methods", js_objc_methods, 2);
