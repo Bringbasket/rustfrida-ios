@@ -222,6 +222,41 @@ function parseObjcProtocolMethods(raw) {
     };
 }
 
+function parseObjcProtocolMethodInfo(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) {
+        throw new Error('objc.protocolMethodInfo usage: objc.protocolMethodInfo <protocol> <selector> [required] [instance]');
+    }
+    let isRequired = true;
+    let isInstanceMethod = true;
+    for (let i = 2; i < parts.length; i++) {
+        const part = parts[i];
+        if (part === 'required' || part === 'req') {
+            isRequired = true;
+            continue;
+        }
+        if (part === 'optional' || part === 'opt') {
+            isRequired = false;
+            continue;
+        }
+        if (part === 'instance' || part === 'inst' || part === '-') {
+            isInstanceMethod = true;
+            continue;
+        }
+        if (part === 'class' || part === 'meta' || part === '+') {
+            isInstanceMethod = false;
+            continue;
+        }
+        throw new Error('objc.protocolMethodInfo usage: objc.protocolMethodInfo <protocol> <selector> [required] [instance]');
+    }
+    return {
+        protocolName: parts[0],
+        selectorName: parts[1],
+        isRequired,
+        isInstanceMethod,
+    };
+}
+
 function parseObjcMethodOwners(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -671,6 +706,21 @@ function formatObjcProtocolMethod(method) {
     }
     if (method.typeEncoding.length !== 0) {
         details.push('types=' + method.typeEncoding);
+    }
+    return prefix + '[' + method.protocolName + ' ' + method.selector + '] ' + details.join(' ');
+}
+
+function formatObjcProtocolMethodInfo(method) {
+    const prefix = method.isInstanceMethod ? '-' : '+';
+    const details = [method.isRequired ? 'required' : 'optional'];
+    if (method.signature && method.signature.length !== 0) {
+        details.push('sig=' + method.signature);
+    }
+    if (method.typeEncoding.length !== 0) {
+        details.push('types=' + method.typeEncoding);
+    }
+    if (method.imagePath !== null && method.imagePath !== undefined) {
+        details.push('image=' + method.imagePath);
     }
     return prefix + '[' + method.protocolName + ' ' + method.selector + '] ' + details.join(' ');
 }
@@ -1377,6 +1427,32 @@ function normalizeObjcProtocolMethod(method) {
         isInstanceMethod: !!method.isInstanceMethod,
     };
     normalized.text = formatObjcProtocolMethod(normalized);
+    return normalized;
+}
+
+function normalizeObjcProtocolMethodInfo(method) {
+    const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const normalized = {
+        protocolName: String(method.protocolName || ''),
+        selector: String(method.selector || ''),
+        typeEncoding: String(method.typeEncoding || ''),
+        returnTypeEncoding: methodTypeInfo.returnTypeEncoding,
+        returnTypeName: methodTypeInfo.returnTypeName,
+        returnTypeInfo: methodTypeInfo.returnTypeInfo,
+        frameSize: methodTypeInfo.frameSize,
+        argumentCount: methodTypeInfo.argumentCount,
+        explicitArgumentCount: methodTypeInfo.explicitArgumentCount,
+        argumentTypeEncodings: methodTypeInfo.argumentTypeEncodings,
+        argumentTypeNames: methodTypeInfo.argumentTypeNames,
+        argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
+        hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        signature: methodTypeInfo.signature,
+        methodTypeInfo,
+        isRequired: !!method.isRequired,
+        isInstanceMethod: !!method.isInstanceMethod,
+        imagePath: method.imagePath === undefined || method.imagePath === null ? null : String(method.imagePath),
+    };
+    normalized.text = formatObjcProtocolMethodInfo(normalized);
     return normalized;
 }
 
@@ -2188,6 +2264,23 @@ function handleSpecResult(spec) {
             text: methods.map((method) => method.text).join('\n'),
         };
     }
+    case 'objc.protocol_method_info': {
+        const protocolName = String(spec.protocolName || '');
+        const selectorName = String(spec.selectorName || '');
+        const isRequired = spec.isRequired === undefined ? true : !!spec.isRequired;
+        const isInstanceMethod = spec.isInstanceMethod === undefined ? true : !!spec.isInstanceMethod;
+        const methodInfo = ObjC.protocolMethodInfo(protocolName, selectorName, isRequired, isInstanceMethod);
+        const normalized = methodInfo === null ? null : normalizeObjcProtocolMethodInfo(methodInfo);
+        return {
+            kind: 'objc.protocol_method_info',
+            protocolName,
+            selectorName,
+            isRequired,
+            isInstanceMethod,
+            methodInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'objc.protocol_properties': {
         const protocolName = String(spec.protocolName || '');
         const properties = ObjC.protocolProperties(protocolName).map((property) => normalizeObjcProtocolProperty(property));
@@ -2753,6 +2846,17 @@ function legacyToSpec(command) {
         return {
             kind: 'objc.protocol_methods',
             protocolName: parsed.protocolName,
+            isRequired: parsed.isRequired,
+            isInstanceMethod: parsed.isInstanceMethod,
+        };
+    }
+
+    if (trimmed.startsWith('objc.protocolMethodInfo ')) {
+        const parsed = parseObjcProtocolMethodInfo(trimmed.slice('objc.protocolMethodInfo '.length));
+        return {
+            kind: 'objc.protocol_method_info',
+            protocolName: parsed.protocolName,
+            selectorName: parsed.selectorName,
             isRequired: parsed.isRequired,
             isInstanceMethod: parsed.isInstanceMethod,
         };

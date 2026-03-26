@@ -9,7 +9,8 @@ use crate::value::JSValue;
 use common::Error as CommonError;
 use objc_api::{
     ObjcApi, ObjcClassInfo, ObjcIvarDetail, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail,
-    ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyDetail, ObjcProtocolPropertyInfo,
+    ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodDetail, ObjcProtocolMethodInfo, ObjcProtocolPropertyDetail,
+    ObjcProtocolPropertyInfo,
 };
 
 unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &str) -> Result<u64, ffi::JSValue> {
@@ -730,6 +731,23 @@ unsafe fn objc_protocol_method_to_js(ctx: *mut ffi::JSContext, method: &ObjcProt
     object.raw()
 }
 
+unsafe fn objc_protocol_method_detail_to_js(
+    ctx: *mut ffi::JSContext,
+    method: &ObjcProtocolMethodDetail,
+) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "protocolName", JSValue::string(ctx, &method.protocol_name));
+    object.set_property(ctx, "selector", JSValue::string(ctx, &method.selector_name));
+    object.set_property(ctx, "typeEncoding", JSValue::string(ctx, &method.type_encoding));
+    object.set_property(ctx, "isRequired", JSValue::bool(method.is_required));
+    object.set_property(ctx, "isInstanceMethod", JSValue::bool(method.is_instance_method));
+    match &method.image_path {
+        Some(path) => object.set_property(ctx, "imagePath", JSValue::string(ctx, path)),
+        None => object.set_property(ctx, "imagePath", JSValue::null()),
+    };
+    object.raw()
+}
+
 unsafe fn objc_protocol_property_to_js(ctx: *mut ffi::JSContext, property: &ObjcProtocolPropertyInfo) -> ffi::JSValue {
     let object = JSValue(ffi::JS_NewObject(ctx));
     object.set_property(ctx, "protocolName", JSValue::string(ctx, &property.protocol_name));
@@ -828,6 +846,51 @@ unsafe extern "C" fn js_objc_protocol_properties(
         ffi::JS_SetPropertyUint32(ctx, array, index as u32, objc_protocol_property_to_js(ctx, property));
     }
     array
+}
+
+unsafe extern "C" fn js_objc_protocol_method_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let protocol_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.protocolMethodInfo(protocolName, selectorName[, isRequired[, isInstanceMethod]]) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let selector_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        1,
+        "ObjC.protocolMethodInfo(protocolName, selectorName[, isRequired[, isInstanceMethod]]) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let is_required = if argc >= 3 {
+        JSValue(*argv.add(2)).to_bool().unwrap_or(true)
+    } else {
+        true
+    };
+    let is_instance_method = if argc >= 4 {
+        JSValue(*argv.add(3)).to_bool().unwrap_or(true)
+    } else {
+        true
+    };
+
+    match ObjcApi::new().protocol_method_info(&protocol_name, &selector_name, is_required, is_instance_method) {
+        Ok(Some(info)) => objc_protocol_method_detail_to_js(ctx, &info),
+        Ok(None) | Err(CommonError::Unsupported(_)) => JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
 }
 
 unsafe extern "C" fn js_objc_protocol_property_info(
@@ -1202,6 +1265,13 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolInfo", js_objc_protocol_info, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolProtocols", js_objc_protocol_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolMethods", js_objc_protocol_methods, 3);
+        add_cfunction_to_object(
+            ctx_ptr,
+            objc.raw(),
+            "protocolMethodInfo",
+            js_objc_protocol_method_info,
+            4,
+        );
         add_cfunction_to_object(
             ctx_ptr,
             objc.raw(),

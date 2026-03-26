@@ -185,6 +185,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("objc.protocolMethodInfo NSObject description optional class"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("objc.protocolProperties NSObject"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

@@ -3594,6 +3594,7 @@ fn print_controller_help() {
     println!("  objc.protocolInfo <protocol>");
     println!("  objc.protocolProtocols <protocol>");
     println!("  objc.protocolMethods <protocol> [required] [instance]");
+    println!("  objc.protocolMethodInfo <protocol> <selector> [required] [instance]");
     println!("  objc.protocolProperties <protocol>");
     println!("  objc.protocolPropertyInfo <protocol> <property>");
     println!("  objc.superclass <class>");
@@ -3959,6 +3960,18 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("objc.protocolMethodInfo NSObject description optional class"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_method_info",
+                    "protocolName": "NSObject",
+                    "selectorName": "description",
+                    "isRequired": false,
+                    "isInstanceMethod": false,
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("objc.protocolProperties NSObject"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
@@ -4198,6 +4211,9 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.protocolProtocols NSObject"));
         assert!(!command_requires_inline_hooks(
             "objc.protocolMethods NSObject optional class"
+        ));
+        assert!(!command_requires_inline_hooks(
+            "objc.protocolMethodInfo NSObject description optional class"
         ));
         assert!(!command_requires_inline_hooks("objc.protocolProperties NSObject"));
         assert!(!command_requires_inline_hooks(

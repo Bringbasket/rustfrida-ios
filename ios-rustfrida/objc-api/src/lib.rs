@@ -66,6 +66,16 @@ pub struct ObjcProtocolMethodInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjcProtocolMethodDetail {
+    pub protocol_name: String,
+    pub selector_name: String,
+    pub type_encoding: String,
+    pub is_required: bool,
+    pub is_instance_method: bool,
+    pub image_path: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjcProtocolPropertyInfo {
     pub protocol_name: String,
     pub property_name: String,
@@ -174,6 +184,16 @@ impl ObjcApi {
         is_instance_method: bool,
     ) -> Result<Vec<ObjcProtocolMethodInfo>> {
         platform::protocol_methods(protocol_name, is_required, is_instance_method)
+    }
+
+    pub fn protocol_method_info(
+        &self,
+        protocol_name: &str,
+        selector_name: &str,
+        is_required: bool,
+        is_instance_method: bool,
+    ) -> Result<Option<ObjcProtocolMethodDetail>> {
+        platform::protocol_method_info(protocol_name, selector_name, is_required, is_instance_method)
     }
 
     pub fn protocol_properties(&self, protocol_name: &str) -> Result<Vec<ObjcProtocolPropertyInfo>> {
@@ -322,8 +342,8 @@ mod platform {
     use crate::{
         query_matches_class_name, query_matches_ivar_name, query_matches_method_name, query_matches_property_name,
         ObjcClassInfo, ObjcIvarDetail, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail,
-        ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyDetail,
-        ObjcProtocolPropertyInfo,
+        ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodDetail, ObjcProtocolMethodInfo,
+        ObjcProtocolPropertyDetail, ObjcProtocolPropertyInfo,
     };
 
     #[link(name = "objc")]
@@ -730,6 +750,72 @@ mod platform {
                 && left.is_instance_method == right.is_instance_method
         });
         Ok(methods)
+    }
+
+    pub fn protocol_method_info(
+        protocol_name: &str,
+        selector_name: &str,
+        is_required: bool,
+        is_instance_method: bool,
+    ) -> Result<Option<ObjcProtocolMethodDetail>> {
+        let protocol_name = protocol_name.trim();
+        if protocol_name.is_empty() {
+            return Err(Error::InvalidArgument("protocol name must not be empty".into()));
+        }
+
+        let selector_name = selector_name.trim();
+        if selector_name.is_empty() {
+            return Err(Error::InvalidArgument("selector name must not be empty".into()));
+        }
+
+        let protocol_name_c = CString::new(protocol_name)
+            .map_err(|_| Error::InvalidArgument("protocol name contains interior NUL".into()))?;
+        let protocol = unsafe { objc_getProtocol(protocol_name_c.as_ptr()) };
+        if protocol.is_null() {
+            return Ok(None);
+        }
+
+        let mut count = 0u32;
+        let list = unsafe {
+            protocol_copyMethodDescriptionList(protocol, is_required as i8, is_instance_method as i8, &mut count)
+        };
+        if list.is_null() {
+            return Ok(None);
+        }
+
+        let slice = unsafe { std::slice::from_raw_parts(list, count as usize) };
+        let mut resolved = None;
+        for method in slice {
+            if method.name.is_null() {
+                continue;
+            }
+
+            let resolved_selector_name = unsafe { sel_getName(method.name) };
+            if resolved_selector_name.is_null() {
+                continue;
+            }
+            let resolved_selector_name = unsafe { CStr::from_ptr(resolved_selector_name) }.to_string_lossy();
+            if resolved_selector_name.as_ref() != selector_name {
+                continue;
+            }
+
+            resolved = Some(ObjcProtocolMethodDetail {
+                protocol_name: protocol_name.to_string(),
+                selector_name: selector_name.to_string(),
+                type_encoding: if method.types.is_null() {
+                    String::new()
+                } else {
+                    unsafe { CStr::from_ptr(method.types) }.to_string_lossy().into_owned()
+                },
+                is_required,
+                is_instance_method,
+                image_path: image_path_for_address(protocol as *const c_void)?,
+            });
+            break;
+        }
+
+        unsafe { libc::free(list.cast()) };
+        Ok(resolved)
     }
 
     pub fn protocol_properties(protocol_name: &str) -> Result<Vec<ObjcProtocolPropertyInfo>> {
@@ -1529,8 +1615,8 @@ mod platform {
 
     use crate::{
         ObjcClassInfo, ObjcIvarDetail, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail,
-        ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyDetail,
-        ObjcProtocolPropertyInfo,
+        ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodDetail, ObjcProtocolMethodInfo,
+        ObjcProtocolPropertyDetail, ObjcProtocolPropertyInfo,
     };
 
     pub fn class_exists(_name: &str) -> bool {
@@ -1618,6 +1704,17 @@ mod platform {
         _is_required: bool,
         _is_instance_method: bool,
     ) -> Result<Vec<ObjcProtocolMethodInfo>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn protocol_method_info(
+        _protocol_name: &str,
+        _selector_name: &str,
+        _is_required: bool,
+        _is_instance_method: bool,
+    ) -> Result<Option<ObjcProtocolMethodDetail>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -1877,6 +1974,17 @@ mod tests {
     fn protocol_methods_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .protocol_methods("NSObject", true, true)
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn protocol_method_info_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .protocol_method_info("NSObject", "description", true, true)
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()

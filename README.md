@@ -58,6 +58,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.protocolInfo(protocolName)`
 - `ObjC.protocolProtocols(protocolName)`
 - `ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]])`
+- `ObjC.protocolMethodInfo(protocolName, selectorName[, isRequired[, isInstanceMethod]])`
 - `ObjC.protocolProperties(protocolName)`
 - `ObjC.protocolPropertyInfo(protocolName, propertyName)`
 - `ObjC.superclass(className)`
@@ -105,6 +106,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `objc.protocolInfo <protocol>`
   - `objc.protocolProtocols <protocol>`
   - `objc.protocolMethods <protocol> [required] [instance]`
+  - `objc.protocolMethodInfo <protocol> <selector> [required] [instance]`
   - `objc.protocolProperties <protocol>`
   - `objc.protocolPropertyInfo <protocol> <property>`
   - `objc.classes [filter]`
@@ -221,6 +223,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - iOS 功能目前仍是持续迁移状态，不应视为和 Android 版完全对齐。
 - 当前已经补到可做 ObjC 类/selector/IMP/方法枚举、协议继承/属性查询、Swift 符号查找、PAC 查询、dyld 镜像枚举、基础 hook 环境探测。
 - `objc.methods` / `objc.methodOwners` / `objc.protocolMethods` 这几类查询现在也会在结构化结果里稳定带出 `typeEncoding`，文本模式下若有编码也会附带 `types=...`，方便脚本侧直接消费 ObjC 方法签名。
+- `objc.protocolMethodInfo` 现在可以直接结构化返回单个 protocol method declaration 的 `typeEncoding / imagePath / isRequired / isInstanceMethod`，并补出解码后的 `returnTypeName / argumentTypeNames / signature / methodTypeInfo`，后续排查某个协议方法声明时不必再先全量 `objc.protocolMethods` 再脚本过滤。
 - `objc.properties` / `objc.protocolProperties` 这几类查询现在除了原始 `attributes` 之外，也会在结构化结果里补出 `typeEncoding / ownership / getterName / setterName / ivarName / objectClassName / objectProtocols / attributeInfo` 等解析字段，减少脚本二次拆 Objective-C property attributes 字符串的成本。
 - `objc.protocolPropertyInfo` 现在可以直接结构化返回单个 protocol property 的 `propertyPointer / imagePath / attributes`，并复用同一套 `attributeInfo` 解析字段，后续排查某个协议属性时不必再先全量 `objc.protocolProperties` 再脚本过滤。
 - `objc.propertyInfo` 现在可以直接结构化返回单个 property 的 `propertyPointer / imagePath / attributes`，并复用同一套 `attributeInfo` 解析字段，后续排查某个属性时不必再先全量 `objc.properties` 再脚本过滤。
