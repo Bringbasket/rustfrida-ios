@@ -77,9 +77,10 @@ pub use segments::{find_image_segments, image_segment_support_available, ImageSe
 pub use source_version::{find_image_source_version, image_source_version_support_available, ImageSourceVersion};
 pub use swift::{
     find_swift_conformances, find_swift_metadata, find_swift_method_owners, find_swift_methods, find_swift_protocols,
-    find_swift_symbols, find_swift_type_methods, find_swift_types, find_swift_types_of_kind, find_swift_vtable,
-    find_swift_witness_tables, swift_demangle_symbol, swift_support_available, swift_type_source_kinds,
-    SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftVtableEntry, SwiftWitnessTable,
+    find_swift_symbols, find_swift_type_layouts, find_swift_type_methods, find_swift_types, find_swift_types_of_kind,
+    find_swift_vtable, find_swift_witness_tables, swift_demangle_symbol, swift_support_available,
+    swift_type_source_kinds, SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout,
+    SwiftVtableEntry, SwiftWitnessTable,
 };
 pub use symbols::{find_native_symbols, native_symbol_support_available, NativeSymbol};
 pub use uuid::{find_image_uuid, image_uuid_support_available, ImageUuid};

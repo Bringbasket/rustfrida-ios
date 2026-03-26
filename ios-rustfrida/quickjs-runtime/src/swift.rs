@@ -6,9 +6,10 @@ use crate::value::JSValue;
 use common::Error as CommonError;
 use native_api::{
     find_swift_conformances, find_swift_metadata, find_swift_method_owners, find_swift_methods, find_swift_protocols,
-    find_swift_symbols, find_swift_type_methods, find_swift_types, find_swift_types_of_kind, find_swift_vtable,
-    find_swift_witness_tables, swift_demangle_symbol, swift_support_available, swift_type_source_kinds,
-    SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftVtableEntry, SwiftWitnessTable,
+    find_swift_symbols, find_swift_type_layouts, find_swift_type_methods, find_swift_types, find_swift_types_of_kind,
+    find_swift_vtable, find_swift_witness_tables, swift_demangle_symbol, swift_support_available,
+    swift_type_source_kinds, SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout,
+    SwiftVtableEntry, SwiftWitnessTable,
 };
 
 unsafe fn swift_symbol_to_js(ctx: *mut ffi::JSContext, symbol: &SwiftSymbol) -> ffi::JSValue {
@@ -166,6 +167,62 @@ unsafe fn swift_witness_table_to_js(ctx: *mut ffi::JSContext, entry: &SwiftWitne
         Some(name) => object.set_property(ctx, "demangledName", JSValue::string(ctx, name)),
         None => object.set_property(ctx, "demangledName", JSValue::null()),
     };
+
+    object.raw()
+}
+
+unsafe fn swift_type_layout_to_js(ctx: *mut ffi::JSContext, layout: &SwiftTypeLayout) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "moduleName", JSValue::string(ctx, &layout.module_name));
+    object.set_property(ctx, "moduleBase", create_native_pointer(ctx, layout.module_base as u64));
+    object.set_property(ctx, "name", JSValue::string(ctx, &layout.type_name));
+
+    let metadata = ffi::JS_NewArray(ctx);
+    for (index, item) in layout.metadata.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, metadata, index as u32, swift_type_to_js(ctx, item));
+    }
+    object.set_property(ctx, "metadata", JSValue(metadata));
+
+    let metadata_accessors = ffi::JS_NewArray(ctx);
+    for (index, item) in layout.metadata_accessors.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, metadata_accessors, index as u32, swift_type_to_js(ctx, item));
+    }
+    object.set_property(ctx, "metadataAccessors", JSValue(metadata_accessors));
+
+    let nominal_descriptors = ffi::JS_NewArray(ctx);
+    for (index, item) in layout.nominal_descriptors.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, nominal_descriptors, index as u32, swift_type_to_js(ctx, item));
+    }
+    object.set_property(ctx, "nominalDescriptors", JSValue(nominal_descriptors));
+
+    let metadata_caches = ffi::JS_NewArray(ctx);
+    for (index, item) in layout.metadata_caches.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, metadata_caches, index as u32, swift_type_to_js(ctx, item));
+    }
+    object.set_property(ctx, "metadataCaches", JSValue(metadata_caches));
+
+    let associated_type_descriptors = ffi::JS_NewArray(ctx);
+    for (index, item) in layout.associated_type_descriptors.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            associated_type_descriptors,
+            index as u32,
+            swift_type_to_js(ctx, item),
+        );
+    }
+    object.set_property(ctx, "associatedTypeDescriptors", JSValue(associated_type_descriptors));
+
+    let vtable_entries = ffi::JS_NewArray(ctx);
+    for (index, item) in layout.vtable_entries.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, vtable_entries, index as u32, swift_vtable_entry_to_js(ctx, item));
+    }
+    object.set_property(ctx, "vtableEntries", JSValue(vtable_entries));
+
+    let witness_tables = ffi::JS_NewArray(ctx);
+    for (index, item) in layout.witness_tables.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, witness_tables, index as u32, swift_witness_table_to_js(ctx, item));
+    }
+    object.set_property(ctx, "witnessTables", JSValue(witness_tables));
 
     object.raw()
 }
@@ -773,6 +830,54 @@ unsafe extern "C" fn js_swift_find_witness_table(
     array
 }
 
+unsafe extern "C" fn js_swift_find_type_layout(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let query = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "Swift.findTypeLayout(typeQuery[, moduleName]) requires at least 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let module_name = if argc >= 2 {
+        let value = JSValue(*argv.add(1));
+        if value.is_null() || value.is_undefined() {
+            None
+        } else {
+            match value.to_string(ctx) {
+                Some(module_name) => Some(module_name),
+                None => return js_throw_type_error(
+                    ctx,
+                    "Swift.findTypeLayout(typeQuery[, moduleName]) expected moduleName to be a string when provided",
+                ),
+            }
+        }
+    } else {
+        None
+    };
+
+    let layouts = match find_swift_type_layouts(module_name.as_deref(), &query) {
+        Ok(layouts) => layouts,
+        Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, layout) in layouts.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, swift_type_layout_to_js(ctx, layout));
+    }
+    array
+}
+
 pub(crate) fn register_swift_api(ctx: &JSContext) {
     let global = ctx.global_object();
     let swift = ctx.new_object();
@@ -788,6 +893,7 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMetadata", js_swift_find_metadata, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findVtable", js_swift_find_vtable, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findWitnessTable", js_swift_find_witness_table, 2);
+        add_cfunction_to_object(ctx_ptr, swift.raw(), "findTypeLayout", js_swift_find_type_layout, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMethods", js_swift_find_methods, 3);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findTypeMethods", js_swift_find_type_methods, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMethodOwners", js_swift_find_method_owners, 2);

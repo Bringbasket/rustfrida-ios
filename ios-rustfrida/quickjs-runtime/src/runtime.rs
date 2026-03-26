@@ -681,6 +681,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Swift.findTypeLayout")
+                    .expect("swift findTypeLayout type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Swift.findSymbols")
                     .expect("swift findSymbols type"),
                 "function"
@@ -755,6 +761,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Swift.findWitnessTable('Renderable'))")
                     .expect("swift findWitnessTable"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(Swift.findTypeLayout('ViewController'))")
+                    .expect("swift findTypeLayout"),
                 "true"
             );
             assert_eq!(
@@ -1628,6 +1640,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.typeLayout ViewController'); return value === '' || value.indexOf('metadata=') !== -1; })()")
+                    .expect("agent swift type layout"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF'); return value === '<unavailable>' || value.indexOf('Demo') !== -1 || value.indexOf('method') !== -1; })()"
                     )
@@ -1920,6 +1938,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.type_layout' && result.query === 'ViewController' && result.count === result.layouts.length && (result.layouts.length === 0 || (typeof result.layouts[0].moduleBase === 'string' && Array.isArray(result.layouts[0].metadata) && typeof result.layouts[0].vtableCount === 'number' && typeof result.layouts[0].witnessTableCount === 'number')); })()")
+                    .expect("agent swift type layout result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.types' && result.count === result.types.length && (result.types.length === 0 || (typeof result.types[0].moduleBase === 'string' && typeof result.types[0].sourceSymbolName === 'string' && typeof result.types[0].sourceOffsetHex === 'string')); })()"
                     )
@@ -2200,6 +2224,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' }); return value === result.text; })()")
                     .expect("agent spec swift witness table"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.type_layout', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
+                    .expect("agent spec swift type layout"),
                 "true"
             );
             assert_eq!(

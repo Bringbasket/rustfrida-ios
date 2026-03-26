@@ -561,6 +561,17 @@ function formatSwiftWitnessTable(entry) {
         : base + ' <= ' + entry.demangledName;
 }
 
+function formatSwiftTypeLayout(layout) {
+    return layout.moduleName + '!' + layout.name
+        + ' metadata=' + String(layout.metadataCount || 0)
+        + ' accessor=' + String(layout.metadataAccessorCount || 0)
+        + ' descriptor=' + String(layout.nominalDescriptorCount || 0)
+        + ' cache=' + String(layout.metadataCacheCount || 0)
+        + ' associated=' + String(layout.associatedTypeDescriptorCount || 0)
+        + ' vtable=' + String(layout.vtableCount || 0)
+        + ' witness=' + String(layout.witnessTableCount || 0);
+}
+
 function formatObjcMethod(method) {
     const prefix = method.isClassMethod ? '+' : '-';
     return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']';
@@ -1205,6 +1216,52 @@ function normalizeSwiftWitnessTable(entry) {
     };
 }
 
+function normalizeSwiftTypeLayout(layout) {
+    const metadata = Array.isArray(layout.metadata)
+        ? layout.metadata.map((typeInfo) => normalizeSwiftType(typeInfo))
+        : [];
+    const metadataAccessors = Array.isArray(layout.metadataAccessors)
+        ? layout.metadataAccessors.map((typeInfo) => normalizeSwiftType(typeInfo))
+        : [];
+    const nominalDescriptors = Array.isArray(layout.nominalDescriptors)
+        ? layout.nominalDescriptors.map((typeInfo) => normalizeSwiftType(typeInfo))
+        : [];
+    const metadataCaches = Array.isArray(layout.metadataCaches)
+        ? layout.metadataCaches.map((typeInfo) => normalizeSwiftType(typeInfo))
+        : [];
+    const associatedTypeDescriptors = Array.isArray(layout.associatedTypeDescriptors)
+        ? layout.associatedTypeDescriptors.map((typeInfo) => normalizeSwiftType(typeInfo))
+        : [];
+    const vtableEntries = Array.isArray(layout.vtableEntries)
+        ? layout.vtableEntries.map((entry) => normalizeSwiftVtableEntry(entry))
+        : [];
+    const witnessTables = Array.isArray(layout.witnessTables)
+        ? layout.witnessTables.map((entry) => normalizeSwiftWitnessTable(entry))
+        : [];
+
+    const normalized = {
+        moduleName: String(layout.moduleName || ''),
+        moduleBase: layout.moduleBase ? layout.moduleBase.toString() : null,
+        name: String(layout.name || ''),
+        metadata,
+        metadataAccessors,
+        nominalDescriptors,
+        metadataCaches,
+        associatedTypeDescriptors,
+        vtableEntries,
+        witnessTables,
+        metadataCount: metadata.length,
+        metadataAccessorCount: metadataAccessors.length,
+        nominalDescriptorCount: nominalDescriptors.length,
+        metadataCacheCount: metadataCaches.length,
+        associatedTypeDescriptorCount: associatedTypeDescriptors.length,
+        vtableCount: vtableEntries.length,
+        witnessTableCount: witnessTables.length,
+    };
+    normalized.text = formatSwiftTypeLayout(normalized);
+    return normalized;
+}
+
 function handleSpecResult(spec) {
     if (spec === null || typeof spec !== 'object') {
         throw new Error('agent command spec must be an object');
@@ -1663,6 +1720,12 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const entries = Swift.findWitnessTable(query, moduleName).map((entry) => normalizeSwiftWitnessTable(entry));
         return { kind: 'swift.witness_table', moduleName, query, count: entries.length, entries, text: entries.map((entry) => entry.text).join('\n') };
+    }
+    case 'swift.type_layout': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const query = String(spec.query || '');
+        const layouts = Swift.findTypeLayout(query, moduleName).map((layout) => normalizeSwiftTypeLayout(layout));
+        return { kind: 'swift.type_layout', moduleName, query, count: layouts.length, layouts, text: layouts.map((layout) => layout.text).join('\n') };
     }
     case 'swift.types': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
@@ -2224,6 +2287,16 @@ function legacyToSpec(command) {
         const parsed = splitModuleQuery(trimmed.slice('swift.witnessTable '.length), usage);
         return {
             kind: 'swift.witness_table',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.typeLayout ')) {
+        const usage = 'swift.typeLayout usage: swift.typeLayout <type> | swift.typeLayout <module> -- <type>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.typeLayout '.length), usage);
+        return {
+            kind: 'swift.type_layout',
             moduleName: parsed.moduleName,
             query: parsed.query,
         };

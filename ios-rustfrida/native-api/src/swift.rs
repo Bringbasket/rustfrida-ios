@@ -75,6 +75,20 @@ pub struct SwiftWitnessTable {
     pub is_accessor: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SwiftTypeLayout {
+    pub module_name: String,
+    pub module_base: usize,
+    pub type_name: String,
+    pub metadata: Vec<SwiftType>,
+    pub metadata_accessors: Vec<SwiftType>,
+    pub nominal_descriptors: Vec<SwiftType>,
+    pub metadata_caches: Vec<SwiftType>,
+    pub associated_type_descriptors: Vec<SwiftType>,
+    pub vtable_entries: Vec<SwiftVtableEntry>,
+    pub witness_tables: Vec<SwiftWitnessTable>,
+}
+
 pub fn swift_support_available() -> bool {
     platform::swift_support_available()
 }
@@ -109,6 +123,10 @@ pub fn find_swift_vtable(module_name: Option<&str>, query: &str) -> Result<Vec<S
 
 pub fn find_swift_witness_tables(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftWitnessTable>> {
     platform::find_swift_witness_tables(module_name, query)
+}
+
+pub fn find_swift_type_layouts(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftTypeLayout>> {
+    platform::find_swift_type_layouts(module_name, query)
 }
 
 pub fn swift_type_source_kinds() -> &'static [&'static str] {
@@ -571,6 +589,7 @@ fn normalize_swift_type_source_kind(kind: &str) -> Option<&'static str> {
 
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
+    use std::collections::BTreeMap;
     use std::ffi::{CStr, CString};
     use std::os::raw::{c_char, c_void};
 
@@ -578,7 +597,7 @@ mod platform {
 
     use crate::{
         enumerate_images, image_name_matches, ImageInfo, SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType,
-        SwiftVtableEntry, SwiftWitnessTable,
+        SwiftTypeLayout, SwiftVtableEntry, SwiftWitnessTable,
     };
 
     use super::{
@@ -894,6 +913,117 @@ mod platform {
         Ok(matches)
     }
 
+    pub fn find_swift_type_layouts(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftTypeLayout>> {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return Err(Error::InvalidArgument(
+                "swift type-layout query must not be empty; use `swift.typeLayout <type>` or `swift.typeLayout <module> -- <type>`"
+                    .into(),
+            ));
+        }
+
+        let mut layouts = BTreeMap::<(String, String), SwiftTypeLayout>::new();
+        let symbols = collect_swift_symbols(module_name)?;
+        for symbol in symbols {
+            let demangled_name = symbol.demangled_name.as_deref();
+
+            if let Some(type_name) = extract_swift_type_name(&symbol.symbol_name, demangled_name) {
+                if query_matches_swift_type(&type_name, trimmed) {
+                    let source_kind = infer_swift_type_source_kind(demangled_name);
+                    if matches!(
+                        source_kind,
+                        "metadata"
+                            | "metadata-accessor"
+                            | "nominal-descriptor"
+                            | "metadata-cache"
+                            | "associated-type-descriptor"
+                    ) {
+                        let layout =
+                            ensure_type_layout(&mut layouts, &symbol.module_name, symbol.module_base, &type_name);
+                        let type_info = SwiftType {
+                            module_name: symbol.module_name.clone(),
+                            module_base: symbol.module_base,
+                            type_name,
+                            source_symbol_name: symbol.symbol_name.clone(),
+                            source_demangled_name: symbol.demangled_name.clone(),
+                            source_kind: source_kind.to_string(),
+                            source_address: symbol.address,
+                            source_offset: symbol.offset,
+                        };
+                        match source_kind {
+                            "metadata" => layout.metadata.push(type_info),
+                            "metadata-accessor" => layout.metadata_accessors.push(type_info),
+                            "nominal-descriptor" => layout.nominal_descriptors.push(type_info),
+                            "metadata-cache" => layout.metadata_caches.push(type_info),
+                            "associated-type-descriptor" => layout.associated_type_descriptors.push(type_info),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            if let Some((type_name, member_name, source_kind)) = extract_swift_vtable_parts(demangled_name) {
+                if query_matches_swift_type(&type_name, trimmed) {
+                    let layout = ensure_type_layout(&mut layouts, &symbol.module_name, symbol.module_base, &type_name);
+                    layout.vtable_entries.push(SwiftVtableEntry {
+                        module_name: symbol.module_name.clone(),
+                        module_base: symbol.module_base,
+                        type_name,
+                        member_name,
+                        symbol_name: symbol.symbol_name.clone(),
+                        demangled_name: symbol.demangled_name.clone(),
+                        source_kind: source_kind.to_string(),
+                        address: symbol.address,
+                        offset: symbol.offset,
+                        is_dispatch_thunk: source_kind == "dispatch-thunk",
+                    });
+                }
+            }
+
+            if let Some((type_name, protocol_name)) = extract_swift_conformance(demangled_name) {
+                if query_matches_swift_type(&type_name, trimmed) {
+                    let source_kind = infer_swift_conformance_source_kind(demangled_name);
+                    if matches!(
+                        source_kind,
+                        "protocol-witness-table" | "protocol-witness-table-accessor" | "protocol-witness"
+                    ) {
+                        let layout =
+                            ensure_type_layout(&mut layouts, &symbol.module_name, symbol.module_base, &type_name);
+                        layout.witness_tables.push(SwiftWitnessTable {
+                            module_name: symbol.module_name.clone(),
+                            module_base: symbol.module_base,
+                            type_name,
+                            protocol_name,
+                            symbol_name: symbol.symbol_name.clone(),
+                            demangled_name: symbol.demangled_name.clone(),
+                            source_kind: source_kind.to_string(),
+                            address: symbol.address,
+                            offset: symbol.offset,
+                            is_accessor: source_kind == "protocol-witness-table-accessor",
+                        });
+                    }
+                }
+            }
+        }
+
+        let mut results = layouts.into_values().collect::<Vec<_>>();
+        for layout in &mut results {
+            dedup_and_sort_types(&mut layout.metadata);
+            dedup_and_sort_types(&mut layout.metadata_accessors);
+            dedup_and_sort_types(&mut layout.nominal_descriptors);
+            dedup_and_sort_types(&mut layout.metadata_caches);
+            dedup_and_sort_types(&mut layout.associated_type_descriptors);
+            dedup_and_sort_vtable_entries(&mut layout.vtable_entries);
+            dedup_and_sort_witness_tables(&mut layout.witness_tables);
+        }
+        results.sort_by(|left, right| {
+            left.module_name
+                .cmp(&right.module_name)
+                .then(left.type_name.cmp(&right.type_name))
+        });
+        Ok(results)
+    }
+
     pub fn find_swift_methods(
         module_name: Option<&str>,
         type_name: &str,
@@ -1073,6 +1203,28 @@ mod platform {
                 && left.address == right.address
                 && left.symbol_name == right.symbol_name
         });
+    }
+
+    fn ensure_type_layout<'a>(
+        layouts: &'a mut BTreeMap<(String, String), SwiftTypeLayout>,
+        module_name: &str,
+        module_base: usize,
+        type_name: &str,
+    ) -> &'a mut SwiftTypeLayout {
+        layouts
+            .entry((module_name.to_string(), type_name.to_string()))
+            .or_insert_with(|| SwiftTypeLayout {
+                module_name: module_name.to_string(),
+                module_base,
+                type_name: type_name.to_string(),
+                metadata: Vec::new(),
+                metadata_accessors: Vec::new(),
+                nominal_descriptors: Vec::new(),
+                metadata_caches: Vec::new(),
+                associated_type_descriptors: Vec::new(),
+                vtable_entries: Vec::new(),
+                witness_tables: Vec::new(),
+            })
     }
 
     fn collect_swift_symbols_in_image(image: &ImageInfo) -> Result<Vec<SwiftSymbol>> {
@@ -1259,7 +1411,9 @@ mod platform {
 mod platform {
     use common::{Error, Result};
 
-    use crate::{SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftVtableEntry, SwiftWitnessTable};
+    use crate::{
+        SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout, SwiftVtableEntry, SwiftWitnessTable,
+    };
 
     pub fn swift_support_available() -> bool {
         false
@@ -1308,6 +1462,12 @@ mod platform {
     }
 
     pub fn find_swift_witness_tables(_module_name: Option<&str>, _query: &str) -> Result<Vec<SwiftWitnessTable>> {
+        Err(Error::Unsupported(
+            "Swift symbol lookup is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn find_swift_type_layouts(_module_name: Option<&str>, _query: &str) -> Result<Vec<SwiftTypeLayout>> {
         Err(Error::Unsupported(
             "Swift symbol lookup is only available on Apple targets".into(),
         ))
