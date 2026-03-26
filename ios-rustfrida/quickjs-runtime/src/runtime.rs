@@ -531,6 +531,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const methods = ObjC.methods('NSObject'); return methods.length === 0 || typeof methods[0].typeEncoding === 'string'; })()")
+                    .expect("objc methods typeEncoding"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(ObjC.findClasses('NSObject'))")
                     .expect("objc findClasses"),
                 "true"
@@ -561,6 +567,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(ObjC.protocolMethods('NSObject'))")
                     .expect("objc protocolMethods"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const methods = ObjC.protocolMethods('NSObject'); return methods.length === 0 || typeof methods[0].typeEncoding === 'string'; })()")
+                    .expect("objc protocolMethods typeEncoding"),
                 "true"
             );
             assert_eq!(
@@ -1753,7 +1765,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_methods', protocolName: 'NSObject', isRequired: false, isInstanceMethod: false }); return result.kind === 'objc.protocol_methods' && result.protocolName === 'NSObject' && result.isRequired === false && result.isInstanceMethod === false && result.count === result.methods.length && result.text === result.methods.map((method) => method.text).join('\\n'); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_methods', protocolName: 'NSObject', isRequired: false, isInstanceMethod: false }); return result.kind === 'objc.protocol_methods' && result.protocolName === 'NSObject' && result.isRequired === false && result.isInstanceMethod === false && result.count === result.methods.length && (result.methods.length === 0 || typeof result.methods[0].typeEncoding === 'string') && result.text === result.methods.map((method) => method.text).join('\\n'); })()"
                     )
                     .expect("agent objc protocolMethods result"),
                 "true"

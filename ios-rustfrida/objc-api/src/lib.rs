@@ -5,6 +5,7 @@ pub struct ObjcMethodInfo {
     pub class_name: String,
     pub selector_name: String,
     pub imp: usize,
+    pub type_encoding: String,
     pub is_class_method: bool,
 }
 
@@ -28,6 +29,7 @@ pub struct ObjcIvarInfo {
 pub struct ObjcProtocolMethodInfo {
     pub protocol_name: String,
     pub selector_name: String,
+    pub type_encoding: String,
     pub is_required: bool,
     pub is_instance_method: bool,
 }
@@ -251,6 +253,7 @@ mod platform {
         fn class_getClassMethod(cls: *const c_void, sel: *const c_void) -> *mut c_void;
         fn method_getName(method: *const c_void) -> *const c_void;
         fn method_getImplementation(method: *const c_void) -> *const c_void;
+        fn method_getTypeEncoding(method: *const c_void) -> *const c_char;
         fn sel_registerName(name: *const c_char) -> *const c_void;
         fn sel_getName(sel: *const c_void) -> *const c_char;
         fn dladdr(addr: *const c_void, info: *mut DlInfo) -> i32;
@@ -492,15 +495,25 @@ mod platform {
             methods.push(ObjcProtocolMethodInfo {
                 protocol_name: protocol_name.to_string(),
                 selector_name: unsafe { CStr::from_ptr(selector_name) }.to_string_lossy().into_owned(),
+                type_encoding: if method.types.is_null() {
+                    String::new()
+                } else {
+                    unsafe { CStr::from_ptr(method.types) }.to_string_lossy().into_owned()
+                },
                 is_required,
                 is_instance_method,
             });
         }
 
         unsafe { libc::free(list.cast()) };
-        methods.sort_by(|left, right| left.selector_name.cmp(&right.selector_name));
+        methods.sort_by(|left, right| {
+            left.selector_name
+                .cmp(&right.selector_name)
+                .then(left.type_encoding.cmp(&right.type_encoding))
+        });
         methods.dedup_by(|left, right| {
             left.selector_name == right.selector_name
+                && left.type_encoding == right.type_encoding
                 && left.is_required == right.is_required
                 && left.is_instance_method == right.is_instance_method
         });
@@ -848,12 +861,31 @@ mod platform {
                 class_name: class_name.to_string(),
                 selector_name: unsafe { CStr::from_ptr(selector_name) }.to_string_lossy().into_owned(),
                 imp: unsafe { method_getImplementation(*method as *const c_void) } as usize,
+                type_encoding: {
+                    let type_encoding = unsafe { method_getTypeEncoding(*method as *const c_void) };
+                    if type_encoding.is_null() {
+                        String::new()
+                    } else {
+                        unsafe { CStr::from_ptr(type_encoding) }.to_string_lossy().into_owned()
+                    }
+                },
                 is_class_method,
             });
         }
 
         unsafe { libc::free(list.cast()) };
-        methods.sort_by(|left, right| left.selector_name.cmp(&right.selector_name));
+        methods.sort_by(|left, right| {
+            left.selector_name
+                .cmp(&right.selector_name)
+                .then(left.type_encoding.cmp(&right.type_encoding))
+                .then(left.imp.cmp(&right.imp))
+        });
+        methods.dedup_by(|left, right| {
+            left.selector_name == right.selector_name
+                && left.type_encoding == right.type_encoding
+                && left.imp == right.imp
+                && left.is_class_method == right.is_class_method
+        });
         Ok(methods)
     }
 
@@ -934,6 +966,14 @@ mod platform {
                     class_name: class_name.clone(),
                     selector_name,
                     imp: unsafe { method_getImplementation(*method as *const c_void) } as usize,
+                    type_encoding: {
+                        let type_encoding = unsafe { method_getTypeEncoding(*method as *const c_void) };
+                        if type_encoding.is_null() {
+                            String::new()
+                        } else {
+                            unsafe { CStr::from_ptr(type_encoding) }.to_string_lossy().into_owned()
+                        }
+                    },
                     is_class_method,
                 });
             }
@@ -947,10 +987,14 @@ mod platform {
             left.class_name
                 .cmp(&right.class_name)
                 .then(left.selector_name.cmp(&right.selector_name))
+                .then(left.type_encoding.cmp(&right.type_encoding))
                 .then(left.imp.cmp(&right.imp))
         });
         methods.dedup_by(|left, right| {
-            left.class_name == right.class_name && left.selector_name == right.selector_name && left.imp == right.imp
+            left.class_name == right.class_name
+                && left.selector_name == right.selector_name
+                && left.type_encoding == right.type_encoding
+                && left.imp == right.imp
         });
         Ok(methods)
     }

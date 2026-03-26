@@ -381,6 +381,7 @@ unsafe fn objc_method_to_js(ctx: *mut ffi::JSContext, method: &ObjcMethodInfo) -
     object.set_property(ctx, "className", JSValue::string(ctx, &method.class_name));
     object.set_property(ctx, "selector", JSValue::string(ctx, &method.selector_name));
     object.set_property(ctx, "imp", create_native_pointer(ctx, method.imp as u64));
+    object.set_property(ctx, "typeEncoding", JSValue::string(ctx, &method.type_encoding));
     object.set_property(ctx, "isClassMethod", JSValue::bool(method.is_class_method));
     object.raw()
 }
@@ -411,6 +412,7 @@ unsafe fn objc_protocol_method_to_js(ctx: *mut ffi::JSContext, method: &ObjcProt
     let object = JSValue(ffi::JS_NewObject(ctx));
     object.set_property(ctx, "protocolName", JSValue::string(ctx, &method.protocol_name));
     object.set_property(ctx, "selector", JSValue::string(ctx, &method.selector_name));
+    object.set_property(ctx, "typeEncoding", JSValue::string(ctx, &method.type_encoding));
     object.set_property(ctx, "isRequired", JSValue::bool(method.is_required));
     object.set_property(ctx, "isInstanceMethod", JSValue::bool(method.is_instance_method));
     object.raw()

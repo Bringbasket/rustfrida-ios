@@ -574,12 +574,14 @@ function formatSwiftTypeLayout(layout) {
 
 function formatObjcMethod(method) {
     const prefix = method.isClassMethod ? '+' : '-';
-    return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']';
+    const suffix = method.typeEncoding.length === 0 ? '' : ' types=' + method.typeEncoding;
+    return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']' + suffix;
 }
 
 function formatObjcProtocolMethod(method) {
     const prefix = method.isInstanceMethod ? '-' : '+';
-    return prefix + '[' + method.protocolName + ' ' + method.selector + '] ' + (method.isRequired ? 'required' : 'optional');
+    const suffix = method.typeEncoding.length === 0 ? '' : ' types=' + method.typeEncoding;
+    return prefix + '[' + method.protocolName + ' ' + method.selector + '] ' + (method.isRequired ? 'required' : 'optional') + suffix;
 }
 
 function formatObjcProtocolProperty(property) {
@@ -668,6 +670,7 @@ function normalizeObjcMethod(method) {
         selector: String(method.selector || ''),
         isClassMethod: !!method.isClassMethod,
         imp: method.imp.toString(),
+        typeEncoding: String(method.typeEncoding || ''),
         text: formatObjcMethod(method),
     };
 }
@@ -676,6 +679,7 @@ function normalizeObjcProtocolMethod(method) {
     return {
         protocolName: String(method.protocolName || ''),
         selector: String(method.selector || ''),
+        typeEncoding: String(method.typeEncoding || ''),
         isRequired: !!method.isRequired,
         isInstanceMethod: !!method.isInstanceMethod,
         text: formatObjcProtocolMethod(method),
