@@ -54,6 +54,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.findMethodOwners(query[, isClassMethod])`
 - `ObjC.protocols([query])`
 - `ObjC.classProtocols(className)`
+- `ObjC.superclass(className)`
 - `ObjC.properties(className[, isClassProperty])`
 - `ObjC.findProperties(className, query[, isClassProperty])`
 - `ObjC.ivars(className)`
@@ -75,6 +76,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `objc.methodImage <class> <selector> [meta]`
   - `objc.methodOwners <selector> [meta]`
   - `objc.methods <class> [meta] [filter]`
+  - `objc.superclass <class>`
   - `objc.properties <class> [meta] [filter]`
   - `objc.ivars <class> [filter]`
   - `objc.protocols [filter]`

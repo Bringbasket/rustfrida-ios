@@ -70,6 +70,10 @@ impl ObjcApi {
         platform::class_protocols(class_name)
     }
 
+    pub fn superclass(&self, class_name: &str) -> Result<Option<String>> {
+        platform::superclass(class_name)
+    }
+
     pub fn enumerate_properties(&self, class_name: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
         platform::enumerate_properties(class_name, is_class_property)
     }
@@ -191,6 +195,7 @@ mod platform {
         fn objc_copyClassList(out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyMethodList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
         fn class_getName(cls: *const c_void) -> *const c_char;
+        fn class_getSuperclass(cls: *const c_void) -> *mut c_void;
         fn protocol_getName(proto: *const c_void) -> *const c_char;
         fn property_getName(property: *const c_void) -> *const c_char;
         fn property_getAttributes(property: *const c_void) -> *const c_char;
@@ -336,6 +341,32 @@ mod platform {
         protocols.sort();
         protocols.dedup();
         Ok(protocols)
+    }
+
+    pub fn superclass(class_name: &str) -> Result<Option<String>> {
+        let class_name = class_name.trim();
+        if class_name.is_empty() {
+            return Err(Error::InvalidArgument("class name must not be empty".into()));
+        }
+
+        let class_name_c =
+            CString::new(class_name).map_err(|_| Error::InvalidArgument("class name contains interior NUL".into()))?;
+        let class = unsafe { objc_getClass(class_name_c.as_ptr()) };
+        if class.is_null() {
+            return Ok(None);
+        }
+
+        let superclass = unsafe { class_getSuperclass(class) };
+        if superclass.is_null() {
+            return Ok(None);
+        }
+
+        let name = unsafe { class_getName(superclass as *const c_void) };
+        if name.is_null() {
+            return Ok(None);
+        }
+
+        Ok(Some(unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned()))
     }
 
     pub fn enumerate_properties(class_name: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
@@ -801,6 +832,12 @@ mod platform {
         ))
     }
 
+    pub fn superclass(_class_name: &str) -> Result<Option<String>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
     pub fn find_properties(_class_name: &str, _query: &str, _is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
@@ -930,6 +967,17 @@ mod tests {
     fn class_protocols_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .class_protocols("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn superclass_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .superclass("NSObject")
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()

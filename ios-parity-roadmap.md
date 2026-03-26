@@ -77,7 +77,7 @@
 按现有代码和 README，iOS 版已经具备这几块：
 
 - 注入链路：`plan / preflight / inject / --inject-json / --command-json`
-- ObjC 查询：`objc.classes / objc.methods / objc.methodOwners / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName`
+- ObjC 查询：`objc.classes / objc.protocols / objc.classProtocols / objc.superclass / objc.properties / objc.ivars / objc.methods / objc.methodOwners / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName`
 - Native 查询：`native.images / native.mainImage / native.image / native.symbol / native.symbols / native.exports / native.dependencies / native.encryptionInfo / native.entryPoint / native.sourceVersion / native.buildVersion / native.dylinker / native.installName / native.uuid / native.rpaths / native.imports / native.loadcmds / native.sections / native.segments`
 - Swift 查询：`swift.demangle / swift.symbols / swift.types / swift.typeKinds / swift.methodOwners / swift.typeMethods / swift.methods / swift.typesOfKind`
 - PAC 查询：`pac.available / pac.arm64e / pac.image / pac.images / pac.strip / pac.stripdata`
@@ -131,11 +131,6 @@
 
 明显还没做或没做全的候选项：
 
-- `objc.protocols [filter]`
-- `objc.classProtocols <class>`
-- `objc.properties <class> [meta] [filter]`
-- `objc.ivars <class> [filter]`
-- `objc.superclass <class>`
 - `objc.classChain <class>`
 - `objc.protocolMethods <protocol> [required] [instance]`
 

@@ -84,6 +84,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
             | "swift.typeKinds"
     ) || command.starts_with("objc.classExists ")
         || command.starts_with("objc.classProtocols ")
+        || command.starts_with("objc.superclass ")
         || command.starts_with("objc.selector ")
         || command.starts_with("objc.classImage ")
         || command.starts_with("objc.methodImage ")
@@ -175,6 +176,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     if let Some(class_name) = command.strip_prefix("objc.classProtocols ") {
         return Some(json!({
             "kind": "objc.class_protocols",
+            "className": class_name.trim(),
+        }));
+    }
+
+    if let Some(class_name) = command.strip_prefix("objc.superclass ") {
+        return Some(json!({
+            "kind": "objc.superclass",
             "className": class_name.trim(),
         }));
     }
@@ -976,6 +984,15 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
                     "kind": "objc.class_protocols",
+                    "className": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.superclass NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.superclass",
                     "className": "NSObject",
                 })
             })
