@@ -1598,6 +1598,12 @@ function handleSpecResult(spec) {
         const conformances = Swift.findConformances(query, moduleName).map((conformance) => normalizeSwiftConformance(conformance));
         return { kind: 'swift.conformances', moduleName, query, count: conformances.length, conformances, text: conformances.map((conformance) => conformance.text).join('\n') };
     }
+    case 'swift.metadata': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const query = String(spec.query || '');
+        const metadata = Swift.findMetadata(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
+        return { kind: 'swift.metadata', moduleName, query, count: metadata.length, metadata, text: metadata.map((typeInfo) => typeInfo.text).join('\n') };
+    }
     case 'swift.types': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
@@ -2128,6 +2134,16 @@ function legacyToSpec(command) {
         const parsed = splitModuleQuery(trimmed.slice('swift.conformances '.length), usage);
         return {
             kind: 'swift.conformances',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.metadata ')) {
+        const usage = 'swift.metadata usage: swift.metadata <type> | swift.metadata <module> -- <type>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.metadata '.length), usage);
+        return {
+            kind: 'swift.metadata',
             moduleName: parsed.moduleName,
             query: parsed.query,
         };

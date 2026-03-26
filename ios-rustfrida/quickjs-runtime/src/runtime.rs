@@ -665,6 +665,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Swift.findMetadata")
+                    .expect("swift findMetadata type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Swift.findSymbols")
                     .expect("swift findSymbols type"),
                 "function"
@@ -721,6 +727,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Swift.findConformances('ViewController'))")
                     .expect("swift findConformances"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(Swift.findMetadata('ViewController'))")
+                    .expect("swift findMetadata"),
                 "true"
             );
             assert_eq!(
@@ -1576,6 +1588,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.metadata ViewController'); return value === '' || value.indexOf('[metadata') !== -1 || value.indexOf('[nominal-descriptor]') !== -1; })()")
+                    .expect("agent swift metadata"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF'); return value === '<unavailable>' || value.indexOf('Demo') !== -1 || value.indexOf('method') !== -1; })()"
                     )
@@ -1850,6 +1868,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.metadata' && result.query === 'ViewController' && result.count === result.metadata.length && (result.metadata.length === 0 || (typeof result.metadata[0].moduleBase === 'string' && typeof result.metadata[0].sourceSymbolName === 'string' && typeof result.metadata[0].sourceOffsetHex === 'string' && typeof result.metadata[0].sourceKind === 'string')); })()")
+                    .expect("agent swift metadata result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.types' && result.count === result.types.length && (result.types.length === 0 || (typeof result.types[0].moduleBase === 'string' && typeof result.types[0].sourceSymbolName === 'string' && typeof result.types[0].sourceOffsetHex === 'string')); })()"
                     )
@@ -2112,6 +2136,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.conformances', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformances', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
                     .expect("agent spec swift conformances"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
+                    .expect("agent spec swift metadata"),
                 "true"
             );
             assert_eq!(

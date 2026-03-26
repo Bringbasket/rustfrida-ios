@@ -71,8 +71,13 @@ pub fn find_swift_conformances(module_name: Option<&str>, query: &str) -> Result
     platform::find_swift_conformances(module_name, query)
 }
 
+pub fn find_swift_metadata(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftType>> {
+    platform::find_swift_metadata(module_name, query)
+}
+
 pub fn swift_type_source_kinds() -> &'static [&'static str] {
     &[
+        "metadata",
         "metadata-accessor",
         "nominal-descriptor",
         "metadata-cache",
@@ -283,6 +288,7 @@ fn extract_swift_type_name(symbol_name: &str, demangled_name: Option<&str>) -> O
     }
 
     for prefix in [
+        "type metadata for ",
         "type metadata accessor for ",
         "nominal type descriptor for ",
         "lazy cache variable for type metadata for ",
@@ -460,6 +466,8 @@ fn infer_swift_type_source_kind(demangled_name: Option<&str>) -> &'static str {
 
     if demangled_name.starts_with("type metadata accessor for ") {
         "metadata-accessor"
+    } else if demangled_name.starts_with("type metadata for ") {
+        "metadata"
     } else if demangled_name.starts_with("nominal type descriptor for ") {
         "nominal-descriptor"
     } else if demangled_name.starts_with("lazy cache variable for type metadata for ") {
@@ -485,6 +493,7 @@ fn infer_swift_type_source_kind(demangled_name: Option<&str>) -> &'static str {
 fn normalize_swift_type_source_kind(kind: &str) -> Option<&'static str> {
     let trimmed = kind.trim().to_ascii_lowercase();
     match trimmed.as_str() {
+        "full-metadata" | "type-metadata" => Some("metadata"),
         "metadata-accessor" | "metadata" | "accessor" => Some("metadata-accessor"),
         "nominal-descriptor" | "nominal" | "descriptor" => Some("nominal-descriptor"),
         "metadata-cache" | "cache" => Some("metadata-cache"),
@@ -665,6 +674,47 @@ mod platform {
             })
             .collect::<Vec<_>>();
         dedup_and_sort_protocols(&mut matches);
+        Ok(matches)
+    }
+
+    pub fn find_swift_metadata(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftType>> {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return Err(Error::InvalidArgument(
+                "swift metadata query must not be empty; use `swift.metadata <type>` or `swift.metadata <module> -- <type>`"
+                    .into(),
+            ));
+        }
+
+        let mut matches = collect_swift_symbols(module_name)?
+            .into_iter()
+            .filter_map(|symbol| {
+                let type_name = extract_swift_type_name(&symbol.symbol_name, symbol.demangled_name.as_deref())?;
+                if !query_matches_swift_type(&type_name, trimmed) {
+                    return None;
+                }
+
+                let source_kind = infer_swift_type_source_kind(symbol.demangled_name.as_deref());
+                if !matches!(
+                    source_kind,
+                    "metadata" | "metadata-accessor" | "metadata-cache" | "nominal-descriptor"
+                ) {
+                    return None;
+                }
+
+                Some(SwiftType {
+                    module_name: symbol.module_name,
+                    module_base: symbol.module_base,
+                    type_name,
+                    source_symbol_name: symbol.symbol_name,
+                    source_demangled_name: symbol.demangled_name,
+                    source_kind: source_kind.to_string(),
+                    source_address: symbol.address,
+                    source_offset: symbol.offset,
+                })
+            })
+            .collect::<Vec<_>>();
+        dedup_and_sort_types(&mut matches);
         Ok(matches)
     }
 
@@ -1064,6 +1114,12 @@ mod platform {
         ))
     }
 
+    pub fn find_swift_metadata(_module_name: Option<&str>, _query: &str) -> Result<Vec<SwiftType>> {
+        Err(Error::Unsupported(
+            "Swift symbol lookup is only available on Apple targets".into(),
+        ))
+    }
+
     pub fn find_swift_conformances(_module_name: Option<&str>, _query: &str) -> Result<Vec<SwiftConformance>> {
         Err(Error::Unsupported(
             "Swift symbol lookup is only available on Apple targets".into(),
@@ -1174,6 +1230,13 @@ mod tests {
         );
         assert_eq!(
             extract_swift_type_name(
+                "_$s4Demo14ViewControllerCN",
+                Some("type metadata for Demo.ViewController")
+            ),
+            Some("Demo.ViewController".into())
+        );
+        assert_eq!(
+            extract_swift_type_name(
                 "_$s4Demo14ViewControllerCMa",
                 Some("type metadata accessor for Demo.ViewController")
             ),
@@ -1256,6 +1319,10 @@ mod tests {
     #[test]
     fn infers_swift_type_source_kind_from_demangled_names() {
         assert_eq!(
+            infer_swift_type_source_kind(Some("type metadata for Demo.ViewController")),
+            "metadata"
+        );
+        assert_eq!(
             infer_swift_type_source_kind(Some("type metadata accessor for Demo.ViewController")),
             "metadata-accessor"
         );
@@ -1314,6 +1381,7 @@ mod tests {
 
     #[test]
     fn normalizes_swift_type_source_kind_aliases() {
+        assert_eq!(normalize_swift_type_source_kind("full-metadata"), Some("metadata"));
         assert_eq!(normalize_swift_type_source_kind("metadata"), Some("metadata-accessor"));
         assert_eq!(
             normalize_swift_type_source_kind("descriptor"),
