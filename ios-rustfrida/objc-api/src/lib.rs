@@ -41,6 +41,17 @@ pub struct ObjcProtocolPropertyInfo {
     pub attributes: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjcClassInfo {
+    pub class_name: String,
+    pub class_pointer: usize,
+    pub is_meta_class: bool,
+    pub superclass_name: Option<String>,
+    pub superclass_pointer: Option<usize>,
+    pub instance_size: usize,
+    pub image_path: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct ObjcApi;
 
@@ -93,6 +104,10 @@ impl ObjcApi {
 
     pub fn class_chain(&self, class_name: &str) -> Result<Vec<String>> {
         platform::class_chain(class_name)
+    }
+
+    pub fn class_info(&self, class_name: &str, is_meta_class: bool) -> Result<Option<ObjcClassInfo>> {
+        platform::class_info(class_name, is_meta_class)
     }
 
     pub fn protocol_methods(
@@ -219,7 +234,8 @@ mod platform {
 
     use crate::{
         query_matches_class_name, query_matches_ivar_name, query_matches_method_name, query_matches_property_name,
-        ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
+        ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo,
+        ObjcProtocolPropertyInfo,
     };
 
     #[link(name = "objc")]
@@ -243,6 +259,8 @@ mod platform {
         fn class_copyMethodList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
         fn class_getName(cls: *const c_void) -> *const c_char;
         fn class_getSuperclass(cls: *const c_void) -> *mut c_void;
+        fn class_getInstanceSize(cls: *const c_void) -> usize;
+        fn class_isMetaClass(cls: *const c_void) -> i8;
         fn protocol_getName(proto: *const c_void) -> *const c_char;
         fn property_getName(property: *const c_void) -> *const c_char;
         fn property_getAttributes(property: *const c_void) -> *const c_char;
@@ -448,6 +466,61 @@ mod platform {
         }
 
         Ok(chain)
+    }
+
+    pub fn class_info(class_name: &str, is_meta_class: bool) -> Result<Option<ObjcClassInfo>> {
+        let class_name = class_name.trim();
+        if class_name.is_empty() {
+            return Err(Error::InvalidArgument("class name must not be empty".into()));
+        }
+
+        let class_name_c =
+            CString::new(class_name).map_err(|_| Error::InvalidArgument("class name contains interior NUL".into()))?;
+        let class = unsafe { objc_getClass(class_name_c.as_ptr()) };
+        if class.is_null() {
+            return Ok(None);
+        }
+
+        let lookup_class = if is_meta_class {
+            unsafe { object_getClass(class) }
+        } else {
+            class
+        };
+        if lookup_class.is_null() {
+            return Ok(None);
+        }
+
+        let resolved_name = unsafe { class_getName(lookup_class as *const c_void) };
+        if resolved_name.is_null() {
+            return Ok(None);
+        }
+
+        let superclass = unsafe { class_getSuperclass(lookup_class as *const c_void) };
+        let superclass_name = if superclass.is_null() {
+            None
+        } else {
+            let name = unsafe { class_getName(superclass as *const c_void) };
+            if name.is_null() {
+                None
+            } else {
+                Some(unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned())
+            }
+        };
+        let image_path = image_path_for_address(lookup_class as *const c_void)?;
+
+        Ok(Some(ObjcClassInfo {
+            class_name: unsafe { CStr::from_ptr(resolved_name) }.to_string_lossy().into_owned(),
+            class_pointer: lookup_class as usize,
+            is_meta_class: unsafe { class_isMetaClass(lookup_class as *const c_void) != 0 },
+            superclass_name,
+            superclass_pointer: if superclass.is_null() {
+                None
+            } else {
+                Some(superclass as usize)
+            },
+            instance_size: unsafe { class_getInstanceSize(lookup_class as *const c_void) },
+            image_path,
+        }))
     }
 
     pub fn protocol_methods(
@@ -1056,7 +1129,9 @@ mod platform {
 mod platform {
     use common::Result;
 
-    use crate::{ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo};
+    use crate::{
+        ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
+    };
 
     pub fn class_exists(_name: &str) -> bool {
         false
@@ -1111,6 +1186,12 @@ mod platform {
     }
 
     pub fn class_chain(_class_name: &str) -> Result<Vec<String>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn class_info(_class_name: &str, _is_meta_class: bool) -> Result<Option<ObjcClassInfo>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -1311,6 +1392,17 @@ mod tests {
     fn class_chain_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .class_chain("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn class_info_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .class_info("NSObject", false)
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()

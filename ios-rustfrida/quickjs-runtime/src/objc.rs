@@ -8,7 +8,8 @@ use crate::util::{
 use crate::value::JSValue;
 use common::Error as CommonError;
 use objc_api::{
-    ObjcApi, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
+    ObjcApi, ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo,
+    ObjcProtocolPropertyInfo,
 };
 
 unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &str) -> Result<u64, ffi::JSValue> {
@@ -238,6 +239,36 @@ unsafe extern "C" fn js_objc_class_chain(
     array
 }
 
+unsafe extern "C" fn js_objc_class_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.classInfo(className[, isMetaClass]) requires 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let is_meta_class = if argc >= 2 {
+        JSValue(*argv.add(1)).to_bool().unwrap_or(false)
+    } else {
+        false
+    };
+
+    match ObjcApi::new().class_info(&class_name, is_meta_class) {
+        Ok(Some(info)) => objc_class_info_to_js(ctx, &info),
+        Ok(None) | Err(CommonError::Unsupported(_)) => JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
+}
+
 unsafe extern "C" fn js_objc_class_exists(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -383,6 +414,35 @@ unsafe fn objc_method_to_js(ctx: *mut ffi::JSContext, method: &ObjcMethodInfo) -
     object.set_property(ctx, "imp", create_native_pointer(ctx, method.imp as u64));
     object.set_property(ctx, "typeEncoding", JSValue::string(ctx, &method.type_encoding));
     object.set_property(ctx, "isClassMethod", JSValue::bool(method.is_class_method));
+    object.raw()
+}
+
+unsafe fn objc_class_info_to_js(ctx: *mut ffi::JSContext, info: &ObjcClassInfo) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "className", JSValue::string(ctx, &info.class_name));
+    object.set_property(
+        ctx,
+        "classPointer",
+        create_native_pointer(ctx, info.class_pointer as u64),
+    );
+    object.set_property(ctx, "isMetaClass", JSValue::bool(info.is_meta_class));
+    match &info.superclass_name {
+        Some(name) => object.set_property(ctx, "superclassName", JSValue::string(ctx, name)),
+        None => object.set_property(ctx, "superclassName", JSValue::null()),
+    };
+    match info.superclass_pointer {
+        Some(pointer) => object.set_property(ctx, "superclassPointer", create_native_pointer(ctx, pointer as u64)),
+        None => object.set_property(ctx, "superclassPointer", JSValue::null()),
+    };
+    object.set_property(
+        ctx,
+        "instanceSize",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, info.instance_size as u64)),
+    );
+    match &info.image_path {
+        Some(path) => object.set_property(ctx, "imagePath", JSValue::string(ctx, path)),
+        None => object.set_property(ctx, "imagePath", JSValue::null()),
+    };
     object.raw()
 }
 
@@ -843,6 +903,7 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         );
         add_cfunction_to_object(ctx_ptr, objc.raw(), "superclass", js_objc_superclass, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classChain", js_objc_class_chain, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "classInfo", js_objc_class_info, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classExists", js_objc_class_exists, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "selector", js_objc_selector, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methodImp", js_objc_method_imp, 3);

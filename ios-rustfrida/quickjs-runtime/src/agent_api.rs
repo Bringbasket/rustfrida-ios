@@ -61,6 +61,26 @@ function parseObjcMethodImp(raw) {
     };
 }
 
+function parseObjcClassInfo(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) {
+        throw new Error('objc.classInfo usage: objc.classInfo <class> [meta]');
+    }
+    if (parts.length > 2) {
+        throw new Error('objc.classInfo usage: objc.classInfo <class> [meta]');
+    }
+    const isMetaClass = parts.length === 2
+        ? (parts[1] === 'meta' || parts[1] === 'class' || parts[1] === '+')
+        : false;
+    if (parts.length === 2 && !isMetaClass && parts[1] !== 'instance' && parts[1] !== 'inst' && parts[1] !== '-') {
+        throw new Error('objc.classInfo usage: objc.classInfo <class> [meta]');
+    }
+    return {
+        className: parts[0],
+        isMetaClass,
+    };
+}
+
 function parseObjcMethods(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -594,6 +614,22 @@ function formatObjcProtocolMethod(method) {
         details.push('types=' + method.typeEncoding);
     }
     return prefix + '[' + method.protocolName + ' ' + method.selector + '] ' + details.join(' ');
+}
+
+function formatObjcClassInfo(info) {
+    const details = [
+        info.classPointer,
+        info.isMetaClass ? 'meta' : 'class',
+        info.className,
+        'size=' + String(info.instanceSize || 0),
+    ];
+    if (info.superclassName !== null && info.superclassName !== undefined) {
+        details.push('super=' + info.superclassName);
+    }
+    if (info.imagePath !== null && info.imagePath !== undefined) {
+        details.push('image=' + info.imagePath);
+    }
+    return details.join(' ');
 }
 
 const OBJC_TYPE_QUALIFIER_NAMES = {
@@ -1130,6 +1166,21 @@ function normalizeObjcMethod(method) {
         methodTypeInfo,
     };
     normalized.text = formatObjcMethod(normalized);
+    return normalized;
+}
+
+function normalizeObjcClassInfo(info) {
+    const instanceSize = Number(info.instanceSize || 0);
+    const normalized = {
+        className: String(info.className || ''),
+        classPointer: info.classPointer.toString(),
+        isMetaClass: !!info.isMetaClass,
+        superclassName: info.superclassName === undefined || info.superclassName === null ? null : String(info.superclassName),
+        superclassPointer: info.superclassPointer === undefined || info.superclassPointer === null ? null : info.superclassPointer.toString(),
+        instanceSize,
+        imagePath: info.imagePath === undefined || info.imagePath === null ? null : String(info.imagePath),
+    };
+    normalized.text = formatObjcClassInfo(normalized);
     return normalized;
 }
 
@@ -1835,6 +1886,19 @@ function handleSpecResult(spec) {
             text: protocols.join('\n'),
         };
     }
+    case 'objc.class_info': {
+        const className = String(spec.className || '');
+        const isMetaClass = !!spec.isMetaClass;
+        const classInfo = ObjC.classInfo(className, isMetaClass);
+        const normalized = classInfo === null ? null : normalizeObjcClassInfo(classInfo);
+        return {
+            kind: 'objc.class_info',
+            className,
+            isMetaClass,
+            classInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'objc.protocol_protocols': {
         const protocolName = String(spec.protocolName || '');
         const protocols = ObjC.protocolProtocols(protocolName);
@@ -2349,6 +2413,11 @@ function legacyToSpec(command) {
 
     if (trimmed.startsWith('objc.classProtocols ')) {
         return { kind: 'objc.class_protocols', className: trimmed.slice('objc.classProtocols '.length) };
+    }
+
+    if (trimmed.startsWith('objc.classInfo ')) {
+        const parsed = parseObjcClassInfo(trimmed.slice('objc.classInfo '.length));
+        return { kind: 'objc.class_info', className: parsed.className, isMetaClass: parsed.isMetaClass };
     }
 
     if (trimmed.startsWith('objc.protocolProtocols ')) {

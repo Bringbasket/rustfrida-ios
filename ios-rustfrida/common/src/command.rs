@@ -85,6 +85,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
             | "swift.typeKinds"
     ) || command.starts_with("objc.classExists ")
         || command.starts_with("objc.classProtocols ")
+        || command.starts_with("objc.classInfo ")
         || command.starts_with("objc.protocolProtocols ")
         || command.starts_with("objc.protocolMethods ")
         || command.starts_with("objc.protocolProperties ")
@@ -189,6 +190,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "objc.class_protocols",
             "className": class_name.trim(),
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.classInfo ") {
+        let (class_name, is_meta_class) = parse_objc_class_info(raw)?;
+        return Some(json!({
+            "kind": "objc.class_info",
+            "className": class_name,
+            "isMetaClass": is_meta_class,
         }));
     }
 
@@ -774,6 +784,23 @@ fn parse_objc_method_target(raw: &str) -> Option<(String, String, bool)> {
     Some((parts[0].to_string(), parts[1].to_string(), is_class_method))
 }
 
+fn parse_objc_class_info(raw: &str) -> Option<(String, bool)> {
+    let parts: Vec<&str> = raw.split_whitespace().collect();
+    if parts.is_empty() || parts.len() > 2 {
+        return None;
+    }
+    let is_meta_class = if parts.len() == 2 {
+        match parts[1] {
+            "meta" | "class" | "+" => true,
+            "instance" | "inst" | "-" => false,
+            _ => return None,
+        }
+    } else {
+        false
+    };
+    Some((parts[0].to_string(), is_meta_class))
+}
+
 fn parse_objc_methods(raw: &str) -> Option<(String, bool, Option<String>)> {
     let parts = raw.split_whitespace().collect::<Vec<_>>();
     if parts.is_empty() {
@@ -1103,6 +1130,16 @@ mod tests {
                 spec: json!({
                     "kind": "objc.class_protocols",
                     "className": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.classInfo NSObject meta"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_info",
+                    "className": "NSObject",
+                    "isMetaClass": true,
                 })
             })
         );
