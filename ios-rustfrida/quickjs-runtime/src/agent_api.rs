@@ -547,6 +547,13 @@ function formatSwiftConformance(conformance) {
         : base + ' <= ' + conformance.sourceDemangledName;
 }
 
+function formatSwiftVtableEntry(entry) {
+    const base = entry.address.toString() + ' ' + entry.moduleName + '!' + entry.typeName + '.' + entry.memberName + ' [' + String(entry.sourceKind || 'member') + ']';
+    return entry.demangledName === null || entry.demangledName === undefined
+        ? base
+        : base + ' <= ' + entry.demangledName;
+}
+
 function formatObjcMethod(method) {
     const prefix = method.isClassMethod ? '+' : '-';
     return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']';
@@ -1157,6 +1164,23 @@ function normalizeSwiftConformance(conformance) {
     };
 }
 
+function normalizeSwiftVtableEntry(entry) {
+    const offset = typeof entry.offset === 'bigint' ? entry.offset : BigInt(entry.offset || 0);
+    return {
+        moduleName: String(entry.moduleName || ''),
+        moduleBase: entry.moduleBase ? entry.moduleBase.toString() : null,
+        typeName: String(entry.typeName || ''),
+        memberName: String(entry.memberName || ''),
+        name: String(entry.name || ''),
+        demangledName: entry.demangledName === undefined ? null : entry.demangledName,
+        sourceKind: entry.sourceKind === undefined ? null : entry.sourceKind,
+        address: entry.address.toString(),
+        offsetHex: '0x' + offset.toString(16),
+        isDispatchThunk: !!entry.isDispatchThunk,
+        text: formatSwiftVtableEntry(entry),
+    };
+}
+
 function handleSpecResult(spec) {
     if (spec === null || typeof spec !== 'object') {
         throw new Error('agent command spec must be an object');
@@ -1603,6 +1627,12 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const metadata = Swift.findMetadata(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
         return { kind: 'swift.metadata', moduleName, query, count: metadata.length, metadata, text: metadata.map((typeInfo) => typeInfo.text).join('\n') };
+    }
+    case 'swift.vtable': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const query = String(spec.query || '');
+        const entries = Swift.findVtable(query, moduleName).map((entry) => normalizeSwiftVtableEntry(entry));
+        return { kind: 'swift.vtable', moduleName, query, count: entries.length, entries, text: entries.map((entry) => entry.text).join('\n') };
     }
     case 'swift.types': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
@@ -2144,6 +2174,16 @@ function legacyToSpec(command) {
         const parsed = splitModuleQuery(trimmed.slice('swift.metadata '.length), usage);
         return {
             kind: 'swift.metadata',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.vtable ')) {
+        const usage = 'swift.vtable usage: swift.vtable <type> | swift.vtable <module> -- <type>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.vtable '.length), usage);
+        return {
+            kind: 'swift.vtable',
             moduleName: parsed.moduleName,
             query: parsed.query,
         };

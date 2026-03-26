@@ -66,6 +66,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Swift.findProtocols([query[, moduleName]])`
 - `Swift.findConformances(typeName[, moduleName])`
 - `Swift.findMetadata(typeName[, moduleName])`
+- `Swift.findVtable(typeName[, moduleName])`
 - `Swift.findMethods(typeName, methodQuery[, moduleName])`
 - agent / controller CLI:
   - `hfl <module> <offset>`
@@ -161,6 +162,8 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `swift.conformances <module> -- <type>`
   - `swift.metadata <type>`
   - `swift.metadata <module> -- <type>`
+  - `swift.vtable <type>`
+  - `swift.vtable <module> -- <type>`
   - `swift.typeKinds`
   - `swift.methodOwners <method>`
   - `swift.methodOwners <module> -- <method>`

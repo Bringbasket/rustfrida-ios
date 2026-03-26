@@ -670,6 +670,10 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof Swift.findVtable").expect("swift findVtable type"),
+                "function"
+            );
+            assert_eq!(
                 runtime
                     .eval("typeof Swift.findSymbols")
                     .expect("swift findSymbols type"),
@@ -733,6 +737,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Swift.findMetadata('ViewController'))")
                     .expect("swift findMetadata"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(Swift.findVtable('ViewController'))")
+                    .expect("swift findVtable"),
                 "true"
             );
             assert_eq!(
@@ -1594,6 +1604,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.vtable ViewController'); return value === '' || value.indexOf('ViewController.') !== -1; })()")
+                    .expect("agent swift vtable"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF'); return value === '<unavailable>' || value.indexOf('Demo') !== -1 || value.indexOf('method') !== -1; })()"
                     )
@@ -1874,6 +1890,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.vtable' && result.query === 'ViewController' && result.count === result.entries.length && (result.entries.length === 0 || (typeof result.entries[0].moduleBase === 'string' && typeof result.entries[0].memberName === 'string' && typeof result.entries[0].offsetHex === 'string' && typeof result.entries[0].isDispatchThunk === 'boolean')); })()")
+                    .expect("agent swift vtable result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.types' && result.count === result.types.length && (result.types.length === 0 || (typeof result.types[0].moduleBase === 'string' && typeof result.types[0].sourceSymbolName === 'string' && typeof result.types[0].sourceOffsetHex === 'string')); })()"
                     )
@@ -2142,6 +2164,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
                     .expect("agent spec swift metadata"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
+                    .expect("agent spec swift vtable"),
                 "true"
             );
             assert_eq!(

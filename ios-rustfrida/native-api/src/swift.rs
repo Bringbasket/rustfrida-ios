@@ -47,6 +47,20 @@ pub struct SwiftConformance {
     pub source_offset: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SwiftVtableEntry {
+    pub module_name: String,
+    pub module_base: usize,
+    pub type_name: String,
+    pub member_name: String,
+    pub symbol_name: String,
+    pub demangled_name: Option<String>,
+    pub source_kind: String,
+    pub address: usize,
+    pub offset: usize,
+    pub is_dispatch_thunk: bool,
+}
+
 pub fn swift_support_available() -> bool {
     platform::swift_support_available()
 }
@@ -73,6 +87,10 @@ pub fn find_swift_conformances(module_name: Option<&str>, query: &str) -> Result
 
 pub fn find_swift_metadata(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftType>> {
     platform::find_swift_metadata(module_name, query)
+}
+
+pub fn find_swift_vtable(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftVtableEntry>> {
+    platform::find_swift_vtable(module_name, query)
 }
 
 pub fn swift_type_source_kinds() -> &'static [&'static str] {
@@ -490,6 +508,26 @@ fn infer_swift_type_source_kind(demangled_name: Option<&str>) -> &'static str {
 }
 
 #[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+fn extract_swift_vtable_parts(demangled_name: Option<&str>) -> Option<(String, String, &'static str)> {
+    let demangled = demangled_name?.trim();
+    if demangled.is_empty() {
+        return None;
+    }
+
+    let (signature, source_kind) = if let Some(rest) = demangled.strip_prefix("dispatch thunk of ") {
+        (rest.trim(), "dispatch-thunk")
+    } else if infer_swift_type_source_kind(Some(demangled)) == "member" {
+        (demangled, "member")
+    } else {
+        return None;
+    };
+
+    let type_name = extract_swift_member_owner_type(Some(signature))?;
+    let member_name = extract_swift_member_name(Some(signature))?;
+    Some((type_name, member_name, source_kind))
+}
+
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
 fn normalize_swift_type_source_kind(kind: &str) -> Option<&'static str> {
     let trimmed = kind.trim().to_ascii_lowercase();
     match trimmed.as_str() {
@@ -517,14 +555,15 @@ mod platform {
 
     use crate::{
         enumerate_images, image_name_matches, ImageInfo, SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType,
+        SwiftVtableEntry,
     };
 
     use super::{
         extract_swift_conformance, extract_swift_member_name, extract_swift_member_owner_type,
-        extract_swift_protocol_name, extract_swift_type_name, infer_swift_conformance_source_kind,
-        infer_swift_protocol_source_kind, infer_swift_type_source_kind, looks_like_swift_symbol,
-        normalize_swift_type_source_kind, query_matches_swift_member_name, query_matches_swift_method,
-        query_matches_swift_type, query_matches_symbol, swift_type_source_kinds,
+        extract_swift_protocol_name, extract_swift_type_name, extract_swift_vtable_parts,
+        infer_swift_conformance_source_kind, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
+        looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_member_name,
+        query_matches_swift_method, query_matches_swift_type, query_matches_symbol, swift_type_source_kinds,
     };
 
     const LC_SEGMENT_64: u32 = 0x19;
@@ -753,6 +792,42 @@ mod platform {
         Ok(matches)
     }
 
+    pub fn find_swift_vtable(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftVtableEntry>> {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return Err(Error::InvalidArgument(
+                "swift vtable query must not be empty; use `swift.vtable <type>` or `swift.vtable <module> -- <type>`"
+                    .into(),
+            ));
+        }
+
+        let mut matches = collect_swift_symbols(module_name)?
+            .into_iter()
+            .filter_map(|symbol| {
+                let (type_name, member_name, source_kind) =
+                    extract_swift_vtable_parts(symbol.demangled_name.as_deref())?;
+                if !query_matches_swift_type(&type_name, trimmed) {
+                    return None;
+                }
+
+                Some(SwiftVtableEntry {
+                    module_name: symbol.module_name,
+                    module_base: symbol.module_base,
+                    type_name,
+                    member_name,
+                    symbol_name: symbol.symbol_name,
+                    demangled_name: symbol.demangled_name,
+                    source_kind: source_kind.to_string(),
+                    address: symbol.address,
+                    offset: symbol.offset,
+                    is_dispatch_thunk: source_kind == "dispatch-thunk",
+                })
+            })
+            .collect::<Vec<_>>();
+        dedup_and_sort_vtable_entries(&mut matches);
+        Ok(matches)
+    }
+
     pub fn find_swift_methods(
         module_name: Option<&str>,
         type_name: &str,
@@ -898,6 +973,23 @@ mod platform {
         });
         matches
             .dedup_by(|left, right| left.module_name == right.module_name && left.protocol_name == right.protocol_name);
+    }
+
+    fn dedup_and_sort_vtable_entries(matches: &mut Vec<SwiftVtableEntry>) {
+        matches.sort_by(|left, right| {
+            left.module_name
+                .cmp(&right.module_name)
+                .then(left.type_name.cmp(&right.type_name))
+                .then(left.member_name.cmp(&right.member_name))
+                .then(left.is_dispatch_thunk.cmp(&right.is_dispatch_thunk))
+                .then(left.address.cmp(&right.address))
+                .then(left.symbol_name.cmp(&right.symbol_name))
+        });
+        matches.dedup_by(|left, right| {
+            left.module_name == right.module_name
+                && left.address == right.address
+                && left.symbol_name == right.symbol_name
+        });
     }
 
     fn collect_swift_symbols_in_image(image: &ImageInfo) -> Result<Vec<SwiftSymbol>> {
@@ -1084,7 +1176,7 @@ mod platform {
 mod platform {
     use common::{Error, Result};
 
-    use crate::{SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType};
+    use crate::{SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftVtableEntry};
 
     pub fn swift_support_available() -> bool {
         false
@@ -1121,6 +1213,12 @@ mod platform {
     }
 
     pub fn find_swift_conformances(_module_name: Option<&str>, _query: &str) -> Result<Vec<SwiftConformance>> {
+        Err(Error::Unsupported(
+            "Swift symbol lookup is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn find_swift_vtable(_module_name: Option<&str>, _query: &str) -> Result<Vec<SwiftVtableEntry>> {
         Err(Error::Unsupported(
             "Swift symbol lookup is only available on Apple targets".into(),
         ))
@@ -1163,10 +1261,10 @@ mod platform {
 mod tests {
     use super::{
         extract_swift_conformance, extract_swift_member_name, extract_swift_member_owner_type,
-        extract_swift_protocol_name, extract_swift_type_name, infer_swift_conformance_source_kind,
-        infer_swift_protocol_source_kind, infer_swift_type_source_kind, looks_like_swift_symbol,
-        normalize_swift_type_source_kind, query_matches_swift_member_name, query_matches_swift_method,
-        query_matches_swift_type, query_matches_symbol,
+        extract_swift_protocol_name, extract_swift_type_name, extract_swift_vtable_parts,
+        infer_swift_conformance_source_kind, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
+        looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_member_name,
+        query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
     };
 
     #[test]
@@ -1298,6 +1396,22 @@ mod tests {
         assert!(query_matches_swift_type("Demo.ViewController", "viewcontroller"));
         assert!(query_matches_swift_type("Demo.ViewController", "demo.view"));
         assert!(!query_matches_swift_type("Demo.ViewController", "appdelegate"));
+    }
+
+    #[test]
+    fn extracts_swift_vtable_parts_from_members_and_dispatch_thunks() {
+        assert_eq!(
+            extract_swift_vtable_parts(Some("Demo.ViewController.viewDidLoad() -> ()")),
+            Some(("Demo.ViewController".into(), "viewDidLoad".into(), "member"))
+        );
+        assert_eq!(
+            extract_swift_vtable_parts(Some("dispatch thunk of Demo.ViewController.viewDidLoad() -> ()")),
+            Some(("Demo.ViewController".into(), "viewDidLoad".into(), "dispatch-thunk"))
+        );
+        assert_eq!(
+            extract_swift_vtable_parts(Some("type metadata accessor for Demo.ViewController")),
+            None
+        );
     }
 
     #[test]
