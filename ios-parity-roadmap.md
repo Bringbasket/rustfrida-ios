@@ -77,7 +77,7 @@
 按现有代码和 README，iOS 版已经具备这几块：
 
 - 注入链路：`plan / preflight / inject / --inject-json / --command-json`
-- ObjC 查询：`objc.classes / objc.protocols / objc.classProtocols / objc.superclass / objc.properties / objc.ivars / objc.methods / objc.methodOwners / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName`
+- ObjC 查询：`objc.classes / objc.protocols / objc.classProtocols / objc.superclass / objc.classChain / objc.properties / objc.ivars / objc.methods / objc.methodOwners / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName`
 - Native 查询：`native.images / native.mainImage / native.image / native.symbol / native.symbols / native.exports / native.dependencies / native.encryptionInfo / native.entryPoint / native.sourceVersion / native.buildVersion / native.dylinker / native.installName / native.uuid / native.rpaths / native.imports / native.loadcmds / native.sections / native.segments`
 - Swift 查询：`swift.demangle / swift.symbols / swift.types / swift.typeKinds / swift.methodOwners / swift.typeMethods / swift.methods / swift.typesOfKind`
 - PAC 查询：`pac.available / pac.arm64e / pac.image / pac.images / pac.strip / pac.stripdata`
@@ -131,7 +131,6 @@
 
 明显还没做或没做全的候选项：
 
-- `objc.classChain <class>`
 - `objc.protocolMethods <protocol> [required] [instance]`
 
 对标 Android 时，这一块对应的是 `quickjs-hook/src/jsapi/java/` 下那批 inspect / method list / field API 给到的“高层结构可见性”。
@@ -308,18 +307,12 @@ README 已明确写了还没完成：
 
 - `native.dyldInfo <module>`
 - `native.linkedit <module>`
-- `objc.protocols [filter]`
-- `objc.properties <class> [meta] [filter]`
-- `objc.ivars <class> [filter]`
 
 ### 第二优先级
 
 - `native.functionStarts <module>`
 - `native.dataInCode <module>`
 - `native.codeSignature <module>`
-- `objc.classProtocols <class>`
-- `objc.superclass <class>`
-- `objc.classChain <class>`
 
 ### 第三优先级
 

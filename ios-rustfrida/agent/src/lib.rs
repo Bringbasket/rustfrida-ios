@@ -173,6 +173,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("objc.classChain NSObject"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("objc.properties NSObject meta delegate"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

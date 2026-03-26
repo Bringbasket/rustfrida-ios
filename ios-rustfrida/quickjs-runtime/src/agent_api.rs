@@ -1112,6 +1112,17 @@ function handleSpecResult(spec) {
             text: superclass === null ? '<null>' : String(superclass),
         };
     }
+    case 'objc.class_chain': {
+        const className = String(spec.className || '');
+        const chain = ObjC.classChain(className);
+        return {
+            kind: 'objc.class_chain',
+            className,
+            count: chain.length,
+            chain,
+            text: chain.join('\n'),
+        };
+    }
     case 'objc.class_exists': {
         const className = String(spec.className || '');
         const exists = !!ObjC.classExists(className);
@@ -1536,6 +1547,10 @@ function legacyToSpec(command) {
 
     if (trimmed.startsWith('objc.superclass ')) {
         return { kind: 'objc.superclass', className: trimmed.slice('objc.superclass '.length) };
+    }
+
+    if (trimmed.startsWith('objc.classChain ')) {
+        return { kind: 'objc.class_chain', className: trimmed.slice('objc.classChain '.length) };
     }
 
     if (trimmed.startsWith('objc.classExists ')) {

@@ -3591,6 +3591,7 @@ fn print_controller_help() {
     println!("  objc.protocols [filter]");
     println!("  objc.classProtocols <class>");
     println!("  objc.superclass <class>");
+    println!("  objc.classChain <class>");
     println!("  objc.classExists <name>");
     println!("  objc.selector <name>");
     println!("  objc.classImage <class>");
@@ -3913,6 +3914,15 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("objc.classChain UIViewController"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_chain",
+                    "className": "UIViewController",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("objc.properties UIViewController meta delegate"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
@@ -4055,6 +4065,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.protocols NS"));
         assert!(!command_requires_inline_hooks("objc.classProtocols UIView"));
         assert!(!command_requires_inline_hooks("objc.superclass UIView"));
+        assert!(!command_requires_inline_hooks("objc.classChain UIView"));
         assert!(!command_requires_inline_hooks("objc.properties UIView meta delegate"));
         assert!(!command_requires_inline_hooks("objc.ivars UIView delegate"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));

@@ -425,6 +425,10 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof ObjC.classChain").expect("objc classChain type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof ObjC.methodImp").expect("objc methodImp type"),
                 "function"
             );
@@ -533,6 +537,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = ObjC.superclass('NSObject'); return ObjC.available ? (value === null || typeof value === 'string') : value === null; })()")
                     .expect("objc superclass"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.classChain('NSObject'))")
+                    .expect("objc classChain"),
                 "true"
             );
             assert_eq!(
@@ -1453,6 +1463,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.classChain NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_chain', className: 'NSObject' }); return value === result.text && result.count === result.chain.length; })()"
+                    )
+                    .expect("agent objc classChain"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.properties NSObject meta delegate'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return value === result.text && result.count === result.properties.length; })()"
                     )
                     .expect("agent objc properties"),
@@ -1564,6 +1582,14 @@ undefined;
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.superclass', className: 'NSObject' }); return result.kind === 'objc.superclass' && result.className === 'NSObject' && ((result.superclass === null && result.text === '<null>') || (typeof result.superclass === 'string' && result.text === result.superclass)); })()"
                     )
                     .expect("agent objc superclass result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_chain', className: 'NSObject' }); return result.kind === 'objc.class_chain' && result.className === 'NSObject' && result.count === result.chain.length && result.text === result.chain.join('\\n'); })()"
+                    )
+                    .expect("agent objc classChain result"),
                 "true"
             );
             assert_eq!(
@@ -1974,6 +2000,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.superclass', className: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.superclass', className: 'NSObject' }); return value === result.text; })()")
                     .expect("agent spec objc superclass"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.class_chain', className: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_chain', className: 'NSObject' }); return value === result.text; })()")
+                    .expect("agent spec objc classChain"),
                 "true"
             );
             assert_eq!(

@@ -174,6 +174,37 @@ unsafe extern "C" fn js_objc_superclass(
     }
 }
 
+unsafe extern "C" fn js_objc_class_chain(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.classChain(className) requires 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let chain = match ObjcApi::new().class_chain(&class_name) {
+        Ok(chain) => chain,
+        Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, name) in chain.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, JSValue::string(ctx, name).raw());
+    }
+    array
+}
+
 unsafe extern "C" fn js_objc_class_exists(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -678,6 +709,7 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocols", js_objc_find_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classProtocols", js_objc_class_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "superclass", js_objc_superclass, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "classChain", js_objc_class_chain, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classExists", js_objc_class_exists, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "selector", js_objc_selector, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methodImp", js_objc_method_imp, 3);

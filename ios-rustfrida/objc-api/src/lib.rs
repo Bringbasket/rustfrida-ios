@@ -74,6 +74,10 @@ impl ObjcApi {
         platform::superclass(class_name)
     }
 
+    pub fn class_chain(&self, class_name: &str) -> Result<Vec<String>> {
+        platform::class_chain(class_name)
+    }
+
     pub fn enumerate_properties(&self, class_name: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
         platform::enumerate_properties(class_name, is_class_property)
     }
@@ -367,6 +371,33 @@ mod platform {
         }
 
         Ok(Some(unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned()))
+    }
+
+    pub fn class_chain(class_name: &str) -> Result<Vec<String>> {
+        let class_name = class_name.trim();
+        if class_name.is_empty() {
+            return Err(Error::InvalidArgument("class name must not be empty".into()));
+        }
+
+        let class_name_c =
+            CString::new(class_name).map_err(|_| Error::InvalidArgument("class name contains interior NUL".into()))?;
+        let mut class = unsafe { objc_getClass(class_name_c.as_ptr()) };
+        if class.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let mut chain = Vec::new();
+        while !class.is_null() {
+            let name = unsafe { class_getName(class as *const c_void) };
+            if name.is_null() {
+                break;
+            }
+
+            chain.push(unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned());
+            class = unsafe { class_getSuperclass(class as *const c_void) };
+        }
+
+        Ok(chain)
     }
 
     pub fn enumerate_properties(class_name: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
@@ -838,6 +869,12 @@ mod platform {
         ))
     }
 
+    pub fn class_chain(_class_name: &str) -> Result<Vec<String>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
     pub fn find_properties(_class_name: &str, _query: &str, _is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
@@ -978,6 +1015,17 @@ mod tests {
     fn superclass_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .superclass("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn class_chain_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .class_chain("NSObject")
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()
