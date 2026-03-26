@@ -8,7 +8,7 @@ use crate::util::{
 use crate::value::JSValue;
 use common::Error as CommonError;
 use objc_api::{
-    ObjcApi, ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo,
+    ObjcApi, ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo,
     ObjcProtocolPropertyInfo,
 };
 
@@ -181,6 +181,31 @@ unsafe extern "C" fn js_objc_protocol_protocols(
         ffi::JS_SetPropertyUint32(ctx, array, index as u32, JSValue::string(ctx, name).raw());
     }
     array
+}
+
+unsafe extern "C" fn js_objc_protocol_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let protocol_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.protocolInfo(protocolName) requires 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    match ObjcApi::new().protocol_info(&protocol_name) {
+        Ok(Some(info)) => objc_protocol_info_to_js(ctx, &info),
+        Ok(None) | Err(CommonError::Unsupported(_)) => JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
 }
 
 unsafe extern "C" fn js_objc_superclass(
@@ -438,6 +463,63 @@ unsafe fn objc_class_info_to_js(ctx: *mut ffi::JSContext, info: &ObjcClassInfo) 
         ctx,
         "instanceSize",
         JSValue(js_u64_to_js_number_or_bigint(ctx, info.instance_size as u64)),
+    );
+    match &info.image_path {
+        Some(path) => object.set_property(ctx, "imagePath", JSValue::string(ctx, path)),
+        None => object.set_property(ctx, "imagePath", JSValue::null()),
+    };
+    object.raw()
+}
+
+unsafe fn objc_protocol_info_to_js(ctx: *mut ffi::JSContext, info: &ObjcProtocolInfo) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "protocolName", JSValue::string(ctx, &info.protocol_name));
+    object.set_property(
+        ctx,
+        "protocolPointer",
+        create_native_pointer(ctx, info.protocol_pointer as u64),
+    );
+    let adopted_protocols = ffi::JS_NewArray(ctx);
+    for (index, name) in info.adopted_protocols.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, adopted_protocols, index as u32, JSValue::string(ctx, name).raw());
+    }
+    object.set_property(ctx, "adoptedProtocols", JSValue(adopted_protocols));
+    object.set_property(
+        ctx,
+        "requiredInstanceMethodCount",
+        JSValue(js_u64_to_js_number_or_bigint(
+            ctx,
+            info.required_instance_method_count as u64,
+        )),
+    );
+    object.set_property(
+        ctx,
+        "requiredClassMethodCount",
+        JSValue(js_u64_to_js_number_or_bigint(
+            ctx,
+            info.required_class_method_count as u64,
+        )),
+    );
+    object.set_property(
+        ctx,
+        "optionalInstanceMethodCount",
+        JSValue(js_u64_to_js_number_or_bigint(
+            ctx,
+            info.optional_instance_method_count as u64,
+        )),
+    );
+    object.set_property(
+        ctx,
+        "optionalClassMethodCount",
+        JSValue(js_u64_to_js_number_or_bigint(
+            ctx,
+            info.optional_class_method_count as u64,
+        )),
+    );
+    object.set_property(
+        ctx,
+        "propertyCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, info.property_count as u64)),
     );
     match &info.image_path {
         Some(path) => object.set_property(ctx, "imagePath", JSValue::string(ctx, path)),
@@ -892,6 +974,7 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocols", js_objc_protocols, 0);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocols", js_objc_find_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classProtocols", js_objc_class_protocols, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolInfo", js_objc_protocol_info, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolProtocols", js_objc_protocol_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolMethods", js_objc_protocol_methods, 3);
         add_cfunction_to_object(

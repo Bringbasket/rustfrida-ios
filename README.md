@@ -55,6 +55,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.protocols([query])`
 - `ObjC.classProtocols(className)`
 - `ObjC.classInfo(className[, isMetaClass])`
+- `ObjC.protocolInfo(protocolName)`
 - `ObjC.protocolProtocols(protocolName)`
 - `ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]])`
 - `ObjC.protocolProperties(protocolName)`
@@ -94,6 +95,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `objc.protocols [filter]`
   - `objc.classProtocols <class>`
   - `objc.classInfo <class> [meta]`
+  - `objc.protocolInfo <protocol>`
   - `objc.protocolProtocols <protocol>`
   - `objc.protocolMethods <protocol> [required] [instance]`
   - `objc.protocolProperties <protocol>`
@@ -214,6 +216,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `objc.properties` / `objc.protocolProperties` 这几类查询现在除了原始 `attributes` 之外，也会在结构化结果里补出 `typeEncoding / ownership / getterName / setterName / ivarName / objectClassName / objectProtocols / attributeInfo` 等解析字段，减少脚本二次拆 Objective-C property attributes 字符串的成本。
 - `objc.methods` / `objc.methodOwners` / `objc.protocolMethods` / `objc.ivars` 这几类查询现在也会在结构化结果里补出解码后的 `returnTypeName / argumentTypeNames / signature / typeName / typeInfo / methodTypeInfo` 等字段，不再只能盯着原始 type encoding 字符串自己拆。
 - `objc.classInfo` 现在可以直接结构化返回 class / metaclass 的 `classPointer / superclassName / superclassPointer / instanceSize / imagePath / isMetaClass`，后续排查 ObjC 类层级和 metaclass 边界时不必再手工拼多个命令。
+- `objc.protocolInfo` 现在可以直接结构化返回协议指针、adopted protocols、required/optional 的 instance/class method 计数、property 数量以及 image 路径，后续排查协议继承和声明面时不必再手工拼多条 `protocol*` 命令。
 - hook backend filesystem 探测现在同时覆盖 rootful 和 rootless 常见路径前缀；像 ElleKit / Substrate / Substitute / libhooker 这类生态，不再只认 `/usr/lib`，也会扫描 `/var/jb/...`。
 - `native.hookenv` / `Native.detectHookEnvironment()` 现在除了 backend / warning，还会补出面向当前 `hook_policy` 的建议动作，便于真机上快速判断该走 query-only、fail-fast 还是继续冒险装 inline hook；返回里也会区分 `allowed` 和 `inlineHooksAllowed`，不再把“允许注入做查询”和“允许安装 inline hook”混成一个布尔值。
 - `PAC.isImageArm64e(moduleName)` / `pac.image <module>` 现在可以直接判断单个镜像是否是 `arm64e`，比只看当前进程主镜像更适合排查某个目标 dylib 是否已经进入 PAC 风险面。

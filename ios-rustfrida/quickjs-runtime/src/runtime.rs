@@ -426,6 +426,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof ObjC.protocolInfo")
+                    .expect("objc protocolInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof ObjC.protocolProtocols")
                     .expect("objc protocolProtocols type"),
                 "function"
@@ -571,6 +577,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = ObjC.classInfo('NSObject'); return value === null || (typeof value.className === 'string' && typeof value.isMetaClass === 'boolean' && typeof value.instanceSize === 'number'); })()")
                     .expect("objc classInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = ObjC.protocolInfo('NSObject'); return value === null || (typeof value.protocolName === 'string' && Array.isArray(value.adoptedProtocols) && typeof value.propertyCount === 'number'); })()")
+                    .expect("objc protocolInfo"),
                 "true"
             );
             assert_eq!(
@@ -1601,6 +1613,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.protocolInfo NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_info', protocolName: 'NSObject' }); return value === result.text && (result.protocolInfo === null || (result.protocolInfo.protocolName === 'NSObject' && Array.isArray(result.protocolInfo.adoptedProtocols))); })()"
+                    )
+                    .expect("agent objc protocolInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.classProtocols NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_protocols', className: 'NSObject' }); return value === result.text && result.count === result.protocols.length; })()"
                     )
                     .expect("agent objc classProtocols"),
@@ -1788,6 +1808,14 @@ undefined;
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true }); return result.kind === 'objc.class_info' && result.className === 'NSObject' && result.isMetaClass === true && ((result.classInfo === null && result.text === '<null>') || (typeof result.classInfo.classPointer === 'string' && result.classInfo.isMetaClass === true && typeof result.classInfo.instanceSize === 'number' && result.text === result.classInfo.text)); })()"
                     )
                     .expect("agent objc classInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_info', protocolName: 'NSObject' }); return result.kind === 'objc.protocol_info' && result.protocolName === 'NSObject' && ((result.protocolInfo === null && result.text === '<null>') || (typeof result.protocolInfo.protocolPointer === 'string' && Array.isArray(result.protocolInfo.adoptedProtocols) && typeof result.protocolInfo.propertyCount === 'number' && result.text === result.protocolInfo.text)); })()"
+                    )
+                    .expect("agent objc protocolInfo result"),
                 "true"
             );
             assert_eq!(

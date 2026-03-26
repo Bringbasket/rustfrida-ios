@@ -86,6 +86,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
     ) || command.starts_with("objc.classExists ")
         || command.starts_with("objc.classProtocols ")
         || command.starts_with("objc.classInfo ")
+        || command.starts_with("objc.protocolInfo ")
         || command.starts_with("objc.protocolProtocols ")
         || command.starts_with("objc.protocolMethods ")
         || command.starts_with("objc.protocolProperties ")
@@ -199,6 +200,14 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "objc.class_info",
             "className": class_name,
             "isMetaClass": is_meta_class,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.protocolInfo ") {
+        let protocol_name = parse_objc_protocol_info(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_info",
+            "protocolName": protocol_name,
         }));
     }
 
@@ -801,6 +810,14 @@ fn parse_objc_class_info(raw: &str) -> Option<(String, bool)> {
     Some((parts[0].to_string(), is_meta_class))
 }
 
+fn parse_objc_protocol_info(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(trimmed.to_string())
+}
+
 fn parse_objc_methods(raw: &str) -> Option<(String, bool, Option<String>)> {
     let parts = raw.split_whitespace().collect::<Vec<_>>();
     if parts.is_empty() {
@@ -1144,6 +1161,15 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("objc.protocolInfo NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_info",
+                    "protocolName": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("objc.protocolProtocols NSObject"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
@@ -1328,6 +1354,12 @@ mod tests {
             AgentCommand::from_legacy("native.dyldInfo  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.dyldInfo  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolInfo  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "objc.protocolInfo  ".into(),
             })
         );
         assert_eq!(

@@ -52,6 +52,19 @@ pub struct ObjcClassInfo {
     pub image_path: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjcProtocolInfo {
+    pub protocol_name: String,
+    pub protocol_pointer: usize,
+    pub adopted_protocols: Vec<String>,
+    pub required_instance_method_count: usize,
+    pub required_class_method_count: usize,
+    pub optional_instance_method_count: usize,
+    pub optional_class_method_count: usize,
+    pub property_count: usize,
+    pub image_path: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct ObjcApi;
 
@@ -108,6 +121,10 @@ impl ObjcApi {
 
     pub fn class_info(&self, class_name: &str, is_meta_class: bool) -> Result<Option<ObjcClassInfo>> {
         platform::class_info(class_name, is_meta_class)
+    }
+
+    pub fn protocol_info(&self, protocol_name: &str) -> Result<Option<ObjcProtocolInfo>> {
+        platform::protocol_info(protocol_name)
     }
 
     pub fn protocol_methods(
@@ -234,7 +251,7 @@ mod platform {
 
     use crate::{
         query_matches_class_name, query_matches_ivar_name, query_matches_method_name, query_matches_property_name,
-        ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo,
+        ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo,
         ObjcProtocolPropertyInfo,
     };
 
@@ -519,6 +536,45 @@ mod platform {
                 Some(superclass as usize)
             },
             instance_size: unsafe { class_getInstanceSize(lookup_class as *const c_void) },
+            image_path,
+        }))
+    }
+
+    pub fn protocol_info(protocol_name: &str) -> Result<Option<ObjcProtocolInfo>> {
+        let protocol_name = protocol_name.trim();
+        if protocol_name.is_empty() {
+            return Err(Error::InvalidArgument("protocol name must not be empty".into()));
+        }
+
+        let protocol_name_c = CString::new(protocol_name)
+            .map_err(|_| Error::InvalidArgument("protocol name contains interior NUL".into()))?;
+        let protocol = unsafe { objc_getProtocol(protocol_name_c.as_ptr()) };
+        if protocol.is_null() {
+            return Ok(None);
+        }
+
+        let resolved_name = unsafe { protocol_getName(protocol as *const c_void) };
+        if resolved_name.is_null() {
+            return Ok(None);
+        }
+
+        let adopted_protocols = protocol_protocols(protocol_name)?;
+        let required_instance_method_count = protocol_methods(protocol_name, true, true)?.len();
+        let required_class_method_count = protocol_methods(protocol_name, true, false)?.len();
+        let optional_instance_method_count = protocol_methods(protocol_name, false, true)?.len();
+        let optional_class_method_count = protocol_methods(protocol_name, false, false)?.len();
+        let property_count = protocol_properties(protocol_name)?.len();
+        let image_path = image_path_for_address(protocol as *const c_void)?;
+
+        Ok(Some(ObjcProtocolInfo {
+            protocol_name: unsafe { CStr::from_ptr(resolved_name) }.to_string_lossy().into_owned(),
+            protocol_pointer: protocol as usize,
+            adopted_protocols,
+            required_instance_method_count,
+            required_class_method_count,
+            optional_instance_method_count,
+            optional_class_method_count,
+            property_count,
             image_path,
         }))
     }
@@ -1130,7 +1186,8 @@ mod platform {
     use common::Result;
 
     use crate::{
-        ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
+        ObjcClassInfo, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo,
+        ObjcProtocolPropertyInfo,
     };
 
     pub fn class_exists(_name: &str) -> bool {
@@ -1192,6 +1249,12 @@ mod platform {
     }
 
     pub fn class_info(_class_name: &str, _is_meta_class: bool) -> Result<Option<ObjcClassInfo>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn protocol_info(_protocol_name: &str) -> Result<Option<ObjcProtocolInfo>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -1403,6 +1466,17 @@ mod tests {
     fn class_info_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .class_info("NSObject", false)
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn protocol_info_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .protocol_info("NSObject")
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()

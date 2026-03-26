@@ -81,6 +81,16 @@ function parseObjcClassInfo(raw) {
     };
 }
 
+function parseObjcProtocolInfo(raw) {
+    const trimmed = String(raw || '').trim();
+    if (trimmed.length === 0) {
+        throw new Error('objc.protocolInfo usage: objc.protocolInfo <protocol>');
+    }
+    return {
+        protocolName: trimmed,
+    };
+}
+
 function parseObjcMethods(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -626,6 +636,24 @@ function formatObjcClassInfo(info) {
     if (info.superclassName !== null && info.superclassName !== undefined) {
         details.push('super=' + info.superclassName);
     }
+    if (info.imagePath !== null && info.imagePath !== undefined) {
+        details.push('image=' + info.imagePath);
+    }
+    return details.join(' ');
+}
+
+function formatObjcProtocolInfo(info) {
+    const details = [
+        info.protocolPointer,
+        'protocol',
+        info.protocolName,
+        'adopted=' + String(info.adoptedProtocolCount || 0),
+        'requiredInstance=' + String(info.requiredInstanceMethodCount || 0),
+        'requiredClass=' + String(info.requiredClassMethodCount || 0),
+        'optionalInstance=' + String(info.optionalInstanceMethodCount || 0),
+        'optionalClass=' + String(info.optionalClassMethodCount || 0),
+        'properties=' + String(info.propertyCount || 0),
+    ];
     if (info.imagePath !== null && info.imagePath !== undefined) {
         details.push('image=' + info.imagePath);
     }
@@ -1181,6 +1209,30 @@ function normalizeObjcClassInfo(info) {
         imagePath: info.imagePath === undefined || info.imagePath === null ? null : String(info.imagePath),
     };
     normalized.text = formatObjcClassInfo(normalized);
+    return normalized;
+}
+
+function normalizeObjcProtocolInfo(info) {
+    const adoptedProtocols = Array.isArray(info.adoptedProtocols)
+        ? info.adoptedProtocols.map((name) => String(name))
+        : [];
+    const normalized = {
+        protocolName: String(info.protocolName || ''),
+        protocolPointer: info.protocolPointer.toString(),
+        adoptedProtocols,
+        adoptedProtocolCount: adoptedProtocols.length,
+        requiredInstanceMethodCount: Number(info.requiredInstanceMethodCount || 0),
+        requiredClassMethodCount: Number(info.requiredClassMethodCount || 0),
+        optionalInstanceMethodCount: Number(info.optionalInstanceMethodCount || 0),
+        optionalClassMethodCount: Number(info.optionalClassMethodCount || 0),
+        propertyCount: Number(info.propertyCount || 0),
+        imagePath: info.imagePath === undefined || info.imagePath === null ? null : String(info.imagePath),
+    };
+    normalized.totalMethodCount = normalized.requiredInstanceMethodCount
+        + normalized.requiredClassMethodCount
+        + normalized.optionalInstanceMethodCount
+        + normalized.optionalClassMethodCount;
+    normalized.text = formatObjcProtocolInfo(normalized);
     return normalized;
 }
 
@@ -1899,6 +1951,17 @@ function handleSpecResult(spec) {
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
+    case 'objc.protocol_info': {
+        const protocolName = String(spec.protocolName || '');
+        const protocolInfo = ObjC.protocolInfo(protocolName);
+        const normalized = protocolInfo === null ? null : normalizeObjcProtocolInfo(protocolInfo);
+        return {
+            kind: 'objc.protocol_info',
+            protocolName,
+            protocolInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'objc.protocol_protocols': {
         const protocolName = String(spec.protocolName || '');
         const protocols = ObjC.protocolProtocols(protocolName);
@@ -2418,6 +2481,11 @@ function legacyToSpec(command) {
     if (trimmed.startsWith('objc.classInfo ')) {
         const parsed = parseObjcClassInfo(trimmed.slice('objc.classInfo '.length));
         return { kind: 'objc.class_info', className: parsed.className, isMetaClass: parsed.isMetaClass };
+    }
+
+    if (trimmed.startsWith('objc.protocolInfo ')) {
+        const parsed = parseObjcProtocolInfo(trimmed.slice('objc.protocolInfo '.length));
+        return { kind: 'objc.protocol_info', protocolName: parsed.protocolName };
     }
 
     if (trimmed.startsWith('objc.protocolProtocols ')) {
