@@ -3645,6 +3645,7 @@ fn print_controller_help() {
     println!("  swift.conformances <type>|swift.conformances <module> -- <type>");
     println!("  swift.metadata <type>|swift.metadata <module> -- <type>");
     println!("  swift.vtable <type>|swift.vtable <module> -- <type>");
+    println!("  swift.witnessTable <type|protocol>|swift.witnessTable <module> -- <type|protocol>");
     println!("  swift.symbols <query>|swift.symbols <module> -- <query>");
     println!("  swift.typeKinds");
     println!("  swift.methodOwners <method>|swift.methodOwners <module> -- <method>");
@@ -4068,6 +4069,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.witnessTable Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.typeMethods ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4125,6 +4130,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("swift.conformances ViewController"));
         assert!(!command_requires_inline_hooks("swift.metadata ViewController"));
         assert!(!command_requires_inline_hooks("swift.vtable ViewController"));
+        assert!(!command_requires_inline_hooks("swift.witnessTable Renderable"));
         assert!(!command_requires_inline_hooks("swift.types ViewController"));
     }
 

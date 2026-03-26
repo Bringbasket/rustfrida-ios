@@ -554,6 +554,13 @@ function formatSwiftVtableEntry(entry) {
         : base + ' <= ' + entry.demangledName;
 }
 
+function formatSwiftWitnessTable(entry) {
+    const base = entry.address.toString() + ' ' + entry.moduleName + '!' + entry.typeName + ' : ' + entry.protocolName + ' [' + String(entry.sourceKind || 'protocol-witness-table') + ']';
+    return entry.demangledName === null || entry.demangledName === undefined
+        ? base
+        : base + ' <= ' + entry.demangledName;
+}
+
 function formatObjcMethod(method) {
     const prefix = method.isClassMethod ? '+' : '-';
     return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']';
@@ -1181,6 +1188,23 @@ function normalizeSwiftVtableEntry(entry) {
     };
 }
 
+function normalizeSwiftWitnessTable(entry) {
+    const offset = typeof entry.offset === 'bigint' ? entry.offset : BigInt(entry.offset || 0);
+    return {
+        moduleName: String(entry.moduleName || ''),
+        moduleBase: entry.moduleBase ? entry.moduleBase.toString() : null,
+        typeName: String(entry.typeName || ''),
+        protocolName: String(entry.protocolName || ''),
+        name: String(entry.name || ''),
+        demangledName: entry.demangledName === undefined ? null : entry.demangledName,
+        sourceKind: entry.sourceKind === undefined ? null : entry.sourceKind,
+        address: entry.address.toString(),
+        offsetHex: '0x' + offset.toString(16),
+        isAccessor: !!entry.isAccessor,
+        text: formatSwiftWitnessTable(entry),
+    };
+}
+
 function handleSpecResult(spec) {
     if (spec === null || typeof spec !== 'object') {
         throw new Error('agent command spec must be an object');
@@ -1633,6 +1657,12 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const entries = Swift.findVtable(query, moduleName).map((entry) => normalizeSwiftVtableEntry(entry));
         return { kind: 'swift.vtable', moduleName, query, count: entries.length, entries, text: entries.map((entry) => entry.text).join('\n') };
+    }
+    case 'swift.witness_table': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const query = String(spec.query || '');
+        const entries = Swift.findWitnessTable(query, moduleName).map((entry) => normalizeSwiftWitnessTable(entry));
+        return { kind: 'swift.witness_table', moduleName, query, count: entries.length, entries, text: entries.map((entry) => entry.text).join('\n') };
     }
     case 'swift.types': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
@@ -2184,6 +2214,16 @@ function legacyToSpec(command) {
         const parsed = splitModuleQuery(trimmed.slice('swift.vtable '.length), usage);
         return {
             kind: 'swift.vtable',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.witnessTable ')) {
+        const usage = 'swift.witnessTable usage: swift.witnessTable <type|protocol> | swift.witnessTable <module> -- <type|protocol>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.witnessTable '.length), usage);
+        return {
+            kind: 'swift.witness_table',
             moduleName: parsed.moduleName,
             query: parsed.query,
         };

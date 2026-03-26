@@ -675,6 +675,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Swift.findWitnessTable")
+                    .expect("swift findWitnessTable type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Swift.findSymbols")
                     .expect("swift findSymbols type"),
                 "function"
@@ -743,6 +749,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Swift.findVtable('ViewController'))")
                     .expect("swift findVtable"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(Swift.findWitnessTable('Renderable'))")
+                    .expect("swift findWitnessTable"),
                 "true"
             );
             assert_eq!(
@@ -1610,6 +1622,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.witnessTable Renderable'); return value === '' || value.indexOf('Renderable') !== -1; })()")
+                    .expect("agent swift witness table"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF'); return value === '<unavailable>' || value.indexOf('Demo') !== -1 || value.indexOf('method') !== -1; })()"
                     )
@@ -1896,6 +1914,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' }); return result.kind === 'swift.witness_table' && result.query === 'Renderable' && result.count === result.entries.length && (result.entries.length === 0 || (typeof result.entries[0].moduleBase === 'string' && typeof result.entries[0].protocolName === 'string' && typeof result.entries[0].offsetHex === 'string' && typeof result.entries[0].isAccessor === 'boolean')); })()")
+                    .expect("agent swift witness table result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.types' && result.count === result.types.length && (result.types.length === 0 || (typeof result.types[0].moduleBase === 'string' && typeof result.types[0].sourceSymbolName === 'string' && typeof result.types[0].sourceOffsetHex === 'string')); })()"
                     )
@@ -2170,6 +2194,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
                     .expect("agent spec swift vtable"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' }); return value === result.text; })()")
+                    .expect("agent spec swift witness table"),
                 "true"
             );
             assert_eq!(

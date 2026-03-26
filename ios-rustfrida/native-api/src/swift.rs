@@ -61,6 +61,20 @@ pub struct SwiftVtableEntry {
     pub is_dispatch_thunk: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SwiftWitnessTable {
+    pub module_name: String,
+    pub module_base: usize,
+    pub type_name: String,
+    pub protocol_name: String,
+    pub symbol_name: String,
+    pub demangled_name: Option<String>,
+    pub source_kind: String,
+    pub address: usize,
+    pub offset: usize,
+    pub is_accessor: bool,
+}
+
 pub fn swift_support_available() -> bool {
     platform::swift_support_available()
 }
@@ -91,6 +105,10 @@ pub fn find_swift_metadata(module_name: Option<&str>, query: &str) -> Result<Vec
 
 pub fn find_swift_vtable(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftVtableEntry>> {
     platform::find_swift_vtable(module_name, query)
+}
+
+pub fn find_swift_witness_tables(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftWitnessTable>> {
+    platform::find_swift_witness_tables(module_name, query)
 }
 
 pub fn swift_type_source_kinds() -> &'static [&'static str] {
@@ -202,6 +220,11 @@ fn query_matches_swift_type(type_name: &str, query: &str) -> bool {
         .next()
         .map(|basename| basename.to_ascii_lowercase().contains(&needle))
         .unwrap_or(false)
+}
+
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+fn query_matches_swift_conformance_query(type_name: &str, protocol_name: &str, query: &str) -> bool {
+    query_matches_swift_type(type_name, query) || query_matches_swift_type(protocol_name, query)
 }
 
 #[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
@@ -555,15 +578,16 @@ mod platform {
 
     use crate::{
         enumerate_images, image_name_matches, ImageInfo, SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType,
-        SwiftVtableEntry,
+        SwiftVtableEntry, SwiftWitnessTable,
     };
 
     use super::{
         extract_swift_conformance, extract_swift_member_name, extract_swift_member_owner_type,
         extract_swift_protocol_name, extract_swift_type_name, extract_swift_vtable_parts,
         infer_swift_conformance_source_kind, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
-        looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_member_name,
-        query_matches_swift_method, query_matches_swift_type, query_matches_symbol, swift_type_source_kinds,
+        looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_conformance_query,
+        query_matches_swift_member_name, query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
+        swift_type_source_kinds,
     };
 
     const LC_SEGMENT_64: u32 = 0x19;
@@ -828,6 +852,48 @@ mod platform {
         Ok(matches)
     }
 
+    pub fn find_swift_witness_tables(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftWitnessTable>> {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return Err(Error::InvalidArgument(
+                "swift witness-table query must not be empty; use `swift.witnessTable <type|protocol>` or `swift.witnessTable <module> -- <type|protocol>`"
+                    .into(),
+            ));
+        }
+
+        let mut matches = collect_swift_symbols(module_name)?
+            .into_iter()
+            .filter_map(|symbol| {
+                let (type_name, protocol_name) = extract_swift_conformance(symbol.demangled_name.as_deref())?;
+                let source_kind = infer_swift_conformance_source_kind(symbol.demangled_name.as_deref());
+                if !matches!(
+                    source_kind,
+                    "protocol-witness-table" | "protocol-witness-table-accessor" | "protocol-witness"
+                ) {
+                    return None;
+                }
+                if !query_matches_swift_conformance_query(&type_name, &protocol_name, trimmed) {
+                    return None;
+                }
+
+                Some(SwiftWitnessTable {
+                    module_name: symbol.module_name,
+                    module_base: symbol.module_base,
+                    type_name,
+                    protocol_name,
+                    symbol_name: symbol.symbol_name,
+                    demangled_name: symbol.demangled_name,
+                    source_kind: source_kind.to_string(),
+                    address: symbol.address,
+                    offset: symbol.offset,
+                    is_accessor: source_kind == "protocol-witness-table-accessor",
+                })
+            })
+            .collect::<Vec<_>>();
+        dedup_and_sort_witness_tables(&mut matches);
+        Ok(matches)
+    }
+
     pub fn find_swift_methods(
         module_name: Option<&str>,
         type_name: &str,
@@ -982,6 +1048,23 @@ mod platform {
                 .then(left.type_name.cmp(&right.type_name))
                 .then(left.member_name.cmp(&right.member_name))
                 .then(left.is_dispatch_thunk.cmp(&right.is_dispatch_thunk))
+                .then(left.address.cmp(&right.address))
+                .then(left.symbol_name.cmp(&right.symbol_name))
+        });
+        matches.dedup_by(|left, right| {
+            left.module_name == right.module_name
+                && left.address == right.address
+                && left.symbol_name == right.symbol_name
+        });
+    }
+
+    fn dedup_and_sort_witness_tables(matches: &mut Vec<SwiftWitnessTable>) {
+        matches.sort_by(|left, right| {
+            left.module_name
+                .cmp(&right.module_name)
+                .then(left.type_name.cmp(&right.type_name))
+                .then(left.protocol_name.cmp(&right.protocol_name))
+                .then(left.source_kind.cmp(&right.source_kind))
                 .then(left.address.cmp(&right.address))
                 .then(left.symbol_name.cmp(&right.symbol_name))
         });
@@ -1176,7 +1259,7 @@ mod platform {
 mod platform {
     use common::{Error, Result};
 
-    use crate::{SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftVtableEntry};
+    use crate::{SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftVtableEntry, SwiftWitnessTable};
 
     pub fn swift_support_available() -> bool {
         false
@@ -1224,6 +1307,12 @@ mod platform {
         ))
     }
 
+    pub fn find_swift_witness_tables(_module_name: Option<&str>, _query: &str) -> Result<Vec<SwiftWitnessTable>> {
+        Err(Error::Unsupported(
+            "Swift symbol lookup is only available on Apple targets".into(),
+        ))
+    }
+
     pub fn find_swift_types_of_kind(
         _module_name: Option<&str>,
         _source_kind: &str,
@@ -1263,8 +1352,8 @@ mod tests {
         extract_swift_conformance, extract_swift_member_name, extract_swift_member_owner_type,
         extract_swift_protocol_name, extract_swift_type_name, extract_swift_vtable_parts,
         infer_swift_conformance_source_kind, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
-        looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_member_name,
-        query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
+        looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_conformance_query,
+        query_matches_swift_member_name, query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
     };
 
     #[test]
@@ -1396,6 +1485,25 @@ mod tests {
         assert!(query_matches_swift_type("Demo.ViewController", "viewcontroller"));
         assert!(query_matches_swift_type("Demo.ViewController", "demo.view"));
         assert!(!query_matches_swift_type("Demo.ViewController", "appdelegate"));
+    }
+
+    #[test]
+    fn matches_swift_conformance_query_against_type_or_protocol_name() {
+        assert!(query_matches_swift_conformance_query(
+            "Demo.ViewController",
+            "Demo.Renderable",
+            "ViewController"
+        ));
+        assert!(query_matches_swift_conformance_query(
+            "Demo.ViewController",
+            "Demo.Renderable",
+            "Renderable"
+        ));
+        assert!(!query_matches_swift_conformance_query(
+            "Demo.ViewController",
+            "Demo.Renderable",
+            "Hashable"
+        ));
     }
 
     #[test]

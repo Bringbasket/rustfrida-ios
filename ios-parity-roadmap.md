@@ -79,7 +79,7 @@
 - 注入链路：`plan / preflight / inject / --inject-json / --command-json`
 - ObjC 查询：`objc.classes / objc.protocols / objc.classProtocols / objc.protocolMethods / objc.superclass / objc.classChain / objc.properties / objc.ivars / objc.methods / objc.methodOwners / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName`
 - Native 查询：`native.images / native.mainImage / native.image / native.symbol / native.symbols / native.exports / native.dependencies / native.encryptionInfo / native.entryPoint / native.sourceVersion / native.buildVersion / native.dylinker / native.installName / native.uuid / native.rpaths / native.imports / native.loadcmds / native.sections / native.segments`
-- Swift 查询：`swift.demangle / swift.symbols / swift.protocols / swift.conformances / swift.metadata / swift.vtable / swift.types / swift.typeKinds / swift.methodOwners / swift.typeMethods / swift.methods / swift.typesOfKind`
+- Swift 查询：`swift.demangle / swift.symbols / swift.protocols / swift.conformances / swift.metadata / swift.vtable / swift.witnessTable / swift.types / swift.typeKinds / swift.methodOwners / swift.typeMethods / swift.methods / swift.typesOfKind`
 - PAC 查询：`pac.available / pac.arm64e / pac.image / pac.images / pac.strip / pac.stripdata`
 - 控制命令：`hfl / jhook / shook / trace / stalker`
 - 自动化：legacy command + structured spec + `payloadJson`
@@ -136,7 +136,6 @@
 当前 Swift 查询已经比早期完整很多，但还可以继续增强：
 
 - `swift.typeLayout <type>`
-- `swift.witnessTable <type | protocol>`
 
 这里不要求一步到位，但至少要先明确哪些是“稳定可读的公开元数据”，哪些已经会掉进 runtime ABI 细节。
 
@@ -254,7 +253,7 @@ README 已明确写了还没完成：
 
 建议顺序：
 
-1. `swift.witnessTable`
+1. `swift.typeLayout`
 
 原因：
 

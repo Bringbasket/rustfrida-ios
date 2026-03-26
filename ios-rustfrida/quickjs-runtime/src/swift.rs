@@ -7,8 +7,8 @@ use common::Error as CommonError;
 use native_api::{
     find_swift_conformances, find_swift_metadata, find_swift_method_owners, find_swift_methods, find_swift_protocols,
     find_swift_symbols, find_swift_type_methods, find_swift_types, find_swift_types_of_kind, find_swift_vtable,
-    swift_demangle_symbol, swift_support_available, swift_type_source_kinds, SwiftConformance, SwiftProtocol,
-    SwiftSymbol, SwiftType, SwiftVtableEntry,
+    find_swift_witness_tables, swift_demangle_symbol, swift_support_available, swift_type_source_kinds,
+    SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftVtableEntry, SwiftWitnessTable,
 };
 
 unsafe fn swift_symbol_to_js(ctx: *mut ffi::JSContext, symbol: &SwiftSymbol) -> ffi::JSValue {
@@ -141,6 +141,26 @@ unsafe fn swift_vtable_entry_to_js(ctx: *mut ffi::JSContext, entry: &SwiftVtable
     object.set_property(ctx, "address", create_native_pointer(ctx, entry.address as u64));
     object.set_property(ctx, "offset", JSValue(ffi::JS_NewBigUint64(ctx, entry.offset as u64)));
     object.set_property(ctx, "isDispatchThunk", JSValue::bool(entry.is_dispatch_thunk));
+
+    match &entry.demangled_name {
+        Some(name) => object.set_property(ctx, "demangledName", JSValue::string(ctx, name)),
+        None => object.set_property(ctx, "demangledName", JSValue::null()),
+    };
+
+    object.raw()
+}
+
+unsafe fn swift_witness_table_to_js(ctx: *mut ffi::JSContext, entry: &SwiftWitnessTable) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "moduleName", JSValue::string(ctx, &entry.module_name));
+    object.set_property(ctx, "moduleBase", create_native_pointer(ctx, entry.module_base as u64));
+    object.set_property(ctx, "typeName", JSValue::string(ctx, &entry.type_name));
+    object.set_property(ctx, "protocolName", JSValue::string(ctx, &entry.protocol_name));
+    object.set_property(ctx, "name", JSValue::string(ctx, &entry.symbol_name));
+    object.set_property(ctx, "sourceKind", JSValue::string(ctx, &entry.source_kind));
+    object.set_property(ctx, "address", create_native_pointer(ctx, entry.address as u64));
+    object.set_property(ctx, "offset", JSValue(ffi::JS_NewBigUint64(ctx, entry.offset as u64)));
+    object.set_property(ctx, "isAccessor", JSValue::bool(entry.is_accessor));
 
     match &entry.demangled_name {
         Some(name) => object.set_property(ctx, "demangledName", JSValue::string(ctx, name)),
@@ -704,6 +724,55 @@ unsafe extern "C" fn js_swift_find_vtable(
     array
 }
 
+unsafe extern "C" fn js_swift_find_witness_table(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let query = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "Swift.findWitnessTable(query[, moduleName]) requires at least 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let module_name =
+        if argc >= 2 {
+            let value = JSValue(*argv.add(1));
+            if value.is_null() || value.is_undefined() {
+                None
+            } else {
+                match value.to_string(ctx) {
+                    Some(module_name) => Some(module_name),
+                    None => return js_throw_type_error(
+                        ctx,
+                        "Swift.findWitnessTable(query[, moduleName]) expected moduleName to be a string when provided",
+                    ),
+                }
+            }
+        } else {
+            None
+        };
+
+    let entries = match find_swift_witness_tables(module_name.as_deref(), &query) {
+        Ok(entries) => entries,
+        Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, entry) in entries.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, swift_witness_table_to_js(ctx, entry));
+    }
+    array
+}
+
 pub(crate) fn register_swift_api(ctx: &JSContext) {
     let global = ctx.global_object();
     let swift = ctx.new_object();
@@ -718,6 +787,7 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findConformances", js_swift_find_conformances, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMetadata", js_swift_find_metadata, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findVtable", js_swift_find_vtable, 2);
+        add_cfunction_to_object(ctx_ptr, swift.raw(), "findWitnessTable", js_swift_find_witness_table, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMethods", js_swift_find_methods, 3);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findTypeMethods", js_swift_find_type_methods, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMethodOwners", js_swift_find_method_owners, 2);
