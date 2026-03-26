@@ -54,7 +54,9 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.findMethodOwners(query[, isClassMethod])`
 - `ObjC.protocols([query])`
 - `ObjC.classProtocols(className)`
+- `ObjC.protocolProtocols(protocolName)`
 - `ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]])`
+- `ObjC.protocolProperties(protocolName)`
 - `ObjC.superclass(className)`
 - `ObjC.classChain(className)`
 - `ObjC.properties(className[, isClassProperty])`
@@ -90,7 +92,9 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `objc.ivars <class> [filter]`
   - `objc.protocols [filter]`
   - `objc.classProtocols <class>`
+  - `objc.protocolProtocols <protocol>`
   - `objc.protocolMethods <protocol> [required] [instance]`
+  - `objc.protocolProperties <protocol>`
   - `objc.classes [filter]`
   - `objc.selectorName <selector>`
   - `objc.objectClassName <object>`
@@ -203,7 +207,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - GitHub Actions 需要放在仓库根目录 `.github/workflows/`；`ios-rustfrida/.github/workflows/` 里的文件仅作子 workspace 镜像参考，真正触发以根目录 workflow 为准。
 - `quickjs-runtime` 需要的 ARM64 hook engine 已 vendored 到 `ios-rustfrida/quickjs-runtime/hook-engine-src/`。
 - iOS 功能目前仍是持续迁移状态，不应视为和 Android 版完全对齐。
-- 当前已经补到可做 ObjC 类/selector/IMP/方法枚举、Swift 符号查找、PAC 查询、dyld 镜像枚举、基础 hook 环境探测。
+- 当前已经补到可做 ObjC 类/selector/IMP/方法枚举、协议继承/属性查询、Swift 符号查找、PAC 查询、dyld 镜像枚举、基础 hook 环境探测。
 - hook backend filesystem 探测现在同时覆盖 rootful 和 rootless 常见路径前缀；像 ElleKit / Substrate / Substitute / libhooker 这类生态，不再只认 `/usr/lib`，也会扫描 `/var/jb/...`。
 - `native.hookenv` / `Native.detectHookEnvironment()` 现在除了 backend / warning，还会补出面向当前 `hook_policy` 的建议动作，便于真机上快速判断该走 query-only、fail-fast 还是继续冒险装 inline hook；返回里也会区分 `allowed` 和 `inlineHooksAllowed`，不再把“允许注入做查询”和“允许安装 inline hook”混成一个布尔值。
 - `PAC.isImageArm64e(moduleName)` / `pac.image <module>` 现在可以直接判断单个镜像是否是 `arm64e`，比只看当前进程主镜像更适合排查某个目标 dylib 是否已经进入 PAC 风险面。

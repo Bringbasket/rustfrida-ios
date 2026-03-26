@@ -582,6 +582,11 @@ function formatObjcProtocolMethod(method) {
     return prefix + '[' + method.protocolName + ' ' + method.selector + '] ' + (method.isRequired ? 'required' : 'optional');
 }
 
+function formatObjcProtocolProperty(property) {
+    const suffix = property.attributes.length === 0 ? '' : ' attrs=' + property.attributes;
+    return '@protocol(' + property.protocolName + ') ' + property.name + suffix;
+}
+
 function formatObjcProperty(property) {
     const prefix = property.isClassProperty ? '+' : '-';
     const suffix = property.attributes.length === 0 ? '' : ' attrs=' + property.attributes;
@@ -674,6 +679,15 @@ function normalizeObjcProtocolMethod(method) {
         isRequired: !!method.isRequired,
         isInstanceMethod: !!method.isInstanceMethod,
         text: formatObjcProtocolMethod(method),
+    };
+}
+
+function normalizeObjcProtocolProperty(property) {
+    return {
+        protocolName: String(property.protocolName || ''),
+        name: String(property.name || ''),
+        attributes: String(property.attributes || ''),
+        text: formatObjcProtocolProperty(property),
     };
 }
 
@@ -1301,6 +1315,17 @@ function handleSpecResult(spec) {
             text: protocols.join('\n'),
         };
     }
+    case 'objc.protocol_protocols': {
+        const protocolName = String(spec.protocolName || '');
+        const protocols = ObjC.protocolProtocols(protocolName);
+        return {
+            kind: 'objc.protocol_protocols',
+            protocolName,
+            count: protocols.length,
+            protocols,
+            text: protocols.join('\n'),
+        };
+    }
     case 'objc.protocol_methods': {
         const protocolName = String(spec.protocolName || '');
         const isRequired = spec.isRequired === undefined ? true : !!spec.isRequired;
@@ -1314,6 +1339,17 @@ function handleSpecResult(spec) {
             count: methods.length,
             methods,
             text: methods.map((method) => method.text).join('\n'),
+        };
+    }
+    case 'objc.protocol_properties': {
+        const protocolName = String(spec.protocolName || '');
+        const properties = ObjC.protocolProperties(protocolName).map((property) => normalizeObjcProtocolProperty(property));
+        return {
+            kind: 'objc.protocol_properties',
+            protocolName,
+            count: properties.length,
+            properties,
+            text: properties.map((property) => property.text).join('\n'),
         };
     }
     case 'objc.superclass': {
@@ -1795,6 +1831,10 @@ function legacyToSpec(command) {
         return { kind: 'objc.class_protocols', className: trimmed.slice('objc.classProtocols '.length) };
     }
 
+    if (trimmed.startsWith('objc.protocolProtocols ')) {
+        return { kind: 'objc.protocol_protocols', protocolName: trimmed.slice('objc.protocolProtocols '.length) };
+    }
+
     if (trimmed.startsWith('objc.protocolMethods ')) {
         const parsed = parseObjcProtocolMethods(trimmed.slice('objc.protocolMethods '.length));
         return {
@@ -1803,6 +1843,10 @@ function legacyToSpec(command) {
             isRequired: parsed.isRequired,
             isInstanceMethod: parsed.isInstanceMethod,
         };
+    }
+
+    if (trimmed.startsWith('objc.protocolProperties ')) {
+        return { kind: 'objc.protocol_properties', protocolName: trimmed.slice('objc.protocolProperties '.length) };
     }
 
     if (trimmed.startsWith('objc.superclass ')) {

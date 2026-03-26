@@ -77,8 +77,8 @@
 按现有代码和 README，iOS 版已经具备这几块：
 
 - 注入链路：`plan / preflight / inject / --inject-json / --command-json`
-- ObjC 查询：`objc.classes / objc.protocols / objc.classProtocols / objc.protocolMethods / objc.superclass / objc.classChain / objc.properties / objc.ivars / objc.methods / objc.methodOwners / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName`
-- Native 查询：`native.images / native.mainImage / native.image / native.symbol / native.symbols / native.exports / native.dependencies / native.encryptionInfo / native.entryPoint / native.sourceVersion / native.buildVersion / native.dylinker / native.installName / native.uuid / native.rpaths / native.imports / native.loadcmds / native.sections / native.segments`
+- ObjC 查询：`objc.classes / objc.protocols / objc.classProtocols / objc.protocolProtocols / objc.protocolMethods / objc.protocolProperties / objc.superclass / objc.classChain / objc.properties / objc.ivars / objc.methods / objc.methodOwners / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName`
+- Native 查询：`native.images / native.mainImage / native.image / native.symbol / native.symbols / native.exports / native.dependencies / native.encryptionInfo / native.entryPoint / native.dyldInfo / native.linkedit / native.functionStarts / native.dataInCode / native.codeSignature / native.exportsTrie / native.chainedFixups / native.sourceVersion / native.buildVersion / native.dylinker / native.installName / native.uuid / native.rpaths / native.imports / native.loadcmds / native.sections / native.segments`
 - Swift 查询：`swift.demangle / swift.symbols / swift.protocols / swift.conformances / swift.metadata / swift.vtable / swift.witnessTable / swift.typeLayout / swift.types / swift.typeKinds / swift.methodOwners / swift.typeMethods / swift.methods / swift.typesOfKind`
 - PAC 查询：`pac.available / pac.arm64e / pac.image / pac.images / pac.strip / pac.stripdata`
 - 控制命令：`hfl / jhook / shook / trace / stalker`
@@ -89,7 +89,7 @@
 
 ## 剩余差距
 
-### A. Mach-O 深层查询还没拆成独立命令
+### A. Mach-O 深层查询主体已补齐，但还可以继续细化
 
 目前已经有：
 
@@ -108,16 +108,21 @@
 - `native.installName`
 - `native.uuid`
 - `native.rpaths`
+- `native.dyldInfo`
+- `native.linkedit`
+- `native.functionStarts`
+- `native.dataInCode`
+- `native.codeSignature`
+- `native.exportsTrie`
+- `native.chainedFixups`
 
-但从 `native-api/src/loadcmds.rs` 的解析面看，后面还可以继续拆：
+这说明 Phase 1 原先列的“按 load command 细分查询”已经基本落地。
 
-- `native.dyldInfo <module>`
-- `native.linkedit <module>`
-- `native.functionStarts <module>`
-- `native.dataInCode <module>`
-- `native.codeSignature <module>`
-- `native.exportsTrie <module>`
-- `native.chainedFixups <module>`
+后面如果还要继续往下做，重点不再是“有没有这个命令”，而是：
+
+- 继续补更稳定的结构化字段，减少文本二次解析
+- 评估是否需要再拆更细的 rebasing / binding / import graph 视图
+- 把 CLI / README / roadmap 保持同步，避免功能已实现但文档仍停留在旧阶段
 
 这些能力的价值在于：
 
@@ -127,9 +132,9 @@
 
 ### B. ObjC 元数据面还偏薄
 
-当前 `objc-api` 主要覆盖类、方法、selector、IMP 和 image 归属。
+当前 `objc-api` 已经覆盖类、方法、selector、IMP、image 归属，以及协议方法 / 协议属性 / 协议继承协议查询。
 
-目前 ObjC 这一层已经补到协议方法枚举；后续如果继续扩，就应该优先补“协议关联的更深结构信息”，而不是再回头补基础枚举命令。
+目前 ObjC 这一层基础枚举已经比较完整；后续如果继续扩，重点应该放在更深的协议/类元数据、类型编码解释、以及更适合脚本消费的结构化字段，而不是再回头补基础命令名。
 
 ### C. Swift 元数据仍可继续补
 
@@ -233,13 +238,10 @@ README 已明确写了还没完成：
 
 建议顺序：
 
-1. `objc.protocols`
-2. `objc.classProtocols`
-3. `objc.protocolMethods`
-4. `objc.properties`
-5. `objc.ivars`
-6. `objc.superclass`
-7. `objc.classChain`
+1. 补更深的协议/类元数据，而不是重复基础枚举
+2. 优先补“已有命令的结构化字段完整度”和“文本输出稳定性”
+3. 明确 class / metaclass / protocol 三种元数据视角的边界
+4. 如果要继续新增命令，优先选择 Android inspection 里高频、iOS 当前仍缺的查询
 
 原因：
 

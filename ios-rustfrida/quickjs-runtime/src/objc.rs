@@ -7,7 +7,9 @@ use crate::util::{
 };
 use crate::value::JSValue;
 use common::Error as CommonError;
-use objc_api::{ObjcApi, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo};
+use objc_api::{
+    ObjcApi, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
+};
 
 unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &str) -> Result<u64, ffi::JSValue> {
     if let Some(address) = crate::ptr::get_native_pointer_addr(value) {
@@ -136,6 +138,37 @@ unsafe extern "C" fn js_objc_class_protocols(
     };
 
     let protocols = match ObjcApi::new().class_protocols(&class_name) {
+        Ok(protocols) => protocols,
+        Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, name) in protocols.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, JSValue::string(ctx, name).raw());
+    }
+    array
+}
+
+unsafe extern "C" fn js_objc_protocol_protocols(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let protocol_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.protocolProtocols(protocolName) requires 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let protocols = match ObjcApi::new().protocol_protocols(&protocol_name) {
         Ok(protocols) => protocols,
         Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
         Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
@@ -383,6 +416,14 @@ unsafe fn objc_protocol_method_to_js(ctx: *mut ffi::JSContext, method: &ObjcProt
     object.raw()
 }
 
+unsafe fn objc_protocol_property_to_js(ctx: *mut ffi::JSContext, property: &ObjcProtocolPropertyInfo) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "protocolName", JSValue::string(ctx, &property.protocol_name));
+    object.set_property(ctx, "name", JSValue::string(ctx, &property.property_name));
+    object.set_property(ctx, "attributes", JSValue::string(ctx, &property.attributes));
+    object.raw()
+}
+
 unsafe extern "C" fn js_objc_protocol_methods(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -420,6 +461,37 @@ unsafe extern "C" fn js_objc_protocol_methods(
     let array = ffi::JS_NewArray(ctx);
     for (index, method) in methods.iter().enumerate() {
         ffi::JS_SetPropertyUint32(ctx, array, index as u32, objc_protocol_method_to_js(ctx, method));
+    }
+    array
+}
+
+unsafe extern "C" fn js_objc_protocol_properties(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let protocol_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.protocolProperties(protocolName) requires 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let properties = match ObjcApi::new().protocol_properties(&protocol_name) {
+        Ok(properties) => properties,
+        Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, property) in properties.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, objc_protocol_property_to_js(ctx, property));
     }
     array
 }
@@ -758,7 +830,15 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocols", js_objc_protocols, 0);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocols", js_objc_find_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classProtocols", js_objc_class_protocols, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolProtocols", js_objc_protocol_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolMethods", js_objc_protocol_methods, 3);
+        add_cfunction_to_object(
+            ctx_ptr,
+            objc.raw(),
+            "protocolProperties",
+            js_objc_protocol_properties,
+            1,
+        );
         add_cfunction_to_object(ctx_ptr, objc.raw(), "superclass", js_objc_superclass, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classChain", js_objc_class_chain, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classExists", js_objc_class_exists, 1);

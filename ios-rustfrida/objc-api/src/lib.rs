@@ -32,6 +32,13 @@ pub struct ObjcProtocolMethodInfo {
     pub is_instance_method: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjcProtocolPropertyInfo {
+    pub protocol_name: String,
+    pub property_name: String,
+    pub attributes: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct ObjcApi;
 
@@ -93,6 +100,14 @@ impl ObjcApi {
         is_instance_method: bool,
     ) -> Result<Vec<ObjcProtocolMethodInfo>> {
         platform::protocol_methods(protocol_name, is_required, is_instance_method)
+    }
+
+    pub fn protocol_properties(&self, protocol_name: &str) -> Result<Vec<ObjcProtocolPropertyInfo>> {
+        platform::protocol_properties(protocol_name)
+    }
+
+    pub fn protocol_protocols(&self, protocol_name: &str) -> Result<Vec<String>> {
+        platform::protocol_protocols(protocol_name)
     }
 
     pub fn enumerate_properties(&self, class_name: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
@@ -202,7 +217,7 @@ mod platform {
 
     use crate::{
         query_matches_class_name, query_matches_ivar_name, query_matches_method_name, query_matches_property_name,
-        ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo,
+        ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
     };
 
     #[link(name = "objc")]
@@ -219,6 +234,8 @@ mod platform {
             is_instance_method: i8,
             out_count: *mut u32,
         ) -> *mut ObjcMethodDescription;
+        fn protocol_copyPropertyList(proto: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
+        fn protocol_copyProtocolList(proto: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
         fn object_getClass(obj: *const c_void) -> *mut c_void;
         fn objc_copyClassList(out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyMethodList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
@@ -488,6 +505,96 @@ mod platform {
                 && left.is_instance_method == right.is_instance_method
         });
         Ok(methods)
+    }
+
+    pub fn protocol_properties(protocol_name: &str) -> Result<Vec<ObjcProtocolPropertyInfo>> {
+        let protocol_name = protocol_name.trim();
+        if protocol_name.is_empty() {
+            return Err(Error::InvalidArgument("protocol name must not be empty".into()));
+        }
+
+        let protocol_name_c = CString::new(protocol_name)
+            .map_err(|_| Error::InvalidArgument("protocol name contains interior NUL".into()))?;
+        let protocol = unsafe { objc_getProtocol(protocol_name_c.as_ptr()) };
+        if protocol.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let mut count = 0u32;
+        let list = unsafe { protocol_copyPropertyList(protocol, &mut count as *mut u32) };
+        if list.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let slice = unsafe { std::slice::from_raw_parts(list, count as usize) };
+        let mut properties = Vec::with_capacity(slice.len());
+        for property in slice {
+            if property.is_null() {
+                continue;
+            }
+
+            let name = unsafe { property_getName(*property as *const c_void) };
+            if name.is_null() {
+                continue;
+            }
+
+            let attributes = unsafe { property_getAttributes(*property as *const c_void) };
+            properties.push(ObjcProtocolPropertyInfo {
+                protocol_name: protocol_name.to_string(),
+                property_name: unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned(),
+                attributes: if attributes.is_null() {
+                    String::new()
+                } else {
+                    unsafe { CStr::from_ptr(attributes) }.to_string_lossy().into_owned()
+                },
+            });
+        }
+
+        unsafe { libc::free(list.cast()) };
+        properties.sort_by(|left, right| left.property_name.cmp(&right.property_name));
+        properties
+            .dedup_by(|left, right| left.property_name == right.property_name && left.attributes == right.attributes);
+        Ok(properties)
+    }
+
+    pub fn protocol_protocols(protocol_name: &str) -> Result<Vec<String>> {
+        let protocol_name = protocol_name.trim();
+        if protocol_name.is_empty() {
+            return Err(Error::InvalidArgument("protocol name must not be empty".into()));
+        }
+
+        let protocol_name_c = CString::new(protocol_name)
+            .map_err(|_| Error::InvalidArgument("protocol name contains interior NUL".into()))?;
+        let protocol = unsafe { objc_getProtocol(protocol_name_c.as_ptr()) };
+        if protocol.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let mut count = 0u32;
+        let list = unsafe { protocol_copyProtocolList(protocol, &mut count as *mut u32) };
+        if list.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let slice = unsafe { std::slice::from_raw_parts(list, count as usize) };
+        let mut protocols = Vec::with_capacity(slice.len());
+        for adopted_protocol in slice {
+            if adopted_protocol.is_null() {
+                continue;
+            }
+
+            let name = unsafe { protocol_getName(*adopted_protocol as *const c_void) };
+            if name.is_null() {
+                continue;
+            }
+
+            protocols.push(unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned());
+        }
+
+        unsafe { libc::free(list.cast()) };
+        protocols.sort();
+        protocols.dedup();
+        Ok(protocols)
     }
 
     pub fn enumerate_properties(class_name: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
@@ -905,7 +1012,7 @@ mod platform {
 mod platform {
     use common::Result;
 
-    use crate::{ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo};
+    use crate::{ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo};
 
     pub fn class_exists(_name: &str) -> bool {
         false
@@ -970,6 +1077,18 @@ mod platform {
         _is_required: bool,
         _is_instance_method: bool,
     ) -> Result<Vec<ObjcProtocolMethodInfo>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn protocol_properties(_protocol_name: &str) -> Result<Vec<ObjcProtocolPropertyInfo>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn protocol_protocols(_protocol_name: &str) -> Result<Vec<String>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -1104,6 +1223,28 @@ mod tests {
     fn class_protocols_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .class_protocols("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn protocol_properties_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .protocol_properties("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn protocol_protocols_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .protocol_protocols("NSObject")
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()

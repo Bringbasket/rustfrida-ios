@@ -85,7 +85,9 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
             | "swift.typeKinds"
     ) || command.starts_with("objc.classExists ")
         || command.starts_with("objc.classProtocols ")
+        || command.starts_with("objc.protocolProtocols ")
         || command.starts_with("objc.protocolMethods ")
+        || command.starts_with("objc.protocolProperties ")
         || command.starts_with("objc.superclass ")
         || command.starts_with("objc.classChain ")
         || command.starts_with("objc.selector ")
@@ -190,6 +192,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(protocol_name) = command.strip_prefix("objc.protocolProtocols ") {
+        return Some(json!({
+            "kind": "objc.protocol_protocols",
+            "protocolName": protocol_name.trim(),
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("objc.protocolMethods ") {
         let (protocol_name, is_required, is_instance_method) = parse_objc_protocol_methods(raw)?;
         return Some(json!({
@@ -197,6 +206,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "protocolName": protocol_name,
             "isRequired": is_required,
             "isInstanceMethod": is_instance_method,
+        }));
+    }
+
+    if let Some(protocol_name) = command.strip_prefix("objc.protocolProperties ") {
+        return Some(json!({
+            "kind": "objc.protocol_properties",
+            "protocolName": protocol_name.trim(),
         }));
     }
 
@@ -1091,6 +1107,15 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("objc.protocolProtocols NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_protocols",
+                    "protocolName": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("objc.protocolMethods NSObject optional class"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
@@ -1098,6 +1123,15 @@ mod tests {
                     "protocolName": "NSObject",
                     "isRequired": false,
                     "isInstanceMethod": false,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolProperties NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_properties",
+                    "protocolName": "NSObject",
                 })
             })
         );
