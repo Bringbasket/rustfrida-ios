@@ -34,6 +34,19 @@ pub struct SwiftProtocol {
     pub source_offset: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SwiftConformance {
+    pub module_name: String,
+    pub module_base: usize,
+    pub type_name: String,
+    pub protocol_name: String,
+    pub source_symbol_name: String,
+    pub source_demangled_name: Option<String>,
+    pub source_kind: String,
+    pub source_address: usize,
+    pub source_offset: usize,
+}
+
 pub fn swift_support_available() -> bool {
     platform::swift_support_available()
 }
@@ -54,6 +67,10 @@ pub fn find_swift_protocols(module_name: Option<&str>, query: Option<&str>) -> R
     platform::find_swift_protocols(module_name, query)
 }
 
+pub fn find_swift_conformances(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftConformance>> {
+    platform::find_swift_conformances(module_name, query)
+}
+
 pub fn swift_type_source_kinds() -> &'static [&'static str] {
     &[
         "metadata-accessor",
@@ -62,6 +79,7 @@ pub fn swift_type_source_kinds() -> &'static [&'static str] {
         "associated-type-descriptor",
         "protocol-conformance-descriptor",
         "protocol-witness-table",
+        "protocol-witness-table-accessor",
         "protocol-witness",
         "dispatch-thunk",
         "member",
@@ -189,6 +207,59 @@ fn infer_swift_protocol_source_kind(demangled_name: Option<&str>) -> &'static st
         "protocol-descriptor"
     } else if demangled_name.starts_with("protocol requirements base descriptor for ") {
         "protocol-requirements-base-descriptor"
+    } else {
+        "symbol"
+    }
+}
+
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+fn extract_swift_conformance(demangled_name: Option<&str>) -> Option<(String, String)> {
+    let demangled = demangled_name?.trim();
+    if demangled.is_empty() {
+        return None;
+    }
+
+    let mut rest = None;
+    for prefix in [
+        "protocol conformance descriptor for ",
+        "protocol witness table for ",
+        "protocol witness table accessor for ",
+        "protocol witness for ",
+    ] {
+        if let Some(value) = demangled.strip_prefix(prefix) {
+            rest = Some(value.trim());
+            break;
+        }
+    }
+    let mut rest = rest?;
+
+    if let Some((head, _)) = rest.rsplit_once(" in ") {
+        rest = head.trim();
+    }
+    if let Some((head, _)) = rest.split_once(" where ") {
+        rest = head.trim();
+    }
+
+    let (type_name, protocol_name) = rest.split_once(" : ")?;
+    let type_name = sanitize_swift_type_candidate(type_name)?;
+    let protocol_name = sanitize_swift_type_candidate(protocol_name)?;
+    Some((type_name, protocol_name))
+}
+
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+fn infer_swift_conformance_source_kind(demangled_name: Option<&str>) -> &'static str {
+    let Some(demangled_name) = demangled_name.map(str::trim) else {
+        return "symbol";
+    };
+
+    if demangled_name.starts_with("protocol conformance descriptor for ") {
+        "protocol-conformance-descriptor"
+    } else if demangled_name.starts_with("protocol witness table for ") {
+        "protocol-witness-table"
+    } else if demangled_name.starts_with("protocol witness table accessor for ") {
+        "protocol-witness-table-accessor"
+    } else if demangled_name.starts_with("protocol witness for ") {
+        "protocol-witness"
     } else {
         "symbol"
     }
@@ -435,13 +506,16 @@ mod platform {
 
     use common::{Error, Result};
 
-    use crate::{enumerate_images, image_name_matches, ImageInfo, SwiftProtocol, SwiftSymbol, SwiftType};
+    use crate::{
+        enumerate_images, image_name_matches, ImageInfo, SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType,
+    };
 
     use super::{
-        extract_swift_member_name, extract_swift_member_owner_type, extract_swift_protocol_name,
-        extract_swift_type_name, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
-        looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_member_name,
-        query_matches_swift_method, query_matches_swift_type, query_matches_symbol, swift_type_source_kinds,
+        extract_swift_conformance, extract_swift_member_name, extract_swift_member_owner_type,
+        extract_swift_protocol_name, extract_swift_type_name, infer_swift_conformance_source_kind,
+        infer_swift_protocol_source_kind, infer_swift_type_source_kind, looks_like_swift_symbol,
+        normalize_swift_type_source_kind, query_matches_swift_member_name, query_matches_swift_method,
+        query_matches_swift_type, query_matches_symbol, swift_type_source_kinds,
     };
 
     const LC_SEGMENT_64: u32 = 0x19;
@@ -591,6 +665,41 @@ mod platform {
             })
             .collect::<Vec<_>>();
         dedup_and_sort_protocols(&mut matches);
+        Ok(matches)
+    }
+
+    pub fn find_swift_conformances(module_name: Option<&str>, query: &str) -> Result<Vec<SwiftConformance>> {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return Err(Error::InvalidArgument(
+                "swift conformance query must not be empty; use `swift.conformances <type>` or `swift.conformances <module> -- <type>`"
+                    .into(),
+            ));
+        }
+
+        let mut matches = collect_swift_symbols(module_name)?
+            .into_iter()
+            .filter_map(|symbol| {
+                let (type_name, protocol_name) = extract_swift_conformance(symbol.demangled_name.as_deref())?;
+                if !query_matches_swift_type(&type_name, trimmed) {
+                    return None;
+                }
+                let source_kind = infer_swift_conformance_source_kind(symbol.demangled_name.as_deref()).to_string();
+
+                Some(SwiftConformance {
+                    module_name: symbol.module_name,
+                    module_base: symbol.module_base,
+                    type_name,
+                    protocol_name,
+                    source_symbol_name: symbol.symbol_name,
+                    source_demangled_name: symbol.demangled_name,
+                    source_kind,
+                    source_address: symbol.address,
+                    source_offset: symbol.offset,
+                })
+            })
+            .collect::<Vec<_>>();
+        dedup_and_sort_conformances(&mut matches);
         Ok(matches)
     }
 
@@ -818,6 +927,21 @@ mod platform {
             });
         }
 
+        fn dedup_and_sort_conformances(matches: &mut Vec<SwiftConformance>) {
+            matches.sort_by(|left, right| {
+                left.module_name
+                    .cmp(&right.module_name)
+                    .then(left.type_name.cmp(&right.type_name))
+                    .then(left.protocol_name.cmp(&right.protocol_name))
+                    .then(left.source_symbol_name.cmp(&right.source_symbol_name))
+            });
+            matches.dedup_by(|left, right| {
+                left.module_name == right.module_name
+                    && left.type_name == right.type_name
+                    && left.protocol_name == right.protocol_name
+            });
+        }
+
         Ok(matches)
     }
 
@@ -910,7 +1034,7 @@ mod platform {
 mod platform {
     use common::{Error, Result};
 
-    use crate::{SwiftProtocol, SwiftSymbol, SwiftType};
+    use crate::{SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType};
 
     pub fn swift_support_available() -> bool {
         false
@@ -935,6 +1059,12 @@ mod platform {
     }
 
     pub fn find_swift_protocols(_module_name: Option<&str>, _query: Option<&str>) -> Result<Vec<SwiftProtocol>> {
+        Err(Error::Unsupported(
+            "Swift symbol lookup is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn find_swift_conformances(_module_name: Option<&str>, _query: &str) -> Result<Vec<SwiftConformance>> {
         Err(Error::Unsupported(
             "Swift symbol lookup is only available on Apple targets".into(),
         ))
@@ -976,10 +1106,11 @@ mod platform {
 #[cfg(test)]
 mod tests {
     use super::{
-        extract_swift_member_name, extract_swift_member_owner_type, extract_swift_protocol_name,
-        extract_swift_type_name, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
-        looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_member_name,
-        query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
+        extract_swift_conformance, extract_swift_member_name, extract_swift_member_owner_type,
+        extract_swift_protocol_name, extract_swift_type_name, infer_swift_conformance_source_kind,
+        infer_swift_protocol_source_kind, infer_swift_type_source_kind, looks_like_swift_symbol,
+        normalize_swift_type_source_kind, query_matches_swift_member_name, query_matches_swift_method,
+        query_matches_swift_type, query_matches_symbol,
     };
 
     #[test]
@@ -1076,6 +1207,30 @@ mod tests {
     }
 
     #[test]
+    fn extracts_swift_conformances_from_demangled_symbols() {
+        assert_eq!(
+            extract_swift_conformance(Some(
+                "protocol conformance descriptor for Demo.ViewController : Demo.Renderable in Demo"
+            )),
+            Some(("Demo.ViewController".into(), "Demo.Renderable".into()))
+        );
+        assert_eq!(
+            extract_swift_conformance(Some(
+                "protocol witness table for Demo.ViewController : Swift.Hashable in Demo"
+            )),
+            Some(("Demo.ViewController".into(), "Swift.Hashable".into()))
+        );
+        assert_eq!(
+            extract_swift_conformance(Some("protocol witness table accessor for Swift.Optional<A> : Swift.Equatable where A : Swift.Equatable in Swift")),
+            Some(("Swift.Optional<A>".into(), "Swift.Equatable".into()))
+        );
+        assert_eq!(
+            extract_swift_conformance(Some("protocol descriptor for Demo.Renderable")),
+            None
+        );
+    }
+
+    #[test]
     fn matches_swift_type_query_against_full_and_basename() {
         assert!(query_matches_swift_type("Demo.ViewController", "viewcontroller"));
         assert!(query_matches_swift_type("Demo.ViewController", "demo.view"));
@@ -1126,6 +1281,35 @@ mod tests {
             "protocol-requirements-base-descriptor"
         );
         assert_eq!(infer_swift_protocol_source_kind(None), "symbol");
+    }
+
+    #[test]
+    fn infers_swift_conformance_source_kind_from_demangled_names() {
+        assert_eq!(
+            infer_swift_conformance_source_kind(Some(
+                "protocol conformance descriptor for Demo.ViewController : Demo.Renderable in Demo"
+            )),
+            "protocol-conformance-descriptor"
+        );
+        assert_eq!(
+            infer_swift_conformance_source_kind(Some(
+                "protocol witness table for Demo.ViewController : Demo.Renderable in Demo"
+            )),
+            "protocol-witness-table"
+        );
+        assert_eq!(
+            infer_swift_conformance_source_kind(Some(
+                "protocol witness table accessor for Demo.ViewController : Demo.Renderable in Demo"
+            )),
+            "protocol-witness-table-accessor"
+        );
+        assert_eq!(
+            infer_swift_conformance_source_kind(Some(
+                "protocol witness for Demo.ViewController : Demo.Renderable in Demo"
+            )),
+            "protocol-witness"
+        );
+        assert_eq!(infer_swift_conformance_source_kind(None), "symbol");
     }
 
     #[test]

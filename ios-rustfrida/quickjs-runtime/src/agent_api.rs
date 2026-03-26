@@ -540,6 +540,13 @@ function formatSwiftProtocol(protocolInfo) {
         : base + ' <= ' + protocolInfo.sourceDemangledName;
 }
 
+function formatSwiftConformance(conformance) {
+    const base = conformance.sourceAddress.toString() + ' ' + conformance.moduleName + '!' + conformance.typeName + ' : ' + conformance.protocolName + ' [' + String(conformance.sourceKind || 'symbol') + ']';
+    return conformance.sourceDemangledName === null || conformance.sourceDemangledName === undefined
+        ? base
+        : base + ' <= ' + conformance.sourceDemangledName;
+}
+
 function formatObjcMethod(method) {
     const prefix = method.isClassMethod ? '+' : '-';
     return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']';
@@ -1134,6 +1141,22 @@ function normalizeSwiftProtocol(protocolInfo) {
     };
 }
 
+function normalizeSwiftConformance(conformance) {
+    const sourceOffset = typeof conformance.sourceOffset === 'bigint' ? conformance.sourceOffset : BigInt(conformance.sourceOffset || 0);
+    return {
+        moduleName: String(conformance.moduleName || ''),
+        moduleBase: conformance.moduleBase ? conformance.moduleBase.toString() : null,
+        typeName: String(conformance.typeName || ''),
+        protocolName: String(conformance.protocolName || ''),
+        sourceSymbolName: conformance.sourceSymbolName === undefined ? null : String(conformance.sourceSymbolName),
+        sourceKind: conformance.sourceKind === undefined ? null : conformance.sourceKind,
+        sourceAddress: conformance.sourceAddress.toString(),
+        sourceOffsetHex: '0x' + sourceOffset.toString(16),
+        sourceDemangledName: conformance.sourceDemangledName === undefined ? null : conformance.sourceDemangledName,
+        text: formatSwiftConformance(conformance),
+    };
+}
+
 function handleSpecResult(spec) {
     if (spec === null || typeof spec !== 'object') {
         throw new Error('agent command spec must be an object');
@@ -1568,6 +1591,12 @@ function handleSpecResult(spec) {
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const protocols = Swift.findProtocols(query, moduleName).map((protocolInfo) => normalizeSwiftProtocol(protocolInfo));
         return { kind: 'swift.protocols', moduleName, query, count: protocols.length, protocols, text: protocols.map((protocolInfo) => protocolInfo.text).join('\n') };
+    }
+    case 'swift.conformances': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const query = String(spec.query || '');
+        const conformances = Swift.findConformances(query, moduleName).map((conformance) => normalizeSwiftConformance(conformance));
+        return { kind: 'swift.conformances', moduleName, query, count: conformances.length, conformances, text: conformances.map((conformance) => conformance.text).join('\n') };
     }
     case 'swift.types': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
@@ -2089,6 +2118,16 @@ function legacyToSpec(command) {
         const parsed = splitModuleQuery(trimmed.slice('swift.protocols '.length), usage);
         return {
             kind: 'swift.protocols',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.conformances ')) {
+        const usage = 'swift.conformances usage: swift.conformances <type> | swift.conformances <module> -- <type>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.conformances '.length), usage);
+        return {
+            kind: 'swift.conformances',
             moduleName: parsed.moduleName,
             query: parsed.query,
         };

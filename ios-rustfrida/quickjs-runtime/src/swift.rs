@@ -5,9 +5,9 @@ use crate::util::{add_cfunction_to_object, js_throw_internal_error, js_throw_typ
 use crate::value::JSValue;
 use common::Error as CommonError;
 use native_api::{
-    find_swift_method_owners, find_swift_methods, find_swift_protocols, find_swift_symbols, find_swift_type_methods,
-    find_swift_types, find_swift_types_of_kind, swift_demangle_symbol, swift_support_available,
-    swift_type_source_kinds, SwiftProtocol, SwiftSymbol, SwiftType,
+    find_swift_conformances, find_swift_method_owners, find_swift_methods, find_swift_protocols, find_swift_symbols,
+    find_swift_type_methods, find_swift_types, find_swift_types_of_kind, swift_demangle_symbol,
+    swift_support_available, swift_type_source_kinds, SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType,
 };
 
 unsafe fn swift_symbol_to_js(ctx: *mut ffi::JSContext, symbol: &SwiftSymbol) -> ffi::JSValue {
@@ -87,6 +87,41 @@ unsafe fn swift_protocol_to_js(ctx: *mut ffi::JSContext, protocol_info: &SwiftPr
     );
 
     match &protocol_info.source_demangled_name {
+        Some(name) => object.set_property(ctx, "sourceDemangledName", JSValue::string(ctx, name)),
+        None => object.set_property(ctx, "sourceDemangledName", JSValue::null()),
+    };
+
+    object.raw()
+}
+
+unsafe fn swift_conformance_to_js(ctx: *mut ffi::JSContext, conformance: &SwiftConformance) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "moduleName", JSValue::string(ctx, &conformance.module_name));
+    object.set_property(
+        ctx,
+        "moduleBase",
+        create_native_pointer(ctx, conformance.module_base as u64),
+    );
+    object.set_property(ctx, "typeName", JSValue::string(ctx, &conformance.type_name));
+    object.set_property(ctx, "protocolName", JSValue::string(ctx, &conformance.protocol_name));
+    object.set_property(
+        ctx,
+        "sourceSymbolName",
+        JSValue::string(ctx, &conformance.source_symbol_name),
+    );
+    object.set_property(ctx, "sourceKind", JSValue::string(ctx, &conformance.source_kind));
+    object.set_property(
+        ctx,
+        "sourceAddress",
+        create_native_pointer(ctx, conformance.source_address as u64),
+    );
+    object.set_property(
+        ctx,
+        "sourceOffset",
+        JSValue(ffi::JS_NewBigUint64(ctx, conformance.source_offset as u64)),
+    );
+
+    match &conformance.source_demangled_name {
         Some(name) => object.set_property(ctx, "sourceDemangledName", JSValue::string(ctx, name)),
         None => object.set_property(ctx, "sourceDemangledName", JSValue::null()),
     };
@@ -502,6 +537,54 @@ unsafe extern "C" fn js_swift_find_protocols(
     array
 }
 
+unsafe extern "C" fn js_swift_find_conformances(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let type_query = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "Swift.findConformances(typeQuery[, moduleName]) requires at least 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let module_name = if argc >= 2 {
+        let value = JSValue(*argv.add(1));
+        if value.is_null() || value.is_undefined() {
+            None
+        } else {
+            match value.to_string(ctx) {
+                Some(module_name) => Some(module_name),
+                None => return js_throw_type_error(
+                    ctx,
+                    "Swift.findConformances(typeQuery[, moduleName]) expected moduleName to be a string when provided",
+                ),
+            }
+        }
+    } else {
+        None
+    };
+
+    let conformances = match find_swift_conformances(module_name.as_deref(), &type_query) {
+        Ok(conformances) => conformances,
+        Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, conformance) in conformances.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, swift_conformance_to_js(ctx, conformance));
+    }
+    array
+}
+
 pub(crate) fn register_swift_api(ctx: &JSContext) {
     let global = ctx.global_object();
     let swift = ctx.new_object();
@@ -513,6 +596,7 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, swift.raw(), "demangle", js_swift_demangle, 1);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findSymbols", js_swift_find_symbols, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findProtocols", js_swift_find_protocols, 2);
+        add_cfunction_to_object(ctx_ptr, swift.raw(), "findConformances", js_swift_find_conformances, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMethods", js_swift_find_methods, 3);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findTypeMethods", js_swift_find_type_methods, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMethodOwners", js_swift_find_method_owners, 2);
