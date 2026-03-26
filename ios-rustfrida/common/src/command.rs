@@ -96,6 +96,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.classImage ")
         || command.starts_with("objc.methodImage ")
         || command.starts_with("objc.methodInfo ")
+        || command.starts_with("objc.propertyInfo ")
         || command.starts_with("objc.selectorName ")
         || command.starts_with("objc.objectClassName ")
         || command.starts_with("objc.methodImp ")
@@ -291,6 +292,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "className": class_name,
             "selectorName": selector_name,
             "isClassMethod": is_class_method,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.propertyInfo ") {
+        let (class_name, property_name, is_class_property) = parse_objc_method_target(raw)?;
+        return Some(json!({
+            "kind": "objc.property_info",
+            "className": class_name,
+            "propertyName": property_name,
+            "isClassProperty": is_class_property,
         }));
     }
 
@@ -1260,6 +1271,17 @@ mod tests {
                     "className": "NSObject",
                     "selectorName": "init",
                     "isClassMethod": false,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.propertyInfo NSObject description"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.property_info",
+                    "className": "NSObject",
+                    "propertyName": "description",
+                    "isClassProperty": false,
                 })
             })
         );

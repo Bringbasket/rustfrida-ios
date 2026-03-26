@@ -62,6 +62,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.superclass(className)`
 - `ObjC.classChain(className)`
 - `ObjC.properties(className[, isClassProperty])`
+- `ObjC.propertyInfo(className, propertyName[, isClassProperty])`
 - `ObjC.findProperties(className, query[, isClassProperty])`
 - `ObjC.ivars(className)`
 - `ObjC.findIvars(className, query)`
@@ -93,6 +94,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `objc.superclass <class>`
   - `objc.classChain <class>`
   - `objc.properties <class> [meta] [filter]`
+  - `objc.propertyInfo <class> <property> [meta]`
   - `objc.ivars <class> [filter]`
   - `objc.protocols [filter]`
   - `objc.classProtocols <class>`
@@ -216,6 +218,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - 当前已经补到可做 ObjC 类/selector/IMP/方法枚举、协议继承/属性查询、Swift 符号查找、PAC 查询、dyld 镜像枚举、基础 hook 环境探测。
 - `objc.methods` / `objc.methodOwners` / `objc.protocolMethods` 这几类查询现在也会在结构化结果里稳定带出 `typeEncoding`，文本模式下若有编码也会附带 `types=...`，方便脚本侧直接消费 ObjC 方法签名。
 - `objc.properties` / `objc.protocolProperties` 这几类查询现在除了原始 `attributes` 之外，也会在结构化结果里补出 `typeEncoding / ownership / getterName / setterName / ivarName / objectClassName / objectProtocols / attributeInfo` 等解析字段，减少脚本二次拆 Objective-C property attributes 字符串的成本。
+- `objc.propertyInfo` 现在可以直接结构化返回单个 property 的 `propertyPointer / imagePath / attributes`，并复用同一套 `attributeInfo` 解析字段，后续排查某个属性时不必再先全量 `objc.properties` 再脚本过滤。
 - `objc.methods` / `objc.methodOwners` / `objc.protocolMethods` / `objc.ivars` 这几类查询现在也会在结构化结果里补出解码后的 `returnTypeName / argumentTypeNames / signature / typeName / typeInfo / methodTypeInfo` 等字段，不再只能盯着原始 type encoding 字符串自己拆。
 - `objc.classInfo` 现在可以直接结构化返回 class / metaclass 的 `classPointer / superclassName / superclassPointer / instanceSize / imagePath / isMetaClass`，后续排查 ObjC 类层级和 metaclass 边界时不必再手工拼多个命令。
 - `objc.protocolInfo` 现在可以直接结构化返回协议指针、adopted protocols、required/optional 的 instance/class method 计数、property 数量以及 image 路径，后续排查协议继承和声明面时不必再手工拼多条 `protocol*` 命令。

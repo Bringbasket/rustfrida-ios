@@ -3604,6 +3604,7 @@ fn print_controller_help() {
     println!("  objc.objectClassName <object>");
     println!("  objc.methodImp <class> <selector> [meta]");
     println!("  objc.methodInfo <class> <selector> [meta]");
+    println!("  objc.propertyInfo <class> <property> [meta]");
     println!("  objc.methodImage <class> <selector> [meta]");
     println!("  objc.methodOwners <selector> [meta]");
     println!("  objc.methods <class> [meta] [filter]");
@@ -4022,6 +4023,17 @@ mod tests {
                 })
             })
         );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.propertyInfo UIViewController view"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.property_info",
+                    "className": "UIViewController",
+                    "propertyName": "view",
+                    "isClassProperty": false,
+                })
+            })
+        );
         assert!(matches!(
             AgentCommand::from_legacy("objc.methodImage UIViewController viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch { .. })
@@ -4169,6 +4181,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.superclass UIView"));
         assert!(!command_requires_inline_hooks("objc.classChain UIView"));
         assert!(!command_requires_inline_hooks("objc.properties UIView meta delegate"));
+        assert!(!command_requires_inline_hooks("objc.propertyInfo UIView view"));
         assert!(!command_requires_inline_hooks("objc.ivars UIView delegate"));
         assert!(!command_requires_inline_hooks("objc.methodInfo UIView viewDidLoad"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));

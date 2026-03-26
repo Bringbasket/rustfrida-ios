@@ -213,6 +213,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("objc.propertyInfo NSObject description"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("objc.methodOwners init"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

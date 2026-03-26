@@ -29,6 +29,16 @@ pub struct ObjcPropertyInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjcPropertyDetail {
+    pub class_name: String,
+    pub property_name: String,
+    pub attributes: String,
+    pub is_class_property: bool,
+    pub property_pointer: usize,
+    pub image_path: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjcIvarInfo {
     pub class_name: String,
     pub ivar_name: String,
@@ -159,6 +169,15 @@ impl ObjcApi {
         platform::enumerate_properties(class_name, is_class_property)
     }
 
+    pub fn property_info(
+        &self,
+        class_name: &str,
+        property_name: &str,
+        is_class_property: bool,
+    ) -> Result<Option<ObjcPropertyDetail>> {
+        platform::property_info(class_name, property_name, is_class_property)
+    }
+
     pub fn find_properties(
         &self,
         class_name: &str,
@@ -271,8 +290,8 @@ mod platform {
 
     use crate::{
         query_matches_class_name, query_matches_ivar_name, query_matches_method_name, query_matches_property_name,
-        ObjcClassInfo, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolInfo,
-        ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
+        ObjcClassInfo, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail, ObjcPropertyInfo,
+        ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
     };
 
     #[link(name = "objc")]
@@ -332,6 +351,12 @@ mod platform {
         method_pointer: usize,
         imp: usize,
         type_encoding: String,
+    }
+
+    struct ResolvedProperty {
+        property_pointer: usize,
+        attributes: String,
+        image_path: Option<String>,
     }
 
     pub fn class_exists(name: &str) -> bool {
@@ -828,6 +853,95 @@ mod platform {
         Ok(properties)
     }
 
+    fn resolve_property(
+        class_name: &str,
+        property_name: &str,
+        is_class_property: bool,
+    ) -> Result<Option<ResolvedProperty>> {
+        let class_name = class_name.trim();
+        if class_name.is_empty() {
+            return Err(Error::InvalidArgument("class name must not be empty".into()));
+        }
+
+        let property_name = property_name.trim();
+        if property_name.is_empty() {
+            return Err(Error::InvalidArgument("property name must not be empty".into()));
+        }
+
+        let class_name_c =
+            CString::new(class_name).map_err(|_| Error::InvalidArgument("class name contains interior NUL".into()))?;
+        let class = unsafe { objc_getClass(class_name_c.as_ptr()) };
+        if class.is_null() {
+            return Ok(None);
+        }
+
+        let lookup_class = if is_class_property {
+            unsafe { object_getClass(class) }
+        } else {
+            class
+        };
+        if lookup_class.is_null() {
+            return Ok(None);
+        }
+
+        let mut count = 0u32;
+        let list = unsafe { class_copyPropertyList(lookup_class, &mut count as *mut u32) };
+        if list.is_null() {
+            return Ok(None);
+        }
+
+        let slice = unsafe { std::slice::from_raw_parts(list, count as usize) };
+        let mut resolved = None;
+        for property in slice {
+            if property.is_null() {
+                continue;
+            }
+
+            let name = unsafe { property_getName(*property as *const c_void) };
+            if name.is_null() {
+                continue;
+            }
+            let resolved_name = unsafe { CStr::from_ptr(name) }.to_string_lossy();
+            if resolved_name.as_ref() != property_name {
+                continue;
+            }
+
+            let attributes = unsafe { property_getAttributes(*property as *const c_void) };
+            resolved = Some(ResolvedProperty {
+                property_pointer: *property as usize,
+                attributes: if attributes.is_null() {
+                    String::new()
+                } else {
+                    unsafe { CStr::from_ptr(attributes) }.to_string_lossy().into_owned()
+                },
+                image_path: image_path_for_address(lookup_class as *const c_void)?,
+            });
+            break;
+        }
+
+        unsafe { libc::free(list.cast()) };
+        Ok(resolved)
+    }
+
+    pub fn property_info(
+        class_name: &str,
+        property_name: &str,
+        is_class_property: bool,
+    ) -> Result<Option<ObjcPropertyDetail>> {
+        let Some(property) = resolve_property(class_name, property_name, is_class_property)? else {
+            return Ok(None);
+        };
+
+        Ok(Some(ObjcPropertyDetail {
+            class_name: class_name.trim().to_string(),
+            property_name: property_name.trim().to_string(),
+            attributes: property.attributes,
+            is_class_property,
+            property_pointer: property.property_pointer,
+            image_path: property.image_path,
+        }))
+    }
+
     pub fn find_properties(class_name: &str, query: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
         let trimmed = query.trim();
         if trimmed.is_empty() {
@@ -1256,8 +1370,8 @@ mod platform {
     use common::Result;
 
     use crate::{
-        ObjcClassInfo, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolInfo,
-        ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
+        ObjcClassInfo, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail, ObjcPropertyInfo,
+        ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
     };
 
     pub fn class_exists(_name: &str) -> bool {
@@ -1301,6 +1415,16 @@ mod platform {
     }
 
     pub fn enumerate_properties(_class_name: &str, _is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn property_info(
+        _class_name: &str,
+        _property_name: &str,
+        _is_class_property: bool,
+    ) -> Result<Option<ObjcPropertyDetail>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -1579,6 +1703,17 @@ mod tests {
     fn enumerate_properties_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .enumerate_properties("NSObject", false)
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn property_info_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .property_info("NSObject", "description", false)
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()

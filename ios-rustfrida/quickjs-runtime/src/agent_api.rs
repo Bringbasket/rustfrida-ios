@@ -61,6 +61,18 @@ function parseObjcMethodImp(raw) {
     };
 }
 
+function parseObjcPropertyInfo(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) {
+        throw new Error('objc.propertyInfo usage: objc.propertyInfo <class> <property> [meta]');
+    }
+    return {
+        className: parts[0],
+        propertyName: parts[1],
+        isClassProperty: parts.slice(2).some((part) => part === 'meta' || part === 'class' || part === '+'),
+    };
+}
+
 function parseObjcClassInfo(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -1117,6 +1129,21 @@ function formatObjcProperty(property) {
     return prefix + '[' + property.className + ' ' + property.name + ']' + (details.length === 0 ? '' : ' ' + details.join(' '));
 }
 
+function formatObjcPropertyInfo(property) {
+    const prefix = property.isClassProperty ? '+' : '-';
+    const details = ['property=' + property.propertyPointer];
+    if (property.typeName && property.typeName.length !== 0) {
+        details.push('type=' + property.typeName);
+    }
+    if (property.attributes.length !== 0) {
+        details.push('attrs=' + property.attributes);
+    }
+    if (property.imagePath !== null && property.imagePath !== undefined) {
+        details.push('image=' + property.imagePath);
+    }
+    return prefix + '[' + property.className + ' ' + property.name + ']' + ' ' + details.join(' ');
+}
+
 function formatObjcIvar(ivar) {
     const typeName = ivar.typeName || ivar.typeEncoding;
     const suffix = typeName.length === 0 ? '' : ' type=' + typeName;
@@ -1355,6 +1382,36 @@ function normalizeObjcProperty(property) {
         isClassProperty: !!property.isClassProperty,
     };
     normalized.text = formatObjcProperty(normalized);
+    return normalized;
+}
+
+function normalizeObjcPropertyInfo(property) {
+    const attributeInfo = parseObjcPropertyAttributes(property.attributes);
+    const normalized = {
+        className: String(property.className || ''),
+        name: String(property.name || ''),
+        attributes: String(property.attributes || ''),
+        typeEncoding: attributeInfo.typeEncoding,
+        typeName: attributeInfo.typeName,
+        typeInfo: attributeInfo.typeInfo,
+        oldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding,
+        ownership: attributeInfo.ownership,
+        isReadonly: attributeInfo.isReadonly,
+        isNonatomic: attributeInfo.isNonatomic,
+        isDynamic: attributeInfo.isDynamic,
+        getterName: attributeInfo.getterName,
+        setterName: attributeInfo.setterName,
+        ivarName: attributeInfo.ivarName,
+        isObject: attributeInfo.isObject,
+        isBlock: attributeInfo.isBlock,
+        objectClassName: attributeInfo.objectClassName,
+        objectProtocols: attributeInfo.objectProtocols,
+        attributeInfo,
+        isClassProperty: !!property.isClassProperty,
+        propertyPointer: property.propertyPointer.toString(),
+        imagePath: property.imagePath === undefined || property.imagePath === null ? null : String(property.imagePath),
+    };
+    normalized.text = formatObjcPropertyInfo(normalized);
     return normalized;
 }
 
@@ -2180,6 +2237,21 @@ function handleSpecResult(spec) {
             text: properties.map((property) => property.text).join('\n'),
         };
     }
+    case 'objc.property_info': {
+        const className = String(spec.className || '');
+        const propertyName = String(spec.propertyName || '');
+        const isClassProperty = !!spec.isClassProperty;
+        const propertyInfo = ObjC.propertyInfo(className, propertyName, isClassProperty);
+        const normalized = propertyInfo === null ? null : normalizeObjcPropertyInfo(propertyInfo);
+        return {
+            kind: 'objc.property_info',
+            className,
+            propertyName,
+            isClassProperty,
+            propertyInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'objc.ivars': {
         const className = String(spec.className || '');
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
@@ -2644,6 +2716,16 @@ function legacyToSpec(command) {
             className: parsed.className,
             isClassProperty: parsed.isClassProperty,
             filter: parsed.filter,
+        };
+    }
+
+    if (trimmed.startsWith('objc.propertyInfo ')) {
+        const parsed = parseObjcPropertyInfo(trimmed.slice('objc.propertyInfo '.length));
+        return {
+            kind: 'objc.property_info',
+            className: parsed.className,
+            propertyName: parsed.propertyName,
+            isClassProperty: parsed.isClassProperty,
         };
     }
 
