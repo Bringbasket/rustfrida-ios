@@ -91,6 +91,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.objectClassName ")
         || command.starts_with("objc.methodImp ")
         || command.starts_with("objc.methods ")
+        || command.starts_with("objc.properties ")
         || command.starts_with("objc.methodOwners ")
         || command.starts_with("objc.classes ")
         || command.starts_with("objc.protocols ")
@@ -231,6 +232,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "objc.methods",
             "className": class_name,
             "isClassMethod": is_class_method,
+            "filter": filter,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.properties ") {
+        let (class_name, is_class_property, filter) = parse_objc_properties(raw)?;
+        return Some(json!({
+            "kind": "objc.properties",
+            "className": class_name,
+            "isClassProperty": is_class_property,
             "filter": filter,
         }));
     }
@@ -672,6 +683,30 @@ fn parse_objc_methods(raw: &str) -> Option<(String, bool, Option<String>)> {
     Some((parts[0].to_string(), is_class_method, filter))
 }
 
+fn parse_objc_properties(raw: &str) -> Option<(String, bool, Option<String>)> {
+    let parts = raw.split_whitespace().collect::<Vec<_>>();
+    if parts.is_empty() {
+        return None;
+    }
+
+    let mut is_class_property = false;
+    let mut filter_parts = Vec::new();
+    for part in parts.iter().skip(1) {
+        if filter_parts.is_empty() && matches!(*part, "meta" | "class" | "+") {
+            is_class_property = true;
+            continue;
+        }
+        if filter_parts.is_empty() && matches!(*part, "instance" | "inst" | "-") {
+            is_class_property = false;
+            continue;
+        }
+        filter_parts.push((*part).to_string());
+    }
+
+    let filter = (!filter_parts.is_empty()).then(|| filter_parts.join(" "));
+    Some((parts[0].to_string(), is_class_property, filter))
+}
+
 fn parse_objc_method_owners(raw: &str) -> Option<(String, bool)> {
     let parts = raw.split_whitespace().collect::<Vec<_>>();
     if parts.is_empty() {
@@ -922,6 +957,17 @@ mod tests {
                 spec: json!({
                     "kind": "objc.class_protocols",
                     "className": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.properties NSObject meta delegate"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.properties",
+                    "className": "NSObject",
+                    "isClassProperty": true,
+                    "filter": "delegate",
                 })
             })
         );

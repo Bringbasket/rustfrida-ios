@@ -425,6 +425,16 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof ObjC.properties").expect("objc properties type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findProperties")
+                    .expect("objc findProperties type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof ObjC.classImage").expect("objc classImage type"),
                 "function"
             );
@@ -514,6 +524,18 @@ undefined;
                 runtime
                     .eval("Array.isArray(ObjC.findMethods('NSObject', 'init'))")
                     .expect("objc findMethods"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.properties('NSObject'))")
+                    .expect("objc properties"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.findProperties('NSObject', 'delegate'))")
+                    .expect("objc findProperties"),
                 "true"
             );
             assert_eq!(
@@ -1396,6 +1418,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.properties NSObject meta delegate'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return value === result.text && result.count === result.properties.length; })()"
+                    )
+                    .expect("agent objc properties"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.classImage NSObject'); return value === '<null>' || value.indexOf('/') !== -1; })()"
                     )
                     .expect("agent objc classImage"),
@@ -1483,6 +1513,14 @@ undefined;
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_protocols', className: 'NSObject' }); return result.kind === 'objc.class_protocols' && result.className === 'NSObject' && result.count === result.protocols.length && result.text === result.protocols.join('\\n'); })()"
                     )
                     .expect("agent objc classProtocols result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return result.kind === 'objc.properties' && result.className === 'NSObject' && result.isClassProperty === true && result.filter === 'delegate' && result.count === result.properties.length && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
+                    )
+                    .expect("agent objc properties result"),
                 "true"
             );
             assert_eq!(
@@ -1871,6 +1909,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.class_protocols', className: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_protocols', className: 'NSObject' }); return value === result.text; })()")
                     .expect("agent spec objc classProtocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return value === result.text; })()")
+                    .expect("agent spec objc properties"),
                 "true"
             );
             assert_eq!(

@@ -3599,6 +3599,7 @@ fn print_controller_help() {
     println!("  objc.methodImage <class> <selector> [meta]");
     println!("  objc.methodOwners <selector> [meta]");
     println!("  objc.methods <class> [meta] [filter]");
+    println!("  objc.properties <class> [meta] [filter]");
     println!("  native.base <module>");
     println!("  native.export <symbol>|native.export <module> -- <symbol>");
     println!("  native.exports <module>|native.exports <module> -- <query>");
@@ -3900,6 +3901,17 @@ mod tests {
                 })
             })
         );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.properties UIViewController meta delegate"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.properties",
+                    "className": "UIViewController",
+                    "isClassProperty": true,
+                    "filter": "delegate",
+                })
+            })
+        );
         assert!(matches!(
             AgentCommand::from_legacy("objc.methodOwners viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch { .. })
@@ -4021,6 +4033,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.classes UIView"));
         assert!(!command_requires_inline_hooks("objc.protocols NS"));
         assert!(!command_requires_inline_hooks("objc.classProtocols UIView"));
+        assert!(!command_requires_inline_hooks("objc.properties UIView meta delegate"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
         assert!(!command_requires_inline_hooks("native.encryptionInfo UIKit"));

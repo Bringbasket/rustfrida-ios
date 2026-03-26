@@ -87,6 +87,32 @@ function parseObjcMethods(raw) {
     };
 }
 
+function parseObjcProperties(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) {
+        throw new Error('objc.properties usage: objc.properties <class> [meta] [filter]');
+    }
+    let isClassProperty = false;
+    const filterTokens = [];
+    for (let i = 1; i < parts.length; i++) {
+        const part = parts[i];
+        if (filterTokens.length === 0 && (part === 'meta' || part === 'class' || part === '+')) {
+            isClassProperty = true;
+            continue;
+        }
+        if (filterTokens.length === 0 && (part === 'instance' || part === 'inst' || part === '-')) {
+            isClassProperty = false;
+            continue;
+        }
+        filterTokens.push(part);
+    }
+    return {
+        className: parts[0],
+        isClassProperty,
+        filter: filterTokens.length === 0 ? null : filterTokens.join(' '),
+    };
+}
+
 function parseObjcMethodOwners(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -467,6 +493,12 @@ function formatObjcMethod(method) {
     return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']';
 }
 
+function formatObjcProperty(property) {
+    const prefix = property.isClassProperty ? '+' : '-';
+    const suffix = property.attributes.length === 0 ? '' : ' attrs=' + property.attributes;
+    return prefix + '[' + property.className + ' ' + property.name + ']' + suffix;
+}
+
 function formatDebugSymbol(symbol, rawAddress) {
     if (symbol === null || symbol === undefined) {
         return ptr(rawAddress).toString() + ' <unresolved>';
@@ -538,6 +570,16 @@ function normalizeObjcMethod(method) {
         isClassMethod: !!method.isClassMethod,
         imp: method.imp.toString(),
         text: formatObjcMethod(method),
+    };
+}
+
+function normalizeObjcProperty(property) {
+    return {
+        className: String(property.className || ''),
+        name: String(property.name || ''),
+        attributes: String(property.attributes || ''),
+        isClassProperty: !!property.isClassProperty,
+        text: formatObjcProperty(property),
     };
 }
 
@@ -1118,6 +1160,23 @@ function handleSpecResult(spec) {
             text: methods.map((method) => method.text).join('\n'),
         };
     }
+    case 'objc.properties': {
+        const className = String(spec.className || '');
+        const isClassProperty = !!spec.isClassProperty;
+        const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
+        const properties = (filter === null
+            ? ObjC.properties(className, isClassProperty)
+            : ObjC.findProperties(className, filter, isClassProperty)).map((property) => normalizeObjcProperty(property));
+        return {
+            kind: 'objc.properties',
+            className,
+            isClassProperty,
+            filter,
+            count: properties.length,
+            properties,
+            text: properties.map((property) => property.text).join('\n'),
+        };
+    }
     case 'objc.method_owners': {
         const query = String(spec.query || '');
         const isClassMethod = !!spec.isClassMethod;
@@ -1474,6 +1533,16 @@ function legacyToSpec(command) {
             kind: 'objc.methods',
             className: parsed.className,
             isClassMethod: parsed.isClassMethod,
+            filter: parsed.filter,
+        };
+    }
+
+    if (trimmed.startsWith('objc.properties ')) {
+        const parsed = parseObjcProperties(trimmed.slice('objc.properties '.length));
+        return {
+            kind: 'objc.properties',
+            className: parsed.className,
+            isClassProperty: parsed.isClassProperty,
             filter: parsed.filter,
         };
     }

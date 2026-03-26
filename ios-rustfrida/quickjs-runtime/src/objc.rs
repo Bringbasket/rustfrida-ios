@@ -4,7 +4,7 @@ use crate::ptr::create_native_pointer;
 use crate::util::{add_cfunction_to_object, js_throw_internal_error, js_throw_type_error, require_string_arg};
 use crate::value::JSValue;
 use common::Error as CommonError;
-use objc_api::{ObjcApi, ObjcMethodInfo};
+use objc_api::{ObjcApi, ObjcMethodInfo, ObjcPropertyInfo};
 
 unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &str) -> Result<u64, ffi::JSValue> {
     if let Some(address) = crate::ptr::get_native_pointer_addr(value) {
@@ -293,6 +293,15 @@ unsafe fn objc_method_to_js(ctx: *mut ffi::JSContext, method: &ObjcMethodInfo) -
     object.raw()
 }
 
+unsafe fn objc_property_to_js(ctx: *mut ffi::JSContext, property: &ObjcPropertyInfo) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "className", JSValue::string(ctx, &property.class_name));
+    object.set_property(ctx, "name", JSValue::string(ctx, &property.property_name));
+    object.set_property(ctx, "attributes", JSValue::string(ctx, &property.attributes));
+    object.set_property(ctx, "isClassProperty", JSValue::bool(property.is_class_property));
+    object.raw()
+}
+
 unsafe extern "C" fn js_objc_methods(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -371,6 +380,88 @@ unsafe extern "C" fn js_objc_find_methods(
     let array = ffi::JS_NewArray(ctx);
     for (index, method) in methods.iter().enumerate() {
         ffi::JS_SetPropertyUint32(ctx, array, index as u32, objc_method_to_js(ctx, method));
+    }
+    array
+}
+
+unsafe extern "C" fn js_objc_properties(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.properties(className[, isClassProperty]) requires 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let is_class_property = if argc >= 2 {
+        JSValue(*argv.add(1)).to_bool().unwrap_or(false)
+    } else {
+        false
+    };
+
+    let properties = match ObjcApi::new().enumerate_properties(&class_name, is_class_property) {
+        Ok(properties) => properties,
+        Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, property) in properties.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, objc_property_to_js(ctx, property));
+    }
+    array
+}
+
+unsafe extern "C" fn js_objc_find_properties(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.findProperties(className, query[, isClassProperty]) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let query = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        1,
+        "ObjC.findProperties(className, query[, isClassProperty]) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let is_class_property = if argc >= 3 {
+        JSValue(*argv.add(2)).to_bool().unwrap_or(false)
+    } else {
+        false
+    };
+
+    let properties = match ObjcApi::new().find_properties(&class_name, &query, is_class_property) {
+        Ok(properties) => properties,
+        Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, property) in properties.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, objc_property_to_js(ctx, property));
     }
     array
 }
@@ -486,6 +577,8 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methodImage", js_objc_method_image, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methods", js_objc_methods, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findMethods", js_objc_find_methods, 3);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "properties", js_objc_properties, 2);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findProperties", js_objc_find_properties, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findMethodOwners", js_objc_find_method_owners, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "selectorName", js_objc_selector_name, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "objectClassName", js_objc_object_class_name, 1);

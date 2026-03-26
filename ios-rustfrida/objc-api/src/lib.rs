@@ -8,6 +8,14 @@ pub struct ObjcMethodInfo {
     pub is_class_method: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjcPropertyInfo {
+    pub class_name: String,
+    pub property_name: String,
+    pub attributes: String,
+    pub is_class_property: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct ObjcApi;
 
@@ -52,6 +60,19 @@ impl ObjcApi {
 
     pub fn class_protocols(&self, class_name: &str) -> Result<Vec<String>> {
         platform::class_protocols(class_name)
+    }
+
+    pub fn enumerate_properties(&self, class_name: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
+        platform::enumerate_properties(class_name, is_class_property)
+    }
+
+    pub fn find_properties(
+        &self,
+        class_name: &str,
+        query: &str,
+        is_class_property: bool,
+    ) -> Result<Vec<ObjcPropertyInfo>> {
+        platform::find_properties(class_name, query, is_class_property)
     }
 
     pub fn method_imp(&self, class_name: &str, selector_name: &str, is_class_method: bool) -> Result<Option<usize>> {
@@ -109,6 +130,18 @@ fn query_matches_method_name(selector_name: &str, query: &str) -> bool {
         .contains(&trimmed.to_ascii_lowercase())
 }
 
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+fn query_matches_property_name(property_name: &str, query: &str) -> bool {
+    let trimmed = query.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    property_name
+        .to_ascii_lowercase()
+        .contains(&trimmed.to_ascii_lowercase())
+}
+
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use std::ffi::{CStr, CString};
@@ -116,18 +149,24 @@ mod platform {
 
     use common::{Error, Result};
 
-    use crate::{query_matches_class_name, query_matches_method_name, ObjcMethodInfo};
+    use crate::{
+        query_matches_class_name, query_matches_method_name, query_matches_property_name, ObjcMethodInfo,
+        ObjcPropertyInfo,
+    };
 
     #[link(name = "objc")]
     extern "C" {
         fn objc_getClass(name: *const c_char) -> *mut c_void;
         fn objc_copyProtocolList(out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyProtocolList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
+        fn class_copyPropertyList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
         fn object_getClass(obj: *const c_void) -> *mut c_void;
         fn objc_copyClassList(out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyMethodList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
         fn class_getName(cls: *const c_void) -> *const c_char;
         fn protocol_getName(proto: *const c_void) -> *const c_char;
+        fn property_getName(property: *const c_void) -> *const c_char;
+        fn property_getAttributes(property: *const c_void) -> *const c_char;
         fn class_getInstanceMethod(cls: *const c_void, sel: *const c_void) -> *mut c_void;
         fn class_getClassMethod(cls: *const c_void, sel: *const c_void) -> *mut c_void;
         fn method_getName(method: *const c_void) -> *const c_void;
@@ -267,6 +306,80 @@ mod platform {
         protocols.sort();
         protocols.dedup();
         Ok(protocols)
+    }
+
+    pub fn enumerate_properties(class_name: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
+        let class_name = class_name.trim();
+        if class_name.is_empty() {
+            return Err(Error::InvalidArgument("class name must not be empty".into()));
+        }
+
+        let class_name_c =
+            CString::new(class_name).map_err(|_| Error::InvalidArgument("class name contains interior NUL".into()))?;
+        let class = unsafe { objc_getClass(class_name_c.as_ptr()) };
+        if class.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let lookup_class = if is_class_property {
+            unsafe { object_getClass(class) }
+        } else {
+            class
+        };
+        if lookup_class.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let mut count = 0u32;
+        let list = unsafe { class_copyPropertyList(lookup_class, &mut count as *mut u32) };
+        if list.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let slice = unsafe { std::slice::from_raw_parts(list, count as usize) };
+        let mut properties = Vec::with_capacity(slice.len());
+        for property in slice {
+            if property.is_null() {
+                continue;
+            }
+
+            let name = unsafe { property_getName(*property as *const c_void) };
+            if name.is_null() {
+                continue;
+            }
+
+            let attributes = unsafe { property_getAttributes(*property as *const c_void) };
+            properties.push(ObjcPropertyInfo {
+                class_name: class_name.to_string(),
+                property_name: unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned(),
+                attributes: if attributes.is_null() {
+                    String::new()
+                } else {
+                    unsafe { CStr::from_ptr(attributes) }.to_string_lossy().into_owned()
+                },
+                is_class_property,
+            });
+        }
+
+        unsafe { libc::free(list.cast()) };
+        properties.sort_by(|left, right| left.property_name.cmp(&right.property_name));
+        properties.dedup_by(|left, right| {
+            left.property_name == right.property_name
+                && left.attributes == right.attributes
+                && left.is_class_property == right.is_class_property
+        });
+        Ok(properties)
+    }
+
+    pub fn find_properties(class_name: &str, query: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return Err(Error::InvalidArgument("property query must not be empty".into()));
+        }
+
+        let mut properties = enumerate_properties(class_name, is_class_property)?;
+        properties.retain(|property| query_matches_property_name(&property.property_name, trimmed));
+        Ok(properties)
     }
 
     pub fn method_imp(class_name: &str, selector_name: &str, is_class_method: bool) -> Result<Option<usize>> {
@@ -536,7 +649,7 @@ mod platform {
 mod platform {
     use common::Result;
 
-    use crate::ObjcMethodInfo;
+    use crate::{ObjcMethodInfo, ObjcPropertyInfo};
 
     pub fn class_exists(_name: &str) -> bool {
         false
@@ -573,6 +686,18 @@ mod platform {
     }
 
     pub fn class_protocols(_class_name: &str) -> Result<Vec<String>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn enumerate_properties(_class_name: &str, _is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn find_properties(_class_name: &str, _query: &str, _is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -629,7 +754,7 @@ mod platform {
 
 #[cfg(test)]
 mod tests {
-    use super::{query_matches_class_name, query_matches_method_name, ObjcApi};
+    use super::{query_matches_class_name, query_matches_method_name, query_matches_property_name, ObjcApi};
 
     #[test]
     fn class_query_matches_case_insensitively() {
@@ -643,6 +768,13 @@ mod tests {
         assert!(query_matches_method_name("viewDidLoad", "view"));
         assert!(query_matches_method_name("viewDidLoad", "DIDLOAD"));
         assert!(!query_matches_method_name("viewDidLoad", "applicationdidfinish"));
+    }
+
+    #[test]
+    fn property_query_matches_case_insensitively() {
+        assert!(query_matches_property_name("delegate", "dele"));
+        assert!(query_matches_property_name("delegate", "LEG"));
+        assert!(!query_matches_property_name("delegate", "window"));
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "macos")))]
@@ -672,6 +804,28 @@ mod tests {
     fn class_protocols_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .class_protocols("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn enumerate_properties_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .enumerate_properties("NSObject", false)
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn find_properties_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .find_properties("NSObject", "delegate", false)
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()
