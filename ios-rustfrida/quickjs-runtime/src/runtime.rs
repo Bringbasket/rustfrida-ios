@@ -434,6 +434,11 @@ undefined;
                     .expect("objc findProperties type"),
                 "function"
             );
+            assert_eq!(runtime.eval("typeof ObjC.ivars").expect("objc ivars type"), "function");
+            assert_eq!(
+                runtime.eval("typeof ObjC.findIvars").expect("objc findIvars type"),
+                "function"
+            );
             assert_eq!(
                 runtime.eval("typeof ObjC.classImage").expect("objc classImage type"),
                 "function"
@@ -536,6 +541,18 @@ undefined;
                 runtime
                     .eval("Array.isArray(ObjC.findProperties('NSObject', 'delegate'))")
                     .expect("objc findProperties"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.ivars('NSObject'))")
+                    .expect("objc ivars"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.findIvars('NSObject', 'delegate'))")
+                    .expect("objc findIvars"),
                 "true"
             );
             assert_eq!(
@@ -1426,6 +1443,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.ivars NSObject delegate'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return value === result.text && result.count === result.ivars.length; })()"
+                    )
+                    .expect("agent objc ivars"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.classImage NSObject'); return value === '<null>' || value.indexOf('/') !== -1; })()"
                     )
                     .expect("agent objc classImage"),
@@ -1521,6 +1546,14 @@ undefined;
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return result.kind === 'objc.properties' && result.className === 'NSObject' && result.isClassProperty === true && result.filter === 'delegate' && result.count === result.properties.length && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
                     )
                     .expect("agent objc properties result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return result.kind === 'objc.ivars' && result.className === 'NSObject' && result.filter === 'delegate' && result.count === result.ivars.length && result.text === result.ivars.map((ivar) => ivar.text).join('\\n') && (result.ivars.length === 0 || typeof result.ivars[0].offsetHex === 'string'); })()"
+                    )
+                    .expect("agent objc ivars result"),
                 "true"
             );
             assert_eq!(
@@ -1915,6 +1948,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return value === result.text; })()")
                     .expect("agent spec objc properties"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return value === result.text; })()")
+                    .expect("agent spec objc ivars"),
                 "true"
             );
             assert_eq!(

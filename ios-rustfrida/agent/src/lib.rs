@@ -173,6 +173,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("objc.ivars NSObject delegate"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("objc.selectorName 0x1234"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

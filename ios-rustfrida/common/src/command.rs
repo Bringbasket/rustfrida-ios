@@ -92,6 +92,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.methodImp ")
         || command.starts_with("objc.methods ")
         || command.starts_with("objc.properties ")
+        || command.starts_with("objc.ivars ")
         || command.starts_with("objc.methodOwners ")
         || command.starts_with("objc.classes ")
         || command.starts_with("objc.protocols ")
@@ -242,6 +243,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "objc.properties",
             "className": class_name,
             "isClassProperty": is_class_property,
+            "filter": filter,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.ivars ") {
+        let (class_name, filter) = parse_objc_ivars(raw)?;
+        return Some(json!({
+            "kind": "objc.ivars",
+            "className": class_name,
             "filter": filter,
         }));
     }
@@ -707,6 +717,16 @@ fn parse_objc_properties(raw: &str) -> Option<(String, bool, Option<String>)> {
     Some((parts[0].to_string(), is_class_property, filter))
 }
 
+fn parse_objc_ivars(raw: &str) -> Option<(String, Option<String>)> {
+    let parts = raw.split_whitespace().collect::<Vec<_>>();
+    if parts.is_empty() {
+        return None;
+    }
+
+    let filter = (parts.len() > 1).then(|| parts[1..].join(" "));
+    Some((parts[0].to_string(), filter))
+}
+
 fn parse_objc_method_owners(raw: &str) -> Option<(String, bool)> {
     let parts = raw.split_whitespace().collect::<Vec<_>>();
     if parts.is_empty() {
@@ -967,6 +987,16 @@ mod tests {
                     "kind": "objc.properties",
                     "className": "NSObject",
                     "isClassProperty": true,
+                    "filter": "delegate",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.ivars NSObject delegate"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.ivars",
+                    "className": "NSObject",
                     "filter": "delegate",
                 })
             })

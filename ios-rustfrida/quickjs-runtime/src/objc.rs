@@ -1,10 +1,13 @@
 use crate::context::JSContext;
 use crate::ffi;
 use crate::ptr::create_native_pointer;
-use crate::util::{add_cfunction_to_object, js_throw_internal_error, js_throw_type_error, require_string_arg};
+use crate::util::{
+    add_cfunction_to_object, js_throw_internal_error, js_throw_type_error, js_u64_to_js_number_or_bigint,
+    require_string_arg,
+};
 use crate::value::JSValue;
 use common::Error as CommonError;
-use objc_api::{ObjcApi, ObjcMethodInfo, ObjcPropertyInfo};
+use objc_api::{ObjcApi, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo};
 
 unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &str) -> Result<u64, ffi::JSValue> {
     if let Some(address) = crate::ptr::get_native_pointer_addr(value) {
@@ -302,6 +305,19 @@ unsafe fn objc_property_to_js(ctx: *mut ffi::JSContext, property: &ObjcPropertyI
     object.raw()
 }
 
+unsafe fn objc_ivar_to_js(ctx: *mut ffi::JSContext, ivar: &ObjcIvarInfo) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "className", JSValue::string(ctx, &ivar.class_name));
+    object.set_property(ctx, "name", JSValue::string(ctx, &ivar.ivar_name));
+    object.set_property(ctx, "typeEncoding", JSValue::string(ctx, &ivar.type_encoding));
+    object.set_property(
+        ctx,
+        "offset",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, ivar.offset as u64)),
+    );
+    object.raw()
+}
+
 unsafe extern "C" fn js_objc_methods(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -466,6 +482,72 @@ unsafe extern "C" fn js_objc_find_properties(
     array
 }
 
+unsafe extern "C" fn js_objc_ivars(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_name = match require_string_arg(ctx, argc, argv, 0, "ObjC.ivars(className) requires 1 string argument") {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let ivars = match ObjcApi::new().enumerate_ivars(&class_name) {
+        Ok(ivars) => ivars,
+        Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, ivar) in ivars.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, objc_ivar_to_js(ctx, ivar));
+    }
+    array
+}
+
+unsafe extern "C" fn js_objc_find_ivars(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.findIvars(className, query) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let query = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        1,
+        "ObjC.findIvars(className, query) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let ivars = match ObjcApi::new().find_ivars(&class_name, &query) {
+        Ok(ivars) => ivars,
+        Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, ivar) in ivars.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, objc_ivar_to_js(ctx, ivar));
+    }
+    array
+}
+
 unsafe extern "C" fn js_objc_find_method_owners(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -579,6 +661,8 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findMethods", js_objc_find_methods, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "properties", js_objc_properties, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findProperties", js_objc_find_properties, 3);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "ivars", js_objc_ivars, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findIvars", js_objc_find_ivars, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findMethodOwners", js_objc_find_method_owners, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "selectorName", js_objc_selector_name, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "objectClassName", js_objc_object_class_name, 1);

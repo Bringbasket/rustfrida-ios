@@ -113,6 +113,17 @@ function parseObjcProperties(raw) {
     };
 }
 
+function parseObjcIvars(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) {
+        throw new Error('objc.ivars usage: objc.ivars <class> [filter]');
+    }
+    return {
+        className: parts[0],
+        filter: parts.length <= 1 ? null : parts.slice(1).join(' '),
+    };
+}
+
 function parseObjcMethodOwners(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -499,6 +510,11 @@ function formatObjcProperty(property) {
     return prefix + '[' + property.className + ' ' + property.name + ']' + suffix;
 }
 
+function formatObjcIvar(ivar) {
+    const suffix = ivar.typeEncoding.length === 0 ? '' : ' type=' + ivar.typeEncoding;
+    return ivar.className + ' ' + ivar.name + ' offset=' + '0x' + BigInt(ivar.offset || 0).toString(16) + suffix;
+}
+
 function formatDebugSymbol(symbol, rawAddress) {
     if (symbol === null || symbol === undefined) {
         return ptr(rawAddress).toString() + ' <unresolved>';
@@ -580,6 +596,18 @@ function normalizeObjcProperty(property) {
         attributes: String(property.attributes || ''),
         isClassProperty: !!property.isClassProperty,
         text: formatObjcProperty(property),
+    };
+}
+
+function normalizeObjcIvar(ivar) {
+    const offset = typeof ivar.offset === 'bigint' ? ivar.offset : BigInt(ivar.offset || 0);
+    return {
+        className: String(ivar.className || ''),
+        name: String(ivar.name || ''),
+        typeEncoding: String(ivar.typeEncoding || ''),
+        offset: offset.toString(),
+        offsetHex: '0x' + offset.toString(16),
+        text: formatObjcIvar(ivar),
     };
 }
 
@@ -1177,6 +1205,21 @@ function handleSpecResult(spec) {
             text: properties.map((property) => property.text).join('\n'),
         };
     }
+    case 'objc.ivars': {
+        const className = String(spec.className || '');
+        const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
+        const ivars = (filter === null
+            ? ObjC.ivars(className)
+            : ObjC.findIvars(className, filter)).map((ivar) => normalizeObjcIvar(ivar));
+        return {
+            kind: 'objc.ivars',
+            className,
+            filter,
+            count: ivars.length,
+            ivars,
+            text: ivars.map((ivar) => ivar.text).join('\n'),
+        };
+    }
     case 'objc.method_owners': {
         const query = String(spec.query || '');
         const isClassMethod = !!spec.isClassMethod;
@@ -1543,6 +1586,15 @@ function legacyToSpec(command) {
             kind: 'objc.properties',
             className: parsed.className,
             isClassProperty: parsed.isClassProperty,
+            filter: parsed.filter,
+        };
+    }
+
+    if (trimmed.startsWith('objc.ivars ')) {
+        const parsed = parseObjcIvars(trimmed.slice('objc.ivars '.length));
+        return {
+            kind: 'objc.ivars',
+            className: parsed.className,
             filter: parsed.filter,
         };
     }

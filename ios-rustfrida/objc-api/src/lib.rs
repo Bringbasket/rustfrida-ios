@@ -16,6 +16,14 @@ pub struct ObjcPropertyInfo {
     pub is_class_property: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjcIvarInfo {
+    pub class_name: String,
+    pub ivar_name: String,
+    pub type_encoding: String,
+    pub offset: usize,
+}
+
 #[derive(Debug, Clone)]
 pub struct ObjcApi;
 
@@ -73,6 +81,14 @@ impl ObjcApi {
         is_class_property: bool,
     ) -> Result<Vec<ObjcPropertyInfo>> {
         platform::find_properties(class_name, query, is_class_property)
+    }
+
+    pub fn enumerate_ivars(&self, class_name: &str) -> Result<Vec<ObjcIvarInfo>> {
+        platform::enumerate_ivars(class_name)
+    }
+
+    pub fn find_ivars(&self, class_name: &str, query: &str) -> Result<Vec<ObjcIvarInfo>> {
+        platform::find_ivars(class_name, query)
     }
 
     pub fn method_imp(&self, class_name: &str, selector_name: &str, is_class_method: bool) -> Result<Option<usize>> {
@@ -142,6 +158,16 @@ fn query_matches_property_name(property_name: &str, query: &str) -> bool {
         .contains(&trimmed.to_ascii_lowercase())
 }
 
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+fn query_matches_ivar_name(ivar_name: &str, query: &str) -> bool {
+    let trimmed = query.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    ivar_name.to_ascii_lowercase().contains(&trimmed.to_ascii_lowercase())
+}
+
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use std::ffi::{CStr, CString};
@@ -150,8 +176,8 @@ mod platform {
     use common::{Error, Result};
 
     use crate::{
-        query_matches_class_name, query_matches_method_name, query_matches_property_name, ObjcMethodInfo,
-        ObjcPropertyInfo,
+        query_matches_class_name, query_matches_ivar_name, query_matches_method_name, query_matches_property_name,
+        ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo,
     };
 
     #[link(name = "objc")]
@@ -160,6 +186,7 @@ mod platform {
         fn objc_copyProtocolList(out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyProtocolList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyPropertyList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
+        fn class_copyIvarList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
         fn object_getClass(obj: *const c_void) -> *mut c_void;
         fn objc_copyClassList(out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyMethodList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
@@ -167,6 +194,9 @@ mod platform {
         fn protocol_getName(proto: *const c_void) -> *const c_char;
         fn property_getName(property: *const c_void) -> *const c_char;
         fn property_getAttributes(property: *const c_void) -> *const c_char;
+        fn ivar_getName(ivar: *const c_void) -> *const c_char;
+        fn ivar_getTypeEncoding(ivar: *const c_void) -> *const c_char;
+        fn ivar_getOffset(ivar: *const c_void) -> isize;
         fn class_getInstanceMethod(cls: *const c_void, sel: *const c_void) -> *mut c_void;
         fn class_getClassMethod(cls: *const c_void, sel: *const c_void) -> *mut c_void;
         fn method_getName(method: *const c_void) -> *const c_void;
@@ -380,6 +410,80 @@ mod platform {
         let mut properties = enumerate_properties(class_name, is_class_property)?;
         properties.retain(|property| query_matches_property_name(&property.property_name, trimmed));
         Ok(properties)
+    }
+
+    pub fn enumerate_ivars(class_name: &str) -> Result<Vec<ObjcIvarInfo>> {
+        let class_name = class_name.trim();
+        if class_name.is_empty() {
+            return Err(Error::InvalidArgument("class name must not be empty".into()));
+        }
+
+        let class_name_c =
+            CString::new(class_name).map_err(|_| Error::InvalidArgument("class name contains interior NUL".into()))?;
+        let class = unsafe { objc_getClass(class_name_c.as_ptr()) };
+        if class.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let mut count = 0u32;
+        let list = unsafe { class_copyIvarList(class, &mut count as *mut u32) };
+        if list.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let slice = unsafe { std::slice::from_raw_parts(list, count as usize) };
+        let mut ivars = Vec::with_capacity(slice.len());
+        for ivar in slice {
+            if ivar.is_null() {
+                continue;
+            }
+
+            let name = unsafe { ivar_getName(*ivar as *const c_void) };
+            if name.is_null() {
+                continue;
+            }
+
+            let type_encoding = unsafe { ivar_getTypeEncoding(*ivar as *const c_void) };
+            let offset = unsafe { ivar_getOffset(*ivar as *const c_void) };
+            if offset < 0 {
+                continue;
+            }
+
+            ivars.push(ObjcIvarInfo {
+                class_name: class_name.to_string(),
+                ivar_name: unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned(),
+                type_encoding: if type_encoding.is_null() {
+                    String::new()
+                } else {
+                    unsafe { CStr::from_ptr(type_encoding) }.to_string_lossy().into_owned()
+                },
+                offset: offset as usize,
+            });
+        }
+
+        unsafe { libc::free(list.cast()) };
+        ivars.sort_by(|left, right| {
+            left.ivar_name
+                .cmp(&right.ivar_name)
+                .then(left.offset.cmp(&right.offset))
+        });
+        ivars.dedup_by(|left, right| {
+            left.ivar_name == right.ivar_name
+                && left.type_encoding == right.type_encoding
+                && left.offset == right.offset
+        });
+        Ok(ivars)
+    }
+
+    pub fn find_ivars(class_name: &str, query: &str) -> Result<Vec<ObjcIvarInfo>> {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return Err(Error::InvalidArgument("ivar query must not be empty".into()));
+        }
+
+        let mut ivars = enumerate_ivars(class_name)?;
+        ivars.retain(|ivar| query_matches_ivar_name(&ivar.ivar_name, trimmed));
+        Ok(ivars)
     }
 
     pub fn method_imp(class_name: &str, selector_name: &str, is_class_method: bool) -> Result<Option<usize>> {
@@ -649,7 +753,7 @@ mod platform {
 mod platform {
     use common::Result;
 
-    use crate::{ObjcMethodInfo, ObjcPropertyInfo};
+    use crate::{ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo};
 
     pub fn class_exists(_name: &str) -> bool {
         false
@@ -698,6 +802,18 @@ mod platform {
     }
 
     pub fn find_properties(_class_name: &str, _query: &str, _is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn enumerate_ivars(_class_name: &str) -> Result<Vec<ObjcIvarInfo>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn find_ivars(_class_name: &str, _query: &str) -> Result<Vec<ObjcIvarInfo>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -754,7 +870,10 @@ mod platform {
 
 #[cfg(test)]
 mod tests {
-    use super::{query_matches_class_name, query_matches_method_name, query_matches_property_name, ObjcApi};
+    use super::{
+        query_matches_class_name, query_matches_ivar_name, query_matches_method_name, query_matches_property_name,
+        ObjcApi,
+    };
 
     #[test]
     fn class_query_matches_case_insensitively() {
@@ -775,6 +894,13 @@ mod tests {
         assert!(query_matches_property_name("delegate", "dele"));
         assert!(query_matches_property_name("delegate", "LEG"));
         assert!(!query_matches_property_name("delegate", "window"));
+    }
+
+    #[test]
+    fn ivar_query_matches_case_insensitively() {
+        assert!(query_matches_ivar_name("_delegate", "dele"));
+        assert!(query_matches_ivar_name("_delegate", "LEG"));
+        assert!(!query_matches_ivar_name("_delegate", "window"));
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "macos")))]
@@ -826,6 +952,28 @@ mod tests {
     fn find_properties_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .find_properties("NSObject", "delegate", false)
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn enumerate_ivars_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .enumerate_ivars("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn find_ivars_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .find_ivars("NSObject", "delegate")
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()
