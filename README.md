@@ -209,6 +209,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - iOS 功能目前仍是持续迁移状态，不应视为和 Android 版完全对齐。
 - 当前已经补到可做 ObjC 类/selector/IMP/方法枚举、协议继承/属性查询、Swift 符号查找、PAC 查询、dyld 镜像枚举、基础 hook 环境探测。
 - `objc.methods` / `objc.methodOwners` / `objc.protocolMethods` 这几类查询现在也会在结构化结果里稳定带出 `typeEncoding`，文本模式下若有编码也会附带 `types=...`，方便脚本侧直接消费 ObjC 方法签名。
+- `objc.properties` / `objc.protocolProperties` 这几类查询现在除了原始 `attributes` 之外，也会在结构化结果里补出 `typeEncoding / ownership / getterName / setterName / ivarName / objectClassName / objectProtocols / attributeInfo` 等解析字段，减少脚本二次拆 Objective-C property attributes 字符串的成本。
 - hook backend filesystem 探测现在同时覆盖 rootful 和 rootless 常见路径前缀；像 ElleKit / Substrate / Substitute / libhooker 这类生态，不再只认 `/usr/lib`，也会扫描 `/var/jb/...`。
 - `native.hookenv` / `Native.detectHookEnvironment()` 现在除了 backend / warning，还会补出面向当前 `hook_policy` 的建议动作，便于真机上快速判断该走 query-only、fail-fast 还是继续冒险装 inline hook；返回里也会区分 `allowed` 和 `inlineHooksAllowed`，不再把“允许注入做查询”和“允许安装 inline hook”混成一个布尔值。
 - `PAC.isImageArm64e(moduleName)` / `pac.image <module>` 现在可以直接判断单个镜像是否是 `arm64e`，比只看当前进程主镜像更适合排查某个目标 dylib 是否已经进入 PAC 风险面。

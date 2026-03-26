@@ -584,15 +584,182 @@ function formatObjcProtocolMethod(method) {
     return prefix + '[' + method.protocolName + ' ' + method.selector + '] ' + (method.isRequired ? 'required' : 'optional') + suffix;
 }
 
+function parseObjcPropertyTypeEncoding(typeEncoding) {
+    const raw = String(typeEncoding || '');
+    const result = {
+        typeEncoding: raw,
+        isObject: false,
+        isBlock: false,
+        objectClassName: null,
+        objectProtocols: [],
+    };
+
+    if (!raw.startsWith('@')) {
+        return result;
+    }
+
+    result.isObject = true;
+    if (raw === '@?') {
+        result.isBlock = true;
+        return result;
+    }
+
+    if (!(raw.startsWith('@\"') && raw.endsWith('\"'))) {
+        return result;
+    }
+
+    const inner = raw.slice(2, -1);
+    if (inner.length === 0) {
+        return result;
+    }
+
+    const protocols = [];
+    let objectClassName = inner;
+    const firstProtocol = inner.indexOf('<');
+    if (firstProtocol !== -1) {
+        objectClassName = inner.slice(0, firstProtocol);
+        const matches = inner.match(/<[^>]+>/g) || [];
+        for (const match of matches) {
+            const protocolName = match.slice(1, -1).trim();
+            if (protocolName.length !== 0) {
+                protocols.push(protocolName);
+            }
+        }
+    }
+
+    result.objectClassName = objectClassName.length === 0 ? null : objectClassName;
+    result.objectProtocols = protocols;
+    return result;
+}
+
+function parseObjcPropertyAttributes(attributes) {
+    const raw = String(attributes || '');
+    const info = {
+        raw,
+        typeEncoding: '',
+        oldStyleTypeEncoding: null,
+        ownership: 'assign',
+        isReadonly: false,
+        isNonatomic: false,
+        isDynamic: false,
+        hasGetter: false,
+        hasSetter: false,
+        getterName: null,
+        setterName: null,
+        ivarName: null,
+        parsedTokens: [],
+        isObject: false,
+        isBlock: false,
+        objectClassName: null,
+        objectProtocols: [],
+    };
+
+    if (raw.length === 0) {
+        return info;
+    }
+
+    const tokens = raw.split(',');
+    for (const token of tokens) {
+        if (token.length === 0) {
+            continue;
+        }
+
+        info.parsedTokens.push(token);
+        if (token.startsWith('T')) {
+            info.typeEncoding = token.slice(1);
+            continue;
+        }
+        if (token === 'R') {
+            info.isReadonly = true;
+            continue;
+        }
+        if (token === 'C') {
+            info.ownership = 'copy';
+            continue;
+        }
+        if (token === '&') {
+            info.ownership = 'strong';
+            continue;
+        }
+        if (token === 'N') {
+            info.isNonatomic = true;
+            continue;
+        }
+        if (token.startsWith('G')) {
+            info.hasGetter = true;
+            info.getterName = token.slice(1) || null;
+            continue;
+        }
+        if (token.startsWith('S')) {
+            info.hasSetter = true;
+            info.setterName = token.slice(1) || null;
+            continue;
+        }
+        if (token === 'D') {
+            info.isDynamic = true;
+            continue;
+        }
+        if (token === 'W') {
+            info.ownership = 'weak';
+            continue;
+        }
+        if (token.startsWith('V')) {
+            info.ivarName = token.slice(1) || null;
+            continue;
+        }
+        if (token.startsWith('t')) {
+            info.oldStyleTypeEncoding = token.slice(1) || null;
+            continue;
+        }
+    }
+
+    const parsedType = parseObjcPropertyTypeEncoding(info.typeEncoding);
+    info.isObject = parsedType.isObject;
+    info.isBlock = parsedType.isBlock;
+    info.objectClassName = parsedType.objectClassName;
+    info.objectProtocols = parsedType.objectProtocols;
+    return info;
+}
+
 function formatObjcProtocolProperty(property) {
-    const suffix = property.attributes.length === 0 ? '' : ' attrs=' + property.attributes;
-    return '@protocol(' + property.protocolName + ') ' + property.name + suffix;
+    const details = [];
+    if (property.typeEncoding.length !== 0) {
+        details.push('type=' + property.typeEncoding);
+    }
+    if (property.ownership !== 'assign') {
+        details.push('ownership=' + property.ownership);
+    }
+    if (property.isReadonly) {
+        details.push('readonly');
+    }
+    if (property.isNonatomic) {
+        details.push('nonatomic');
+    }
+    if (property.attributes.length !== 0) {
+        details.push('attrs=' + property.attributes);
+    }
+    return '@protocol(' + property.protocolName + ') ' + property.name + (details.length === 0 ? '' : ' ' + details.join(' '));
 }
 
 function formatObjcProperty(property) {
     const prefix = property.isClassProperty ? '+' : '-';
-    const suffix = property.attributes.length === 0 ? '' : ' attrs=' + property.attributes;
-    return prefix + '[' + property.className + ' ' + property.name + ']' + suffix;
+    const details = [];
+    if (property.typeEncoding.length !== 0) {
+        details.push('type=' + property.typeEncoding);
+    }
+    if (property.ownership !== 'assign') {
+        details.push('ownership=' + property.ownership);
+    }
+    if (property.isReadonly) {
+        details.push('readonly');
+    }
+    if (property.isNonatomic) {
+        details.push('nonatomic');
+    }
+    if (property.attributes.length !== 0) {
+        details.push('attrs=' + property.attributes);
+    }
+    return prefix + '[' + property.className + ' ' + property.name + ']' + (details.length === 0 ? '' : ' ' + details.join(' '));
 }
 
 function formatObjcIvar(ivar) {
@@ -687,22 +854,54 @@ function normalizeObjcProtocolMethod(method) {
 }
 
 function normalizeObjcProtocolProperty(property) {
-    return {
+    const attributeInfo = parseObjcPropertyAttributes(property.attributes);
+    const normalized = {
         protocolName: String(property.protocolName || ''),
         name: String(property.name || ''),
         attributes: String(property.attributes || ''),
-        text: formatObjcProtocolProperty(property),
+        typeEncoding: attributeInfo.typeEncoding,
+        oldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding,
+        ownership: attributeInfo.ownership,
+        isReadonly: attributeInfo.isReadonly,
+        isNonatomic: attributeInfo.isNonatomic,
+        isDynamic: attributeInfo.isDynamic,
+        getterName: attributeInfo.getterName,
+        setterName: attributeInfo.setterName,
+        ivarName: attributeInfo.ivarName,
+        isObject: attributeInfo.isObject,
+        isBlock: attributeInfo.isBlock,
+        objectClassName: attributeInfo.objectClassName,
+        objectProtocols: attributeInfo.objectProtocols,
+        attributeInfo,
     };
+    normalized.text = formatObjcProtocolProperty(normalized);
+    return normalized;
 }
 
 function normalizeObjcProperty(property) {
-    return {
+    const attributeInfo = parseObjcPropertyAttributes(property.attributes);
+    const normalized = {
         className: String(property.className || ''),
         name: String(property.name || ''),
         attributes: String(property.attributes || ''),
+        typeEncoding: attributeInfo.typeEncoding,
+        oldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding,
+        ownership: attributeInfo.ownership,
+        isReadonly: attributeInfo.isReadonly,
+        isNonatomic: attributeInfo.isNonatomic,
+        isDynamic: attributeInfo.isDynamic,
+        getterName: attributeInfo.getterName,
+        setterName: attributeInfo.setterName,
+        ivarName: attributeInfo.ivarName,
+        isObject: attributeInfo.isObject,
+        isBlock: attributeInfo.isBlock,
+        objectClassName: attributeInfo.objectClassName,
+        objectProtocols: attributeInfo.objectProtocols,
+        attributeInfo,
         isClassProperty: !!property.isClassProperty,
-        text: formatObjcProperty(property),
     };
+    normalized.text = formatObjcProperty(normalized);
+    return normalized;
 }
 
 function normalizeObjcIvar(ivar) {

@@ -1773,7 +1773,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_properties', protocolName: 'NSObject' }); return result.kind === 'objc.protocol_properties' && result.protocolName === 'NSObject' && result.count === result.properties.length && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_properties', protocolName: 'NSObject' }); return result.kind === 'objc.protocol_properties' && result.protocolName === 'NSObject' && result.count === result.properties.length && (result.properties.length === 0 || (typeof result.properties[0].typeEncoding === 'string' && Array.isArray(result.properties[0].objectProtocols) && typeof result.properties[0].attributeInfo === 'object')) && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
                     )
                     .expect("agent objc protocolProperties result"),
                 "true"
@@ -1797,7 +1797,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return result.kind === 'objc.properties' && result.className === 'NSObject' && result.isClassProperty === true && result.filter === 'delegate' && result.count === result.properties.length && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return result.kind === 'objc.properties' && result.className === 'NSObject' && result.isClassProperty === true && result.filter === 'delegate' && result.count === result.properties.length && (result.properties.length === 0 || (typeof result.properties[0].typeEncoding === 'string' && Array.isArray(result.properties[0].objectProtocols) && typeof result.properties[0].attributeInfo === 'object')) && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
                     )
                     .expect("agent objc properties result"),
                 "true"
