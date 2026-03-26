@@ -3589,6 +3589,7 @@ fn print_controller_help() {
     println!("  objc.classes [filter]");
     println!("  objc.protocols");
     println!("  objc.protocols [filter]");
+    println!("  objc.classProtocols <class>");
     println!("  objc.classExists <name>");
     println!("  objc.selector <name>");
     println!("  objc.classImage <class>");
@@ -3890,6 +3891,15 @@ mod tests {
             AgentCommand::from_legacy("objc.protocols NS"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
+        assert_eq!(
+            AgentCommand::from_legacy("objc.classProtocols UIViewController"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_protocols",
+                    "className": "UIViewController",
+                })
+            })
+        );
         assert!(matches!(
             AgentCommand::from_legacy("objc.methodOwners viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch { .. })
@@ -4010,6 +4020,7 @@ mod tests {
         assert!(command_requires_inline_hooks("hfl libobjc.A.dylib 0x1234"));
         assert!(!command_requires_inline_hooks("objc.classes UIView"));
         assert!(!command_requires_inline_hooks("objc.protocols NS"));
+        assert!(!command_requires_inline_hooks("objc.classProtocols UIView"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
         assert!(!command_requires_inline_hooks("native.encryptionInfo UIKit"));

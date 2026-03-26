@@ -1021,6 +1021,17 @@ function handleSpecResult(spec) {
             text: protocols.join('\n'),
         };
     }
+    case 'objc.class_protocols': {
+        const className = String(spec.className || '');
+        const protocols = ObjC.classProtocols(className);
+        return {
+            kind: 'objc.class_protocols',
+            className,
+            count: protocols.length,
+            protocols,
+            text: protocols.join('\n'),
+        };
+    }
     case 'objc.class_exists': {
         const className = String(spec.className || '');
         const exists = !!ObjC.classExists(className);
@@ -1405,6 +1416,10 @@ function legacyToSpec(command) {
 
     if (trimmed.startsWith('objc.protocols ')) {
         return { kind: 'objc.protocols', filter: trimmed.slice('objc.protocols '.length) };
+    }
+
+    if (trimmed.startsWith('objc.classProtocols ')) {
+        return { kind: 'objc.class_protocols', className: trimmed.slice('objc.classProtocols '.length) };
     }
 
     if (trimmed.startsWith('objc.classExists ')) {

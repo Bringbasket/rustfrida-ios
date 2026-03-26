@@ -83,6 +83,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
             | "swift.available"
             | "swift.typeKinds"
     ) || command.starts_with("objc.classExists ")
+        || command.starts_with("objc.classProtocols ")
         || command.starts_with("objc.selector ")
         || command.starts_with("objc.classImage ")
         || command.starts_with("objc.methodImage ")
@@ -165,6 +166,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     if let Some(class_name) = command.strip_prefix("objc.classExists ") {
         return Some(json!({
             "kind": "objc.class_exists",
+            "className": class_name.trim(),
+        }));
+    }
+
+    if let Some(class_name) = command.strip_prefix("objc.classProtocols ") {
+        return Some(json!({
+            "kind": "objc.class_protocols",
             "className": class_name.trim(),
         }));
     }
@@ -908,6 +916,15 @@ mod tests {
             AgentCommand::from_legacy("objc.protocols NS"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
+        assert_eq!(
+            AgentCommand::from_legacy("objc.classProtocols NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_protocols",
+                    "className": "NSObject",
+                })
+            })
+        );
         assert!(matches!(
             AgentCommand::from_legacy("objc.selectorName 0x1234"),
             Some(AgentCommand::RuntimeDispatch { .. })

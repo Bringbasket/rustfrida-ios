@@ -409,7 +409,15 @@ undefined;
                 "function"
             );
             assert_eq!(
-                runtime.eval("typeof ObjC.findProtocols").expect("objc findProtocols type"),
+                runtime
+                    .eval("typeof ObjC.findProtocols")
+                    .expect("objc findProtocols type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.classProtocols")
+                    .expect("objc classProtocols type"),
                 "function"
             );
             assert_eq!(
@@ -487,15 +495,19 @@ undefined;
                 "true"
             );
             assert_eq!(
-                runtime
-                    .eval("Array.isArray(ObjC.protocols())")
-                    .expect("objc protocols"),
+                runtime.eval("Array.isArray(ObjC.protocols())").expect("objc protocols"),
                 "true"
             );
             assert_eq!(
                 runtime
                     .eval("Array.isArray(ObjC.findProtocols('NS'))")
                     .expect("objc findProtocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.classProtocols('NSObject'))")
+                    .expect("objc classProtocols"),
                 "true"
             );
             assert_eq!(
@@ -1376,6 +1388,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.classProtocols NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_protocols', className: 'NSObject' }); return value === result.text && result.count === result.protocols.length; })()"
+                    )
+                    .expect("agent objc classProtocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.classImage NSObject'); return value === '<null>' || value.indexOf('/') !== -1; })()"
                     )
                     .expect("agent objc classImage"),
@@ -1455,6 +1475,14 @@ undefined;
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocols', filter: null }); return result.kind === 'objc.protocols' && result.filter === null && result.count === result.protocols.length && result.text === result.protocols.join('\\n'); })()"
                     )
                     .expect("agent objc protocols result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_protocols', className: 'NSObject' }); return result.kind === 'objc.class_protocols' && result.className === 'NSObject' && result.count === result.protocols.length && result.text === result.protocols.join('\\n'); })()"
+                    )
+                    .expect("agent objc classProtocols result"),
                 "true"
             );
             assert_eq!(
@@ -1837,6 +1865,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.protocols', filter: 'NS' }); return value === '' || value.indexOf('NS') !== -1; })()")
                     .expect("agent spec objc protocols filtered"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.class_protocols', className: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_protocols', className: 'NSObject' }); return value === result.text; })()")
+                    .expect("agent spec objc classProtocols"),
                 "true"
             );
             assert_eq!(
