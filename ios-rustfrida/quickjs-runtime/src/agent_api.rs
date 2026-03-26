@@ -166,6 +166,17 @@ function parseObjcIvars(raw) {
     };
 }
 
+function parseObjcIvarInfo(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) {
+        throw new Error('objc.ivarInfo usage: objc.ivarInfo <class> <ivar>');
+    }
+    return {
+        className: parts[0],
+        ivarName: parts[1],
+    };
+}
+
 function parseObjcProtocolMethods(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -1150,6 +1161,20 @@ function formatObjcIvar(ivar) {
     return ivar.className + ' ' + ivar.name + ' offset=' + '0x' + BigInt(ivar.offset || 0).toString(16) + suffix;
 }
 
+function formatObjcIvarInfo(ivar) {
+    const details = ['ivar=' + ivar.ivarPointer, 'offset=' + ivar.offsetHex];
+    if (ivar.typeName && ivar.typeName.length !== 0) {
+        details.push('type=' + ivar.typeName);
+    }
+    if (ivar.typeEncoding.length !== 0) {
+        details.push('types=' + ivar.typeEncoding);
+    }
+    if (ivar.imagePath !== null && ivar.imagePath !== undefined) {
+        details.push('image=' + ivar.imagePath);
+    }
+    return ivar.className + ' ' + ivar.name + ' ' + details.join(' ');
+}
+
 function formatDebugSymbol(symbol, rawAddress) {
     if (symbol === null || symbol === undefined) {
         return ptr(rawAddress).toString() + ' <unresolved>';
@@ -1432,6 +1457,28 @@ function normalizeObjcIvar(ivar) {
         offsetHex: '0x' + offset.toString(16),
     };
     normalized.text = formatObjcIvar(normalized);
+    return normalized;
+}
+
+function normalizeObjcIvarInfo(ivar) {
+    const offset = typeof ivar.offset === 'bigint' ? ivar.offset : BigInt(ivar.offset || 0);
+    const typeInfo = parseObjcTypeEncodingInfo(ivar.typeEncoding);
+    const normalized = {
+        className: String(ivar.className || ''),
+        name: String(ivar.name || ''),
+        typeEncoding: String(ivar.typeEncoding || ''),
+        typeName: typeInfo.displayName,
+        typeInfo,
+        isObject: typeInfo.isObject,
+        isBlock: typeInfo.isBlock,
+        objectClassName: typeInfo.objectClassName,
+        objectProtocols: typeInfo.objectProtocols,
+        offset: offset.toString(),
+        offsetHex: '0x' + offset.toString(16),
+        ivarPointer: ivar.ivarPointer.toString(),
+        imagePath: ivar.imagePath === undefined || ivar.imagePath === null ? null : String(ivar.imagePath),
+    };
+    normalized.text = formatObjcIvarInfo(normalized);
     return normalized;
 }
 
@@ -2267,6 +2314,19 @@ function handleSpecResult(spec) {
             text: ivars.map((ivar) => ivar.text).join('\n'),
         };
     }
+    case 'objc.ivar_info': {
+        const className = String(spec.className || '');
+        const ivarName = String(spec.ivarName || '');
+        const ivarInfo = ObjC.ivarInfo(className, ivarName);
+        const normalized = ivarInfo === null ? null : normalizeObjcIvarInfo(ivarInfo);
+        return {
+            kind: 'objc.ivar_info',
+            className,
+            ivarName,
+            ivarInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'objc.method_owners': {
         const query = String(spec.query || '');
         const isClassMethod = !!spec.isClassMethod;
@@ -2735,6 +2795,15 @@ function legacyToSpec(command) {
             kind: 'objc.ivars',
             className: parsed.className,
             filter: parsed.filter,
+        };
+    }
+
+    if (trimmed.startsWith('objc.ivarInfo ')) {
+        const parsed = parseObjcIvarInfo(trimmed.slice('objc.ivarInfo '.length));
+        return {
+            kind: 'objc.ivar_info',
+            className: parsed.className,
+            ivarName: parsed.ivarName,
         };
     }
 

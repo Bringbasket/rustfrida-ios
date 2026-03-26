@@ -475,6 +475,10 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof ObjC.ivarInfo").expect("objc ivarInfo type"),
+                "function"
+            );
+            assert_eq!(
                 runtime
                     .eval("typeof ObjC.findProperties")
                     .expect("objc findProperties type"),
@@ -667,6 +671,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = ObjC.propertyInfo('NSObject', 'description'); return value === null || (typeof value.name === 'string' && typeof value.attributes === 'string' && typeof value.isClassProperty === 'boolean'); })()")
                     .expect("objc propertyInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = ObjC.ivarInfo('NSObject', '_isa'); return value === null || (typeof value.name === 'string' && typeof value.typeEncoding === 'string' && typeof value.offset === 'number'); })()")
+                    .expect("objc ivarInfo"),
                 "true"
             );
             assert_eq!(
@@ -1709,6 +1719,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.ivarInfo NSObject _isa'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); return value === result.text && (result.ivarInfo === null || (result.ivarInfo.name === '_isa' && typeof result.ivarInfo.typeEncoding === 'string')); })()"
+                    )
+                    .expect("agent objc ivarInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.ivars NSObject delegate'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return value === result.text && result.count === result.ivars.length; })()"
                     )
                     .expect("agent objc ivars"),
@@ -1928,6 +1946,14 @@ undefined;
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.property_info', className: 'NSObject', propertyName: 'description', isClassProperty: false }); return result.kind === 'objc.property_info' && result.className === 'NSObject' && result.propertyName === 'description' && result.isClassProperty === false && ((result.propertyInfo === null && result.text === '<null>') || (typeof result.propertyInfo.propertyPointer === 'string' && typeof result.propertyInfo.typeEncoding === 'string' && typeof result.propertyInfo.typeName === 'string' && Array.isArray(result.propertyInfo.objectProtocols) && typeof result.propertyInfo.attributeInfo === 'object' && result.text === result.propertyInfo.text)); })()"
                     )
                     .expect("agent objc propertyInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); return result.kind === 'objc.ivar_info' && result.className === 'NSObject' && result.ivarName === '_isa' && ((result.ivarInfo === null && result.text === '<null>') || (typeof result.ivarInfo.ivarPointer === 'string' && typeof result.ivarInfo.offsetHex === 'string' && typeof result.ivarInfo.typeName === 'string' && typeof result.ivarInfo.typeInfo === 'object' && result.text === result.ivarInfo.text)); })()"
+                    )
+                    .expect("agent objc ivarInfo result"),
                 "true"
             );
             assert_eq!(
@@ -2408,6 +2434,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.property_info', className: 'NSObject', propertyName: 'description', isClassProperty: false }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.property_info', className: 'NSObject', propertyName: 'description', isClassProperty: false }); return value === result.text; })()")
                     .expect("agent spec objc propertyInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); return value === result.text; })()")
+                    .expect("agent spec objc ivarInfo"),
                 "true"
             );
             assert_eq!(

@@ -102,6 +102,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.methodImp ")
         || command.starts_with("objc.methods ")
         || command.starts_with("objc.properties ")
+        || command.starts_with("objc.ivarInfo ")
         || command.starts_with("objc.ivars ")
         || command.starts_with("objc.methodOwners ")
         || command.starts_with("objc.classes ")
@@ -336,6 +337,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "className": class_name,
             "isClassProperty": is_class_property,
             "filter": filter,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.ivarInfo ") {
+        let (class_name, ivar_name) = parse_objc_member_info(raw)?;
+        return Some(json!({
+            "kind": "objc.ivar_info",
+            "className": class_name,
+            "ivarName": ivar_name,
         }));
     }
 
@@ -898,6 +908,14 @@ fn parse_objc_ivars(raw: &str) -> Option<(String, Option<String>)> {
     Some((parts[0].to_string(), filter))
 }
 
+fn parse_objc_member_info(raw: &str) -> Option<(String, String)> {
+    let parts = raw.split_whitespace().collect::<Vec<_>>();
+    if parts.len() < 2 {
+        return None;
+    }
+    Some((parts[0].to_string(), parts[1].to_string()))
+}
+
 fn parse_objc_protocol_methods(raw: &str) -> Option<(String, bool, bool)> {
     let parts = raw.split_whitespace().collect::<Vec<_>>();
     if parts.is_empty() {
@@ -1282,6 +1300,16 @@ mod tests {
                     "className": "NSObject",
                     "propertyName": "description",
                     "isClassProperty": false,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.ivarInfo NSObject _isa"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.ivar_info",
+                    "className": "NSObject",
+                    "ivarName": "_isa",
                 })
             })
         );

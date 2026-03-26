@@ -8,8 +8,8 @@ use crate::util::{
 use crate::value::JSValue;
 use common::Error as CommonError;
 use objc_api::{
-    ObjcApi, ObjcClassInfo, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail, ObjcPropertyInfo,
-    ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
+    ObjcApi, ObjcClassInfo, ObjcIvarDetail, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail,
+    ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
 };
 
 unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &str) -> Result<u64, ffi::JSValue> {
@@ -472,6 +472,41 @@ unsafe extern "C" fn js_objc_property_info(
     }
 }
 
+unsafe extern "C" fn js_objc_ivar_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.ivarInfo(className, ivarName) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let ivar_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        1,
+        "ObjC.ivarInfo(className, ivarName) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    match ObjcApi::new().ivar_info(&class_name, &ivar_name) {
+        Ok(Some(info)) => objc_ivar_detail_to_js(ctx, &info),
+        Ok(None) | Err(CommonError::Unsupported(_)) => JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
+}
+
 unsafe extern "C" fn js_objc_method_image(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -664,6 +699,24 @@ unsafe fn objc_ivar_to_js(ctx: *mut ffi::JSContext, ivar: &ObjcIvarInfo) -> ffi:
         "offset",
         JSValue(js_u64_to_js_number_or_bigint(ctx, ivar.offset as u64)),
     );
+    object.raw()
+}
+
+unsafe fn objc_ivar_detail_to_js(ctx: *mut ffi::JSContext, ivar: &ObjcIvarDetail) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "className", JSValue::string(ctx, &ivar.class_name));
+    object.set_property(ctx, "name", JSValue::string(ctx, &ivar.ivar_name));
+    object.set_property(ctx, "typeEncoding", JSValue::string(ctx, &ivar.type_encoding));
+    object.set_property(
+        ctx,
+        "offset",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, ivar.offset as u64)),
+    );
+    object.set_property(ctx, "ivarPointer", create_native_pointer(ctx, ivar.ivar_pointer as u64));
+    match &ivar.image_path {
+        Some(path) => object.set_property(ctx, "imagePath", JSValue::string(ctx, path)),
+        None => object.set_property(ctx, "imagePath", JSValue::null()),
+    };
     object.raw()
 }
 
@@ -1110,6 +1163,7 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methodInfo", js_objc_method_info, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classImage", js_objc_class_image, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "propertyInfo", js_objc_property_info, 3);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "ivarInfo", js_objc_ivar_info, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methodImage", js_objc_method_image, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methods", js_objc_methods, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findMethods", js_objc_find_methods, 3);

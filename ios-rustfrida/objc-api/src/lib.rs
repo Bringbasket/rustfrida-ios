@@ -47,6 +47,16 @@ pub struct ObjcIvarInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjcIvarDetail {
+    pub class_name: String,
+    pub ivar_name: String,
+    pub type_encoding: String,
+    pub offset: usize,
+    pub ivar_pointer: usize,
+    pub image_path: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjcProtocolMethodInfo {
     pub protocol_name: String,
     pub selector_name: String,
@@ -191,6 +201,10 @@ impl ObjcApi {
         platform::enumerate_ivars(class_name)
     }
 
+    pub fn ivar_info(&self, class_name: &str, ivar_name: &str) -> Result<Option<ObjcIvarDetail>> {
+        platform::ivar_info(class_name, ivar_name)
+    }
+
     pub fn find_ivars(&self, class_name: &str, query: &str) -> Result<Vec<ObjcIvarInfo>> {
         platform::find_ivars(class_name, query)
     }
@@ -290,8 +304,8 @@ mod platform {
 
     use crate::{
         query_matches_class_name, query_matches_ivar_name, query_matches_method_name, query_matches_property_name,
-        ObjcClassInfo, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail, ObjcPropertyInfo,
-        ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
+        ObjcClassInfo, ObjcIvarDetail, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail,
+        ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
     };
 
     #[link(name = "objc")]
@@ -953,6 +967,70 @@ mod platform {
         Ok(properties)
     }
 
+    pub fn ivar_info(class_name: &str, ivar_name: &str) -> Result<Option<ObjcIvarDetail>> {
+        let class_name = class_name.trim();
+        if class_name.is_empty() {
+            return Err(Error::InvalidArgument("class name must not be empty".into()));
+        }
+
+        let ivar_name = ivar_name.trim();
+        if ivar_name.is_empty() {
+            return Err(Error::InvalidArgument("ivar name must not be empty".into()));
+        }
+
+        let class_name_c =
+            CString::new(class_name).map_err(|_| Error::InvalidArgument("class name contains interior NUL".into()))?;
+        let class = unsafe { objc_getClass(class_name_c.as_ptr()) };
+        if class.is_null() {
+            return Ok(None);
+        }
+
+        let mut count = 0u32;
+        let list = unsafe { class_copyIvarList(class, &mut count as *mut u32) };
+        if list.is_null() {
+            return Ok(None);
+        }
+
+        let slice = unsafe { std::slice::from_raw_parts(list, count as usize) };
+        let mut resolved = None;
+        for ivar in slice {
+            if ivar.is_null() {
+                continue;
+            }
+
+            let name = unsafe { ivar_getName(*ivar as *const c_void) };
+            if name.is_null() {
+                continue;
+            }
+            let resolved_name = unsafe { CStr::from_ptr(name) }.to_string_lossy();
+            if resolved_name.as_ref() != ivar_name {
+                continue;
+            }
+
+            let type_encoding = unsafe { ivar_getTypeEncoding(*ivar as *const c_void) };
+            let offset = unsafe { ivar_getOffset(*ivar as *const c_void) };
+            if offset < 0 {
+                continue;
+            }
+            resolved = Some(ObjcIvarDetail {
+                class_name: class_name.to_string(),
+                ivar_name: ivar_name.to_string(),
+                type_encoding: if type_encoding.is_null() {
+                    String::new()
+                } else {
+                    unsafe { CStr::from_ptr(type_encoding) }.to_string_lossy().into_owned()
+                },
+                offset: offset as usize,
+                ivar_pointer: *ivar as usize,
+                image_path: image_path_for_address(class as *const c_void)?,
+            });
+            break;
+        }
+
+        unsafe { libc::free(list.cast()) };
+        Ok(resolved)
+    }
+
     pub fn enumerate_ivars(class_name: &str) -> Result<Vec<ObjcIvarInfo>> {
         let class_name = class_name.trim();
         if class_name.is_empty() {
@@ -1370,8 +1448,8 @@ mod platform {
     use common::Result;
 
     use crate::{
-        ObjcClassInfo, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail, ObjcPropertyInfo,
-        ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
+        ObjcClassInfo, ObjcIvarDetail, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail,
+        ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
     };
 
     pub fn class_exists(_name: &str) -> bool {
@@ -1483,6 +1561,12 @@ mod platform {
     }
 
     pub fn enumerate_ivars(_class_name: &str) -> Result<Vec<ObjcIvarInfo>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn ivar_info(_class_name: &str, _ivar_name: &str) -> Result<Option<ObjcIvarDetail>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -1736,6 +1820,17 @@ mod tests {
     fn enumerate_ivars_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .enumerate_ivars("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn ivar_info_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .ivar_info("NSObject", "_isa")
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()
