@@ -189,6 +189,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("objc.protocolPropertyInfo NSObject description"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("objc.superclass NSObject"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

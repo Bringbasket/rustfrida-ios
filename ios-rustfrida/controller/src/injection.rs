@@ -3595,6 +3595,7 @@ fn print_controller_help() {
     println!("  objc.protocolProtocols <protocol>");
     println!("  objc.protocolMethods <protocol> [required] [instance]");
     println!("  objc.protocolProperties <protocol>");
+    println!("  objc.protocolPropertyInfo <protocol> <property>");
     println!("  objc.superclass <class>");
     println!("  objc.classChain <class>");
     println!("  objc.classExists <name>");
@@ -3967,6 +3968,16 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("objc.protocolPropertyInfo NSObject description"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_property_info",
+                    "protocolName": "NSObject",
+                    "propertyName": "description",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("objc.superclass UIViewController"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
@@ -4189,6 +4200,9 @@ mod tests {
             "objc.protocolMethods NSObject optional class"
         ));
         assert!(!command_requires_inline_hooks("objc.protocolProperties NSObject"));
+        assert!(!command_requires_inline_hooks(
+            "objc.protocolPropertyInfo NSObject description"
+        ));
         assert!(!command_requires_inline_hooks("objc.superclass UIView"));
         assert!(!command_requires_inline_hooks("objc.classChain UIView"));
         assert!(!command_requires_inline_hooks("objc.properties UIView meta delegate"));

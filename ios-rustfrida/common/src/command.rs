@@ -90,6 +90,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.protocolProtocols ")
         || command.starts_with("objc.protocolMethods ")
         || command.starts_with("objc.protocolProperties ")
+        || command.starts_with("objc.protocolPropertyInfo ")
         || command.starts_with("objc.superclass ")
         || command.starts_with("objc.classChain ")
         || command.starts_with("objc.selector ")
@@ -235,6 +236,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "objc.protocol_properties",
             "protocolName": protocol_name.trim(),
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.protocolPropertyInfo ") {
+        let (protocol_name, property_name) = parse_objc_member_info(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_property_info",
+            "protocolName": protocol_name,
+            "propertyName": property_name,
         }));
     }
 
@@ -1235,6 +1245,16 @@ mod tests {
                 spec: json!({
                     "kind": "objc.protocol_properties",
                     "protocolName": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolPropertyInfo NSObject description"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_property_info",
+                    "protocolName": "NSObject",
+                    "propertyName": "description",
                 })
             })
         );

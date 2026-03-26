@@ -9,7 +9,7 @@ use crate::value::JSValue;
 use common::Error as CommonError;
 use objc_api::{
     ObjcApi, ObjcClassInfo, ObjcIvarDetail, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail,
-    ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyInfo,
+    ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodInfo, ObjcProtocolPropertyDetail, ObjcProtocolPropertyInfo,
 };
 
 unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &str) -> Result<u64, ffi::JSValue> {
@@ -738,6 +738,26 @@ unsafe fn objc_protocol_property_to_js(ctx: *mut ffi::JSContext, property: &Objc
     object.raw()
 }
 
+unsafe fn objc_protocol_property_detail_to_js(
+    ctx: *mut ffi::JSContext,
+    property: &ObjcProtocolPropertyDetail,
+) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "protocolName", JSValue::string(ctx, &property.protocol_name));
+    object.set_property(ctx, "name", JSValue::string(ctx, &property.property_name));
+    object.set_property(ctx, "attributes", JSValue::string(ctx, &property.attributes));
+    object.set_property(
+        ctx,
+        "propertyPointer",
+        create_native_pointer(ctx, property.property_pointer as u64),
+    );
+    match &property.image_path {
+        Some(path) => object.set_property(ctx, "imagePath", JSValue::string(ctx, path)),
+        None => object.set_property(ctx, "imagePath", JSValue::null()),
+    };
+    object.raw()
+}
+
 unsafe extern "C" fn js_objc_protocol_methods(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -808,6 +828,41 @@ unsafe extern "C" fn js_objc_protocol_properties(
         ffi::JS_SetPropertyUint32(ctx, array, index as u32, objc_protocol_property_to_js(ctx, property));
     }
     array
+}
+
+unsafe extern "C" fn js_objc_protocol_property_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let protocol_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.protocolPropertyInfo(protocolName, propertyName) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let property_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        1,
+        "ObjC.protocolPropertyInfo(protocolName, propertyName) requires 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    match ObjcApi::new().protocol_property_info(&protocol_name, &property_name) {
+        Ok(Some(info)) => objc_protocol_property_detail_to_js(ctx, &info),
+        Ok(None) | Err(CommonError::Unsupported(_)) => JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => js_throw_type_error(ctx, &message),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
 }
 
 unsafe extern "C" fn js_objc_methods(
@@ -1153,6 +1208,13 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
             "protocolProperties",
             js_objc_protocol_properties,
             1,
+        );
+        add_cfunction_to_object(
+            ctx_ptr,
+            objc.raw(),
+            "protocolPropertyInfo",
+            js_objc_protocol_property_info,
+            2,
         );
         add_cfunction_to_object(ctx_ptr, objc.raw(), "superclass", js_objc_superclass, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classChain", js_objc_class_chain, 1);

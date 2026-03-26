@@ -103,6 +103,17 @@ function parseObjcProtocolInfo(raw) {
     };
 }
 
+function parseObjcProtocolPropertyInfo(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) {
+        throw new Error('objc.protocolPropertyInfo usage: objc.protocolPropertyInfo <protocol> <property>');
+    }
+    return {
+        protocolName: parts[0],
+        propertyName: parts[1],
+    };
+}
+
 function parseObjcMethods(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -1155,6 +1166,20 @@ function formatObjcPropertyInfo(property) {
     return prefix + '[' + property.className + ' ' + property.name + ']' + ' ' + details.join(' ');
 }
 
+function formatObjcProtocolPropertyInfo(property) {
+    const details = ['property=' + property.propertyPointer];
+    if (property.typeName && property.typeName.length !== 0) {
+        details.push('type=' + property.typeName);
+    }
+    if (property.attributes.length !== 0) {
+        details.push('attrs=' + property.attributes);
+    }
+    if (property.imagePath !== null && property.imagePath !== undefined) {
+        details.push('image=' + property.imagePath);
+    }
+    return '@protocol(' + property.protocolName + ') ' + property.name + ' ' + details.join(' ');
+}
+
 function formatObjcIvar(ivar) {
     const typeName = ivar.typeName || ivar.typeEncoding;
     const suffix = typeName.length === 0 ? '' : ' type=' + typeName;
@@ -1437,6 +1462,35 @@ function normalizeObjcPropertyInfo(property) {
         imagePath: property.imagePath === undefined || property.imagePath === null ? null : String(property.imagePath),
     };
     normalized.text = formatObjcPropertyInfo(normalized);
+    return normalized;
+}
+
+function normalizeObjcProtocolPropertyInfo(property) {
+    const attributeInfo = parseObjcPropertyAttributes(property.attributes);
+    const normalized = {
+        protocolName: String(property.protocolName || ''),
+        name: String(property.name || ''),
+        attributes: String(property.attributes || ''),
+        typeEncoding: attributeInfo.typeEncoding,
+        typeName: attributeInfo.typeName,
+        typeInfo: attributeInfo.typeInfo,
+        oldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding,
+        ownership: attributeInfo.ownership,
+        isReadonly: attributeInfo.isReadonly,
+        isNonatomic: attributeInfo.isNonatomic,
+        isDynamic: attributeInfo.isDynamic,
+        getterName: attributeInfo.getterName,
+        setterName: attributeInfo.setterName,
+        ivarName: attributeInfo.ivarName,
+        isObject: attributeInfo.isObject,
+        isBlock: attributeInfo.isBlock,
+        objectClassName: attributeInfo.objectClassName,
+        objectProtocols: attributeInfo.objectProtocols,
+        attributeInfo,
+        propertyPointer: property.propertyPointer.toString(),
+        imagePath: property.imagePath === undefined || property.imagePath === null ? null : String(property.imagePath),
+    };
+    normalized.text = formatObjcProtocolPropertyInfo(normalized);
     return normalized;
 }
 
@@ -2145,6 +2199,19 @@ function handleSpecResult(spec) {
             text: properties.map((property) => property.text).join('\n'),
         };
     }
+    case 'objc.protocol_property_info': {
+        const protocolName = String(spec.protocolName || '');
+        const propertyName = String(spec.propertyName || '');
+        const propertyInfo = ObjC.protocolPropertyInfo(protocolName, propertyName);
+        const normalized = propertyInfo === null ? null : normalizeObjcProtocolPropertyInfo(propertyInfo);
+        return {
+            kind: 'objc.protocol_property_info',
+            protocolName,
+            propertyName,
+            propertyInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'objc.superclass': {
         const className = String(spec.className || '');
         const superclass = ObjC.superclass(className);
@@ -2693,6 +2760,15 @@ function legacyToSpec(command) {
 
     if (trimmed.startsWith('objc.protocolProperties ')) {
         return { kind: 'objc.protocol_properties', protocolName: trimmed.slice('objc.protocolProperties '.length) };
+    }
+
+    if (trimmed.startsWith('objc.protocolPropertyInfo ')) {
+        const parsed = parseObjcProtocolPropertyInfo(trimmed.slice('objc.protocolPropertyInfo '.length));
+        return {
+            kind: 'objc.protocol_property_info',
+            protocolName: parsed.protocolName,
+            propertyName: parsed.propertyName,
+        };
     }
 
     if (trimmed.startsWith('objc.superclass ')) {
