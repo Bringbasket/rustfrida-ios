@@ -537,6 +537,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const methods = ObjC.methods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && typeof methods[0].methodTypeInfo === 'object'); })()")
+                    .expect("objc methods decoded type info"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(ObjC.findClasses('NSObject'))")
                     .expect("objc findClasses"),
                 "true"
@@ -573,6 +579,12 @@ undefined;
                 runtime
                     .eval("(function() { const methods = ObjC.protocolMethods('NSObject'); return methods.length === 0 || typeof methods[0].typeEncoding === 'string'; })()")
                     .expect("objc protocolMethods typeEncoding"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const methods = ObjC.protocolMethods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && typeof methods[0].methodTypeInfo === 'object'); })()")
+                    .expect("objc protocolMethods decoded type info"),
                 "true"
             );
             assert_eq!(
@@ -615,6 +627,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(ObjC.ivars('NSObject'))")
                     .expect("objc ivars"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const ivars = ObjC.ivars('NSObject'); return ivars.length === 0 || (typeof ivars[0].typeName === 'string' && typeof ivars[0].typeInfo === 'object'); })()")
+                    .expect("objc ivars decoded type info"),
                 "true"
             );
             assert_eq!(
@@ -1765,7 +1783,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_methods', protocolName: 'NSObject', isRequired: false, isInstanceMethod: false }); return result.kind === 'objc.protocol_methods' && result.protocolName === 'NSObject' && result.isRequired === false && result.isInstanceMethod === false && result.count === result.methods.length && (result.methods.length === 0 || typeof result.methods[0].typeEncoding === 'string') && result.text === result.methods.map((method) => method.text).join('\\n'); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_methods', protocolName: 'NSObject', isRequired: false, isInstanceMethod: false }); return result.kind === 'objc.protocol_methods' && result.protocolName === 'NSObject' && result.isRequired === false && result.isInstanceMethod === false && result.count === result.methods.length && (result.methods.length === 0 || (typeof result.methods[0].typeEncoding === 'string' && typeof result.methods[0].returnTypeName === 'string' && Array.isArray(result.methods[0].argumentTypeNames) && typeof result.methods[0].methodTypeInfo === 'object')) && result.text === result.methods.map((method) => method.text).join('\\n'); })()"
                     )
                     .expect("agent objc protocolMethods result"),
                 "true"
@@ -1773,7 +1791,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_properties', protocolName: 'NSObject' }); return result.kind === 'objc.protocol_properties' && result.protocolName === 'NSObject' && result.count === result.properties.length && (result.properties.length === 0 || (typeof result.properties[0].typeEncoding === 'string' && Array.isArray(result.properties[0].objectProtocols) && typeof result.properties[0].attributeInfo === 'object')) && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_properties', protocolName: 'NSObject' }); return result.kind === 'objc.protocol_properties' && result.protocolName === 'NSObject' && result.count === result.properties.length && (result.properties.length === 0 || (typeof result.properties[0].typeEncoding === 'string' && typeof result.properties[0].typeName === 'string' && Array.isArray(result.properties[0].objectProtocols) && typeof result.properties[0].typeInfo === 'object' && typeof result.properties[0].attributeInfo === 'object')) && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
                     )
                     .expect("agent objc protocolProperties result"),
                 "true"
@@ -1797,7 +1815,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return result.kind === 'objc.properties' && result.className === 'NSObject' && result.isClassProperty === true && result.filter === 'delegate' && result.count === result.properties.length && (result.properties.length === 0 || (typeof result.properties[0].typeEncoding === 'string' && Array.isArray(result.properties[0].objectProtocols) && typeof result.properties[0].attributeInfo === 'object')) && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return result.kind === 'objc.properties' && result.className === 'NSObject' && result.isClassProperty === true && result.filter === 'delegate' && result.count === result.properties.length && (result.properties.length === 0 || (typeof result.properties[0].typeEncoding === 'string' && typeof result.properties[0].typeName === 'string' && Array.isArray(result.properties[0].objectProtocols) && typeof result.properties[0].typeInfo === 'object' && typeof result.properties[0].attributeInfo === 'object')) && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
                     )
                     .expect("agent objc properties result"),
                 "true"
@@ -1805,7 +1823,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return result.kind === 'objc.ivars' && result.className === 'NSObject' && result.filter === 'delegate' && result.count === result.ivars.length && result.text === result.ivars.map((ivar) => ivar.text).join('\\n') && (result.ivars.length === 0 || typeof result.ivars[0].offsetHex === 'string'); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return result.kind === 'objc.ivars' && result.className === 'NSObject' && result.filter === 'delegate' && result.count === result.ivars.length && result.text === result.ivars.map((ivar) => ivar.text).join('\\n') && (result.ivars.length === 0 || (typeof result.ivars[0].offsetHex === 'string' && typeof result.ivars[0].typeName === 'string' && typeof result.ivars[0].typeInfo === 'object')); })()"
                     )
                     .expect("agent objc ivars result"),
                 "true"

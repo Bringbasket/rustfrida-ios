@@ -574,45 +574,81 @@ function formatSwiftTypeLayout(layout) {
 
 function formatObjcMethod(method) {
     const prefix = method.isClassMethod ? '+' : '-';
-    const suffix = method.typeEncoding.length === 0 ? '' : ' types=' + method.typeEncoding;
-    return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']' + suffix;
+    const details = [];
+    if (method.signature && method.signature.length !== 0) {
+        details.push('sig=' + method.signature);
+    }
+    if (method.typeEncoding.length !== 0) {
+        details.push('types=' + method.typeEncoding);
+    }
+    return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']' + (details.length === 0 ? '' : ' ' + details.join(' '));
 }
 
 function formatObjcProtocolMethod(method) {
     const prefix = method.isInstanceMethod ? '-' : '+';
-    const suffix = method.typeEncoding.length === 0 ? '' : ' types=' + method.typeEncoding;
-    return prefix + '[' + method.protocolName + ' ' + method.selector + '] ' + (method.isRequired ? 'required' : 'optional') + suffix;
+    const details = [method.isRequired ? 'required' : 'optional'];
+    if (method.signature && method.signature.length !== 0) {
+        details.push('sig=' + method.signature);
+    }
+    if (method.typeEncoding.length !== 0) {
+        details.push('types=' + method.typeEncoding);
+    }
+    return prefix + '[' + method.protocolName + ' ' + method.selector + '] ' + details.join(' ');
 }
 
-function parseObjcPropertyTypeEncoding(typeEncoding) {
-    const raw = String(typeEncoding || '');
-    const result = {
-        typeEncoding: raw,
-        isObject: false,
-        isBlock: false,
-        objectClassName: null,
-        objectProtocols: [],
-    };
+const OBJC_TYPE_QUALIFIER_NAMES = {
+    r: 'const',
+    n: 'in',
+    N: 'inout',
+    o: 'out',
+    O: 'bycopy',
+    R: 'byref',
+    V: 'oneway',
+};
 
-    if (!raw.startsWith('@')) {
-        return result;
+const OBJC_SIMPLE_TYPE_NAMES = {
+    c: 'char',
+    i: 'int',
+    s: 'short',
+    l: 'long',
+    q: 'long long',
+    C: 'unsigned char',
+    I: 'unsigned int',
+    S: 'unsigned short',
+    L: 'unsigned long',
+    Q: 'unsigned long long',
+    f: 'float',
+    d: 'double',
+    D: 'long double',
+    B: 'bool',
+    v: 'void',
+    '*': 'char *',
+    '#': 'Class',
+    ':': 'SEL',
+    '?': 'unknown',
+};
+
+function isObjcTypeQualifier(ch) {
+    return Object.prototype.hasOwnProperty.call(OBJC_TYPE_QUALIFIER_NAMES, ch);
+}
+
+function findMatchingDelimiter(raw, start, openChar, closeChar) {
+    let depth = 0;
+    for (let i = start; i < raw.length; i++) {
+        const ch = raw[i];
+        if (ch === openChar) {
+            depth += 1;
+        } else if (ch === closeChar) {
+            depth -= 1;
+            if (depth === 0) {
+                return i;
+            }
+        }
     }
+    return raw.length - 1;
+}
 
-    result.isObject = true;
-    if (raw === '@?') {
-        result.isBlock = true;
-        return result;
-    }
-
-    if (!(raw.startsWith('@\"') && raw.endsWith('\"'))) {
-        return result;
-    }
-
-    const inner = raw.slice(2, -1);
-    if (inner.length === 0) {
-        return result;
-    }
-
+function parseObjcObjectTypeInner(inner) {
     const protocols = [];
     let objectClassName = inner;
     const firstProtocol = inner.indexOf('<');
@@ -627,8 +663,244 @@ function parseObjcPropertyTypeEncoding(typeEncoding) {
         }
     }
 
-    result.objectClassName = objectClassName.length === 0 ? null : objectClassName;
-    result.objectProtocols = protocols;
+    const className = objectClassName.trim();
+    const displayName = protocols.length === 0
+        ? (className.length === 0 ? 'id' : className + ' *')
+        : (className.length === 0 ? 'id<' + protocols.join(', ') + '>' : className + '<' + protocols.join(', ') + '> *');
+    return {
+        displayName,
+        objectClassName: className.length === 0 ? null : className,
+        objectProtocols: protocols,
+    };
+}
+
+function consumeObjcTypeEncoding(raw, start) {
+    raw = String(raw || '');
+    let index = start;
+    const qualifiers = [];
+    while (index < raw.length && isObjcTypeQualifier(raw[index])) {
+        qualifiers.push(raw[index]);
+        index += 1;
+    }
+
+    if (index >= raw.length) {
+        return null;
+    }
+
+    const ch = raw[index];
+    let kind = 'unknown';
+    let displayName = 'unknown';
+    let objectClassName = null;
+    let objectProtocols = [];
+    let isObject = false;
+    let isBlock = false;
+    let pointee = null;
+    let arrayCount = null;
+    let memberName = null;
+
+    if (ch === '@') {
+        isObject = true;
+        kind = 'object';
+        index += 1;
+        if (index < raw.length && raw[index] === '?') {
+            kind = 'block';
+            isBlock = true;
+            displayName = 'block';
+            index += 1;
+        } else if (index < raw.length && raw[index] === '"') {
+            const endQuote = raw.indexOf('"', index + 1);
+            const quoteEnd = endQuote === -1 ? raw.length - 1 : endQuote;
+            const inner = raw.slice(index + 1, quoteEnd);
+            const parsedObject = parseObjcObjectTypeInner(inner);
+            displayName = parsedObject.displayName;
+            objectClassName = parsedObject.objectClassName;
+            objectProtocols = parsedObject.objectProtocols;
+            index = quoteEnd + 1;
+        } else {
+            displayName = 'id';
+        }
+    } else if (ch === '^') {
+        kind = 'pointer';
+        const pointeeInfo = consumeObjcTypeEncoding(raw, index + 1);
+        if (pointeeInfo === null) {
+            displayName = 'void *';
+            index += 1;
+        } else {
+            pointee = pointeeInfo.info;
+            displayName = pointee.displayName + ' *';
+            index = pointeeInfo.nextIndex;
+        }
+    } else if (ch === '[') {
+        kind = 'array';
+        index += 1;
+        const countStart = index;
+        while (index < raw.length && /[0-9]/.test(raw[index])) {
+            index += 1;
+        }
+        arrayCount = index > countStart ? Number(raw.slice(countStart, index)) : null;
+        const elementInfo = consumeObjcTypeEncoding(raw, index);
+        if (elementInfo === null) {
+            displayName = 'array';
+        } else {
+            pointee = elementInfo.info;
+            displayName = pointee.displayName + '[' + String(arrayCount === null ? '' : arrayCount) + ']';
+            index = elementInfo.nextIndex;
+        }
+        if (index < raw.length && raw[index] === ']') {
+            index += 1;
+        }
+    } else if (ch === '{') {
+        kind = 'struct';
+        const end = findMatchingDelimiter(raw, index, '{', '}');
+        const body = raw.slice(index + 1, end);
+        const separator = body.indexOf('=');
+        memberName = (separator === -1 ? body : body.slice(0, separator)).trim() || '?';
+        displayName = 'struct ' + memberName;
+        index = end + 1;
+    } else if (ch === '(') {
+        kind = 'union';
+        const end = findMatchingDelimiter(raw, index, '(', ')');
+        const body = raw.slice(index + 1, end);
+        const separator = body.indexOf('=');
+        memberName = (separator === -1 ? body : body.slice(0, separator)).trim() || '?';
+        displayName = 'union ' + memberName;
+        index = end + 1;
+    } else if (ch === 'b') {
+        kind = 'bitfield';
+        index += 1;
+        const digitsStart = index;
+        while (index < raw.length && /[0-9]/.test(raw[index])) {
+            index += 1;
+        }
+        const bits = raw.slice(digitsStart, index) || '?';
+        displayName = 'bitfield(' + bits + ')';
+    } else {
+        kind = ch;
+        displayName = OBJC_SIMPLE_TYPE_NAMES[ch] || ('unknown(' + ch + ')');
+        index += 1;
+    }
+
+    const qualifierNames = qualifiers.map((qualifier) => OBJC_TYPE_QUALIFIER_NAMES[qualifier]).filter(Boolean);
+    const qualifierPrefix = qualifierNames.length === 0 ? '' : qualifierNames.join(' ') + ' ';
+    return {
+        nextIndex: index,
+        info: {
+            raw: raw.slice(start, index),
+            qualifiers,
+            qualifierNames,
+            kind,
+            displayName: qualifierPrefix + displayName,
+            isObject,
+            isBlock,
+            objectClassName,
+            objectProtocols,
+            pointee,
+            arrayCount,
+            memberName,
+        },
+    };
+}
+
+function parseObjcTypeEncodingInfo(typeEncoding) {
+    const raw = String(typeEncoding || '');
+    const parsed = consumeObjcTypeEncoding(raw, 0);
+    if (parsed === null) {
+        return {
+            raw,
+            qualifiers: [],
+            qualifierNames: [],
+            kind: 'unknown',
+            displayName: raw.length === 0 ? '' : raw,
+            isObject: false,
+            isBlock: false,
+            objectClassName: null,
+            objectProtocols: [],
+            pointee: null,
+            arrayCount: null,
+            memberName: null,
+        };
+    }
+    const info = parsed.info;
+    if (parsed.nextIndex !== raw.length) {
+        info.trailingEncoding = raw.slice(parsed.nextIndex);
+    }
+    return info;
+}
+
+function parseObjcPropertyTypeEncoding(typeEncoding) {
+    const info = parseObjcTypeEncodingInfo(typeEncoding);
+    return {
+        typeEncoding: String(typeEncoding || ''),
+        typeName: info.displayName,
+        typeInfo: info,
+        isObject: info.isObject,
+        isBlock: info.isBlock,
+        objectClassName: info.objectClassName,
+        objectProtocols: info.objectProtocols,
+    };
+}
+
+function skipObjcMethodOffsetDigits(raw, start) {
+    let index = start;
+    while (index < raw.length && /[0-9]/.test(raw[index])) {
+        index += 1;
+    }
+    return index;
+}
+
+function parseObjcMethodTypeEncoding(typeEncoding) {
+    const raw = String(typeEncoding || '');
+    const result = {
+        raw,
+        returnTypeEncoding: '',
+        returnTypeName: '',
+        returnTypeInfo: null,
+        frameSize: null,
+        argumentCount: 0,
+        explicitArgumentCount: 0,
+        argumentTypeEncodings: [],
+        argumentTypeNames: [],
+        argumentTypeInfos: [],
+        hiddenArgumentTypeNames: [],
+        signature: '',
+    };
+
+    if (raw.length === 0) {
+        return result;
+    }
+
+    const returnType = consumeObjcTypeEncoding(raw, 0);
+    if (returnType === null) {
+        return result;
+    }
+
+    result.returnTypeEncoding = returnType.info.raw;
+    result.returnTypeName = returnType.info.displayName;
+    result.returnTypeInfo = returnType.info;
+
+    let index = skipObjcMethodOffsetDigits(raw, returnType.nextIndex);
+    if (index > returnType.nextIndex) {
+        result.frameSize = Number(raw.slice(returnType.nextIndex, index));
+    }
+
+    while (index < raw.length) {
+        const argumentType = consumeObjcTypeEncoding(raw, index);
+        if (argumentType === null || argumentType.nextIndex <= index) {
+            break;
+        }
+        result.argumentTypeEncodings.push(argumentType.info.raw);
+        result.argumentTypeNames.push(argumentType.info.displayName);
+        result.argumentTypeInfos.push(argumentType.info);
+        index = skipObjcMethodOffsetDigits(raw, argumentType.nextIndex);
+    }
+
+    result.argumentCount = result.argumentTypeNames.length;
+    result.explicitArgumentCount = Math.max(result.argumentCount - 2, 0);
+    result.hiddenArgumentTypeNames = result.argumentTypeNames.slice(0, 2);
+    const explicitArguments = result.argumentTypeNames.slice(2);
+    result.signature = result.returnTypeName.length === 0
+        ? ''
+        : result.returnTypeName + ' (' + explicitArguments.join(', ') + ')';
     return result;
 }
 
@@ -637,6 +909,8 @@ function parseObjcPropertyAttributes(attributes) {
     const info = {
         raw,
         typeEncoding: '',
+        typeName: '',
+        typeInfo: null,
         oldStyleTypeEncoding: null,
         ownership: 'assign',
         isReadonly: false,
@@ -714,6 +988,8 @@ function parseObjcPropertyAttributes(attributes) {
     }
 
     const parsedType = parseObjcPropertyTypeEncoding(info.typeEncoding);
+    info.typeName = parsedType.typeName;
+    info.typeInfo = parsedType.typeInfo;
     info.isObject = parsedType.isObject;
     info.isBlock = parsedType.isBlock;
     info.objectClassName = parsedType.objectClassName;
@@ -723,8 +999,8 @@ function parseObjcPropertyAttributes(attributes) {
 
 function formatObjcProtocolProperty(property) {
     const details = [];
-    if (property.typeEncoding.length !== 0) {
-        details.push('type=' + property.typeEncoding);
+    if (property.typeName && property.typeName.length !== 0) {
+        details.push('type=' + property.typeName);
     }
     if (property.ownership !== 'assign') {
         details.push('ownership=' + property.ownership);
@@ -744,8 +1020,8 @@ function formatObjcProtocolProperty(property) {
 function formatObjcProperty(property) {
     const prefix = property.isClassProperty ? '+' : '-';
     const details = [];
-    if (property.typeEncoding.length !== 0) {
-        details.push('type=' + property.typeEncoding);
+    if (property.typeName && property.typeName.length !== 0) {
+        details.push('type=' + property.typeName);
     }
     if (property.ownership !== 'assign') {
         details.push('ownership=' + property.ownership);
@@ -763,7 +1039,8 @@ function formatObjcProperty(property) {
 }
 
 function formatObjcIvar(ivar) {
-    const suffix = ivar.typeEncoding.length === 0 ? '' : ' type=' + ivar.typeEncoding;
+    const typeName = ivar.typeName || ivar.typeEncoding;
+    const suffix = typeName.length === 0 ? '' : ' type=' + typeName;
     return ivar.className + ' ' + ivar.name + ' offset=' + '0x' + BigInt(ivar.offset || 0).toString(16) + suffix;
 }
 
@@ -832,25 +1109,53 @@ function normalizeImage(image) {
 }
 
 function normalizeObjcMethod(method) {
-    return {
+    const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const normalized = {
         className: String(method.className || ''),
         selector: String(method.selector || ''),
         isClassMethod: !!method.isClassMethod,
         imp: method.imp.toString(),
         typeEncoding: String(method.typeEncoding || ''),
-        text: formatObjcMethod(method),
+        returnTypeEncoding: methodTypeInfo.returnTypeEncoding,
+        returnTypeName: methodTypeInfo.returnTypeName,
+        returnTypeInfo: methodTypeInfo.returnTypeInfo,
+        frameSize: methodTypeInfo.frameSize,
+        argumentCount: methodTypeInfo.argumentCount,
+        explicitArgumentCount: methodTypeInfo.explicitArgumentCount,
+        argumentTypeEncodings: methodTypeInfo.argumentTypeEncodings,
+        argumentTypeNames: methodTypeInfo.argumentTypeNames,
+        argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
+        hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        signature: methodTypeInfo.signature,
+        methodTypeInfo,
     };
+    normalized.text = formatObjcMethod(normalized);
+    return normalized;
 }
 
 function normalizeObjcProtocolMethod(method) {
-    return {
+    const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const normalized = {
         protocolName: String(method.protocolName || ''),
         selector: String(method.selector || ''),
         typeEncoding: String(method.typeEncoding || ''),
+        returnTypeEncoding: methodTypeInfo.returnTypeEncoding,
+        returnTypeName: methodTypeInfo.returnTypeName,
+        returnTypeInfo: methodTypeInfo.returnTypeInfo,
+        frameSize: methodTypeInfo.frameSize,
+        argumentCount: methodTypeInfo.argumentCount,
+        explicitArgumentCount: methodTypeInfo.explicitArgumentCount,
+        argumentTypeEncodings: methodTypeInfo.argumentTypeEncodings,
+        argumentTypeNames: methodTypeInfo.argumentTypeNames,
+        argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
+        hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        signature: methodTypeInfo.signature,
+        methodTypeInfo,
         isRequired: !!method.isRequired,
         isInstanceMethod: !!method.isInstanceMethod,
-        text: formatObjcProtocolMethod(method),
     };
+    normalized.text = formatObjcProtocolMethod(normalized);
+    return normalized;
 }
 
 function normalizeObjcProtocolProperty(property) {
@@ -860,6 +1165,8 @@ function normalizeObjcProtocolProperty(property) {
         name: String(property.name || ''),
         attributes: String(property.attributes || ''),
         typeEncoding: attributeInfo.typeEncoding,
+        typeName: attributeInfo.typeName,
+        typeInfo: attributeInfo.typeInfo,
         oldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding,
         ownership: attributeInfo.ownership,
         isReadonly: attributeInfo.isReadonly,
@@ -885,6 +1192,8 @@ function normalizeObjcProperty(property) {
         name: String(property.name || ''),
         attributes: String(property.attributes || ''),
         typeEncoding: attributeInfo.typeEncoding,
+        typeName: attributeInfo.typeName,
+        typeInfo: attributeInfo.typeInfo,
         oldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding,
         ownership: attributeInfo.ownership,
         isReadonly: attributeInfo.isReadonly,
@@ -906,14 +1215,22 @@ function normalizeObjcProperty(property) {
 
 function normalizeObjcIvar(ivar) {
     const offset = typeof ivar.offset === 'bigint' ? ivar.offset : BigInt(ivar.offset || 0);
-    return {
+    const typeInfo = parseObjcTypeEncodingInfo(ivar.typeEncoding);
+    const normalized = {
         className: String(ivar.className || ''),
         name: String(ivar.name || ''),
         typeEncoding: String(ivar.typeEncoding || ''),
+        typeName: typeInfo.displayName,
+        typeInfo,
+        isObject: typeInfo.isObject,
+        isBlock: typeInfo.isBlock,
+        objectClassName: typeInfo.objectClassName,
+        objectProtocols: typeInfo.objectProtocols,
         offset: offset.toString(),
         offsetHex: '0x' + offset.toString(16),
-        text: formatObjcIvar(ivar),
     };
+    normalized.text = formatObjcIvar(normalized);
+    return normalized;
 }
 
 function normalizeDebugSymbol(symbol, rawAddress) {
