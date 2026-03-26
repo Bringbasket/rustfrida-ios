@@ -84,6 +84,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
             | "swift.typeKinds"
     ) || command.starts_with("objc.classExists ")
         || command.starts_with("objc.classProtocols ")
+        || command.starts_with("objc.protocolMethods ")
         || command.starts_with("objc.superclass ")
         || command.starts_with("objc.classChain ")
         || command.starts_with("objc.selector ")
@@ -178,6 +179,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "objc.class_protocols",
             "className": class_name.trim(),
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.protocolMethods ") {
+        let (protocol_name, is_required, is_instance_method) = parse_objc_protocol_methods(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_methods",
+            "protocolName": protocol_name,
+            "isRequired": is_required,
+            "isInstanceMethod": is_instance_method,
         }));
     }
 
@@ -743,6 +754,27 @@ fn parse_objc_ivars(raw: &str) -> Option<(String, Option<String>)> {
     Some((parts[0].to_string(), filter))
 }
 
+fn parse_objc_protocol_methods(raw: &str) -> Option<(String, bool, bool)> {
+    let parts = raw.split_whitespace().collect::<Vec<_>>();
+    if parts.is_empty() {
+        return None;
+    }
+
+    let mut is_required = true;
+    let mut is_instance_method = true;
+    for part in parts.iter().skip(1) {
+        match *part {
+            "required" | "req" => is_required = true,
+            "optional" | "opt" => is_required = false,
+            "instance" | "inst" | "-" => is_instance_method = true,
+            "class" | "meta" | "+" => is_instance_method = false,
+            _ => return None,
+        }
+    }
+
+    Some((parts[0].to_string(), is_required, is_instance_method))
+}
+
 fn parse_objc_method_owners(raw: &str) -> Option<(String, bool)> {
     let parts = raw.split_whitespace().collect::<Vec<_>>();
     if parts.is_empty() {
@@ -993,6 +1025,17 @@ mod tests {
                 spec: json!({
                     "kind": "objc.class_protocols",
                     "className": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolMethods NSObject optional class"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_methods",
+                    "protocolName": "NSObject",
+                    "isRequired": false,
+                    "isInstanceMethod": false,
                 })
             })
         );

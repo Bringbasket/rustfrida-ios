@@ -24,6 +24,14 @@ pub struct ObjcIvarInfo {
     pub offset: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjcProtocolMethodInfo {
+    pub protocol_name: String,
+    pub selector_name: String,
+    pub is_required: bool,
+    pub is_instance_method: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct ObjcApi;
 
@@ -76,6 +84,15 @@ impl ObjcApi {
 
     pub fn class_chain(&self, class_name: &str) -> Result<Vec<String>> {
         platform::class_chain(class_name)
+    }
+
+    pub fn protocol_methods(
+        &self,
+        protocol_name: &str,
+        is_required: bool,
+        is_instance_method: bool,
+    ) -> Result<Vec<ObjcProtocolMethodInfo>> {
+        platform::protocol_methods(protocol_name, is_required, is_instance_method)
     }
 
     pub fn enumerate_properties(&self, class_name: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
@@ -185,16 +202,23 @@ mod platform {
 
     use crate::{
         query_matches_class_name, query_matches_ivar_name, query_matches_method_name, query_matches_property_name,
-        ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo,
+        ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo,
     };
 
     #[link(name = "objc")]
     extern "C" {
         fn objc_getClass(name: *const c_char) -> *mut c_void;
+        fn objc_getProtocol(name: *const c_char) -> *mut c_void;
         fn objc_copyProtocolList(out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyProtocolList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyPropertyList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyIvarList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
+        fn protocol_copyMethodDescriptionList(
+            proto: *const c_void,
+            is_required_method: i8,
+            is_instance_method: i8,
+            out_count: *mut u32,
+        ) -> *mut ObjcMethodDescription;
         fn object_getClass(obj: *const c_void) -> *mut c_void;
         fn objc_copyClassList(out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyMethodList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
@@ -221,6 +245,12 @@ mod platform {
         dli_fbase: *mut c_void,
         dli_sname: *const c_char,
         dli_saddr: *mut c_void,
+    }
+
+    #[repr(C)]
+    struct ObjcMethodDescription {
+        name: *const c_void,
+        types: *const c_char,
     }
 
     pub fn class_exists(name: &str) -> bool {
@@ -398,6 +428,66 @@ mod platform {
         }
 
         Ok(chain)
+    }
+
+    pub fn protocol_methods(
+        protocol_name: &str,
+        is_required: bool,
+        is_instance_method: bool,
+    ) -> Result<Vec<ObjcProtocolMethodInfo>> {
+        let protocol_name = protocol_name.trim();
+        if protocol_name.is_empty() {
+            return Err(Error::InvalidArgument("protocol name must not be empty".into()));
+        }
+
+        let protocol_name_c = CString::new(protocol_name)
+            .map_err(|_| Error::InvalidArgument("protocol name contains interior NUL".into()))?;
+        let protocol = unsafe { objc_getProtocol(protocol_name_c.as_ptr()) };
+        if protocol.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let mut count = 0u32;
+        let list = unsafe {
+            protocol_copyMethodDescriptionList(
+                protocol,
+                if is_required { 1 } else { 0 },
+                if is_instance_method { 1 } else { 0 },
+                &mut count as *mut u32,
+            )
+        };
+        if list.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let slice = unsafe { std::slice::from_raw_parts(list, count as usize) };
+        let mut methods = Vec::with_capacity(slice.len());
+        for method in slice {
+            if method.name.is_null() {
+                continue;
+            }
+
+            let selector_name = unsafe { sel_getName(method.name) };
+            if selector_name.is_null() {
+                continue;
+            }
+
+            methods.push(ObjcProtocolMethodInfo {
+                protocol_name: protocol_name.to_string(),
+                selector_name: unsafe { CStr::from_ptr(selector_name) }.to_string_lossy().into_owned(),
+                is_required,
+                is_instance_method,
+            });
+        }
+
+        unsafe { libc::free(list.cast()) };
+        methods.sort_by(|left, right| left.selector_name.cmp(&right.selector_name));
+        methods.dedup_by(|left, right| {
+            left.selector_name == right.selector_name
+                && left.is_required == right.is_required
+                && left.is_instance_method == right.is_instance_method
+        });
+        Ok(methods)
     }
 
     pub fn enumerate_properties(class_name: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
@@ -815,7 +905,7 @@ mod platform {
 mod platform {
     use common::Result;
 
-    use crate::{ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo};
+    use crate::{ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo};
 
     pub fn class_exists(_name: &str) -> bool {
         false
@@ -870,6 +960,16 @@ mod platform {
     }
 
     pub fn class_chain(_class_name: &str) -> Result<Vec<String>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn protocol_methods(
+        _protocol_name: &str,
+        _is_required: bool,
+        _is_instance_method: bool,
+    ) -> Result<Vec<ObjcProtocolMethodInfo>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -1026,6 +1126,17 @@ mod tests {
     fn class_chain_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .class_chain("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn protocol_methods_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .protocol_methods("NSObject", true, true)
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()

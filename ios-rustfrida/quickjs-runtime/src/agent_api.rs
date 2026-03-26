@@ -124,6 +124,40 @@ function parseObjcIvars(raw) {
     };
 }
 
+function parseObjcProtocolMethods(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) {
+        throw new Error('objc.protocolMethods usage: objc.protocolMethods <protocol> [required] [instance]');
+    }
+    let isRequired = true;
+    let isInstanceMethod = true;
+    for (let i = 1; i < parts.length; i++) {
+        const part = parts[i];
+        if (part === 'required' || part === 'req') {
+            isRequired = true;
+            continue;
+        }
+        if (part === 'optional' || part === 'opt') {
+            isRequired = false;
+            continue;
+        }
+        if (part === 'instance' || part === 'inst' || part === '-') {
+            isInstanceMethod = true;
+            continue;
+        }
+        if (part === 'class' || part === 'meta' || part === '+') {
+            isInstanceMethod = false;
+            continue;
+        }
+        throw new Error('objc.protocolMethods usage: objc.protocolMethods <protocol> [required] [instance]');
+    }
+    return {
+        protocolName: parts[0],
+        isRequired,
+        isInstanceMethod,
+    };
+}
+
 function parseObjcMethodOwners(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -504,6 +538,11 @@ function formatObjcMethod(method) {
     return method.imp.toString() + ' ' + prefix + '[' + method.className + ' ' + method.selector + ']';
 }
 
+function formatObjcProtocolMethod(method) {
+    const prefix = method.isInstanceMethod ? '-' : '+';
+    return prefix + '[' + method.protocolName + ' ' + method.selector + '] ' + (method.isRequired ? 'required' : 'optional');
+}
+
 function formatObjcProperty(property) {
     const prefix = property.isClassProperty ? '+' : '-';
     const suffix = property.attributes.length === 0 ? '' : ' attrs=' + property.attributes;
@@ -586,6 +625,16 @@ function normalizeObjcMethod(method) {
         isClassMethod: !!method.isClassMethod,
         imp: method.imp.toString(),
         text: formatObjcMethod(method),
+    };
+}
+
+function normalizeObjcProtocolMethod(method) {
+    return {
+        protocolName: String(method.protocolName || ''),
+        selector: String(method.selector || ''),
+        isRequired: !!method.isRequired,
+        isInstanceMethod: !!method.isInstanceMethod,
+        text: formatObjcProtocolMethod(method),
     };
 }
 
@@ -1102,6 +1151,21 @@ function handleSpecResult(spec) {
             text: protocols.join('\n'),
         };
     }
+    case 'objc.protocol_methods': {
+        const protocolName = String(spec.protocolName || '');
+        const isRequired = spec.isRequired === undefined ? true : !!spec.isRequired;
+        const isInstanceMethod = spec.isInstanceMethod === undefined ? true : !!spec.isInstanceMethod;
+        const methods = ObjC.protocolMethods(protocolName, isRequired, isInstanceMethod).map((method) => normalizeObjcProtocolMethod(method));
+        return {
+            kind: 'objc.protocol_methods',
+            protocolName,
+            isRequired,
+            isInstanceMethod,
+            count: methods.length,
+            methods,
+            text: methods.map((method) => method.text).join('\n'),
+        };
+    }
     case 'objc.superclass': {
         const className = String(spec.className || '');
         const superclass = ObjC.superclass(className);
@@ -1543,6 +1607,16 @@ function legacyToSpec(command) {
 
     if (trimmed.startsWith('objc.classProtocols ')) {
         return { kind: 'objc.class_protocols', className: trimmed.slice('objc.classProtocols '.length) };
+    }
+
+    if (trimmed.startsWith('objc.protocolMethods ')) {
+        const parsed = parseObjcProtocolMethods(trimmed.slice('objc.protocolMethods '.length));
+        return {
+            kind: 'objc.protocol_methods',
+            protocolName: parsed.protocolName,
+            isRequired: parsed.isRequired,
+            isInstanceMethod: parsed.isInstanceMethod,
+        };
     }
 
     if (trimmed.startsWith('objc.superclass ')) {

@@ -7,7 +7,7 @@ use crate::util::{
 };
 use crate::value::JSValue;
 use common::Error as CommonError;
-use objc_api::{ObjcApi, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo};
+use objc_api::{ObjcApi, ObjcIvarInfo, ObjcMethodInfo, ObjcPropertyInfo, ObjcProtocolMethodInfo};
 
 unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &str) -> Result<u64, ffi::JSValue> {
     if let Some(address) = crate::ptr::get_native_pointer_addr(value) {
@@ -374,6 +374,56 @@ unsafe fn objc_ivar_to_js(ctx: *mut ffi::JSContext, ivar: &ObjcIvarInfo) -> ffi:
     object.raw()
 }
 
+unsafe fn objc_protocol_method_to_js(ctx: *mut ffi::JSContext, method: &ObjcProtocolMethodInfo) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "protocolName", JSValue::string(ctx, &method.protocol_name));
+    object.set_property(ctx, "selector", JSValue::string(ctx, &method.selector_name));
+    object.set_property(ctx, "isRequired", JSValue::bool(method.is_required));
+    object.set_property(ctx, "isInstanceMethod", JSValue::bool(method.is_instance_method));
+    object.raw()
+}
+
+unsafe extern "C" fn js_objc_protocol_methods(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let protocol_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]]) requires 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let is_required = if argc >= 2 {
+        JSValue(*argv.add(1)).to_bool().unwrap_or(true)
+    } else {
+        true
+    };
+    let is_instance_method = if argc >= 3 {
+        JSValue(*argv.add(2)).to_bool().unwrap_or(true)
+    } else {
+        true
+    };
+
+    let methods = match ObjcApi::new().protocol_methods(&protocol_name, is_required, is_instance_method) {
+        Ok(methods) => methods,
+        Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    for (index, method) in methods.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, objc_protocol_method_to_js(ctx, method));
+    }
+    array
+}
+
 unsafe extern "C" fn js_objc_methods(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -708,6 +758,7 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocols", js_objc_protocols, 0);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocols", js_objc_find_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classProtocols", js_objc_class_protocols, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolMethods", js_objc_protocol_methods, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "superclass", js_objc_superclass, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classChain", js_objc_class_chain, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classExists", js_objc_class_exists, 1);

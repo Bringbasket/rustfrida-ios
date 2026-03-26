@@ -77,7 +77,7 @@
 按现有代码和 README，iOS 版已经具备这几块：
 
 - 注入链路：`plan / preflight / inject / --inject-json / --command-json`
-- ObjC 查询：`objc.classes / objc.protocols / objc.classProtocols / objc.superclass / objc.classChain / objc.properties / objc.ivars / objc.methods / objc.methodOwners / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName`
+- ObjC 查询：`objc.classes / objc.protocols / objc.classProtocols / objc.protocolMethods / objc.superclass / objc.classChain / objc.properties / objc.ivars / objc.methods / objc.methodOwners / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName`
 - Native 查询：`native.images / native.mainImage / native.image / native.symbol / native.symbols / native.exports / native.dependencies / native.encryptionInfo / native.entryPoint / native.sourceVersion / native.buildVersion / native.dylinker / native.installName / native.uuid / native.rpaths / native.imports / native.loadcmds / native.sections / native.segments`
 - Swift 查询：`swift.demangle / swift.symbols / swift.types / swift.typeKinds / swift.methodOwners / swift.typeMethods / swift.methods / swift.typesOfKind`
 - PAC 查询：`pac.available / pac.arm64e / pac.image / pac.images / pac.strip / pac.stripdata`
@@ -129,11 +129,7 @@
 
 当前 `objc-api` 主要覆盖类、方法、selector、IMP 和 image 归属。
 
-明显还没做或没做全的候选项：
-
-- `objc.protocolMethods <protocol> [required] [instance]`
-
-对标 Android 时，这一块对应的是 `quickjs-hook/src/jsapi/java/` 下那批 inspect / method list / field API 给到的“高层结构可见性”。
+目前 ObjC 这一层已经补到协议方法枚举；后续如果继续扩，就应该优先补“协议关联的更深结构信息”，而不是再回头补基础枚举命令。
 
 ### C. Swift 元数据仍可继续补
 
@@ -246,10 +242,11 @@ README 已明确写了还没完成：
 
 1. `objc.protocols`
 2. `objc.classProtocols`
-3. `objc.properties`
-4. `objc.ivars`
-5. `objc.superclass`
-6. `objc.classChain`
+3. `objc.protocolMethods`
+4. `objc.properties`
+5. `objc.ivars`
+6. `objc.superclass`
+7. `objc.classChain`
 
 原因：
 
