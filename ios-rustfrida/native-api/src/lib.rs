@@ -213,6 +213,10 @@ pub fn enumerate_images() -> Result<Vec<ImageInfo>> {
     platform::enumerate_images()
 }
 
+pub fn find_image_by_name(module_name: &str) -> Result<Option<ImageInfo>> {
+    platform::find_image_by_name(module_name)
+}
+
 pub fn find_image_by_address(address: usize) -> Result<Option<ImageInfo>> {
     platform::find_image_by_address(address)
 }
@@ -452,6 +456,17 @@ mod platform {
             images.push(ImageInfo { name, base, slide });
         }
         Ok(images)
+    }
+
+    pub fn find_image_by_name(module_name: &str) -> Result<Option<ImageInfo>> {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return Err(common::Error::InvalidArgument("module name must not be empty".into()));
+        }
+
+        Ok(enumerate_images()?
+            .into_iter()
+            .find(|image| image_name_matches(module_name, &image.name)))
     }
 
     pub fn plan(target: &InjectionTarget) -> Result<InjectionPlan> {
@@ -788,6 +803,16 @@ mod platform {
         ))
     }
 
+    pub fn find_image_by_name(module_name: &str) -> Result<Option<ImageInfo>> {
+        if module_name.trim().is_empty() {
+            return Err(common::Error::InvalidArgument("module name must not be empty".into()));
+        }
+
+        Err(common::Error::Unsupported(
+            "image lookup by module name is only available on Apple targets".into(),
+        ))
+    }
+
     pub fn plan(target: &InjectionTarget) -> Result<InjectionPlan> {
         let plan = build_injection_plan(target)?;
         let loader_symbols = resolve_loader_symbols()?;
@@ -943,6 +968,16 @@ mod platform {
         ))
     }
 
+    pub fn find_image_by_name(module_name: &str) -> Result<Option<ImageInfo>> {
+        if module_name.trim().is_empty() {
+            return Err(common::Error::InvalidArgument("module name must not be empty".into()));
+        }
+
+        Err(common::Error::Unsupported(
+            "image lookup by module name is only available on Apple targets".into(),
+        ))
+    }
+
     pub fn plan(target: &InjectionTarget) -> Result<InjectionPlan> {
         build_injection_plan(target)
     }
@@ -993,11 +1028,24 @@ mod tests {
     use common::DEFAULT_AGENT_PATH;
 
     use super::{
-        find_export_by_name, find_symbol_by_address, format_hook_environment_brief,
+        find_export_by_name, find_image_by_name, find_symbol_by_address, format_hook_environment_brief,
         loader_symbol_offset_from_canonical_address, rebase_loader_symbols_to_images,
         validate_thread_bootstrap_symbol_for_target, HookBackendInfo, HookEnvironmentReport, ImageInfo,
         InjectionTarget, LoaderSymbolRole, MachInjector, ResolvedLoaderSymbol,
     };
+
+    #[test]
+    fn image_name_matching_accepts_full_path_and_basename() {
+        assert!(find_image_by_name("").is_err());
+        assert!(super::image_name_matches(
+            "libsystem_malloc.dylib",
+            "/usr/lib/system/libsystem_malloc.dylib"
+        ));
+        assert!(super::image_name_matches(
+            "/usr/lib/system/libsystem_malloc.dylib",
+            "/usr/lib/system/libsystem_malloc.dylib"
+        ));
+    }
 
     #[cfg(unix)]
     #[test]

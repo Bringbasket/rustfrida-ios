@@ -3614,6 +3614,7 @@ fn print_controller_help() {
     println!("  objc.properties <class> [meta] [filter]");
     println!("  objc.ivars <class> [filter]");
     println!("  native.base <module>");
+    println!("  native.imageInfo <module>");
     println!("  native.export <symbol>|native.export <module> -- <symbol>");
     println!("  native.exports <module>|native.exports <module> -- <query>");
     println!("  native.exportInfo <module> -- <symbol>");
@@ -4095,6 +4096,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.imageInfo DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.exportInfo DemoBinary -- malloc"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4311,6 +4316,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.ivarInfo UIView _viewFlags"));
         assert!(!command_requires_inline_hooks("objc.ivars UIView delegate"));
         assert!(!command_requires_inline_hooks("objc.methodInfo UIView viewDidLoad"));
+        assert!(!command_requires_inline_hooks("native.imageInfo UIKit"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
         assert!(!command_requires_inline_hooks("native.exportInfo UIKit -- malloc"));

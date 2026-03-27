@@ -2533,6 +2533,12 @@ function handleSpecResult(spec) {
             text: base === null ? '<null>' : base.toString(),
         };
     }
+    case 'native.image_info': {
+        const moduleName = String(spec.moduleName || '');
+        const image = Native.imageInfo(moduleName);
+        const normalized = image === null ? null : normalizeImage(image);
+        return { kind: 'native.image_info', moduleName, image: normalized, text: normalized === null ? '<null>' : normalized.text };
+    }
     case 'native.main_image': {
         const images = Module.enumerateModules();
         const image = images.length === 0 ? null : normalizeImage(images[0]);
@@ -3253,6 +3259,14 @@ function legacyToSpec(command) {
             throw new Error('native.base usage: native.base <module>');
         }
         return { kind: 'native.base', moduleName };
+    }
+
+    if (trimmed.startsWith('native.imageInfo ')) {
+        const moduleName = trimmed.slice('native.imageInfo '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.imageInfo usage: native.imageInfo <module>');
+        }
+        return { kind: 'native.image_info', moduleName };
     }
 
     if (trimmed.startsWith('native.images ')) {

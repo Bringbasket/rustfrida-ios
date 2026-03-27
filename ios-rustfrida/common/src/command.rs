@@ -110,6 +110,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.classes ")
         || command.starts_with("objc.protocols ")
         || command.starts_with("native.base ")
+        || command.starts_with("native.imageInfo ")
         || command.starts_with("native.export ")
         || command.starts_with("native.exportInfo ")
         || command.starts_with("native.symbolInfo ")
@@ -410,6 +411,17 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "native.base",
             "moduleName": module_name.trim(),
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.imageInfo ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.image_info",
+            "moduleName": module_name,
         }));
     }
 
@@ -1288,6 +1300,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.imageInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.symbols malloc"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -1750,6 +1766,12 @@ mod tests {
             AgentCommand::from_legacy("native.export  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.export  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.imageInfo  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.imageInfo  ".into(),
             })
         );
         assert_eq!(
