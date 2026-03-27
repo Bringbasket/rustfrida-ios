@@ -3653,6 +3653,7 @@ fn print_controller_help() {
     println!("  swift.protocolInfo <protocol>|swift.protocolInfo <module> -- <protocol>");
     println!("  swift.conformanceInfo <type> <protocol>|swift.conformanceInfo <module> -- <type> <protocol>");
     println!("  swift.typeInfo <type>|swift.typeInfo <module> -- <type>");
+    println!("  swift.methodInfo <type> <method>|swift.methodInfo <module> -- <type> <method>");
     println!("  swift.protocols [query]|swift.protocols <module> -- <query>");
     println!("  swift.conformances <type>|swift.conformances <module> -- <type>");
     println!("  swift.metadata <type>|swift.metadata <module> -- <type>");
@@ -4169,6 +4170,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.methodInfo Demo -- ViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.protocols"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4264,6 +4269,9 @@ mod tests {
             "swift.conformanceInfo ViewController Renderable"
         ));
         assert!(!command_requires_inline_hooks("swift.typeInfo ViewController"));
+        assert!(!command_requires_inline_hooks(
+            "swift.methodInfo ViewController viewDidLoad"
+        ));
         assert!(!command_requires_inline_hooks("swift.protocols"));
         assert!(!command_requires_inline_hooks("swift.conformances ViewController"));
         assert!(!command_requires_inline_hooks("swift.metadata ViewController"));

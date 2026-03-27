@@ -447,6 +447,10 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof Swift.methodInfo").expect("swift methodInfo type"),
+                "function"
+            );
+            assert_eq!(
                 runtime
                     .eval("typeof ObjC.protocolProtocols")
                     .expect("objc protocolProtocols type"),
@@ -1850,6 +1854,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = Swift.methodInfo('ViewController', 'viewDidLoad'); return value === null || (typeof value.name === 'string' && typeof value.moduleName === 'string' && typeof value.address === 'object'); })()")
+                    .expect("swift methodInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.protocols'); return value === '' || value.indexOf('[protocol-') !== -1; })()")
                     .expect("agent swift protocols"),
                 "true"
@@ -1870,6 +1880,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.typeInfo ViewController'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_info', moduleName: null, typeName: 'ViewController' }); return value === result.text && (result.typeInfo === null || (result.typeInfo.name === 'ViewController' && typeof result.typeInfo.sourceKind === 'string')); })()")
                     .expect("agent swift typeInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.methodInfo ViewController viewDidLoad'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' }); return value === result.text && (result.methodInfo === null || (typeof result.methodInfo.name === 'string' && typeof result.methodInfo.offsetHex === 'string')); })()")
+                    .expect("agent swift methodInfo"),
                 "true"
             );
             assert_eq!(
@@ -2256,6 +2272,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' }); return result.kind === 'swift.method_info' && result.typeName === 'ViewController' && result.methodName === 'viewDidLoad' && ((result.methodInfo === null && result.text === '<null>') || (typeof result.methodInfo.moduleBase === 'string' && typeof result.methodInfo.name === 'string' && typeof result.methodInfo.offsetHex === 'string' && result.text === result.methodInfo.text)); })()")
+                    .expect("agent swift methodInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null }); return result.kind === 'swift.protocols' && result.query === null && result.count === result.protocols.length && (result.protocols.length === 0 || (typeof result.protocols[0].moduleBase === 'string' && typeof result.protocols[0].sourceSymbolName === 'string' && typeof result.protocols[0].sourceOffsetHex === 'string')); })()")
                     .expect("agent swift protocols result"),
                 "true"
@@ -2602,6 +2624,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.type_info', moduleName: null, typeName: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_info', moduleName: null, typeName: 'ViewController' }); return value === result.text; })()")
                     .expect("agent spec swift typeInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' }); return value === result.text; })()")
+                    .expect("agent spec swift methodInfo"),
                 "true"
             );
             assert_eq!(

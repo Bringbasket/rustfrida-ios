@@ -147,6 +147,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("swift.conformances ")
         || command.starts_with("swift.metadata ")
         || command.starts_with("swift.typeInfo ")
+        || command.starts_with("swift.methodInfo ")
         || command.starts_with("swift.vtable ")
         || command.starts_with("swift.witnessTable ")
         || command.starts_with("swift.typeLayout ")
@@ -731,6 +732,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "swift.type_info",
             "moduleName": module_name,
             "typeName": type_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.methodInfo ") {
+        let (module_name, type_name, method_name) = parse_swift_methods(raw)?;
+        return Some(json!({
+            "kind": "swift.method_info",
+            "moduleName": module_name,
+            "typeName": type_name,
+            "methodName": method_name,
         }));
     }
 
@@ -1447,6 +1458,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.methodInfo ViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.protocols"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -1507,6 +1522,12 @@ mod tests {
             AgentCommand::from_legacy("swift.methods ViewController"),
             Some(AgentCommand::RuntimeHandle {
                 command: "swift.methods ViewController".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.methodInfo ViewController"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "swift.methodInfo ViewController".into(),
             })
         );
         assert_eq!(

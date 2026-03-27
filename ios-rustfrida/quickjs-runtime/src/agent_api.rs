@@ -2782,6 +2782,21 @@ function handleSpecResult(spec) {
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
+    case 'swift.method_info': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const typeName = String(spec.typeName || '');
+        const methodName = String(spec.methodName || '');
+        const methodInfo = Swift.methodInfo(typeName, methodName, moduleName);
+        const normalized = methodInfo === null ? null : normalizeSwiftSymbol(methodInfo);
+        return {
+            kind: 'swift.method_info',
+            moduleName,
+            typeName,
+            methodName,
+            methodInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'swift.vtable': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
@@ -3444,6 +3459,17 @@ function legacyToSpec(command) {
             kind: 'swift.type_info',
             moduleName: parsed.moduleName,
             typeName: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.methodInfo ')) {
+        const usage = 'swift.methodInfo usage: swift.methodInfo <type> <method> | swift.methodInfo <module> -- <type> <method>';
+        const parsed = splitSwiftMethods(trimmed.slice('swift.methodInfo '.length), usage);
+        return {
+            kind: 'swift.method_info',
+            moduleName: parsed.moduleName,
+            typeName: parsed.typeName,
+            methodName: parsed.methodQuery,
         };
     }
 
