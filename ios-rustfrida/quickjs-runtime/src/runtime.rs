@@ -1175,6 +1175,10 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof Native.rpathInfo").expect("native rpath info type"),
+                "function"
+            );
+            assert_eq!(
                 runtime
                     .eval("typeof Native.dependencyInfo")
                     .expect("native dependency info type"),
@@ -1214,6 +1218,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = Native.importInfo('libsystem_malloc.dylib', 'malloc'); return value === null || (typeof value.name === 'string' && typeof value.moduleName === 'string' && typeof value.dylibOrdinal === 'number'); })()")
                     .expect("native importInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = Native.rpathInfo('libsystem_malloc.dylib', '@loader_path'); return value === null || (typeof value.path === 'string' && typeof value.moduleName === 'string'); })()")
+                    .expect("native rpathInfo"),
                 "true"
             );
             assert_eq!(
@@ -2379,6 +2389,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.rpath_info', moduleName: 'libsystem_malloc.dylib', path: '@loader_path' }); return result.kind === 'native.rpath_info' && result.moduleName === 'libsystem_malloc.dylib' && result.path === '@loader_path' && ((result.rpathInfo === null && result.text === '<null>') || (typeof result.rpathInfo.moduleBase === 'string' && typeof result.rpathInfo.path === 'string' && result.text === result.rpathInfo.text)); })()"
+                    )
+                    .expect("agent native rpathInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: main.image.name, query: null }); return result.kind === 'native.imports' && result.count === result.imports.length && (result.imports.length === 0 || (typeof result.imports[0].dylibOrdinal === 'number' && typeof result.imports[0].weakImport === 'boolean')); })()"
                     )
                     .expect("agent native imports result"),
@@ -2662,6 +2680,12 @@ undefined;
                 runtime
                     .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.rpaths ' + base); return value === '' || value.indexOf('@') !== -1 || value.indexOf('/') !== -1; })()")
                     .expect("agent native rpaths"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.rpathInfo libsystem_malloc.dylib -- @loader_path'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.rpath_info', moduleName: 'libsystem_malloc.dylib', path: '@loader_path' }); return value === result.text && (result.rpathInfo === null || result.rpathInfo.path === '@loader_path'); })()")
+                    .expect("agent native rpathInfo"),
                 "true"
             );
             assert_eq!(

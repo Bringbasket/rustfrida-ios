@@ -146,6 +146,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.uuid <module>`
   - `native.rpaths <module>`
   - `native.rpaths <module> -- <query>`
+  - `native.rpathInfo <module> -- <path>`
   - `native.imports <module>`
   - `native.imports <module> -- <query>`
   - `native.importInfo <module> -- <symbol>`
@@ -327,6 +328,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.installName <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `installName / path / currentVersion / compatibilityVersion / timestamp`，适合快速确认某个 dylib 自身声明的 install name 和版本信息。
 - `native.uuid <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `imageUuid / uuid`，适合把运行中镜像和 dSYM / 本地 Mach-O 做快速 UUID 对齐。
 - `native.rpaths <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `rpaths / path`，适合和 `native.dependencies` 一起排查运行时 dylib 查找路径。
+- `native.rpathInfo <module> -- <path>` / `Native.rpathInfo(moduleName, path)` 现在可以直接结构化返回单条 rpath 的 `moduleBase / path`，不必先全量 `native.rpaths` 再二次过滤。
 - `native.imports <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；当前实现基于 Mach-O undefined symbol 表，结构化结果会带 `imports / dylibOrdinal / dylibName / weakImport`，适合先看一个镜像依赖了哪些外部符号，再决定后续 trace/hook 目标。
 - `native.importInfo <module> -- <symbol>` 现在可以直接结构化返回单个 import entry 的 `moduleBase / name / dylibOrdinal / dylibName / weakImport`，后续排查某个镜像依赖的具体外部符号时不必再先全量 `native.imports` 再脚本过滤。
 - 对 `hfl / jhook / shook / trace / stalker` 这类 controller dispatch 命令，`--command-json` 现在也会尽量回传结构化 `payloadJson`，包含 `action / kind / target / count / key / moduleName / selectorName / resolvedLabel / targetAddress / filter / replacedCount` 等字段；对应的 `*.status` 结果也会补出当前 active state 和 target 元数据，像 `hfl/jhook/shook` 不再只有 key/count；`*.stop` 结果现在也会把被回收的 key/target 一并带回，`trace.stop / stalker.stop` 也会继续带上实际 detach 计数。

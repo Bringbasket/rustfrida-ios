@@ -329,6 +329,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.rpathInfo libsystem_malloc.dylib -- @loader_path"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.imports libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

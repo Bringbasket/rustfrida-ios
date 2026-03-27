@@ -3633,6 +3633,7 @@ fn print_controller_help() {
     println!("  native.installName <module>");
     println!("  native.uuid <module>");
     println!("  native.rpaths <module>|native.rpaths <module> -- <query>");
+    println!("  native.rpathInfo <module> -- <path>");
     println!("  native.imports <module>|native.imports <module> -- <query>");
     println!("  native.importInfo <module> -- <symbol>");
     println!("  native.loadcmds <module>");
@@ -4158,6 +4159,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.rpathInfo DemoBinary -- @loader_path"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.imports DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4304,6 +4309,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.installName UIKit"));
         assert!(!command_requires_inline_hooks("native.uuid UIKit"));
         assert!(!command_requires_inline_hooks("native.rpaths UIKit"));
+        assert!(!command_requires_inline_hooks("native.rpathInfo UIKit -- @loader_path"));
         assert!(!command_requires_inline_hooks("native.imports UIKit"));
         assert!(!command_requires_inline_hooks("native.importInfo UIKit -- malloc"));
         assert!(!command_requires_inline_hooks("native.symbolInfo malloc"));

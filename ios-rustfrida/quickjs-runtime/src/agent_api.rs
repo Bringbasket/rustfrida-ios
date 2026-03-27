@@ -2681,6 +2681,19 @@ function handleSpecResult(spec) {
         const rpaths = Native.findRpaths(moduleName, query).map((rpath) => normalizeRpath(rpath));
         return { kind: 'native.rpaths', moduleName, query, count: rpaths.length, rpaths, text: rpaths.map((rpath) => rpath.text).join('\n') };
     }
+    case 'native.rpath_info': {
+        const moduleName = String(spec.moduleName || '');
+        const path = String(spec.path || '');
+        const rpathInfo = Native.rpathInfo(moduleName, path);
+        const normalized = rpathInfo === null ? null : normalizeRpath(rpathInfo);
+        return {
+            kind: 'native.rpath_info',
+            moduleName,
+            path,
+            rpathInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'native.imports': {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
@@ -3421,6 +3434,18 @@ function legacyToSpec(command) {
             kind: 'native.rpaths',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.rpathInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.rpathInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.rpathInfo usage: native.rpathInfo <module> -- <path>');
+        }
+        return {
+            kind: 'native.rpath_info',
+            moduleName: parsed.moduleName,
+            path: parsed.query,
         };
     }
 

@@ -1711,6 +1711,52 @@ unsafe extern "C" fn js_native_find_rpaths(
     array
 }
 
+unsafe extern "C" fn js_native_rpath_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 2 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.rpathInfo(moduleName, path) requires 2 string arguments",
+        );
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.rpathInfo(moduleName, path) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    let path = match JSValue(*argv.add(1)).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.rpathInfo(moduleName, path) requires path to be a non-empty string",
+            )
+        }
+    };
+
+    let rpaths = match find_image_rpaths(&module_name, Some(&path)) {
+        Ok(rpaths) => rpaths,
+        Err(common::Error::Unsupported(_)) => return JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => return crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match rpaths.into_iter().find(|rpath| rpath.path == path) {
+        Some(rpath) => image_rpath_to_js(ctx, &rpath),
+        None => JSValue::null().raw(),
+    }
+}
+
 unsafe extern "C" fn js_native_import_info(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -2080,6 +2126,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
         );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findUuid", js_native_find_uuid, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findRpaths", js_native_find_rpaths, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "rpathInfo", js_native_rpath_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findImports", js_native_find_imports, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "importInfo", js_native_import_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSegments", js_native_find_segments, 1);

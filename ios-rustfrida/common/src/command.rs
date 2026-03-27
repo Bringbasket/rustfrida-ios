@@ -130,6 +130,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.installName ")
         || command.starts_with("native.uuid ")
         || command.starts_with("native.rpaths ")
+        || command.starts_with("native.rpathInfo ")
         || command.starts_with("native.imports ")
         || command.starts_with("native.importInfo ")
         || command.starts_with("native.images ")
@@ -644,6 +645,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "native.rpaths",
             "moduleName": module_name,
             "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.rpathInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let path = query?;
+        return Some(json!({
+            "kind": "native.rpath_info",
+            "moduleName": module_name,
+            "path": path,
         }));
     }
 
@@ -1332,6 +1343,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.rpathInfo libsystem_malloc.dylib -- @loader_path"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.imports libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -1794,6 +1809,12 @@ mod tests {
             AgentCommand::from_legacy("native.rpaths  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.rpaths  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.rpathInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.rpathInfo libsystem_malloc.dylib".into(),
             })
         );
     }
