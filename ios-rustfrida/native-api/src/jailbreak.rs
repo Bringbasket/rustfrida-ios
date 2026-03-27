@@ -68,6 +68,28 @@ pub struct HookStrategyDecision {
     pub reason: Option<String>,
 }
 
+impl HookStrategyDecision {
+    pub fn bootstrap_injection_allowed(&self) -> bool {
+        self.allowed
+    }
+
+    pub fn query_commands_allowed(&self) -> bool {
+        self.allowed
+    }
+
+    pub fn hook_install_commands_allowed(&self) -> bool {
+        self.allowed && self.inline_hooks_allowed
+    }
+
+    pub fn hook_status_commands_allowed(&self) -> bool {
+        self.allowed
+    }
+
+    pub fn hook_stop_commands_allowed(&self) -> bool {
+        self.allowed
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 struct KnownHookBackend {
     id: &'static str,
@@ -479,6 +501,11 @@ mod tests {
         let decision = resolve_hook_strategy_with_report(&report, HookPolicy::Warn);
         assert!(decision.allowed);
         assert!(decision.inline_hooks_allowed);
+        assert!(decision.bootstrap_injection_allowed());
+        assert!(decision.query_commands_allowed());
+        assert!(decision.hook_install_commands_allowed());
+        assert!(decision.hook_status_commands_allowed());
+        assert!(decision.hook_stop_commands_allowed());
         assert_eq!(decision.strategy, "internal-inline-risky");
         assert_eq!(decision.policy, HookPolicy::Warn);
     }
@@ -499,6 +526,11 @@ mod tests {
         let decision = resolve_hook_strategy_with_report(&report, HookPolicy::QueryOnlyExternalLoaded);
         assert!(decision.allowed);
         assert!(!decision.inline_hooks_allowed);
+        assert!(decision.bootstrap_injection_allowed());
+        assert!(decision.query_commands_allowed());
+        assert!(!decision.hook_install_commands_allowed());
+        assert!(decision.hook_status_commands_allowed());
+        assert!(decision.hook_stop_commands_allowed());
         assert_eq!(decision.strategy, "query-only-external-loaded");
         assert_eq!(decision.policy, HookPolicy::QueryOnlyExternalLoaded);
     }
@@ -519,6 +551,11 @@ mod tests {
         let decision = resolve_hook_strategy_with_report(&report, HookPolicy::DenyExternalLoaded);
         assert!(!decision.allowed);
         assert!(!decision.inline_hooks_allowed);
+        assert!(!decision.bootstrap_injection_allowed());
+        assert!(!decision.query_commands_allowed());
+        assert!(!decision.hook_install_commands_allowed());
+        assert!(!decision.hook_status_commands_allowed());
+        assert!(!decision.hook_stop_commands_allowed());
         assert_eq!(decision.strategy, "blocked-external-loaded");
         assert_eq!(decision.policy, HookPolicy::DenyExternalLoaded);
     }

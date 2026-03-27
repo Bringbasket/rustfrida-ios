@@ -1290,6 +1290,11 @@ function formatHookEnvironmentReport(report) {
     lines.push('strategy=' + String(report.strategy));
     lines.push('allowed=' + String(!!report.allowed));
     lines.push('inline_hooks_allowed=' + String(!!report.inlineHooksAllowed));
+    lines.push('bootstrap_injection_allowed=' + String(!!report.bootstrapInjectionAllowed));
+    lines.push('query_commands_allowed=' + String(!!report.queryCommandsAllowed));
+    lines.push('hook_install_commands_allowed=' + String(!!report.hookInstallCommandsAllowed));
+    lines.push('hook_status_commands_allowed=' + String(!!report.hookStatusCommandsAllowed));
+    lines.push('hook_stop_commands_allowed=' + String(!!report.hookStopCommandsAllowed));
     lines.push('coexistence_layer_available=' + String(!!report.coexistenceLayerAvailable));
     lines.push('loaded_backend_count=' + String(Number(report.loadedBackendCount || 0)));
     lines.push('filesystem_only_backend_count=' + String(Number(report.filesystemOnlyBackendCount || 0)));

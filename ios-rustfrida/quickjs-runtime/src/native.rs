@@ -83,6 +83,31 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         result.set_property(ctx, "strategy", JSValue::string(ctx, &decision.strategy));
         result.set_property(ctx, "allowed", JSValue::bool(decision.allowed));
         result.set_property(ctx, "inlineHooksAllowed", JSValue::bool(decision.inline_hooks_allowed));
+        result.set_property(
+            ctx,
+            "bootstrapInjectionAllowed",
+            JSValue::bool(decision.bootstrap_injection_allowed()),
+        );
+        result.set_property(
+            ctx,
+            "queryCommandsAllowed",
+            JSValue::bool(decision.query_commands_allowed()),
+        );
+        result.set_property(
+            ctx,
+            "hookInstallCommandsAllowed",
+            JSValue::bool(decision.hook_install_commands_allowed()),
+        );
+        result.set_property(
+            ctx,
+            "hookStatusCommandsAllowed",
+            JSValue::bool(decision.hook_status_commands_allowed()),
+        );
+        result.set_property(
+            ctx,
+            "hookStopCommandsAllowed",
+            JSValue::bool(decision.hook_stop_commands_allowed()),
+        );
         match &decision.reason {
             Some(reason) => result.set_property(ctx, "reason", JSValue::string(ctx, reason)),
             None => result.set_property(ctx, "reason", JSValue::null()),
@@ -92,6 +117,11 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         result.set_property(ctx, "strategy", JSValue::null());
         result.set_property(ctx, "allowed", JSValue::bool(true));
         result.set_property(ctx, "inlineHooksAllowed", JSValue::bool(true));
+        result.set_property(ctx, "bootstrapInjectionAllowed", JSValue::bool(true));
+        result.set_property(ctx, "queryCommandsAllowed", JSValue::bool(true));
+        result.set_property(ctx, "hookInstallCommandsAllowed", JSValue::bool(true));
+        result.set_property(ctx, "hookStatusCommandsAllowed", JSValue::bool(true));
+        result.set_property(ctx, "hookStopCommandsAllowed", JSValue::bool(true));
         result.set_property(ctx, "reason", JSValue::null());
     }
 
