@@ -1362,9 +1362,30 @@ function formatObjcProtocolPropertyInfo(property) {
 }
 
 function formatObjcIvar(ivar) {
+    const details = ['offset=' + '0x' + BigInt(ivar.offset || 0).toString(16)];
     const typeName = ivar.typeName || ivar.typeEncoding;
-    const suffix = typeName.length === 0 ? '' : ' type=' + typeName;
-    return ivar.className + ' ' + ivar.name + ' offset=' + '0x' + BigInt(ivar.offset || 0).toString(16) + suffix;
+    if (typeName.length !== 0) {
+        details.push('type=' + typeName);
+    }
+    if (ivar.hasQualifiers) {
+        details.push('quals=' + String(ivar.qualifierCount || 0));
+    }
+    if (ivar.hasPointeeType && ivar.pointeeTypeName !== null) {
+        details.push('ptr=' + ivar.pointeeTypeName);
+    }
+    if (ivar.isArray) {
+        details.push('array=' + String(ivar.arrayCount === null ? '?' : ivar.arrayCount));
+    }
+    if (ivar.hasMemberName && ivar.memberName !== null) {
+        details.push('member=' + ivar.memberName);
+    }
+    if (ivar.hasObjectClassName && ivar.objectClassName !== null) {
+        details.push('class=' + ivar.objectClassName);
+    }
+    if ((ivar.objectProtocolCount || 0) !== 0) {
+        details.push('protocols=' + String(ivar.objectProtocolCount || 0));
+    }
+    return ivar.className + ' ' + ivar.name + ' ' + details.join(' ');
 }
 
 function formatObjcIvarInfo(ivar) {
@@ -1374,6 +1395,24 @@ function formatObjcIvarInfo(ivar) {
     }
     if (ivar.typeEncoding.length !== 0) {
         details.push('types=' + ivar.typeEncoding);
+    }
+    if (ivar.hasQualifiers) {
+        details.push('quals=' + String(ivar.qualifierCount || 0));
+    }
+    if (ivar.hasPointeeType && ivar.pointeeTypeName !== null) {
+        details.push('ptr=' + ivar.pointeeTypeName);
+    }
+    if (ivar.isArray) {
+        details.push('array=' + String(ivar.arrayCount === null ? '?' : ivar.arrayCount));
+    }
+    if (ivar.hasMemberName && ivar.memberName !== null) {
+        details.push('member=' + ivar.memberName);
+    }
+    if (ivar.hasObjectClassName && ivar.objectClassName !== null) {
+        details.push('class=' + ivar.objectClassName);
+    }
+    if ((ivar.objectProtocolCount || 0) !== 0) {
+        details.push('protocols=' + String(ivar.objectProtocolCount || 0));
     }
     if (ivar.imagePath !== null && ivar.imagePath !== undefined) {
         details.push('image=' + ivar.imagePath);
@@ -1790,16 +1829,35 @@ function normalizeObjcProtocolPropertyInfo(property) {
 function normalizeObjcIvar(ivar) {
     const offset = typeof ivar.offset === 'bigint' ? ivar.offset : BigInt(ivar.offset || 0);
     const typeInfo = parseObjcTypeEncodingInfo(ivar.typeEncoding);
+    const qualifierCount = Array.isArray(typeInfo.qualifiers) ? typeInfo.qualifiers.length : 0;
+    const objectProtocolCount = Array.isArray(typeInfo.objectProtocols) ? typeInfo.objectProtocols.length : 0;
+    const pointeeTypeName = typeInfo.pointee && typeof typeInfo.pointee.displayName === 'string'
+        ? typeInfo.pointee.displayName
+        : null;
     const normalized = {
         className: String(ivar.className || ''),
         name: String(ivar.name || ''),
         typeEncoding: String(ivar.typeEncoding || ''),
         typeName: typeInfo.displayName,
         typeInfo,
+        kind: String(typeInfo.kind || 'unknown'),
+        qualifiers: Array.isArray(typeInfo.qualifiers) ? typeInfo.qualifiers : [],
+        qualifierNames: Array.isArray(typeInfo.qualifierNames) ? typeInfo.qualifierNames : [],
+        qualifierCount,
+        hasQualifiers: qualifierCount !== 0,
         isObject: typeInfo.isObject,
         isBlock: typeInfo.isBlock,
         objectClassName: typeInfo.objectClassName,
         objectProtocols: typeInfo.objectProtocols,
+        objectProtocolCount,
+        hasObjectClassName: typeInfo.objectClassName !== null,
+        pointeeTypeName,
+        hasPointeeType: pointeeTypeName !== null,
+        isPointer: typeInfo.kind === 'pointer',
+        isArray: typeInfo.kind === 'array',
+        arrayCount: typeof typeInfo.arrayCount === 'number' ? typeInfo.arrayCount : null,
+        memberName: typeInfo.memberName,
+        hasMemberName: typeInfo.memberName !== null,
         offset: offset.toString(),
         offsetHex: '0x' + offset.toString(16),
     };
@@ -1810,16 +1868,35 @@ function normalizeObjcIvar(ivar) {
 function normalizeObjcIvarInfo(ivar) {
     const offset = typeof ivar.offset === 'bigint' ? ivar.offset : BigInt(ivar.offset || 0);
     const typeInfo = parseObjcTypeEncodingInfo(ivar.typeEncoding);
+    const qualifierCount = Array.isArray(typeInfo.qualifiers) ? typeInfo.qualifiers.length : 0;
+    const objectProtocolCount = Array.isArray(typeInfo.objectProtocols) ? typeInfo.objectProtocols.length : 0;
+    const pointeeTypeName = typeInfo.pointee && typeof typeInfo.pointee.displayName === 'string'
+        ? typeInfo.pointee.displayName
+        : null;
     const normalized = {
         className: String(ivar.className || ''),
         name: String(ivar.name || ''),
         typeEncoding: String(ivar.typeEncoding || ''),
         typeName: typeInfo.displayName,
         typeInfo,
+        kind: String(typeInfo.kind || 'unknown'),
+        qualifiers: Array.isArray(typeInfo.qualifiers) ? typeInfo.qualifiers : [],
+        qualifierNames: Array.isArray(typeInfo.qualifierNames) ? typeInfo.qualifierNames : [],
+        qualifierCount,
+        hasQualifiers: qualifierCount !== 0,
         isObject: typeInfo.isObject,
         isBlock: typeInfo.isBlock,
         objectClassName: typeInfo.objectClassName,
         objectProtocols: typeInfo.objectProtocols,
+        objectProtocolCount,
+        hasObjectClassName: typeInfo.objectClassName !== null,
+        pointeeTypeName,
+        hasPointeeType: pointeeTypeName !== null,
+        isPointer: typeInfo.kind === 'pointer',
+        isArray: typeInfo.kind === 'array',
+        arrayCount: typeof typeInfo.arrayCount === 'number' ? typeInfo.arrayCount : null,
+        memberName: typeInfo.memberName,
+        hasMemberName: typeInfo.memberName !== null,
         offset: offset.toString(),
         offsetHex: '0x' + offset.toString(16),
         ivarPointer: ivar.ivarPointer.toString(),

@@ -743,7 +743,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.ivarInfo('NSObject', '_isa'); return value === null || (typeof value.name === 'string' && typeof value.typeEncoding === 'string' && typeof value.offset === 'number'); })()")
+                    .eval("(function() { const value = ObjC.ivarInfo('NSObject', '_isa'); return value === null || (typeof value.name === 'string' && typeof value.typeEncoding === 'string' && typeof value.offset === 'number' && typeof value.kind === 'string' && Array.isArray(value.qualifiers) && Array.isArray(value.qualifierNames) && typeof value.qualifierCount === 'number' && typeof value.hasQualifiers === 'boolean' && typeof value.objectProtocolCount === 'number' && typeof value.hasObjectClassName === 'boolean' && (value.pointeeTypeName === null || typeof value.pointeeTypeName === 'string') && typeof value.hasPointeeType === 'boolean' && typeof value.isPointer === 'boolean' && typeof value.isArray === 'boolean' && (value.arrayCount === null || typeof value.arrayCount === 'number') && (value.memberName === null || typeof value.memberName === 'string') && typeof value.hasMemberName === 'boolean'); })()")
                     .expect("objc ivarInfo"),
                 "true"
             );
@@ -755,7 +755,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const ivars = ObjC.ivars('NSObject'); return ivars.length === 0 || (typeof ivars[0].typeName === 'string' && typeof ivars[0].typeInfo === 'object'); })()")
+                    .eval("(function() { const ivars = ObjC.ivars('NSObject'); return ivars.length === 0 || (typeof ivars[0].typeName === 'string' && typeof ivars[0].typeInfo === 'object' && typeof ivars[0].kind === 'string' && typeof ivars[0].qualifierCount === 'number' && typeof ivars[0].hasQualifiers === 'boolean' && typeof ivars[0].objectProtocolCount === 'number' && typeof ivars[0].hasObjectClassName === 'boolean' && (ivars[0].pointeeTypeName === null || typeof ivars[0].pointeeTypeName === 'string') && typeof ivars[0].hasPointeeType === 'boolean' && typeof ivars[0].isPointer === 'boolean' && typeof ivars[0].isArray === 'boolean' && (ivars[0].arrayCount === null || typeof ivars[0].arrayCount === 'number') && (ivars[0].memberName === null || typeof ivars[0].memberName === 'string') && typeof ivars[0].hasMemberName === 'boolean'); })()")
                     .expect("objc ivars decoded type info"),
                 "true"
             );
@@ -2133,7 +2133,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.ivarInfo NSObject _isa'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); return value === result.text && (result.ivarInfo === null || (result.ivarInfo.name === '_isa' && typeof result.ivarInfo.typeEncoding === 'string')); })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.ivarInfo NSObject _isa'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); return value === result.text && (result.ivarInfo === null || (result.ivarInfo.name === '_isa' && typeof result.ivarInfo.typeEncoding === 'string' && typeof result.ivarInfo.kind === 'string' && typeof result.ivarInfo.qualifierCount === 'number' && typeof result.ivarInfo.hasQualifiers === 'boolean' && typeof result.ivarInfo.objectProtocolCount === 'number' && typeof result.ivarInfo.hasObjectClassName === 'boolean' && (result.ivarInfo.pointeeTypeName === null || typeof result.ivarInfo.pointeeTypeName === 'string') && typeof result.ivarInfo.hasPointeeType === 'boolean' && typeof result.ivarInfo.isPointer === 'boolean' && typeof result.ivarInfo.isArray === 'boolean' && (result.ivarInfo.arrayCount === null || typeof result.ivarInfo.arrayCount === 'number') && (result.ivarInfo.memberName === null || typeof result.ivarInfo.memberName === 'string') && typeof result.ivarInfo.hasMemberName === 'boolean')); })()"
                     )
                     .expect("agent objc ivarInfo"),
                 "true"
@@ -2459,7 +2459,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); return result.kind === 'objc.ivar_info' && result.className === 'NSObject' && result.ivarName === '_isa' && ((result.ivarInfo === null && result.text === '<null>') || (typeof result.ivarInfo.ivarPointer === 'string' && typeof result.ivarInfo.offsetHex === 'string' && typeof result.ivarInfo.typeName === 'string' && typeof result.ivarInfo.typeInfo === 'object' && result.text === result.ivarInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); return result.kind === 'objc.ivar_info' && result.className === 'NSObject' && result.ivarName === '_isa' && ((result.ivarInfo === null && result.text === '<null>') || (typeof result.ivarInfo.ivarPointer === 'string' && typeof result.ivarInfo.offsetHex === 'string' && typeof result.ivarInfo.typeName === 'string' && typeof result.ivarInfo.typeInfo === 'object' && typeof result.ivarInfo.kind === 'string' && Array.isArray(result.ivarInfo.qualifiers) && Array.isArray(result.ivarInfo.qualifierNames) && typeof result.ivarInfo.qualifierCount === 'number' && typeof result.ivarInfo.hasQualifiers === 'boolean' && typeof result.ivarInfo.objectProtocolCount === 'number' && typeof result.ivarInfo.hasObjectClassName === 'boolean' && (result.ivarInfo.pointeeTypeName === null || typeof result.ivarInfo.pointeeTypeName === 'string') && typeof result.ivarInfo.hasPointeeType === 'boolean' && typeof result.ivarInfo.isPointer === 'boolean' && typeof result.ivarInfo.isArray === 'boolean' && (result.ivarInfo.arrayCount === null || typeof result.ivarInfo.arrayCount === 'number') && (result.ivarInfo.memberName === null || typeof result.ivarInfo.memberName === 'string') && typeof result.ivarInfo.hasMemberName === 'boolean' && result.text === result.ivarInfo.text)); })()"
                     )
                     .expect("agent objc ivarInfo result"),
                 "true"
@@ -2467,7 +2467,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return result.kind === 'objc.ivars' && result.className === 'NSObject' && result.filter === 'delegate' && result.count === result.ivars.length && result.text === result.ivars.map((ivar) => ivar.text).join('\\n') && (result.ivars.length === 0 || (typeof result.ivars[0].offsetHex === 'string' && typeof result.ivars[0].typeName === 'string' && typeof result.ivars[0].typeInfo === 'object')); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return result.kind === 'objc.ivars' && result.className === 'NSObject' && result.filter === 'delegate' && result.count === result.ivars.length && result.text === result.ivars.map((ivar) => ivar.text).join('\\n') && (result.ivars.length === 0 || (typeof result.ivars[0].offsetHex === 'string' && typeof result.ivars[0].typeName === 'string' && typeof result.ivars[0].typeInfo === 'object' && typeof result.ivars[0].kind === 'string' && Array.isArray(result.ivars[0].qualifiers) && Array.isArray(result.ivars[0].qualifierNames) && typeof result.ivars[0].qualifierCount === 'number' && typeof result.ivars[0].hasQualifiers === 'boolean' && typeof result.ivars[0].objectProtocolCount === 'number' && typeof result.ivars[0].hasObjectClassName === 'boolean' && (result.ivars[0].pointeeTypeName === null || typeof result.ivars[0].pointeeTypeName === 'string') && typeof result.ivars[0].hasPointeeType === 'boolean' && typeof result.ivars[0].isPointer === 'boolean' && typeof result.ivars[0].isArray === 'boolean' && (result.ivars[0].arrayCount === null || typeof result.ivars[0].arrayCount === 'number') && (result.ivars[0].memberName === null || typeof result.ivars[0].memberName === 'string') && typeof result.ivars[0].hasMemberName === 'boolean')); })()"
                     )
                     .expect("agent objc ivars result"),
                 "true"
