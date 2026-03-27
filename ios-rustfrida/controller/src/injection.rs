@@ -3639,6 +3639,7 @@ fn print_controller_help() {
     println!("  native.loadcmds <module>");
     println!("  native.loadCommandInfo <module> -- <name|cmd|index>");
     println!("  native.sections <module>");
+    println!("  native.sectionInfo <module> -- <segment> <section>");
     println!("  native.segments <module>");
     println!("  native.symbolInfo <symbol>|native.symbolInfo <module> -- <symbol>");
     println!("  native.symbols <query>|native.symbols <module> -- <query>");
@@ -4180,6 +4181,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.sectionInfo DemoBinary -- __TEXT __text"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("pac.image DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4318,6 +4323,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.imports UIKit"));
         assert!(!command_requires_inline_hooks("native.importInfo UIKit -- malloc"));
         assert!(!command_requires_inline_hooks("native.loadCommandInfo UIKit -- LC_UUID"));
+        assert!(!command_requires_inline_hooks("native.sectionInfo UIKit -- __TEXT __text"));
         assert!(!command_requires_inline_hooks("native.symbolInfo malloc"));
         assert!(!command_requires_inline_hooks("swift.protocolInfo Renderable"));
         assert!(!command_requires_inline_hooks(

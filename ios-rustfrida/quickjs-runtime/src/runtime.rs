@@ -1246,6 +1246,18 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Native.sectionInfo")
+                    .expect("native section info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = Native.sectionInfo('libsystem_malloc.dylib', '__TEXT', '__text'); return value === null || (typeof value.segmentName === 'string' && typeof value.name === 'string' && typeof value.addr === 'object'); })()")
+                    .expect("native sectionInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findLoadCommands('libsystem_malloc.dylib'))")
                     .expect("native find load commands"),
                 "true"
@@ -2281,6 +2293,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); return result.kind === 'native.section_info' && result.moduleName === 'libsystem_malloc.dylib' && result.segmentName === '__TEXT' && result.sectionName === '__text' && ((result.sectionInfo === null && result.text === '<null>') || (typeof result.sectionInfo.moduleBase === 'string' && typeof result.sectionInfo.segmentName === 'string' && typeof result.sectionInfo.offsetHex === 'string' && result.text === result.sectionInfo.text)); })()"
+                    )
+                    .expect("agent native sectionInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }); return result.kind === 'native.load_command_info' && result.moduleName === 'libsystem_malloc.dylib' && result.commandOrIndex === 'LC_UUID' && ((result.loadCommandInfo === null && result.text === '<null>') || (typeof result.loadCommandInfo.moduleBase === 'string' && typeof result.loadCommandInfo.name === 'string' && typeof result.loadCommandInfo.cmdHex === 'string' && result.text === result.loadCommandInfo.text)); })()"
                     )
                     .expect("agent native loadCommandInfo result"),
@@ -2734,6 +2754,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.sectionInfo libsystem_malloc.dylib -- __TEXT __text'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); return value === result.text && (result.sectionInfo === null || (result.sectionInfo.segmentName === '__TEXT' && result.sectionInfo.name === '__text')); })()")
+                    .expect("agent native sectionInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.loadcmds ' + base); return value === '' || value.indexOf('cmd=0x') !== -1; })()")
                     .expect("agent native load commands"),
                 "true"
@@ -2772,6 +2798,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }); return value === result.text; })()")
                     .expect("agent spec native loadCommandInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); return value === result.text; })()")
+                    .expect("agent spec native sectionInfo"),
                 "true"
             );
             assert_eq!(

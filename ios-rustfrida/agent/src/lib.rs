@@ -361,6 +361,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.sectionInfo libsystem_malloc.dylib -- __TEXT __text"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.loadcmds libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

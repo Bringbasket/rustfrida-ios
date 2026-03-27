@@ -1909,6 +1909,65 @@ unsafe extern "C" fn js_native_find_load_commands(
     array
 }
 
+unsafe extern "C" fn js_native_section_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 3 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.sectionInfo(moduleName, segmentName, sectionName) requires 3 string arguments",
+        );
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.sectionInfo(moduleName, segmentName, sectionName) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    let segment_name = match JSValue(*argv.add(1)).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.sectionInfo(moduleName, segmentName, sectionName) requires segmentName to be a non-empty string",
+            )
+        }
+    };
+
+    let section_name = match JSValue(*argv.add(2)).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.sectionInfo(moduleName, segmentName, sectionName) requires sectionName to be a non-empty string",
+            )
+        }
+    };
+
+    let sections = match find_image_sections(&module_name) {
+        Ok(sections) => sections,
+        Err(common::Error::Unsupported(_)) => return JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => return crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match sections
+        .into_iter()
+        .find(|section| section.segment_name == segment_name && section.section_name == section_name)
+    {
+        Some(section) => image_section_to_js(ctx, &section),
+        None => JSValue::null().raw(),
+    }
+}
+
 fn parse_load_command_query(query: &str) -> Option<u64> {
     let trimmed = query.trim();
     if trimmed.is_empty() {
@@ -2214,6 +2273,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "importInfo", js_native_import_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSegments", js_native_find_segments, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSections", js_native_find_sections, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "sectionInfo", js_native_section_info, 3);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),

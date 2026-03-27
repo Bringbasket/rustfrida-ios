@@ -138,6 +138,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.loadcmds ")
         || command.starts_with("native.loadCommandInfo ")
         || command.starts_with("native.sections ")
+        || command.starts_with("native.sectionInfo ")
         || command.starts_with("native.segments ")
         || command.starts_with("native.symbol ")
         || command.starts_with("native.symbols ")
@@ -689,6 +690,23 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "native.sections",
             "moduleName": module_name.trim(),
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.sectionInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let query = query?;
+        let mut parts = query.split_whitespace();
+        let segment_name = parts.next()?;
+        let section_name = parts.next()?;
+        if parts.next().is_some() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.section_info",
+            "moduleName": module_name,
+            "segmentName": segment_name,
+            "sectionName": section_name,
         }));
     }
 
@@ -1374,6 +1392,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.sectionInfo DemoBinary -- __TEXT __text"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.loadcmds DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -1836,6 +1858,12 @@ mod tests {
             AgentCommand::from_legacy("native.loadCommandInfo libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.loadCommandInfo libsystem_malloc.dylib".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.sectionInfo libsystem_malloc.dylib -- __TEXT"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.sectionInfo libsystem_malloc.dylib -- __TEXT".into(),
             })
         );
     }

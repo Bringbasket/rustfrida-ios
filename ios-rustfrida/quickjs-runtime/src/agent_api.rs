@@ -325,6 +325,22 @@ function parseNativeExports(raw) {
     return { moduleName, query };
 }
 
+function parseNativeSectionInfo(raw) {
+    const parsed = parseNativeExports(raw);
+    if (parsed.query === null) {
+        throw new Error('native.sectionInfo usage: native.sectionInfo <module> -- <segment> <section>');
+    }
+    const parts = parsed.query.split(/\s+/).filter(Boolean);
+    if (parts.length !== 2) {
+        throw new Error('native.sectionInfo usage: native.sectionInfo <module> -- <segment> <section>');
+    }
+    return {
+        moduleName: parsed.moduleName,
+        segmentName: parts[0],
+        sectionName: parts[1],
+    };
+}
+
 function formatNativeSymbol(symbol) {
     return symbol.address.toString() + ' ' + symbol.moduleName + '!' + symbol.name + '+0x' + BigInt(symbol.offset || 0).toString(16);
 }
@@ -2723,6 +2739,21 @@ function handleSpecResult(spec) {
         const sections = Native.findSections(moduleName).map((section) => normalizeSection(section));
         return { kind: 'native.sections', moduleName, count: sections.length, sections, text: sections.map((section) => section.text).join('\n') };
     }
+    case 'native.section_info': {
+        const moduleName = String(spec.moduleName || '');
+        const segmentName = String(spec.segmentName || '');
+        const sectionName = String(spec.sectionName || '');
+        const sectionInfo = Native.sectionInfo(moduleName, segmentName, sectionName);
+        const normalized = sectionInfo === null ? null : normalizeSection(sectionInfo);
+        return {
+            kind: 'native.section_info',
+            moduleName,
+            segmentName,
+            sectionName,
+            sectionInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'native.load_commands': {
         const moduleName = String(spec.moduleName || '');
         const commands = Native.findLoadCommands(moduleName).map((command) => normalizeLoadCommand(command));
@@ -3497,6 +3528,16 @@ function legacyToSpec(command) {
             throw new Error('native.sections usage: native.sections <module>');
         }
         return { kind: 'native.sections', moduleName };
+    }
+
+    if (trimmed.startsWith('native.sectionInfo ')) {
+        const parsed = parseNativeSectionInfo(trimmed.slice('native.sectionInfo '.length));
+        return {
+            kind: 'native.section_info',
+            moduleName: parsed.moduleName,
+            segmentName: parsed.segmentName,
+            sectionName: parsed.sectionName,
+        };
     }
 
     if (trimmed.startsWith('native.loadcmds ')) {
