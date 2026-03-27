@@ -612,7 +612,19 @@ undefined;
                 "true"
             );
             assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.classes('NSObject'))")
+                    .expect("objc classes filtered"),
+                "true"
+            );
+            assert_eq!(
                 runtime.eval("Array.isArray(ObjC.protocols())").expect("objc protocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.protocols('NS'))")
+                    .expect("objc protocols filtered"),
                 "true"
             );
             assert_eq!(

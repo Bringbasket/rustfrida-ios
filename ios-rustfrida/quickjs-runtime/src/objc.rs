@@ -31,12 +31,37 @@ unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &s
 unsafe extern "C" fn js_objc_classes(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
-    _argc: i32,
-    _argv: *mut ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
 ) -> ffi::JSValue {
-    let classes = match ObjcApi::new().enumerate_classes() {
+    let query = if argc < 1 {
+        None
+    } else {
+        let value = JSValue(*argv);
+        if value.is_null() || value.is_undefined() {
+            None
+        } else {
+            match value.to_string(ctx) {
+                Some(query) => Some(query),
+                None => {
+                    return js_throw_type_error(
+                        ctx,
+                        "ObjC.classes([query]) expected query to be a string when provided",
+                    )
+                }
+            }
+        }
+    };
+
+    let classes = match query {
+        Some(query) => ObjcApi::new().find_classes(&query),
+        None => ObjcApi::new().enumerate_classes(),
+    };
+
+    let classes = match classes {
         Ok(classes) => classes,
         Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
         Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
     };
 
@@ -75,12 +100,37 @@ unsafe extern "C" fn js_objc_find_classes(
 unsafe extern "C" fn js_objc_protocols(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
-    _argc: i32,
-    _argv: *mut ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
 ) -> ffi::JSValue {
-    let protocols = match ObjcApi::new().enumerate_protocols() {
+    let query = if argc < 1 {
+        None
+    } else {
+        let value = JSValue(*argv);
+        if value.is_null() || value.is_undefined() {
+            None
+        } else {
+            match value.to_string(ctx) {
+                Some(query) => Some(query),
+                None => {
+                    return js_throw_type_error(
+                        ctx,
+                        "ObjC.protocols([query]) expected query to be a string when provided",
+                    )
+                }
+            }
+        }
+    };
+
+    let protocols = match query {
+        Some(query) => ObjcApi::new().find_protocols(&query),
+        None => ObjcApi::new().enumerate_protocols(),
+    };
+
+    let protocols = match protocols {
         Ok(protocols) => protocols,
         Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
         Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
     };
 
@@ -1257,9 +1307,9 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
 
     unsafe {
         let ctx_ptr = ctx.as_ptr();
-        add_cfunction_to_object(ctx_ptr, objc.raw(), "classes", js_objc_classes, 0);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "classes", js_objc_classes, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findClasses", js_objc_find_classes, 1);
-        add_cfunction_to_object(ctx_ptr, objc.raw(), "protocols", js_objc_protocols, 0);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "protocols", js_objc_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocols", js_objc_find_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classProtocols", js_objc_class_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolInfo", js_objc_protocol_info, 1);

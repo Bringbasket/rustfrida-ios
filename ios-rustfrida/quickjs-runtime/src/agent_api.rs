@@ -2218,7 +2218,7 @@ function handleSpecResult(spec) {
     switch (String(spec.kind || '')) {
     case 'objc.classes': {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter).trim();
-        const classes = (filter === null || filter.length === 0 ? ObjC.classes() : ObjC.findClasses(filter));
+        const classes = ObjC.classes(filter);
         return {
             kind: 'objc.classes',
             filter,
@@ -2229,7 +2229,7 @@ function handleSpecResult(spec) {
     }
     case 'objc.protocols': {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter).trim();
-        const protocols = (filter === null || filter.length === 0 ? ObjC.protocols() : ObjC.findProtocols(filter));
+        const protocols = ObjC.protocols(filter);
         return {
             kind: 'objc.protocols',
             filter,
