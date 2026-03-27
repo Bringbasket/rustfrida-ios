@@ -787,6 +787,12 @@ function formatObjcClassInfo(info) {
         info.isMetaClass ? 'meta' : 'class',
         info.className,
         'size=' + String(info.instanceSize || 0),
+        'protocols=' + String(info.protocolCount || 0),
+        'instanceProperties=' + String(info.instancePropertyCount || 0),
+        'classProperties=' + String(info.classPropertyCount || 0),
+        'ivars=' + String(info.ivarCount || 0),
+        'instanceMethods=' + String(info.instanceMethodCount || 0),
+        'classMethods=' + String(info.classMethodCount || 0),
     ];
     if (info.superclassName !== null && info.superclassName !== undefined) {
         details.push('super=' + info.superclassName);
@@ -1447,8 +1453,16 @@ function normalizeObjcClassInfo(info) {
         superclassName: info.superclassName === undefined || info.superclassName === null ? null : String(info.superclassName),
         superclassPointer: info.superclassPointer === undefined || info.superclassPointer === null ? null : info.superclassPointer.toString(),
         instanceSize,
+        protocolCount: Number(info.protocolCount || 0),
+        instancePropertyCount: Number(info.instancePropertyCount || 0),
+        classPropertyCount: Number(info.classPropertyCount || 0),
+        ivarCount: Number(info.ivarCount || 0),
+        instanceMethodCount: Number(info.instanceMethodCount || 0),
+        classMethodCount: Number(info.classMethodCount || 0),
         imagePath: info.imagePath === undefined || info.imagePath === null ? null : String(info.imagePath),
     };
+    normalized.totalPropertyCount = normalized.instancePropertyCount + normalized.classPropertyCount;
+    normalized.totalMethodCount = normalized.instanceMethodCount + normalized.classMethodCount;
     normalized.text = formatObjcClassInfo(normalized);
     return normalized;
 }

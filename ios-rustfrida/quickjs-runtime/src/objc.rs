@@ -730,6 +730,36 @@ unsafe fn objc_class_info_to_js(ctx: *mut ffi::JSContext, info: &ObjcClassInfo) 
         "instanceSize",
         JSValue(js_u64_to_js_number_or_bigint(ctx, info.instance_size as u64)),
     );
+    object.set_property(
+        ctx,
+        "protocolCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, info.protocol_count as u64)),
+    );
+    object.set_property(
+        ctx,
+        "instancePropertyCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, info.instance_property_count as u64)),
+    );
+    object.set_property(
+        ctx,
+        "classPropertyCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, info.class_property_count as u64)),
+    );
+    object.set_property(
+        ctx,
+        "ivarCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, info.ivar_count as u64)),
+    );
+    object.set_property(
+        ctx,
+        "instanceMethodCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, info.instance_method_count as u64)),
+    );
+    object.set_property(
+        ctx,
+        "classMethodCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, info.class_method_count as u64)),
+    );
     match &info.image_path {
         Some(path) => object.set_property(ctx, "imagePath", JSValue::string(ctx, path)),
         None => object.set_property(ctx, "imagePath", JSValue::null()),

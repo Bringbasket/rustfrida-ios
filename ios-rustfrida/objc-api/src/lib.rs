@@ -99,6 +99,12 @@ pub struct ObjcClassInfo {
     pub superclass_name: Option<String>,
     pub superclass_pointer: Option<usize>,
     pub instance_size: usize,
+    pub protocol_count: usize,
+    pub instance_property_count: usize,
+    pub class_property_count: usize,
+    pub ivar_count: usize,
+    pub instance_method_count: usize,
+    pub class_method_count: usize,
     pub image_path: Option<String>,
 }
 
@@ -659,6 +665,12 @@ mod platform {
                 Some(unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned())
             }
         };
+        let protocol_count = class_protocols(class_name)?.len();
+        let instance_property_count = enumerate_properties(class_name, false)?.len();
+        let class_property_count = enumerate_properties(class_name, true)?.len();
+        let ivar_count = enumerate_ivars(class_name)?.len();
+        let instance_method_count = enumerate_methods(class_name, false)?.len();
+        let class_method_count = enumerate_methods(class_name, true)?.len();
         let image_path = image_path_for_address(lookup_class as *const c_void)?;
 
         Ok(Some(ObjcClassInfo {
@@ -672,6 +684,12 @@ mod platform {
                 Some(superclass as usize)
             },
             instance_size: unsafe { class_getInstanceSize(lookup_class as *const c_void) },
+            protocol_count,
+            instance_property_count,
+            class_property_count,
+            ivar_count,
+            instance_method_count,
+            class_method_count,
             image_path,
         }))
     }

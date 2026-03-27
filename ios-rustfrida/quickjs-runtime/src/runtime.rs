@@ -647,7 +647,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.classInfo('NSObject'); return value === null || (typeof value.className === 'string' && typeof value.isMetaClass === 'boolean' && typeof value.instanceSize === 'number'); })()")
+                    .eval("(function() { const value = ObjC.classInfo('NSObject'); return value === null || (typeof value.className === 'string' && typeof value.isMetaClass === 'boolean' && typeof value.instanceSize === 'number' && typeof value.protocolCount === 'number' && typeof value.instancePropertyCount === 'number' && typeof value.classPropertyCount === 'number' && typeof value.ivarCount === 'number' && typeof value.instanceMethodCount === 'number' && typeof value.classMethodCount === 'number'); })()")
                     .expect("objc classInfo"),
                 "true"
             );
@@ -2037,7 +2037,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.classInfo NSObject meta'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true }); return value === result.text && (result.classInfo === null || result.classInfo.isMetaClass === true); })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.classInfo NSObject meta'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true }); return value === result.text && (result.classInfo === null || (result.classInfo.isMetaClass === true && typeof result.classInfo.protocolCount === 'number' && typeof result.classInfo.instanceMethodCount === 'number' && typeof result.classInfo.classMethodCount === 'number')); })()"
                     )
                     .expect("agent objc classInfo"),
                 "true"
@@ -2355,7 +2355,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true }); return result.kind === 'objc.class_info' && result.className === 'NSObject' && result.isMetaClass === true && ((result.classInfo === null && result.text === '<null>') || (typeof result.classInfo.classPointer === 'string' && result.classInfo.isMetaClass === true && typeof result.classInfo.instanceSize === 'number' && result.text === result.classInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true }); return result.kind === 'objc.class_info' && result.className === 'NSObject' && result.isMetaClass === true && ((result.classInfo === null && result.text === '<null>') || (typeof result.classInfo.classPointer === 'string' && result.classInfo.isMetaClass === true && typeof result.classInfo.instanceSize === 'number' && typeof result.classInfo.protocolCount === 'number' && typeof result.classInfo.totalPropertyCount === 'number' && typeof result.classInfo.totalMethodCount === 'number' && result.text === result.classInfo.text)); })()"
                     )
                     .expect("agent objc classInfo result"),
                 "true"
