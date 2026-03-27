@@ -191,34 +191,49 @@ function parseObjcIvarInfo(raw) {
 function parseObjcProtocolMethods(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
-        throw new Error('objc.protocolMethods usage: objc.protocolMethods <protocol> [required] [instance]');
+        throw new Error('objc.protocolMethods usage: objc.protocolMethods <protocol> [required] [instance] [filter]');
     }
     let isRequired = true;
     let isInstanceMethod = true;
+    const filterTokens = [];
     for (let i = 1; i < parts.length; i++) {
         const part = parts[i];
-        if (part === 'required' || part === 'req') {
-            isRequired = true;
-            continue;
+        if (filterTokens.length === 0) {
+            if (part === 'required' || part === 'req') {
+                isRequired = true;
+                continue;
+            }
+            if (part === 'optional' || part === 'opt') {
+                isRequired = false;
+                continue;
+            }
+            if (part === 'instance' || part === 'inst' || part === '-') {
+                isInstanceMethod = true;
+                continue;
+            }
+            if (part === 'class' || part === 'meta' || part === '+') {
+                isInstanceMethod = false;
+                continue;
+            }
         }
-        if (part === 'optional' || part === 'opt') {
-            isRequired = false;
-            continue;
-        }
-        if (part === 'instance' || part === 'inst' || part === '-') {
-            isInstanceMethod = true;
-            continue;
-        }
-        if (part === 'class' || part === 'meta' || part === '+') {
-            isInstanceMethod = false;
-            continue;
-        }
-        throw new Error('objc.protocolMethods usage: objc.protocolMethods <protocol> [required] [instance]');
+        filterTokens.push(part);
     }
     return {
         protocolName: parts[0],
         isRequired,
         isInstanceMethod,
+        filter: filterTokens.length === 0 ? null : filterTokens.join(' '),
+    };
+}
+
+function parseObjcProtocolProperties(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) {
+        throw new Error('objc.protocolProperties usage: objc.protocolProperties <protocol> [filter]');
+    }
+    return {
+        protocolName: parts[0],
+        filter: parts.length <= 1 ? null : parts.slice(1).join(' '),
     };
 }
 
@@ -2288,12 +2303,14 @@ function handleSpecResult(spec) {
         const protocolName = String(spec.protocolName || '');
         const isRequired = spec.isRequired === undefined ? true : !!spec.isRequired;
         const isInstanceMethod = spec.isInstanceMethod === undefined ? true : !!spec.isInstanceMethod;
-        const methods = ObjC.protocolMethods(protocolName, isRequired, isInstanceMethod).map((method) => normalizeObjcProtocolMethod(method));
+        const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
+        const methods = ObjC.protocolMethods(protocolName, isRequired, isInstanceMethod, filter).map((method) => normalizeObjcProtocolMethod(method));
         return {
             kind: 'objc.protocol_methods',
             protocolName,
             isRequired,
             isInstanceMethod,
+            filter,
             count: methods.length,
             methods,
             text: methods.map((method) => method.text).join('\n'),
@@ -2318,10 +2335,12 @@ function handleSpecResult(spec) {
     }
     case 'objc.protocol_properties': {
         const protocolName = String(spec.protocolName || '');
-        const properties = ObjC.protocolProperties(protocolName).map((property) => normalizeObjcProtocolProperty(property));
+        const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
+        const properties = ObjC.protocolProperties(protocolName, filter).map((property) => normalizeObjcProtocolProperty(property));
         return {
             kind: 'objc.protocol_properties',
             protocolName,
+            filter,
             count: properties.length,
             properties,
             text: properties.map((property) => property.text).join('\n'),
@@ -3112,6 +3131,7 @@ function legacyToSpec(command) {
             protocolName: parsed.protocolName,
             isRequired: parsed.isRequired,
             isInstanceMethod: parsed.isInstanceMethod,
+            filter: parsed.filter,
         };
     }
 
@@ -3127,7 +3147,12 @@ function legacyToSpec(command) {
     }
 
     if (trimmed.startsWith('objc.protocolProperties ')) {
-        return { kind: 'objc.protocol_properties', protocolName: trimmed.slice('objc.protocolProperties '.length) };
+        const parsed = parseObjcProtocolProperties(trimmed.slice('objc.protocolProperties '.length));
+        return {
+            kind: 'objc.protocol_properties',
+            protocolName: parsed.protocolName,
+            filter: parsed.filter,
+        };
     }
 
     if (trimmed.startsWith('objc.protocolPropertyInfo ')) {

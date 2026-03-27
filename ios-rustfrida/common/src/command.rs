@@ -242,12 +242,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(raw) = command.strip_prefix("objc.protocolMethods ") {
-        let (protocol_name, is_required, is_instance_method) = parse_objc_protocol_methods(raw)?;
+        let (protocol_name, is_required, is_instance_method, filter) = parse_objc_protocol_methods(raw)?;
         return Some(json!({
             "kind": "objc.protocol_methods",
             "protocolName": protocol_name,
             "isRequired": is_required,
             "isInstanceMethod": is_instance_method,
+            "filter": filter,
         }));
     }
 
@@ -262,10 +263,12 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
-    if let Some(protocol_name) = command.strip_prefix("objc.protocolProperties ") {
+    if let Some(raw) = command.strip_prefix("objc.protocolProperties ") {
+        let (protocol_name, filter) = parse_objc_protocol_properties(raw)?;
         return Some(json!({
             "kind": "objc.protocol_properties",
-            "protocolName": protocol_name.trim(),
+            "protocolName": protocol_name,
+            "filter": filter,
         }));
     }
 
@@ -1142,7 +1145,7 @@ fn parse_objc_member_info(raw: &str) -> Option<(String, String)> {
     Some((parts[0].to_string(), parts[1].to_string()))
 }
 
-fn parse_objc_protocol_methods(raw: &str) -> Option<(String, bool, bool)> {
+fn parse_objc_protocol_methods(raw: &str) -> Option<(String, bool, bool, Option<String>)> {
     let parts = raw.split_whitespace().collect::<Vec<_>>();
     if parts.is_empty() {
         return None;
@@ -1150,17 +1153,44 @@ fn parse_objc_protocol_methods(raw: &str) -> Option<(String, bool, bool)> {
 
     let mut is_required = true;
     let mut is_instance_method = true;
+    let mut filter_parts = Vec::new();
     for part in parts.iter().skip(1) {
-        match *part {
-            "required" | "req" => is_required = true,
-            "optional" | "opt" => is_required = false,
-            "instance" | "inst" | "-" => is_instance_method = true,
-            "class" | "meta" | "+" => is_instance_method = false,
-            _ => return None,
+        if filter_parts.is_empty() {
+            match *part {
+                "required" | "req" => {
+                    is_required = true;
+                    continue;
+                }
+                "optional" | "opt" => {
+                    is_required = false;
+                    continue;
+                }
+                "instance" | "inst" | "-" => {
+                    is_instance_method = true;
+                    continue;
+                }
+                "class" | "meta" | "+" => {
+                    is_instance_method = false;
+                    continue;
+                }
+                _ => {}
+            }
         }
+        filter_parts.push((*part).to_string());
     }
 
-    Some((parts[0].to_string(), is_required, is_instance_method))
+    let filter = (!filter_parts.is_empty()).then(|| filter_parts.join(" "));
+    Some((parts[0].to_string(), is_required, is_instance_method, filter))
+}
+
+fn parse_objc_protocol_properties(raw: &str) -> Option<(String, Option<String>)> {
+    let parts = raw.split_whitespace().collect::<Vec<_>>();
+    if parts.is_empty() {
+        return None;
+    }
+
+    let filter = (parts.len() > 1).then(|| parts[1..].join(" "));
+    Some((parts[0].to_string(), filter))
 }
 
 fn parse_objc_protocol_method_info(raw: &str) -> Option<(String, String, bool, bool)> {
@@ -1510,6 +1540,19 @@ mod tests {
                     "protocolName": "NSObject",
                     "isRequired": false,
                     "isInstanceMethod": false,
+                    "filter": null,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolMethods NSObject optional class description"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_methods",
+                    "protocolName": "NSObject",
+                    "isRequired": false,
+                    "isInstanceMethod": false,
+                    "filter": "description",
                 })
             })
         );
@@ -1531,6 +1574,17 @@ mod tests {
                 spec: json!({
                     "kind": "objc.protocol_properties",
                     "protocolName": "NSObject",
+                    "filter": null,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolProperties NSObject description"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_properties",
+                    "protocolName": "NSObject",
+                    "filter": "description",
                 })
             })
         );

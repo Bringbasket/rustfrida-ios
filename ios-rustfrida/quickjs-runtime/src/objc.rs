@@ -884,23 +884,50 @@ unsafe extern "C" fn js_objc_protocol_methods(
         argc,
         argv,
         0,
-        "ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]]) requires 1 string argument",
+        "ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]][, query]) requires 1 string argument",
     ) {
         Ok(value) => value,
         Err(err) => return err,
     };
-    let is_required = if argc >= 2 {
-        JSValue(*argv.add(1)).to_bool().unwrap_or(true)
-    } else {
-        true
-    };
-    let is_instance_method = if argc >= 3 {
-        JSValue(*argv.add(2)).to_bool().unwrap_or(true)
-    } else {
-        true
+    let mut is_required = true;
+    let mut is_instance_method = true;
+    let mut bool_count = 0usize;
+    let mut query = None;
+    for index in 1..(argc as usize) {
+        let value = JSValue(*argv.add(index));
+        if value.is_null() || value.is_undefined() {
+            continue;
+        }
+        if value.is_bool() {
+            match bool_count {
+                0 => is_required = value.to_bool().unwrap_or(true),
+                1 => is_instance_method = value.to_bool().unwrap_or(true),
+                _ => {
+                    return js_throw_type_error(
+                        ctx,
+                        "ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]][, query]); expected at most two boolean flags before the optional query string",
+                    )
+                }
+            }
+            bool_count += 1;
+            continue;
+        }
+        if value.is_string() {
+            query = value.to_string(ctx);
+            continue;
+        }
+        return js_throw_type_error(
+            ctx,
+            "ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]][, query]); expected isRequired/isInstanceMethod to be booleans and query to be a string when provided",
+        );
+    }
+
+    let methods = match query {
+        Some(query) => ObjcApi::new().find_protocol_methods(&protocol_name, &query, is_required, is_instance_method),
+        None => ObjcApi::new().protocol_methods(&protocol_name, is_required, is_instance_method),
     };
 
-    let methods = match ObjcApi::new().protocol_methods(&protocol_name, is_required, is_instance_method) {
+    let methods = match methods {
         Ok(methods) => methods,
         Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
         Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
@@ -925,13 +952,30 @@ unsafe extern "C" fn js_objc_protocol_properties(
         argc,
         argv,
         0,
-        "ObjC.protocolProperties(protocolName) requires 1 string argument",
+        "ObjC.protocolProperties(protocolName[, query]) requires 1 string argument",
     ) {
         Ok(value) => value,
         Err(err) => return err,
     };
+    let query = if argc >= 2 {
+        match parse_optional_filter_arg(
+            ctx,
+            JSValue(*argv.add(1)),
+            "ObjC.protocolProperties(protocolName[, query]) expected query to be a string when provided",
+        ) {
+            Ok(value) => value,
+            Err(err) => return err,
+        }
+    } else {
+        None
+    };
 
-    let properties = match ObjcApi::new().protocol_properties(&protocol_name) {
+    let properties = match query {
+        Some(query) => ObjcApi::new().find_protocol_properties(&protocol_name, &query),
+        None => ObjcApi::new().protocol_properties(&protocol_name),
+    };
+
+    let properties = match properties {
         Ok(properties) => properties,
         Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
         Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),

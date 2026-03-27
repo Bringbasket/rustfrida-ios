@@ -59,9 +59,9 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.classInfo(className[, isMetaClass])`
 - `ObjC.protocolInfo(protocolName)`
 - `ObjC.protocolProtocols(protocolName)`
-- `ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]])`
+- `ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]][, query])`
 - `ObjC.protocolMethodInfo(protocolName, selectorName[, isRequired[, isInstanceMethod]])`
-- `ObjC.protocolProperties(protocolName)`
+- `ObjC.protocolProperties(protocolName[, query])`
 - `ObjC.protocolPropertyInfo(protocolName, propertyName)`
 - `ObjC.superclass(className)`
 - `ObjC.classChain(className)`
