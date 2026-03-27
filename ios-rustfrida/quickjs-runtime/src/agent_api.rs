@@ -2723,6 +2723,19 @@ function handleSpecResult(spec) {
         const symbols = Swift.findSymbols(query, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
         return { kind: 'swift.symbols', moduleName, query, count: symbols.length, symbols, text: symbols.map((symbol) => symbol.text).join('\n') };
     }
+    case 'swift.protocol_info': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const protocolName = String(spec.protocolName || '');
+        const protocolInfo = Swift.protocolInfo(protocolName, moduleName);
+        const normalized = protocolInfo === null ? null : normalizeSwiftProtocol(protocolInfo);
+        return {
+            kind: 'swift.protocol_info',
+            moduleName,
+            protocolName,
+            protocolInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'swift.protocols': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
@@ -3339,6 +3352,16 @@ function legacyToSpec(command) {
 
     if (trimmed === 'swift.protocols') {
         return { kind: 'swift.protocols', moduleName: null, query: null };
+    }
+
+    if (trimmed.startsWith('swift.protocolInfo ')) {
+        const usage = 'swift.protocolInfo usage: swift.protocolInfo <protocol> | swift.protocolInfo <module> -- <protocol>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.protocolInfo '.length), usage);
+        return {
+            kind: 'swift.protocol_info',
+            moduleName: parsed.moduleName,
+            protocolName: parsed.query,
+        };
     }
 
     if (trimmed.startsWith('swift.protocols ')) {

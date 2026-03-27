@@ -432,6 +432,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Swift.protocolInfo")
+                    .expect("swift protocolInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof ObjC.protocolProtocols")
                     .expect("objc protocolProtocols type"),
                 "function"
@@ -1816,8 +1822,20 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = Swift.protocolInfo('Renderable'); return value === null || (typeof value.name === 'string' && typeof value.moduleName === 'string' && typeof value.sourceKind === 'string'); })()")
+                    .expect("swift protocolInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.protocols'); return value === '' || value.indexOf('[protocol-') !== -1; })()")
                     .expect("agent swift protocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.protocolInfo Renderable'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' }); return value === result.text && (result.protocolInfo === null || (result.protocolInfo.name === 'Renderable' && typeof result.protocolInfo.sourceKind === 'string')); })()")
+                    .expect("agent swift protocolInfo"),
                 "true"
             );
             assert_eq!(
@@ -2186,6 +2204,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' }); return result.kind === 'swift.protocol_info' && result.protocolName === 'Renderable' && ((result.protocolInfo === null && result.text === '<null>') || (typeof result.protocolInfo.moduleBase === 'string' && typeof result.protocolInfo.sourceSymbolName === 'string' && typeof result.protocolInfo.sourceOffsetHex === 'string' && result.text === result.protocolInfo.text)); })()")
+                    .expect("agent swift protocolInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null }); return result.kind === 'swift.protocols' && result.query === null && result.count === result.protocols.length && (result.protocols.length === 0 || (typeof result.protocols[0].moduleBase === 'string' && typeof result.protocols[0].sourceSymbolName === 'string' && typeof result.protocols[0].sourceOffsetHex === 'string')); })()")
                     .expect("agent swift protocols result"),
                 "true"
@@ -2514,6 +2538,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return value === result.text; })()")
                     .expect("agent spec objc ivars"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' }); return value === result.text; })()")
+                    .expect("agent spec swift protocolInfo"),
                 "true"
             );
             assert_eq!(

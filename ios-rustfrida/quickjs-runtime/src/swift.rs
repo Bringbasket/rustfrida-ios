@@ -635,6 +635,56 @@ unsafe extern "C" fn js_swift_find_protocols(
     array
 }
 
+unsafe extern "C" fn js_swift_protocol_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let protocol_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "Swift.protocolInfo(protocolName[, moduleName]) requires at least 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let module_name = if argc >= 2 {
+        let value = JSValue(*argv.add(1));
+        if value.is_null() || value.is_undefined() {
+            None
+        } else {
+            match value.to_string(ctx) {
+                Some(module_name) => Some(module_name),
+                None => return js_throw_type_error(
+                    ctx,
+                    "Swift.protocolInfo(protocolName[, moduleName]) expected moduleName to be a string when provided",
+                ),
+            }
+        }
+    } else {
+        None
+    };
+
+    let protocols = match find_swift_protocols(module_name.as_deref(), Some(protocol_name.as_str())) {
+        Ok(protocols) => protocols,
+        Err(CommonError::Unsupported(_)) => return JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match protocols
+        .into_iter()
+        .find(|protocol_info| protocol_info.protocol_name == protocol_name)
+    {
+        Some(protocol_info) => swift_protocol_to_js(ctx, &protocol_info),
+        None => JSValue::null().raw(),
+    }
+}
+
 unsafe extern "C" fn js_swift_find_conformances(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -889,6 +939,7 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, swift.raw(), "demangle", js_swift_demangle, 1);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findSymbols", js_swift_find_symbols, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findProtocols", js_swift_find_protocols, 2);
+        add_cfunction_to_object(ctx_ptr, swift.raw(), "protocolInfo", js_swift_protocol_info, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findConformances", js_swift_find_conformances, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMetadata", js_swift_find_metadata, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findVtable", js_swift_find_vtable, 2);

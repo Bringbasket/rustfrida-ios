@@ -141,6 +141,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("pac.strip ")
         || command.starts_with("pac.stripdata ")
         || command.starts_with("swift.demangle ")
+        || command.starts_with("swift.protocolInfo ")
         || command.starts_with("swift.protocols ")
         || command.starts_with("swift.conformances ")
         || command.starts_with("swift.metadata ")
@@ -678,6 +679,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "swift.demangle",
             "symbol": symbol.trim(),
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.protocolInfo ") {
+        let (module_name, protocol_name) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.protocol_info",
+            "moduleName": module_name,
+            "protocolName": protocol_name,
         }));
     }
 
@@ -1397,6 +1407,10 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("objc.objectClassName 0x1234"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.protocolInfo Renderable"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
