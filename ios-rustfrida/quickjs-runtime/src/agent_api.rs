@@ -2449,9 +2449,7 @@ function handleSpecResult(spec) {
         const className = String(spec.className || '');
         const isClassMethod = !!spec.isClassMethod;
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
-        const methods = (filter === null
-            ? ObjC.methods(className, isClassMethod)
-            : ObjC.findMethods(className, filter, isClassMethod)).map((method) => normalizeObjcMethod(method));
+        const methods = ObjC.methods(className, isClassMethod, filter).map((method) => normalizeObjcMethod(method));
         return {
             kind: 'objc.methods',
             className,
@@ -2466,9 +2464,7 @@ function handleSpecResult(spec) {
         const className = String(spec.className || '');
         const isClassProperty = !!spec.isClassProperty;
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
-        const properties = (filter === null
-            ? ObjC.properties(className, isClassProperty)
-            : ObjC.findProperties(className, filter, isClassProperty)).map((property) => normalizeObjcProperty(property));
+        const properties = ObjC.properties(className, isClassProperty, filter).map((property) => normalizeObjcProperty(property));
         return {
             kind: 'objc.properties',
             className,
@@ -2497,9 +2493,7 @@ function handleSpecResult(spec) {
     case 'objc.ivars': {
         const className = String(spec.className || '');
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
-        const ivars = (filter === null
-            ? ObjC.ivars(className)
-            : ObjC.findIvars(className, filter)).map((ivar) => normalizeObjcIvar(ivar));
+        const ivars = ObjC.ivars(className, filter).map((ivar) => normalizeObjcIvar(ivar));
         return {
             kind: 'objc.ivars',
             className,

@@ -28,6 +28,53 @@ unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &s
     Err(js_throw_type_error(ctx, usage))
 }
 
+unsafe fn parse_optional_filter_arg(
+    ctx: *mut ffi::JSContext,
+    value: JSValue,
+    usage: &str,
+) -> Result<Option<String>, ffi::JSValue> {
+    if value.is_null() || value.is_undefined() {
+        return Ok(None);
+    }
+    if value.is_string() {
+        return Ok(value.to_string(ctx));
+    }
+    Err(js_throw_type_error(ctx, usage))
+}
+
+unsafe fn parse_objc_bool_and_query_args(
+    ctx: *mut ffi::JSContext,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+    start_index: usize,
+    bool_name: &str,
+    query_usage: &str,
+) -> Result<(bool, Option<String>), ffi::JSValue> {
+    let mut flag = false;
+    let mut query = None;
+
+    for index in start_index..(argc as usize) {
+        let value = JSValue(*argv.add(index));
+        if value.is_null() || value.is_undefined() {
+            continue;
+        }
+        if value.is_bool() {
+            flag = value.to_bool().unwrap_or(false);
+            continue;
+        }
+        if value.is_string() {
+            query = value.to_string(ctx);
+            continue;
+        }
+        return Err(js_throw_type_error(
+            ctx,
+            &format!("{query_usage}; expected {bool_name} to be a boolean and query to be a string when provided"),
+        ));
+    }
+
+    Ok((flag, query))
+}
+
 unsafe extern "C" fn js_objc_classes(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -989,18 +1036,29 @@ unsafe extern "C" fn js_objc_methods(
         argc,
         argv,
         0,
-        "ObjC.methods(className[, isClassMethod]) requires 1 string argument",
+        "ObjC.methods(className[, isClassMethod][, query]) requires 1 string argument",
     ) {
         Ok(value) => value,
         Err(err) => return err,
     };
-    let is_class_method = if argc >= 2 {
-        JSValue(*argv.add(1)).to_bool().unwrap_or(false)
-    } else {
-        false
+    let (is_class_method, query) = match parse_objc_bool_and_query_args(
+        ctx,
+        argc,
+        argv,
+        1,
+        "isClassMethod",
+        "ObjC.methods(className[, isClassMethod][, query])",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
     };
 
-    let methods = match ObjcApi::new().enumerate_methods(&class_name, is_class_method) {
+    let methods = match query {
+        Some(query) => ObjcApi::new().find_methods(&class_name, &query, is_class_method),
+        None => ObjcApi::new().enumerate_methods(&class_name, is_class_method),
+    };
+
+    let methods = match methods {
         Ok(methods) => methods,
         Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
         Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
@@ -1071,18 +1129,29 @@ unsafe extern "C" fn js_objc_properties(
         argc,
         argv,
         0,
-        "ObjC.properties(className[, isClassProperty]) requires 1 string argument",
+        "ObjC.properties(className[, isClassProperty][, query]) requires 1 string argument",
     ) {
         Ok(value) => value,
         Err(err) => return err,
     };
-    let is_class_property = if argc >= 2 {
-        JSValue(*argv.add(1)).to_bool().unwrap_or(false)
-    } else {
-        false
+    let (is_class_property, query) = match parse_objc_bool_and_query_args(
+        ctx,
+        argc,
+        argv,
+        1,
+        "isClassProperty",
+        "ObjC.properties(className[, isClassProperty][, query])",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
     };
 
-    let properties = match ObjcApi::new().enumerate_properties(&class_name, is_class_property) {
+    let properties = match query {
+        Some(query) => ObjcApi::new().find_properties(&class_name, &query, is_class_property),
+        None => ObjcApi::new().enumerate_properties(&class_name, is_class_property),
+    };
+
+    let properties = match properties {
         Ok(properties) => properties,
         Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
         Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
@@ -1148,12 +1217,35 @@ unsafe extern "C" fn js_objc_ivars(
     argc: i32,
     argv: *mut ffi::JSValue,
 ) -> ffi::JSValue {
-    let class_name = match require_string_arg(ctx, argc, argv, 0, "ObjC.ivars(className) requires 1 string argument") {
+    let class_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.ivars(className[, query]) requires 1 string argument",
+    ) {
         Ok(value) => value,
         Err(err) => return err,
     };
+    let query = if argc >= 2 {
+        match parse_optional_filter_arg(
+            ctx,
+            JSValue(*argv.add(1)),
+            "ObjC.ivars(className[, query]) expected query to be a string when provided",
+        ) {
+            Ok(value) => value,
+            Err(err) => return err,
+        }
+    } else {
+        None
+    };
 
-    let ivars = match ObjcApi::new().enumerate_ivars(&class_name) {
+    let ivars = match query {
+        Some(query) => ObjcApi::new().find_ivars(&class_name, &query),
+        None => ObjcApi::new().enumerate_ivars(&class_name),
+    };
+
+    let ivars = match ivars {
         Ok(ivars) => ivars,
         Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
         Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),

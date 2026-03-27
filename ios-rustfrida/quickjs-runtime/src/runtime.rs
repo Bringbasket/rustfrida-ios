@@ -761,6 +761,24 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("Array.isArray(ObjC.methods('NSObject', 'init'))")
+                    .expect("objc methods filtered"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.properties('NSObject', 'delegate'))")
+                    .expect("objc properties filtered"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.ivars('NSObject', 'delegate'))")
+                    .expect("objc ivars filtered direct"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof ObjC.methodOwners")
                     .expect("objc methodOwners type"),
                 "function"

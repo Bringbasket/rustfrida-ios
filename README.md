@@ -49,7 +49,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 
 最近补上的 iOS 运行时能力：
 
-- `ObjC.methods(className[, isClassMethod])`
+- `ObjC.methods(className[, isClassMethod][, query])`
 - `ObjC.findMethods(className, query[, isClassMethod])`
 - `ObjC.findMethodOwners(query[, isClassMethod])`
 - `ObjC.methodOwners(query[, isClassMethod])`
@@ -65,10 +65,10 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.protocolPropertyInfo(protocolName, propertyName)`
 - `ObjC.superclass(className)`
 - `ObjC.classChain(className)`
-- `ObjC.properties(className[, isClassProperty])`
+- `ObjC.properties(className[, isClassProperty][, query])`
 - `ObjC.propertyInfo(className, propertyName[, isClassProperty])`
 - `ObjC.findProperties(className, query[, isClassProperty])`
-- `ObjC.ivars(className)`
+- `ObjC.ivars(className[, query])`
 - `ObjC.ivarInfo(className, ivarName)`
 - `ObjC.findIvars(className, query)`
 - `ObjC.classImage(className)`
