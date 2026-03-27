@@ -582,7 +582,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = ObjC.methodInfo('NSObject', 'init'); return value === null || (typeof value.selector === 'string' && typeof value.typeEncoding === 'string' && typeof value.isClassMethod === 'boolean'); })()"
+                        "(function() { const value = ObjC.methodInfo('NSObject', 'init'); return value === null || (typeof value.selector === 'string' && Array.isArray(value.selectorParts) && typeof value.selectorPartCount === 'number' && typeof value.hasSelectorArguments === 'boolean' && typeof value.isUnarySelector === 'boolean' && typeof value.isKeywordSelector === 'boolean' && typeof value.typeEncoding === 'string' && typeof value.isClassMethod === 'boolean'); })()"
                     )
                     .expect("objc methodInfo"),
                 "true"
@@ -601,7 +601,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const methods = ObjC.methods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && typeof methods[0].methodTypeInfo === 'object'); })()")
+                    .eval("(function() { const methods = ObjC.methods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && typeof methods[0].methodTypeInfo === 'object' && Array.isArray(methods[0].selectorParts) && typeof methods[0].selectorPartCount === 'number' && typeof methods[0].hasSelectorArguments === 'boolean' && typeof methods[0].isUnarySelector === 'boolean' && typeof methods[0].isKeywordSelector === 'boolean'); })()")
                     .expect("objc methods decoded type info"),
                 "true"
             );
@@ -683,13 +683,13 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const methods = ObjC.protocolMethods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && typeof methods[0].methodTypeInfo === 'object'); })()")
+                    .eval("(function() { const methods = ObjC.protocolMethods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && typeof methods[0].methodTypeInfo === 'object' && Array.isArray(methods[0].selectorParts) && typeof methods[0].selectorPartCount === 'number' && typeof methods[0].hasSelectorArguments === 'boolean' && typeof methods[0].isUnarySelector === 'boolean' && typeof methods[0].isKeywordSelector === 'boolean'); })()")
                     .expect("objc protocolMethods decoded type info"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.protocolMethodInfo('NSObject', 'description', false, false); return value === null || (typeof value.selector === 'string' && typeof value.typeEncoding === 'string' && typeof value.isRequired === 'boolean' && typeof value.isInstanceMethod === 'boolean'); })()")
+                    .eval("(function() { const value = ObjC.protocolMethodInfo('NSObject', 'description', false, false); return value === null || (typeof value.selector === 'string' && Array.isArray(value.selectorParts) && typeof value.selectorPartCount === 'number' && typeof value.hasSelectorArguments === 'boolean' && typeof value.isUnarySelector === 'boolean' && typeof value.isKeywordSelector === 'boolean' && typeof value.typeEncoding === 'string' && typeof value.isRequired === 'boolean' && typeof value.isInstanceMethod === 'boolean'); })()")
                     .expect("objc protocolMethodInfo"),
                 "true"
             );
@@ -2379,7 +2379,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_info', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return result.kind === 'objc.method_info' && result.className === 'NSObject' && result.selectorName === 'init' && result.isClassMethod === false && ((result.methodInfo === null && result.text === '<null>') || (typeof result.methodInfo.methodPointer === 'string' && typeof result.methodInfo.imp === 'string' && typeof result.methodInfo.typeEncoding === 'string' && typeof result.methodInfo.hasExplicitArguments === 'boolean' && typeof result.methodInfo.hiddenArgumentCount === 'number' && typeof result.methodInfo.returnsVoid === 'boolean' && typeof result.methodInfo.returnsObject === 'boolean' && typeof result.methodInfo.returnsBlock === 'boolean' && result.text === result.methodInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_info', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return result.kind === 'objc.method_info' && result.className === 'NSObject' && result.selectorName === 'init' && result.isClassMethod === false && ((result.methodInfo === null && result.text === '<null>') || (typeof result.methodInfo.methodPointer === 'string' && typeof result.methodInfo.imp === 'string' && typeof result.methodInfo.typeEncoding === 'string' && Array.isArray(result.methodInfo.selectorParts) && typeof result.methodInfo.selectorPartCount === 'number' && typeof result.methodInfo.hasSelectorArguments === 'boolean' && typeof result.methodInfo.isUnarySelector === 'boolean' && typeof result.methodInfo.isKeywordSelector === 'boolean' && typeof result.methodInfo.hasExplicitArguments === 'boolean' && typeof result.methodInfo.hiddenArgumentCount === 'number' && typeof result.methodInfo.returnsVoid === 'boolean' && typeof result.methodInfo.returnsObject === 'boolean' && typeof result.methodInfo.returnsBlock === 'boolean' && result.text === result.methodInfo.text)); })()"
                     )
                     .expect("agent objc methodInfo result"),
                 "true"
@@ -2395,7 +2395,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_methods', protocolName: 'NSObject', isRequired: false, isInstanceMethod: false, filter: 'description' }); return result.kind === 'objc.protocol_methods' && result.protocolName === 'NSObject' && result.isRequired === false && result.isInstanceMethod === false && result.filter === 'description' && result.count === result.methods.length && (result.methods.length === 0 || (typeof result.methods[0].typeEncoding === 'string' && typeof result.methods[0].returnTypeName === 'string' && Array.isArray(result.methods[0].argumentTypeNames) && typeof result.methods[0].methodTypeInfo === 'object' && typeof result.methods[0].hasExplicitArguments === 'boolean' && typeof result.methods[0].hiddenArgumentCount === 'number' && typeof result.methods[0].returnsVoid === 'boolean' && typeof result.methods[0].returnsObject === 'boolean' && typeof result.methods[0].returnsBlock === 'boolean')) && result.text === result.methods.map((method) => method.text).join('\\n'); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_methods', protocolName: 'NSObject', isRequired: false, isInstanceMethod: false, filter: 'description' }); return result.kind === 'objc.protocol_methods' && result.protocolName === 'NSObject' && result.isRequired === false && result.isInstanceMethod === false && result.filter === 'description' && result.count === result.methods.length && (result.methods.length === 0 || (typeof result.methods[0].typeEncoding === 'string' && typeof result.methods[0].returnTypeName === 'string' && Array.isArray(result.methods[0].argumentTypeNames) && typeof result.methods[0].methodTypeInfo === 'object' && Array.isArray(result.methods[0].selectorParts) && typeof result.methods[0].selectorPartCount === 'number' && typeof result.methods[0].hasSelectorArguments === 'boolean' && typeof result.methods[0].isUnarySelector === 'boolean' && typeof result.methods[0].isKeywordSelector === 'boolean' && typeof result.methods[0].hasExplicitArguments === 'boolean' && typeof result.methods[0].hiddenArgumentCount === 'number' && typeof result.methods[0].returnsVoid === 'boolean' && typeof result.methods[0].returnsObject === 'boolean' && typeof result.methods[0].returnsBlock === 'boolean')) && result.text === result.methods.map((method) => method.text).join('\\n'); })()"
                     )
                     .expect("agent objc protocolMethods result"),
                 "true"
@@ -2403,7 +2403,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_method_info', protocolName: 'NSObject', selectorName: 'description', isRequired: false, isInstanceMethod: false }); return result.kind === 'objc.protocol_method_info' && result.protocolName === 'NSObject' && result.selectorName === 'description' && result.isRequired === false && result.isInstanceMethod === false && ((result.methodInfo === null && result.text === '<null>') || (typeof result.methodInfo.typeEncoding === 'string' && typeof result.methodInfo.returnTypeName === 'string' && Array.isArray(result.methodInfo.argumentTypeNames) && typeof result.methodInfo.methodTypeInfo === 'object' && typeof result.methodInfo.hasExplicitArguments === 'boolean' && typeof result.methodInfo.hiddenArgumentCount === 'number' && typeof result.methodInfo.returnsVoid === 'boolean' && typeof result.methodInfo.returnsObject === 'boolean' && typeof result.methodInfo.returnsBlock === 'boolean' && result.text === result.methodInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_method_info', protocolName: 'NSObject', selectorName: 'description', isRequired: false, isInstanceMethod: false }); return result.kind === 'objc.protocol_method_info' && result.protocolName === 'NSObject' && result.selectorName === 'description' && result.isRequired === false && result.isInstanceMethod === false && ((result.methodInfo === null && result.text === '<null>') || (typeof result.methodInfo.typeEncoding === 'string' && typeof result.methodInfo.returnTypeName === 'string' && Array.isArray(result.methodInfo.argumentTypeNames) && typeof result.methodInfo.methodTypeInfo === 'object' && Array.isArray(result.methodInfo.selectorParts) && typeof result.methodInfo.selectorPartCount === 'number' && typeof result.methodInfo.hasSelectorArguments === 'boolean' && typeof result.methodInfo.isUnarySelector === 'boolean' && typeof result.methodInfo.isKeywordSelector === 'boolean' && typeof result.methodInfo.hasExplicitArguments === 'boolean' && typeof result.methodInfo.hiddenArgumentCount === 'number' && typeof result.methodInfo.returnsVoid === 'boolean' && typeof result.methodInfo.returnsObject === 'boolean' && typeof result.methodInfo.returnsBlock === 'boolean' && result.text === result.methodInfo.text)); })()"
                     )
                     .expect("agent objc protocolMethodInfo result"),
                 "true"

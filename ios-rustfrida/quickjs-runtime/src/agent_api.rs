@@ -1171,6 +1171,22 @@ function parseObjcMethodTypeEncoding(typeEncoding) {
     return result;
 }
 
+function parseObjcSelectorInfo(selector) {
+    const raw = String(selector || '');
+    const partCount = (raw.match(/:/g) || []).length;
+    const parts = raw.length === 0
+        ? []
+        : raw.split(':').filter((part, index, array) => part.length !== 0 || index !== array.length - 1);
+    return {
+        raw,
+        parts,
+        partCount,
+        hasArguments: partCount !== 0,
+        isUnarySelector: partCount === 0,
+        isKeywordSelector: partCount !== 0,
+    };
+}
+
 function parseObjcPropertyAttributes(attributes) {
     const raw = String(attributes || '');
     const info = {
@@ -1511,10 +1527,16 @@ function normalizeImage(image) {
 
 function normalizeObjcMethod(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const selectorInfo = parseObjcSelectorInfo(method.selector);
     const hiddenArgumentCount = Array.isArray(methodTypeInfo.hiddenArgumentTypeNames) ? methodTypeInfo.hiddenArgumentTypeNames.length : 0;
     const normalized = {
         className: String(method.className || ''),
         selector: String(method.selector || ''),
+        selectorParts: selectorInfo.parts,
+        selectorPartCount: selectorInfo.partCount,
+        hasSelectorArguments: selectorInfo.hasArguments,
+        isUnarySelector: selectorInfo.isUnarySelector,
+        isKeywordSelector: selectorInfo.isKeywordSelector,
         isClassMethod: !!method.isClassMethod,
         imp: method.imp.toString(),
         typeEncoding: String(method.typeEncoding || ''),
@@ -1543,10 +1565,16 @@ function normalizeObjcMethod(method) {
 
 function normalizeObjcMethodInfo(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const selectorInfo = parseObjcSelectorInfo(method.selector);
     const hiddenArgumentCount = Array.isArray(methodTypeInfo.hiddenArgumentTypeNames) ? methodTypeInfo.hiddenArgumentTypeNames.length : 0;
     const normalized = {
         className: String(method.className || ''),
         selector: String(method.selector || ''),
+        selectorParts: selectorInfo.parts,
+        selectorPartCount: selectorInfo.partCount,
+        hasSelectorArguments: selectorInfo.hasArguments,
+        isUnarySelector: selectorInfo.isUnarySelector,
+        isKeywordSelector: selectorInfo.isKeywordSelector,
         isClassMethod: !!method.isClassMethod,
         methodPointer: method.methodPointer.toString(),
         imp: method.imp.toString(),
@@ -1642,10 +1670,16 @@ function normalizeObjcProtocolInfo(info) {
 
 function normalizeObjcProtocolMethod(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const selectorInfo = parseObjcSelectorInfo(method.selector);
     const hiddenArgumentCount = Array.isArray(methodTypeInfo.hiddenArgumentTypeNames) ? methodTypeInfo.hiddenArgumentTypeNames.length : 0;
     const normalized = {
         protocolName: String(method.protocolName || ''),
         selector: String(method.selector || ''),
+        selectorParts: selectorInfo.parts,
+        selectorPartCount: selectorInfo.partCount,
+        hasSelectorArguments: selectorInfo.hasArguments,
+        isUnarySelector: selectorInfo.isUnarySelector,
+        isKeywordSelector: selectorInfo.isKeywordSelector,
         typeEncoding: String(method.typeEncoding || ''),
         returnTypeEncoding: methodTypeInfo.returnTypeEncoding,
         returnTypeName: methodTypeInfo.returnTypeName,
@@ -1674,10 +1708,16 @@ function normalizeObjcProtocolMethod(method) {
 
 function normalizeObjcProtocolMethodInfo(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const selectorInfo = parseObjcSelectorInfo(method.selector);
     const hiddenArgumentCount = Array.isArray(methodTypeInfo.hiddenArgumentTypeNames) ? methodTypeInfo.hiddenArgumentTypeNames.length : 0;
     const normalized = {
         protocolName: String(method.protocolName || ''),
         selector: String(method.selector || ''),
+        selectorParts: selectorInfo.parts,
+        selectorPartCount: selectorInfo.partCount,
+        hasSelectorArguments: selectorInfo.hasArguments,
+        isUnarySelector: selectorInfo.isUnarySelector,
+        isKeywordSelector: selectorInfo.isKeywordSelector,
         typeEncoding: String(method.typeEncoding || ''),
         returnTypeEncoding: methodTypeInfo.returnTypeEncoding,
         returnTypeName: methodTypeInfo.returnTypeName,
