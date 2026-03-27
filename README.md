@@ -334,7 +334,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.dylinker <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dylinker / path / kind`，适合直接确认某个 Mach-O 记录的 dyld linker 路径。
 - `native.installName <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `installName / path / currentVersion / compatibilityVersion / timestamp`，适合快速确认某个 dylib 自身声明的 install name 和版本信息。
 - `native.uuid <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `imageUuid / uuid`，适合把运行中镜像和 dSYM / 本地 Mach-O 做快速 UUID 对齐。
-- `native.imageInfo <module>` / `Native.imageInfo(moduleName)` 现在可以直接按模块名返回单条 image 记录的 `name / path / base / slide`，不必再先 `native.images` 再手动筛一条，也比只看 `native.base` 更适合脚本直接拿模块上下文。
+- `native.imageInfo <module>` / `Native.imageInfo(moduleName)` 现在可以直接按模块名返回单条 image 记录的 `name / path / base / slide / size`，不必再先 `native.images` 再手动筛一条，也比只看 `native.base` 更适合脚本直接拿模块上下文。
 - `native.rpaths <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `rpaths / path`，适合和 `native.dependencies` 一起排查运行时 dylib 查找路径。
 - `native.rpathInfo <module> -- <path>` / `Native.rpathInfo(moduleName, path)` 现在可以直接结构化返回单条 rpath 的 `moduleBase / path`，不必先全量 `native.rpaths` 再二次过滤。
 - `native.exportInfo <module> -- <symbol>` / `Native.exportInfo(moduleName, symbolName)` 现在可以直接结构化返回单条 export entry 的 `moduleBase / name / address / offsetHex`；匹配时会兼容 `_foo` / `foo` 这类常见导出名差异，不必先全量 `native.exports` 再脚本过滤。

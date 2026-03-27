@@ -1,7 +1,7 @@
 use crate::context::JSContext;
 use crate::ffi;
 use crate::ptr::create_native_pointer;
-use crate::util::{add_cfunction_to_object, js_i64_to_js_number_or_bigint, js_throw_internal_error};
+use crate::util::{add_cfunction_to_object, js_i64_to_js_number_or_bigint, js_throw_internal_error, js_u64_to_js_number_or_bigint};
 use crate::value::JSValue;
 use native_api::{
     detect_hook_environment, find_image_build_version, find_image_by_name, find_image_chained_fixups,
@@ -120,6 +120,7 @@ unsafe fn image_info_to_js(ctx: *mut ffi::JSContext, image: &native_api::ImageIn
     result.set_property(ctx, "path", JSValue::string(ctx, &image.name));
     result.set_property(ctx, "base", create_native_pointer(ctx, image.base as u64));
     result.set_property(ctx, "slide", JSValue(js_i64_to_js_number_or_bigint(ctx, image.slide as i64)));
+    result.set_property(ctx, "size", JSValue(js_u64_to_js_number_or_bigint(ctx, image.size as u64)));
     result.raw()
 }
 

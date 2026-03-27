@@ -298,7 +298,10 @@ function parseAddressArg(raw, usage) {
 }
 
 function formatImage(image) {
-    return image.base.toString() + ' slide=' + formatSlide(image.slide) + ' ' + image.path;
+    const size = image.sizeHex === undefined || image.sizeHex === null
+        ? '0x' + BigInt(image.size || 0).toString(16)
+        : String(image.sizeHex);
+    return image.base.toString() + ' slide=' + formatSlide(image.slide) + ' size=' + size + ' ' + image.path;
 }
 
 function parseNativeExport(raw) {
@@ -1321,11 +1324,14 @@ function normalizeImage(image) {
     }
     const path = String(image.path || image.name || '');
     const pathParts = path.split('/').filter(Boolean);
+    const size = Number(image.size || 0);
     return {
         path,
         name: pathParts.length === 0 ? path : pathParts[pathParts.length - 1],
         base: image.base.toString(),
         slide: formatSlide(image.slide),
+        size,
+        sizeHex: '0x' + BigInt(image.size || 0).toString(16),
         text: formatImage(image),
     };
 }

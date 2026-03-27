@@ -267,12 +267,19 @@ fn json_hex_isize(value: isize) -> String {
 
 #[cfg(unix)]
 fn image_info_to_json(image: &native_api::ImageInfo) -> Value {
+    let name = Path::new(&image.name)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or(&image.name);
     json!({
+        "name": name,
         "path": image.name,
         "base": image.base,
         "baseHex": json_hex_usize(image.base),
         "slide": image.slide,
         "slideHex": json_hex_isize(image.slide),
+        "size": image.size,
+        "sizeHex": json_hex_usize(image.size),
     })
 }
 
@@ -4568,17 +4575,20 @@ mod tests {
                 name: "/Applications/Test.app/Test".into(),
                 base: 0x1000_0000_0,
                 slide: 0,
+                size: 0x4000,
             }),
             target_images: vec![
                 native_api::ImageInfo {
                     name: "/Applications/Test.app/Test".into(),
                     base: 0x1000_0000_0,
                     slide: 0,
+                    size: 0x4000,
                 },
                 native_api::ImageInfo {
                     name: "/usr/lib/libobjc.A.dylib".into(),
                     base: 0x1800_0000_0,
                     slide: 0,
+                    size: 0x8000,
                 },
             ],
             target_image_count: 42,
@@ -4664,17 +4674,20 @@ mod tests {
                 name: "/Applications/Test.app/Test".into(),
                 base: 0x1000_0000,
                 slide: 0,
+                size: 0x4000,
             }),
             target_images: vec![
                 native_api::ImageInfo {
                     name: "/Applications/Test.app/Test".into(),
                     base: 0x1000_0000,
                     slide: 0,
+                    size: 0x4000,
                 },
                 native_api::ImageInfo {
                     name: "/usr/lib/libobjc.A.dylib".into(),
                     base: 0x1800_0000,
                     slide: 0,
+                    size: 0x8000,
                 },
             ],
             target_image_count: 7,
@@ -4711,6 +4724,8 @@ mod tests {
             rendered["preflight"]["targetImages"][1]["path"],
             "/usr/lib/libobjc.A.dylib"
         );
+        assert_eq!(rendered["preflight"]["targetImages"][1]["name"], "libobjc.A.dylib");
+        assert_eq!(rendered["preflight"]["targetImages"][1]["sizeHex"], json!("0x8000"));
         assert_eq!(rendered["preflight"]["loaderSymbolChecks"]["total"], 1);
         assert_eq!(rendered["preflight"]["loaderSymbolChecks"]["allImagesFound"], false);
         assert_eq!(rendered["preflight"]["loaderSymbolChecks"]["allAddressesMatch"], false);
@@ -4729,11 +4744,13 @@ mod tests {
                 name: "/usr/lib/libobjc.A.dylib".into(),
                 base: 0x1800_0000,
                 slide: 0,
+                size: 0x6000,
             },
             native_api::ImageInfo {
                 name: "/usr/lib/libsystem_kernel.dylib".into(),
                 base: 0x1810_0000,
                 slide: 0x2000,
+                size: 0x9000,
             },
         ]);
 
@@ -4741,6 +4758,7 @@ mod tests {
         assert_eq!(rendered["images"][0]["path"], "/usr/lib/libobjc.A.dylib");
         assert_eq!(rendered["images"][1]["baseHex"], json!("0x18100000"));
         assert_eq!(rendered["images"][1]["slideHex"], json!("0x2000"));
+        assert_eq!(rendered["images"][1]["sizeHex"], json!("0x9000"));
     }
 
     #[test]
@@ -4926,11 +4944,13 @@ mod tests {
                 name: "/Applications/Test.app/Test".into(),
                 base: 0x1000_0000,
                 slide: 0,
+                size: 0x4000,
             }),
             target_images: vec![native_api::ImageInfo {
                 name: "/Applications/Test.app/Test".into(),
                 base: 0x1000_0000,
                 slide: 0,
+                size: 0x4000,
             }],
             target_image_count: 1,
             target_uses_arm64e: Some(false),

@@ -1,19 +1,28 @@
 use crate::context::JSContext;
 use crate::ffi;
 use crate::ptr::create_native_pointer;
-use crate::util::{add_cfunction_to_object, js_throw_internal_error, js_throw_type_error};
+use crate::util::{
+    add_cfunction_to_object, js_i64_to_js_number_or_bigint, js_throw_internal_error, js_throw_type_error,
+    js_u64_to_js_number_or_bigint,
+};
 use crate::value::JSValue;
 use native_api::{
     current_process_uses_arm64e, enumerate_arm64e_images, image_uses_arm64e, pac_support_available, strip_code_pointer,
     strip_data_pointer, ImageInfo,
 };
+use std::path::Path;
 
 unsafe fn image_to_js(ctx: *mut ffi::JSContext, image: &ImageInfo) -> ffi::JSValue {
     let object = JSValue(ffi::JS_NewObject(ctx));
-    object.set_property(ctx, "name", JSValue::string(ctx, &image.name));
+    let basename = Path::new(&image.name)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(&image.name);
+    object.set_property(ctx, "name", JSValue::string(ctx, basename));
     object.set_property(ctx, "path", JSValue::string(ctx, &image.name));
     object.set_property(ctx, "base", create_native_pointer(ctx, image.base as u64));
-    object.set_property(ctx, "slide", JSValue(ffi::JS_NewBigInt64(ctx, image.slide as i64)));
+    object.set_property(ctx, "slide", JSValue(js_i64_to_js_number_or_bigint(ctx, image.slide as i64)));
+    object.set_property(ctx, "size", JSValue(js_u64_to_js_number_or_bigint(ctx, image.size as u64)));
     object.raw()
 }
 

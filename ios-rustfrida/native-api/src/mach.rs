@@ -729,6 +729,7 @@ fn enumerate_remote_images(task: MachTask) -> Result<Vec<ImageInfo>> {
             name,
             base: image.image_load_address as usize,
             slide: 0,
+            size: 0,
         });
     }
     Ok(images)

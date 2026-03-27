@@ -117,6 +117,7 @@ pub struct ImageInfo {
     pub name: String,
     pub base: usize,
     pub slide: isize,
+    pub size: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -361,6 +362,42 @@ mod platform {
         fn _dyld_get_image_vmaddr_slide(index: u32) -> isize;
     }
 
+    const LC_SEGMENT_64: u32 = 0x19;
+    const MH_MAGIC_64: u32 = 0xfeedfacf;
+
+    #[repr(C)]
+    struct MachHeader64 {
+        magic: u32,
+        cputype: i32,
+        cpusubtype: i32,
+        filetype: u32,
+        ncmds: u32,
+        sizeofcmds: u32,
+        flags: u32,
+        reserved: u32,
+    }
+
+    #[repr(C)]
+    struct LoadCommand {
+        cmd: u32,
+        cmdsize: u32,
+    }
+
+    #[repr(C)]
+    struct SegmentCommand64 {
+        cmd: u32,
+        cmdsize: u32,
+        segname: [u8; 16],
+        vmaddr: u64,
+        vmsize: u64,
+        fileoff: u64,
+        filesize: u64,
+        maxprot: i32,
+        initprot: i32,
+        nsects: u32,
+        flags: u32,
+    }
+
     fn make_cstring(raw: &str, label: &str) -> Result<CString> {
         CString::new(raw).map_err(|_| common::Error::InvalidArgument(format!("{label} contains an interior NUL byte")))
     }
@@ -414,6 +451,63 @@ mod platform {
         }
     }
 
+    unsafe fn header_ptr_after_header(header: &MachHeader64) -> *const u8 {
+        (header as *const MachHeader64).add(1) as *const u8
+    }
+
+    fn image_runtime_size(base: usize, slide: isize) -> usize {
+        let header = base as *const MachHeader64;
+        if header.is_null() {
+            return 0;
+        }
+
+        let header = unsafe { &*header };
+        if header.magic != MH_MAGIC_64 {
+            return 0;
+        }
+
+        let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let mut min_runtime_start = None::<u128>;
+        let mut max_runtime_end = None::<u128>;
+
+        for _ in 0..header.ncmds {
+            let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            if load.cmd == LC_SEGMENT_64 {
+                let segment = unsafe { &*(command_ptr as *const SegmentCommand64) };
+                let runtime_start = i128::from(segment.vmaddr) + (slide as i128);
+                let runtime_end = runtime_start + i128::from(segment.vmsize);
+                if runtime_start >= 0 && runtime_end >= runtime_start {
+                    let runtime_start = runtime_start as u128;
+                    let runtime_end = runtime_end as u128;
+                    min_runtime_start = Some(
+                        min_runtime_start
+                            .map(|current| current.min(runtime_start))
+                            .unwrap_or(runtime_start),
+                    );
+                    max_runtime_end = Some(
+                        max_runtime_end
+                            .map(|current| current.max(runtime_end))
+                            .unwrap_or(runtime_end),
+                    );
+                }
+            }
+
+            let command_size = load.cmdsize as usize;
+            if command_size == 0 {
+                break;
+            }
+            command_ptr = unsafe { command_ptr.add(command_size) };
+        }
+
+        match (min_runtime_start, max_runtime_end) {
+            (Some(start), Some(end)) if end >= start => end
+                .checked_sub(start)
+                .and_then(|value| usize::try_from(value).ok())
+                .unwrap_or(0),
+            _ => 0,
+        }
+    }
+
     fn symbol_info_from_dl_info(address: usize, info: libc::Dl_info) -> Option<SymbolInfo> {
         if info.dli_fname.is_null() || info.dli_fbase.is_null() {
             return None;
@@ -453,7 +547,13 @@ mod platform {
             let name = unsafe { CStr::from_ptr(name_ptr) }.to_string_lossy().into_owned();
             let base = unsafe { _dyld_get_image_header(index) } as usize;
             let slide = unsafe { _dyld_get_image_vmaddr_slide(index) };
-            images.push(ImageInfo { name, base, slide });
+            let size = image_runtime_size(base, slide);
+            images.push(ImageInfo {
+                name,
+                base,
+                slide,
+                size,
+            });
         }
         Ok(images)
     }
@@ -632,10 +732,18 @@ mod platform {
         }
 
         let name = unsafe { CStr::from_ptr(info.dli_fname) }.to_string_lossy().into_owned();
+        if let Some(image) = enumerate_images()?
+            .into_iter()
+            .find(|image| image_name_matches(&name, &image.name))
+        {
+            return Ok(Some(image));
+        }
+
         Ok(Some(ImageInfo {
             name,
             base: info.dli_fbase as usize,
             slide: 0,
+            size: 0,
         }))
     }
 
@@ -859,6 +967,7 @@ mod platform {
             name,
             base: info.dli_fbase as usize,
             slide: 0,
+            size: 0,
         }))
     }
 
@@ -1137,11 +1246,13 @@ mod tests {
                 name: "/private/preboot/Cryptexes/OS/usr/lib/libdyld.dylib".into(),
                 base: 0x1800_0000_0,
                 slide: 0,
+                size: 0x20000,
             },
             ImageInfo {
                 name: "/usr/lib/system/libsystem_pthread.dylib".into(),
                 base: 0x1801_0000_0,
                 slide: 0,
+                size: 0x30000,
             },
         ];
 

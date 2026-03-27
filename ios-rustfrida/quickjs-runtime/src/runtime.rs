@@ -796,6 +796,12 @@ undefined;
                     .expect("pac arm64e images"),
                 "true"
             );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const images = PAC.arm64eImages(); return images.length === 0 || (typeof images[0].name === 'string' && typeof images[0].path === 'string' && (typeof images[0].size === 'number' || typeof images[0].size === 'bigint')); })()")
+                    .expect("pac arm64e image shape"),
+                "true"
+            );
             let swift_available = if has_swift_support() { "true" } else { "false" };
             assert_eq!(
                 runtime.eval("Swift.available").expect("swift available"),
@@ -1035,6 +1041,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const modules = Module.enumerateModules(); return modules.length === 0 || (typeof modules[0].name === 'string' && typeof modules[0].path === 'string' && (typeof modules[0].size === 'number' || typeof modules[0].size === 'bigint')); })()")
+                    .expect("enumerate modules shape"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const value = Module.findBaseAddress('libobjc.A.dylib'); return value === null || value.toString().indexOf('0x') === 0; })()"
                     )
@@ -1234,7 +1246,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = Native.imageInfo('libsystem_malloc.dylib'); return value === null || (typeof value.name === 'string' && typeof value.path === 'string' && typeof value.base === 'object'); })()")
+                    .eval("(function() { const value = Native.imageInfo('libsystem_malloc.dylib'); return value === null || (typeof value.name === 'string' && typeof value.path === 'string' && typeof value.base === 'object' && (typeof value.size === 'number' || typeof value.size === 'bigint')); })()")
                     .expect("native imageInfo"),
                 "true"
             );
@@ -2313,7 +2325,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image_info', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.image_info' && result.moduleName === 'libsystem_malloc.dylib' && ((result.image === null && result.text === '<null>') || (typeof result.image.name === 'string' && typeof result.image.path === 'string' && typeof result.image.base === 'string' && result.text === result.image.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image_info', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.image_info' && result.moduleName === 'libsystem_malloc.dylib' && ((result.image === null && result.text === '<null>') || (typeof result.image.name === 'string' && typeof result.image.path === 'string' && typeof result.image.base === 'string' && typeof result.image.sizeHex === 'string' && result.text === result.image.text)); })()"
                     )
                     .expect("agent native imageInfo result"),
                 "true"
