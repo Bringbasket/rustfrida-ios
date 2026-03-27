@@ -733,6 +733,14 @@ function formatObjcMethod(method) {
     if (method.signature && method.signature.length !== 0) {
         details.push('sig=' + method.signature);
     }
+    details.push('args=' + String(method.explicitArgumentCount || 0));
+    if (method.returnsVoid) {
+        details.push('returns=void');
+    } else if (method.returnsBlock) {
+        details.push('returns=block');
+    } else if (method.returnsObject) {
+        details.push('returns=object');
+    }
     if (method.typeEncoding.length !== 0) {
         details.push('types=' + method.typeEncoding);
     }
@@ -744,6 +752,14 @@ function formatObjcMethodInfo(method) {
     const details = ['method=' + method.methodPointer];
     if (method.signature && method.signature.length !== 0) {
         details.push('sig=' + method.signature);
+    }
+    details.push('args=' + String(method.explicitArgumentCount || 0));
+    if (method.returnsVoid) {
+        details.push('returns=void');
+    } else if (method.returnsBlock) {
+        details.push('returns=block');
+    } else if (method.returnsObject) {
+        details.push('returns=object');
     }
     if (method.typeEncoding.length !== 0) {
         details.push('types=' + method.typeEncoding);
@@ -760,6 +776,14 @@ function formatObjcProtocolMethod(method) {
     if (method.signature && method.signature.length !== 0) {
         details.push('sig=' + method.signature);
     }
+    details.push('args=' + String(method.explicitArgumentCount || 0));
+    if (method.returnsVoid) {
+        details.push('returns=void');
+    } else if (method.returnsBlock) {
+        details.push('returns=block');
+    } else if (method.returnsObject) {
+        details.push('returns=object');
+    }
     if (method.typeEncoding.length !== 0) {
         details.push('types=' + method.typeEncoding);
     }
@@ -771,6 +795,14 @@ function formatObjcProtocolMethodInfo(method) {
     const details = [method.isRequired ? 'required' : 'optional'];
     if (method.signature && method.signature.length !== 0) {
         details.push('sig=' + method.signature);
+    }
+    details.push('args=' + String(method.explicitArgumentCount || 0));
+    if (method.returnsVoid) {
+        details.push('returns=void');
+    } else if (method.returnsBlock) {
+        details.push('returns=block');
+    } else if (method.returnsObject) {
+        details.push('returns=object');
     }
     if (method.typeEncoding.length !== 0) {
         details.push('types=' + method.typeEncoding);
@@ -1431,6 +1463,7 @@ function normalizeImage(image) {
 
 function normalizeObjcMethod(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const hiddenArgumentCount = Array.isArray(methodTypeInfo.hiddenArgumentTypeNames) ? methodTypeInfo.hiddenArgumentTypeNames.length : 0;
     const normalized = {
         className: String(method.className || ''),
         selector: String(method.selector || ''),
@@ -1447,8 +1480,14 @@ function normalizeObjcMethod(method) {
         argumentTypeNames: methodTypeInfo.argumentTypeNames,
         argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
         hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        hiddenArgumentCount,
         signature: methodTypeInfo.signature,
         methodTypeInfo,
+        hasExplicitArguments: methodTypeInfo.explicitArgumentCount !== 0,
+        hasHiddenArguments: hiddenArgumentCount !== 0,
+        returnsVoid: methodTypeInfo.returnTypeEncoding === 'v',
+        returnsObject: !!(methodTypeInfo.returnTypeInfo && methodTypeInfo.returnTypeInfo.isObject),
+        returnsBlock: !!(methodTypeInfo.returnTypeInfo && methodTypeInfo.returnTypeInfo.isBlock),
     };
     normalized.text = formatObjcMethod(normalized);
     return normalized;
@@ -1456,6 +1495,7 @@ function normalizeObjcMethod(method) {
 
 function normalizeObjcMethodInfo(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const hiddenArgumentCount = Array.isArray(methodTypeInfo.hiddenArgumentTypeNames) ? methodTypeInfo.hiddenArgumentTypeNames.length : 0;
     const normalized = {
         className: String(method.className || ''),
         selector: String(method.selector || ''),
@@ -1473,8 +1513,14 @@ function normalizeObjcMethodInfo(method) {
         argumentTypeNames: methodTypeInfo.argumentTypeNames,
         argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
         hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        hiddenArgumentCount,
         signature: methodTypeInfo.signature,
         methodTypeInfo,
+        hasExplicitArguments: methodTypeInfo.explicitArgumentCount !== 0,
+        hasHiddenArguments: hiddenArgumentCount !== 0,
+        returnsVoid: methodTypeInfo.returnTypeEncoding === 'v',
+        returnsObject: !!(methodTypeInfo.returnTypeInfo && methodTypeInfo.returnTypeInfo.isObject),
+        returnsBlock: !!(methodTypeInfo.returnTypeInfo && methodTypeInfo.returnTypeInfo.isBlock),
         imagePath: method.imagePath === undefined || method.imagePath === null ? null : String(method.imagePath),
     };
     normalized.text = formatObjcMethodInfo(normalized);
@@ -1536,6 +1582,7 @@ function normalizeObjcProtocolInfo(info) {
 
 function normalizeObjcProtocolMethod(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const hiddenArgumentCount = Array.isArray(methodTypeInfo.hiddenArgumentTypeNames) ? methodTypeInfo.hiddenArgumentTypeNames.length : 0;
     const normalized = {
         protocolName: String(method.protocolName || ''),
         selector: String(method.selector || ''),
@@ -1550,8 +1597,14 @@ function normalizeObjcProtocolMethod(method) {
         argumentTypeNames: methodTypeInfo.argumentTypeNames,
         argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
         hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        hiddenArgumentCount,
         signature: methodTypeInfo.signature,
         methodTypeInfo,
+        hasExplicitArguments: methodTypeInfo.explicitArgumentCount !== 0,
+        hasHiddenArguments: hiddenArgumentCount !== 0,
+        returnsVoid: methodTypeInfo.returnTypeEncoding === 'v',
+        returnsObject: !!(methodTypeInfo.returnTypeInfo && methodTypeInfo.returnTypeInfo.isObject),
+        returnsBlock: !!(methodTypeInfo.returnTypeInfo && methodTypeInfo.returnTypeInfo.isBlock),
         isRequired: !!method.isRequired,
         isInstanceMethod: !!method.isInstanceMethod,
     };
@@ -1561,6 +1614,7 @@ function normalizeObjcProtocolMethod(method) {
 
 function normalizeObjcProtocolMethodInfo(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
+    const hiddenArgumentCount = Array.isArray(methodTypeInfo.hiddenArgumentTypeNames) ? methodTypeInfo.hiddenArgumentTypeNames.length : 0;
     const normalized = {
         protocolName: String(method.protocolName || ''),
         selector: String(method.selector || ''),
@@ -1575,8 +1629,14 @@ function normalizeObjcProtocolMethodInfo(method) {
         argumentTypeNames: methodTypeInfo.argumentTypeNames,
         argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
         hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        hiddenArgumentCount,
         signature: methodTypeInfo.signature,
         methodTypeInfo,
+        hasExplicitArguments: methodTypeInfo.explicitArgumentCount !== 0,
+        hasHiddenArguments: hiddenArgumentCount !== 0,
+        returnsVoid: methodTypeInfo.returnTypeEncoding === 'v',
+        returnsObject: !!(methodTypeInfo.returnTypeInfo && methodTypeInfo.returnTypeInfo.isObject),
+        returnsBlock: !!(methodTypeInfo.returnTypeInfo && methodTypeInfo.returnTypeInfo.isBlock),
         isRequired: !!method.isRequired,
         isInstanceMethod: !!method.isInstanceMethod,
         imagePath: method.imagePath === undefined || method.imagePath === null ? null : String(method.imagePath),
