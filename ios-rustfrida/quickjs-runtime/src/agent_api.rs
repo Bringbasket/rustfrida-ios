@@ -2524,9 +2524,7 @@ function handleSpecResult(spec) {
     }
     case 'native.images': {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter).trim().toLowerCase();
-        const images = Module.enumerateModules()
-            .filter((image) => filter === null || filter.length === 0 || String(image.path || image.name || '').toLowerCase().indexOf(filter) !== -1)
-            .map((image) => normalizeImage(image));
+        const images = Native.images(filter).map((image) => normalizeImage(image));
         return { kind: 'native.images', filter, count: images.length, images, text: images.map((image) => image.text).join('\n') };
     }
     case 'native.base': {
@@ -2558,7 +2556,7 @@ function handleSpecResult(spec) {
     }
     case 'native.symbol': {
         const address = parseAddressArg(spec.address, 'native.symbol usage: native.symbol <address>');
-        const symbol = normalizeDebugSymbol(DebugSymbol.fromAddress(address), address);
+        const symbol = normalizeDebugSymbol(Native.symbol(address), address);
         return { kind: 'native.symbol', address: address.toString(), symbol, text: symbol.text };
     }
     case 'native.export': {

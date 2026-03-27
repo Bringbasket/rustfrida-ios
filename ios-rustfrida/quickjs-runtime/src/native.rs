@@ -11,7 +11,7 @@ use native_api::{
     find_image_entry_point, find_image_exports, find_image_exports_trie, find_image_function_starts,
     find_image_imports,
     find_image_install_name, find_image_linkedit_info, find_image_load_commands, find_image_rpaths,
-    find_image_sections, find_image_segments, find_image_source_version, find_image_uuid, find_native_symbols,
+    find_image_sections, find_image_segments, find_image_source_version, find_image_uuid, find_native_symbols, find_symbol_by_address,
     hook_environment_recommendations, image_build_version_support_available, image_chained_fixups_support_available,
     image_code_signature_support_available, image_dependency_support_available, image_data_in_code_support_available,
     image_exports_trie_support_available,
@@ -108,6 +108,25 @@ unsafe fn native_symbol_to_js(ctx: *mut ffi::JSContext, symbol: &native_api::Nat
     result.set_property(ctx, "address", create_native_pointer(ctx, symbol.address as u64));
     result.set_property(ctx, "offset", JSValue(ffi::JS_NewBigUint64(ctx, symbol.offset as u64)));
     result.raw()
+}
+
+unsafe fn symbol_info_to_js(ctx: *mut ffi::JSContext, symbol: &native_api::SymbolInfo) -> ffi::JSValue {
+    let object = JSValue(ffi::JS_NewObject(ctx));
+    object.set_property(ctx, "moduleName", JSValue::string(ctx, &symbol.module_name));
+    object.set_property(ctx, "moduleBase", create_native_pointer(ctx, symbol.module_base as u64));
+    object.set_property(ctx, "offset", JSValue(ffi::JS_NewBigUint64(ctx, symbol.offset as u64)));
+
+    match &symbol.symbol_name {
+        Some(symbol_name) => object.set_property(ctx, "name", JSValue::string(ctx, symbol_name)),
+        None => object.set_property(ctx, "name", JSValue::null()),
+    };
+
+    match symbol.symbol_address {
+        Some(symbol_address) => object.set_property(ctx, "address", create_native_pointer(ctx, symbol_address as u64)),
+        None => object.set_property(ctx, "address", JSValue::null()),
+    };
+
+    object.raw()
 }
 
 unsafe fn image_info_to_js(ctx: *mut ffi::JSContext, image: &native_api::ImageInfo) -> ffi::JSValue {
@@ -1044,6 +1063,74 @@ unsafe extern "C" fn js_native_symbol_info(
     }) {
         Some(symbol) => native_symbol_to_js(ctx, &symbol),
         None => JSValue::null().raw(),
+    }
+}
+
+unsafe extern "C" fn js_native_images(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let filter = if argc >= 1 {
+        match JSValue(*argv).to_string(ctx) {
+            Some(value) => {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_lowercase())
+                }
+            }
+            None => {
+                return crate::util::js_throw_type_error(
+                    ctx,
+                    "Native.images([filter]) expected filter to be a string when provided",
+                )
+            }
+        }
+    } else {
+        None
+    };
+
+    match enumerate_images() {
+        Ok(images) => {
+            let array = ffi::JS_NewArray(ctx);
+            let mut index = 0u32;
+            for image in images {
+                let haystack = image.name.to_lowercase();
+                if filter.as_ref().is_some_and(|value| !haystack.contains(value)) {
+                    continue;
+                }
+                ffi::JS_SetPropertyUint32(ctx, array, index, image_info_to_js(ctx, &image));
+                index += 1;
+            }
+            array
+        }
+        Err(common::Error::Unsupported(_)) => ffi::JS_NewArray(ctx),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
+}
+
+unsafe extern "C" fn js_native_symbol(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return crate::util::js_throw_type_error(ctx, "Native.symbol(address) requires 1 address argument");
+    }
+
+    let address = match pointer_arg_to_u64(ctx, JSValue(*argv), "Native.symbol(address) expected a pointer-like value") {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    match find_symbol_by_address(address as usize) {
+        Ok(Some(symbol)) => symbol_info_to_js(ctx, &symbol),
+        Ok(None) | Err(common::Error::Unsupported(_)) => JSValue::null().raw(),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
     }
 }
 
@@ -2391,9 +2478,11 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_detect_hook_environment,
             0,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "images", js_native_images, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "base", js_native_base, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "mainImage", js_native_main_image, 0);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "image", js_native_image, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbol", js_native_symbol, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSymbols", js_native_find_symbols, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbolInfo", js_native_symbol_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "imageInfo", js_native_image_info, 1);

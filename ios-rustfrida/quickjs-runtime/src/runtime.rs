@@ -1145,6 +1145,10 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof Native.images").expect("native images type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof Native.base").expect("native base type"),
                 "function"
             );
@@ -1156,6 +1160,10 @@ undefined;
             );
             assert_eq!(
                 runtime.eval("typeof Native.image").expect("native image type"),
+                "function"
+            );
+            assert_eq!(
+                runtime.eval("typeof Native.symbol").expect("native symbol type"),
                 "function"
             );
             assert_eq!(
@@ -1266,6 +1274,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const values = Native.images(); return Array.isArray(values) && (values.length === 0 || (typeof values[0].name === 'string' && typeof values[0].path === 'string' && typeof values[0].base === 'object' && (typeof values[0].size === 'number' || typeof values[0].size === 'bigint'))); })()")
+                    .expect("native images"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = Native.base('libsystem_malloc.dylib'); return value === null || value.toString().indexOf('0x') === 0; })()")
                     .expect("native base"),
                 "true"
@@ -1280,6 +1294,12 @@ undefined;
                 runtime
                     .eval("(function() { const address = Module.findExportByName(null, 'malloc'); if (address === null) { return true; } const value = Native.image(address); return value === null || (typeof value.name === 'string' && typeof value.path === 'string' && typeof value.base === 'object' && (typeof value.size === 'number' || typeof value.size === 'bigint')); })()")
                     .expect("native image"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const address = Module.findExportByName(null, 'malloc'); if (address === null) { return true; } const value = Native.symbol(address); return value === null || (typeof value.moduleName === 'string' && (value.name === null || typeof value.name === 'string') && typeof value.moduleBase === 'object'); })()")
+                    .expect("native symbol"),
                 "true"
             );
             assert_eq!(
