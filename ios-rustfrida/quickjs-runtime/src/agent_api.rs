@@ -2097,10 +2097,14 @@ function normalizeDebugSymbol(symbol, rawAddress) {
 
 function normalizeNativeSymbol(symbol) {
     const offset = typeof symbol.offset === 'bigint' ? symbol.offset : BigInt(symbol.offset || 0);
+    const moduleName = String(symbol.moduleName || '');
+    const name = String(symbol.name || '');
     return {
-        moduleName: String(symbol.moduleName || ''),
+        moduleName,
         moduleBase: symbol.moduleBase ? symbol.moduleBase.toString() : null,
-        name: String(symbol.name || ''),
+        name,
+        hasModuleName: moduleName.length !== 0,
+        hasName: name.length !== 0,
         address: symbol.address.toString(),
         offsetHex: '0x' + offset.toString(16),
         text: formatNativeSymbol(symbol),
@@ -2108,13 +2112,22 @@ function normalizeNativeSymbol(symbol) {
 }
 
 function normalizeImport(imp) {
+    const name = String(imp.name || '');
+    const dylibOrdinal = Number(imp.dylibOrdinal || 0);
+    const dylibName = imp.dylibName === undefined || imp.dylibName === null ? null : String(imp.dylibName);
     return {
         moduleName: String(imp.moduleName || ''),
         moduleBase: imp.moduleBase ? imp.moduleBase.toString() : null,
-        name: String(imp.name || ''),
-        dylibOrdinal: Number(imp.dylibOrdinal || 0),
-        dylibName: imp.dylibName === undefined ? null : imp.dylibName,
+        name,
+        hasName: name.length !== 0,
+        dylibOrdinal,
+        dylibName,
+        hasDylibName: dylibName !== null,
+        usesOrdinalOnly: dylibName === null,
+        isMainExecutableImport: dylibOrdinal === -1,
+        isFlatLookupImport: dylibOrdinal === -2,
         weakImport: !!imp.weakImport,
+        source: dylibName === null ? 'ordinal=' + String(dylibOrdinal) : dylibName,
         text: formatImport(imp),
     };
 }
@@ -2122,16 +2135,29 @@ function normalizeImport(imp) {
 function normalizeDependency(dep) {
     const path = String(dep.path || '');
     const pathParts = path.split('/').filter(Boolean);
+    const name = pathParts.length === 0 ? path : pathParts[pathParts.length - 1];
+    const kind = String(dep.kind || 'load');
+    const currentVersion = formatPackedVersion(dep.currentVersion);
+    const compatibilityVersion = formatPackedVersion(dep.compatibilityVersion);
+    const timestamp = Number(dep.timestamp || 0);
     return {
         moduleName: String(dep.moduleName || ''),
         moduleBase: dep.moduleBase ? dep.moduleBase.toString() : null,
         ordinal: Number(dep.ordinal || 0),
         path,
-        name: pathParts.length === 0 ? path : pathParts[pathParts.length - 1],
-        kind: String(dep.kind || 'load'),
-        currentVersion: formatPackedVersion(dep.currentVersion),
-        compatibilityVersion: formatPackedVersion(dep.compatibilityVersion),
-        timestamp: Number(dep.timestamp || 0),
+        hasPath: path.length !== 0,
+        name,
+        hasName: name.length !== 0,
+        kind,
+        isWeakDependency: kind === 'weak',
+        isReexportDependency: kind === 'reexport',
+        isUpwardDependency: kind === 'upward',
+        isLoadDependency: kind === 'load',
+        currentVersion,
+        compatibilityVersion,
+        versionMismatch: currentVersion !== compatibilityVersion,
+        timestamp,
+        hasTimestamp: timestamp !== 0,
         text: formatDependency(dep),
     };
 }

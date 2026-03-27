@@ -2537,7 +2537,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); return result.kind === 'native.export_info' && result.moduleName === 'libsystem_malloc.dylib' && result.symbolName === 'malloc' && ((result.exportInfo === null && result.text === '<null>') || (typeof result.exportInfo.moduleBase === 'string' && typeof result.exportInfo.name === 'string' && typeof result.exportInfo.offsetHex === 'string' && result.text === result.exportInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); return result.kind === 'native.export_info' && result.moduleName === 'libsystem_malloc.dylib' && result.symbolName === 'malloc' && ((result.exportInfo === null && result.text === '<null>') || (typeof result.exportInfo.moduleBase === 'string' && typeof result.exportInfo.name === 'string' && typeof result.exportInfo.hasModuleName === 'boolean' && typeof result.exportInfo.hasName === 'boolean' && typeof result.exportInfo.offsetHex === 'string' && result.text === result.exportInfo.text)); })()"
                     )
                     .expect("agent native exportInfo result"),
                 "true"
@@ -2545,7 +2545,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependencies', moduleName: main.image.name, query: null }); return result.kind === 'native.dependencies' && result.count === result.dependencies.length && (result.dependencies.length === 0 || (typeof result.dependencies[0].ordinal === 'number' && typeof result.dependencies[0].kind === 'string')); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependencies', moduleName: main.image.name, query: null }); return result.kind === 'native.dependencies' && result.count === result.dependencies.length && (result.dependencies.length === 0 || (typeof result.dependencies[0].ordinal === 'number' && typeof result.dependencies[0].kind === 'string' && typeof result.dependencies[0].hasPath === 'boolean' && typeof result.dependencies[0].hasName === 'boolean' && typeof result.dependencies[0].isWeakDependency === 'boolean' && typeof result.dependencies[0].isReexportDependency === 'boolean' && typeof result.dependencies[0].isUpwardDependency === 'boolean' && typeof result.dependencies[0].isLoadDependency === 'boolean' && typeof result.dependencies[0].versionMismatch === 'boolean' && typeof result.dependencies[0].hasTimestamp === 'boolean')); })()"
                     )
                     .expect("agent native dependencies result"),
                 "true"
@@ -2553,7 +2553,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependency_info', moduleName: 'libsystem_malloc.dylib', pathOrName: 'libSystem.B.dylib' }); return result.kind === 'native.dependency_info' && result.moduleName === 'libsystem_malloc.dylib' && result.pathOrName === 'libSystem.B.dylib' && ((result.dependencyInfo === null && result.text === '<null>') || (typeof result.dependencyInfo.moduleBase === 'string' && typeof result.dependencyInfo.ordinal === 'number' && typeof result.dependencyInfo.kind === 'string' && result.text === result.dependencyInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependency_info', moduleName: 'libsystem_malloc.dylib', pathOrName: 'libSystem.B.dylib' }); return result.kind === 'native.dependency_info' && result.moduleName === 'libsystem_malloc.dylib' && result.pathOrName === 'libSystem.B.dylib' && ((result.dependencyInfo === null && result.text === '<null>') || (typeof result.dependencyInfo.moduleBase === 'string' && typeof result.dependencyInfo.ordinal === 'number' && typeof result.dependencyInfo.kind === 'string' && typeof result.dependencyInfo.hasPath === 'boolean' && typeof result.dependencyInfo.hasName === 'boolean' && typeof result.dependencyInfo.isWeakDependency === 'boolean' && typeof result.dependencyInfo.isReexportDependency === 'boolean' && typeof result.dependencyInfo.isUpwardDependency === 'boolean' && typeof result.dependencyInfo.isLoadDependency === 'boolean' && typeof result.dependencyInfo.versionMismatch === 'boolean' && typeof result.dependencyInfo.hasTimestamp === 'boolean' && result.text === result.dependencyInfo.text)); })()"
                     )
                     .expect("agent native dependencyInfo result"),
                 "true"
@@ -2713,7 +2713,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: main.image.name, query: null }); return result.kind === 'native.imports' && result.count === result.imports.length && (result.imports.length === 0 || (typeof result.imports[0].dylibOrdinal === 'number' && typeof result.imports[0].weakImport === 'boolean')); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: main.image.name, query: null }); return result.kind === 'native.imports' && result.count === result.imports.length && (result.imports.length === 0 || (typeof result.imports[0].dylibOrdinal === 'number' && typeof result.imports[0].weakImport === 'boolean' && typeof result.imports[0].hasName === 'boolean' && typeof result.imports[0].hasDylibName === 'boolean' && typeof result.imports[0].usesOrdinalOnly === 'boolean' && typeof result.imports[0].isMainExecutableImport === 'boolean' && typeof result.imports[0].isFlatLookupImport === 'boolean' && typeof result.imports[0].source === 'string')); })()"
                     )
                     .expect("agent native imports result"),
                 "true"
@@ -2721,7 +2721,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.import_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); return result.kind === 'native.import_info' && result.moduleName === 'libsystem_malloc.dylib' && result.symbolName === 'malloc' && ((result.importInfo === null && result.text === '<null>') || (typeof result.importInfo.moduleBase === 'string' && typeof result.importInfo.dylibOrdinal === 'number' && typeof result.importInfo.weakImport === 'boolean' && result.text === result.importInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.import_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); return result.kind === 'native.import_info' && result.moduleName === 'libsystem_malloc.dylib' && result.symbolName === 'malloc' && ((result.importInfo === null && result.text === '<null>') || (typeof result.importInfo.moduleBase === 'string' && typeof result.importInfo.dylibOrdinal === 'number' && typeof result.importInfo.weakImport === 'boolean' && typeof result.importInfo.hasName === 'boolean' && typeof result.importInfo.hasDylibName === 'boolean' && typeof result.importInfo.usesOrdinalOnly === 'boolean' && typeof result.importInfo.isMainExecutableImport === 'boolean' && typeof result.importInfo.isFlatLookupImport === 'boolean' && typeof result.importInfo.source === 'string' && result.text === result.importInfo.text)); })()"
                     )
                     .expect("agent native importInfo result"),
                 "true"
