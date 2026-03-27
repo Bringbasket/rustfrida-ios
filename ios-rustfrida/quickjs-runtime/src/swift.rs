@@ -733,6 +733,66 @@ unsafe extern "C" fn js_swift_find_conformances(
     array
 }
 
+unsafe extern "C" fn js_swift_conformance_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let type_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "Swift.conformanceInfo(typeName, protocolName[, moduleName]) requires at least 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let protocol_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        1,
+        "Swift.conformanceInfo(typeName, protocolName[, moduleName]) requires at least 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let module_name = if argc >= 3 {
+        let value = JSValue(*argv.add(2));
+        if value.is_null() || value.is_undefined() {
+            None
+        } else {
+            match value.to_string(ctx) {
+                Some(module_name) => Some(module_name),
+                None => return js_throw_type_error(
+                    ctx,
+                    "Swift.conformanceInfo(typeName, protocolName[, moduleName]) expected moduleName to be a string when provided",
+                ),
+            }
+        }
+    } else {
+        None
+    };
+
+    let conformances = match find_swift_conformances(module_name.as_deref(), &type_name) {
+        Ok(conformances) => conformances,
+        Err(CommonError::Unsupported(_)) => return JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match conformances
+        .into_iter()
+        .find(|conformance| conformance.type_name == type_name && conformance.protocol_name == protocol_name)
+    {
+        Some(conformance) => swift_conformance_to_js(ctx, &conformance),
+        None => JSValue::null().raw(),
+    }
+}
+
 unsafe extern "C" fn js_swift_find_metadata(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -941,6 +1001,7 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findProtocols", js_swift_find_protocols, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "protocolInfo", js_swift_protocol_info, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findConformances", js_swift_find_conformances, 2);
+        add_cfunction_to_object(ctx_ptr, swift.raw(), "conformanceInfo", js_swift_conformance_info, 3);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMetadata", js_swift_find_metadata, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findVtable", js_swift_find_vtable, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findWitnessTable", js_swift_find_witness_table, 2);

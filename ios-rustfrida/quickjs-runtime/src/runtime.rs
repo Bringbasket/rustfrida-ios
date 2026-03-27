@@ -438,6 +438,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Swift.conformanceInfo")
+                    .expect("swift conformanceInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof ObjC.protocolProtocols")
                     .expect("objc protocolProtocols type"),
                 "function"
@@ -1828,6 +1834,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = Swift.conformanceInfo('ViewController', 'Renderable'); return value === null || (typeof value.typeName === 'string' && typeof value.protocolName === 'string' && typeof value.moduleName === 'string'); })()")
+                    .expect("swift conformanceInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.protocols'); return value === '' || value.indexOf('[protocol-') !== -1; })()")
                     .expect("agent swift protocols"),
                 "true"
@@ -1836,6 +1848,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.protocolInfo Renderable'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' }); return value === result.text && (result.protocolInfo === null || (result.protocolInfo.name === 'Renderable' && typeof result.protocolInfo.sourceKind === 'string')); })()")
                     .expect("agent swift protocolInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.conformanceInfo ViewController Renderable'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformance_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }); return value === result.text && (result.conformanceInfo === null || (result.conformanceInfo.typeName === 'ViewController' && result.conformanceInfo.protocolName === 'Renderable')); })()")
+                    .expect("agent swift conformanceInfo"),
                 "true"
             );
             assert_eq!(
@@ -2210,6 +2228,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformance_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }); return result.kind === 'swift.conformance_info' && result.typeName === 'ViewController' && result.protocolName === 'Renderable' && ((result.conformanceInfo === null && result.text === '<null>') || (typeof result.conformanceInfo.moduleBase === 'string' && typeof result.conformanceInfo.sourceSymbolName === 'string' && typeof result.conformanceInfo.sourceOffsetHex === 'string' && result.text === result.conformanceInfo.text)); })()")
+                    .expect("agent swift conformanceInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null }); return result.kind === 'swift.protocols' && result.query === null && result.count === result.protocols.length && (result.protocols.length === 0 || (typeof result.protocols[0].moduleBase === 'string' && typeof result.protocols[0].sourceSymbolName === 'string' && typeof result.protocols[0].sourceOffsetHex === 'string')); })()")
                     .expect("agent swift protocols result"),
                 "true"
@@ -2544,6 +2568,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' }); return value === result.text; })()")
                     .expect("agent spec swift protocolInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.conformance_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformance_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }); return value === result.text; })()")
+                    .expect("agent spec swift conformanceInfo"),
                 "true"
             );
             assert_eq!(

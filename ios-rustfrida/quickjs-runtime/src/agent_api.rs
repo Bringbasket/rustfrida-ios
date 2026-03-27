@@ -2736,6 +2736,21 @@ function handleSpecResult(spec) {
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
+    case 'swift.conformance_info': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const typeName = String(spec.typeName || '');
+        const protocolName = String(spec.protocolName || '');
+        const conformanceInfo = Swift.conformanceInfo(typeName, protocolName, moduleName);
+        const normalized = conformanceInfo === null ? null : normalizeSwiftConformance(conformanceInfo);
+        return {
+            kind: 'swift.conformance_info',
+            moduleName,
+            typeName,
+            protocolName,
+            conformanceInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'swift.protocols': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
@@ -3361,6 +3376,21 @@ function legacyToSpec(command) {
             kind: 'swift.protocol_info',
             moduleName: parsed.moduleName,
             protocolName: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.conformanceInfo ')) {
+        const usage = 'swift.conformanceInfo usage: swift.conformanceInfo <type> <protocol> | swift.conformanceInfo <module> -- <type> <protocol>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.conformanceInfo '.length), usage);
+        const parts = parsed.query.split(/\s+/).filter(Boolean);
+        if (parts.length < 2) {
+            throw new Error(usage);
+        }
+        return {
+            kind: 'swift.conformance_info',
+            moduleName: parsed.moduleName,
+            typeName: parts[0],
+            protocolName: parts.slice(1).join(' '),
         };
     }
 

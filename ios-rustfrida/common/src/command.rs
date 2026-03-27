@@ -142,6 +142,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("pac.stripdata ")
         || command.starts_with("swift.demangle ")
         || command.starts_with("swift.protocolInfo ")
+        || command.starts_with("swift.conformanceInfo ")
         || command.starts_with("swift.protocols ")
         || command.starts_with("swift.conformances ")
         || command.starts_with("swift.metadata ")
@@ -688,6 +689,20 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "swift.protocol_info",
             "moduleName": module_name,
             "protocolName": protocol_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.conformanceInfo ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        let parts = query.split_whitespace().collect::<Vec<_>>();
+        if parts.len() < 2 {
+            return None;
+        }
+        return Some(json!({
+            "kind": "swift.conformance_info",
+            "moduleName": module_name,
+            "typeName": parts[0],
+            "protocolName": parts[1..].join(" "),
         }));
     }
 
@@ -1411,6 +1426,10 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("swift.protocolInfo Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.conformanceInfo ViewController Renderable"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
