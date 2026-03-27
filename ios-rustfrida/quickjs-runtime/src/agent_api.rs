@@ -415,33 +415,42 @@ function formatEntryPoint(entryPoint) {
     ].join(' ');
 }
 
+function formatHex(value) {
+    return '0x' + BigInt(value || 0).toString(16);
+}
+
+function formatHexAdd(left, right) {
+    return '0x' + (BigInt(left || 0) + BigInt(right || 0)).toString(16);
+}
+
 function formatDyldInfo(dyldInfo) {
     return [
         String(dyldInfo.commandName || 'LC_DYLD_INFO'),
-        'rebase=0x' + BigInt(dyldInfo.rebaseOff || 0).toString(16) + '/0x' + BigInt(dyldInfo.rebaseSize || 0).toString(16),
-        'bind=0x' + BigInt(dyldInfo.bindOff || 0).toString(16) + '/0x' + BigInt(dyldInfo.bindSize || 0).toString(16),
-        'weak=0x' + BigInt(dyldInfo.weakBindOff || 0).toString(16) + '/0x' + BigInt(dyldInfo.weakBindSize || 0).toString(16),
-        'lazy=0x' + BigInt(dyldInfo.lazyBindOff || 0).toString(16) + '/0x' + BigInt(dyldInfo.lazyBindSize || 0).toString(16),
-        'export=0x' + BigInt(dyldInfo.exportOff || 0).toString(16) + '/0x' + BigInt(dyldInfo.exportSize || 0).toString(16),
+        'rebase=' + formatHex(dyldInfo.rebaseOff) + '/' + formatHex(dyldInfo.rebaseSize),
+        'bind=' + formatHex(dyldInfo.bindOff) + '/' + formatHex(dyldInfo.bindSize),
+        'weak=' + formatHex(dyldInfo.weakBindOff) + '/' + formatHex(dyldInfo.weakBindSize),
+        'lazy=' + formatHex(dyldInfo.lazyBindOff) + '/' + formatHex(dyldInfo.lazyBindSize),
+        'export=' + formatHex(dyldInfo.exportOff) + '/' + formatHex(dyldInfo.exportSize),
     ].join(' ');
 }
 
 function formatLinkedit(linkedit) {
     const symtab = linkedit.symoff === null || linkedit.symoff === undefined
         ? 'symtab=<none>'
-        : 'symtab=0x' + BigInt(linkedit.symoff || 0).toString(16) + '/' + String(linkedit.nsyms === null || linkedit.nsyms === undefined ? 0 : linkedit.nsyms);
+        : 'symtab=' + formatHex(linkedit.symoff) + '/' + String(linkedit.nsyms === null || linkedit.nsyms === undefined ? 0 : linkedit.nsyms);
     const strtab = linkedit.stroff === null || linkedit.stroff === undefined
         ? 'strtab=<none>'
-        : 'strtab=0x' + BigInt(linkedit.stroff || 0).toString(16) + '/0x' + BigInt(linkedit.strsize === null || linkedit.strsize === undefined ? 0 : linkedit.strsize).toString(16);
+        : 'strtab=' + formatHex(linkedit.stroff) + '/' + formatHex(linkedit.strsize === null || linkedit.strsize === undefined ? 0 : linkedit.strsize);
     const indirect = linkedit.indirectsymoff === null || linkedit.indirectsymoff === undefined
         ? 'indirect=<none>'
-        : 'indirect=0x' + BigInt(linkedit.indirectsymoff || 0).toString(16) + '/' + String(linkedit.nindirectsyms === null || linkedit.nindirectsyms === undefined ? 0 : linkedit.nindirectsyms);
+        : 'indirect=' + formatHex(linkedit.indirectsymoff) + '/' + String(linkedit.nindirectsyms === null || linkedit.nindirectsyms === undefined ? 0 : linkedit.nindirectsyms);
     return [
         'vmaddr=' + linkedit.vmaddr.toString(),
-        'vmsize=0x' + BigInt(linkedit.vmsize || 0).toString(16),
-        'fileoff=0x' + BigInt(linkedit.fileoff || 0).toString(16),
-        'filesize=0x' + BigInt(linkedit.filesize || 0).toString(16),
+        'vmsize=' + formatHex(linkedit.vmsize),
+        'fileoff=' + formatHex(linkedit.fileoff),
+        'filesize=' + formatHex(linkedit.filesize),
         'base=' + linkedit.computedBase.toString(),
+        'end=' + formatHexAdd(linkedit.computedBase, linkedit.filesize),
         symtab,
         strtab,
         indirect,
@@ -1995,40 +2004,75 @@ function normalizeEntryPoint(entryPoint) {
 }
 
 function normalizeDyldInfo(dyldInfo) {
+    const rebaseSize = BigInt(dyldInfo.rebaseSize || 0);
+    const bindSize = BigInt(dyldInfo.bindSize || 0);
+    const weakBindSize = BigInt(dyldInfo.weakBindSize || 0);
+    const lazyBindSize = BigInt(dyldInfo.lazyBindSize || 0);
+    const exportSize = BigInt(dyldInfo.exportSize || 0);
+    const regionCount = [rebaseSize, bindSize, weakBindSize, lazyBindSize, exportSize]
+        .filter((size) => size !== 0n)
+        .length;
+    const totalSize = rebaseSize + bindSize + weakBindSize + lazyBindSize + exportSize;
     return {
         moduleName: String(dyldInfo.moduleName || ''),
         moduleBase: dyldInfo.moduleBase ? dyldInfo.moduleBase.toString() : null,
         commandHex: '0x' + BigInt(dyldInfo.command || 0).toString(16),
         commandName: String(dyldInfo.commandName || 'LC_DYLD_INFO'),
+        commandRequiresDyld: (Number(dyldInfo.command || 0) & 0x80000000) !== 0,
         rebaseOffHex: '0x' + BigInt(dyldInfo.rebaseOff || 0).toString(16),
         rebaseSizeHex: '0x' + BigInt(dyldInfo.rebaseSize || 0).toString(16),
+        rebaseEndHex: formatHexAdd(dyldInfo.rebaseOff, dyldInfo.rebaseSize),
+        hasRebaseInfo: rebaseSize !== 0n,
         bindOffHex: '0x' + BigInt(dyldInfo.bindOff || 0).toString(16),
         bindSizeHex: '0x' + BigInt(dyldInfo.bindSize || 0).toString(16),
+        bindEndHex: formatHexAdd(dyldInfo.bindOff, dyldInfo.bindSize),
+        hasBindInfo: bindSize !== 0n,
         weakBindOffHex: '0x' + BigInt(dyldInfo.weakBindOff || 0).toString(16),
         weakBindSizeHex: '0x' + BigInt(dyldInfo.weakBindSize || 0).toString(16),
+        weakBindEndHex: formatHexAdd(dyldInfo.weakBindOff, dyldInfo.weakBindSize),
+        hasWeakBindInfo: weakBindSize !== 0n,
         lazyBindOffHex: '0x' + BigInt(dyldInfo.lazyBindOff || 0).toString(16),
         lazyBindSizeHex: '0x' + BigInt(dyldInfo.lazyBindSize || 0).toString(16),
+        lazyBindEndHex: formatHexAdd(dyldInfo.lazyBindOff, dyldInfo.lazyBindSize),
+        hasLazyBindInfo: lazyBindSize !== 0n,
         exportOffHex: '0x' + BigInt(dyldInfo.exportOff || 0).toString(16),
         exportSizeHex: '0x' + BigInt(dyldInfo.exportSize || 0).toString(16),
+        exportEndHex: formatHexAdd(dyldInfo.exportOff, dyldInfo.exportSize),
+        hasExportInfo: exportSize !== 0n,
+        hasAnyBindInfo: bindSize !== 0n || weakBindSize !== 0n || lazyBindSize !== 0n,
+        regionCount,
+        totalSizeHex: '0x' + totalSize.toString(16),
         text: formatDyldInfo(dyldInfo),
     };
 }
 
 function normalizeLinkedit(linkedit) {
+    const symoff = linkedit.symoff === null || linkedit.symoff === undefined ? null : BigInt(linkedit.symoff);
+    const stroff = linkedit.stroff === null || linkedit.stroff === undefined ? null : BigInt(linkedit.stroff);
+    const indirectsymoff = linkedit.indirectsymoff === null || linkedit.indirectsymoff === undefined ? null : BigInt(linkedit.indirectsymoff);
     return {
         moduleName: String(linkedit.moduleName || ''),
         moduleBase: linkedit.moduleBase ? linkedit.moduleBase.toString() : null,
         vmaddr: linkedit.vmaddr.toString(),
         vmsizeHex: '0x' + BigInt(linkedit.vmsize || 0).toString(16),
+        vmEnd: formatHexAdd(linkedit.vmaddr, linkedit.vmsize),
         fileoffHex: '0x' + BigInt(linkedit.fileoff || 0).toString(16),
         filesizeHex: '0x' + BigInt(linkedit.filesize || 0).toString(16),
+        fileEndHex: formatHexAdd(linkedit.fileoff, linkedit.filesize),
         computedBase: linkedit.computedBase.toString(),
-        symoffHex: linkedit.symoff === null || linkedit.symoff === undefined ? null : '0x' + BigInt(linkedit.symoff).toString(16),
+        computedEnd: formatHexAdd(linkedit.computedBase, linkedit.filesize),
+        symoffHex: symoff === null ? null : '0x' + symoff.toString(16),
         nsyms: linkedit.nsyms === null || linkedit.nsyms === undefined ? null : Number(linkedit.nsyms),
-        stroffHex: linkedit.stroff === null || linkedit.stroff === undefined ? null : '0x' + BigInt(linkedit.stroff).toString(16),
+        hasSymtab: symoff !== null,
+        symtabAddress: symoff === null ? null : formatHexAdd(linkedit.computedBase, symoff),
+        stroffHex: stroff === null ? null : '0x' + stroff.toString(16),
         strsizeHex: linkedit.strsize === null || linkedit.strsize === undefined ? null : '0x' + BigInt(linkedit.strsize).toString(16),
-        indirectsymoffHex: linkedit.indirectsymoff === null || linkedit.indirectsymoff === undefined ? null : '0x' + BigInt(linkedit.indirectsymoff).toString(16),
+        hasStrtab: stroff !== null,
+        strtabAddress: stroff === null ? null : formatHexAdd(linkedit.computedBase, stroff),
+        indirectsymoffHex: indirectsymoff === null ? null : '0x' + indirectsymoff.toString(16),
         nindirectsyms: linkedit.nindirectsyms === null || linkedit.nindirectsyms === undefined ? null : Number(linkedit.nindirectsyms),
+        hasIndirectSymbols: indirectsymoff !== null,
+        indirectsymAddress: indirectsymoff === null ? null : formatHexAdd(linkedit.computedBase, indirectsymoff),
         text: formatLinkedit(linkedit),
     };
 }
