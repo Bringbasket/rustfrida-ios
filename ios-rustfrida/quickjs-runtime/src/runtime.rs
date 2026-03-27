@@ -839,6 +839,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Swift.witnessTableInfo")
+                    .expect("swift witnessTableInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Swift.findTypeLayout")
                     .expect("swift findTypeLayout type"),
                 "function"
@@ -931,6 +937,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Swift.findWitnessTable('Renderable'))")
                     .expect("swift findWitnessTable"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = Swift.witnessTableInfo('ViewController', 'Renderable'); return value === null || (typeof value.typeName === 'string' && typeof value.protocolName === 'string' && typeof value.isAccessor === 'boolean'); })()")
+                    .expect("swift witnessTableInfo"),
                 "true"
             );
             assert_eq!(
@@ -1942,6 +1954,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.witnessTableInfo ViewController Renderable'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }); return value === result.text && (result.witnessTableInfo === null || (result.witnessTableInfo.typeName === 'ViewController' && result.witnessTableInfo.protocolName === 'Renderable')); })()")
+                    .expect("agent swift witness table info"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.typeLayout ViewController'); return value === '' || value.indexOf('metadata=') !== -1; })()")
                     .expect("agent swift type layout"),
                 "true"
@@ -2348,6 +2366,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }); return result.kind === 'swift.witness_table_info' && result.typeName === 'ViewController' && result.protocolName === 'Renderable' && ((result.witnessTableInfo === null && result.text === '<null>') || (typeof result.witnessTableInfo.moduleBase === 'string' && typeof result.witnessTableInfo.protocolName === 'string' && typeof result.witnessTableInfo.offsetHex === 'string' && typeof result.witnessTableInfo.isAccessor === 'boolean' && result.text === result.witnessTableInfo.text)); })()")
+                    .expect("agent swift witness table info result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.type_layout' && result.query === 'ViewController' && result.count === result.layouts.length && (result.layouts.length === 0 || (typeof result.layouts[0].moduleBase === 'string' && Array.isArray(result.layouts[0].metadata) && typeof result.layouts[0].vtableCount === 'number' && typeof result.layouts[0].witnessTableCount === 'number')); })()")
                     .expect("agent swift type layout result"),
                 "true"
@@ -2712,6 +2736,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' }); return value === result.text; })()")
                     .expect("agent spec swift witness table"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.witness_table_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }); return value === result.text; })()")
+                    .expect("agent spec swift witness table info"),
                 "true"
             );
             assert_eq!(

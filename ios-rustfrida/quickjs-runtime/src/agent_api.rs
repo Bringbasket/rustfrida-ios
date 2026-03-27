@@ -2824,6 +2824,21 @@ function handleSpecResult(spec) {
         const entries = Swift.findWitnessTable(query, moduleName).map((entry) => normalizeSwiftWitnessTable(entry));
         return { kind: 'swift.witness_table', moduleName, query, count: entries.length, entries, text: entries.map((entry) => entry.text).join('\n') };
     }
+    case 'swift.witness_table_info': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const typeName = String(spec.typeName || '');
+        const protocolName = String(spec.protocolName || '');
+        const witnessTableInfo = Swift.witnessTableInfo(typeName, protocolName, moduleName);
+        const normalized = witnessTableInfo === null ? null : normalizeSwiftWitnessTable(witnessTableInfo);
+        return {
+            kind: 'swift.witness_table_info',
+            moduleName,
+            typeName,
+            protocolName,
+            witnessTableInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'swift.type_layout': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
@@ -3529,6 +3544,17 @@ function legacyToSpec(command) {
             kind: 'swift.witness_table',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.witnessTableInfo ')) {
+        const usage = 'swift.witnessTableInfo usage: swift.witnessTableInfo <type> <protocol> | swift.witnessTableInfo <module> -- <type> <protocol>';
+        const parsed = splitSwiftMethods(trimmed.slice('swift.witnessTableInfo '.length), usage);
+        return {
+            kind: 'swift.witness_table_info',
+            moduleName: parsed.moduleName,
+            typeName: parsed.typeName,
+            protocolName: parsed.methodQuery,
         };
     }
 

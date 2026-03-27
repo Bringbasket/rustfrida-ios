@@ -429,6 +429,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.witnessTableInfo ViewController Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.typeLayout ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

@@ -3659,6 +3659,7 @@ fn print_controller_help() {
     println!("  swift.metadata <type>|swift.metadata <module> -- <type>");
     println!("  swift.vtable <type>|swift.vtable <module> -- <type>");
     println!("  swift.witnessTable <type|protocol>|swift.witnessTable <module> -- <type|protocol>");
+    println!("  swift.witnessTableInfo <type> <protocol>|swift.witnessTableInfo <module> -- <type> <protocol>");
     println!("  swift.typeLayout <type>|swift.typeLayout <module> -- <type>");
     println!("  swift.typeLayoutInfo <type>|swift.typeLayoutInfo <module> -- <type>");
     println!("  swift.vtableInfo <type> <member>|swift.vtableInfo <module> -- <type> <member>");
@@ -4200,6 +4201,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.witnessTableInfo Demo -- ViewController Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.typeLayout ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4290,6 +4295,9 @@ mod tests {
             "swift.vtableInfo ViewController viewDidLoad"
         ));
         assert!(!command_requires_inline_hooks("swift.witnessTable Renderable"));
+        assert!(!command_requires_inline_hooks(
+            "swift.witnessTableInfo ViewController Renderable"
+        ));
         assert!(!command_requires_inline_hooks("swift.typeLayout ViewController"));
         assert!(!command_requires_inline_hooks("swift.typeLayoutInfo ViewController"));
         assert!(!command_requires_inline_hooks("swift.types ViewController"));

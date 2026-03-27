@@ -151,6 +151,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("swift.vtable ")
         || command.starts_with("swift.vtableInfo ")
         || command.starts_with("swift.witnessTable ")
+        || command.starts_with("swift.witnessTableInfo ")
         || command.starts_with("swift.typeLayout ")
         || command.starts_with("swift.typeLayoutInfo ")
         || command.starts_with("swift.symbols ")
@@ -781,6 +782,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "swift.witness_table",
             "moduleName": module_name,
             "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.witnessTableInfo ") {
+        let (module_name, type_name, protocol_name) = parse_swift_methods(raw)?;
+        return Some(json!({
+            "kind": "swift.witness_table_info",
+            "moduleName": module_name,
+            "typeName": type_name,
+            "protocolName": protocol_name,
         }));
     }
 
@@ -1511,6 +1522,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.witnessTableInfo ViewController Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.typeLayout ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -1557,6 +1572,12 @@ mod tests {
             AgentCommand::from_legacy("swift.methodInfo ViewController"),
             Some(AgentCommand::RuntimeHandle {
                 command: "swift.methodInfo ViewController".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.witnessTableInfo ViewController"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "swift.witnessTableInfo ViewController".into(),
             })
         );
         assert_eq!(
