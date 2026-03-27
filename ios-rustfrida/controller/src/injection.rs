@@ -329,10 +329,35 @@ fn hook_strategy_to_json(strategy: &native_api::HookStrategyDecision) -> Value {
 }
 
 #[cfg(unix)]
-fn hook_environment_to_json(report: &native_api::HookEnvironmentReport) -> Value {
+fn hook_environment_to_json(
+    report: &native_api::HookEnvironmentReport,
+    strategy: Option<&native_api::HookStrategyDecision>,
+) -> Value {
+    let risk_level = if let Some(strategy) = strategy {
+        if !strategy.bootstrap_injection_allowed() {
+            "blocked"
+        } else if !strategy.hook_install_commands_allowed() {
+            "query-only"
+        } else if report.loaded_backend_count() > 0 {
+            "risky"
+        } else if report.filesystem_only_backend_count() > 0 {
+            "cautious"
+        } else {
+            "normal"
+        }
+    } else if report.loaded_backend_count() > 0 {
+        "risky"
+    } else if report.filesystem_only_backend_count() > 0 {
+        "cautious"
+    } else {
+        "normal"
+    };
+
     json!({
         "activeBackend": report.active_backend,
         "conflictState": report.conflict_state(),
+        "riskLevel": risk_level,
+        "coexistenceLayerAvailable": false,
         "loadedBackendCount": report.loaded_backend_count(),
         "filesystemOnlyBackendCount": report.filesystem_only_backend_count(),
         "loadedImageCount": report.loaded_image_count(),
@@ -349,7 +374,7 @@ fn injection_environment_to_json(report: &InjectionEnvironmentReport) -> Value {
         "bootstrapWaitMs": report.bootstrap_wait_ms,
         "hookPolicy": report.hook_policy.as_str(),
         "hookStrategy": hook_strategy_to_json(&report.hook_strategy),
-        "hookEnvironment": hook_environment_to_json(&report.hook_environment),
+        "hookEnvironment": hook_environment_to_json(&report.hook_environment, Some(&report.hook_strategy)),
         "recommendations": hook_environment_recommendations(&report.hook_environment, Some(&report.hook_strategy)),
     })
 }
@@ -478,7 +503,10 @@ fn injection_preflight_to_json(report: &InjectionTargetPreflightReport) -> Value
         "threadBootstrapRawAddress": report.thread_bootstrap_raw_address,
         "threadBootstrapRawAddressHex": json_hex_usize(report.thread_bootstrap_raw_address),
         "threadBootstrapCanonicalized": report.thread_bootstrap_canonicalized,
-        "targetHookEnvironment": hook_environment_to_json(&report.target_hook_environment),
+        "targetHookEnvironment": hook_environment_to_json(
+            &report.target_hook_environment,
+            Some(&report.target_hook_strategy),
+        ),
         "targetHookStrategy": hook_strategy_to_json(&report.target_hook_strategy),
         "targetRecommendations": hook_environment_recommendations(
             &report.target_hook_environment,
@@ -4964,6 +4992,8 @@ mod tests {
         assert_eq!(rendered["environment"]["hookStrategy"]["queryCommandsAllowed"], true);
         assert_eq!(rendered["environment"]["hookStrategy"]["hookInstallCommandsAllowed"], true);
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["conflictState"], "none");
+        assert_eq!(rendered["preflight"]["targetHookEnvironment"]["riskLevel"], "normal");
+        assert_eq!(rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerAvailable"], false);
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["loadedBackendCount"], 0);
         assert_eq!(rendered["payload"], json!(null));
         assert_eq!(rendered["items"], json!([]));
