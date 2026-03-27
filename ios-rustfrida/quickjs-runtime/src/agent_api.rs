@@ -2803,6 +2803,21 @@ function handleSpecResult(spec) {
         const entries = Swift.findVtable(query, moduleName).map((entry) => normalizeSwiftVtableEntry(entry));
         return { kind: 'swift.vtable', moduleName, query, count: entries.length, entries, text: entries.map((entry) => entry.text).join('\n') };
     }
+    case 'swift.vtable_info': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const typeName = String(spec.typeName || '');
+        const memberName = String(spec.memberName || '');
+        const vtableInfo = Swift.vtableInfo(typeName, memberName, moduleName);
+        const normalized = vtableInfo === null ? null : normalizeSwiftVtableEntry(vtableInfo);
+        return {
+            kind: 'swift.vtable_info',
+            moduleName,
+            typeName,
+            memberName,
+            vtableInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'swift.witness_table': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
@@ -3493,6 +3508,17 @@ function legacyToSpec(command) {
             kind: 'swift.vtable',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.vtableInfo ')) {
+        const usage = 'swift.vtableInfo usage: swift.vtableInfo <type> <member> | swift.vtableInfo <module> -- <type> <member>';
+        const parsed = splitSwiftMethods(trimmed.slice('swift.vtableInfo '.length), usage);
+        return {
+            kind: 'swift.vtable_info',
+            moduleName: parsed.moduleName,
+            typeName: parsed.typeName,
+            memberName: parsed.methodQuery,
         };
     }
 

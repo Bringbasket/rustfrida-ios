@@ -999,6 +999,68 @@ unsafe extern "C" fn js_swift_find_vtable(
     array
 }
 
+unsafe extern "C" fn js_swift_vtable_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let type_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "Swift.vtableInfo(typeName, memberName[, moduleName]) requires at least 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+    let member_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        1,
+        "Swift.vtableInfo(typeName, memberName[, moduleName]) requires at least 2 string arguments",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let module_name = if argc >= 3 {
+        let value = JSValue(*argv.add(2));
+        if value.is_null() || value.is_undefined() {
+            None
+        } else {
+            match value.to_string(ctx) {
+                Some(module_name) => Some(module_name),
+                None => {
+                    return js_throw_type_error(
+                        ctx,
+                        "Swift.vtableInfo(typeName, memberName[, moduleName]) expected moduleName to be a string when provided",
+                    )
+                }
+            }
+        }
+    } else {
+        None
+    };
+
+    let entries = match find_swift_vtable(module_name.as_deref(), &type_name) {
+        Ok(entries) => entries,
+        Err(CommonError::Unsupported(_)) => return JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match entries
+        .into_iter()
+        .find(|entry| entry.type_name == type_name && entry.member_name == member_name)
+    {
+        Some(entry) => swift_vtable_entry_to_js(ctx, &entry),
+        None => JSValue::null().raw(),
+    }
+}
+
 unsafe extern "C" fn js_swift_find_witness_table(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -1160,6 +1222,7 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, swift.raw(), "conformanceInfo", js_swift_conformance_info, 3);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMetadata", js_swift_find_metadata, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findVtable", js_swift_find_vtable, 2);
+        add_cfunction_to_object(ctx_ptr, swift.raw(), "vtableInfo", js_swift_vtable_info, 3);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findWitnessTable", js_swift_find_witness_table, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findTypeLayout", js_swift_find_type_layout, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "typeLayoutInfo", js_swift_type_layout_info, 2);

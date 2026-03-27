@@ -828,6 +828,10 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof Swift.vtableInfo").expect("swift vtableInfo type"),
+                "function"
+            );
+            assert_eq!(
                 runtime
                     .eval("typeof Swift.findWitnessTable")
                     .expect("swift findWitnessTable type"),
@@ -915,6 +919,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Swift.findVtable('ViewController'))")
                     .expect("swift findVtable"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = Swift.vtableInfo('ViewController', 'viewDidLoad'); return value === null || (typeof value.typeName === 'string' && typeof value.memberName === 'string' && typeof value.isDispatchThunk === 'boolean'); })()")
+                    .expect("swift vtableInfo"),
                 "true"
             );
             assert_eq!(
@@ -1920,6 +1930,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.vtableInfo ViewController viewDidLoad'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewController', memberName: 'viewDidLoad' }); return value === result.text && (result.vtableInfo === null || (result.vtableInfo.typeName === 'ViewController' && result.vtableInfo.memberName === 'viewDidLoad')); })()")
+                    .expect("agent swift vtable info"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.witnessTable Renderable'); return value === '' || value.indexOf('Renderable') !== -1; })()")
                     .expect("agent swift witness table"),
                 "true"
@@ -2320,6 +2336,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewController', memberName: 'viewDidLoad' }); return result.kind === 'swift.vtable_info' && result.typeName === 'ViewController' && result.memberName === 'viewDidLoad' && ((result.vtableInfo === null && result.text === '<null>') || (typeof result.vtableInfo.moduleBase === 'string' && typeof result.vtableInfo.memberName === 'string' && typeof result.vtableInfo.offsetHex === 'string' && typeof result.vtableInfo.isDispatchThunk === 'boolean' && result.text === result.vtableInfo.text)); })()")
+                    .expect("agent swift vtable info result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' }); return result.kind === 'swift.witness_table' && result.query === 'Renderable' && result.count === result.entries.length && (result.entries.length === 0 || (typeof result.entries[0].moduleBase === 'string' && typeof result.entries[0].protocolName === 'string' && typeof result.entries[0].offsetHex === 'string' && typeof result.entries[0].isAccessor === 'boolean')); })()")
                     .expect("agent swift witness table result"),
                 "true"
@@ -2678,6 +2700,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
                     .expect("agent spec swift vtable"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewController', memberName: 'viewDidLoad' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewController', memberName: 'viewDidLoad' }); return value === result.text; })()")
+                    .expect("agent spec swift vtable info"),
                 "true"
             );
             assert_eq!(
