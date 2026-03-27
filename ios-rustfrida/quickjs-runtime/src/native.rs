@@ -957,6 +957,65 @@ unsafe extern "C" fn js_native_find_symbols(
     array
 }
 
+unsafe extern "C" fn js_native_symbol_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.symbolInfo(symbolName[, moduleName]) requires at least 1 string argument",
+        );
+    }
+
+    let symbol_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.symbolInfo(symbolName[, moduleName]) requires symbolName to be a non-empty string",
+            )
+        }
+    };
+
+    let module_name = if argc >= 2 {
+        let value = JSValue(*argv.add(1));
+        if value.is_null() || value.is_undefined() {
+            None
+        } else {
+            match value.to_string(ctx) {
+                Some(module_name) => Some(module_name),
+                None => {
+                    return crate::util::js_throw_type_error(
+                        ctx,
+                        "Native.symbolInfo(symbolName[, moduleName]) expected moduleName to be a string when provided",
+                    )
+                }
+            }
+        }
+    } else {
+        None
+    };
+
+    let normalized_symbol_name = symbol_name.strip_prefix('_').unwrap_or(&symbol_name);
+    let symbols = match find_native_symbols(module_name.as_deref(), &symbol_name) {
+        Ok(symbols) => symbols,
+        Err(common::Error::Unsupported(_)) => return JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => return crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match symbols.into_iter().find(|symbol| {
+        symbol.symbol_name == symbol_name
+            || symbol.symbol_name.strip_prefix('_').unwrap_or(&symbol.symbol_name) == normalized_symbol_name
+    }) {
+        Some(symbol) => native_symbol_to_js(ctx, &symbol),
+        None => JSValue::null().raw(),
+    }
+}
+
 unsafe extern "C" fn js_native_find_exports(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -1826,6 +1885,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             0,
         );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSymbols", js_native_find_symbols, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbolInfo", js_native_symbol_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findExports", js_native_find_exports, 2);
         add_cfunction_to_object(
             ctx.as_ptr(),

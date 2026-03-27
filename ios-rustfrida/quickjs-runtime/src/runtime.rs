@@ -1140,6 +1140,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Native.symbolInfo")
+                    .expect("native symbol info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Native.findExports")
                     .expect("native find exports type"),
                 "function"
@@ -1178,6 +1184,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = Native.symbolInfo('malloc'); return value === null || (typeof value.name === 'string' && typeof value.moduleName === 'string' && typeof value.address === 'object'); })()")
+                    .expect("native symbolInfo"),
                 "true"
             );
             assert_eq!(
@@ -2199,6 +2211,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }); return result.kind === 'native.symbol_info' && result.symbolName === 'malloc' && ((result.symbolInfo === null && result.text === '<null>') || (typeof result.symbolInfo.moduleBase === 'string' && typeof result.symbolInfo.name === 'string' && typeof result.symbolInfo.offsetHex === 'string' && result.text === result.symbolInfo.text)); })()"
+                    )
+                    .expect("agent native symbolInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependencies', moduleName: main.image.name, query: null }); return result.kind === 'native.dependencies' && result.count === result.dependencies.length && (result.dependencies.length === 0 || (typeof result.dependencies[0].ordinal === 'number' && typeof result.dependencies[0].kind === 'string')); })()"
                     )
                     .expect("agent native dependencies result"),
@@ -2492,6 +2512,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.symbolInfo malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }); return value === result.text && (result.symbolInfo === null || result.symbolInfo.name.indexOf('malloc') !== -1); })()")
+                    .expect("agent native symbolInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.exports libsystem_malloc.dylib -- malloc'); return value === '' || value.indexOf('malloc') !== -1; })()")
                     .expect("agent native exports by query"),
                 "true"
@@ -2620,6 +2646,12 @@ undefined;
                 runtime
                     .eval("__iosRustFridaAgentApi.handle('native.export malloc').indexOf('malloc') !== -1")
                     .expect("agent native export"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }); return value === result.text; })()")
+                    .expect("agent spec native symbolInfo"),
                 "true"
             );
             assert_eq!(

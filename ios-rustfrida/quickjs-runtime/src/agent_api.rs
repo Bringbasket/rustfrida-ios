@@ -2553,6 +2553,19 @@ function handleSpecResult(spec) {
         const symbols = Native.findSymbols(query, moduleName).map((symbol) => normalizeNativeSymbol(symbol));
         return { kind: 'native.symbols', moduleName, query, count: symbols.length, symbols, text: symbols.map((symbol) => symbol.text).join('\n') };
     }
+    case 'native.symbol_info': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const symbolName = String(spec.symbolName || '');
+        const symbolInfo = Native.symbolInfo(symbolName, moduleName);
+        const normalized = symbolInfo === null ? null : normalizeNativeSymbol(symbolInfo);
+        return {
+            kind: 'native.symbol_info',
+            moduleName,
+            symbolName,
+            symbolInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'native.exports': {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
@@ -3177,6 +3190,18 @@ function legacyToSpec(command) {
             kind: 'native.symbols',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.symbolInfo ')) {
+        const parsed = splitModuleQuery(
+            trimmed.slice('native.symbolInfo '.length),
+            'native.symbolInfo usage: native.symbolInfo <symbol> | native.symbolInfo <module> -- <symbol>'
+        );
+        return {
+            kind: 'native.symbol_info',
+            moduleName: parsed.moduleName,
+            symbolName: parsed.query,
         };
     }
 

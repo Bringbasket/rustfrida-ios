@@ -3636,6 +3636,7 @@ fn print_controller_help() {
     println!("  native.loadcmds <module>");
     println!("  native.sections <module>");
     println!("  native.segments <module>");
+    println!("  native.symbolInfo <symbol>|native.symbolInfo <module> -- <symbol>");
     println!("  native.symbols <query>|native.symbols <module> -- <query>");
     println!("  native.images [filter]");
     println!("  native.mainImage");
@@ -4155,6 +4156,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.symbolInfo DemoBinary -- malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("pac.image DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4289,6 +4294,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.uuid UIKit"));
         assert!(!command_requires_inline_hooks("native.rpaths UIKit"));
         assert!(!command_requires_inline_hooks("native.imports UIKit"));
+        assert!(!command_requires_inline_hooks("native.symbolInfo malloc"));
         assert!(!command_requires_inline_hooks("swift.protocolInfo Renderable"));
         assert!(!command_requires_inline_hooks(
             "swift.conformanceInfo ViewController Renderable"

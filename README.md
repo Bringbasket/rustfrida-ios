@@ -88,6 +88,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Swift.typeLayoutInfo(typeName[, moduleName])`
 - `Swift.findMethods(typeName, methodQuery[, moduleName])`
 - `Swift.symbolInfo(symbolName[, moduleName])`
+- `Native.symbolInfo(symbolName[, moduleName])`
 - agent / controller CLI:
   - `hfl <module> <offset>`
   - `hfl status`
@@ -149,6 +150,8 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.loadcmds <module>`
   - `native.sections <module>`
   - `native.segments <module>`
+  - `native.symbolInfo <symbol>`
+  - `native.symbolInfo <module> -- <symbol>`
   - `native.symbols <query>`
   - `native.symbols <module> -- <query>`
   - `native.images [filter]`
@@ -265,6 +268,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `swift.typeInfo` 现在可以直接结构化返回单个 Swift type 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName / name`，后续排查某个类型声明时不必再先全量 `swift.types` 再脚本过滤。
 - `swift.methodInfo` 现在可以直接结构化返回单个 Swift method symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个类型里的目标方法时不必再先全量 `swift.methods` 再脚本过滤。
 - `swift.symbolInfo` 现在可以直接结构化返回单个 Swift symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个 Swift 符号时不必再先全量 `swift.symbols` 再脚本过滤。
+- `native.symbolInfo` 现在可以直接结构化返回单个 native symbol 的 `moduleBase / address / offsetHex / name`，后续排查某个本地符号时不必再先全量 `native.symbols` 再脚本过滤。
 - `swift.typeLayoutInfo` 现在可以直接结构化返回单个 Swift type layout 的 `metadata / metadataAccessors / nominalDescriptors / metadataCaches / associatedTypeDescriptors / vtableEntries / witnessTables` 以及对应计数，后续排查某个类型布局时不必再先全量 `swift.typeLayout` 再脚本过滤。
 - `swift.vtableInfo` 现在可以直接结构化返回单个 Swift vtable entry 的 `moduleBase / typeName / memberName / sourceKind / address / offsetHex / isDispatchThunk`，后续排查某个类型的具体虚表成员时不必再先全量 `swift.vtable` 再脚本过滤。
 - `swift.witnessTableInfo` 现在可以直接结构化返回单个 Swift witness table entry 的 `moduleBase / typeName / protocolName / sourceKind / address / offsetHex / isAccessor`，后续排查某个类型对某个协议的 witness table 时不必再先全量 `swift.witnessTable` 再脚本过滤。

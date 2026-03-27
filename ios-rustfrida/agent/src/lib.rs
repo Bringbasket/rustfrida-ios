@@ -337,6 +337,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.symbolInfo malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.segments libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
