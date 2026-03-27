@@ -578,6 +578,55 @@ unsafe extern "C" fn js_swift_find_types(
     array
 }
 
+unsafe extern "C" fn js_swift_type_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let type_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "Swift.typeInfo(typeName[, moduleName]) requires at least 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let module_name = if argc >= 2 {
+        let value = JSValue(*argv.add(1));
+        if value.is_null() || value.is_undefined() {
+            None
+        } else {
+            match value.to_string(ctx) {
+                Some(module_name) => Some(module_name),
+                None => {
+                    return js_throw_type_error(
+                        ctx,
+                        "Swift.typeInfo(typeName[, moduleName]) expected moduleName to be a string when provided",
+                    )
+                }
+            }
+        }
+    } else {
+        None
+    };
+
+    let types = match find_swift_types(module_name.as_deref(), &type_name) {
+        Ok(types) => types,
+        Err(CommonError::Unsupported(_)) => return JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match types.into_iter().find(|type_info| type_info.type_name == type_name) {
+        Some(type_info) => swift_type_to_js(ctx, &type_info),
+        None => JSValue::null().raw(),
+    }
+}
+
 unsafe extern "C" fn js_swift_find_protocols(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -1011,6 +1060,7 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMethodOwners", js_swift_find_method_owners, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findTypesOfKind", js_swift_find_types_of_kind, 3);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findTypes", js_swift_find_types, 2);
+        add_cfunction_to_object(ctx_ptr, swift.raw(), "typeInfo", js_swift_type_info, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "typeSourceKinds", js_swift_type_source_kinds, 0);
     }
 

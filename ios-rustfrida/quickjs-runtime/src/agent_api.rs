@@ -2769,6 +2769,19 @@ function handleSpecResult(spec) {
         const metadata = Swift.findMetadata(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
         return { kind: 'swift.metadata', moduleName, query, count: metadata.length, metadata, text: metadata.map((typeInfo) => typeInfo.text).join('\n') };
     }
+    case 'swift.type_info': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const typeName = String(spec.typeName || '');
+        const typeInfo = Swift.typeInfo(typeName, moduleName);
+        const normalized = typeInfo === null ? null : normalizeSwiftType(typeInfo);
+        return {
+            kind: 'swift.type_info',
+            moduleName,
+            typeName,
+            typeInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'swift.vtable': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
@@ -3421,6 +3434,16 @@ function legacyToSpec(command) {
             kind: 'swift.metadata',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.typeInfo ')) {
+        const usage = 'swift.typeInfo usage: swift.typeInfo <type> | swift.typeInfo <module> -- <type>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.typeInfo '.length), usage);
+        return {
+            kind: 'swift.type_info',
+            moduleName: parsed.moduleName,
+            typeName: parsed.query,
         };
     }
 

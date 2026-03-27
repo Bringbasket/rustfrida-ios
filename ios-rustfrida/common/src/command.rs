@@ -146,6 +146,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("swift.protocols ")
         || command.starts_with("swift.conformances ")
         || command.starts_with("swift.metadata ")
+        || command.starts_with("swift.typeInfo ")
         || command.starts_with("swift.vtable ")
         || command.starts_with("swift.witnessTable ")
         || command.starts_with("swift.typeLayout ")
@@ -721,6 +722,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "swift.conformances",
             "moduleName": module_name,
             "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.typeInfo ") {
+        let (module_name, type_name) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.type_info",
+            "moduleName": module_name,
+            "typeName": type_name,
         }));
     }
 
@@ -1430,6 +1440,10 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("swift.conformanceInfo ViewController Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.typeInfo ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
