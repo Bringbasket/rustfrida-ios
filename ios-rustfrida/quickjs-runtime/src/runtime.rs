@@ -2625,7 +2625,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.function_starts', moduleName: main.image.name }); return result.kind === 'native.function_starts' && (result.functionStarts === null || (typeof result.functionStarts.dataoffHex === 'string' && typeof result.functionStarts.count === 'number' && Array.isArray(result.functionStarts.starts))); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.function_starts', moduleName: main.image.name }); return result.kind === 'native.function_starts' && (result.functionStarts === null || (typeof result.functionStarts.dataoffHex === 'string' && typeof result.functionStarts.dataEnd === 'string' && typeof result.functionStarts.count === 'number' && typeof result.functionStarts.hasStarts === 'boolean' && (result.functionStarts.firstStartOffsetHex === null || typeof result.functionStarts.firstStartOffsetHex === 'string') && (result.functionStarts.firstStartAddress === null || typeof result.functionStarts.firstStartAddress === 'string') && (result.functionStarts.lastStartOffsetHex === null || typeof result.functionStarts.lastStartOffsetHex === 'string') && (result.functionStarts.lastStartAddress === null || typeof result.functionStarts.lastStartAddress === 'string') && Array.isArray(result.functionStarts.starts))); })()"
                     )
                     .expect("agent native function starts result"),
                 "true"
@@ -2633,7 +2633,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.code_signature', moduleName: main.image.name }); return result.kind === 'native.code_signature' && (result.codeSignature === null || (typeof result.codeSignature.dataoffHex === 'string' && typeof result.codeSignature.datasizeHex === 'string' && (result.codeSignature.magicHex === null || typeof result.codeSignature.magicHex === 'string'))); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.code_signature', moduleName: main.image.name }); return result.kind === 'native.code_signature' && (result.codeSignature === null || (typeof result.codeSignature.dataoffHex === 'string' && typeof result.codeSignature.datasizeHex === 'string' && typeof result.codeSignature.dataEnd === 'string' && typeof result.codeSignature.hasMagic === 'boolean' && (result.codeSignature.magicHex === null || typeof result.codeSignature.magicHex === 'string') && (result.codeSignature.lengthHex === null || typeof result.codeSignature.lengthHex === 'string') && typeof result.codeSignature.hasBlobLength === 'boolean' && (result.codeSignature.blobLengthMatchesDataSize === null || typeof result.codeSignature.blobLengthMatchesDataSize === 'boolean') && typeof result.codeSignature.isSuperBlob === 'boolean')); })()"
                     )
                     .expect("agent native code signature result"),
                 "true"
@@ -2641,7 +2641,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.data_in_code', moduleName: main.image.name }); return result.kind === 'native.data_in_code' && (result.dataInCode === null || (typeof result.dataInCode.dataoffHex === 'string' && typeof result.dataInCode.count === 'number' && Array.isArray(result.dataInCode.entries))); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.data_in_code', moduleName: main.image.name }); return result.kind === 'native.data_in_code' && (result.dataInCode === null || (typeof result.dataInCode.dataoffHex === 'string' && typeof result.dataInCode.dataEnd === 'string' && typeof result.dataInCode.count === 'number' && typeof result.dataInCode.hasEntries === 'boolean' && typeof result.dataInCode.totalEntryLength === 'string' && (result.dataInCode.firstEntryOffsetHex === null || typeof result.dataInCode.firstEntryOffsetHex === 'string') && (result.dataInCode.firstEntryAddress === null || typeof result.dataInCode.firstEntryAddress === 'string') && (result.dataInCode.lastEntryOffsetHex === null || typeof result.dataInCode.lastEntryOffsetHex === 'string') && (result.dataInCode.lastEntryAddress === null || typeof result.dataInCode.lastEntryAddress === 'string') && Array.isArray(result.dataInCode.entries))); })()"
                     )
                     .expect("agent native data in code result"),
                 "true"
@@ -2649,7 +2649,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.exports_trie', moduleName: main.image.name }); return result.kind === 'native.exports_trie' && (result.exportsTrie === null || (typeof result.exportsTrie.dataoffHex === 'string' && typeof result.exportsTrie.count === 'number' && Array.isArray(result.exportsTrie.entries))); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.exports_trie', moduleName: main.image.name }); return result.kind === 'native.exports_trie' && (result.exportsTrie === null || (typeof result.exportsTrie.dataoffHex === 'string' && typeof result.exportsTrie.dataEnd === 'string' && typeof result.exportsTrie.count === 'number' && typeof result.exportsTrie.hasEntries === 'boolean' && typeof result.exportsTrie.reexportCount === 'number' && typeof result.exportsTrie.stubAndResolverCount === 'number' && typeof result.exportsTrie.weakDefinitionCount === 'number' && Array.isArray(result.exportsTrie.entries))); })()"
                     )
                     .expect("agent native exports trie result"),
                 "true"
@@ -2657,7 +2657,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.chained_fixups', moduleName: main.image.name }); return result.kind === 'native.chained_fixups' && (result.chainedFixups === null || (typeof result.chainedFixups.dataoffHex === 'string' && typeof result.chainedFixups.segmentCount === 'number' && Array.isArray(result.chainedFixups.segments) && Array.isArray(result.chainedFixups.imports))); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.chained_fixups', moduleName: main.image.name }); return result.kind === 'native.chained_fixups' && (result.chainedFixups === null || (typeof result.chainedFixups.dataoffHex === 'string' && typeof result.chainedFixups.dataEnd === 'string' && typeof result.chainedFixups.startsAddress === 'string' && typeof result.chainedFixups.importsAddress === 'string' && typeof result.chainedFixups.symbolsAddress === 'string' && typeof result.chainedFixups.segmentCount === 'number' && typeof result.chainedFixups.hasSegments === 'boolean' && typeof result.chainedFixups.importCount === 'number' && typeof result.chainedFixups.hasImports === 'boolean' && Array.isArray(result.chainedFixups.segments) && Array.isArray(result.chainedFixups.imports))); })()"
                     )
                     .expect("agent native chained fixups result"),
                 "true"

@@ -2089,6 +2089,8 @@ function normalizeFunctionStarts(functionStarts) {
     const starts = Array.isArray(functionStarts.starts)
         ? functionStarts.starts.map((functionStart) => normalizeFunctionStart(functionStart))
         : [];
+    const firstStart = starts.length === 0 ? null : starts[0];
+    const lastStart = starts.length === 0 ? null : starts[starts.length - 1];
     return {
         moduleName: String(functionStarts.moduleName || ''),
         moduleBase: functionStarts.moduleBase ? functionStarts.moduleBase.toString() : null,
@@ -2096,24 +2098,39 @@ function normalizeFunctionStarts(functionStarts) {
         datasizeHex: '0x' + BigInt(functionStarts.datasize || 0).toString(16),
         linkeditBase: functionStarts.linkeditBase.toString(),
         dataAddress: functionStarts.dataAddress.toString(),
+        dataEnd: formatHexAdd(functionStarts.dataAddress, functionStarts.datasize),
         count: starts.length,
+        hasStarts: starts.length !== 0,
+        firstStartOffsetHex: firstStart === null ? null : firstStart.offsetHex,
+        firstStartAddress: firstStart === null ? null : firstStart.address,
+        lastStartOffsetHex: lastStart === null ? null : lastStart.offsetHex,
+        lastStartAddress: lastStart === null ? null : lastStart.address,
         starts,
         text: formatFunctionStarts(functionStarts),
     };
 }
 
 function normalizeCodeSignature(codeSignature) {
+    const dataoff = BigInt(codeSignature.dataoff || 0);
+    const datasize = BigInt(codeSignature.datasize || 0);
+    const length = codeSignature.length === null || codeSignature.length === undefined ? null : BigInt(codeSignature.length);
+    const magicName = codeSignature.magicName === undefined ? null : codeSignature.magicName;
     return {
         moduleName: String(codeSignature.moduleName || ''),
         moduleBase: codeSignature.moduleBase ? codeSignature.moduleBase.toString() : null,
-        dataoffHex: '0x' + BigInt(codeSignature.dataoff || 0).toString(16),
-        datasizeHex: '0x' + BigInt(codeSignature.datasize || 0).toString(16),
+        dataoffHex: '0x' + dataoff.toString(16),
+        datasizeHex: '0x' + datasize.toString(16),
         linkeditBase: codeSignature.linkeditBase.toString(),
         dataAddress: codeSignature.dataAddress.toString(),
+        dataEnd: formatHexAdd(codeSignature.dataAddress, codeSignature.datasize),
         magicHex: codeSignature.magic === null || codeSignature.magic === undefined ? null : '0x' + BigInt(codeSignature.magic).toString(16),
-        magicName: codeSignature.magicName === undefined ? null : codeSignature.magicName,
-        lengthHex: codeSignature.length === null || codeSignature.length === undefined ? null : '0x' + BigInt(codeSignature.length).toString(16),
+        magicName,
+        hasMagic: magicName !== null,
+        lengthHex: length === null ? null : '0x' + length.toString(16),
         count: codeSignature.count === null || codeSignature.count === undefined ? null : Number(codeSignature.count),
+        hasBlobLength: length !== null,
+        blobLengthMatchesDataSize: length === null ? null : length === datasize,
+        isSuperBlob: magicName === 'CSMAGIC_EMBEDDED_SIGNATURE',
         text: formatCodeSignature(codeSignature),
     };
 }
@@ -2133,6 +2150,9 @@ function normalizeDataInCode(dataInCode) {
     const entries = Array.isArray(dataInCode.entries)
         ? dataInCode.entries.map((entry) => normalizeDataInCodeEntry(entry))
         : [];
+    const firstEntry = entries.length === 0 ? null : entries[0];
+    const lastEntry = entries.length === 0 ? null : entries[entries.length - 1];
+    const totalEntryLength = entries.reduce((sum, entry) => sum + BigInt(entry.length || 0), 0n);
     return {
         moduleName: String(dataInCode.moduleName || ''),
         moduleBase: dataInCode.moduleBase ? dataInCode.moduleBase.toString() : null,
@@ -2140,7 +2160,14 @@ function normalizeDataInCode(dataInCode) {
         datasizeHex: '0x' + BigInt(dataInCode.datasize || 0).toString(16),
         linkeditBase: dataInCode.linkeditBase.toString(),
         dataAddress: dataInCode.dataAddress.toString(),
+        dataEnd: formatHexAdd(dataInCode.dataAddress, dataInCode.datasize),
         count: entries.length,
+        hasEntries: entries.length !== 0,
+        totalEntryLength: '0x' + totalEntryLength.toString(16),
+        firstEntryOffsetHex: firstEntry === null ? null : firstEntry.offsetHex,
+        firstEntryAddress: firstEntry === null ? null : firstEntry.address,
+        lastEntryOffsetHex: lastEntry === null ? null : lastEntry.offsetHex,
+        lastEntryAddress: lastEntry === null ? null : lastEntry.address,
         entries,
         text: formatDataInCode(dataInCode),
     };
@@ -2152,12 +2179,16 @@ function normalizeExportsTrieEntry(entry) {
         flagsHex: '0x' + BigInt(entry.flags || 0).toString(16),
         kind: String(entry.kind || 'unknown'),
         address: entry.address === null || entry.address === undefined ? null : entry.address.toString(),
+        hasAddress: entry.address !== null && entry.address !== undefined,
         offsetHex: entry.offset === null || entry.offset === undefined ? null : '0x' + BigInt(entry.offset).toString(16),
+        hasOffset: entry.offset !== null && entry.offset !== undefined,
         otherHex: entry.other === null || entry.other === undefined ? null : '0x' + BigInt(entry.other).toString(16),
         importName: entry.importName === null || entry.importName === undefined ? null : String(entry.importName),
+        hasImportName: entry.importName !== null && entry.importName !== undefined,
         isWeakDefinition: !!entry.isWeakDefinition,
         isReexport: !!entry.isReexport,
         isStubAndResolver: !!entry.isStubAndResolver,
+        hasResolver: entry.other !== null && entry.other !== undefined,
         text: formatExportsTrieEntry(entry),
     };
 }
@@ -2166,6 +2197,9 @@ function normalizeExportsTrie(exportsTrie) {
     const entries = Array.isArray(exportsTrie.entries)
         ? exportsTrie.entries.map((entry) => normalizeExportsTrieEntry(entry))
         : [];
+    const reexportCount = entries.filter((entry) => entry.isReexport).length;
+    const stubAndResolverCount = entries.filter((entry) => entry.isStubAndResolver).length;
+    const weakDefinitionCount = entries.filter((entry) => entry.isWeakDefinition).length;
     return {
         moduleName: String(exportsTrie.moduleName || ''),
         moduleBase: exportsTrie.moduleBase ? exportsTrie.moduleBase.toString() : null,
@@ -2173,7 +2207,12 @@ function normalizeExportsTrie(exportsTrie) {
         datasizeHex: '0x' + BigInt(exportsTrie.datasize || 0).toString(16),
         linkeditBase: exportsTrie.linkeditBase.toString(),
         dataAddress: exportsTrie.dataAddress.toString(),
+        dataEnd: formatHexAdd(exportsTrie.dataAddress, exportsTrie.datasize),
         count: entries.length,
+        hasEntries: entries.length !== 0,
+        reexportCount,
+        stubAndResolverCount,
+        weakDefinitionCount,
         entries,
         text: formatExportsTrie(exportsTrie),
     };
@@ -2240,16 +2279,23 @@ function normalizeChainedFixups(chainedFixups) {
         datasizeHex: '0x' + BigInt(chainedFixups.datasize || 0).toString(16),
         linkeditBase: chainedFixups.linkeditBase.toString(),
         dataAddress: chainedFixups.dataAddress.toString(),
+        dataEnd: formatHexAdd(chainedFixups.dataAddress, chainedFixups.datasize),
         fixupsVersion: Number(chainedFixups.fixupsVersion || 0),
         startsOffsetHex: '0x' + BigInt(chainedFixups.startsOffset || 0).toString(16),
+        startsAddress: formatHexAdd(chainedFixups.dataAddress, chainedFixups.startsOffset),
         importsOffsetHex: '0x' + BigInt(chainedFixups.importsOffset || 0).toString(16),
+        importsAddress: formatHexAdd(chainedFixups.dataAddress, chainedFixups.importsOffset),
         symbolsOffsetHex: '0x' + BigInt(chainedFixups.symbolsOffset || 0).toString(16),
+        symbolsAddress: formatHexAdd(chainedFixups.dataAddress, chainedFixups.symbolsOffset),
         importsCount: Number(chainedFixups.importsCount || 0),
         importsFormat: Number(chainedFixups.importsFormat || 0),
         importsFormatName: String(chainedFixups.importsFormatName || 'DYLD_CHAINED_IMPORT_UNKNOWN'),
         symbolsFormat: Number(chainedFixups.symbolsFormat || 0),
         symbolsFormatName: String(chainedFixups.symbolsFormatName || 'unknown'),
         segmentCount: segments.length,
+        hasSegments: segments.length !== 0,
+        importCount: imports.length,
+        hasImports: imports.length !== 0,
         segments,
         imports,
         text: formatChainedFixups(chainedFixups),
