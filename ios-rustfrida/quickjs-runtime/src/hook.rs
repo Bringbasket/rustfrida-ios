@@ -540,7 +540,7 @@ fn enforce_hook_installation_policy() -> Result<(), String> {
     let decision = resolve_hook_strategy().map_err(|err| err.to_string())?;
     warn_external_hook_environment_once(&decision);
 
-    if decision.inline_hooks_allowed {
+    if decision.hook_install_commands_allowed() {
         Ok(())
     } else {
         let reason = decision

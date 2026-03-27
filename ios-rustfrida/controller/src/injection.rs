@@ -650,10 +650,10 @@ fn analyze_doctor_report(
         None => make_doctor_check("script-path", "pass", "no bootstrap script requested", None),
     });
 
-    checks.push(if injection_environment.hook_strategy.allowed {
+    checks.push(if injection_environment.hook_strategy.bootstrap_injection_allowed() {
         let status = if injection_environment.hook_environment.backends.is_empty()
             && injection_environment.hook_environment.warnings.is_empty()
-            && injection_environment.hook_strategy.inline_hooks_allowed
+            && injection_environment.hook_strategy.hook_install_commands_allowed()
         {
             "pass"
         } else {
@@ -664,7 +664,7 @@ fn analyze_doctor_report(
             status,
             format!(
                 "controller hook strategy is {} ({})",
-                if injection_environment.hook_strategy.inline_hooks_allowed {
+                if injection_environment.hook_strategy.hook_install_commands_allowed() {
                     "allowed"
                 } else {
                     "query-only"
@@ -685,10 +685,10 @@ fn analyze_doctor_report(
         )
     });
 
-    checks.push(if preflight.target_hook_strategy.allowed {
+    checks.push(if preflight.target_hook_strategy.bootstrap_injection_allowed() {
         let status = if preflight.target_hook_environment.backends.is_empty()
             && preflight.target_hook_environment.warnings.is_empty()
-            && preflight.target_hook_strategy.inline_hooks_allowed
+            && preflight.target_hook_strategy.hook_install_commands_allowed()
         {
             "pass"
         } else {
@@ -700,7 +700,7 @@ fn analyze_doctor_report(
             format!(
                 "target hook strategy for pid {} is {} ({})",
                 pid,
-                if preflight.target_hook_strategy.inline_hooks_allowed {
+                if preflight.target_hook_strategy.hook_install_commands_allowed() {
                     "allowed"
                 } else {
                     "query-only"
@@ -2700,7 +2700,7 @@ fn ensure_inline_hooks_allowed_for_command(
     }
 
     let mut blocked_by = Vec::new();
-    if !injection_environment.hook_strategy.inline_hooks_allowed {
+    if !injection_environment.hook_strategy.hook_install_commands_allowed() {
         let reason = injection_environment
             .hook_strategy
             .reason
@@ -2713,7 +2713,7 @@ fn ensure_inline_hooks_allowed_for_command(
             reason
         ));
     }
-    if !preflight.target_hook_strategy.inline_hooks_allowed {
+    if !preflight.target_hook_strategy.hook_install_commands_allowed() {
         let reason = preflight
             .target_hook_strategy
             .reason
