@@ -265,6 +265,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.dependencyInfo libsystem_malloc.dylib -- libSystem.B.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.encryptionInfo libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

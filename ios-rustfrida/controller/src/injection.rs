@@ -3617,6 +3617,7 @@ fn print_controller_help() {
     println!("  native.export <symbol>|native.export <module> -- <symbol>");
     println!("  native.exports <module>|native.exports <module> -- <query>");
     println!("  native.dependencies <module>|native.dependencies <module> -- <query>");
+    println!("  native.dependencyInfo <module> -- <path-or-name>");
     println!("  native.encryptionInfo <module>");
     println!("  native.entryPoint <module>");
     println!("  native.dyldInfo <module>");
@@ -4093,6 +4094,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.dependencyInfo DemoBinary -- libSystem.B.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.encryptionInfo DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4283,6 +4288,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.methodInfo UIView viewDidLoad"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
+        assert!(!command_requires_inline_hooks("native.dependencyInfo UIKit -- libSystem.B.dylib"));
         assert!(!command_requires_inline_hooks("native.encryptionInfo UIKit"));
         assert!(!command_requires_inline_hooks("native.entryPoint UIKit"));
         assert!(!command_requires_inline_hooks("native.dyldInfo UIKit"));

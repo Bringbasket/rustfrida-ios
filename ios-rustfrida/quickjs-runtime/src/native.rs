@@ -1187,6 +1187,60 @@ unsafe extern "C" fn js_native_find_dependencies(
     array
 }
 
+unsafe extern "C" fn js_native_dependency_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 2 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.dependencyInfo(moduleName, pathOrName) requires 2 string arguments",
+        );
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.dependencyInfo(moduleName, pathOrName) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    let path_or_name = match JSValue(*argv.add(1)).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.dependencyInfo(moduleName, pathOrName) requires pathOrName to be a non-empty string",
+            )
+        }
+    };
+
+    let dependencies = match find_image_dependencies(&module_name, Some(&path_or_name)) {
+        Ok(dependencies) => dependencies,
+        Err(common::Error::Unsupported(_)) => return JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => return crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match dependencies.into_iter().find(|dependency| {
+        dependency.path == path_or_name
+            || dependency
+                .path
+                .rsplit('/')
+                .next()
+                .map(|name| name == path_or_name)
+                .unwrap_or(false)
+    }) {
+        Some(dependency) => image_dependency_to_js(ctx, &dependency),
+        None => JSValue::null().raw(),
+    }
+}
+
 unsafe extern "C" fn js_native_find_encryption_info(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -1944,6 +1998,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_dependencies,
             2,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dependencyInfo", js_native_dependency_info, 2);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),

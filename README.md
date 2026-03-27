@@ -129,6 +129,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.exports <module> -- <query>`
   - `native.dependencies <module>`
   - `native.dependencies <module> -- <query>`
+  - `native.dependencyInfo <module> -- <path-or-name>`
   - `native.encryptionInfo <module>`
   - `native.entryPoint <module>`
   - `native.dyldInfo <module>`
@@ -310,6 +311,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - 对 `objc.* / native.* / pac.* / swift.*` 这类 runtime 查询命令，`--command-json` 现在也会尽量回传稳定的 `payloadJson` 字段，里面直接带 `count / classes / methods / images / symbols / types / report / text` 等结构化内容，不再只能从换行文本里二次解析。
 - 其中 `native.symbols / native.exports / native.segments / native.sections / native.loadcmds / swift.symbols / swift.types / swift.methodOwners / swift.typeMethods / swift.methods` 这批结果现在也会补出更稳定的定位字段，例如 `moduleBase / offsetHex / sourceSymbolName / sourceOffsetHex`；`native.images / native.mainImage / pac.images` 里的镜像项也会顺手带 `name`，脚本侧不必再自己拆 basename。
 - `native.dependencies <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dependencies / ordinal / kind / path / currentVersion / compatibilityVersion / timestamp`，适合先看一个镜像依赖树，再结合 `native.imports` 缩小目标符号来源。
+- `native.dependencyInfo <module> -- <path-or-name>` 现在可以直接结构化返回单个 dependency entry 的 `moduleBase / ordinal / kind / path / currentVersion / compatibilityVersion / timestamp`，后续排查某个镜像依赖的具体 dylib 时不必再先全量 `native.dependencies` 再脚本过滤。
 - `native.encryptionInfo <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `encryptionInfo / cryptoff / cryptsize / cryptid`，适合快速确认目标 Mach-O 是否声明了加密区以及范围。
 - `native.entryPoint <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `entryPoint / entryoff / stacksize`，适合快速确认 `LC_MAIN` 指向的主入口偏移。
 - `native.dyldInfo <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dyldInfo / rebaseOff / bindOff / weakBindOff / lazyBindOff / exportOff` 等字段，适合快速确认 `LC_DYLD_INFO(_ONLY)` 记录的 dyld info 区间布局。

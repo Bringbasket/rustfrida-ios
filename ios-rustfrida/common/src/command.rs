@@ -114,6 +114,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.symbolInfo ")
         || command.starts_with("native.exports ")
         || command.starts_with("native.dependencies ")
+        || command.starts_with("native.dependencyInfo ")
         || command.starts_with("native.encryptionInfo ")
         || command.starts_with("native.entryPoint ")
         || command.starts_with("native.dyldInfo ")
@@ -470,6 +471,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "native.dependencies",
             "moduleName": module_name,
             "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.dependencyInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let path_or_name = query?;
+        return Some(json!({
+            "kind": "native.dependency_info",
+            "moduleName": module_name,
+            "pathOrName": path_or_name,
         }));
     }
 
@@ -1227,6 +1238,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.dependencyInfo libsystem_malloc.dylib -- libSystem.B.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.encryptionInfo libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -1677,6 +1692,12 @@ mod tests {
             AgentCommand::from_legacy("native.dependencies  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.dependencies  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.dependencyInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.dependencyInfo libsystem_malloc.dylib".into(),
             })
         );
         assert_eq!(

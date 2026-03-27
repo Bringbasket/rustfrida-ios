@@ -2578,6 +2578,19 @@ function handleSpecResult(spec) {
         const dependencies = Native.findDependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
         return { kind: 'native.dependencies', moduleName, query, count: dependencies.length, dependencies, text: dependencies.map((dependency) => dependency.text).join('\n') };
     }
+    case 'native.dependency_info': {
+        const moduleName = String(spec.moduleName || '');
+        const pathOrName = String(spec.pathOrName || '');
+        const dependencyInfo = Native.dependencyInfo(moduleName, pathOrName);
+        const normalized = dependencyInfo === null ? null : normalizeDependency(dependencyInfo);
+        return {
+            kind: 'native.dependency_info',
+            moduleName,
+            pathOrName,
+            dependencyInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'native.encryption_info': {
         const moduleName = String(spec.moduleName || '');
         const encryptionInfo = Native.findEncryptionInfo(moduleName);
@@ -3233,6 +3246,18 @@ function legacyToSpec(command) {
             kind: 'native.dependencies',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.dependencyInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.dependencyInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.dependencyInfo usage: native.dependencyInfo <module> -- <path-or-name>');
+        }
+        return {
+            kind: 'native.dependency_info',
+            moduleName: parsed.moduleName,
+            pathOrName: parsed.query,
         };
     }
 
