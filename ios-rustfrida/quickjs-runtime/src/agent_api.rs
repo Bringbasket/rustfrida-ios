@@ -2531,7 +2531,7 @@ function handleSpecResult(spec) {
     }
     case 'native.base': {
         const moduleName = String(spec.moduleName || '');
-        const base = Module.findBaseAddress(moduleName);
+        const base = Native.base(moduleName);
         return {
             kind: 'native.base',
             moduleName,
@@ -2546,13 +2546,13 @@ function handleSpecResult(spec) {
         return { kind: 'native.image_info', moduleName, image: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.main_image': {
-        const images = Module.enumerateModules();
-        const image = images.length === 0 ? null : normalizeImage(images[0]);
+        const imageValue = Native.mainImage();
+        const image = imageValue === null ? null : normalizeImage(imageValue);
         return { kind: 'native.main_image', image, text: image === null ? '<null>' : image.text };
     }
     case 'native.image': {
         const address = parseAddressArg(spec.address, 'native.image usage: native.image <address>');
-        const image = Module.findByAddress(address);
+        const image = Native.image(address);
         const normalized = image === null ? null : normalizeImage(image);
         return { kind: 'native.image', address: address.toString(), image: normalized, text: normalized === null ? '<null>' : normalized.text };
     }

@@ -1145,6 +1145,20 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof Native.base").expect("native base type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.mainImage")
+                    .expect("native mainImage type"),
+                "function"
+            );
+            assert_eq!(
+                runtime.eval("typeof Native.image").expect("native image type"),
+                "function"
+            );
+            assert_eq!(
                 runtime
                     .eval("typeof Native.findSymbols")
                     .expect("native find symbols type"),
@@ -1248,6 +1262,24 @@ undefined;
                 runtime
                     .eval("(function() { const value = Native.imageInfo('libsystem_malloc.dylib'); return value === null || (typeof value.name === 'string' && typeof value.path === 'string' && typeof value.base === 'object' && (typeof value.size === 'number' || typeof value.size === 'bigint')); })()")
                     .expect("native imageInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = Native.base('libsystem_malloc.dylib'); return value === null || value.toString().indexOf('0x') === 0; })()")
+                    .expect("native base"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = Native.mainImage(); return value === null || (typeof value.name === 'string' && typeof value.path === 'string' && typeof value.base === 'object' && (typeof value.size === 'number' || typeof value.size === 'bigint')); })()")
+                    .expect("native mainImage"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const address = Module.findExportByName(null, 'malloc'); if (address === null) { return true; } const value = Native.image(address); return value === null || (typeof value.name === 'string' && typeof value.path === 'string' && typeof value.base === 'object' && (typeof value.size === 'number' || typeof value.size === 'bigint')); })()")
+                    .expect("native image"),
                 "true"
             );
             assert_eq!(
@@ -2301,9 +2333,25 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.base', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.base' && result.moduleName === 'libsystem_malloc.dylib' && (result.base === null || typeof result.base === 'string'); })()"
+                    )
+                    .expect("agent native base result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); return result.kind === 'native.main_image' && (result.image === null || (typeof result.image.name === 'string' && result.image.name.length !== 0)); })()"
                     )
                     .expect("agent native main image result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const address = Module.findExportByName(null, 'malloc'); if (address === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image', address: address.toString() }); return result.kind === 'native.image' && result.address === address.toString() && ((result.image === null && result.text === '<null>') || (typeof result.image.name === 'string' && typeof result.image.path === 'string' && typeof result.image.base === 'string' && typeof result.image.sizeHex === 'string' && result.text === result.image.text)); })()"
+                    )
+                    .expect("agent native image result"),
                 "true"
             );
             assert_eq!(
