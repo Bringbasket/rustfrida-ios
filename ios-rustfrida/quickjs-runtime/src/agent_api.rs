@@ -809,6 +809,7 @@ function formatObjcProtocolInfo(info) {
         'protocol',
         info.protocolName,
         'adopted=' + String(info.adoptedProtocolCount || 0),
+        'totalMethods=' + String(info.totalMethodCount || 0),
         'requiredInstance=' + String(info.requiredInstanceMethodCount || 0),
         'requiredClass=' + String(info.requiredClassMethodCount || 0),
         'optionalInstance=' + String(info.optionalInstanceMethodCount || 0),
@@ -1487,6 +1488,12 @@ function normalizeObjcProtocolInfo(info) {
         + normalized.requiredClassMethodCount
         + normalized.optionalInstanceMethodCount
         + normalized.optionalClassMethodCount;
+    normalized.hasRequiredMethods = (normalized.requiredInstanceMethodCount + normalized.requiredClassMethodCount) !== 0;
+    normalized.hasOptionalMethods = (normalized.optionalInstanceMethodCount + normalized.optionalClassMethodCount) !== 0;
+    normalized.hasInstanceMethods = (normalized.requiredInstanceMethodCount + normalized.optionalInstanceMethodCount) !== 0;
+    normalized.hasClassMethods = (normalized.requiredClassMethodCount + normalized.optionalClassMethodCount) !== 0;
+    normalized.hasProperties = normalized.propertyCount !== 0;
+    normalized.hasAdoptedProtocols = normalized.adoptedProtocolCount !== 0;
     normalized.text = formatObjcProtocolInfo(normalized);
     return normalized;
 }

@@ -817,6 +817,42 @@ unsafe fn objc_protocol_info_to_js(ctx: *mut ffi::JSContext, info: &ObjcProtocol
         "propertyCount",
         JSValue(js_u64_to_js_number_or_bigint(ctx, info.property_count as u64)),
     );
+    let total_method_count = info.required_instance_method_count
+        + info.required_class_method_count
+        + info.optional_instance_method_count
+        + info.optional_class_method_count;
+    object.set_property(
+        ctx,
+        "totalMethodCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, total_method_count as u64)),
+    );
+    object.set_property(
+        ctx,
+        "adoptedProtocolCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, info.adopted_protocols.len() as u64)),
+    );
+    object.set_property(
+        ctx,
+        "hasRequiredMethods",
+        JSValue::bool((info.required_instance_method_count + info.required_class_method_count) != 0),
+    );
+    object.set_property(
+        ctx,
+        "hasOptionalMethods",
+        JSValue::bool((info.optional_instance_method_count + info.optional_class_method_count) != 0),
+    );
+    object.set_property(
+        ctx,
+        "hasInstanceMethods",
+        JSValue::bool((info.required_instance_method_count + info.optional_instance_method_count) != 0),
+    );
+    object.set_property(
+        ctx,
+        "hasClassMethods",
+        JSValue::bool((info.required_class_method_count + info.optional_class_method_count) != 0),
+    );
+    object.set_property(ctx, "hasProperties", JSValue::bool(info.property_count != 0));
+    object.set_property(ctx, "hasAdoptedProtocols", JSValue::bool(!info.adopted_protocols.is_empty()));
     match &info.image_path {
         Some(path) => object.set_property(ctx, "imagePath", JSValue::string(ctx, path)),
         None => object.set_property(ctx, "imagePath", JSValue::null()),
