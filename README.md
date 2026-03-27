@@ -155,6 +155,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.sections <module>`
   - `native.sectionInfo <module> -- <segment> <section>`
   - `native.segments <module>`
+  - `native.segmentInfo <module> -- <segment>`
   - `native.symbolInfo <symbol>`
   - `native.symbolInfo <module> -- <symbol>`
   - `native.symbols <query>`
@@ -335,6 +336,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.importInfo <module> -- <symbol>` 现在可以直接结构化返回单个 import entry 的 `moduleBase / name / dylibOrdinal / dylibName / weakImport`，后续排查某个镜像依赖的具体外部符号时不必再先全量 `native.imports` 再脚本过滤。
 - `native.loadCommandInfo <module> -- <name|cmd|index>` / `Native.loadCommandInfo(moduleName, commandOrIndex)` 现在可以直接返回单条 load command 的结构化结果；支持按 `LC_*` 名称、命令字值或命令索引定位，不必先全量 `native.loadcmds` 再筛。
 - `native.sectionInfo <module> -- <segment> <section>` / `Native.sectionInfo(moduleName, segmentName, sectionName)` 现在可以直接返回单条 section 的结构化结果，不必先全量 `native.sections` 再脚本过滤。
+- `native.segmentInfo <module> -- <segment>` / `Native.segmentInfo(moduleName, segmentName)` 现在可以直接返回单条 segment 的结构化结果，不必先全量 `native.segments` 再脚本过滤。
 - 对 `hfl / jhook / shook / trace / stalker` 这类 controller dispatch 命令，`--command-json` 现在也会尽量回传结构化 `payloadJson`，包含 `action / kind / target / count / key / moduleName / selectorName / resolvedLabel / targetAddress / filter / replacedCount` 等字段；对应的 `*.status` 结果也会补出当前 active state 和 target 元数据，像 `hfl/jhook/shook` 不再只有 key/count；`*.stop` 结果现在也会把被回收的 key/target 一并带回，`trace.stop / stalker.stop` 也会继续带上实际 detach 计数。
 - 对同一批 `*.status` 控制命令，普通文本模式的 `--command` / REPL 输出现在也不再只回一行 `active: N`；会附带当前 target / filter / symbol / Swift 命中项摘要，真机交互排查时不必每次都切到 `--command-json`。
 - `hfl/jhook/shook` 现在除了 `stop` 全停，也支持按目标定向停止；对应的普通文本模式 `*.stop` 输出也会和 `*.status` 一样附带命中的 target 摘要，适合 REPL 下快速确认到底停掉了哪一个 hook。

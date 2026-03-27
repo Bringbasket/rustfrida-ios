@@ -2734,6 +2734,19 @@ function handleSpecResult(spec) {
         const segments = Native.findSegments(moduleName).map((segment) => normalizeSegment(segment));
         return { kind: 'native.segments', moduleName, count: segments.length, segments, text: segments.map((segment) => segment.text).join('\n') };
     }
+    case 'native.segment_info': {
+        const moduleName = String(spec.moduleName || '');
+        const segmentName = String(spec.segmentName || '');
+        const segmentInfo = Native.segmentInfo(moduleName, segmentName);
+        const normalized = segmentInfo === null ? null : normalizeSegment(segmentInfo);
+        return {
+            kind: 'native.segment_info',
+            moduleName,
+            segmentName,
+            segmentInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'native.sections': {
         const moduleName = String(spec.moduleName || '');
         const sections = Native.findSections(moduleName).map((section) => normalizeSection(section));
@@ -3515,11 +3528,27 @@ function legacyToSpec(command) {
     }
 
     if (trimmed.startsWith('native.segments ')) {
-        const moduleName = trimmed.slice('native.segments '.length).trim();
-        if (moduleName.length === 0) {
-            throw new Error('native.segments usage: native.segments <module>');
+        const parsed = parseNativeExports(trimmed.slice('native.segments '.length));
+        if (parsed.query !== null) {
+            return {
+                kind: 'native.segment_info',
+                moduleName: parsed.moduleName,
+                segmentName: parsed.query,
+            };
         }
-        return { kind: 'native.segments', moduleName };
+        return { kind: 'native.segments', moduleName: parsed.moduleName };
+    }
+
+    if (trimmed.startsWith('native.segmentInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.segmentInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.segmentInfo usage: native.segmentInfo <module> -- <segment>');
+        }
+        return {
+            kind: 'native.segment_info',
+            moduleName: parsed.moduleName,
+            segmentName: parsed.query,
+        };
     }
 
     if (trimmed.startsWith('native.sections ')) {

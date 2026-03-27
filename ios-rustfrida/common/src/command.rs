@@ -140,6 +140,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.sections ")
         || command.starts_with("native.sectionInfo ")
         || command.starts_with("native.segments ")
+        || command.starts_with("native.segmentInfo ")
         || command.starts_with("native.symbol ")
         || command.starts_with("native.symbols ")
         || command.starts_with("pac.images ")
@@ -683,6 +684,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "native.segments",
             "moduleName": module_name.trim(),
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.segmentInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let segment_name = query?;
+        return Some(json!({
+            "kind": "native.segment_info",
+            "moduleName": module_name,
+            "segmentName": segment_name,
         }));
     }
 
@@ -1388,6 +1399,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.segmentInfo DemoBinary -- __TEXT"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.sections DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -1864,6 +1879,12 @@ mod tests {
             AgentCommand::from_legacy("native.sectionInfo libsystem_malloc.dylib -- __TEXT"),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.sectionInfo libsystem_malloc.dylib -- __TEXT".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.segmentInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.segmentInfo libsystem_malloc.dylib".into(),
             })
         );
     }
