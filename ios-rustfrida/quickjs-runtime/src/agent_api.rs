@@ -2588,6 +2588,19 @@ function handleSpecResult(spec) {
         const symbols = Native.findExports(moduleName, query).map((symbol) => normalizeNativeSymbol(symbol));
         return { kind: 'native.exports', moduleName, query, count: symbols.length, symbols, text: symbols.map((symbol) => symbol.text).join('\n') };
     }
+    case 'native.export_info': {
+        const moduleName = String(spec.moduleName || '');
+        const symbolName = String(spec.symbolName || '');
+        const exportInfo = Native.exportInfo(moduleName, symbolName);
+        const normalized = exportInfo === null ? null : normalizeNativeSymbol(exportInfo);
+        return {
+            kind: 'native.export_info',
+            moduleName,
+            symbolName,
+            exportInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'native.dependencies': {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
@@ -3307,6 +3320,18 @@ function legacyToSpec(command) {
             kind: 'native.exports',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.exportInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.exportInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.exportInfo usage: native.exportInfo <module> -- <symbol>');
+        }
+        return {
+            kind: 'native.export_info',
+            moduleName: parsed.moduleName,
+            symbolName: parsed.query,
         };
     }
 

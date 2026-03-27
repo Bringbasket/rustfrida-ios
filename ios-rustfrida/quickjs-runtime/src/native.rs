@@ -1073,6 +1073,56 @@ unsafe extern "C" fn js_native_find_exports(
     array
 }
 
+unsafe extern "C" fn js_native_export_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 2 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.exportInfo(moduleName, symbolName) requires 2 string arguments",
+        );
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.exportInfo(moduleName, symbolName) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    let symbol_name = match JSValue(*argv.add(1)).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.exportInfo(moduleName, symbolName) requires symbolName to be a non-empty string",
+            )
+        }
+    };
+
+    let normalized_symbol_name = symbol_name.strip_prefix('_').unwrap_or(&symbol_name);
+    let exports = match find_image_exports(&module_name, Some(&symbol_name)) {
+        Ok(exports) => exports,
+        Err(common::Error::Unsupported(_)) => return JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => return crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match exports.into_iter().find(|export| {
+        export.symbol_name == symbol_name
+            || export.symbol_name.strip_prefix('_').unwrap_or(&export.symbol_name) == normalized_symbol_name
+    }) {
+        Some(export) => native_symbol_to_js(ctx, &export),
+        None => JSValue::null().raw(),
+    }
+}
+
 unsafe extern "C" fn js_native_find_imports(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -2228,6 +2278,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSymbols", js_native_find_symbols, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbolInfo", js_native_symbol_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findExports", js_native_find_exports, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "exportInfo", js_native_export_info, 2);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),

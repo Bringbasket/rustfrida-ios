@@ -1152,6 +1152,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Native.exportInfo")
+                    .expect("native export info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Native.findSegments")
                     .expect("native find segments type"),
                 "function"
@@ -1212,6 +1218,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Native.findExports('libsystem_malloc.dylib'))")
                     .expect("native find exports"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = Native.exportInfo('libsystem_malloc.dylib', 'malloc'); return value === null || (typeof value.name === 'string' && typeof value.moduleName === 'string' && typeof value.address === 'object'); })()")
+                    .expect("native exportInfo"),
                 "true"
             );
             assert_eq!(
@@ -2289,6 +2301,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); return result.kind === 'native.export_info' && result.moduleName === 'libsystem_malloc.dylib' && result.symbolName === 'malloc' && ((result.exportInfo === null && result.text === '<null>') || (typeof result.exportInfo.moduleBase === 'string' && typeof result.exportInfo.name === 'string' && typeof result.exportInfo.offsetHex === 'string' && result.text === result.exportInfo.text)); })()"
+                    )
+                    .expect("agent native exportInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependencies', moduleName: main.image.name, query: null }); return result.kind === 'native.dependencies' && result.count === result.dependencies.length && (result.dependencies.length === 0 || (typeof result.dependencies[0].ordinal === 'number' && typeof result.dependencies[0].kind === 'string')); })()"
                     )
                     .expect("agent native dependencies result"),
@@ -2762,6 +2782,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.exportInfo libsystem_malloc.dylib -- malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); return value === result.text && (result.exportInfo === null || result.exportInfo.name.indexOf('malloc') !== -1); })()")
+                    .expect("agent native exportInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.segments ' + base); return value === '' || value.indexOf('vmaddr=') !== -1; })()")
                     .expect("agent native segments"),
                 "true"
@@ -2806,6 +2832,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }); return value === result.text; })()")
                     .expect("agent spec native symbolInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.export_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); return value === result.text; })()")
+                    .expect("agent spec native exportInfo"),
                 "true"
             );
             assert_eq!(

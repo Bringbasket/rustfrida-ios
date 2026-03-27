@@ -3616,6 +3616,7 @@ fn print_controller_help() {
     println!("  native.base <module>");
     println!("  native.export <symbol>|native.export <module> -- <symbol>");
     println!("  native.exports <module>|native.exports <module> -- <query>");
+    println!("  native.exportInfo <module> -- <symbol>");
     println!("  native.dependencies <module>|native.dependencies <module> -- <query>");
     println!("  native.dependencyInfo <module> -- <path-or-name>");
     println!("  native.encryptionInfo <module>");
@@ -4094,6 +4095,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.exportInfo DemoBinary -- malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.dependencies DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4308,7 +4313,10 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.methodInfo UIView viewDidLoad"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
-        assert!(!command_requires_inline_hooks("native.dependencyInfo UIKit -- libSystem.B.dylib"));
+        assert!(!command_requires_inline_hooks("native.exportInfo UIKit -- malloc"));
+        assert!(!command_requires_inline_hooks(
+            "native.dependencyInfo UIKit -- libSystem.B.dylib"
+        ));
         assert!(!command_requires_inline_hooks("native.encryptionInfo UIKit"));
         assert!(!command_requires_inline_hooks("native.entryPoint UIKit"));
         assert!(!command_requires_inline_hooks("native.dyldInfo UIKit"));
@@ -4327,8 +4335,12 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.rpathInfo UIKit -- @loader_path"));
         assert!(!command_requires_inline_hooks("native.imports UIKit"));
         assert!(!command_requires_inline_hooks("native.importInfo UIKit -- malloc"));
-        assert!(!command_requires_inline_hooks("native.loadCommandInfo UIKit -- LC_UUID"));
-        assert!(!command_requires_inline_hooks("native.sectionInfo UIKit -- __TEXT __text"));
+        assert!(!command_requires_inline_hooks(
+            "native.loadCommandInfo UIKit -- LC_UUID"
+        ));
+        assert!(!command_requires_inline_hooks(
+            "native.sectionInfo UIKit -- __TEXT __text"
+        ));
         assert!(!command_requires_inline_hooks("native.segmentInfo UIKit -- __TEXT"));
         assert!(!command_requires_inline_hooks("native.symbolInfo malloc"));
         assert!(!command_requires_inline_hooks("swift.protocolInfo Renderable"));

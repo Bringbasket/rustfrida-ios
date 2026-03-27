@@ -89,6 +89,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Swift.findMethods(typeName, methodQuery[, moduleName])`
 - `Swift.symbolInfo(symbolName[, moduleName])`
 - `Native.symbolInfo(symbolName[, moduleName])`
+- `Native.exportInfo(moduleName, symbolName)`
 - agent / controller CLI:
   - `hfl <module> <offset>`
   - `hfl status`
@@ -127,6 +128,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.export <module> -- <symbol>`
   - `native.exports <module>`
   - `native.exports <module> -- <query>`
+  - `native.exportInfo <module> -- <symbol>`
   - `native.dependencies <module>`
   - `native.dependencies <module> -- <query>`
   - `native.dependencyInfo <module> -- <path-or-name>`
@@ -332,6 +334,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.uuid <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `imageUuid / uuid`，适合把运行中镜像和 dSYM / 本地 Mach-O 做快速 UUID 对齐。
 - `native.rpaths <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `rpaths / path`，适合和 `native.dependencies` 一起排查运行时 dylib 查找路径。
 - `native.rpathInfo <module> -- <path>` / `Native.rpathInfo(moduleName, path)` 现在可以直接结构化返回单条 rpath 的 `moduleBase / path`，不必先全量 `native.rpaths` 再二次过滤。
+- `native.exportInfo <module> -- <symbol>` / `Native.exportInfo(moduleName, symbolName)` 现在可以直接结构化返回单条 export entry 的 `moduleBase / name / address / offsetHex`；匹配时会兼容 `_foo` / `foo` 这类常见导出名差异，不必先全量 `native.exports` 再脚本过滤。
 - `native.imports <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；当前实现基于 Mach-O undefined symbol 表，结构化结果会带 `imports / dylibOrdinal / dylibName / weakImport`，适合先看一个镜像依赖了哪些外部符号，再决定后续 trace/hook 目标。
 - `native.importInfo <module> -- <symbol>` 现在可以直接结构化返回单个 import entry 的 `moduleBase / name / dylibOrdinal / dylibName / weakImport`，后续排查某个镜像依赖的具体外部符号时不必再先全量 `native.imports` 再脚本过滤。
 - `native.loadCommandInfo <module> -- <name|cmd|index>` / `Native.loadCommandInfo(moduleName, commandOrIndex)` 现在可以直接返回单条 load command 的结构化结果；支持按 `LC_*` 名称、命令字值或命令索引定位，不必先全量 `native.loadcmds` 再筛。
