@@ -1985,11 +1985,15 @@ fn print_injection_preflight(report: &InjectionTargetPreflightReport) {
         report.thread_bootstrap_canonicalized
     );
     println!(
-        "target hook strategy: policy={} strategy={} allowed={} inline_hooks_allowed={}",
+        "target hook strategy: policy={} strategy={} allowed={} inline_hooks_allowed={} query_commands_allowed={} hook_install_commands_allowed={} hook_status_commands_allowed={} hook_stop_commands_allowed={}",
         report.target_hook_strategy.policy.as_str(),
         report.target_hook_strategy.strategy,
         report.target_hook_strategy.allowed,
-        report.target_hook_strategy.inline_hooks_allowed
+        report.target_hook_strategy.inline_hooks_allowed,
+        report.target_hook_strategy.query_commands_allowed(),
+        report.target_hook_strategy.hook_install_commands_allowed(),
+        report.target_hook_strategy.hook_status_commands_allowed(),
+        report.target_hook_strategy.hook_stop_commands_allowed()
     );
     if let Some(reason) = &report.target_hook_strategy.reason {
         println!("target hook strategy reason: {reason}");
@@ -1999,7 +2003,15 @@ fn print_injection_preflight(report: &InjectionTargetPreflightReport) {
         .active_backend
         .as_deref()
         .unwrap_or("<none>");
-    println!("target hook backends: active={active_backend}");
+    println!(
+        "target hook backends: active={} conflict_state={} loaded_backends={} filesystem_only_backends={} loaded_images={} filesystem_paths={}",
+        active_backend,
+        report.target_hook_environment.conflict_state(),
+        report.target_hook_environment.loaded_backend_count(),
+        report.target_hook_environment.filesystem_only_backend_count(),
+        report.target_hook_environment.loaded_image_count(),
+        report.target_hook_environment.filesystem_path_count()
+    );
     for backend in &report.target_hook_environment.backends {
         println!(
             " - {} ({}) loaded={} filesystem={}",
@@ -2026,20 +2038,32 @@ fn render_injection_environment(report: &InjectionEnvironmentReport) -> Vec<Stri
         .map(|value| format!("{value}ms"))
         .unwrap_or_else(|| "disabled".into());
     let mut lines = vec![format!(
-        "injection environment: dry_run={} bootstrap_wait={} hook_policy={} strategy={} allowed={} inline_hooks_allowed={}",
+        "injection environment: dry_run={} bootstrap_wait={} hook_policy={} strategy={} allowed={} inline_hooks_allowed={} query_commands_allowed={} hook_install_commands_allowed={} hook_status_commands_allowed={} hook_stop_commands_allowed={}",
         report.dry_run,
         bootstrap_wait,
         report.hook_policy.as_str(),
         report.hook_strategy.strategy,
         report.hook_strategy.allowed,
-        report.hook_strategy.inline_hooks_allowed
+        report.hook_strategy.inline_hooks_allowed,
+        report.hook_strategy.query_commands_allowed(),
+        report.hook_strategy.hook_install_commands_allowed(),
+        report.hook_strategy.hook_status_commands_allowed(),
+        report.hook_strategy.hook_stop_commands_allowed()
     )];
     if let Some(reason) = &report.hook_strategy.reason {
         lines.push(format!("hook strategy reason: {reason}"));
     }
 
     let active_backend = report.hook_environment.active_backend.as_deref().unwrap_or("<none>");
-    lines.push(format!("hook backends: active={active_backend}"));
+    lines.push(format!(
+        "hook backends: active={} conflict_state={} loaded_backends={} filesystem_only_backends={} loaded_images={} filesystem_paths={}",
+        active_backend,
+        report.hook_environment.conflict_state(),
+        report.hook_environment.loaded_backend_count(),
+        report.hook_environment.filesystem_only_backend_count(),
+        report.hook_environment.loaded_image_count(),
+        report.hook_environment.filesystem_path_count()
+    ));
     for backend in &report.hook_environment.backends {
         lines.push(format!(
             " - {} ({}) loaded={} filesystem={}",
@@ -2370,11 +2394,26 @@ fn fetch_hook_environment_notice(
 #[cfg(unix)]
 fn hook_environment_requires_notice(payload: &str) -> bool {
     let trimmed = payload.trim();
-    if trimmed.is_empty() || trimmed == "active=<none>" {
+    if trimmed.is_empty() {
         return false;
     }
-
-    trimmed.lines().skip(1).any(|line| !line.trim().is_empty()) || !trimmed.starts_with("active=<none>")
+    let mut active_backend = "<none>";
+    let mut has_actionable_lines = false;
+    for line in trimmed.lines() {
+        let line = line.trim();
+        if let Some(value) = line.strip_prefix("active=") {
+            active_backend = value.trim();
+            continue;
+        }
+        if line.starts_with("backend ")
+            || line.starts_with("warning ")
+            || line.starts_with("advice ")
+            || line.starts_with("reason=")
+        {
+            has_actionable_lines = true;
+        }
+    }
+    active_backend != "<none>" || has_actionable_lines
 }
 
 fn send_complete_command_json_with_logs(
@@ -6448,6 +6487,9 @@ mod tests {
     fn hook_environment_notice_is_suppressed_when_nothing_is_detected() {
         assert!(!hook_environment_requires_notice("active=<none>"));
         assert!(!hook_environment_requires_notice(""));
+        assert!(!hook_environment_requires_notice(
+            "active=<none>\nconflict_state=none\nrisk_level=normal\npolicy=warn\nstrategy=internal-inline\nallowed=true\ninline_hooks_allowed=true\nbootstrap_injection_allowed=true\nquery_commands_allowed=true\nhook_install_commands_allowed=true\nhook_status_commands_allowed=true\nhook_stop_commands_allowed=true\ncoexistence_layer_available=false\nloaded_backend_count=0\nfilesystem_only_backend_count=0\nloaded_image_count=0\nfilesystem_path_count=0"
+        ));
     }
 
     #[test]
@@ -6492,10 +6534,12 @@ mod tests {
         assert!(lines[0].contains("bootstrap_wait=1500ms"));
         assert!(lines[0].contains("strategy=internal-inline-risky"));
         assert!(lines[0].contains("inline_hooks_allowed=true"));
+        assert!(lines[0].contains("query_commands_allowed=true"));
+        assert!(lines[0].contains("hook_install_commands_allowed=true"));
         assert!(lines
             .iter()
             .any(|line| line.contains("hook strategy reason: external hook backend is already loaded")));
-        assert!(lines.iter().any(|line| line.contains("hook backends: active=ellekit")));
+        assert!(lines.iter().any(|line| line.contains("hook backends: active=ellekit conflict_state=external-loaded")));
         assert!(lines.iter().any(|line| line.contains("ElleKit")));
         assert!(lines
             .iter()
