@@ -731,13 +731,13 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.protocolPropertyInfo('NSObject', 'description'); return value === null || (typeof value.name === 'string' && typeof value.attributes === 'string'); })()")
+                    .eval("(function() { const value = ObjC.protocolPropertyInfo('NSObject', 'description'); return value === null || (typeof value.name === 'string' && typeof value.attributes === 'string' && typeof value.hasCustomGetter === 'boolean' && typeof value.hasCustomSetter === 'boolean' && typeof value.hasAccessorCustomization === 'boolean' && typeof value.hasBackingIvar === 'boolean' && typeof value.hasOldStyleTypeEncoding === 'boolean' && typeof value.objectProtocolCount === 'number' && typeof value.parsedTokenCount === 'number'); })()")
                     .expect("objc protocolPropertyInfo"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.propertyInfo('NSObject', 'description'); return value === null || (typeof value.name === 'string' && typeof value.attributes === 'string' && typeof value.isClassProperty === 'boolean'); })()")
+                    .eval("(function() { const value = ObjC.propertyInfo('NSObject', 'description'); return value === null || (typeof value.name === 'string' && typeof value.attributes === 'string' && typeof value.isClassProperty === 'boolean' && typeof value.hasCustomGetter === 'boolean' && typeof value.hasCustomSetter === 'boolean' && typeof value.hasAccessorCustomization === 'boolean' && typeof value.hasBackingIvar === 'boolean' && typeof value.hasOldStyleTypeEncoding === 'boolean' && typeof value.objectProtocolCount === 'number' && typeof value.parsedTokenCount === 'number'); })()")
                     .expect("objc propertyInfo"),
                 "true"
             );
@@ -2093,7 +2093,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.protocolPropertyInfo NSObject description'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_property_info', protocolName: 'NSObject', propertyName: 'description' }); return value === result.text && (result.propertyInfo === null || (result.propertyInfo.name === 'description' && typeof result.propertyInfo.attributes === 'string')); })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.protocolPropertyInfo NSObject description'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_property_info', protocolName: 'NSObject', propertyName: 'description' }); return value === result.text && (result.propertyInfo === null || (result.propertyInfo.name === 'description' && typeof result.propertyInfo.attributes === 'string' && typeof result.propertyInfo.hasAccessorCustomization === 'boolean' && typeof result.propertyInfo.objectProtocolCount === 'number' && typeof result.propertyInfo.parsedTokenCount === 'number')); })()"
                     )
                     .expect("agent objc protocolPropertyInfo"),
                 "true"
@@ -2125,7 +2125,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.propertyInfo NSObject description'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.property_info', className: 'NSObject', propertyName: 'description', isClassProperty: false }); return value === result.text && (result.propertyInfo === null || (result.propertyInfo.name === 'description' && typeof result.propertyInfo.attributes === 'string')); })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.propertyInfo NSObject description'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.property_info', className: 'NSObject', propertyName: 'description', isClassProperty: false }); return value === result.text && (result.propertyInfo === null || (result.propertyInfo.name === 'description' && typeof result.propertyInfo.attributes === 'string' && typeof result.propertyInfo.hasAccessorCustomization === 'boolean' && typeof result.propertyInfo.objectProtocolCount === 'number' && typeof result.propertyInfo.parsedTokenCount === 'number')); })()"
                     )
                     .expect("agent objc propertyInfo"),
                 "true"
@@ -2419,7 +2419,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_property_info', protocolName: 'NSObject', propertyName: 'description' }); return result.kind === 'objc.protocol_property_info' && result.protocolName === 'NSObject' && result.propertyName === 'description' && ((result.propertyInfo === null && result.text === '<null>') || (typeof result.propertyInfo.propertyPointer === 'string' && typeof result.propertyInfo.typeEncoding === 'string' && typeof result.propertyInfo.typeName === 'string' && Array.isArray(result.propertyInfo.objectProtocols) && typeof result.propertyInfo.attributeInfo === 'object' && result.text === result.propertyInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_property_info', protocolName: 'NSObject', propertyName: 'description' }); return result.kind === 'objc.protocol_property_info' && result.protocolName === 'NSObject' && result.propertyName === 'description' && ((result.propertyInfo === null && result.text === '<null>') || (typeof result.propertyInfo.propertyPointer === 'string' && typeof result.propertyInfo.typeEncoding === 'string' && typeof result.propertyInfo.typeName === 'string' && Array.isArray(result.propertyInfo.objectProtocols) && typeof result.propertyInfo.attributeInfo === 'object' && typeof result.propertyInfo.hasAccessorCustomization === 'boolean' && typeof result.propertyInfo.hasBackingIvar === 'boolean' && typeof result.propertyInfo.hasOldStyleTypeEncoding === 'boolean' && typeof result.propertyInfo.objectProtocolCount === 'number' && typeof result.propertyInfo.parsedTokenCount === 'number' && result.text === result.propertyInfo.text)); })()"
                     )
                     .expect("agent objc protocolPropertyInfo result"),
                 "true"
@@ -2451,7 +2451,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.property_info', className: 'NSObject', propertyName: 'description', isClassProperty: false }); return result.kind === 'objc.property_info' && result.className === 'NSObject' && result.propertyName === 'description' && result.isClassProperty === false && ((result.propertyInfo === null && result.text === '<null>') || (typeof result.propertyInfo.propertyPointer === 'string' && typeof result.propertyInfo.typeEncoding === 'string' && typeof result.propertyInfo.typeName === 'string' && Array.isArray(result.propertyInfo.objectProtocols) && typeof result.propertyInfo.attributeInfo === 'object' && result.text === result.propertyInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.property_info', className: 'NSObject', propertyName: 'description', isClassProperty: false }); return result.kind === 'objc.property_info' && result.className === 'NSObject' && result.propertyName === 'description' && result.isClassProperty === false && ((result.propertyInfo === null && result.text === '<null>') || (typeof result.propertyInfo.propertyPointer === 'string' && typeof result.propertyInfo.typeEncoding === 'string' && typeof result.propertyInfo.typeName === 'string' && Array.isArray(result.propertyInfo.objectProtocols) && typeof result.propertyInfo.attributeInfo === 'object' && typeof result.propertyInfo.hasAccessorCustomization === 'boolean' && typeof result.propertyInfo.hasBackingIvar === 'boolean' && typeof result.propertyInfo.hasOldStyleTypeEncoding === 'boolean' && typeof result.propertyInfo.objectProtocolCount === 'number' && typeof result.propertyInfo.parsedTokenCount === 'number' && result.text === result.propertyInfo.text)); })()"
                     )
                     .expect("agent objc propertyInfo result"),
                 "true"

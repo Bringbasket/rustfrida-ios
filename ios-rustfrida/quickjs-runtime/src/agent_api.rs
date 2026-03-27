@@ -1237,6 +1237,15 @@ function formatObjcProtocolProperty(property) {
     if (property.isNonatomic) {
         details.push('nonatomic');
     }
+    if (property.hasCustomGetter && property.getterName) {
+        details.push('getter=' + property.getterName);
+    }
+    if (property.hasCustomSetter && property.setterName) {
+        details.push('setter=' + property.setterName);
+    }
+    if (property.hasBackingIvar && property.ivarName) {
+        details.push('ivar=' + property.ivarName);
+    }
     if (property.attributes.length !== 0) {
         details.push('attrs=' + property.attributes);
     }
@@ -1258,6 +1267,15 @@ function formatObjcProperty(property) {
     if (property.isNonatomic) {
         details.push('nonatomic');
     }
+    if (property.hasCustomGetter && property.getterName) {
+        details.push('getter=' + property.getterName);
+    }
+    if (property.hasCustomSetter && property.setterName) {
+        details.push('setter=' + property.setterName);
+    }
+    if (property.hasBackingIvar && property.ivarName) {
+        details.push('ivar=' + property.ivarName);
+    }
     if (property.attributes.length !== 0) {
         details.push('attrs=' + property.attributes);
     }
@@ -1269,6 +1287,15 @@ function formatObjcPropertyInfo(property) {
     const details = ['property=' + property.propertyPointer];
     if (property.typeName && property.typeName.length !== 0) {
         details.push('type=' + property.typeName);
+    }
+    if (property.hasCustomGetter && property.getterName) {
+        details.push('getter=' + property.getterName);
+    }
+    if (property.hasCustomSetter && property.setterName) {
+        details.push('setter=' + property.setterName);
+    }
+    if (property.hasBackingIvar && property.ivarName) {
+        details.push('ivar=' + property.ivarName);
     }
     if (property.attributes.length !== 0) {
         details.push('attrs=' + property.attributes);
@@ -1283,6 +1310,15 @@ function formatObjcProtocolPropertyInfo(property) {
     const details = ['property=' + property.propertyPointer];
     if (property.typeName && property.typeName.length !== 0) {
         details.push('type=' + property.typeName);
+    }
+    if (property.hasCustomGetter && property.getterName) {
+        details.push('getter=' + property.getterName);
+    }
+    if (property.hasCustomSetter && property.setterName) {
+        details.push('setter=' + property.setterName);
+    }
+    if (property.hasBackingIvar && property.ivarName) {
+        details.push('ivar=' + property.ivarName);
     }
     if (property.attributes.length !== 0) {
         details.push('attrs=' + property.attributes);
@@ -1566,10 +1602,17 @@ function normalizeObjcProtocolProperty(property) {
         getterName: attributeInfo.getterName,
         setterName: attributeInfo.setterName,
         ivarName: attributeInfo.ivarName,
+        hasCustomGetter: attributeInfo.hasGetter,
+        hasCustomSetter: attributeInfo.hasSetter,
+        hasAccessorCustomization: attributeInfo.hasGetter || attributeInfo.hasSetter,
+        hasBackingIvar: attributeInfo.ivarName !== null,
+        hasOldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding !== null,
         isObject: attributeInfo.isObject,
         isBlock: attributeInfo.isBlock,
         objectClassName: attributeInfo.objectClassName,
         objectProtocols: attributeInfo.objectProtocols,
+        objectProtocolCount: Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0,
+        parsedTokenCount: Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0,
         attributeInfo,
     };
     normalized.text = formatObjcProtocolProperty(normalized);
@@ -1593,10 +1636,17 @@ function normalizeObjcProperty(property) {
         getterName: attributeInfo.getterName,
         setterName: attributeInfo.setterName,
         ivarName: attributeInfo.ivarName,
+        hasCustomGetter: attributeInfo.hasGetter,
+        hasCustomSetter: attributeInfo.hasSetter,
+        hasAccessorCustomization: attributeInfo.hasGetter || attributeInfo.hasSetter,
+        hasBackingIvar: attributeInfo.ivarName !== null,
+        hasOldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding !== null,
         isObject: attributeInfo.isObject,
         isBlock: attributeInfo.isBlock,
         objectClassName: attributeInfo.objectClassName,
         objectProtocols: attributeInfo.objectProtocols,
+        objectProtocolCount: Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0,
+        parsedTokenCount: Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0,
         attributeInfo,
         isClassProperty: !!property.isClassProperty,
     };
@@ -1621,10 +1671,17 @@ function normalizeObjcPropertyInfo(property) {
         getterName: attributeInfo.getterName,
         setterName: attributeInfo.setterName,
         ivarName: attributeInfo.ivarName,
+        hasCustomGetter: attributeInfo.hasGetter,
+        hasCustomSetter: attributeInfo.hasSetter,
+        hasAccessorCustomization: attributeInfo.hasGetter || attributeInfo.hasSetter,
+        hasBackingIvar: attributeInfo.ivarName !== null,
+        hasOldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding !== null,
         isObject: attributeInfo.isObject,
         isBlock: attributeInfo.isBlock,
         objectClassName: attributeInfo.objectClassName,
         objectProtocols: attributeInfo.objectProtocols,
+        objectProtocolCount: Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0,
+        parsedTokenCount: Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0,
         attributeInfo,
         isClassProperty: !!property.isClassProperty,
         propertyPointer: property.propertyPointer.toString(),
@@ -1651,10 +1708,17 @@ function normalizeObjcProtocolPropertyInfo(property) {
         getterName: attributeInfo.getterName,
         setterName: attributeInfo.setterName,
         ivarName: attributeInfo.ivarName,
+        hasCustomGetter: attributeInfo.hasGetter,
+        hasCustomSetter: attributeInfo.hasSetter,
+        hasAccessorCustomization: attributeInfo.hasGetter || attributeInfo.hasSetter,
+        hasBackingIvar: attributeInfo.ivarName !== null,
+        hasOldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding !== null,
         isObject: attributeInfo.isObject,
         isBlock: attributeInfo.isBlock,
         objectClassName: attributeInfo.objectClassName,
         objectProtocols: attributeInfo.objectProtocols,
+        objectProtocolCount: Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0,
+        parsedTokenCount: Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0,
         attributeInfo,
         propertyPointer: property.propertyPointer.toString(),
         imagePath: property.imagePath === undefined || property.imagePath === null ? null : String(property.imagePath),
