@@ -303,6 +303,10 @@ fn hook_backend_to_json(backend: &native_api::HookBackendInfo) -> Value {
     json!({
         "id": backend.id,
         "displayName": backend.display_name,
+        "loaded": !backend.loaded_images.is_empty(),
+        "presentOnFilesystem": !backend.filesystem_paths.is_empty(),
+        "loadedImageCount": backend.loaded_images.len(),
+        "filesystemPathCount": backend.filesystem_paths.len(),
         "loadedImages": backend.loaded_images,
         "filesystemPaths": backend.filesystem_paths,
     })
@@ -315,6 +319,11 @@ fn hook_strategy_to_json(strategy: &native_api::HookStrategyDecision) -> Value {
         "strategy": strategy.strategy,
         "allowed": strategy.allowed,
         "inlineHooksAllowed": strategy.inline_hooks_allowed,
+        "bootstrapInjectionAllowed": strategy.bootstrap_injection_allowed(),
+        "queryCommandsAllowed": strategy.query_commands_allowed(),
+        "hookInstallCommandsAllowed": strategy.hook_install_commands_allowed(),
+        "hookStatusCommandsAllowed": strategy.hook_status_commands_allowed(),
+        "hookStopCommandsAllowed": strategy.hook_stop_commands_allowed(),
         "reason": strategy.reason,
     })
 }
@@ -323,6 +332,11 @@ fn hook_strategy_to_json(strategy: &native_api::HookStrategyDecision) -> Value {
 fn hook_environment_to_json(report: &native_api::HookEnvironmentReport) -> Value {
     json!({
         "activeBackend": report.active_backend,
+        "conflictState": report.conflict_state(),
+        "loadedBackendCount": report.loaded_backend_count(),
+        "filesystemOnlyBackendCount": report.filesystem_only_backend_count(),
+        "loadedImageCount": report.loaded_image_count(),
+        "filesystemPathCount": report.filesystem_path_count(),
         "backends": report.backends.iter().map(hook_backend_to_json).collect::<Vec<_>>(),
         "warnings": report.warnings,
     })
@@ -4890,6 +4904,11 @@ mod tests {
         assert_eq!(rendered["command"], "objc.classes UIView");
         assert_eq!(rendered["doctor"]["failureCount"], 1);
         assert!(rendered["preflight"].is_object());
+        assert_eq!(rendered["environment"]["hookStrategy"]["bootstrapInjectionAllowed"], true);
+        assert_eq!(rendered["environment"]["hookStrategy"]["queryCommandsAllowed"], true);
+        assert_eq!(rendered["environment"]["hookStrategy"]["hookInstallCommandsAllowed"], true);
+        assert_eq!(rendered["preflight"]["targetHookEnvironment"]["conflictState"], "none");
+        assert_eq!(rendered["preflight"]["targetHookEnvironment"]["loadedBackendCount"], 0);
         assert_eq!(rendered["payload"], json!(null));
         assert_eq!(rendered["items"], json!([]));
         assert_eq!(rendered["logs"][0], "bootstrap pending");
