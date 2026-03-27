@@ -73,20 +73,38 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.methodInfo(className, selectorName[, isClassMethod])`
 - `ObjC.methodImage(className, selectorName[, isClassMethod])`
 - `Swift.findProtocols([query[, moduleName]])`
+- `Swift.protocols([query[, moduleName]])`
 - `Swift.protocolInfo(protocolName[, moduleName])`
 - `Swift.conformanceInfo(typeName, protocolName[, moduleName])`
 - `Swift.typeInfo(typeName[, moduleName])`
 - `Swift.methodInfo(typeName, methodName[, moduleName])`
 - `Swift.findConformances(typeName[, moduleName])`
+- `Swift.conformances(typeName[, moduleName])`
 - `Swift.findMetadata(typeName[, moduleName])`
+- `Swift.metadata(typeName[, moduleName])`
 - `Swift.metadataInfo(typeName[, moduleName])`
 - `Swift.findVtable(typeName[, moduleName])`
+- `Swift.vtable(typeName[, moduleName])`
 - `Swift.vtableInfo(typeName, memberName[, moduleName])`
 - `Swift.findWitnessTable(query[, moduleName])`
+- `Swift.witnessTable(query[, moduleName])`
 - `Swift.witnessTableInfo(typeName, protocolName[, moduleName])`
 - `Swift.findTypeLayout(typeName[, moduleName])`
+- `Swift.typeLayout(typeName[, moduleName])`
 - `Swift.typeLayoutInfo(typeName[, moduleName])`
+- `Swift.findTypes(query[, moduleName])`
+- `Swift.types(query[, moduleName])`
+- `Swift.typeKinds()`
+- `Swift.findTypesOfKind(kind, query[, moduleName])`
+- `Swift.typesOfKind(kind, query[, moduleName])`
+- `Swift.findMethodOwners(query[, moduleName])`
+- `Swift.methodOwners(query[, moduleName])`
+- `Swift.findTypeMethods(query[, moduleName])`
+- `Swift.typeMethods(query[, moduleName])`
 - `Swift.findMethods(typeName, methodQuery[, moduleName])`
+- `Swift.methods(typeName, methodQuery[, moduleName])`
+- `Swift.findSymbols(query[, moduleName])`
+- `Swift.symbols(query[, moduleName])`
 - `Swift.symbolInfo(symbolName[, moduleName])`
 - `Native.base(moduleName)`
 - `Native.images([filter])`

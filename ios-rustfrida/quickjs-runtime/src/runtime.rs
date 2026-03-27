@@ -813,6 +813,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { return typeof Swift.symbols === 'function' && typeof Swift.protocols === 'function' && typeof Swift.conformances === 'function' && typeof Swift.metadata === 'function' && typeof Swift.vtable === 'function' && typeof Swift.witnessTable === 'function' && typeof Swift.typeLayout === 'function' && typeof Swift.types === 'function' && typeof Swift.typeKinds === 'function' && typeof Swift.typesOfKind === 'function' && typeof Swift.methodOwners === 'function' && typeof Swift.typeMethods === 'function' && typeof Swift.methods === 'function'; })()")
+                    .expect("swift alias types"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Swift.findProtocols")
                     .expect("swift findProtocols type"),
                 "function"
@@ -1031,6 +1037,16 @@ undefined;
                 runtime
                     .eval("Array.isArray(Swift.findMethods('ViewController', 'viewDidLoad'))")
                     .expect("swift findMethods"),
+                "true"
+            );
+            assert_eq!(
+                runtime.eval("Array.isArray(Swift.typeKinds())").expect("swift typeKinds"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(Swift.types('ViewController'))")
+                    .expect("swift types alias"),
                 "true"
             );
             assert_eq!(
