@@ -749,6 +749,18 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof ObjC.methodOwners")
+                    .expect("objc methodOwners type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.methodOwners('init'))")
+                    .expect("objc methodOwners"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("ObjC.selectorName(0) === null")
                     .expect("objc selectorName"),
                 "true"

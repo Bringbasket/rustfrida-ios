@@ -1304,6 +1304,7 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "ivars", js_objc_ivars, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findIvars", js_objc_find_ivars, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findMethodOwners", js_objc_find_method_owners, 2);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "methodOwners", js_objc_find_method_owners, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "selectorName", js_objc_selector_name, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "objectClassName", js_objc_object_class_name, 1);
     }

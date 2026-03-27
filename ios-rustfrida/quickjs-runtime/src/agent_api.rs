@@ -2512,7 +2512,7 @@ function handleSpecResult(spec) {
     case 'objc.method_owners': {
         const query = String(spec.query || '');
         const isClassMethod = !!spec.isClassMethod;
-        const methods = ObjC.findMethodOwners(query, isClassMethod).map((method) => normalizeObjcMethod(method));
+        const methods = ObjC.methodOwners(query, isClassMethod).map((method) => normalizeObjcMethod(method));
         return {
             kind: 'objc.method_owners',
             query,
