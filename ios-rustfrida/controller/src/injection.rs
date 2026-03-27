@@ -663,13 +663,17 @@ fn analyze_doctor_report(
             "controller-hook-strategy",
             status,
             format!(
-                "controller hook strategy is {} ({})",
+                "controller hook strategy is {} ({}) query={} install={} status={} stop={}",
                 if injection_environment.hook_strategy.hook_install_commands_allowed() {
                     "allowed"
                 } else {
                     "query-only"
                 },
-                injection_environment.hook_strategy.strategy
+                injection_environment.hook_strategy.strategy,
+                injection_environment.hook_strategy.query_commands_allowed(),
+                injection_environment.hook_strategy.hook_install_commands_allowed(),
+                injection_environment.hook_strategy.hook_status_commands_allowed(),
+                injection_environment.hook_strategy.hook_stop_commands_allowed()
             ),
             injection_environment.hook_strategy.reason.clone(),
         )
@@ -678,8 +682,12 @@ fn analyze_doctor_report(
             "controller-hook-strategy",
             "fail",
             format!(
-                "controller hook strategy is blocked ({})",
-                injection_environment.hook_strategy.strategy
+                "controller hook strategy is blocked ({}) query={} install={} status={} stop={}",
+                injection_environment.hook_strategy.strategy,
+                injection_environment.hook_strategy.query_commands_allowed(),
+                injection_environment.hook_strategy.hook_install_commands_allowed(),
+                injection_environment.hook_strategy.hook_status_commands_allowed(),
+                injection_environment.hook_strategy.hook_stop_commands_allowed()
             ),
             injection_environment.hook_strategy.reason.clone(),
         )
@@ -698,14 +706,18 @@ fn analyze_doctor_report(
             "target-hook-strategy",
             status,
             format!(
-                "target hook strategy for pid {} is {} ({})",
+                "target hook strategy for pid {} is {} ({}) query={} install={} status={} stop={}",
                 pid,
                 if preflight.target_hook_strategy.hook_install_commands_allowed() {
                     "allowed"
                 } else {
                     "query-only"
                 },
-                preflight.target_hook_strategy.strategy
+                preflight.target_hook_strategy.strategy,
+                preflight.target_hook_strategy.query_commands_allowed(),
+                preflight.target_hook_strategy.hook_install_commands_allowed(),
+                preflight.target_hook_strategy.hook_status_commands_allowed(),
+                preflight.target_hook_strategy.hook_stop_commands_allowed()
             ),
             preflight.target_hook_strategy.reason.clone(),
         )
@@ -714,8 +726,13 @@ fn analyze_doctor_report(
             "target-hook-strategy",
             "fail",
             format!(
-                "target hook strategy for pid {} is blocked ({})",
-                pid, preflight.target_hook_strategy.strategy
+                "target hook strategy for pid {} is blocked ({}) query={} install={} status={} stop={}",
+                pid,
+                preflight.target_hook_strategy.strategy,
+                preflight.target_hook_strategy.query_commands_allowed(),
+                preflight.target_hook_strategy.hook_install_commands_allowed(),
+                preflight.target_hook_strategy.hook_status_commands_allowed(),
+                preflight.target_hook_strategy.hook_stop_commands_allowed()
             ),
             preflight.target_hook_strategy.reason.clone(),
         )
