@@ -1096,6 +1096,54 @@ unsafe extern "C" fn js_swift_find_type_layout(
     array
 }
 
+unsafe extern "C" fn js_swift_type_layout_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let type_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "Swift.typeLayoutInfo(typeName[, moduleName]) requires at least 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let module_name =
+        if argc >= 2 {
+            let value = JSValue(*argv.add(1));
+            if value.is_null() || value.is_undefined() {
+                None
+            } else {
+                match value.to_string(ctx) {
+                    Some(module_name) => Some(module_name),
+                    None => return js_throw_type_error(
+                        ctx,
+                        "Swift.typeLayoutInfo(typeName[, moduleName]) expected moduleName to be a string when provided",
+                    ),
+                }
+            }
+        } else {
+            None
+        };
+
+    let layouts = match find_swift_type_layouts(module_name.as_deref(), &type_name) {
+        Ok(layouts) => layouts,
+        Err(CommonError::Unsupported(_)) => return JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match layouts.into_iter().find(|layout| layout.type_name == type_name) {
+        Some(layout) => swift_type_layout_to_js(ctx, &layout),
+        None => JSValue::null().raw(),
+    }
+}
+
 pub(crate) fn register_swift_api(ctx: &JSContext) {
     let global = ctx.global_object();
     let swift = ctx.new_object();
@@ -1114,6 +1162,7 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findVtable", js_swift_find_vtable, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findWitnessTable", js_swift_find_witness_table, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findTypeLayout", js_swift_find_type_layout, 2);
+        add_cfunction_to_object(ctx_ptr, swift.raw(), "typeLayoutInfo", js_swift_type_layout_info, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMethods", js_swift_find_methods, 3);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "methodInfo", js_swift_method_info, 3);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findTypeMethods", js_swift_find_type_methods, 2);

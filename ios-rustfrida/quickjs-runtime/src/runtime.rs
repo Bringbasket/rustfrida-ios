@@ -841,6 +841,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Swift.typeLayoutInfo")
+                    .expect("swift typeLayoutInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Swift.findSymbols")
                     .expect("swift findSymbols type"),
                 "function"
@@ -921,6 +927,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Swift.findTypeLayout('ViewController'))")
                     .expect("swift findTypeLayout"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = Swift.typeLayoutInfo('ViewController'); return value === null || (typeof value.name === 'string' && Array.isArray(value.metadata) && typeof value.vtableEntries.length === 'number' && typeof value.witnessTables.length === 'number'); })()")
+                    .expect("swift typeLayoutInfo"),
                 "true"
             );
             assert_eq!(
@@ -1920,6 +1932,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.typeLayoutInfo ViewController'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' }); return value === result.text && (result.typeLayout === null || (result.typeLayout.name === 'ViewController' && typeof result.typeLayout.vtableCount === 'number')); })()")
+                    .expect("agent swift type layout info"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF'); return value === '<unavailable>' || value.indexOf('Demo') !== -1 || value.indexOf('method') !== -1; })()"
                     )
@@ -2314,6 +2332,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' }); return result.kind === 'swift.type_layout_info' && result.typeName === 'ViewController' && ((result.typeLayout === null && result.text === '<null>') || (typeof result.typeLayout.moduleBase === 'string' && Array.isArray(result.typeLayout.metadata) && typeof result.typeLayout.vtableCount === 'number' && typeof result.typeLayout.witnessTableCount === 'number' && result.text === result.typeLayout.text)); })()")
+                    .expect("agent swift type layout info result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.types' && result.count === result.types.length && (result.types.length === 0 || (typeof result.types[0].moduleBase === 'string' && typeof result.types[0].sourceSymbolName === 'string' && typeof result.types[0].sourceOffsetHex === 'string')); })()"
                     )
@@ -2666,6 +2690,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.type_layout', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
                     .expect("agent spec swift type layout"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' }); return value === result.text; })()")
+                    .expect("agent spec swift type layout info"),
                 "true"
             );
             assert_eq!(

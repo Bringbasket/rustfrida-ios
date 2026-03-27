@@ -2815,6 +2815,19 @@ function handleSpecResult(spec) {
         const layouts = Swift.findTypeLayout(query, moduleName).map((layout) => normalizeSwiftTypeLayout(layout));
         return { kind: 'swift.type_layout', moduleName, query, count: layouts.length, layouts, text: layouts.map((layout) => layout.text).join('\n') };
     }
+    case 'swift.type_layout_info': {
+        const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
+        const typeName = String(spec.typeName || '');
+        const typeLayout = Swift.typeLayoutInfo(typeName, moduleName);
+        const normalized = typeLayout === null ? null : normalizeSwiftTypeLayout(typeLayout);
+        return {
+            kind: 'swift.type_layout_info',
+            moduleName,
+            typeName,
+            typeLayout: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'swift.types': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
@@ -3500,6 +3513,16 @@ function legacyToSpec(command) {
             kind: 'swift.type_layout',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.typeLayoutInfo ')) {
+        const usage = 'swift.typeLayoutInfo usage: swift.typeLayoutInfo <type> | swift.typeLayoutInfo <module> -- <type>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.typeLayoutInfo '.length), usage);
+        return {
+            kind: 'swift.type_layout_info',
+            moduleName: parsed.moduleName,
+            typeName: parsed.query,
         };
     }
 

@@ -82,6 +82,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Swift.findVtable(typeName[, moduleName])`
 - `Swift.findWitnessTable(query[, moduleName])`
 - `Swift.findTypeLayout(typeName[, moduleName])`
+- `Swift.typeLayoutInfo(typeName[, moduleName])`
 - `Swift.findMethods(typeName, methodQuery[, moduleName])`
 - agent / controller CLI:
   - `hfl <module> <offset>`
@@ -200,6 +201,8 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `swift.witnessTable <module> -- <type|protocol>`
   - `swift.typeLayout <type>`
   - `swift.typeLayout <module> -- <type>`
+  - `swift.typeLayoutInfo <type>`
+  - `swift.typeLayoutInfo <module> -- <type>`
   - `swift.typeKinds`
   - `swift.methodOwners <method>`
   - `swift.methodOwners <module> -- <method>`
@@ -248,6 +251,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `swift.conformanceInfo` 现在可以直接结构化返回单个 Swift conformance 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName / typeName / protocolName`，后续排查某个类型对某个协议的符合性时不必再先全量 `swift.conformances` 再脚本过滤。
 - `swift.typeInfo` 现在可以直接结构化返回单个 Swift type 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName / name`，后续排查某个类型声明时不必再先全量 `swift.types` 再脚本过滤。
 - `swift.methodInfo` 现在可以直接结构化返回单个 Swift method symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个类型里的目标方法时不必再先全量 `swift.methods` 再脚本过滤。
+- `swift.typeLayoutInfo` 现在可以直接结构化返回单个 Swift type layout 的 `metadata / metadataAccessors / nominalDescriptors / metadataCaches / associatedTypeDescriptors / vtableEntries / witnessTables` 以及对应计数，后续排查某个类型布局时不必再先全量 `swift.typeLayout` 再脚本过滤。
 - hook backend filesystem 探测现在同时覆盖 rootful 和 rootless 常见路径前缀；像 ElleKit / Substrate / Substitute / libhooker 这类生态，不再只认 `/usr/lib`，也会扫描 `/var/jb/...`。
 - `native.hookenv` / `Native.detectHookEnvironment()` 现在除了 backend / warning，还会补出面向当前 `hook_policy` 的建议动作，便于真机上快速判断该走 query-only、fail-fast 还是继续冒险装 inline hook；返回里也会区分 `allowed` 和 `inlineHooksAllowed`，不再把“允许注入做查询”和“允许安装 inline hook”混成一个布尔值。
 - `PAC.isImageArm64e(moduleName)` / `pac.image <module>` 现在可以直接判断单个镜像是否是 `arm64e`，比只看当前进程主镜像更适合排查某个目标 dylib 是否已经进入 PAC 风险面。

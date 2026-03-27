@@ -151,6 +151,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("swift.vtable ")
         || command.starts_with("swift.witnessTable ")
         || command.starts_with("swift.typeLayout ")
+        || command.starts_with("swift.typeLayoutInfo ")
         || command.starts_with("swift.symbols ")
         || command.starts_with("swift.methodOwners ")
         || command.starts_with("swift.typesOfKind ")
@@ -778,6 +779,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "swift.type_layout",
             "moduleName": module_name,
             "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.typeLayoutInfo ") {
+        let (module_name, type_name) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.type_layout_info",
+            "moduleName": module_name,
+            "typeName": type_name,
         }));
     }
 
@@ -1487,6 +1497,10 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("swift.typeLayout ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.typeLayoutInfo ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
