@@ -211,9 +211,11 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(class_name) = command.strip_prefix("objc.classProtocols ") {
+        let (class_name, filter) = parse_objc_protocol_list_owner(class_name)?;
         return Some(json!({
             "kind": "objc.class_protocols",
-            "className": class_name.trim(),
+            "className": class_name,
+            "filter": filter,
         }));
     }
 
@@ -235,9 +237,11 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(protocol_name) = command.strip_prefix("objc.protocolProtocols ") {
+        let (protocol_name, filter) = parse_objc_protocol_list_owner(protocol_name)?;
         return Some(json!({
             "kind": "objc.protocol_protocols",
-            "protocolName": protocol_name.trim(),
+            "protocolName": protocol_name,
+            "filter": filter,
         }));
     }
 
@@ -1079,6 +1083,16 @@ fn parse_objc_protocol_info(raw: &str) -> Option<String> {
     Some(trimmed.to_string())
 }
 
+fn parse_objc_protocol_list_owner(raw: &str) -> Option<(String, Option<String>)> {
+    let parts = raw.split_whitespace().collect::<Vec<_>>();
+    if parts.is_empty() {
+        return None;
+    }
+
+    let filter = (parts.len() > 1).then(|| parts[1..].join(" "));
+    Some((parts[0].to_string(), filter))
+}
+
 fn parse_objc_methods(raw: &str) -> Option<(String, bool, Option<String>)> {
     let parts = raw.split_whitespace().collect::<Vec<_>>();
     if parts.is_empty() {
@@ -1501,6 +1515,17 @@ mod tests {
                 spec: json!({
                     "kind": "objc.class_protocols",
                     "className": "NSObject",
+                    "filter": null,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.classProtocols NSObject NS"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_protocols",
+                    "className": "NSObject",
+                    "filter": "NS",
                 })
             })
         );
@@ -1529,6 +1554,17 @@ mod tests {
                 spec: json!({
                     "kind": "objc.protocol_protocols",
                     "protocolName": "NSObject",
+                    "filter": null,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolProtocols NSObject NS"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_protocols",
+                    "protocolName": "NSObject",
+                    "filter": "NS",
                 })
             })
         );

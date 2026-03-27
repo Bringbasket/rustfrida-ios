@@ -161,6 +161,10 @@ impl ObjcApi {
         platform::class_protocols(class_name)
     }
 
+    pub fn find_class_protocols(&self, class_name: &str, query: &str) -> Result<Vec<String>> {
+        platform::find_class_protocols(class_name, query)
+    }
+
     pub fn superclass(&self, class_name: &str) -> Result<Option<String>> {
         platform::superclass(class_name)
     }
@@ -224,6 +228,10 @@ impl ObjcApi {
 
     pub fn protocol_protocols(&self, protocol_name: &str) -> Result<Vec<String>> {
         platform::protocol_protocols(protocol_name)
+    }
+
+    pub fn find_protocol_protocols(&self, protocol_name: &str, query: &str) -> Result<Vec<String>> {
+        platform::find_protocol_protocols(protocol_name, query)
     }
 
     pub fn enumerate_properties(&self, class_name: &str, is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
@@ -546,6 +554,17 @@ mod platform {
         unsafe { libc::free(list.cast()) };
         protocols.sort();
         protocols.dedup();
+        Ok(protocols)
+    }
+
+    pub fn find_class_protocols(class_name: &str, query: &str) -> Result<Vec<String>> {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return Err(Error::InvalidArgument("protocol query must not be empty".into()));
+        }
+
+        let mut protocols = class_protocols(class_name)?;
+        protocols.retain(|name| query_matches_class_name(name, trimmed));
         Ok(protocols)
     }
 
@@ -1008,6 +1027,17 @@ mod platform {
         unsafe { libc::free(list.cast()) };
         protocols.sort();
         protocols.dedup();
+        Ok(protocols)
+    }
+
+    pub fn find_protocol_protocols(protocol_name: &str, query: &str) -> Result<Vec<String>> {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return Err(Error::InvalidArgument("protocol query must not be empty".into()));
+        }
+
+        let mut protocols = protocol_protocols(protocol_name)?;
+        protocols.retain(|name| query_matches_class_name(name, trimmed));
         Ok(protocols)
     }
 
@@ -1700,6 +1730,12 @@ mod platform {
         ))
     }
 
+    pub fn find_class_protocols(_class_name: &str, _query: &str) -> Result<Vec<String>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
     pub fn enumerate_properties(_class_name: &str, _is_class_property: bool) -> Result<Vec<ObjcPropertyInfo>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
@@ -1794,6 +1830,12 @@ mod platform {
     }
 
     pub fn protocol_protocols(_protocol_name: &str) -> Result<Vec<String>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn find_protocol_protocols(_protocol_name: &str, _query: &str) -> Result<Vec<String>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -1952,6 +1994,17 @@ mod tests {
 
     #[cfg(not(any(target_os = "ios", target_os = "macos")))]
     #[test]
+    fn find_class_protocols_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .find_class_protocols("NSObject", "NS")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
     fn protocol_properties_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .protocol_properties("NSObject")
@@ -1988,6 +2041,17 @@ mod tests {
     fn protocol_protocols_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .protocol_protocols("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn find_protocol_protocols_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .find_protocol_protocols("NSObject", "NS")
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()

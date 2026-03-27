@@ -230,13 +230,30 @@ unsafe extern "C" fn js_objc_class_protocols(
         argc,
         argv,
         0,
-        "ObjC.classProtocols(className) requires 1 string argument",
+        "ObjC.classProtocols(className[, query]) requires 1 string argument",
     ) {
         Ok(value) => value,
         Err(err) => return err,
     };
+    let query = if argc >= 2 {
+        match parse_optional_filter_arg(
+            ctx,
+            JSValue(*argv.add(1)),
+            "ObjC.classProtocols(className[, query]) expected query to be a string when provided",
+        ) {
+            Ok(value) => value,
+            Err(err) => return err,
+        }
+    } else {
+        None
+    };
 
-    let protocols = match ObjcApi::new().class_protocols(&class_name) {
+    let protocols = match query {
+        Some(query) => ObjcApi::new().find_class_protocols(&class_name, &query),
+        None => ObjcApi::new().class_protocols(&class_name),
+    };
+
+    let protocols = match protocols {
         Ok(protocols) => protocols,
         Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
         Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
@@ -261,13 +278,30 @@ unsafe extern "C" fn js_objc_protocol_protocols(
         argc,
         argv,
         0,
-        "ObjC.protocolProtocols(protocolName) requires 1 string argument",
+        "ObjC.protocolProtocols(protocolName[, query]) requires 1 string argument",
     ) {
         Ok(value) => value,
         Err(err) => return err,
     };
+    let query = if argc >= 2 {
+        match parse_optional_filter_arg(
+            ctx,
+            JSValue(*argv.add(1)),
+            "ObjC.protocolProtocols(protocolName[, query]) expected query to be a string when provided",
+        ) {
+            Ok(value) => value,
+            Err(err) => return err,
+        }
+    } else {
+        None
+    };
 
-    let protocols = match ObjcApi::new().protocol_protocols(&protocol_name) {
+    let protocols = match query {
+        Some(query) => ObjcApi::new().find_protocol_protocols(&protocol_name, &query),
+        None => ObjcApi::new().protocol_protocols(&protocol_name),
+    };
+
+    let protocols = match protocols {
         Ok(protocols) => protocols,
         Err(CommonError::Unsupported(_)) => return ffi::JS_NewArray(ctx),
         Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),

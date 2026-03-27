@@ -237,6 +237,28 @@ function parseObjcProtocolProperties(raw) {
     };
 }
 
+function parseObjcClassProtocols(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) {
+        throw new Error('objc.classProtocols usage: objc.classProtocols <class> [filter]');
+    }
+    return {
+        className: parts[0],
+        filter: parts.length <= 1 ? null : parts.slice(1).join(' '),
+    };
+}
+
+function parseObjcProtocolProtocols(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) {
+        throw new Error('objc.protocolProtocols usage: objc.protocolProtocols <protocol> [filter]');
+    }
+    return {
+        protocolName: parts[0],
+        filter: parts.length <= 1 ? null : parts.slice(1).join(' '),
+    };
+}
+
 function parseObjcProtocolMethodInfo(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length < 2) {
@@ -2255,10 +2277,12 @@ function handleSpecResult(spec) {
     }
     case 'objc.class_protocols': {
         const className = String(spec.className || '');
-        const protocols = ObjC.classProtocols(className);
+        const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
+        const protocols = ObjC.classProtocols(className, filter);
         return {
             kind: 'objc.class_protocols',
             className,
+            filter,
             count: protocols.length,
             protocols,
             text: protocols.join('\n'),
@@ -2290,10 +2314,12 @@ function handleSpecResult(spec) {
     }
     case 'objc.protocol_protocols': {
         const protocolName = String(spec.protocolName || '');
-        const protocols = ObjC.protocolProtocols(protocolName);
+        const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
+        const protocols = ObjC.protocolProtocols(protocolName, filter);
         return {
             kind: 'objc.protocol_protocols',
             protocolName,
+            filter,
             count: protocols.length,
             protocols,
             text: protocols.join('\n'),
@@ -3107,7 +3133,8 @@ function legacyToSpec(command) {
     }
 
     if (trimmed.startsWith('objc.classProtocols ')) {
-        return { kind: 'objc.class_protocols', className: trimmed.slice('objc.classProtocols '.length) };
+        const parsed = parseObjcClassProtocols(trimmed.slice('objc.classProtocols '.length));
+        return { kind: 'objc.class_protocols', className: parsed.className, filter: parsed.filter };
     }
 
     if (trimmed.startsWith('objc.classInfo ')) {
@@ -3121,7 +3148,8 @@ function legacyToSpec(command) {
     }
 
     if (trimmed.startsWith('objc.protocolProtocols ')) {
-        return { kind: 'objc.protocol_protocols', protocolName: trimmed.slice('objc.protocolProtocols '.length) };
+        const parsed = parseObjcProtocolProtocols(trimmed.slice('objc.protocolProtocols '.length));
+        return { kind: 'objc.protocol_protocols', protocolName: parsed.protocolName, filter: parsed.filter };
     }
 
     if (trimmed.startsWith('objc.protocolMethods ')) {

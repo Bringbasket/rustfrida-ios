@@ -3694,10 +3694,10 @@ fn print_controller_help() {
     println!("  objc.classes [filter]");
     println!("  objc.protocols");
     println!("  objc.protocols [filter]");
-    println!("  objc.classProtocols <class>");
+    println!("  objc.classProtocols <class> [filter]");
     println!("  objc.classInfo <class> [meta]");
     println!("  objc.protocolInfo <protocol>");
-    println!("  objc.protocolProtocols <protocol>");
+    println!("  objc.protocolProtocols <protocol> [filter]");
     println!("  objc.protocolMethods <protocol> [required] [instance] [filter]");
     println!("  objc.protocolMethodInfo <protocol> <selector> [required] [instance]");
     println!("  objc.protocolProperties <protocol> [filter]");
@@ -4040,6 +4040,17 @@ mod tests {
                 spec: json!({
                     "kind": "objc.class_protocols",
                     "className": "UIViewController",
+                    "filter": null,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.classProtocols UIViewController UI"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_protocols",
+                    "className": "UIViewController",
+                    "filter": "UI",
                 })
             })
         );
@@ -4068,6 +4079,17 @@ mod tests {
                 spec: json!({
                     "kind": "objc.protocol_protocols",
                     "protocolName": "NSObject",
+                    "filter": null,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolProtocols NSObject NS"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_protocols",
+                    "protocolName": "NSObject",
+                    "filter": "NS",
                 })
             })
         );
@@ -4425,9 +4447,11 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.classes UIView"));
         assert!(!command_requires_inline_hooks("objc.protocols NS"));
         assert!(!command_requires_inline_hooks("objc.classProtocols UIView"));
+        assert!(!command_requires_inline_hooks("objc.classProtocols UIView UI"));
         assert!(!command_requires_inline_hooks("objc.classInfo UIView meta"));
         assert!(!command_requires_inline_hooks("objc.protocolInfo NSObject"));
         assert!(!command_requires_inline_hooks("objc.protocolProtocols NSObject"));
+        assert!(!command_requires_inline_hooks("objc.protocolProtocols NSObject NS"));
         assert!(!command_requires_inline_hooks(
             "objc.protocolMethods NSObject optional class"
         ));
