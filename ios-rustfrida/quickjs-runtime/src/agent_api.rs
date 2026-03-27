@@ -1284,10 +1284,17 @@ function formatDebugSymbol(symbol, rawAddress) {
 function formatHookEnvironmentReport(report) {
     const lines = [];
     lines.push('active=' + (report.activeBackend === null || report.activeBackend === undefined ? '<none>' : report.activeBackend));
+    lines.push('conflict_state=' + String(report.conflictState));
+    lines.push('risk_level=' + String(report.riskLevel));
     lines.push('policy=' + String(report.policy));
     lines.push('strategy=' + String(report.strategy));
     lines.push('allowed=' + String(!!report.allowed));
     lines.push('inline_hooks_allowed=' + String(!!report.inlineHooksAllowed));
+    lines.push('coexistence_layer_available=' + String(!!report.coexistenceLayerAvailable));
+    lines.push('loaded_backend_count=' + String(Number(report.loadedBackendCount || 0)));
+    lines.push('filesystem_only_backend_count=' + String(Number(report.filesystemOnlyBackendCount || 0)));
+    lines.push('loaded_image_count=' + String(Number(report.loadedImageCount || 0)));
+    lines.push('filesystem_path_count=' + String(Number(report.filesystemPathCount || 0)));
     if (report.reason !== null && report.reason !== undefined) {
         lines.push('reason=' + String(report.reason));
     }
@@ -1295,6 +1302,7 @@ function formatHookEnvironmentReport(report) {
     const backends = Array.isArray(report.backends) ? report.backends : [];
     for (const backend of backends) {
         lines.push('backend ' + backend.id + ' ' + backend.name);
+        lines.push('  counts loaded_images=' + String(Number(backend.loadedImageCount || 0)) + ' filesystem_paths=' + String(Number(backend.filesystemPathCount || 0)));
         const loadedImages = Array.isArray(backend.loadedImages) ? backend.loadedImages : [];
         for (const image of loadedImages) {
             lines.push('  loaded ' + image);

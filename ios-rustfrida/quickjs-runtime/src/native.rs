@@ -37,11 +37,46 @@ unsafe fn set_string_array_property(ctx: *mut ffi::JSContext, obj: ffi::JSValue,
 unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnvironmentReport) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
     let decision = resolve_hook_strategy().ok();
+    let loaded_backend_count = report.loaded_backend_count();
+    let filesystem_only_backend_count = report.filesystem_only_backend_count();
+    let loaded_image_count = report.loaded_image_count();
+    let filesystem_path_count = report.filesystem_path_count();
+    let conflict_state = report.conflict_state();
+    let risk_level = if let Some(decision) = &decision {
+        if !decision.allowed {
+            "blocked"
+        } else if !decision.inline_hooks_allowed {
+            "query-only"
+        } else if loaded_backend_count > 0 {
+            "risky"
+        } else if filesystem_only_backend_count > 0 {
+            "cautious"
+        } else {
+            "normal"
+        }
+    } else if loaded_backend_count > 0 {
+        "risky"
+    } else if filesystem_only_backend_count > 0 {
+        "cautious"
+    } else {
+        "normal"
+    };
 
     match &report.active_backend {
         Some(active) => result.set_property(ctx, "activeBackend", JSValue::string(ctx, active)),
         None => result.set_property(ctx, "activeBackend", JSValue::null()),
     };
+    result.set_property(ctx, "conflictState", JSValue::string(ctx, conflict_state));
+    result.set_property(ctx, "riskLevel", JSValue::string(ctx, risk_level));
+    result.set_property(ctx, "coexistenceLayerAvailable", JSValue::bool(false));
+    result.set_property(ctx, "loadedBackendCount", JSValue::int(loaded_backend_count as i32));
+    result.set_property(
+        ctx,
+        "filesystemOnlyBackendCount",
+        JSValue::int(filesystem_only_backend_count as i32),
+    );
+    result.set_property(ctx, "loadedImageCount", JSValue::int(loaded_image_count as i32));
+    result.set_property(ctx, "filesystemPathCount", JSValue::int(filesystem_path_count as i32));
 
     if let Some(decision) = &decision {
         result.set_property(ctx, "policy", JSValue::string(ctx, decision.policy.as_str()));
@@ -86,10 +121,16 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         item.set_property(ctx, "id", JSValue::string(ctx, &backend.id));
         item.set_property(ctx, "name", JSValue::string(ctx, &backend.display_name));
         item.set_property(ctx, "loaded", JSValue::bool(!backend.loaded_images.is_empty()));
+        item.set_property(ctx, "loadedImageCount", JSValue::int(backend.loaded_images.len() as i32));
         item.set_property(
             ctx,
             "presentOnFilesystem",
             JSValue::bool(!backend.filesystem_paths.is_empty()),
+        );
+        item.set_property(
+            ctx,
+            "filesystemPathCount",
+            JSValue::int(backend.filesystem_paths.len() as i32),
         );
         set_string_array_property(ctx, item.raw(), "loadedImages", &backend.loaded_images);
         set_string_array_property(ctx, item.raw(), "filesystemPaths", &backend.filesystem_paths);

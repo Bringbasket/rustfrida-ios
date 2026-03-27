@@ -1282,6 +1282,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const report = Native.detectHookEnvironment(); return typeof report.conflictState === 'string' && typeof report.riskLevel === 'string' && typeof report.coexistenceLayerAvailable === 'boolean' && typeof report.loadedBackendCount === 'number' && typeof report.filesystemOnlyBackendCount === 'number' && typeof report.loadedImageCount === 'number' && typeof report.filesystemPathCount === 'number'; })()")
+                    .expect("native hook env summary fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
                 "true"
@@ -2786,6 +2792,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.hookenv'); return value.indexOf('advice ') !== -1 || value.indexOf('warning ') !== -1 || value.indexOf('active=<none>') !== -1; })()")
                     .expect("agent native hook env advice"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.hookenv'); return value.indexOf('conflict_state=') !== -1 && value.indexOf('risk_level=') !== -1 && value.indexOf('loaded_backend_count=') !== -1; })()")
+                    .expect("agent native hook env summary"),
                 "true"
             );
             assert_eq!(

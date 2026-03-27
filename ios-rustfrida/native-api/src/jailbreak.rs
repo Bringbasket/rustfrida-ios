@@ -16,6 +16,42 @@ pub struct HookEnvironmentReport {
     pub warnings: Vec<String>,
 }
 
+impl HookEnvironmentReport {
+    pub fn loaded_backend_count(&self) -> usize {
+        self.backends
+            .iter()
+            .filter(|backend| !backend.loaded_images.is_empty())
+            .count()
+    }
+
+    pub fn filesystem_only_backend_count(&self) -> usize {
+        self.backends
+            .iter()
+            .filter(|backend| backend.loaded_images.is_empty() && !backend.filesystem_paths.is_empty())
+            .count()
+    }
+
+    pub fn loaded_image_count(&self) -> usize {
+        self.backends.iter().map(|backend| backend.loaded_images.len()).sum()
+    }
+
+    pub fn filesystem_path_count(&self) -> usize {
+        self.backends
+            .iter()
+            .map(|backend| backend.filesystem_paths.len())
+            .sum()
+    }
+
+    pub fn conflict_state(&self) -> &'static str {
+        match self.loaded_backend_count() {
+            count if count > 1 => "multiple-loaded",
+            1 => "external-loaded",
+            _ if self.filesystem_path_count() > 0 => "filesystem-only",
+            _ => "none",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HookPolicy {
     Warn,
@@ -360,6 +396,11 @@ mod tests {
         assert_eq!(report.active_backend.as_deref(), Some("ellekit"));
         assert_eq!(report.backends.len(), 1);
         assert_eq!(report.backends[0].id, "ellekit");
+        assert_eq!(report.loaded_backend_count(), 1);
+        assert_eq!(report.loaded_image_count(), 1);
+        assert_eq!(report.filesystem_only_backend_count(), 0);
+        assert_eq!(report.filesystem_path_count(), 0);
+        assert_eq!(report.conflict_state(), "external-loaded");
         assert_eq!(
             report.backends[0].loaded_images,
             vec!["/usr/lib/libellekit.dylib".to_string()]
@@ -374,6 +415,11 @@ mod tests {
         assert!(report.active_backend.is_none());
         assert_eq!(report.backends.len(), 1);
         assert_eq!(report.backends[0].id, "libhooker");
+        assert_eq!(report.loaded_backend_count(), 0);
+        assert_eq!(report.loaded_image_count(), 0);
+        assert_eq!(report.filesystem_only_backend_count(), 1);
+        assert_eq!(report.filesystem_path_count(), 1);
+        assert_eq!(report.conflict_state(), "filesystem-only");
         assert!(report.backends[0].loaded_images.is_empty());
         assert_eq!(
             report.backends[0].filesystem_paths,
@@ -409,6 +455,8 @@ mod tests {
 
         let report = detect_hook_environment_with(&images, |_| false);
         assert_eq!(report.backends.len(), 2);
+        assert_eq!(report.loaded_backend_count(), 2);
+        assert_eq!(report.conflict_state(), "multiple-loaded");
         assert!(report
             .warnings
             .iter()
