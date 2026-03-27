@@ -2590,11 +2590,15 @@ function handleSpecResult(spec) {
     }
     case 'objc.protocols': {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter).trim();
-        const protocols = ObjC.protocols(filter);
+        const protocols = ObjC.protocols(filter).map((name) => String(name));
         return {
             kind: 'objc.protocols',
             filter,
+            hasFilter: filter !== null && filter.length !== 0,
             count: protocols.length,
+            hasProtocols: protocols.length !== 0,
+            firstProtocol: protocols.length === 0 ? null : protocols[0],
+            lastProtocol: protocols.length === 0 ? null : protocols[protocols.length - 1],
             protocols,
             text: protocols.join('\n'),
         };
@@ -2602,12 +2606,16 @@ function handleSpecResult(spec) {
     case 'objc.class_protocols': {
         const className = String(spec.className || '');
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
-        const protocols = ObjC.classProtocols(className, filter);
+        const protocols = ObjC.classProtocols(className, filter).map((name) => String(name));
         return {
             kind: 'objc.class_protocols',
             className,
             filter,
+            hasFilter: filter !== null && filter.length !== 0,
             count: protocols.length,
+            hasProtocols: protocols.length !== 0,
+            firstProtocol: protocols.length === 0 ? null : protocols[0],
+            lastProtocol: protocols.length === 0 ? null : protocols[protocols.length - 1],
             protocols,
             text: protocols.join('\n'),
         };
@@ -2639,12 +2647,16 @@ function handleSpecResult(spec) {
     case 'objc.protocol_protocols': {
         const protocolName = String(spec.protocolName || '');
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
-        const protocols = ObjC.protocolProtocols(protocolName, filter);
+        const protocols = ObjC.protocolProtocols(protocolName, filter).map((name) => String(name));
         return {
             kind: 'objc.protocol_protocols',
             protocolName,
             filter,
+            hasFilter: filter !== null && filter.length !== 0,
             count: protocols.length,
+            hasProtocols: protocols.length !== 0,
+            firstProtocol: protocols.length === 0 ? null : protocols[0],
+            lastProtocol: protocols.length === 0 ? null : protocols[protocols.length - 1],
             protocols,
             text: protocols.join('\n'),
         };
