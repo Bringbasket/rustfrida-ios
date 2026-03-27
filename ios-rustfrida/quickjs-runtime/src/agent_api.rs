@@ -2576,7 +2576,7 @@ function handleSpecResult(spec) {
     case 'native.symbols': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
-        const symbols = Native.findSymbols(query, moduleName).map((symbol) => normalizeNativeSymbol(symbol));
+        const symbols = Native.symbols(query, moduleName).map((symbol) => normalizeNativeSymbol(symbol));
         return { kind: 'native.symbols', moduleName, query, count: symbols.length, symbols, text: symbols.map((symbol) => symbol.text).join('\n') };
     }
     case 'native.symbol_info': {
@@ -2595,7 +2595,7 @@ function handleSpecResult(spec) {
     case 'native.exports': {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
-        const symbols = Native.findExports(moduleName, query).map((symbol) => normalizeNativeSymbol(symbol));
+        const symbols = Native.exports(moduleName, query).map((symbol) => normalizeNativeSymbol(symbol));
         return { kind: 'native.exports', moduleName, query, count: symbols.length, symbols, text: symbols.map((symbol) => symbol.text).join('\n') };
     }
     case 'native.export_info': {
@@ -2614,7 +2614,7 @@ function handleSpecResult(spec) {
     case 'native.dependencies': {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
-        const dependencies = Native.findDependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
+        const dependencies = Native.dependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
         return { kind: 'native.dependencies', moduleName, query, count: dependencies.length, dependencies, text: dependencies.map((dependency) => dependency.text).join('\n') };
     }
     case 'native.dependency_info': {
@@ -2632,92 +2632,92 @@ function handleSpecResult(spec) {
     }
     case 'native.encryption_info': {
         const moduleName = String(spec.moduleName || '');
-        const encryptionInfo = Native.findEncryptionInfo(moduleName);
+        const encryptionInfo = Native.encryptionInfo(moduleName);
         const normalized = encryptionInfo === null ? null : normalizeEncryptionInfo(encryptionInfo);
         return { kind: 'native.encryption_info', moduleName, encryptionInfo: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.entry_point': {
         const moduleName = String(spec.moduleName || '');
-        const entryPoint = Native.findEntryPoint(moduleName);
+        const entryPoint = Native.entryPoint(moduleName);
         const normalized = entryPoint === null ? null : normalizeEntryPoint(entryPoint);
         return { kind: 'native.entry_point', moduleName, entryPoint: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.dyld_info': {
         const moduleName = String(spec.moduleName || '');
-        const dyldInfo = Native.findDyldInfo(moduleName);
+        const dyldInfo = Native.dyldInfo(moduleName);
         const normalized = dyldInfo === null ? null : normalizeDyldInfo(dyldInfo);
         return { kind: 'native.dyld_info', moduleName, dyldInfo: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.linkedit': {
         const moduleName = String(spec.moduleName || '');
-        const linkedit = Native.findLinkedit(moduleName);
+        const linkedit = Native.linkedit(moduleName);
         const normalized = linkedit === null ? null : normalizeLinkedit(linkedit);
         return { kind: 'native.linkedit', moduleName, linkedit: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.function_starts': {
         const moduleName = String(spec.moduleName || '');
-        const functionStarts = Native.findFunctionStarts(moduleName);
+        const functionStarts = Native.functionStarts(moduleName);
         const normalized = functionStarts === null ? null : normalizeFunctionStarts(functionStarts);
         return { kind: 'native.function_starts', moduleName, functionStarts: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.code_signature': {
         const moduleName = String(spec.moduleName || '');
-        const codeSignature = Native.findCodeSignature(moduleName);
+        const codeSignature = Native.codeSignature(moduleName);
         const normalized = codeSignature === null ? null : normalizeCodeSignature(codeSignature);
         return { kind: 'native.code_signature', moduleName, codeSignature: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.data_in_code': {
         const moduleName = String(spec.moduleName || '');
-        const dataInCode = Native.findDataInCode(moduleName);
+        const dataInCode = Native.dataInCode(moduleName);
         const normalized = dataInCode === null ? null : normalizeDataInCode(dataInCode);
         return { kind: 'native.data_in_code', moduleName, dataInCode: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.exports_trie': {
         const moduleName = String(spec.moduleName || '');
-        const exportsTrie = Native.findExportsTrie(moduleName);
+        const exportsTrie = Native.exportsTrie(moduleName);
         const normalized = exportsTrie === null ? null : normalizeExportsTrie(exportsTrie);
         return { kind: 'native.exports_trie', moduleName, exportsTrie: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.chained_fixups': {
         const moduleName = String(spec.moduleName || '');
-        const chainedFixups = Native.findChainedFixups(moduleName);
+        const chainedFixups = Native.chainedFixups(moduleName);
         const normalized = chainedFixups === null ? null : normalizeChainedFixups(chainedFixups);
         return { kind: 'native.chained_fixups', moduleName, chainedFixups: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.source_version': {
         const moduleName = String(spec.moduleName || '');
-        const sourceVersion = Native.findSourceVersion(moduleName);
+        const sourceVersion = Native.sourceVersion(moduleName);
         const normalized = sourceVersion === null ? null : normalizeSourceVersion(sourceVersion);
         return { kind: 'native.source_version', moduleName, sourceVersion: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.build_version': {
         const moduleName = String(spec.moduleName || '');
-        const buildVersion = Native.findBuildVersion(moduleName);
+        const buildVersion = Native.buildVersion(moduleName);
         const normalized = buildVersion === null ? null : normalizeBuildVersion(buildVersion);
         return { kind: 'native.build_version', moduleName, buildVersion: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.dylinker': {
         const moduleName = String(spec.moduleName || '');
-        const dylinker = Native.findDylinker(moduleName);
+        const dylinker = Native.dylinker(moduleName);
         const normalized = dylinker === null ? null : normalizeDylinker(dylinker);
         return { kind: 'native.dylinker', moduleName, dylinker: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.install_name': {
         const moduleName = String(spec.moduleName || '');
-        const installName = Native.findInstallName(moduleName);
+        const installName = Native.installName(moduleName);
         const normalized = installName === null ? null : normalizeInstallName(installName);
         return { kind: 'native.install_name', moduleName, installName: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.uuid': {
         const moduleName = String(spec.moduleName || '');
-        const imageUuid = Native.findUuid(moduleName);
+        const imageUuid = Native.uuid(moduleName);
         const normalized = imageUuid === null ? null : normalizeUuid(imageUuid);
         return { kind: 'native.uuid', moduleName, imageUuid: normalized, text: normalized === null ? '<null>' : normalized.text };
     }
     case 'native.rpaths': {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
-        const rpaths = Native.findRpaths(moduleName, query).map((rpath) => normalizeRpath(rpath));
+        const rpaths = Native.rpaths(moduleName, query).map((rpath) => normalizeRpath(rpath));
         return { kind: 'native.rpaths', moduleName, query, count: rpaths.length, rpaths, text: rpaths.map((rpath) => rpath.text).join('\n') };
     }
     case 'native.rpath_info': {
@@ -2736,7 +2736,7 @@ function handleSpecResult(spec) {
     case 'native.imports': {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
-        const imports = Native.findImports(moduleName, query).map((imp) => normalizeImport(imp));
+        const imports = Native.imports(moduleName, query).map((imp) => normalizeImport(imp));
         return { kind: 'native.imports', moduleName, query, count: imports.length, imports, text: imports.map((imp) => imp.text).join('\n') };
     }
     case 'native.import_info': {
@@ -2754,7 +2754,7 @@ function handleSpecResult(spec) {
     }
     case 'native.segments': {
         const moduleName = String(spec.moduleName || '');
-        const segments = Native.findSegments(moduleName).map((segment) => normalizeSegment(segment));
+        const segments = Native.segments(moduleName).map((segment) => normalizeSegment(segment));
         return { kind: 'native.segments', moduleName, count: segments.length, segments, text: segments.map((segment) => segment.text).join('\n') };
     }
     case 'native.segment_info': {
@@ -2772,7 +2772,7 @@ function handleSpecResult(spec) {
     }
     case 'native.sections': {
         const moduleName = String(spec.moduleName || '');
-        const sections = Native.findSections(moduleName).map((section) => normalizeSection(section));
+        const sections = Native.sections(moduleName).map((section) => normalizeSection(section));
         return { kind: 'native.sections', moduleName, count: sections.length, sections, text: sections.map((section) => section.text).join('\n') };
     }
     case 'native.section_info': {
@@ -2792,7 +2792,7 @@ function handleSpecResult(spec) {
     }
     case 'native.load_commands': {
         const moduleName = String(spec.moduleName || '');
-        const commands = Native.findLoadCommands(moduleName).map((command) => normalizeLoadCommand(command));
+        const commands = Native.loadCommands(moduleName).map((command) => normalizeLoadCommand(command));
         return { kind: 'native.load_commands', moduleName, count: commands.length, commands, text: commands.map((command) => command.text).join('\n') };
     }
     case 'native.load_command_info': {

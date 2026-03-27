@@ -112,9 +112,58 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Native.mainImage()`
 - `Native.image(address)`
 - `Native.symbol(address)`
+- `Native.findSymbols(query[, moduleName])`
+- `Native.symbols(query[, moduleName])`
 - `Native.symbolInfo(symbolName[, moduleName])`
 - `Native.imageInfo(moduleName)`
+- `Native.findExports(moduleName[, query])`
+- `Native.exports(moduleName[, query])`
 - `Native.exportInfo(moduleName, symbolName)`
+- `Native.findDependencies(moduleName[, query])`
+- `Native.dependencies(moduleName[, query])`
+- `Native.findEncryptionInfo(moduleName)`
+- `Native.encryptionInfo(moduleName)`
+- `Native.findEntryPoint(moduleName)`
+- `Native.entryPoint(moduleName)`
+- `Native.findDyldInfo(moduleName)`
+- `Native.dyldInfo(moduleName)`
+- `Native.findLinkedit(moduleName)`
+- `Native.linkedit(moduleName)`
+- `Native.findFunctionStarts(moduleName)`
+- `Native.functionStarts(moduleName)`
+- `Native.findCodeSignature(moduleName)`
+- `Native.codeSignature(moduleName)`
+- `Native.findDataInCode(moduleName)`
+- `Native.dataInCode(moduleName)`
+- `Native.findExportsTrie(moduleName)`
+- `Native.exportsTrie(moduleName)`
+- `Native.findChainedFixups(moduleName)`
+- `Native.chainedFixups(moduleName)`
+- `Native.findSourceVersion(moduleName)`
+- `Native.sourceVersion(moduleName)`
+- `Native.findBuildVersion(moduleName)`
+- `Native.buildVersion(moduleName)`
+- `Native.findDylinker(moduleName)`
+- `Native.dylinker(moduleName)`
+- `Native.findInstallName(moduleName)`
+- `Native.installName(moduleName)`
+- `Native.findUuid(moduleName)`
+- `Native.uuid(moduleName)`
+- `Native.findRpaths(moduleName[, query])`
+- `Native.rpaths(moduleName[, query])`
+- `Native.rpathInfo(moduleName, path)`
+- `Native.findImports(moduleName[, query])`
+- `Native.imports(moduleName[, query])`
+- `Native.importInfo(moduleName, symbolName)`
+- `Native.findSegments(moduleName)`
+- `Native.segments(moduleName)`
+- `Native.segmentInfo(moduleName, segmentName)`
+- `Native.findSections(moduleName)`
+- `Native.sections(moduleName)`
+- `Native.sectionInfo(moduleName, segmentName, sectionName)`
+- `Native.findLoadCommands(moduleName)`
+- `Native.loadCommands(moduleName)`
+- `Native.loadCommandInfo(moduleName, commandOrIndex)`
 - agent / controller CLI:
   - `hfl <module> <offset>`
   - `hfl status`

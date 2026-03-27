@@ -2538,9 +2538,11 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "image", js_native_image, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbol", js_native_symbol, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSymbols", js_native_find_symbols, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbols", js_native_find_symbols, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbolInfo", js_native_symbol_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "imageInfo", js_native_image_info, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findExports", js_native_find_exports, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "exports", js_native_find_exports, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "exportInfo", js_native_export_info, 2);
         add_cfunction_to_object(
             ctx.as_ptr(),
@@ -2549,6 +2551,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_dependencies,
             2,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dependencies", js_native_find_dependencies, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dependencyInfo", js_native_dependency_info, 2);
         add_cfunction_to_object(
             ctx.as_ptr(),
@@ -2557,6 +2560,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_encryption_info,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "encryptionInfo", js_native_find_encryption_info, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2564,6 +2568,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_dyld_info,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dyldInfo", js_native_find_dyld_info, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2571,6 +2576,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_entry_point,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "entryPoint", js_native_find_entry_point, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2578,6 +2584,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_source_version,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "sourceVersion", js_native_find_source_version, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2585,7 +2592,9 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_build_version,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "buildVersion", js_native_find_build_version, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findDylinker", js_native_find_dylinker, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dylinker", js_native_find_dylinker, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2593,7 +2602,9 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_install_name,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "installName", js_native_find_install_name, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findLinkedit", js_native_find_linkedit, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "linkedit", js_native_find_linkedit, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2601,6 +2612,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_function_starts,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "functionStarts", js_native_find_function_starts, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2608,6 +2620,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_code_signature,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "codeSignature", js_native_find_code_signature, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2615,6 +2628,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_data_in_code,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dataInCode", js_native_find_data_in_code, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2622,6 +2636,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_exports_trie,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "exportsTrie", js_native_find_exports_trie, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2629,14 +2644,20 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_chained_fixups,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "chainedFixups", js_native_find_chained_fixups, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findUuid", js_native_find_uuid, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "uuid", js_native_find_uuid, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findRpaths", js_native_find_rpaths, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "rpaths", js_native_find_rpaths, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "rpathInfo", js_native_rpath_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findImports", js_native_find_imports, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "imports", js_native_find_imports, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "importInfo", js_native_import_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSegments", js_native_find_segments, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "segments", js_native_find_segments, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "segmentInfo", js_native_segment_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSections", js_native_find_sections, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "sections", js_native_find_sections, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "sectionInfo", js_native_section_info, 3);
         add_cfunction_to_object(
             ctx.as_ptr(),
@@ -2652,6 +2673,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_load_commands,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "loadCommands", js_native_find_load_commands, 1);
     }
 
     global.set_property(ctx.as_ptr(), "Native", native);

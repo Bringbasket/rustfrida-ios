@@ -1188,6 +1188,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { return typeof Native.symbols === 'function' && typeof Native.exports === 'function' && typeof Native.dependencies === 'function' && typeof Native.encryptionInfo === 'function' && typeof Native.dyldInfo === 'function' && typeof Native.entryPoint === 'function' && typeof Native.sourceVersion === 'function' && typeof Native.buildVersion === 'function' && typeof Native.dylinker === 'function' && typeof Native.installName === 'function' && typeof Native.linkedit === 'function' && typeof Native.functionStarts === 'function' && typeof Native.codeSignature === 'function' && typeof Native.dataInCode === 'function' && typeof Native.exportsTrie === 'function' && typeof Native.chainedFixups === 'function' && typeof Native.uuid === 'function' && typeof Native.rpaths === 'function' && typeof Native.imports === 'function' && typeof Native.segments === 'function' && typeof Native.sections === 'function' && typeof Native.loadCommands === 'function'; })()")
+                    .expect("native alias types"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Native.findSymbols")
                     .expect("native find symbols type"),
                 "function"
@@ -1270,6 +1276,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("Array.isArray(Native.symbols('malloc'))")
+                    .expect("native symbols alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = Native.symbolInfo('malloc'); return value === null || (typeof value.name === 'string' && typeof value.moduleName === 'string' && typeof value.address === 'object'); })()")
                     .expect("native symbolInfo"),
                 "true"
@@ -1278,6 +1290,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Native.findExports('libsystem_malloc.dylib'))")
                     .expect("native find exports"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(Native.exports('libsystem_malloc.dylib'))")
+                    .expect("native exports alias"),
                 "true"
             );
             assert_eq!(
@@ -1354,6 +1372,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("Array.isArray(Native.segments('libsystem_malloc.dylib'))")
+                    .expect("native segments alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSections('libsystem_malloc.dylib'))")
                     .expect("native find sections"),
                 "true"
@@ -1386,6 +1410,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Native.findLoadCommands('libsystem_malloc.dylib'))")
                     .expect("native find load commands"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(Native.loadCommands('libsystem_malloc.dylib'))")
+                    .expect("native load commands alias"),
                 "true"
             );
             assert_eq!(
