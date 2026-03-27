@@ -824,6 +824,12 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof Swift.metadataInfo")
+                    .expect("swift metadataInfo type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof Swift.findVtable").expect("swift findVtable type"),
                 "function"
             );
@@ -919,6 +925,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Swift.findMetadata('ViewController'))")
                     .expect("swift findMetadata"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = Swift.metadataInfo('ViewController'); return value === null || (typeof value.name === 'string' && typeof value.sourceKind === 'string' && typeof value.sourceSymbolName === 'string'); })()")
+                    .expect("swift metadataInfo"),
                 "true"
             );
             assert_eq!(
@@ -1936,6 +1948,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.metadataInfo ViewController'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' }); return value === result.text && (result.metadataInfo === null || result.metadataInfo.name === 'ViewController'); })()")
+                    .expect("agent swift metadata info"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.vtable ViewController'); return value === '' || value.indexOf('ViewController.') !== -1; })()")
                     .expect("agent swift vtable"),
                 "true"
@@ -2348,6 +2366,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' }); return result.kind === 'swift.metadata_info' && result.typeName === 'ViewController' && ((result.metadataInfo === null && result.text === '<null>') || (typeof result.metadataInfo.moduleBase === 'string' && typeof result.metadataInfo.sourceSymbolName === 'string' && typeof result.metadataInfo.sourceOffsetHex === 'string' && typeof result.metadataInfo.sourceKind === 'string' && result.text === result.metadataInfo.text)); })()")
+                    .expect("agent swift metadata info result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.vtable' && result.query === 'ViewController' && result.count === result.entries.length && (result.entries.length === 0 || (typeof result.entries[0].moduleBase === 'string' && typeof result.entries[0].memberName === 'string' && typeof result.entries[0].offsetHex === 'string' && typeof result.entries[0].isDispatchThunk === 'boolean')); })()")
                     .expect("agent swift vtable result"),
                 "true"
@@ -2718,6 +2742,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
                     .expect("agent spec swift metadata"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' }); return value === result.text; })()")
+                    .expect("agent spec swift metadata info"),
                 "true"
             );
             assert_eq!(

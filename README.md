@@ -79,6 +79,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Swift.methodInfo(typeName, methodName[, moduleName])`
 - `Swift.findConformances(typeName[, moduleName])`
 - `Swift.findMetadata(typeName[, moduleName])`
+- `Swift.metadataInfo(typeName[, moduleName])`
 - `Swift.findVtable(typeName[, moduleName])`
 - `Swift.vtableInfo(typeName, memberName[, moduleName])`
 - `Swift.findWitnessTable(query[, moduleName])`
@@ -197,6 +198,8 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `swift.conformances <module> -- <type>`
   - `swift.metadata <type>`
   - `swift.metadata <module> -- <type>`
+  - `swift.metadataInfo <type>`
+  - `swift.metadataInfo <module> -- <type>`
   - `swift.vtable <type>`
   - `swift.vtable <module> -- <type>`
   - `swift.vtableInfo <type> <member>`
@@ -255,6 +258,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `objc.methodInfo` 现在可以直接结构化返回单个方法的 `methodPointer / imp / typeEncoding / imagePath / isClassMethod`，后续排查某个 selector 时不必再手工拼 `objc.methodImp`、`objc.methodImage` 和 `objc.methods`。
 - `swift.protocolInfo` 现在可以直接结构化返回单个 Swift protocol 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName`，后续排查某个协议声明时不必再先全量 `swift.protocols` 再脚本过滤。
 - `swift.conformanceInfo` 现在可以直接结构化返回单个 Swift conformance 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName / typeName / protocolName`，后续排查某个类型对某个协议的符合性时不必再先全量 `swift.conformances` 再脚本过滤。
+- `swift.metadataInfo` 现在可以直接结构化返回单个 Swift metadata entry 的 `moduleBase / name / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName`，后续排查某个类型的 metadata 符号时不必再先全量 `swift.metadata` 再脚本过滤。
 - `swift.typeInfo` 现在可以直接结构化返回单个 Swift type 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName / name`，后续排查某个类型声明时不必再先全量 `swift.types` 再脚本过滤。
 - `swift.methodInfo` 现在可以直接结构化返回单个 Swift method symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个类型里的目标方法时不必再先全量 `swift.methods` 再脚本过滤。
 - `swift.typeLayoutInfo` 现在可以直接结构化返回单个 Swift type layout 的 `metadata / metadataAccessors / nominalDescriptors / metadataCaches / associatedTypeDescriptors / vtableEntries / witnessTables` 以及对应计数，后续排查某个类型布局时不必再先全量 `swift.typeLayout` 再脚本过滤。

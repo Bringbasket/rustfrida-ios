@@ -3657,6 +3657,7 @@ fn print_controller_help() {
     println!("  swift.protocols [query]|swift.protocols <module> -- <query>");
     println!("  swift.conformances <type>|swift.conformances <module> -- <type>");
     println!("  swift.metadata <type>|swift.metadata <module> -- <type>");
+    println!("  swift.metadataInfo <type>|swift.metadataInfo <module> -- <type>");
     println!("  swift.vtable <type>|swift.vtable <module> -- <type>");
     println!("  swift.witnessTable <type|protocol>|swift.witnessTable <module> -- <type|protocol>");
     println!("  swift.witnessTableInfo <type> <protocol>|swift.witnessTableInfo <module> -- <type> <protocol>");
@@ -4189,6 +4190,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.metadataInfo Demo -- ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.vtable ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4290,6 +4295,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("swift.protocols"));
         assert!(!command_requires_inline_hooks("swift.conformances ViewController"));
         assert!(!command_requires_inline_hooks("swift.metadata ViewController"));
+        assert!(!command_requires_inline_hooks("swift.metadataInfo ViewController"));
         assert!(!command_requires_inline_hooks("swift.vtable ViewController"));
         assert!(!command_requires_inline_hooks(
             "swift.vtableInfo ViewController viewDidLoad"

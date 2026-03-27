@@ -950,6 +950,54 @@ unsafe extern "C" fn js_swift_find_metadata(
     array
 }
 
+unsafe extern "C" fn js_swift_metadata_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let type_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "Swift.metadataInfo(typeName[, moduleName]) requires at least 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let module_name =
+        if argc >= 2 {
+            let value = JSValue(*argv.add(1));
+            if value.is_null() || value.is_undefined() {
+                None
+            } else {
+                match value.to_string(ctx) {
+                    Some(module_name) => Some(module_name),
+                    None => return js_throw_type_error(
+                        ctx,
+                        "Swift.metadataInfo(typeName[, moduleName]) expected moduleName to be a string when provided",
+                    ),
+                }
+            }
+        } else {
+            None
+        };
+
+    let metadata = match find_swift_metadata(module_name.as_deref(), &type_name) {
+        Ok(metadata) => metadata,
+        Err(CommonError::Unsupported(_)) => return JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match metadata.into_iter().find(|type_info| type_info.type_name == type_name) {
+        Some(type_info) => swift_type_to_js(ctx, &type_info),
+        None => JSValue::null().raw(),
+    }
+}
+
 unsafe extern "C" fn js_swift_find_vtable(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -1283,6 +1331,7 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findConformances", js_swift_find_conformances, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "conformanceInfo", js_swift_conformance_info, 3);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMetadata", js_swift_find_metadata, 2);
+        add_cfunction_to_object(ctx_ptr, swift.raw(), "metadataInfo", js_swift_metadata_info, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findVtable", js_swift_find_vtable, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "vtableInfo", js_swift_vtable_info, 3);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findWitnessTable", js_swift_find_witness_table, 2);

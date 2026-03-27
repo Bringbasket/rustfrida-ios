@@ -413,6 +413,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.metadataInfo ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.typeLayoutInfo ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
