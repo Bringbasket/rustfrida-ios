@@ -656,7 +656,7 @@ function stalkerStatus() {
 }
 
 function installSwiftHookResult(typeName, methodQuery, moduleName) {
-    const matches = Swift.findMethods(typeName, methodQuery, moduleName);
+    const matches = Swift.methods(typeName, methodQuery, moduleName);
     if (!Array.isArray(matches) || matches.length === 0) {
         const scope = moduleName ? (' in ' + moduleName) : '';
         throw new Error('swift method not found: ' + typeName + ' ' + methodQuery + scope);
