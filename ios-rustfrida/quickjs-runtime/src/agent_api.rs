@@ -2562,7 +2562,7 @@ function handleSpecResult(spec) {
     case 'native.export': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const symbolName = String(spec.symbolName || '');
-        const address = Module.findExportByName(moduleName, symbolName);
+        const address = Native.export(moduleName, symbolName);
         const symbol = address === null ? null : normalizeDebugSymbol(DebugSymbol.fromAddress(address), address);
         return {
             kind: 'native.export',

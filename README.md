@@ -90,6 +90,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Swift.symbolInfo(symbolName[, moduleName])`
 - `Native.base(moduleName)`
 - `Native.images([filter])`
+- `Native.export(moduleNameOrNull, symbolName)`
 - `Native.mainImage()`
 - `Native.image(address)`
 - `Native.symbol(address)`
@@ -342,6 +343,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.imageInfo <module>` / `Native.imageInfo(moduleName)` 现在可以直接按模块名返回单条 image 记录的 `name / path / base / slide / size`，不必再先 `native.images` 再手动筛一条，也比只看 `native.base` 更适合脚本直接拿模块上下文。
 - `native.base <module>` / `Native.base(moduleName)` 现在统一走同一套 image lookup 语义；`native.mainImage` / `Native.mainImage()`、`native.image <address>` / `Native.image(address)` 也都有了同层级直连 API，后续脚本不必在 `Native` 和 `Module` 两套入口之间来回切。
 - `native.images [filter]` / `Native.images([filter])`、`native.symbol <address>` / `Native.symbol(address)` 现在也都有了同层级直连 API；脚本如果只想走 `Native.*` 命名空间，已经不用再回退到 `Module.enumerateModules()` 或 `DebugSymbol.fromAddress()`。
+- `native.export <symbol>` / `native.export <module> -- <symbol>` 现在也可以统一走 `Native.export(moduleNameOrNull, symbolName)`；这样 `Native.*` 基础查询层已经把 images / export / base / symbol 这一组常用入口都收进来了。
 - `native.rpaths <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `rpaths / path`，适合和 `native.dependencies` 一起排查运行时 dylib 查找路径。
 - `native.rpathInfo <module> -- <path>` / `Native.rpathInfo(moduleName, path)` 现在可以直接结构化返回单条 rpath 的 `moduleBase / path`，不必先全量 `native.rpaths` 再二次过滤。
 - `native.exportInfo <module> -- <symbol>` / `Native.exportInfo(moduleName, symbolName)` 现在可以直接结构化返回单条 export entry 的 `moduleBase / name / address / offsetHex`；匹配时会兼容 `_foo` / `foo` 这类常见导出名差异，不必先全量 `native.exports` 再脚本过滤。

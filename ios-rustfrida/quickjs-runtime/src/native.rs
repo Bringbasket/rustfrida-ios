@@ -4,7 +4,7 @@ use crate::ptr::{create_native_pointer, get_native_pointer_addr};
 use crate::util::{add_cfunction_to_object, js_i64_to_js_number_or_bigint, js_throw_internal_error, js_u64_to_js_number_or_bigint};
 use crate::value::JSValue;
 use native_api::{
-    detect_hook_environment, enumerate_images, find_image_build_version, find_image_by_address, find_image_by_name, find_image_chained_fixups,
+    detect_hook_environment, enumerate_images, find_export_by_name, find_image_build_version, find_image_by_address, find_image_by_name, find_image_chained_fixups,
     find_image_code_signature,
     find_image_dependencies, find_image_data_in_code, find_image_dyld_info, find_image_dylinker,
     find_image_encryption_info,
@@ -1130,6 +1130,59 @@ unsafe extern "C" fn js_native_symbol(
     match find_symbol_by_address(address as usize) {
         Ok(Some(symbol)) => symbol_info_to_js(ctx, &symbol),
         Ok(None) | Err(common::Error::Unsupported(_)) => JSValue::null().raw(),
+        Err(err) => js_throw_internal_error(ctx, &err.to_string()),
+    }
+}
+
+unsafe extern "C" fn js_native_export(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 2 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.export(moduleNameOrNull, symbolName) requires 2 arguments",
+        );
+    }
+
+    let module_name = {
+        let value = JSValue(*argv);
+        if value.is_null() || value.is_undefined() {
+            None
+        } else if value.is_string() {
+            match value.to_string(ctx) {
+                Some(value) => Some(value),
+                None => {
+                    return crate::util::js_throw_type_error(
+                        ctx,
+                        "Native.export(moduleNameOrNull, symbolName) expected moduleNameOrNull to be a string or null",
+                    )
+                }
+            }
+        } else {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.export(moduleNameOrNull, symbolName) expected moduleNameOrNull to be a string or null",
+            );
+        }
+    };
+
+    let symbol_name = match JSValue(*argv.add(1)).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.export(moduleNameOrNull, symbolName) requires symbolName to be a non-empty string",
+            )
+        }
+    };
+
+    match find_export_by_name(module_name.as_deref(), &symbol_name) {
+        Ok(Some(address)) => create_native_pointer(ctx, address as u64).raw(),
+        Ok(None) | Err(common::Error::Unsupported(_)) => JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => crate::util::js_throw_type_error(ctx, &message),
         Err(err) => js_throw_internal_error(ctx, &err.to_string()),
     }
 }
@@ -2479,6 +2532,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             0,
         );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "images", js_native_images, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "export", js_native_export, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "base", js_native_base, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "mainImage", js_native_main_image, 0);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "image", js_native_image, 1);
