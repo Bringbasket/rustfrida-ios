@@ -3650,6 +3650,7 @@ fn print_controller_help() {
     println!("  pac.stripdata <address>");
     println!("  swift.available");
     println!("  swift.demangle <mangled-symbol>");
+    println!("  swift.symbolInfo <symbol>|swift.symbolInfo <module> -- <symbol>");
     println!("  swift.protocolInfo <protocol>|swift.protocolInfo <module> -- <protocol>");
     println!("  swift.conformanceInfo <type> <protocol>|swift.conformanceInfo <module> -- <type> <protocol>");
     println!("  swift.typeInfo <type>|swift.typeInfo <module> -- <type>");
@@ -4178,6 +4179,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.symbolInfo Demo -- ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.protocols"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4292,6 +4297,7 @@ mod tests {
         assert!(!command_requires_inline_hooks(
             "swift.methodInfo ViewController viewDidLoad"
         ));
+        assert!(!command_requires_inline_hooks("swift.symbolInfo ViewController"));
         assert!(!command_requires_inline_hooks("swift.protocols"));
         assert!(!command_requires_inline_hooks("swift.conformances ViewController"));
         assert!(!command_requires_inline_hooks("swift.metadata ViewController"));

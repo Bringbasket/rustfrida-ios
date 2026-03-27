@@ -297,6 +297,56 @@ unsafe extern "C" fn js_swift_find_symbols(
     array
 }
 
+unsafe extern "C" fn js_swift_symbol_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let symbol_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "Swift.symbolInfo(symbolName[, moduleName]) requires at least 1 string argument",
+    ) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let module_name =
+        if argc >= 2 {
+            let value = JSValue(*argv.add(1));
+            if value.is_null() || value.is_undefined() {
+                None
+            } else {
+                match value.to_string(ctx) {
+                    Some(module_name) => Some(module_name),
+                    None => return js_throw_type_error(
+                        ctx,
+                        "Swift.symbolInfo(symbolName[, moduleName]) expected moduleName to be a string when provided",
+                    ),
+                }
+            }
+        } else {
+            None
+        };
+
+    let symbols = match find_swift_symbols(module_name.as_deref(), &symbol_name) {
+        Ok(symbols) => symbols,
+        Err(CommonError::Unsupported(_)) => return JSValue::null().raw(),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match symbols.into_iter().find(|symbol| {
+        symbol.symbol_name == symbol_name || symbol.demangled_name.as_deref() == Some(symbol_name.as_str())
+    }) {
+        Some(symbol) => swift_symbol_to_js(ctx, &symbol),
+        None => JSValue::null().raw(),
+    }
+}
+
 unsafe extern "C" fn js_swift_find_methods(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -1326,6 +1376,7 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         let ctx_ptr = ctx.as_ptr();
         add_cfunction_to_object(ctx_ptr, swift.raw(), "demangle", js_swift_demangle, 1);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findSymbols", js_swift_find_symbols, 2);
+        add_cfunction_to_object(ctx_ptr, swift.raw(), "symbolInfo", js_swift_symbol_info, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findProtocols", js_swift_find_protocols, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "protocolInfo", js_swift_protocol_info, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findConformances", js_swift_find_conformances, 2);

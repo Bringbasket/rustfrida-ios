@@ -401,6 +401,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.symbolInfo ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.protocols"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

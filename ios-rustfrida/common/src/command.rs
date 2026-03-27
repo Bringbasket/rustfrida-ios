@@ -141,6 +141,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("pac.strip ")
         || command.starts_with("pac.stripdata ")
         || command.starts_with("swift.demangle ")
+        || command.starts_with("swift.symbolInfo ")
         || command.starts_with("swift.protocolInfo ")
         || command.starts_with("swift.conformanceInfo ")
         || command.starts_with("swift.protocols ")
@@ -832,6 +833,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("swift.symbolInfo ") {
+        let (module_name, symbol_name) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.symbol_info",
+            "moduleName": module_name,
+            "symbolName": symbol_name,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("swift.types ") {
         let (module_name, query) = parse_module_query(raw)?;
         return Some(json!({
@@ -1504,6 +1514,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.symbolInfo ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.protocols"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -1592,6 +1606,12 @@ mod tests {
             AgentCommand::from_legacy("swift.metadataInfo "),
             Some(AgentCommand::RuntimeHandle {
                 command: "swift.metadataInfo ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.symbolInfo "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "swift.symbolInfo ".into(),
             })
         );
         assert_eq!(

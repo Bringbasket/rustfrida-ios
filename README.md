@@ -87,6 +87,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Swift.findTypeLayout(typeName[, moduleName])`
 - `Swift.typeLayoutInfo(typeName[, moduleName])`
 - `Swift.findMethods(typeName, methodQuery[, moduleName])`
+- `Swift.symbolInfo(symbolName[, moduleName])`
 - agent / controller CLI:
   - `hfl <module> <offset>`
   - `hfl status`
@@ -192,6 +193,8 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `swift.typeInfo <module> -- <type>`
   - `swift.methodInfo <type> <method>`
   - `swift.methodInfo <module> -- <type> <method>`
+  - `swift.symbolInfo <symbol>`
+  - `swift.symbolInfo <module> -- <symbol>`
   - `swift.protocols [query]`
   - `swift.protocols <module> -- <query>`
   - `swift.conformances <type>`
@@ -261,6 +264,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `swift.metadataInfo` 现在可以直接结构化返回单个 Swift metadata entry 的 `moduleBase / name / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName`，后续排查某个类型的 metadata 符号时不必再先全量 `swift.metadata` 再脚本过滤。
 - `swift.typeInfo` 现在可以直接结构化返回单个 Swift type 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName / name`，后续排查某个类型声明时不必再先全量 `swift.types` 再脚本过滤。
 - `swift.methodInfo` 现在可以直接结构化返回单个 Swift method symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个类型里的目标方法时不必再先全量 `swift.methods` 再脚本过滤。
+- `swift.symbolInfo` 现在可以直接结构化返回单个 Swift symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个 Swift 符号时不必再先全量 `swift.symbols` 再脚本过滤。
 - `swift.typeLayoutInfo` 现在可以直接结构化返回单个 Swift type layout 的 `metadata / metadataAccessors / nominalDescriptors / metadataCaches / associatedTypeDescriptors / vtableEntries / witnessTables` 以及对应计数，后续排查某个类型布局时不必再先全量 `swift.typeLayout` 再脚本过滤。
 - `swift.vtableInfo` 现在可以直接结构化返回单个 Swift vtable entry 的 `moduleBase / typeName / memberName / sourceKind / address / offsetHex / isDispatchThunk`，后续排查某个类型的具体虚表成员时不必再先全量 `swift.vtable` 再脚本过滤。
 - `swift.witnessTableInfo` 现在可以直接结构化返回单个 Swift witness table entry 的 `moduleBase / typeName / protocolName / sourceKind / address / offsetHex / isAccessor`，后续排查某个类型对某个协议的 witness table 时不必再先全量 `swift.witnessTable` 再脚本过滤。

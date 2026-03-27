@@ -868,6 +868,10 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof Swift.symbolInfo").expect("swift symbolInfo type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof Swift.findTypes").expect("swift findTypes type"),
                 "function"
             );
@@ -973,6 +977,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(Swift.findSymbols('ViewController'))")
                     .expect("swift findSymbols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = Swift.symbolInfo('ViewController'); return value === null || (typeof value.name === 'string' && typeof value.moduleName === 'string' && typeof value.address === 'object'); })()")
+                    .expect("swift symbolInfo"),
                 "true"
             );
             assert_eq!(
@@ -1936,6 +1946,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.symbolInfo ViewController'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbol_info', moduleName: null, symbolName: 'ViewController' }); return value === result.text && (result.symbolInfo === null || typeof result.symbolInfo.name === 'string'); })()")
+                    .expect("agent swift symbolInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.conformances ViewController'); return value === '' || value.indexOf(' : ') !== -1; })()")
                     .expect("agent swift conformances"),
                 "true"
@@ -2348,6 +2364,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbol_info', moduleName: null, symbolName: 'ViewController' }); return result.kind === 'swift.symbol_info' && result.symbolName === 'ViewController' && ((result.symbolInfo === null && result.text === '<null>') || (typeof result.symbolInfo.moduleBase === 'string' && typeof result.symbolInfo.name === 'string' && typeof result.symbolInfo.offsetHex === 'string' && result.text === result.symbolInfo.text)); })()")
+                    .expect("agent swift symbolInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null }); return result.kind === 'swift.protocols' && result.query === null && result.count === result.protocols.length && (result.protocols.length === 0 || (typeof result.protocols[0].moduleBase === 'string' && typeof result.protocols[0].sourceSymbolName === 'string' && typeof result.protocols[0].sourceOffsetHex === 'string')); })()")
                     .expect("agent swift protocols result"),
                 "true"
@@ -2724,6 +2746,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' }); return value === result.text; })()")
                     .expect("agent spec swift methodInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.symbol_info', moduleName: null, symbolName: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbol_info', moduleName: null, symbolName: 'ViewController' }); return value === result.text; })()")
+                    .expect("agent spec swift symbolInfo"),
                 "true"
             );
             assert_eq!(
