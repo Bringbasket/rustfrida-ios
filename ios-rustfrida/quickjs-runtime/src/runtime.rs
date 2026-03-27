@@ -647,13 +647,13 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.classInfo('NSObject'); return value === null || (typeof value.className === 'string' && typeof value.isMetaClass === 'boolean' && typeof value.instanceSize === 'number' && typeof value.protocolCount === 'number' && typeof value.instancePropertyCount === 'number' && typeof value.classPropertyCount === 'number' && typeof value.ivarCount === 'number' && typeof value.instanceMethodCount === 'number' && typeof value.classMethodCount === 'number'); })()")
+                    .eval("(function() { const value = ObjC.classInfo('NSObject'); return value === null || (typeof value.className === 'string' && typeof value.isMetaClass === 'boolean' && typeof value.instanceSize === 'number' && typeof value.protocolCount === 'number' && typeof value.instancePropertyCount === 'number' && typeof value.classPropertyCount === 'number' && typeof value.ivarCount === 'number' && typeof value.instanceMethodCount === 'number' && typeof value.classMethodCount === 'number' && typeof value.totalPropertyCount === 'number' && typeof value.totalMethodCount === 'number' && typeof value.hasSuperclass === 'boolean' && typeof value.isRootClass === 'boolean' && typeof value.hasProtocols === 'boolean' && typeof value.hasProperties === 'boolean' && typeof value.hasIvars === 'boolean' && typeof value.hasMethods === 'boolean' && typeof value.hasImagePath === 'boolean'); })()")
                     .expect("objc classInfo"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.protocolInfo('NSObject'); return value === null || (typeof value.protocolName === 'string' && Array.isArray(value.adoptedProtocols) && typeof value.propertyCount === 'number' && typeof value.totalMethodCount === 'number' && typeof value.adoptedProtocolCount === 'number' && typeof value.hasRequiredMethods === 'boolean' && typeof value.hasOptionalMethods === 'boolean' && typeof value.hasInstanceMethods === 'boolean' && typeof value.hasClassMethods === 'boolean' && typeof value.hasProperties === 'boolean' && typeof value.hasAdoptedProtocols === 'boolean'); })()")
+                    .eval("(function() { const value = ObjC.protocolInfo('NSObject'); return value === null || (typeof value.protocolName === 'string' && Array.isArray(value.adoptedProtocols) && typeof value.propertyCount === 'number' && typeof value.totalMethodCount === 'number' && typeof value.adoptedProtocolCount === 'number' && typeof value.hasRequiredMethods === 'boolean' && typeof value.hasOptionalMethods === 'boolean' && typeof value.hasInstanceMethods === 'boolean' && typeof value.hasClassMethods === 'boolean' && typeof value.hasProperties === 'boolean' && typeof value.hasAdoptedProtocols === 'boolean' && typeof value.hasImagePath === 'boolean'); })()")
                     .expect("objc protocolInfo"),
                 "true"
             );
@@ -707,7 +707,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("Array.isArray(ObjC.classChain('NSObject'))")
+                    .eval("(function() { const value = ObjC.classChain('NSObject'); return Array.isArray(value) && (value.length === 0 || typeof value[0] === 'string'); })()")
                     .expect("objc classChain"),
                 "true"
             );
@@ -2427,7 +2427,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.superclass', className: 'NSObject' }); return result.kind === 'objc.superclass' && result.className === 'NSObject' && ((result.superclass === null && result.text === '<null>') || (typeof result.superclass === 'string' && result.text === result.superclass)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.superclass', className: 'NSObject' }); return result.kind === 'objc.superclass' && result.className === 'NSObject' && typeof result.hasSuperclass === 'boolean' && typeof result.isRootClass === 'boolean' && ((result.superclass === null && result.hasSuperclass === false && result.isRootClass === true && result.text === '<null>') || (typeof result.superclass === 'string' && result.hasSuperclass === true && result.isRootClass === false && result.text === result.superclass)); })()"
                     )
                     .expect("agent objc superclass result"),
                 "true"
@@ -2435,7 +2435,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_chain', className: 'NSObject' }); return result.kind === 'objc.class_chain' && result.className === 'NSObject' && result.count === result.chain.length && result.text === result.chain.join('\\n'); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_chain', className: 'NSObject' }); return result.kind === 'objc.class_chain' && result.className === 'NSObject' && result.count === result.chain.length && result.depth === result.chain.length && typeof result.hasChain === 'boolean' && typeof result.includesSelf === 'boolean' && (result.rootClass === null || typeof result.rootClass === 'string') && result.text === result.chain.join('\\n'); })()"
                     )
                     .expect("agent objc classChain result"),
                 "true"

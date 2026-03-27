@@ -1592,6 +1592,17 @@ function normalizeObjcClassInfo(info) {
         classMethodCount: Number(info.classMethodCount || 0),
         imagePath: info.imagePath === undefined || info.imagePath === null ? null : String(info.imagePath),
     };
+    normalized.hasSuperclass = normalized.superclassName !== null;
+    normalized.isRootClass = !normalized.hasSuperclass;
+    normalized.hasProtocols = normalized.protocolCount !== 0;
+    normalized.hasInstanceProperties = normalized.instancePropertyCount !== 0;
+    normalized.hasClassProperties = normalized.classPropertyCount !== 0;
+    normalized.hasProperties = normalized.hasInstanceProperties || normalized.hasClassProperties;
+    normalized.hasIvars = normalized.ivarCount !== 0;
+    normalized.hasInstanceMethods = normalized.instanceMethodCount !== 0;
+    normalized.hasClassMethods = normalized.classMethodCount !== 0;
+    normalized.hasMethods = normalized.hasInstanceMethods || normalized.hasClassMethods;
+    normalized.hasImagePath = normalized.imagePath !== null;
     normalized.totalPropertyCount = normalized.instancePropertyCount + normalized.classPropertyCount;
     normalized.totalMethodCount = normalized.instanceMethodCount + normalized.classMethodCount;
     normalized.text = formatObjcClassInfo(normalized);
@@ -1624,6 +1635,7 @@ function normalizeObjcProtocolInfo(info) {
     normalized.hasClassMethods = (normalized.requiredClassMethodCount + normalized.optionalClassMethodCount) !== 0;
     normalized.hasProperties = normalized.propertyCount !== 0;
     normalized.hasAdoptedProtocols = normalized.adoptedProtocolCount !== 0;
+    normalized.hasImagePath = normalized.imagePath !== null;
     normalized.text = formatObjcProtocolInfo(normalized);
     return normalized;
 }
@@ -2700,20 +2712,28 @@ function handleSpecResult(spec) {
     case 'objc.superclass': {
         const className = String(spec.className || '');
         const superclass = ObjC.superclass(className);
+        const normalized = superclass === null ? null : String(superclass);
         return {
             kind: 'objc.superclass',
             className,
-            superclass: superclass === null ? null : String(superclass),
-            text: superclass === null ? '<null>' : String(superclass),
+            superclass: normalized,
+            hasSuperclass: normalized !== null,
+            isRootClass: normalized === null,
+            text: normalized === null ? '<null>' : normalized,
         };
     }
     case 'objc.class_chain': {
         const className = String(spec.className || '');
-        const chain = ObjC.classChain(className);
+        const chain = ObjC.classChain(className).map((name) => String(name));
+        const rootClass = chain.length === 0 ? null : chain[chain.length - 1];
         return {
             kind: 'objc.class_chain',
             className,
             count: chain.length,
+            depth: chain.length,
+            hasChain: chain.length !== 0,
+            includesSelf: chain.length !== 0 && chain[0] === className,
+            rootClass,
             chain,
             text: chain.join('\n'),
         };
