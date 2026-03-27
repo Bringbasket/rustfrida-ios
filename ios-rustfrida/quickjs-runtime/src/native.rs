@@ -1657,6 +1657,56 @@ unsafe extern "C" fn js_native_find_rpaths(
     array
 }
 
+unsafe extern "C" fn js_native_import_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 2 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.importInfo(moduleName, symbolName) requires 2 string arguments",
+        );
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.importInfo(moduleName, symbolName) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    let symbol_name = match JSValue(*argv.add(1)).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.importInfo(moduleName, symbolName) requires symbolName to be a non-empty string",
+            )
+        }
+    };
+
+    let normalized_symbol_name = symbol_name.strip_prefix('_').unwrap_or(&symbol_name);
+    let imports = match find_image_imports(&module_name, Some(&symbol_name)) {
+        Ok(imports) => imports,
+        Err(common::Error::Unsupported(_)) => return JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => return crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match imports.into_iter().find(|imp| {
+        imp.symbol_name == symbol_name
+            || imp.symbol_name.strip_prefix('_').unwrap_or(&imp.symbol_name) == normalized_symbol_name
+    }) {
+        Some(import) => image_import_to_js(ctx, &import),
+        None => JSValue::null().raw(),
+    }
+}
+
 unsafe extern "C" fn js_native_find_segments(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -1976,6 +2026,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findUuid", js_native_find_uuid, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findRpaths", js_native_find_rpaths, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findImports", js_native_find_imports, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "importInfo", js_native_import_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSegments", js_native_find_segments, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSections", js_native_find_sections, 1);
         add_cfunction_to_object(

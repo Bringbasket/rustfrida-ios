@@ -329,6 +329,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.importInfo libsystem_malloc.dylib -- malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.symbols malloc"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

@@ -3633,6 +3633,7 @@ fn print_controller_help() {
     println!("  native.uuid <module>");
     println!("  native.rpaths <module>|native.rpaths <module> -- <query>");
     println!("  native.imports <module>|native.imports <module> -- <query>");
+    println!("  native.importInfo <module> -- <symbol>");
     println!("  native.loadcmds <module>");
     println!("  native.sections <module>");
     println!("  native.segments <module>");
@@ -4156,6 +4157,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.importInfo DemoBinary -- malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.symbolInfo DemoBinary -- malloc"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4294,6 +4299,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.uuid UIKit"));
         assert!(!command_requires_inline_hooks("native.rpaths UIKit"));
         assert!(!command_requires_inline_hooks("native.imports UIKit"));
+        assert!(!command_requires_inline_hooks("native.importInfo UIKit -- malloc"));
         assert!(!command_requires_inline_hooks("native.symbolInfo malloc"));
         assert!(!command_requires_inline_hooks("swift.protocolInfo Renderable"));
         assert!(!command_requires_inline_hooks(

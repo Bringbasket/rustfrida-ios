@@ -2674,6 +2674,19 @@ function handleSpecResult(spec) {
         const imports = Native.findImports(moduleName, query).map((imp) => normalizeImport(imp));
         return { kind: 'native.imports', moduleName, query, count: imports.length, imports, text: imports.map((imp) => imp.text).join('\n') };
     }
+    case 'native.import_info': {
+        const moduleName = String(spec.moduleName || '');
+        const symbolName = String(spec.symbolName || '');
+        const importInfo = Native.importInfo(moduleName, symbolName);
+        const normalized = importInfo === null ? null : normalizeImport(importInfo);
+        return {
+            kind: 'native.import_info',
+            moduleName,
+            symbolName,
+            importInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'native.segments': {
         const moduleName = String(spec.moduleName || '');
         const segments = Native.findSegments(moduleName).map((segment) => normalizeSegment(segment));
@@ -3392,6 +3405,18 @@ function legacyToSpec(command) {
             kind: 'native.imports',
             moduleName: parsed.moduleName,
             query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.importInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.importInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.importInfo usage: native.importInfo <module> -- <symbol>');
+        }
+        return {
+            kind: 'native.import_info',
+            moduleName: parsed.moduleName,
+            symbolName: parsed.query,
         };
     }
 

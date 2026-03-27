@@ -130,6 +130,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.uuid ")
         || command.starts_with("native.rpaths ")
         || command.starts_with("native.imports ")
+        || command.starts_with("native.importInfo ")
         || command.starts_with("native.images ")
         || command.starts_with("native.image ")
         || command.starts_with("native.loadcmds ")
@@ -641,6 +642,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
             "kind": "native.imports",
             "moduleName": module_name,
             "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.importInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let symbol_name = query?;
+        return Some(json!({
+            "kind": "native.import_info",
+            "moduleName": module_name,
+            "symbolName": symbol_name,
         }));
     }
 
@@ -1310,6 +1321,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.importInfo libsystem_malloc.dylib -- malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.segments DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -1650,6 +1665,12 @@ mod tests {
             AgentCommand::from_legacy("native.imports  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.imports  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.importInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.importInfo libsystem_malloc.dylib".into(),
             })
         );
         assert_eq!(
