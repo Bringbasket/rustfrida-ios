@@ -365,6 +365,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.loadCommandInfo libsystem_malloc.dylib -- LC_UUID"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.images"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));

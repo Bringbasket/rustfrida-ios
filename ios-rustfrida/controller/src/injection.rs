@@ -3637,6 +3637,7 @@ fn print_controller_help() {
     println!("  native.imports <module>|native.imports <module> -- <query>");
     println!("  native.importInfo <module> -- <symbol>");
     println!("  native.loadcmds <module>");
+    println!("  native.loadCommandInfo <module> -- <name|cmd|index>");
     println!("  native.sections <module>");
     println!("  native.segments <module>");
     println!("  native.symbolInfo <symbol>|native.symbolInfo <module> -- <symbol>");
@@ -4175,6 +4176,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.loadCommandInfo DemoBinary -- LC_UUID"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("pac.image DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4312,6 +4317,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.rpathInfo UIKit -- @loader_path"));
         assert!(!command_requires_inline_hooks("native.imports UIKit"));
         assert!(!command_requires_inline_hooks("native.importInfo UIKit -- malloc"));
+        assert!(!command_requires_inline_hooks("native.loadCommandInfo UIKit -- LC_UUID"));
         assert!(!command_requires_inline_hooks("native.symbolInfo malloc"));
         assert!(!command_requires_inline_hooks("swift.protocolInfo Renderable"));
         assert!(!command_requires_inline_hooks(

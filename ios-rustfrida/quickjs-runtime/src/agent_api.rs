@@ -2728,6 +2728,19 @@ function handleSpecResult(spec) {
         const commands = Native.findLoadCommands(moduleName).map((command) => normalizeLoadCommand(command));
         return { kind: 'native.load_commands', moduleName, count: commands.length, commands, text: commands.map((command) => command.text).join('\n') };
     }
+    case 'native.load_command_info': {
+        const moduleName = String(spec.moduleName || '');
+        const commandOrIndex = String(spec.commandOrIndex || '');
+        const loadCommandInfo = Native.loadCommandInfo(moduleName, commandOrIndex);
+        const normalized = loadCommandInfo === null ? null : normalizeLoadCommand(loadCommandInfo);
+        return {
+            kind: 'native.load_command_info',
+            moduleName,
+            commandOrIndex,
+            loadCommandInfo: normalized,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
+    }
     case 'native.hook_environment': {
         const report = Native.detectHookEnvironment();
         return { kind: 'native.hook_environment', report, text: formatHookEnvironmentReport(report) };
@@ -3492,6 +3505,18 @@ function legacyToSpec(command) {
             throw new Error('native.loadcmds usage: native.loadcmds <module>');
         }
         return { kind: 'native.load_commands', moduleName };
+    }
+
+    if (trimmed.startsWith('native.loadCommandInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.loadCommandInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.loadCommandInfo usage: native.loadCommandInfo <module> -- <name|cmd|index>');
+        }
+        return {
+            kind: 'native.load_command_info',
+            moduleName: parsed.moduleName,
+            commandOrIndex: parsed.query,
+        };
     }
 
     if (trimmed === 'native.hookenv') {

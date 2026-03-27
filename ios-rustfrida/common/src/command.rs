@@ -136,6 +136,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.images ")
         || command.starts_with("native.image ")
         || command.starts_with("native.loadcmds ")
+        || command.starts_with("native.loadCommandInfo ")
         || command.starts_with("native.sections ")
         || command.starts_with("native.segments ")
         || command.starts_with("native.symbol ")
@@ -695,6 +696,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "native.load_commands",
             "moduleName": module_name.trim(),
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.loadCommandInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let command_or_index = query?;
+        return Some(json!({
+            "kind": "native.load_command_info",
+            "moduleName": module_name,
+            "commandOrIndex": command_or_index,
         }));
     }
 
@@ -1367,6 +1378,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.loadCommandInfo DemoBinary -- LC_UUID"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("pac.image libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -1815,6 +1830,12 @@ mod tests {
             AgentCommand::from_legacy("native.rpathInfo libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.rpathInfo libsystem_malloc.dylib".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.loadCommandInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.loadCommandInfo libsystem_malloc.dylib".into(),
             })
         );
     }

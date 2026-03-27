@@ -1909,6 +1909,89 @@ unsafe extern "C" fn js_native_find_load_commands(
     array
 }
 
+fn parse_load_command_query(query: &str) -> Option<u64> {
+    let trimmed = query.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if let Some(hex) = trimmed.strip_prefix("0x").or_else(|| trimmed.strip_prefix("0X")) {
+        return u64::from_str_radix(hex, 16).ok();
+    }
+
+    trimmed.parse::<u64>().ok()
+}
+
+fn load_command_matches_query(command: &native_api::ImageLoadCommand, query: &str) -> bool {
+    let trimmed = query.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    if let Some(value) = parse_load_command_query(trimmed) {
+        if command.index as u64 == value {
+            return true;
+        }
+
+        let raw = command.command as u64;
+        let masked = (command.command & !0x8000_0000) as u64;
+        if raw == value || masked == value {
+            return true;
+        }
+    }
+
+    command.command_name.eq_ignore_ascii_case(trimmed)
+}
+
+unsafe extern "C" fn js_native_load_command_info(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 2 {
+        return crate::util::js_throw_type_error(
+            ctx,
+            "Native.loadCommandInfo(moduleName, commandOrIndex) requires 2 arguments",
+        );
+    }
+
+    let module_name = match JSValue(*argv).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.loadCommandInfo(moduleName, commandOrIndex) requires moduleName to be a non-empty string",
+            )
+        }
+    };
+
+    let query = match JSValue(*argv.add(1)).to_string(ctx) {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.loadCommandInfo(moduleName, commandOrIndex) requires commandOrIndex to be a non-empty string or number",
+            )
+        }
+    };
+
+    let commands = match find_image_load_commands(&module_name) {
+        Ok(commands) => commands,
+        Err(common::Error::Unsupported(_)) => return JSValue::null().raw(),
+        Err(common::Error::InvalidArgument(message)) => return crate::util::js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    match commands
+        .into_iter()
+        .find(|command| load_command_matches_query(command, &query))
+    {
+        Some(command) => image_load_command_to_js(ctx, &command),
+        None => JSValue::null().raw(),
+    }
+}
+
 pub(crate) fn register_native_api(ctx: &JSContext) {
     let global = ctx.global_object();
     let native = ctx.new_object();
@@ -2131,6 +2214,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "importInfo", js_native_import_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSegments", js_native_find_segments, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSections", js_native_find_sections, 1);
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "loadCommandInfo",
+            js_native_load_command_info,
+            2,
+        );
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
