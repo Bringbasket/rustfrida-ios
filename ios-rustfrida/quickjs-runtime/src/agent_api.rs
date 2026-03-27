@@ -1294,6 +1294,9 @@ function formatObjcProtocolProperty(property) {
     if (property.isNonatomic) {
         details.push('nonatomic');
     }
+    if (property.isDynamic) {
+        details.push('dynamic');
+    }
     if (property.hasCustomGetter && property.getterName) {
         details.push('getter=' + property.getterName);
     }
@@ -1324,6 +1327,9 @@ function formatObjcProperty(property) {
     if (property.isNonatomic) {
         details.push('nonatomic');
     }
+    if (property.isDynamic) {
+        details.push('dynamic');
+    }
     if (property.hasCustomGetter && property.getterName) {
         details.push('getter=' + property.getterName);
     }
@@ -1344,6 +1350,18 @@ function formatObjcPropertyInfo(property) {
     const details = ['property=' + property.propertyPointer];
     if (property.typeName && property.typeName.length !== 0) {
         details.push('type=' + property.typeName);
+    }
+    if (property.ownership !== 'assign') {
+        details.push('ownership=' + property.ownership);
+    }
+    if (property.isReadonly) {
+        details.push('readonly');
+    }
+    if (property.isNonatomic) {
+        details.push('nonatomic');
+    }
+    if (property.isDynamic) {
+        details.push('dynamic');
     }
     if (property.hasCustomGetter && property.getterName) {
         details.push('getter=' + property.getterName);
@@ -1367,6 +1385,18 @@ function formatObjcProtocolPropertyInfo(property) {
     const details = ['property=' + property.propertyPointer];
     if (property.typeName && property.typeName.length !== 0) {
         details.push('type=' + property.typeName);
+    }
+    if (property.ownership !== 'assign') {
+        details.push('ownership=' + property.ownership);
+    }
+    if (property.isReadonly) {
+        details.push('readonly');
+    }
+    if (property.isNonatomic) {
+        details.push('nonatomic');
+    }
+    if (property.isDynamic) {
+        details.push('dynamic');
     }
     if (property.hasCustomGetter && property.getterName) {
         details.push('getter=' + property.getterName);
@@ -1747,6 +1777,8 @@ function normalizeObjcProtocolMethodInfo(method) {
 
 function normalizeObjcProtocolProperty(property) {
     const attributeInfo = parseObjcPropertyAttributes(property.attributes);
+    const objectProtocolCount = Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0;
+    const parsedTokenCount = Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0;
     const normalized = {
         protocolName: String(property.protocolName || ''),
         name: String(property.name || ''),
@@ -1759,20 +1791,36 @@ function normalizeObjcProtocolProperty(property) {
         isReadonly: attributeInfo.isReadonly,
         isNonatomic: attributeInfo.isNonatomic,
         isDynamic: attributeInfo.isDynamic,
+        isReadwrite: !attributeInfo.isReadonly,
+        isAtomic: !attributeInfo.isNonatomic,
+        isStrong: attributeInfo.ownership === 'strong',
+        isCopy: attributeInfo.ownership === 'copy',
+        isWeak: attributeInfo.ownership === 'weak',
+        isAssign: attributeInfo.ownership === 'assign',
         getterName: attributeInfo.getterName,
         setterName: attributeInfo.setterName,
         ivarName: attributeInfo.ivarName,
         hasCustomGetter: attributeInfo.hasGetter,
         hasCustomSetter: attributeInfo.hasSetter,
         hasAccessorCustomization: attributeInfo.hasGetter || attributeInfo.hasSetter,
+        hasAccessorNames: attributeInfo.getterName !== null || attributeInfo.setterName !== null,
+        hasGetterName: attributeInfo.getterName !== null,
+        hasSetterName: attributeInfo.setterName !== null,
         hasBackingIvar: attributeInfo.ivarName !== null,
         hasOldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding !== null,
+        hasOwnershipModifier: attributeInfo.ownership !== 'assign',
+        hasTypeEncoding: attributeInfo.typeEncoding.length !== 0,
+        hasTypeName: attributeInfo.typeName.length !== 0,
+        hasTypeInfo: attributeInfo.typeInfo !== null,
         isObject: attributeInfo.isObject,
         isBlock: attributeInfo.isBlock,
         objectClassName: attributeInfo.objectClassName,
         objectProtocols: attributeInfo.objectProtocols,
-        objectProtocolCount: Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0,
-        parsedTokenCount: Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0,
+        objectProtocolCount,
+        hasObjectClassName: attributeInfo.objectClassName !== null,
+        hasObjectProtocols: objectProtocolCount !== 0,
+        parsedTokenCount,
+        hasParsedTokens: parsedTokenCount !== 0,
         attributeInfo,
     };
     normalized.text = formatObjcProtocolProperty(normalized);
@@ -1781,6 +1829,8 @@ function normalizeObjcProtocolProperty(property) {
 
 function normalizeObjcProperty(property) {
     const attributeInfo = parseObjcPropertyAttributes(property.attributes);
+    const objectProtocolCount = Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0;
+    const parsedTokenCount = Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0;
     const normalized = {
         className: String(property.className || ''),
         name: String(property.name || ''),
@@ -1793,20 +1843,36 @@ function normalizeObjcProperty(property) {
         isReadonly: attributeInfo.isReadonly,
         isNonatomic: attributeInfo.isNonatomic,
         isDynamic: attributeInfo.isDynamic,
+        isReadwrite: !attributeInfo.isReadonly,
+        isAtomic: !attributeInfo.isNonatomic,
+        isStrong: attributeInfo.ownership === 'strong',
+        isCopy: attributeInfo.ownership === 'copy',
+        isWeak: attributeInfo.ownership === 'weak',
+        isAssign: attributeInfo.ownership === 'assign',
         getterName: attributeInfo.getterName,
         setterName: attributeInfo.setterName,
         ivarName: attributeInfo.ivarName,
         hasCustomGetter: attributeInfo.hasGetter,
         hasCustomSetter: attributeInfo.hasSetter,
         hasAccessorCustomization: attributeInfo.hasGetter || attributeInfo.hasSetter,
+        hasAccessorNames: attributeInfo.getterName !== null || attributeInfo.setterName !== null,
+        hasGetterName: attributeInfo.getterName !== null,
+        hasSetterName: attributeInfo.setterName !== null,
         hasBackingIvar: attributeInfo.ivarName !== null,
         hasOldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding !== null,
+        hasOwnershipModifier: attributeInfo.ownership !== 'assign',
+        hasTypeEncoding: attributeInfo.typeEncoding.length !== 0,
+        hasTypeName: attributeInfo.typeName.length !== 0,
+        hasTypeInfo: attributeInfo.typeInfo !== null,
         isObject: attributeInfo.isObject,
         isBlock: attributeInfo.isBlock,
         objectClassName: attributeInfo.objectClassName,
         objectProtocols: attributeInfo.objectProtocols,
-        objectProtocolCount: Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0,
-        parsedTokenCount: Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0,
+        objectProtocolCount,
+        hasObjectClassName: attributeInfo.objectClassName !== null,
+        hasObjectProtocols: objectProtocolCount !== 0,
+        parsedTokenCount,
+        hasParsedTokens: parsedTokenCount !== 0,
         attributeInfo,
         isClassProperty: !!property.isClassProperty,
     };
@@ -1816,6 +1882,8 @@ function normalizeObjcProperty(property) {
 
 function normalizeObjcPropertyInfo(property) {
     const attributeInfo = parseObjcPropertyAttributes(property.attributes);
+    const objectProtocolCount = Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0;
+    const parsedTokenCount = Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0;
     const normalized = {
         className: String(property.className || ''),
         name: String(property.name || ''),
@@ -1828,20 +1896,36 @@ function normalizeObjcPropertyInfo(property) {
         isReadonly: attributeInfo.isReadonly,
         isNonatomic: attributeInfo.isNonatomic,
         isDynamic: attributeInfo.isDynamic,
+        isReadwrite: !attributeInfo.isReadonly,
+        isAtomic: !attributeInfo.isNonatomic,
+        isStrong: attributeInfo.ownership === 'strong',
+        isCopy: attributeInfo.ownership === 'copy',
+        isWeak: attributeInfo.ownership === 'weak',
+        isAssign: attributeInfo.ownership === 'assign',
         getterName: attributeInfo.getterName,
         setterName: attributeInfo.setterName,
         ivarName: attributeInfo.ivarName,
         hasCustomGetter: attributeInfo.hasGetter,
         hasCustomSetter: attributeInfo.hasSetter,
         hasAccessorCustomization: attributeInfo.hasGetter || attributeInfo.hasSetter,
+        hasAccessorNames: attributeInfo.getterName !== null || attributeInfo.setterName !== null,
+        hasGetterName: attributeInfo.getterName !== null,
+        hasSetterName: attributeInfo.setterName !== null,
         hasBackingIvar: attributeInfo.ivarName !== null,
         hasOldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding !== null,
+        hasOwnershipModifier: attributeInfo.ownership !== 'assign',
+        hasTypeEncoding: attributeInfo.typeEncoding.length !== 0,
+        hasTypeName: attributeInfo.typeName.length !== 0,
+        hasTypeInfo: attributeInfo.typeInfo !== null,
         isObject: attributeInfo.isObject,
         isBlock: attributeInfo.isBlock,
         objectClassName: attributeInfo.objectClassName,
         objectProtocols: attributeInfo.objectProtocols,
-        objectProtocolCount: Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0,
-        parsedTokenCount: Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0,
+        objectProtocolCount,
+        hasObjectClassName: attributeInfo.objectClassName !== null,
+        hasObjectProtocols: objectProtocolCount !== 0,
+        parsedTokenCount,
+        hasParsedTokens: parsedTokenCount !== 0,
         attributeInfo,
         isClassProperty: !!property.isClassProperty,
         propertyPointer: property.propertyPointer.toString(),
@@ -1853,6 +1937,8 @@ function normalizeObjcPropertyInfo(property) {
 
 function normalizeObjcProtocolPropertyInfo(property) {
     const attributeInfo = parseObjcPropertyAttributes(property.attributes);
+    const objectProtocolCount = Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0;
+    const parsedTokenCount = Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0;
     const normalized = {
         protocolName: String(property.protocolName || ''),
         name: String(property.name || ''),
@@ -1865,20 +1951,36 @@ function normalizeObjcProtocolPropertyInfo(property) {
         isReadonly: attributeInfo.isReadonly,
         isNonatomic: attributeInfo.isNonatomic,
         isDynamic: attributeInfo.isDynamic,
+        isReadwrite: !attributeInfo.isReadonly,
+        isAtomic: !attributeInfo.isNonatomic,
+        isStrong: attributeInfo.ownership === 'strong',
+        isCopy: attributeInfo.ownership === 'copy',
+        isWeak: attributeInfo.ownership === 'weak',
+        isAssign: attributeInfo.ownership === 'assign',
         getterName: attributeInfo.getterName,
         setterName: attributeInfo.setterName,
         ivarName: attributeInfo.ivarName,
         hasCustomGetter: attributeInfo.hasGetter,
         hasCustomSetter: attributeInfo.hasSetter,
         hasAccessorCustomization: attributeInfo.hasGetter || attributeInfo.hasSetter,
+        hasAccessorNames: attributeInfo.getterName !== null || attributeInfo.setterName !== null,
+        hasGetterName: attributeInfo.getterName !== null,
+        hasSetterName: attributeInfo.setterName !== null,
         hasBackingIvar: attributeInfo.ivarName !== null,
         hasOldStyleTypeEncoding: attributeInfo.oldStyleTypeEncoding !== null,
+        hasOwnershipModifier: attributeInfo.ownership !== 'assign',
+        hasTypeEncoding: attributeInfo.typeEncoding.length !== 0,
+        hasTypeName: attributeInfo.typeName.length !== 0,
+        hasTypeInfo: attributeInfo.typeInfo !== null,
         isObject: attributeInfo.isObject,
         isBlock: attributeInfo.isBlock,
         objectClassName: attributeInfo.objectClassName,
         objectProtocols: attributeInfo.objectProtocols,
-        objectProtocolCount: Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0,
-        parsedTokenCount: Array.isArray(attributeInfo.parsedTokens) ? attributeInfo.parsedTokens.length : 0,
+        objectProtocolCount,
+        hasObjectClassName: attributeInfo.objectClassName !== null,
+        hasObjectProtocols: objectProtocolCount !== 0,
+        parsedTokenCount,
+        hasParsedTokens: parsedTokenCount !== 0,
         attributeInfo,
         propertyPointer: property.propertyPointer.toString(),
         imagePath: property.imagePath === undefined || property.imagePath === null ? null : String(property.imagePath),
