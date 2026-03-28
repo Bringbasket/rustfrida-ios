@@ -2036,14 +2036,38 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("__iosRustFridaAgentApi.handle('pac.stripData 0x1234')")
+                    .expect("agent pac stripData alias"),
+                "0x1234"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('pac.image libsystem_malloc.dylib'); return value === '<null>' || value === 'true' || value === 'false'; })()")
                     .expect("agent pac image"),
                 "true"
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('pac.image libsystem_malloc.dylib'); const right = __iosRustFridaAgentApi.handle('pac.isImageArm64e libsystem_malloc.dylib'); return left === right; })()")
+                    .expect("agent pac isImageArm64e alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('pac.images'); return value === '' || value.indexOf('slide=') !== -1; })()")
                     .expect("agent pac images"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('pac.images'); const right = __iosRustFridaAgentApi.handle('pac.arm64eImages'); return left === right; })()")
+                    .expect("agent pac arm64eImages alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('pac.arm64e'); const right = __iosRustFridaAgentApi.handle('pac.isProcessArm64e'); return left === right; })()")
+                    .expect("agent pac isProcessArm64e alias"),
                 "true"
             );
             assert_eq!(
@@ -5663,6 +5687,12 @@ undefined;
                 runtime
                     .eval("__iosRustFridaAgentApi.handle('native.hookenv').indexOf('active=') !== -1")
                     .expect("agent native hook env"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('native.hookenv'); const right = __iosRustFridaAgentApi.handle('native.detectHookEnvironment'); return left === right; })()")
+                    .expect("agent native detectHookEnvironment alias"),
                 "true"
             );
             assert_eq!(

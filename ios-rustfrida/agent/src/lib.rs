@@ -429,11 +429,35 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("pac.stripData 0x1234"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.isProcessArm64e"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.isImageArm64e libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.arm64eImages"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.arm64eImages malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("pac.image libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
             AgentCommand::from_legacy("pac.images"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.detectHookEnvironment"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(

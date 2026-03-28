@@ -77,9 +77,12 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
             | "native.images"
             | "native.mainImage"
             | "native.hookenv"
+            | "native.detectHookEnvironment"
             | "pac.available"
             | "pac.arm64e"
+            | "pac.isProcessArm64e"
             | "pac.images"
+            | "pac.arm64eImages"
             | "swift.available"
             | "swift.protocols"
             | "swift.typeSourceKinds"
@@ -176,8 +179,11 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.findExports ")
         || command.starts_with("native.findDependencies ")
         || command.starts_with("pac.images ")
+        || command.starts_with("pac.arm64eImages ")
         || command.starts_with("pac.image ")
+        || command.starts_with("pac.isImageArm64e ")
         || command.starts_with("pac.strip ")
+        || command.starts_with("pac.stripData ")
         || command.starts_with("pac.stripdata ")
         || command.starts_with("swift.demangle ")
         || command.starts_with("swift.symbolInfo ")
@@ -222,9 +228,12 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         "native.images" => return Some(json!({ "kind": "native.images", "filter": null })),
         "native.mainImage" => return Some(json!({ "kind": "native.main_image" })),
         "native.hookenv" => return Some(json!({ "kind": "native.hook_environment" })),
+        "native.detectHookEnvironment" => return Some(json!({ "kind": "native.hook_environment" })),
         "pac.available" => return Some(json!({ "kind": "pac.available" })),
         "pac.arm64e" => return Some(json!({ "kind": "pac.arm64e" })),
+        "pac.isProcessArm64e" => return Some(json!({ "kind": "pac.arm64e" })),
         "pac.images" => return Some(json!({ "kind": "pac.images", "filter": null })),
+        "pac.arm64eImages" => return Some(json!({ "kind": "pac.images", "filter": null })),
         "swift.available" => return Some(json!({ "kind": "swift.available" })),
         "swift.protocols" => return Some(json!({ "kind": "swift.protocols", "moduleName": null, "query": null })),
         "swift.typeSourceKinds" => return Some(json!({ "kind": "swift.type_kinds" })),
@@ -1105,7 +1114,21 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("pac.isImageArm64e ") {
+        return Some(json!({
+            "kind": "pac.image",
+            "moduleName": module_name.trim(),
+        }));
+    }
+
     if let Some(filter) = command.strip_prefix("pac.images ") {
+        return Some(json!({
+            "kind": "pac.images",
+            "filter": filter.trim(),
+        }));
+    }
+
+    if let Some(filter) = command.strip_prefix("pac.arm64eImages ") {
         return Some(json!({
             "kind": "pac.images",
             "filter": filter.trim(),
@@ -1115,6 +1138,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     if let Some(address) = command.strip_prefix("pac.strip ") {
         return Some(json!({
             "kind": "pac.strip",
+            "address": address.trim(),
+        }));
+    }
+
+    if let Some(address) = command.strip_prefix("pac.stripData ") {
+        return Some(json!({
+            "kind": "pac.stripdata",
             "address": address.trim(),
         }));
     }
@@ -2002,6 +2032,30 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("native.loadCommandInfo DemoBinary -- LC_UUID"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.detectHookEnvironment"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.isProcessArm64e"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.isImageArm64e libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.arm64eImages"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.arm64eImages malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.stripData 0x1234"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(

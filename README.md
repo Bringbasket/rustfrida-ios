@@ -246,12 +246,17 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.mainImage`
   - `native.image <address>`
   - `native.symbol <address>`
+  - `native.detectHookEnvironment`
   - `pac.available`
   - `pac.arm64e`
+  - `pac.isProcessArm64e`
   - `pac.image <module>`
+  - `pac.isImageArm64e <module>`
   - `pac.images [filter]`
+  - `pac.arm64eImages [filter]`
   - `pac.strip <address>`
   - `pac.stripdata <address>`
+  - `pac.stripData <address>`
   - `shook <type> <method>`
   - `shook <module> -- <type> <method>`
   - `shook status`
@@ -408,9 +413,11 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `swift.vtable / swift.witnessTable` 这两类列表结果现在也会额外补 `uniqueTypeCount / uniqueModuleCount / uniqueSourceKindCount / demangledCount` 这类摘要；其中 `swift.vtable` 还会补 `dispatchThunkCount / types / sourceKinds`，`swift.witnessTable` 还会补 `uniqueProtocolCount / accessorCount / protocols / sourceKinds`，适合脚本先看虚表成员和 witness table 的类型/协议/来源分布，而不必自己扫完整数组。
 - hook backend filesystem 探测现在同时覆盖 rootful 和 rootless 常见路径前缀；像 ElleKit / Substrate / Substitute / libhooker 这类生态，不再只认 `/usr/lib`，也会扫描 `/var/jb/...`。
 - `native.hookenv` / `Native.detectHookEnvironment()` 现在除了 backend / warning，还会补出面向当前 `hook_policy` 的建议动作，便于真机上快速判断该走 query-only、fail-fast 还是继续冒险装 inline hook；返回里也会区分 `allowed` 和 `inlineHooksAllowed`，不再把“允许注入做查询”和“允许安装 inline hook”混成一个布尔值；同时还会额外带上 `conflictState / riskLevel / loadedBackendCount / filesystemOnlyBackendCount / loadedImageCount / filesystemPathCount / coexistenceLayerAvailable`，以及 `bootstrapInjectionAllowed / queryCommandsAllowed / hookInstallCommandsAllowed / hookStatusCommandsAllowed / hookStopCommandsAllowed` 这组能力位，脚本可以直接按命令类别分支，不必再从 warning 文本反推当前冲突态。
+- `native.detectHookEnvironment` 现在也已接到 controller CLI / REPL / `--command-json`，作为 `native.hookenv` 的别名，方便直接按 JS API 里的 `Native.detectHookEnvironment()` 名字调用。
 - `--preflight-json` / `--inject-json` / `--command-json` 里的 `environment.hookStrategy`、`environment.hookEnvironment`、`preflight.targetHookStrategy`、`preflight.targetHookEnvironment` 现在也已经对齐带上这批 hook capability / risk 字段；controller 文本模式下的 injection environment、target hook strategy、doctor 摘要也会直接打印 `query/install/status/stop` 能力位，不必再只从 `allowed/query-only/blocked` 三种文案猜实际可做的命令类别。
 - `PAC.isImageArm64e(moduleName)` / `pac.image <module>` 现在可以直接判断单个镜像是否是 `arm64e`，比只看当前进程主镜像更适合排查某个目标 dylib 是否已经进入 PAC 风险面。
 - `PAC.arm64eImages([query])` / `pac.images [filter]` 现在可以直接列出当前进程里的 `arm64e` 镜像，适合先收敛 PAC 风险面，再决定具体看哪个模块。
+- `pac.isProcessArm64e` / `pac.isImageArm64e <module>` / `pac.arm64eImages [filter]` / `pac.stripData <address>` 现在也都已接到 controller CLI / REPL / `--command-json`，分别作为 `pac.arm64e` / `pac.image` / `pac.images` / `pac.stripdata` 的别名，方便直接按 JS API 里的 `PAC.*` 名字调用。
 - `pac.available / pac.arm64e / pac.image / pac.strip / pac.stripdata` 这组 PAC 单项查询现在也补了统一顶层状态字段，例如 `resolved / hasImage / resolvedModuleName / strippedAddress / changed`，脚本侧判定模块是否命中、以及 strip 前后地址是否变化时不必只看文本。
 - 在这之上，`pac.available / pac.arm64e / pac.image` 现在也继续补了 `resolvedAvailable / resolvedArm64e` 这类直接值字段，脚本侧做 capability / arm64e 判定时不必再在主字段和 resolved 语义之间自己对齐。
 - `pac.images` 结果现在也会额外补 `firstImagePath / lastImagePath / uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNames / pathKinds` 这类摘要，适合脚本先看当前 `arm64e` 风险面主要集中在哪类镜像路径，而不必自己再对 PAC 镜像列表做一轮聚合。

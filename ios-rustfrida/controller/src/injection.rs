@@ -3758,13 +3758,13 @@ fn print_controller_help() {
     println!("  native.mainImage");
     println!("  native.image <address>");
     println!("  native.symbol <address>");
-    println!("  native.hookenv");
+    println!("  native.hookenv|native.detectHookEnvironment");
     println!("  pac.available");
-    println!("  pac.arm64e");
-    println!("  pac.image <module>");
-    println!("  pac.images [filter]");
+    println!("  pac.arm64e|pac.isProcessArm64e");
+    println!("  pac.image <module>|pac.isImageArm64e <module>");
+    println!("  pac.images [filter]|pac.arm64eImages [filter]");
     println!("  pac.strip <address>");
-    println!("  pac.stripdata <address>");
+    println!("  pac.stripdata <address>|pac.stripData <address>");
     println!("  swift.available");
     println!("  swift.demangle <mangled-symbol>");
     println!("  swift.symbolInfo <symbol>|swift.symbolInfo <module> -- <symbol>");
@@ -4453,6 +4453,30 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.detectHookEnvironment"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.isProcessArm64e"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.isImageArm64e DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.arm64eImages"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.arm64eImages Demo"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("pac.stripData 0x1234"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("pac.image DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4588,6 +4612,11 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.findDyldInfo UIKit"));
         assert!(!command_requires_inline_hooks("native.findLoadCommands UIKit"));
         assert!(!command_requires_inline_hooks("native.loadCommands UIKit"));
+        assert!(!command_requires_inline_hooks("native.detectHookEnvironment"));
+        assert!(!command_requires_inline_hooks("pac.isProcessArm64e"));
+        assert!(!command_requires_inline_hooks("pac.isImageArm64e UIKit"));
+        assert!(!command_requires_inline_hooks("pac.arm64eImages UIKit"));
+        assert!(!command_requires_inline_hooks("pac.stripData 0x1234"));
         assert!(!command_requires_inline_hooks("native.findImports UIKit -- malloc"));
         assert!(!command_requires_inline_hooks("native.exportInfo UIKit -- malloc"));
         assert!(!command_requires_inline_hooks(

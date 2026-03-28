@@ -8247,7 +8247,7 @@ function legacyToSpec(command) {
         };
     }
 
-    if (trimmed === 'native.hookenv') {
+    if (trimmed === 'native.hookenv' || trimmed === 'native.detectHookEnvironment') {
         return { kind: 'native.hook_environment' };
     }
 
@@ -8255,7 +8255,7 @@ function legacyToSpec(command) {
         return { kind: 'pac.available' };
     }
 
-    if (trimmed === 'pac.arm64e') {
+    if (trimmed === 'pac.arm64e' || trimmed === 'pac.isProcessArm64e') {
         return { kind: 'pac.arm64e' };
     }
 
@@ -8267,7 +8267,15 @@ function legacyToSpec(command) {
         return { kind: 'pac.image', moduleName };
     }
 
-    if (trimmed === 'pac.images') {
+    if (trimmed.startsWith('pac.isImageArm64e ')) {
+        const moduleName = trimmed.slice('pac.isImageArm64e '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('pac.isImageArm64e usage: pac.isImageArm64e <module>');
+        }
+        return { kind: 'pac.image', moduleName };
+    }
+
+    if (trimmed === 'pac.images' || trimmed === 'pac.arm64eImages') {
         return { kind: 'pac.images', filter: null };
     }
 
@@ -8279,10 +8287,25 @@ function legacyToSpec(command) {
         return { kind: 'pac.images', filter };
     }
 
+    if (trimmed.startsWith('pac.arm64eImages ')) {
+        const filter = trimmed.slice('pac.arm64eImages '.length).trim();
+        if (filter.length === 0) {
+            throw new Error('pac.arm64eImages usage: pac.arm64eImages [filter]');
+        }
+        return { kind: 'pac.images', filter };
+    }
+
     if (trimmed.startsWith('pac.stripdata ')) {
         return {
             kind: 'pac.stripdata',
             address: trimmed.slice('pac.stripdata '.length),
+        };
+    }
+
+    if (trimmed.startsWith('pac.stripData ')) {
+        return {
+            kind: 'pac.stripdata',
+            address: trimmed.slice('pac.stripData '.length),
         };
     }
 
