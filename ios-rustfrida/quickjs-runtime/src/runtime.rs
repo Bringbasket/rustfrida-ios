@@ -2580,7 +2580,80 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_properties', protocolName: 'NSObject', filter: 'description' }); return result.kind === 'objc.protocol_properties' && result.protocolName === 'NSObject' && result.filter === 'description' && result.hasFilter === true && result.count === result.properties.length && typeof result.hasProperties === 'boolean' && ((result.properties.length === 0 && result.hasProperties === false && result.firstProperty === null && result.lastProperty === null) || (result.hasProperties === true && typeof result.firstProperty === 'string' && typeof result.lastProperty === 'string' && typeof result.properties[0].typeEncoding === 'string' && typeof result.properties[0].typeName === 'string' && Array.isArray(result.properties[0].objectProtocols) && typeof result.properties[0].typeInfo === 'object' && typeof result.properties[0].attributeInfo === 'object' && typeof result.properties[0].isReadwrite === 'boolean' && typeof result.properties[0].isAtomic === 'boolean' && typeof result.properties[0].isStrong === 'boolean' && typeof result.properties[0].isCopy === 'boolean' && typeof result.properties[0].isWeak === 'boolean' && typeof result.properties[0].isAssign === 'boolean' && typeof result.properties[0].hasAccessorNames === 'boolean' && typeof result.properties[0].hasOwnershipModifier === 'boolean' && typeof result.properties[0].hasTypeInfo === 'boolean' && typeof result.properties[0].hasObjectClassName === 'boolean' && typeof result.properties[0].hasObjectProtocols === 'boolean' && typeof result.properties[0].hasParsedTokens === 'boolean')) && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_properties', protocolName: 'NSObject', filter: 'description' });
+                            if (result.kind !== 'objc.protocol_properties' || result.protocolName !== 'NSObject' || result.filter !== 'description' || result.hasFilter !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.properties.length || typeof result.hasProperties !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueOwnershipCount !== 'number' ||
+                                    typeof result.uniqueObjectClassCount !== 'number' ||
+                                    typeof result.readonlyPropertyCount !== 'number' ||
+                                    typeof result.readwritePropertyCount !== 'number' ||
+                                    typeof result.atomicPropertyCount !== 'number' ||
+                                    typeof result.nonatomicPropertyCount !== 'number' ||
+                                    typeof result.dynamicPropertyCount !== 'number' ||
+                                    typeof result.strongPropertyCount !== 'number' ||
+                                    typeof result.copyPropertyCount !== 'number' ||
+                                    typeof result.weakPropertyCount !== 'number' ||
+                                    typeof result.assignPropertyCount !== 'number' ||
+                                    typeof result.objectPropertyCount !== 'number' ||
+                                    typeof result.blockPropertyCount !== 'number' ||
+                                    typeof result.propertiesWithAccessorCustomizationCount !== 'number' ||
+                                    typeof result.propertiesWithBackingIvarCount !== 'number' ||
+                                    typeof result.propertiesWithObjectProtocolsCount !== 'number' ||
+                                    typeof result.propertiesWithTypeInfoCount !== 'number' ||
+                                    typeof result.propertiesWithParsedTokensCount !== 'number' ||
+                                    typeof result.totalObjectProtocolCount !== 'number' ||
+                                    !Array.isArray(result.ownerships) ||
+                                    !Array.isArray(result.objectClasses)) {
+                                return false;
+                            }
+                            if (result.properties.length === 0) {
+                                return result.hasProperties === false &&
+                                    result.firstProperty === null &&
+                                    result.lastProperty === null;
+                            }
+                            const ownershipSummary = result.ownerships.length === 0 ? null : result.ownerships[0];
+                            const objectClassSummary = result.objectClasses.length === 0 ? null : result.objectClasses[0];
+                            return result.hasProperties === true &&
+                                typeof result.firstProperty === 'string' &&
+                                typeof result.lastProperty === 'string' &&
+                                result.text === result.properties.map((property) => property.text).join('\\n') &&
+                                (result.firstObjectClassName === null || typeof result.firstObjectClassName === 'string') &&
+                                (result.lastObjectClassName === null || typeof result.lastObjectClassName === 'string') &&
+                                (ownershipSummary === null || (
+                                    typeof ownershipSummary.ownership === 'string' &&
+                                    typeof ownershipSummary.count === 'number' &&
+                                    typeof ownershipSummary.firstProperty === 'string' &&
+                                    typeof ownershipSummary.lastProperty === 'string'
+                                )) &&
+                                (objectClassSummary === null || (
+                                    typeof objectClassSummary.objectClassName === 'string' &&
+                                    typeof objectClassSummary.count === 'number' &&
+                                    typeof objectClassSummary.firstProperty === 'string' &&
+                                    typeof objectClassSummary.lastProperty === 'string'
+                                )) &&
+                                typeof result.properties[0].typeEncoding === 'string' &&
+                                typeof result.properties[0].typeName === 'string' &&
+                                Array.isArray(result.properties[0].objectProtocols) &&
+                                typeof result.properties[0].typeInfo === 'object' &&
+                                typeof result.properties[0].attributeInfo === 'object' &&
+                                typeof result.properties[0].isReadwrite === 'boolean' &&
+                                typeof result.properties[0].isAtomic === 'boolean' &&
+                                typeof result.properties[0].isStrong === 'boolean' &&
+                                typeof result.properties[0].isCopy === 'boolean' &&
+                                typeof result.properties[0].isWeak === 'boolean' &&
+                                typeof result.properties[0].isAssign === 'boolean' &&
+                                typeof result.properties[0].hasAccessorNames === 'boolean' &&
+                                typeof result.properties[0].hasOwnershipModifier === 'boolean' &&
+                                typeof result.properties[0].hasTypeInfo === 'boolean' &&
+                                typeof result.properties[0].hasObjectClassName === 'boolean' &&
+                                typeof result.properties[0].hasObjectProtocols === 'boolean' &&
+                                typeof result.properties[0].hasParsedTokens === 'boolean';
+                        })()"
                     )
                     .expect("agent objc protocolProperties result"),
                 "true"
@@ -2652,7 +2725,80 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return result.kind === 'objc.properties' && result.className === 'NSObject' && result.isClassProperty === true && result.filter === 'delegate' && result.hasFilter === true && result.count === result.properties.length && typeof result.hasProperties === 'boolean' && ((result.properties.length === 0 && result.hasProperties === false && result.firstProperty === null && result.lastProperty === null) || (result.hasProperties === true && typeof result.firstProperty === 'string' && typeof result.lastProperty === 'string' && typeof result.properties[0].typeEncoding === 'string' && typeof result.properties[0].typeName === 'string' && Array.isArray(result.properties[0].objectProtocols) && typeof result.properties[0].typeInfo === 'object' && typeof result.properties[0].attributeInfo === 'object' && typeof result.properties[0].isReadwrite === 'boolean' && typeof result.properties[0].isAtomic === 'boolean' && typeof result.properties[0].isStrong === 'boolean' && typeof result.properties[0].isCopy === 'boolean' && typeof result.properties[0].isWeak === 'boolean' && typeof result.properties[0].isAssign === 'boolean' && typeof result.properties[0].hasAccessorNames === 'boolean' && typeof result.properties[0].hasOwnershipModifier === 'boolean' && typeof result.properties[0].hasTypeInfo === 'boolean' && typeof result.properties[0].hasObjectClassName === 'boolean' && typeof result.properties[0].hasObjectProtocols === 'boolean' && typeof result.properties[0].hasParsedTokens === 'boolean')) && result.text === result.properties.map((property) => property.text).join('\\n'); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' });
+                            if (result.kind !== 'objc.properties' || result.className !== 'NSObject' || result.isClassProperty !== true || result.filter !== 'delegate' || result.hasFilter !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.properties.length || typeof result.hasProperties !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueOwnershipCount !== 'number' ||
+                                    typeof result.uniqueObjectClassCount !== 'number' ||
+                                    typeof result.readonlyPropertyCount !== 'number' ||
+                                    typeof result.readwritePropertyCount !== 'number' ||
+                                    typeof result.atomicPropertyCount !== 'number' ||
+                                    typeof result.nonatomicPropertyCount !== 'number' ||
+                                    typeof result.dynamicPropertyCount !== 'number' ||
+                                    typeof result.strongPropertyCount !== 'number' ||
+                                    typeof result.copyPropertyCount !== 'number' ||
+                                    typeof result.weakPropertyCount !== 'number' ||
+                                    typeof result.assignPropertyCount !== 'number' ||
+                                    typeof result.objectPropertyCount !== 'number' ||
+                                    typeof result.blockPropertyCount !== 'number' ||
+                                    typeof result.propertiesWithAccessorCustomizationCount !== 'number' ||
+                                    typeof result.propertiesWithBackingIvarCount !== 'number' ||
+                                    typeof result.propertiesWithObjectProtocolsCount !== 'number' ||
+                                    typeof result.propertiesWithTypeInfoCount !== 'number' ||
+                                    typeof result.propertiesWithParsedTokensCount !== 'number' ||
+                                    typeof result.totalObjectProtocolCount !== 'number' ||
+                                    !Array.isArray(result.ownerships) ||
+                                    !Array.isArray(result.objectClasses)) {
+                                return false;
+                            }
+                            if (result.properties.length === 0) {
+                                return result.hasProperties === false &&
+                                    result.firstProperty === null &&
+                                    result.lastProperty === null;
+                            }
+                            const ownershipSummary = result.ownerships.length === 0 ? null : result.ownerships[0];
+                            const objectClassSummary = result.objectClasses.length === 0 ? null : result.objectClasses[0];
+                            return result.hasProperties === true &&
+                                typeof result.firstProperty === 'string' &&
+                                typeof result.lastProperty === 'string' &&
+                                result.text === result.properties.map((property) => property.text).join('\\n') &&
+                                (result.firstObjectClassName === null || typeof result.firstObjectClassName === 'string') &&
+                                (result.lastObjectClassName === null || typeof result.lastObjectClassName === 'string') &&
+                                (ownershipSummary === null || (
+                                    typeof ownershipSummary.ownership === 'string' &&
+                                    typeof ownershipSummary.count === 'number' &&
+                                    typeof ownershipSummary.firstProperty === 'string' &&
+                                    typeof ownershipSummary.lastProperty === 'string'
+                                )) &&
+                                (objectClassSummary === null || (
+                                    typeof objectClassSummary.objectClassName === 'string' &&
+                                    typeof objectClassSummary.count === 'number' &&
+                                    typeof objectClassSummary.firstProperty === 'string' &&
+                                    typeof objectClassSummary.lastProperty === 'string'
+                                )) &&
+                                typeof result.properties[0].typeEncoding === 'string' &&
+                                typeof result.properties[0].typeName === 'string' &&
+                                Array.isArray(result.properties[0].objectProtocols) &&
+                                typeof result.properties[0].typeInfo === 'object' &&
+                                typeof result.properties[0].attributeInfo === 'object' &&
+                                typeof result.properties[0].isReadwrite === 'boolean' &&
+                                typeof result.properties[0].isAtomic === 'boolean' &&
+                                typeof result.properties[0].isStrong === 'boolean' &&
+                                typeof result.properties[0].isCopy === 'boolean' &&
+                                typeof result.properties[0].isWeak === 'boolean' &&
+                                typeof result.properties[0].isAssign === 'boolean' &&
+                                typeof result.properties[0].hasAccessorNames === 'boolean' &&
+                                typeof result.properties[0].hasOwnershipModifier === 'boolean' &&
+                                typeof result.properties[0].hasTypeInfo === 'boolean' &&
+                                typeof result.properties[0].hasObjectClassName === 'boolean' &&
+                                typeof result.properties[0].hasObjectProtocols === 'boolean' &&
+                                typeof result.properties[0].hasParsedTokens === 'boolean';
+                        })()"
                     )
                     .expect("agent objc properties result"),
                 "true"

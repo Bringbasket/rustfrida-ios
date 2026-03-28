@@ -2124,6 +2124,136 @@ function normalizeObjcProtocolProperty(property) {
     return normalized;
 }
 
+function summarizeObjcProperties(properties) {
+    const ownerships = [];
+    const objectClasses = [];
+    let readonlyPropertyCount = 0;
+    let readwritePropertyCount = 0;
+    let atomicPropertyCount = 0;
+    let nonatomicPropertyCount = 0;
+    let dynamicPropertyCount = 0;
+    let strongPropertyCount = 0;
+    let copyPropertyCount = 0;
+    let weakPropertyCount = 0;
+    let assignPropertyCount = 0;
+    let objectPropertyCount = 0;
+    let blockPropertyCount = 0;
+    let propertiesWithAccessorCustomizationCount = 0;
+    let propertiesWithBackingIvarCount = 0;
+    let propertiesWithObjectProtocolsCount = 0;
+    let propertiesWithTypeInfoCount = 0;
+    let propertiesWithParsedTokensCount = 0;
+    let totalObjectProtocolCount = 0;
+    let firstObjectClassName = null;
+    let lastObjectClassName = null;
+    for (const property of properties) {
+        totalObjectProtocolCount += property.objectProtocolCount;
+        if (property.isReadonly) {
+            readonlyPropertyCount += 1;
+        }
+        if (property.isReadwrite) {
+            readwritePropertyCount += 1;
+        }
+        if (property.isAtomic) {
+            atomicPropertyCount += 1;
+        }
+        if (property.isNonatomic) {
+            nonatomicPropertyCount += 1;
+        }
+        if (property.isDynamic) {
+            dynamicPropertyCount += 1;
+        }
+        if (property.isStrong) {
+            strongPropertyCount += 1;
+        }
+        if (property.isCopy) {
+            copyPropertyCount += 1;
+        }
+        if (property.isWeak) {
+            weakPropertyCount += 1;
+        }
+        if (property.isAssign) {
+            assignPropertyCount += 1;
+        }
+        if (property.isObject) {
+            objectPropertyCount += 1;
+        }
+        if (property.isBlock) {
+            blockPropertyCount += 1;
+        }
+        if (property.hasAccessorCustomization) {
+            propertiesWithAccessorCustomizationCount += 1;
+        }
+        if (property.hasBackingIvar) {
+            propertiesWithBackingIvarCount += 1;
+        }
+        if (property.hasObjectProtocols) {
+            propertiesWithObjectProtocolsCount += 1;
+        }
+        if (property.hasTypeInfo) {
+            propertiesWithTypeInfoCount += 1;
+        }
+        if (property.hasParsedTokens) {
+            propertiesWithParsedTokensCount += 1;
+        }
+        let ownershipSummary = ownerships.find((item) => item.ownership === property.ownership);
+        if (ownershipSummary === undefined) {
+            ownershipSummary = {
+                ownership: property.ownership,
+                count: 0,
+                firstProperty: property.name,
+                lastProperty: property.name,
+            };
+            ownerships.push(ownershipSummary);
+        }
+        ownershipSummary.count += 1;
+        ownershipSummary.lastProperty = property.name;
+        if (property.hasObjectClassName) {
+            if (firstObjectClassName === null) {
+                firstObjectClassName = property.objectClassName;
+            }
+            lastObjectClassName = property.objectClassName;
+            let objectClassSummary = objectClasses.find((item) => item.objectClassName === property.objectClassName);
+            if (objectClassSummary === undefined) {
+                objectClassSummary = {
+                    objectClassName: property.objectClassName,
+                    count: 0,
+                    firstProperty: property.name,
+                    lastProperty: property.name,
+                };
+                objectClasses.push(objectClassSummary);
+            }
+            objectClassSummary.count += 1;
+            objectClassSummary.lastProperty = property.name;
+        }
+    }
+    return {
+        readonlyPropertyCount,
+        readwritePropertyCount,
+        atomicPropertyCount,
+        nonatomicPropertyCount,
+        dynamicPropertyCount,
+        strongPropertyCount,
+        copyPropertyCount,
+        weakPropertyCount,
+        assignPropertyCount,
+        objectPropertyCount,
+        blockPropertyCount,
+        propertiesWithAccessorCustomizationCount,
+        propertiesWithBackingIvarCount,
+        propertiesWithObjectProtocolsCount,
+        propertiesWithTypeInfoCount,
+        propertiesWithParsedTokensCount,
+        totalObjectProtocolCount,
+        firstObjectClassName,
+        lastObjectClassName,
+        uniqueOwnershipCount: ownerships.length,
+        uniqueObjectClassCount: objectClasses.length,
+        ownerships,
+        objectClasses,
+    };
+}
+
 function normalizeObjcProperty(property) {
     const attributeInfo = parseObjcPropertyAttributes(property.attributes);
     const objectProtocolCount = Array.isArray(attributeInfo.objectProtocols) ? attributeInfo.objectProtocols.length : 0;
@@ -3911,6 +4041,7 @@ function handleSpecResult(spec) {
         const protocolName = String(spec.protocolName || '');
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const properties = ObjC.protocolProperties(protocolName, filter).map((property) => normalizeObjcProtocolProperty(property));
+        const summary = summarizeObjcProperties(properties);
         return {
             kind: 'objc.protocol_properties',
             protocolName,
@@ -3920,6 +4051,29 @@ function handleSpecResult(spec) {
             hasProperties: properties.length !== 0,
             firstProperty: properties.length === 0 ? null : properties[0].name,
             lastProperty: properties.length === 0 ? null : properties[properties.length - 1].name,
+            firstObjectClassName: summary.firstObjectClassName,
+            lastObjectClassName: summary.lastObjectClassName,
+            uniqueOwnershipCount: summary.uniqueOwnershipCount,
+            uniqueObjectClassCount: summary.uniqueObjectClassCount,
+            readonlyPropertyCount: summary.readonlyPropertyCount,
+            readwritePropertyCount: summary.readwritePropertyCount,
+            atomicPropertyCount: summary.atomicPropertyCount,
+            nonatomicPropertyCount: summary.nonatomicPropertyCount,
+            dynamicPropertyCount: summary.dynamicPropertyCount,
+            strongPropertyCount: summary.strongPropertyCount,
+            copyPropertyCount: summary.copyPropertyCount,
+            weakPropertyCount: summary.weakPropertyCount,
+            assignPropertyCount: summary.assignPropertyCount,
+            objectPropertyCount: summary.objectPropertyCount,
+            blockPropertyCount: summary.blockPropertyCount,
+            propertiesWithAccessorCustomizationCount: summary.propertiesWithAccessorCustomizationCount,
+            propertiesWithBackingIvarCount: summary.propertiesWithBackingIvarCount,
+            propertiesWithObjectProtocolsCount: summary.propertiesWithObjectProtocolsCount,
+            propertiesWithTypeInfoCount: summary.propertiesWithTypeInfoCount,
+            propertiesWithParsedTokensCount: summary.propertiesWithParsedTokensCount,
+            totalObjectProtocolCount: summary.totalObjectProtocolCount,
+            ownerships: summary.ownerships,
+            objectClasses: summary.objectClasses,
             properties,
             text: properties.map((property) => property.text).join('\n'),
         };
@@ -4090,6 +4244,7 @@ function handleSpecResult(spec) {
         const isClassProperty = !!spec.isClassProperty;
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const properties = ObjC.properties(className, isClassProperty, filter).map((property) => normalizeObjcProperty(property));
+        const summary = summarizeObjcProperties(properties);
         return {
             kind: 'objc.properties',
             className,
@@ -4100,6 +4255,29 @@ function handleSpecResult(spec) {
             hasProperties: properties.length !== 0,
             firstProperty: properties.length === 0 ? null : properties[0].name,
             lastProperty: properties.length === 0 ? null : properties[properties.length - 1].name,
+            firstObjectClassName: summary.firstObjectClassName,
+            lastObjectClassName: summary.lastObjectClassName,
+            uniqueOwnershipCount: summary.uniqueOwnershipCount,
+            uniqueObjectClassCount: summary.uniqueObjectClassCount,
+            readonlyPropertyCount: summary.readonlyPropertyCount,
+            readwritePropertyCount: summary.readwritePropertyCount,
+            atomicPropertyCount: summary.atomicPropertyCount,
+            nonatomicPropertyCount: summary.nonatomicPropertyCount,
+            dynamicPropertyCount: summary.dynamicPropertyCount,
+            strongPropertyCount: summary.strongPropertyCount,
+            copyPropertyCount: summary.copyPropertyCount,
+            weakPropertyCount: summary.weakPropertyCount,
+            assignPropertyCount: summary.assignPropertyCount,
+            objectPropertyCount: summary.objectPropertyCount,
+            blockPropertyCount: summary.blockPropertyCount,
+            propertiesWithAccessorCustomizationCount: summary.propertiesWithAccessorCustomizationCount,
+            propertiesWithBackingIvarCount: summary.propertiesWithBackingIvarCount,
+            propertiesWithObjectProtocolsCount: summary.propertiesWithObjectProtocolsCount,
+            propertiesWithTypeInfoCount: summary.propertiesWithTypeInfoCount,
+            propertiesWithParsedTokensCount: summary.propertiesWithParsedTokensCount,
+            totalObjectProtocolCount: summary.totalObjectProtocolCount,
+            ownerships: summary.ownerships,
+            objectClasses: summary.objectClasses,
             properties,
             text: properties.map((property) => property.text).join('\n'),
         };
