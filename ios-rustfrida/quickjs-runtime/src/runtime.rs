@@ -3005,6 +3005,170 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            function checkClass(result) {
+                                const info = result.classInfo;
+                                if (info === null) {
+                                    return result.resolvedClassPointer === null &&
+                                        result.resolvedSuperclassPointer === null &&
+                                        result.instanceSize === 0 &&
+                                        result.instancePropertyCount === 0 &&
+                                        result.classPropertyCount === 0 &&
+                                        result.ivarCount === 0 &&
+                                        result.instanceMethodCount === 0 &&
+                                        result.classMethodCount === 0;
+                                }
+                                return result.resolvedClassPointer === info.classPointer &&
+                                    result.resolvedSuperclassPointer === info.superclassPointer &&
+                                    result.instanceSize === info.instanceSize &&
+                                    result.instancePropertyCount === info.instancePropertyCount &&
+                                    result.classPropertyCount === info.classPropertyCount &&
+                                    result.ivarCount === info.ivarCount &&
+                                    result.instanceMethodCount === info.instanceMethodCount &&
+                                    result.classMethodCount === info.classMethodCount;
+                            }
+
+                            function checkProtocol(result) {
+                                const info = result.protocolInfo;
+                                if (info === null) {
+                                    return result.resolvedProtocolPointer === null &&
+                                        result.requiredInstanceMethodCount === 0 &&
+                                        result.requiredClassMethodCount === 0 &&
+                                        result.optionalInstanceMethodCount === 0 &&
+                                        result.optionalClassMethodCount === 0;
+                                }
+                                return result.resolvedProtocolPointer === info.protocolPointer &&
+                                    result.requiredInstanceMethodCount === info.requiredInstanceMethodCount &&
+                                    result.requiredClassMethodCount === info.requiredClassMethodCount &&
+                                    result.optionalInstanceMethodCount === info.optionalInstanceMethodCount &&
+                                    result.optionalClassMethodCount === info.optionalClassMethodCount;
+                            }
+
+                            function checkMethod(result) {
+                                const info = result.methodInfo;
+                                if (info === null) {
+                                    return result.resolvedClassName === null &&
+                                        result.resolvedMethodPointer === null &&
+                                        result.resolvedImp === null &&
+                                        result.resolvedReturnTypeName === null &&
+                                        result.resolvedImagePath === null &&
+                                        result.argumentCount === 0 &&
+                                        result.explicitArgumentCount === 0 &&
+                                        result.hiddenArgumentCount === 0 &&
+                                        result.hasHiddenArguments === false;
+                                }
+                                return result.resolvedClassName === info.className &&
+                                    result.resolvedMethodPointer === info.methodPointer &&
+                                    result.resolvedImp === info.imp &&
+                                    result.resolvedReturnTypeName === info.returnTypeName &&
+                                    result.resolvedImagePath === info.imagePath &&
+                                    result.argumentCount === info.argumentCount &&
+                                    result.explicitArgumentCount === info.explicitArgumentCount &&
+                                    result.hiddenArgumentCount === info.hiddenArgumentCount &&
+                                    result.hasHiddenArguments === (info.hasHiddenArguments === true);
+                            }
+
+                            function checkProtocolMethod(result) {
+                                const info = result.methodInfo;
+                                if (info === null) {
+                                    return result.resolvedProtocolName === null &&
+                                        result.resolvedReturnTypeName === null &&
+                                        result.resolvedImagePath === null &&
+                                        result.argumentCount === 0 &&
+                                        result.explicitArgumentCount === 0 &&
+                                        result.hiddenArgumentCount === 0 &&
+                                        result.hasHiddenArguments === false;
+                                }
+                                return result.resolvedProtocolName === info.protocolName &&
+                                    result.resolvedReturnTypeName === info.returnTypeName &&
+                                    result.resolvedImagePath === info.imagePath &&
+                                    result.argumentCount === info.argumentCount &&
+                                    result.explicitArgumentCount === info.explicitArgumentCount &&
+                                    result.hiddenArgumentCount === info.hiddenArgumentCount &&
+                                    result.hasHiddenArguments === (info.hasHiddenArguments === true);
+                            }
+
+                            function checkProperty(result) {
+                                const info = result.propertyInfo;
+                                if (info === null) {
+                                    return result.resolvedClassName === null &&
+                                        result.resolvedPropertyPointer === null &&
+                                        result.getterName === null &&
+                                        result.setterName === null &&
+                                        result.ivarName === null &&
+                                        result.objectProtocolCount === 0 &&
+                                        result.parsedTokenCount === 0 &&
+                                        result.resolvedImagePath === null;
+                                }
+                                return result.resolvedClassName === info.className &&
+                                    result.resolvedPropertyPointer === info.propertyPointer &&
+                                    result.getterName === info.getterName &&
+                                    result.setterName === info.setterName &&
+                                    result.ivarName === info.ivarName &&
+                                    result.objectProtocolCount === info.objectProtocolCount &&
+                                    result.parsedTokenCount === info.parsedTokenCount &&
+                                    result.resolvedImagePath === info.imagePath;
+                            }
+
+                            function checkProtocolProperty(result) {
+                                const info = result.propertyInfo;
+                                if (info === null) {
+                                    return result.resolvedProtocolName === null &&
+                                        result.resolvedPropertyPointer === null &&
+                                        result.getterName === null &&
+                                        result.setterName === null &&
+                                        result.ivarName === null &&
+                                        result.objectProtocolCount === 0 &&
+                                        result.parsedTokenCount === 0;
+                                }
+                                return result.resolvedProtocolName === info.protocolName &&
+                                    result.resolvedPropertyPointer === info.propertyPointer &&
+                                    result.getterName === info.getterName &&
+                                    result.setterName === info.setterName &&
+                                    result.ivarName === info.ivarName &&
+                                    result.objectProtocolCount === info.objectProtocolCount &&
+                                    result.parsedTokenCount === info.parsedTokenCount;
+                            }
+
+                            function checkIvar(result) {
+                                const info = result.ivarInfo;
+                                if (info === null) {
+                                    return result.resolvedClassName === null &&
+                                        result.resolvedIvarPointer === null &&
+                                        result.resolvedOffset === null &&
+                                        result.resolvedOffsetHex === null &&
+                                        result.objectProtocolCount === 0 &&
+                                        result.arrayCount === null &&
+                                        result.qualifierCount === 0 &&
+                                        result.hasMemberName === false &&
+                                        result.resolvedImagePath === null;
+                                }
+                                return result.resolvedClassName === info.className &&
+                                    result.resolvedIvarPointer === info.ivarPointer &&
+                                    result.resolvedOffset === info.offset &&
+                                    result.resolvedOffsetHex === info.offsetHex &&
+                                    result.objectProtocolCount === info.objectProtocolCount &&
+                                    result.arrayCount === info.arrayCount &&
+                                    result.qualifierCount === info.qualifierCount &&
+                                    result.hasMemberName === (info.hasMemberName === true) &&
+                                    result.resolvedImagePath === info.imagePath;
+                            }
+
+                            return checkClass(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true })) &&
+                                checkProtocol(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_info', protocolName: 'NSObject' })) &&
+                                checkMethod(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_info', className: 'NSObject', selectorName: 'init', isClassMethod: false })) &&
+                                checkProtocolMethod(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_method_info', protocolName: 'NSObject', selectorName: 'description', isRequired: false, isInstanceMethod: false })) &&
+                                checkProperty(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.property_info', className: 'NSObject', propertyName: 'description', isClassProperty: false })) &&
+                                checkProtocolProperty(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_property_info', protocolName: 'NSObject', propertyName: 'description' })) &&
+                                checkIvar(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }));
+                        })()"#
+                    )
+                    .expect("agent objc info summary fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' });
                             if (result.kind !== 'objc.ivars' || result.className !== 'NSObject' || result.filter !== 'delegate' || result.hasFilter !== true) {
