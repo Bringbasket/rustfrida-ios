@@ -1690,6 +1690,34 @@ function normalizeImage(image) {
     };
 }
 
+function classifyLibraryPathKind(path) {
+    if (path.length === 0) {
+        return 'unknown';
+    }
+    if (path.startsWith('@loader_path/')) {
+        return 'loader_path';
+    }
+    if (path.startsWith('@executable_path/')) {
+        return 'executable_path';
+    }
+    if (path.startsWith('@rpath/')) {
+        return 'rpath';
+    }
+    if (path.startsWith('/System/') || path.startsWith('/usr/lib/')) {
+        return 'system';
+    }
+    if (path.startsWith('/private/var/containers/') || path.startsWith('/var/containers/')) {
+        return 'app';
+    }
+    if (path.startsWith('/Applications/')) {
+        return 'application';
+    }
+    if (path.startsWith('/private/var/jb/') || path.startsWith('/var/jb/') || path.startsWith('/private/preboot/')) {
+        return 'jailbreak';
+    }
+    return 'other';
+}
+
 function normalizeObjcMethod(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
     const selectorInfo = parseObjcSelectorInfo(method.selector);
@@ -2874,6 +2902,7 @@ function normalizeDependency(dep) {
     const path = String(dep.path || '');
     const pathParts = path.split('/').filter(Boolean);
     const name = pathParts.length === 0 ? path : pathParts[pathParts.length - 1];
+    const pathKind = classifyLibraryPathKind(path);
     const kind = String(dep.kind || 'load');
     const currentVersion = formatPackedVersion(dep.currentVersion);
     const compatibilityVersion = formatPackedVersion(dep.compatibilityVersion);
@@ -2884,6 +2913,9 @@ function normalizeDependency(dep) {
         ordinal: Number(dep.ordinal || 0),
         path,
         hasPath: path.length !== 0,
+        pathKind,
+        isTokenPath: path.startsWith('@'),
+        pathDepth: pathParts.length,
         name,
         hasName: name.length !== 0,
         kind,
@@ -3812,10 +3844,19 @@ function normalizeUuid(imageUuid) {
 
 function normalizeRpath(rpath) {
     const path = String(rpath.path || '');
+    const pathParts = path.split('/').filter(Boolean);
+    const pathKind = classifyLibraryPathKind(path);
     return {
         moduleName: String(rpath.moduleName || ''),
         moduleBase: rpath.moduleBase ? rpath.moduleBase.toString() : null,
         path,
+        hasPath: path.length !== 0,
+        pathKind,
+        isTokenPath: path.startsWith('@'),
+        usesLoaderPath: path.startsWith('@loader_path'),
+        usesExecutablePath: path.startsWith('@executable_path'),
+        usesRpathToken: path.startsWith('@rpath'),
+        pathDepth: pathParts.length,
         text: formatRpath(rpath),
     };
 }
@@ -5409,6 +5450,51 @@ function handleSpecResult(spec) {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const dependencies = Native.dependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
+        const weakDependencies = dependencies.filter((dependency) => dependency.isWeakDependency);
+        const reexportDependencies = dependencies.filter((dependency) => dependency.isReexportDependency);
+        const upwardDependencies = dependencies.filter((dependency) => dependency.isUpwardDependency);
+        const loadDependencies = dependencies.filter((dependency) => dependency.isLoadDependency);
+        const timestampedDependencies = dependencies.filter((dependency) => dependency.hasTimestamp);
+        const versionMismatchDependencies = dependencies.filter((dependency) => dependency.versionMismatch);
+        const pathKindSummaries = [];
+        const kindSummaries = [];
+        for (const dependency of dependencies) {
+            let pathKindSummary = pathKindSummaries.find((item) => item.pathKind === dependency.pathKind);
+            if (pathKindSummary === undefined) {
+                pathKindSummary = {
+                    pathKind: dependency.pathKind,
+                    count: 0,
+                    firstDependencyName: dependency.name,
+                    lastDependencyName: dependency.name,
+                    firstPath: dependency.path,
+                    lastPath: dependency.path,
+                };
+                pathKindSummaries.push(pathKindSummary);
+            }
+            pathKindSummary.count += 1;
+            pathKindSummary.lastDependencyName = dependency.name;
+            pathKindSummary.lastPath = dependency.path;
+            let kindSummary = kindSummaries.find((item) => item.kind === dependency.kind);
+            if (kindSummary === undefined) {
+                kindSummary = {
+                    kind: dependency.kind,
+                    count: 0,
+                    firstDependencyName: dependency.name,
+                    lastDependencyName: dependency.name,
+                    timestampedCount: 0,
+                    versionMismatchCount: 0,
+                };
+                kindSummaries.push(kindSummary);
+            }
+            kindSummary.count += 1;
+            kindSummary.lastDependencyName = dependency.name;
+            if (dependency.hasTimestamp) {
+                kindSummary.timestampedCount += 1;
+            }
+            if (dependency.versionMismatch) {
+                kindSummary.versionMismatchCount += 1;
+            }
+        }
         return {
             kind: 'native.dependencies',
             moduleName,
@@ -5418,6 +5504,24 @@ function handleSpecResult(spec) {
             hasDependencies: dependencies.length !== 0,
             firstDependencyName: dependencies.length === 0 ? null : dependencies[0].name,
             lastDependencyName: dependencies.length === 0 ? null : dependencies[dependencies.length - 1].name,
+            firstPath: dependencies.length === 0 ? null : dependencies[0].path,
+            lastPath: dependencies.length === 0 ? null : dependencies[dependencies.length - 1].path,
+            uniquePathKindCount: pathKindSummaries.length,
+            uniqueKindCount: kindSummaries.length,
+            weakDependencyCount: weakDependencies.length,
+            hasWeakDependencies: weakDependencies.length !== 0,
+            reexportDependencyCount: reexportDependencies.length,
+            hasReexportDependencies: reexportDependencies.length !== 0,
+            upwardDependencyCount: upwardDependencies.length,
+            hasUpwardDependencies: upwardDependencies.length !== 0,
+            loadDependencyCount: loadDependencies.length,
+            hasLoadDependencies: loadDependencies.length !== 0,
+            timestampedDependencyCount: timestampedDependencies.length,
+            hasTimestampedDependencies: timestampedDependencies.length !== 0,
+            versionMismatchCount: versionMismatchDependencies.length,
+            hasVersionMismatches: versionMismatchDependencies.length !== 0,
+            pathKinds: pathKindSummaries,
+            kinds: kindSummaries,
             dependencies,
             text: dependencies.map((dependency) => dependency.text).join('\n'),
         };
@@ -5836,6 +5940,35 @@ function handleSpecResult(spec) {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const rpaths = Native.rpaths(moduleName, query).map((rpath) => normalizeRpath(rpath));
+        const tokenRpaths = rpaths.filter((rpath) => rpath.isTokenPath);
+        const loaderPathRpaths = rpaths.filter((rpath) => rpath.usesLoaderPath);
+        const executablePathRpaths = rpaths.filter((rpath) => rpath.usesExecutablePath);
+        const rpathTokenRpaths = rpaths.filter((rpath) => rpath.usesRpathToken);
+        const longestRpath = rpaths.reduce((longest, rpath) => {
+            if (longest === null || rpath.path.length > longest.path.length) {
+                return rpath;
+            }
+            return longest;
+        }, null);
+        const pathKindSummaries = [];
+        for (const rpath of rpaths) {
+            let summary = pathKindSummaries.find((item) => item.pathKind === rpath.pathKind);
+            if (summary === undefined) {
+                summary = {
+                    pathKind: rpath.pathKind,
+                    count: 0,
+                    firstPath: rpath.path,
+                    lastPath: rpath.path,
+                    tokenPathCount: 0,
+                };
+                pathKindSummaries.push(summary);
+            }
+            summary.count += 1;
+            summary.lastPath = rpath.path;
+            if (rpath.isTokenPath) {
+                summary.tokenPathCount += 1;
+            }
+        }
         return {
             kind: 'native.rpaths',
             moduleName,
@@ -5845,6 +5978,20 @@ function handleSpecResult(spec) {
             hasRpaths: rpaths.length !== 0,
             firstRpath: rpaths.length === 0 ? null : rpaths[0].path,
             lastRpath: rpaths.length === 0 ? null : rpaths[rpaths.length - 1].path,
+            firstPathKind: rpaths.length === 0 ? null : rpaths[0].pathKind,
+            lastPathKind: rpaths.length === 0 ? null : rpaths[rpaths.length - 1].pathKind,
+            uniquePathKindCount: pathKindSummaries.length,
+            tokenPathCount: tokenRpaths.length,
+            hasTokenPaths: tokenRpaths.length !== 0,
+            loaderPathCount: loaderPathRpaths.length,
+            hasLoaderPaths: loaderPathRpaths.length !== 0,
+            executablePathCount: executablePathRpaths.length,
+            hasExecutablePaths: executablePathRpaths.length !== 0,
+            rpathTokenCount: rpathTokenRpaths.length,
+            hasRpathTokens: rpathTokenRpaths.length !== 0,
+            longestRpath: longestRpath === null ? null : longestRpath.path,
+            longestRpathLength: longestRpath === null ? null : longestRpath.path.length,
+            pathKinds: pathKindSummaries,
             rpaths,
             text: rpaths.map((rpath) => rpath.text).join('\n'),
         };
