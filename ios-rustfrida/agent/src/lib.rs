@@ -173,6 +173,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("objc.findClassProtocols NSObject NS"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("objc.classInfo NSObject meta"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -189,11 +193,19 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("objc.findProtocolProtocols NSObject NS"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("objc.protocolMethods NSObject optional class"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
             AgentCommand::from_legacy("objc.protocolMethods NSObject optional class description"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findProtocolMethods NSObject optional class description"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -206,6 +218,10 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("objc.protocolProperties NSObject description"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findProtocolProperties NSObject description"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(

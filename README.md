@@ -57,12 +57,16 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.classes([query])`
 - `ObjC.protocols([query])`
 - `ObjC.classProtocols(className[, query])`
+- `ObjC.findClassProtocols(className, query)`
 - `ObjC.classInfo(className[, isMetaClass])`
 - `ObjC.protocolInfo(protocolName)`
 - `ObjC.protocolProtocols(protocolName[, query])`
+- `ObjC.findProtocolProtocols(protocolName, query)`
 - `ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]][, query])`
+- `ObjC.findProtocolMethods(protocolName[, isRequired[, isInstanceMethod]], query)`
 - `ObjC.protocolMethodInfo(protocolName, selectorName[, isRequired[, isInstanceMethod]])`
 - `ObjC.protocolProperties(protocolName[, query])`
+- `ObjC.findProtocolProperties(protocolName, query)`
 - `ObjC.protocolPropertyInfo(protocolName, propertyName)`
 - `ObjC.superclass(className)`
 - `ObjC.classChain(className)`
@@ -191,12 +195,16 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `objc.ivarInfo <class> <ivar>`
   - `objc.protocols [filter]`
   - `objc.classProtocols <class>`
+  - `objc.findClassProtocols <class> <query>`
   - `objc.classInfo <class> [meta]`
   - `objc.protocolInfo <protocol>`
   - `objc.protocolProtocols <protocol>`
+  - `objc.findProtocolProtocols <protocol> <query>`
   - `objc.protocolMethods <protocol> [required] [instance]`
+  - `objc.findProtocolMethods <protocol> [required] [instance] <query>`
   - `objc.protocolMethodInfo <protocol> <selector> [required] [instance]`
   - `objc.protocolProperties <protocol>`
+  - `objc.findProtocolProperties <protocol> <query>`
   - `objc.protocolPropertyInfo <protocol> <property>`
   - `objc.classes [filter]`
   - `objc.selectorName <selector>`

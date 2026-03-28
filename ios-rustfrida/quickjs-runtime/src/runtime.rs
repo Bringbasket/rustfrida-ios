@@ -421,6 +421,12 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findClassProtocols")
+                    .expect("objc findClassProtocols type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof ObjC.classInfo").expect("objc classInfo type"),
                 "function"
             );
@@ -458,8 +464,20 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof ObjC.findProtocolProtocols")
+                    .expect("objc findProtocolProtocols type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof ObjC.protocolMethods")
                     .expect("objc protocolMethods type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findProtocolMethods")
+                    .expect("objc findProtocolMethods type"),
                 "function"
             );
             assert_eq!(
@@ -472,6 +490,12 @@ undefined;
                 runtime
                     .eval("typeof ObjC.protocolProperties")
                     .expect("objc protocolProperties type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findProtocolProperties")
+                    .expect("objc findProtocolProperties type"),
                 "function"
             );
             assert_eq!(
@@ -647,6 +671,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("Array.isArray(ObjC.findClassProtocols('NSObject', 'NS'))")
+                    .expect("objc findClassProtocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = ObjC.classInfo('NSObject'); return value === null || (typeof value.className === 'string' && typeof value.isMetaClass === 'boolean' && typeof value.instanceSize === 'number' && typeof value.protocolCount === 'number' && typeof value.instancePropertyCount === 'number' && typeof value.classPropertyCount === 'number' && typeof value.ivarCount === 'number' && typeof value.instanceMethodCount === 'number' && typeof value.classMethodCount === 'number' && typeof value.totalPropertyCount === 'number' && typeof value.totalMethodCount === 'number' && typeof value.hasSuperclass === 'boolean' && typeof value.isRootClass === 'boolean' && typeof value.hasProtocols === 'boolean' && typeof value.hasProperties === 'boolean' && typeof value.hasIvars === 'boolean' && typeof value.hasMethods === 'boolean' && typeof value.hasImagePath === 'boolean'); })()")
                     .expect("objc classInfo"),
                 "true"
@@ -671,6 +701,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("Array.isArray(ObjC.findProtocolProtocols('NSObject', 'NS'))")
+                    .expect("objc findProtocolProtocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(ObjC.protocolMethods('NSObject'))")
                     .expect("objc protocolMethods"),
                 "true"
@@ -689,6 +725,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("Array.isArray(ObjC.findProtocolMethods('NSObject', false, false, 'description'))")
+                    .expect("objc findProtocolMethods"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = ObjC.protocolMethodInfo('NSObject', 'description', false, false); return value === null || (typeof value.selector === 'string' && Array.isArray(value.selectorParts) && typeof value.selectorPartCount === 'number' && typeof value.hasSelectorArguments === 'boolean' && typeof value.isUnarySelector === 'boolean' && typeof value.isKeywordSelector === 'boolean' && typeof value.typeEncoding === 'string' && typeof value.isRequired === 'boolean' && typeof value.isInstanceMethod === 'boolean'); })()")
                     .expect("objc protocolMethodInfo"),
                 "true"
@@ -697,6 +739,12 @@ undefined;
                 runtime
                     .eval("Array.isArray(ObjC.protocolProperties('NSObject'))")
                     .expect("objc protocolProperties"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(ObjC.findProtocolProperties('NSObject', 'description'))")
+                    .expect("objc findProtocolProperties"),
                 "true"
             );
             assert_eq!(
@@ -2096,6 +2144,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.classProtocols NSObject NS'); const right = __iosRustFridaAgentApi.handle('objc.findClassProtocols NSObject NS'); return left === right; })()")
+                    .expect("agent objc findClassProtocols alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.protocolProtocols NSObject NS'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_protocols', protocolName: 'NSObject', filter: 'NS' }); return value === result.text && result.filter === 'NS' && result.hasFilter === true && typeof result.hasProtocols === 'boolean' && (result.firstProtocol === null || typeof result.firstProtocol === 'string') && (result.lastProtocol === null || typeof result.lastProtocol === 'string') && result.count === result.protocols.length; })()"
                     )
@@ -2104,10 +2158,22 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.protocolProtocols NSObject NS'); const right = __iosRustFridaAgentApi.handle('objc.findProtocolProtocols NSObject NS'); return left === right; })()")
+                    .expect("agent objc findProtocolProtocols alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.protocolMethods NSObject optional class description'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_methods', protocolName: 'NSObject', isRequired: false, isInstanceMethod: false, filter: 'description' }); return value === result.text && result.filter === 'description' && result.count === result.methods.length; })()"
                     )
                     .expect("agent objc protocolMethods"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.protocolMethods NSObject optional class description'); const right = __iosRustFridaAgentApi.handle('objc.findProtocolMethods NSObject optional class description'); return left === right; })()")
+                    .expect("agent objc findProtocolMethods alias"),
                 "true"
             );
             assert_eq!(
@@ -2124,6 +2190,12 @@ undefined;
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.protocolProperties NSObject description'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_properties', protocolName: 'NSObject', filter: 'description' }); return value === result.text && result.filter === 'description' && result.count === result.properties.length; })()"
                     )
                     .expect("agent objc protocolProperties"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.protocolProperties NSObject description'); const right = __iosRustFridaAgentApi.handle('objc.findProtocolProperties NSObject description'); return left === right; })()")
+                    .expect("agent objc findProtocolProperties alias"),
                 "true"
             );
             assert_eq!(

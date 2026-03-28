@@ -90,12 +90,16 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
     ) || command.starts_with("objc.classExists ")
         || command.starts_with("objc.findClasses ")
         || command.starts_with("objc.classProtocols ")
+        || command.starts_with("objc.findClassProtocols ")
         || command.starts_with("objc.classInfo ")
         || command.starts_with("objc.protocolInfo ")
         || command.starts_with("objc.protocolProtocols ")
+        || command.starts_with("objc.findProtocolProtocols ")
         || command.starts_with("objc.protocolMethods ")
+        || command.starts_with("objc.findProtocolMethods ")
         || command.starts_with("objc.protocolMethodInfo ")
         || command.starts_with("objc.protocolProperties ")
+        || command.starts_with("objc.findProtocolProperties ")
         || command.starts_with("objc.protocolPropertyInfo ")
         || command.starts_with("objc.superclass ")
         || command.starts_with("objc.classChain ")
@@ -293,6 +297,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(class_name) = command.strip_prefix("objc.findClassProtocols ") {
+        let (class_name, filter) = parse_objc_protocol_list_owner(class_name)?;
+        return Some(json!({
+            "kind": "objc.class_protocols",
+            "className": class_name,
+            "filter": filter,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("objc.classInfo ") {
         let (class_name, is_meta_class) = parse_objc_class_info(raw)?;
         return Some(json!({
@@ -319,7 +332,27 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(protocol_name) = command.strip_prefix("objc.findProtocolProtocols ") {
+        let (protocol_name, filter) = parse_objc_protocol_list_owner(protocol_name)?;
+        return Some(json!({
+            "kind": "objc.protocol_protocols",
+            "protocolName": protocol_name,
+            "filter": filter,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("objc.protocolMethods ") {
+        let (protocol_name, is_required, is_instance_method, filter) = parse_objc_protocol_methods(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_methods",
+            "protocolName": protocol_name,
+            "isRequired": is_required,
+            "isInstanceMethod": is_instance_method,
+            "filter": filter,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.findProtocolMethods ") {
         let (protocol_name, is_required, is_instance_method, filter) = parse_objc_protocol_methods(raw)?;
         return Some(json!({
             "kind": "objc.protocol_methods",
@@ -342,6 +375,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(raw) = command.strip_prefix("objc.protocolProperties ") {
+        let (protocol_name, filter) = parse_objc_protocol_properties(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_properties",
+            "protocolName": protocol_name,
+            "filter": filter,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.findProtocolProperties ") {
         let (protocol_name, filter) = parse_objc_protocol_properties(raw)?;
         return Some(json!({
             "kind": "objc.protocol_properties",
@@ -2095,6 +2137,16 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("objc.findClassProtocols NSObject NS"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_protocols",
+                    "className": "NSObject",
+                    "filter": "NS",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("objc.classInfo NSObject meta"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
@@ -2134,6 +2186,16 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolProtocols NSObject NS"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_protocols",
+                    "protocolName": "NSObject",
+                    "filter": "NS",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("objc.protocolMethods NSObject optional class"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
@@ -2147,6 +2209,18 @@ mod tests {
         );
         assert_eq!(
             AgentCommand::from_legacy("objc.protocolMethods NSObject optional class description"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_methods",
+                    "protocolName": "NSObject",
+                    "isRequired": false,
+                    "isInstanceMethod": false,
+                    "filter": "description",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolMethods NSObject optional class description"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
                     "kind": "objc.protocol_methods",
@@ -2181,6 +2255,16 @@ mod tests {
         );
         assert_eq!(
             AgentCommand::from_legacy("objc.protocolProperties NSObject description"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_properties",
+                    "protocolName": "NSObject",
+                    "filter": "description",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolProperties NSObject description"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
                     "kind": "objc.protocol_properties",

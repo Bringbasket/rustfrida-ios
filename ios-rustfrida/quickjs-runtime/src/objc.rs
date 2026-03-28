@@ -1548,9 +1548,12 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocols", js_objc_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocols", js_objc_find_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classProtocols", js_objc_class_protocols, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findClassProtocols", js_objc_class_protocols, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolInfo", js_objc_protocol_info, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolProtocols", js_objc_protocol_protocols, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocolProtocols", js_objc_protocol_protocols, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolMethods", js_objc_protocol_methods, 3);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocolMethods", js_objc_protocol_methods, 4);
         add_cfunction_to_object(
             ctx_ptr,
             objc.raw(),
@@ -1565,6 +1568,7 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
             js_objc_protocol_properties,
             1,
         );
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocolProperties", js_objc_protocol_properties, 2);
         add_cfunction_to_object(
             ctx_ptr,
             objc.raw(),
