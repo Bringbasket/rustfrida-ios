@@ -1718,6 +1718,14 @@ function classifyLibraryPathKind(path) {
     return 'other';
 }
 
+function splitVersionComponents(version) {
+    const text = String(version || '');
+    if (text.length === 0) {
+        return [];
+    }
+    return text.split('.').map((part) => String(part));
+}
+
 function normalizeObjcMethod(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
     const selectorInfo = parseObjcSelectorInfo(method.selector);
@@ -3778,10 +3786,18 @@ function normalizeChainedFixups(chainedFixups) {
 }
 
 function normalizeSourceVersion(sourceVersion) {
+    const version = String(sourceVersion.version || '');
+    const versionParts = splitVersionComponents(version);
     return {
         moduleName: String(sourceVersion.moduleName || ''),
         moduleBase: sourceVersion.moduleBase ? sourceVersion.moduleBase.toString() : null,
-        version: String(sourceVersion.version || ''),
+        version,
+        hasVersion: version.length !== 0,
+        versionPartCount: versionParts.length,
+        majorVersion: versionParts.length === 0 ? null : versionParts[0],
+        minorVersion: versionParts.length < 2 ? null : versionParts[1],
+        patchVersion: versionParts.length < 3 ? null : versionParts[2],
+        extraVersionCount: versionParts.length <= 3 ? 0 : versionParts.length - 3,
         text: formatSourceVersion(sourceVersion),
     };
 }
@@ -3793,15 +3809,27 @@ function normalizeBuildVersion(buildVersion) {
             version: String(tool.version || ''),
         }))
         : [];
+    const minOs = String(buildVersion.minOs || '');
+    const sdk = String(buildVersion.sdk || '');
+    const minOsParts = splitVersionComponents(minOs);
+    const sdkParts = splitVersionComponents(sdk);
     return {
         moduleName: String(buildVersion.moduleName || ''),
         moduleBase: buildVersion.moduleBase ? buildVersion.moduleBase.toString() : null,
         platform: String(buildVersion.platform || 'unknown'),
-        minOs: String(buildVersion.minOs || ''),
-        sdk: String(buildVersion.sdk || ''),
+        minOs,
+        sdk,
+        hasMinOs: minOs.length !== 0,
+        hasSdk: sdk.length !== 0,
+        minOsPartCount: minOsParts.length,
+        sdkPartCount: sdkParts.length,
         hasTools: tools.length !== 0,
         firstTool: tools.length === 0 ? null : tools[0].tool,
         lastTool: tools.length === 0 ? null : tools[tools.length - 1].tool,
+        firstToolVersion: tools.length === 0 ? null : tools[0].version,
+        lastToolVersion: tools.length === 0 ? null : tools[tools.length - 1].version,
+        uniqueToolCount: Array.from(new Set(tools.map((tool) => tool.tool))).length,
+        toolNames: tools.map((tool) => tool.tool),
         tools,
         text: formatBuildVersion(buildVersion),
     };
@@ -3810,13 +3838,25 @@ function normalizeBuildVersion(buildVersion) {
 function normalizeDylinker(dylinker) {
     const path = String(dylinker.path || '');
     const pathParts = path.split('/').filter(Boolean);
+    const kind = String(dylinker.kind || 'load');
     return {
         moduleName: String(dylinker.moduleName || ''),
         moduleBase: dylinker.moduleBase ? dylinker.moduleBase.toString() : null,
         path,
         name: pathParts.length === 0 ? path : pathParts[pathParts.length - 1],
+        hasName: (pathParts.length === 0 ? path : pathParts[pathParts.length - 1]).length !== 0,
         hasPath: path.length !== 0,
-        kind: String(dylinker.kind || 'load'),
+        pathKind: classifyLibraryPathKind(path),
+        isTokenPath: path.startsWith('@'),
+        usesLoaderPath: path.startsWith('@loader_path'),
+        usesExecutablePath: path.startsWith('@executable_path'),
+        usesRpathToken: path.startsWith('@rpath'),
+        pathDepth: pathParts.length,
+        kind,
+        isWeakDylinker: kind === 'weak',
+        isReexportDylinker: kind === 'reexport',
+        isUpwardDylinker: kind === 'upward',
+        isLoadDylinker: kind === 'load',
         text: formatDylinker(dylinker),
     };
 }
@@ -3824,26 +3864,41 @@ function normalizeDylinker(dylinker) {
 function normalizeInstallName(installName) {
     const path = String(installName.path || '');
     const pathParts = path.split('/').filter(Boolean);
+    const currentVersion = formatPackedVersion(installName.currentVersion);
+    const compatibilityVersion = formatPackedVersion(installName.compatibilityVersion);
     return {
         moduleName: String(installName.moduleName || ''),
         moduleBase: installName.moduleBase ? installName.moduleBase.toString() : null,
         path,
         name: pathParts.length === 0 ? path : pathParts[pathParts.length - 1],
+        hasName: (pathParts.length === 0 ? path : pathParts[pathParts.length - 1]).length !== 0,
         hasPath: path.length !== 0,
-        currentVersion: formatPackedVersion(installName.currentVersion),
-        compatibilityVersion: formatPackedVersion(installName.compatibilityVersion),
+        pathKind: classifyLibraryPathKind(path),
+        isTokenPath: path.startsWith('@'),
+        usesLoaderPath: path.startsWith('@loader_path'),
+        usesExecutablePath: path.startsWith('@executable_path'),
+        usesRpathToken: path.startsWith('@rpath'),
+        pathDepth: pathParts.length,
+        currentVersion,
+        compatibilityVersion,
         timestamp: Number(installName.timestamp || 0),
         hasTimestamp: Number(installName.timestamp || 0) !== 0,
-        versionMismatch: formatPackedVersion(installName.currentVersion) !== formatPackedVersion(installName.compatibilityVersion),
+        versionMismatch: currentVersion !== compatibilityVersion,
         text: formatInstallName(installName),
     };
 }
 
 function normalizeUuid(imageUuid) {
+    const uuid = String(imageUuid.uuid || '');
+    const normalizedUuid = uuid.toUpperCase();
     return {
         moduleName: String(imageUuid.moduleName || ''),
         moduleBase: imageUuid.moduleBase ? imageUuid.moduleBase.toString() : null,
-        uuid: String(imageUuid.uuid || ''),
+        uuid,
+        normalizedUuid,
+        hasUuid: uuid.length !== 0,
+        uuidLength: uuid.length,
+        uuidSegmentCount: uuid.length === 0 ? 0 : uuid.split('-').length,
         text: formatUuid(imageUuid),
     };
 }
@@ -5855,7 +5910,12 @@ function handleSpecResult(spec) {
             resolvedModuleBase: normalized === null ? null : normalized.moduleBase,
             resolvedVersion: normalized === null ? null : normalized.version,
             version: normalized === null ? null : normalized.version,
-            hasVersion: normalized !== null && normalized.version.length !== 0,
+            hasVersion: normalized !== null && normalized.hasVersion === true,
+            versionPartCount: normalized === null ? 0 : normalized.versionPartCount,
+            majorVersion: normalized === null ? null : normalized.majorVersion,
+            minorVersion: normalized === null ? null : normalized.minorVersion,
+            patchVersion: normalized === null ? null : normalized.patchVersion,
+            extraVersionCount: normalized === null ? 0 : normalized.extraVersionCount,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5875,10 +5935,18 @@ function handleSpecResult(spec) {
             resolvedMinOs: normalized === null ? null : normalized.minOs,
             resolvedSdk: normalized === null ? null : normalized.sdk,
             platform: normalized === null ? null : normalized.platform,
+            hasMinOs: normalized !== null && normalized.hasMinOs === true,
+            hasSdk: normalized !== null && normalized.hasSdk === true,
+            minOsPartCount: normalized === null ? 0 : normalized.minOsPartCount,
+            sdkPartCount: normalized === null ? 0 : normalized.sdkPartCount,
             hasTools: normalized !== null && normalized.hasTools === true,
             firstTool: normalized === null ? null : normalized.firstTool,
             lastTool: normalized === null ? null : normalized.lastTool,
+            firstToolVersion: normalized === null ? null : normalized.firstToolVersion,
+            lastToolVersion: normalized === null ? null : normalized.lastToolVersion,
             toolCount: normalized === null ? 0 : normalized.tools.length,
+            uniqueToolCount: normalized === null ? 0 : normalized.uniqueToolCount,
+            toolNames: normalized === null ? [] : normalized.toolNames,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5896,9 +5964,19 @@ function handleSpecResult(spec) {
             resolvedModuleBase: normalized === null ? null : normalized.moduleBase,
             resolvedName: normalized === null ? null : normalized.name,
             resolvedPath: normalized === null ? null : normalized.path,
+            resolvedPathKind: normalized === null ? null : normalized.pathKind,
             kindName: normalized === null ? null : normalized.kind,
-            hasName: normalized !== null && normalized.name.length !== 0,
+            hasName: normalized !== null && normalized.hasName === true,
             hasPath: normalized !== null && normalized.hasPath === true,
+            isTokenPath: normalized !== null && normalized.isTokenPath === true,
+            usesLoaderPath: normalized !== null && normalized.usesLoaderPath === true,
+            usesExecutablePath: normalized !== null && normalized.usesExecutablePath === true,
+            usesRpathToken: normalized !== null && normalized.usesRpathToken === true,
+            pathDepth: normalized === null ? 0 : normalized.pathDepth,
+            isWeakDylinker: normalized !== null && normalized.isWeakDylinker === true,
+            isReexportDylinker: normalized !== null && normalized.isReexportDylinker === true,
+            isUpwardDylinker: normalized !== null && normalized.isUpwardDylinker === true,
+            isLoadDylinker: normalized !== null && normalized.isLoadDylinker === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5916,10 +5994,17 @@ function handleSpecResult(spec) {
             resolvedModuleBase: normalized === null ? null : normalized.moduleBase,
             resolvedName: normalized === null ? null : normalized.name,
             resolvedPath: normalized === null ? null : normalized.path,
+            resolvedPathKind: normalized === null ? null : normalized.pathKind,
             resolvedCurrentVersion: normalized === null ? null : normalized.currentVersion,
             resolvedCompatibilityVersion: normalized === null ? null : normalized.compatibilityVersion,
             resolvedTimestamp: normalized === null ? null : normalized.timestamp,
+            hasName: normalized !== null && normalized.hasName === true,
             hasPath: normalized !== null && normalized.hasPath === true,
+            isTokenPath: normalized !== null && normalized.isTokenPath === true,
+            usesLoaderPath: normalized !== null && normalized.usesLoaderPath === true,
+            usesExecutablePath: normalized !== null && normalized.usesExecutablePath === true,
+            usesRpathToken: normalized !== null && normalized.usesRpathToken === true,
+            pathDepth: normalized === null ? 0 : normalized.pathDepth,
             hasTimestamp: normalized !== null && normalized.hasTimestamp === true,
             versionMismatch: normalized !== null && normalized.versionMismatch === true,
             text: normalized === null ? '<null>' : normalized.text,
@@ -5939,6 +6024,9 @@ function handleSpecResult(spec) {
             resolvedModuleBase: normalized === null ? null : normalized.moduleBase,
             resolvedUuid: normalized === null ? null : normalized.uuid,
             uuid: normalized === null ? null : normalized.uuid,
+            normalizedUuid: normalized === null ? null : normalized.normalizedUuid,
+            uuidLength: normalized === null ? 0 : normalized.uuidLength,
+            uuidSegmentCount: normalized === null ? 0 : normalized.uuidSegmentCount,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
