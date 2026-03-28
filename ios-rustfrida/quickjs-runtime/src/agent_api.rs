@@ -5667,6 +5667,11 @@ function handleSpecResult(spec) {
             moduleName,
             symbolName,
             symbolInfo: normalized,
+            hasSymbolInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            resolvedDemangledName: normalized === null ? null : normalized.demangledName,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5680,6 +5685,12 @@ function handleSpecResult(spec) {
             moduleName,
             protocolName,
             protocolInfo: normalized,
+            hasProtocolInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            sourceKind: normalized === null ? null : normalized.sourceKind,
+            hasSourceKind: normalized !== null && normalized.hasSourceKind === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5695,6 +5706,13 @@ function handleSpecResult(spec) {
             typeName,
             protocolName,
             conformanceInfo: normalized,
+            hasConformanceInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedTypeName: normalized === null ? null : normalized.typeName,
+            resolvedProtocolName: normalized === null ? null : normalized.protocolName,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            sourceKind: normalized === null ? null : normalized.sourceKind,
+            hasSourceKind: normalized !== null && normalized.hasSourceKind === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5861,6 +5879,12 @@ function handleSpecResult(spec) {
             moduleName,
             typeName,
             metadataInfo: normalized,
+            hasMetadataInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            sourceKind: normalized === null ? null : normalized.sourceKind,
+            hasSourceKind: normalized !== null && normalized.hasSourceKind === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5874,6 +5898,12 @@ function handleSpecResult(spec) {
             moduleName,
             typeName,
             typeInfo: normalized,
+            hasTypeInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            sourceKind: normalized === null ? null : normalized.sourceKind,
+            hasSourceKind: normalized !== null && normalized.hasSourceKind === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5889,6 +5919,11 @@ function handleSpecResult(spec) {
             typeName,
             methodName,
             methodInfo: normalized,
+            hasMethodInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            resolvedDemangledName: normalized === null ? null : normalized.demangledName,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
