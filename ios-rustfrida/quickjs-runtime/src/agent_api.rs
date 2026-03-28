@@ -2518,6 +2518,9 @@ function normalizeBuildVersion(buildVersion) {
         platform: String(buildVersion.platform || 'unknown'),
         minOs: String(buildVersion.minOs || ''),
         sdk: String(buildVersion.sdk || ''),
+        hasTools: tools.length !== 0,
+        firstTool: tools.length === 0 ? null : tools[0].tool,
+        lastTool: tools.length === 0 ? null : tools[tools.length - 1].tool,
         tools,
         text: formatBuildVersion(buildVersion),
     };
@@ -2531,6 +2534,7 @@ function normalizeDylinker(dylinker) {
         moduleBase: dylinker.moduleBase ? dylinker.moduleBase.toString() : null,
         path,
         name: pathParts.length === 0 ? path : pathParts[pathParts.length - 1],
+        hasPath: path.length !== 0,
         kind: String(dylinker.kind || 'load'),
         text: formatDylinker(dylinker),
     };
@@ -2544,9 +2548,12 @@ function normalizeInstallName(installName) {
         moduleBase: installName.moduleBase ? installName.moduleBase.toString() : null,
         path,
         name: pathParts.length === 0 ? path : pathParts[pathParts.length - 1],
+        hasPath: path.length !== 0,
         currentVersion: formatPackedVersion(installName.currentVersion),
         compatibilityVersion: formatPackedVersion(installName.compatibilityVersion),
         timestamp: Number(installName.timestamp || 0),
+        hasTimestamp: Number(installName.timestamp || 0) !== 0,
+        versionMismatch: formatPackedVersion(installName.currentVersion) !== formatPackedVersion(installName.compatibilityVersion),
         text: formatInstallName(installName),
     };
 }

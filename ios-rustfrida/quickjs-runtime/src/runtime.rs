@@ -2729,7 +2729,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.build_version', moduleName: main.image.name }); return result.kind === 'native.build_version' && (result.buildVersion === null || (typeof result.buildVersion.platform === 'string' && Array.isArray(result.buildVersion.tools))); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.build_version', moduleName: main.image.name }); return result.kind === 'native.build_version' && (result.buildVersion === null || (typeof result.buildVersion.platform === 'string' && typeof result.buildVersion.hasTools === 'boolean' && (result.buildVersion.firstTool === null || typeof result.buildVersion.firstTool === 'string') && (result.buildVersion.lastTool === null || typeof result.buildVersion.lastTool === 'string') && Array.isArray(result.buildVersion.tools))); })()"
                     )
                     .expect("agent native build version result"),
                 "true"
@@ -2737,7 +2737,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dylinker', moduleName: main.image.name }); return result.kind === 'native.dylinker' && (result.dylinker === null || (typeof result.dylinker.path === 'string' && typeof result.dylinker.kind === 'string')); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dylinker', moduleName: main.image.name }); return result.kind === 'native.dylinker' && (result.dylinker === null || (typeof result.dylinker.path === 'string' && typeof result.dylinker.name === 'string' && typeof result.dylinker.hasPath === 'boolean' && typeof result.dylinker.kind === 'string')); })()"
                     )
                     .expect("agent native dylinker result"),
                 "true"
@@ -2745,7 +2745,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.install_name', moduleName: main.image.name }); return result.kind === 'native.install_name' && (result.installName === null || (typeof result.installName.path === 'string' && typeof result.installName.currentVersion === 'string')); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.install_name', moduleName: main.image.name }); return result.kind === 'native.install_name' && (result.installName === null || (typeof result.installName.path === 'string' && typeof result.installName.name === 'string' && typeof result.installName.hasPath === 'boolean' && typeof result.installName.currentVersion === 'string' && typeof result.installName.compatibilityVersion === 'string' && typeof result.installName.hasTimestamp === 'boolean' && typeof result.installName.versionMismatch === 'boolean')); })()"
                     )
                     .expect("agent native install name result"),
                 "true"
