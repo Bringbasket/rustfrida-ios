@@ -5388,9 +5388,22 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const symbols = Native.symbols(query, moduleName).map((symbol) => normalizeNativeSymbol(symbol));
         const moduleNames = new Set();
+        const moduleSummaries = [];
         const symbolNames = [];
         for (const symbol of symbols) {
             moduleNames.add(symbol.moduleName);
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === symbol.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: symbol.moduleName,
+                    count: 0,
+                    firstSymbolName: symbol.name,
+                    lastSymbolName: symbol.name,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastSymbolName = symbol.name;
             let summary = symbolNames.find((item) => item.symbolName === symbol.name);
             if (summary === undefined) {
                 summary = {
@@ -5417,6 +5430,7 @@ function handleSpecResult(spec) {
             lastModuleName: symbols.length === 0 ? null : symbols[symbols.length - 1].moduleName,
             uniqueModuleCount: symbols.length === 0 ? 0 : moduleNames.size,
             uniqueSymbolCount: symbolNames.length,
+            moduleNames: moduleSummaries,
             symbolNames,
             symbols,
             text: symbols.map((symbol) => symbol.text).join('\n'),
@@ -5450,9 +5464,22 @@ function handleSpecResult(spec) {
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const symbols = Native.exports(moduleName, query).map((symbol) => normalizeNativeSymbol(symbol));
         const moduleNames = new Set();
+        const moduleSummaries = [];
         const symbolNames = [];
         for (const symbol of symbols) {
             moduleNames.add(symbol.moduleName);
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === symbol.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: symbol.moduleName,
+                    count: 0,
+                    firstSymbolName: symbol.name,
+                    lastSymbolName: symbol.name,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastSymbolName = symbol.name;
             let summary = symbolNames.find((item) => item.symbolName === symbol.name);
             if (summary === undefined) {
                 summary = {
@@ -5479,6 +5506,7 @@ function handleSpecResult(spec) {
             lastModuleName: symbols.length === 0 ? null : symbols[symbols.length - 1].moduleName,
             uniqueModuleCount: symbols.length === 0 ? 0 : moduleNames.size,
             uniqueSymbolCount: symbolNames.length,
+            moduleNames: moduleSummaries,
             symbolNames,
             symbols,
             text: symbols.map((symbol) => symbol.text).join('\n'),
@@ -6804,12 +6832,29 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const symbols = Swift.symbols(query, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
         const moduleNames = new Set();
+        const moduleSummaries = [];
         const symbolNames = [];
         let demangledCount = 0;
         for (const symbol of symbols) {
             moduleNames.add(symbol.moduleName);
             if (symbol.hasDemangledName) {
                 demangledCount += 1;
+            }
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === symbol.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: symbol.moduleName,
+                    count: 0,
+                    firstSymbolName: symbol.name,
+                    lastSymbolName: symbol.name,
+                    demangledCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastSymbolName = symbol.name;
+            if (symbol.hasDemangledName) {
+                moduleSummary.demangledCount += 1;
             }
             let summary = symbolNames.find((item) => item.symbolName === symbol.name);
             if (summary === undefined) {
@@ -6843,6 +6888,7 @@ function handleSpecResult(spec) {
             uniqueSymbolCount: symbolNames.length,
             demangledCount,
             hasDemangledSymbols: demangledCount !== 0,
+            moduleNames: moduleSummaries,
             symbolNames,
             symbols,
             text: symbols.map((symbol) => symbol.text).join('\n'),

@@ -3760,6 +3760,7 @@ undefined;
                             }
                             if (typeof result.uniqueModuleCount !== 'number' ||
                                     typeof result.uniqueSymbolCount !== 'number' ||
+                                    !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.symbolNames)) {
                                 return false;
                             }
@@ -3769,6 +3770,7 @@ undefined;
                                     result.lastSymbolName === null;
                             }
                             const symbol = result.symbols[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const symbolSummary = result.symbolNames.length === 0 ? null : result.symbolNames[0];
                             return result.hasSymbols === true &&
                                 typeof result.firstSymbolName === 'string' &&
@@ -3779,6 +3781,12 @@ undefined;
                                 typeof symbol.offsetHex === 'string' &&
                                 typeof symbol.hasModuleName === 'boolean' &&
                                 typeof symbol.hasName === 'boolean' &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstSymbolName === 'string' &&
+                                    typeof moduleSummary.lastSymbolName === 'string'
+                                )) &&
                                 (symbolSummary === null || (
                                     typeof symbolSummary.symbolName === 'string' &&
                                     typeof symbolSummary.count === 'number' &&
@@ -3811,6 +3819,7 @@ undefined;
                             }
                             if (typeof result.uniqueModuleCount !== 'number' ||
                                     typeof result.uniqueSymbolCount !== 'number' ||
+                                    !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.symbolNames)) {
                                 return false;
                             }
@@ -3820,6 +3829,7 @@ undefined;
                                     result.lastSymbolName === null;
                             }
                             const symbol = result.symbols[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const symbolSummary = result.symbolNames.length === 0 ? null : result.symbolNames[0];
                             return result.hasSymbols === true &&
                                 typeof result.firstSymbolName === 'string' &&
@@ -3830,6 +3840,12 @@ undefined;
                                 typeof symbol.offsetHex === 'string' &&
                                 typeof symbol.hasModuleName === 'boolean' &&
                                 typeof symbol.hasName === 'boolean' &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstSymbolName === 'string' &&
+                                    typeof moduleSummary.lastSymbolName === 'string'
+                                )) &&
                                 (symbolSummary === null || (
                                     typeof symbolSummary.symbolName === 'string' &&
                                     typeof symbolSummary.count === 'number' &&
@@ -5147,6 +5163,7 @@ undefined;
                                     typeof result.uniqueSymbolCount !== 'number' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledSymbols !== 'boolean' ||
+                                    !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.symbolNames)) {
                                 return false;
                             }
@@ -5156,6 +5173,7 @@ undefined;
                                     result.lastSymbolName === null;
                             }
                             const symbol = result.symbols[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const symbolSummary = result.symbolNames.length === 0 ? null : result.symbolNames[0];
                             return result.hasSymbols === true &&
                                 typeof result.firstSymbolName === 'string' &&
@@ -5167,6 +5185,13 @@ undefined;
                                 typeof symbol.hasName === 'boolean' &&
                                 typeof symbol.hasDemangledName === 'boolean' &&
                                 typeof symbol.offsetHex === 'string' &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstSymbolName === 'string' &&
+                                    typeof moduleSummary.lastSymbolName === 'string' &&
+                                    typeof moduleSummary.demangledCount === 'number'
+                                )) &&
                                 (symbolSummary === null || (
                                     typeof symbolSummary.symbolName === 'string' &&
                                     typeof symbolSummary.count === 'number' &&

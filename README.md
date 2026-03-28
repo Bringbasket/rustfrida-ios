@@ -394,11 +394,11 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `swift.methodOwners` 列表结果现在也会额外补 `uniqueModuleCount / uniqueOwnerCount / uniqueSourceKindCount / sourceDemangledCount / ownerNames / moduleNames / sourceKinds` 这类摘要，适合脚本先看某个方法名反查到的 owner 类型分布、模块分布和 Swift 符号来源，而不必自己扫完整数组。
 - `swift.typeMethods` 列表结果现在也会额外补 `uniqueModuleCount / uniqueMethodCount / demangledCount / moduleNames / methodNames` 这类摘要，适合脚本先看某个类型查询命中的方法名分布、模块分布和 demangle 覆盖情况，而不必自己扫完整数组。
 - `swift.methods` 列表结果现在也会额外补 `uniqueModuleCount / uniqueMethodCount / demangledCount / moduleNames / methodNames` 这类摘要，适合脚本先看某个类型下目标方法在不同模块里的分布和 demangle 覆盖情况，而不必自己扫完整数组。
-- `swift.symbols` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / demangledCount / symbolNames` 这类摘要，适合脚本先看 Swift 符号名在不同模块里的分布和 demangle 覆盖情况，而不必自己扫完整数组。
+- `swift.symbols` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / demangledCount / moduleNames / symbolNames` 这类摘要，适合脚本先看 Swift 符号名在不同模块里的分布和 demangle 覆盖情况，而不必自己扫完整数组。
 - `swift.symbolInfo` 现在可以直接结构化返回单个 Swift symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个 Swift 符号时不必再先全量 `swift.symbols` 再脚本过滤。
 - `native.symbolInfo` 现在可以直接结构化返回单个 native symbol 的 `moduleBase / address / offsetHex / name`，后续排查某个本地符号时不必再先全量 `native.symbols` 再脚本过滤。
-- `native.symbols` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / symbolNames` 这类摘要，适合脚本先看本地符号名在不同镜像里的分布，而不必自己扫完整数组。
-- `native.exports` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / symbolNames` 这类摘要，适合脚本先看某个镜像导出符号名的分布，而不必自己扫完整数组。
+- `native.symbols` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / moduleNames / symbolNames` 这类摘要，适合脚本先看本地符号名在不同镜像里的分布，而不必自己扫完整数组。
+- `native.exports` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / moduleNames / symbolNames` 这类摘要，适合脚本先看某个镜像导出符号名的分布，而不必自己扫完整数组。
 - `native.images` 列表结果现在也会额外补 `uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNames / pathKinds` 这类摘要，适合脚本先看镜像整体分布，再决定要不要展开完整列表。
 - `native.base / native.imageInfo / native.mainImage / native.image / native.export` 这组单项查询现在也补了更统一的状态字段，例如 `hasBase / hasImage / imageName / imagePath / hasAddress / hasSymbol / resolved`，脚本侧判空时不必再分别盯着 `null` 和文本 `<null>` 两套信号。
 - `native.imageInfo / native.mainImage / native.image / native.symbol / native.export` 这组基础单项查询现在也进一步补了统一顶层摘要字段，例如 `resolvedImageName / resolvedImagePath / resolvedBase / resolvedName / resolvedModuleName / resolvedAddress / hasName / hasModuleName`，脚本侧取镜像和符号摘要时不必每次先钻进内层对象。
