@@ -2633,7 +2633,80 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.segments', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.segments' && result.moduleName === 'libsystem_malloc.dylib' && result.count === result.segments.length && typeof result.hasSegments === 'boolean' && ((result.segments.length === 0 && result.hasSegments === false && result.firstSegmentName === null && result.lastSegmentName === null) || (result.hasSegments === true && typeof result.firstSegmentName === 'string' && typeof result.lastSegmentName === 'string' && typeof result.segments[0].name === 'string' && typeof result.segments[0].vmsizeHex === 'string')); })()"
+                        r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.segments', moduleName: 'libsystem_malloc.dylib' });
+                            if (!(result.kind === 'native.segments'
+                                && result.moduleName === 'libsystem_malloc.dylib'
+                                && result.count === result.segments.length
+                                && typeof result.hasSegments === 'boolean'
+                                && (result.firstSegmentVmaddr === null || typeof result.firstSegmentVmaddr === 'string')
+                                && (result.lastSegmentVmaddr === null || typeof result.lastSegmentVmaddr === 'string')
+                                && typeof result.totalVmSizeHex === 'string'
+                                && typeof result.totalFileSizeHex === 'string'
+                                && (result.largestVmSegmentName === null || typeof result.largestVmSegmentName === 'string')
+                                && (result.largestVmSegmentSizeHex === null || typeof result.largestVmSegmentSizeHex === 'string')
+                                && (result.largestFileSegmentName === null || typeof result.largestFileSegmentName === 'string')
+                                && (result.largestFileSegmentSizeHex === null || typeof result.largestFileSegmentSizeHex === 'string')
+                                && typeof result.fileBackedSegmentCount === 'number'
+                                && typeof result.hasFileBackedSegments === 'boolean'
+                                && typeof result.zeroFillSegmentCount === 'number'
+                                && typeof result.hasZeroFillSegments === 'boolean'
+                                && typeof result.readableSegmentCount === 'number'
+                                && typeof result.hasReadableSegments === 'boolean'
+                                && typeof result.writableSegmentCount === 'number'
+                                && typeof result.hasWritableSegments === 'boolean'
+                                && typeof result.executableSegmentCount === 'number'
+                                && typeof result.hasExecutableSegments === 'boolean'
+                                && typeof result.uniqueProtectionCount === 'number'
+                                && Array.isArray(result.protections))) {
+                                return false;
+                            }
+                            if (result.segments.length === 0) {
+                                return result.hasSegments === false && result.firstSegmentName === null && result.lastSegmentName === null;
+                            }
+                            if (!(result.hasSegments === true
+                                && typeof result.firstSegmentName === 'string'
+                                && typeof result.lastSegmentName === 'string')) {
+                                return false;
+                            }
+                            const segment = result.segments[0];
+                            if (!(typeof segment.name === 'string'
+                                && typeof segment.hasName === 'boolean'
+                                && typeof segment.vmsizeHex === 'string'
+                                && typeof segment.vmEnd === 'string'
+                                && typeof segment.fileoffHex === 'string'
+                                && typeof segment.filesizeHex === 'string'
+                                && typeof segment.fileEndHex === 'string'
+                                && typeof segment.hasVmRange === 'boolean'
+                                && typeof segment.hasFileData === 'boolean'
+                                && typeof segment.isEmpty === 'boolean'
+                                && typeof segment.isZeroFillLike === 'boolean'
+                                && typeof segment.vmSizeMatchesFileSize === 'boolean'
+                                && typeof segment.maxprotFlags === 'string'
+                                && typeof segment.initprotFlags === 'string'
+                                && typeof segment.isReadable === 'boolean'
+                                && typeof segment.isWritable === 'boolean'
+                                && typeof segment.isExecutable === 'boolean'
+                                && typeof segment.maxReadable === 'boolean'
+                                && typeof segment.maxWritable === 'boolean'
+                                && typeof segment.maxExecutable === 'boolean')) {
+                                return false;
+                            }
+                            if (result.protections.length !== 0) {
+                                const protection = result.protections[0];
+                                if (!(typeof protection.initprotFlags === 'string'
+                                    && typeof protection.maxprotFlags === 'string'
+                                    && typeof protection.count === 'number'
+                                    && typeof protection.firstSegmentName === 'string'
+                                    && typeof protection.lastSegmentName === 'string'
+                                    && typeof protection.readableCount === 'number'
+                                    && typeof protection.writableCount === 'number'
+                                    && typeof protection.executableCount === 'number')) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        })()"#
                     )
                     .expect("agent native segments result"),
                 "true"

@@ -732,6 +732,15 @@ function formatSegment(segment) {
     ].join(' ');
 }
 
+function formatVmProtection(prot) {
+    const value = Number(prot || 0);
+    return [
+        (value & 1) !== 0 ? 'r' : '-',
+        (value & 2) !== 0 ? 'w' : '-',
+        (value & 4) !== 0 ? 'x' : '-',
+    ].join('');
+}
+
 function formatSection(section) {
     return [
         section.segmentName + ',' + section.name,
@@ -3178,16 +3187,37 @@ function normalizeRpath(rpath) {
 }
 
 function normalizeSegment(segment) {
+    const name = String(segment.name || '');
+    const vmsize = BigInt(segment.vmsize || 0);
+    const filesize = BigInt(segment.filesize || 0);
+    const initprot = Number(segment.initprot || 0);
+    const maxprot = Number(segment.maxprot || 0);
     return {
         moduleName: String(segment.moduleName || ''),
         moduleBase: segment.moduleBase ? segment.moduleBase.toString() : null,
-        name: String(segment.name || ''),
+        name,
+        hasName: name.length !== 0,
         vmaddr: segment.vmaddr.toString(),
-        vmsizeHex: '0x' + BigInt(segment.vmsize || 0).toString(16),
+        vmsizeHex: '0x' + vmsize.toString(16),
+        vmEnd: formatHexAdd(segment.vmaddr, segment.vmsize),
         fileoffHex: '0x' + BigInt(segment.fileoff || 0).toString(16),
-        filesizeHex: '0x' + BigInt(segment.filesize || 0).toString(16),
-        maxprot: String(segment.maxprot),
-        initprot: String(segment.initprot),
+        filesizeHex: '0x' + filesize.toString(16),
+        fileEndHex: formatHexAdd(segment.fileoff, segment.filesize),
+        hasVmRange: vmsize !== 0n,
+        hasFileData: filesize !== 0n,
+        isEmpty: vmsize === 0n && filesize === 0n,
+        isZeroFillLike: vmsize !== 0n && filesize === 0n,
+        vmSizeMatchesFileSize: vmsize === filesize,
+        maxprot: String(maxprot),
+        maxprotFlags: formatVmProtection(maxprot),
+        initprot: String(initprot),
+        initprotFlags: formatVmProtection(initprot),
+        isReadable: (initprot & 1) !== 0,
+        isWritable: (initprot & 2) !== 0,
+        isExecutable: (initprot & 4) !== 0,
+        maxReadable: (maxprot & 1) !== 0,
+        maxWritable: (maxprot & 2) !== 0,
+        maxExecutable: (maxprot & 4) !== 0,
         text: formatSegment(segment),
     };
 }
@@ -4128,6 +4158,53 @@ function handleSpecResult(spec) {
     case 'native.segments': {
         const moduleName = String(spec.moduleName || '');
         const segments = Native.segments(moduleName).map((segment) => normalizeSegment(segment));
+        const fileBackedSegments = segments.filter((segment) => segment.hasFileData);
+        const zeroFillSegments = segments.filter((segment) => segment.isZeroFillLike);
+        const readableSegments = segments.filter((segment) => segment.isReadable);
+        const writableSegments = segments.filter((segment) => segment.isWritable);
+        const executableSegments = segments.filter((segment) => segment.isExecutable);
+        const totalVmSize = segments.reduce((sum, segment) => sum + BigInt(segment.vmsizeHex), 0n);
+        const totalFileSize = segments.reduce((sum, segment) => sum + BigInt(segment.filesizeHex), 0n);
+        const largestVmSegment = segments.reduce((largest, segment) => {
+            if (largest === null || BigInt(segment.vmsizeHex) > BigInt(largest.vmsizeHex)) {
+                return segment;
+            }
+            return largest;
+        }, null);
+        const largestFileSegment = segments.reduce((largest, segment) => {
+            if (largest === null || BigInt(segment.filesizeHex) > BigInt(largest.filesizeHex)) {
+                return segment;
+            }
+            return largest;
+        }, null);
+        const protectionSummaries = [];
+        for (const segment of segments) {
+            let summary = protectionSummaries.find((item) => item.initprotFlags === segment.initprotFlags && item.maxprotFlags === segment.maxprotFlags);
+            if (summary === undefined) {
+                summary = {
+                    initprotFlags: segment.initprotFlags,
+                    maxprotFlags: segment.maxprotFlags,
+                    count: 0,
+                    firstSegmentName: segment.name,
+                    lastSegmentName: segment.name,
+                    readableCount: 0,
+                    writableCount: 0,
+                    executableCount: 0,
+                };
+                protectionSummaries.push(summary);
+            }
+            summary.count += 1;
+            summary.lastSegmentName = segment.name;
+            if (segment.isReadable) {
+                summary.readableCount += 1;
+            }
+            if (segment.isWritable) {
+                summary.writableCount += 1;
+            }
+            if (segment.isExecutable) {
+                summary.executableCount += 1;
+            }
+        }
         return {
             kind: 'native.segments',
             moduleName,
@@ -4135,6 +4212,35 @@ function handleSpecResult(spec) {
             hasSegments: segments.length !== 0,
             firstSegmentName: segments.length === 0 ? null : segments[0].name,
             lastSegmentName: segments.length === 0 ? null : segments[segments.length - 1].name,
+            firstSegmentVmaddr: segments.length === 0 ? null : segments[0].vmaddr,
+            lastSegmentVmaddr: segments.length === 0 ? null : segments[segments.length - 1].vmaddr,
+            totalVmSizeHex: '0x' + totalVmSize.toString(16),
+            totalFileSizeHex: '0x' + totalFileSize.toString(16),
+            largestVmSegmentName: largestVmSegment === null ? null : largestVmSegment.name,
+            largestVmSegmentSizeHex: largestVmSegment === null ? null : largestVmSegment.vmsizeHex,
+            largestFileSegmentName: largestFileSegment === null ? null : largestFileSegment.name,
+            largestFileSegmentSizeHex: largestFileSegment === null ? null : largestFileSegment.filesizeHex,
+            fileBackedSegmentCount: fileBackedSegments.length,
+            hasFileBackedSegments: fileBackedSegments.length !== 0,
+            zeroFillSegmentCount: zeroFillSegments.length,
+            hasZeroFillSegments: zeroFillSegments.length !== 0,
+            readableSegmentCount: readableSegments.length,
+            hasReadableSegments: readableSegments.length !== 0,
+            writableSegmentCount: writableSegments.length,
+            hasWritableSegments: writableSegments.length !== 0,
+            executableSegmentCount: executableSegments.length,
+            hasExecutableSegments: executableSegments.length !== 0,
+            uniqueProtectionCount: protectionSummaries.length,
+            protections: protectionSummaries.map((summary) => ({
+                initprotFlags: summary.initprotFlags,
+                maxprotFlags: summary.maxprotFlags,
+                count: summary.count,
+                firstSegmentName: summary.firstSegmentName,
+                lastSegmentName: summary.lastSegmentName,
+                readableCount: summary.readableCount,
+                writableCount: summary.writableCount,
+                executableCount: summary.executableCount,
+            })),
             segments,
             text: segments.map((segment) => segment.text).join('\n'),
         };
