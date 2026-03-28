@@ -2375,9 +2375,41 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.available' }); return result.kind === 'pac.available' && result.available === PAC.available && result.text === String(PAC.available); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.available' }); return result.kind === 'pac.available' && result.available === PAC.available && result.resolved === true && result.text === String(PAC.available); })()"
                     )
                     .expect("agent pac available result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.arm64e' }); return result.kind === 'pac.arm64e' && typeof result.arm64e === 'boolean' && result.resolved === true && result.text === String(result.arm64e); })()"
+                    )
+                    .expect("agent pac arm64e result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.image', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'pac.image' && result.moduleName === 'libsystem_malloc.dylib' && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && ((result.arm64e === null && result.hasImage === false && result.resolved === false && result.resolvedModuleName === null && result.text === '<null>') || (typeof result.arm64e === 'boolean' && result.hasImage === true && result.resolved === true && result.resolvedModuleName === result.moduleName && result.text === String(result.arm64e))); })()"
+                    )
+                    .expect("agent pac image result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.strip', address: '0x1234' }); return result.kind === 'pac.strip' && result.address === '0x1234' && result.resolved === true && typeof result.changed === 'boolean' && result.strippedAddress === result.stripped && result.text === result.stripped; })()"
+                    )
+                    .expect("agent pac strip result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.stripdata', address: '0x1234' }); return result.kind === 'pac.stripdata' && result.address === '0x1234' && result.resolved === true && typeof result.changed === 'boolean' && result.strippedAddress === result.stripped && result.text === result.stripped; })()"
+                    )
+                    .expect("agent pac stripdata result"),
                 "true"
             );
             assert_eq!(
@@ -3171,7 +3203,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); return result.kind === 'native.main_image' && typeof result.hasImage === 'boolean' && ((result.image === null && result.hasImage === false && result.imageName === null && result.imagePath === null && result.text === '<null>') || (result.hasImage === true && typeof result.imageName === 'string' && typeof result.imagePath === 'string' && typeof result.image.name === 'string' && result.image.name.length !== 0 && result.text === result.image.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); return result.kind === 'native.main_image' && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && ((result.image === null && result.hasImage === false && result.resolved === false && result.imageName === null && result.imagePath === null && result.resolvedImageName === null && result.resolvedImagePath === null && result.resolvedBase === null && result.text === '<null>') || (result.hasImage === true && result.resolved === true && typeof result.imageName === 'string' && typeof result.imagePath === 'string' && typeof result.resolvedImageName === 'string' && typeof result.resolvedImagePath === 'string' && typeof result.resolvedBase === 'string' && typeof result.image.name === 'string' && result.image.name.length !== 0 && result.resolvedImageName === result.image.name && result.resolvedImagePath === result.image.path && result.resolvedBase === result.image.base && result.text === result.image.text)); })()"
                     )
                     .expect("agent native main image result"),
                 "true"
@@ -3179,9 +3211,17 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const address = Module.findExportByName(null, 'malloc'); if (address === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image', address: address.toString() }); return result.kind === 'native.image' && result.address === address.toString() && typeof result.hasImage === 'boolean' && ((result.image === null && result.hasImage === false && result.imageName === null && result.imagePath === null && result.text === '<null>') || (result.hasImage === true && typeof result.imageName === 'string' && typeof result.imagePath === 'string' && typeof result.image.name === 'string' && typeof result.image.path === 'string' && typeof result.image.base === 'string' && typeof result.image.sizeHex === 'string' && result.text === result.image.text)); })()"
+                        "(function() { const address = Module.findExportByName(null, 'malloc'); if (address === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image', address: address.toString() }); return result.kind === 'native.image' && result.address === address.toString() && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && ((result.image === null && result.hasImage === false && result.resolved === false && result.imageName === null && result.imagePath === null && result.resolvedImageName === null && result.resolvedImagePath === null && result.resolvedBase === null && result.text === '<null>') || (result.hasImage === true && result.resolved === true && typeof result.imageName === 'string' && typeof result.imagePath === 'string' && typeof result.resolvedImageName === 'string' && typeof result.resolvedImagePath === 'string' && typeof result.resolvedBase === 'string' && typeof result.image.name === 'string' && typeof result.image.path === 'string' && typeof result.image.base === 'string' && typeof result.image.sizeHex === 'string' && result.resolvedImageName === result.image.name && result.resolvedImagePath === result.image.path && result.resolvedBase === result.image.base && result.text === result.image.text)); })()"
                     )
                     .expect("agent native image result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const malloc = Module.findExportByName(null, 'malloc'); if (malloc === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol', address: malloc.toString() }); return result.kind === 'native.symbol' && result.address === malloc.toString() && typeof result.resolved === 'boolean' && typeof result.hasName === 'boolean' && typeof result.hasModuleName === 'boolean' && result.resolvedAddress === result.symbol.address && result.resolvedName === result.symbol.name && result.resolvedModuleName === result.symbol.moduleName && result.resolved === (result.symbol.resolved === true) && result.hasName === (result.symbol.name !== null) && result.hasModuleName === (result.symbol.moduleName !== null) && result.text === result.symbol.text; })()"
+                    )
+                    .expect("agent native symbol result"),
                 "true"
             );
             assert_eq!(
@@ -3291,7 +3331,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export', moduleName: null, symbolName: 'malloc' }); return result.kind === 'native.export' && result.symbolName === 'malloc' && typeof result.hasAddress === 'boolean' && typeof result.hasSymbol === 'boolean' && typeof result.resolved === 'boolean' && ((result.address === null && result.symbol === null && result.hasAddress === false && result.hasSymbol === false && result.resolved === false && result.text === '<null>') || (typeof result.address === 'string' && result.hasAddress === true && result.hasSymbol === true && typeof result.symbol.moduleName === 'string' && result.resolved === (result.symbol.resolved === true) && result.text === result.symbol.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export', moduleName: null, symbolName: 'malloc' }); return result.kind === 'native.export' && result.symbolName === 'malloc' && typeof result.hasAddress === 'boolean' && typeof result.hasSymbol === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasName === 'boolean' && typeof result.hasModuleName === 'boolean' && ((result.address === null && result.symbol === null && result.hasAddress === false && result.hasSymbol === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.resolvedAddress === null && result.hasName === false && result.hasModuleName === false && result.text === '<null>') || (typeof result.address === 'string' && result.hasAddress === true && result.hasSymbol === true && result.resolved === (result.symbol.resolved === true) && result.resolvedName === result.symbol.name && result.resolvedModuleName === result.symbol.moduleName && result.resolvedAddress === result.symbol.address && result.hasName === (result.symbol.name !== null) && result.hasModuleName === (result.symbol.moduleName !== null) && result.text === result.symbol.text)); })()"
                     )
                     .expect("agent native export result"),
                 "true"
@@ -3350,7 +3390,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image_info', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.image_info' && result.moduleName === 'libsystem_malloc.dylib' && typeof result.hasImage === 'boolean' && ((result.image === null && result.hasImage === false && result.imageName === null && result.imagePath === null && result.text === '<null>') || (result.hasImage === true && typeof result.imageName === 'string' && typeof result.imagePath === 'string' && typeof result.image.name === 'string' && typeof result.image.path === 'string' && typeof result.image.base === 'string' && typeof result.image.sizeHex === 'string' && result.text === result.image.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image_info', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.image_info' && result.moduleName === 'libsystem_malloc.dylib' && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && ((result.image === null && result.hasImage === false && result.resolved === false && result.imageName === null && result.imagePath === null && result.resolvedImageName === null && result.resolvedImagePath === null && result.resolvedBase === null && result.text === '<null>') || (result.hasImage === true && result.resolved === true && typeof result.imageName === 'string' && typeof result.imagePath === 'string' && typeof result.resolvedImageName === 'string' && typeof result.resolvedImagePath === 'string' && typeof result.resolvedBase === 'string' && typeof result.image.name === 'string' && typeof result.image.path === 'string' && typeof result.image.base === 'string' && typeof result.image.sizeHex === 'string' && result.resolvedImageName === result.image.name && result.resolvedImagePath === result.image.path && result.resolvedBase === result.image.base && result.text === result.image.text)); })()"
                     )
                     .expect("agent native imageInfo result"),
                 "true"
@@ -4941,6 +4981,18 @@ undefined;
                     .eval("__iosRustFridaAgentApi.handleSpec({ kind: 'pac.strip', address: '0x1234' })")
                     .expect("agent spec pac strip"),
                 "0x1234"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'pac.image', moduleName: 'libsystem_malloc.dylib' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.image', moduleName: 'libsystem_malloc.dylib' }); return value === result.text; })()")
+                    .expect("agent spec pac image"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const malloc = Module.findExportByName(null, 'malloc'); if (malloc === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.symbol', address: malloc.toString() }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol', address: malloc.toString() }); return value === result.text; })()")
+                    .expect("agent spec native symbol"),
+                "true"
             );
             assert_eq!(
                 runtime

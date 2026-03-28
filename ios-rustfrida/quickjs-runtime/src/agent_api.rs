@@ -4951,8 +4951,12 @@ function handleSpecResult(spec) {
             moduleName,
             image: normalized,
             hasImage: normalized !== null,
+            resolved: normalized !== null,
             imageName: normalized === null ? null : normalized.name,
             imagePath: normalized === null ? null : normalized.path,
+            resolvedImageName: normalized === null ? null : normalized.name,
+            resolvedImagePath: normalized === null ? null : normalized.path,
+            resolvedBase: normalized === null ? null : normalized.base,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -4963,8 +4967,12 @@ function handleSpecResult(spec) {
             kind: 'native.main_image',
             image,
             hasImage: image !== null,
+            resolved: image !== null,
             imageName: image === null ? null : image.name,
             imagePath: image === null ? null : image.path,
+            resolvedImageName: image === null ? null : image.name,
+            resolvedImagePath: image === null ? null : image.path,
+            resolvedBase: image === null ? null : image.base,
             text: image === null ? '<null>' : image.text,
         };
     }
@@ -4977,15 +4985,30 @@ function handleSpecResult(spec) {
             address: address.toString(),
             image: normalized,
             hasImage: normalized !== null,
+            resolved: normalized !== null,
             imageName: normalized === null ? null : normalized.name,
             imagePath: normalized === null ? null : normalized.path,
+            resolvedImageName: normalized === null ? null : normalized.name,
+            resolvedImagePath: normalized === null ? null : normalized.path,
+            resolvedBase: normalized === null ? null : normalized.base,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
     case 'native.symbol': {
         const address = parseAddressArg(spec.address, 'native.symbol usage: native.symbol <address>');
         const symbol = normalizeDebugSymbol(Native.symbol(address), address);
-        return { kind: 'native.symbol', address: address.toString(), symbol, text: symbol.text };
+        return {
+            kind: 'native.symbol',
+            address: address.toString(),
+            symbol,
+            resolved: symbol.resolved === true,
+            resolvedName: symbol.name,
+            resolvedModuleName: symbol.moduleName,
+            resolvedAddress: symbol.address,
+            hasName: symbol.name !== null,
+            hasModuleName: symbol.moduleName !== null,
+            text: symbol.text,
+        };
     }
     case 'native.export': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
@@ -5001,6 +5024,11 @@ function handleSpecResult(spec) {
             hasAddress: address !== null,
             hasSymbol: symbol !== null,
             resolved: symbol !== null && symbol.resolved === true,
+            resolvedName: symbol === null ? null : symbol.name,
+            resolvedModuleName: symbol === null ? null : symbol.moduleName,
+            resolvedAddress: symbol === null ? null : symbol.address,
+            hasName: symbol !== null && symbol.name !== null,
+            hasModuleName: symbol !== null && symbol.moduleName !== null,
             text: symbol === null ? '<null>' : symbol.text,
         };
     }
@@ -5925,16 +5953,24 @@ function handleSpecResult(spec) {
     }
     case 'pac.available': {
         const available = !!PAC.available;
-        return { kind: 'pac.available', available, text: String(available) };
+        return { kind: 'pac.available', available, resolved: true, text: String(available) };
     }
     case 'pac.arm64e': {
         const arm64e = !!PAC.isProcessArm64e();
-        return { kind: 'pac.arm64e', arm64e, text: String(arm64e) };
+        return { kind: 'pac.arm64e', arm64e, resolved: true, text: String(arm64e) };
     }
     case 'pac.image': {
         const moduleName = String(spec.moduleName || '');
         const arm64e = PAC.isImageArm64e(moduleName);
-        return { kind: 'pac.image', moduleName, arm64e: arm64e === null ? null : !!arm64e, text: arm64e === null ? '<null>' : String(!!arm64e) };
+        return {
+            kind: 'pac.image',
+            moduleName,
+            arm64e: arm64e === null ? null : !!arm64e,
+            hasImage: arm64e !== null,
+            resolved: arm64e !== null,
+            resolvedModuleName: arm64e === null ? null : moduleName,
+            text: arm64e === null ? '<null>' : String(!!arm64e),
+        };
     }
     case 'pac.images': {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
@@ -5954,12 +5990,28 @@ function handleSpecResult(spec) {
     case 'pac.strip': {
         const address = parseAddressArg(spec.address, 'pac.strip usage: pac.strip <address>');
         const stripped = PAC.strip(address).toString();
-        return { kind: 'pac.strip', address: address.toString(), stripped, text: stripped };
+        return {
+            kind: 'pac.strip',
+            address: address.toString(),
+            stripped,
+            resolved: true,
+            strippedAddress: stripped,
+            changed: stripped !== address.toString(),
+            text: stripped,
+        };
     }
     case 'pac.stripdata': {
         const address = parseAddressArg(spec.address, 'pac.stripdata usage: pac.stripdata <address>');
         const stripped = PAC.stripData(address).toString();
-        return { kind: 'pac.stripdata', address: address.toString(), stripped, text: stripped };
+        return {
+            kind: 'pac.stripdata',
+            address: address.toString(),
+            stripped,
+            resolved: true,
+            strippedAddress: stripped,
+            changed: stripped !== address.toString(),
+            text: stripped,
+        };
     }
     case 'swift.available': {
         const available = !!Swift.available;

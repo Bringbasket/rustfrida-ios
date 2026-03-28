@@ -378,6 +378,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.exports` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / symbolNames` 这类摘要，适合脚本先看某个镜像导出符号名的分布，而不必自己扫完整数组。
 - `native.images` 列表结果现在也会额外补 `uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNames / pathKinds` 这类摘要，适合脚本先看镜像整体分布，再决定要不要展开完整列表。
 - `native.base / native.imageInfo / native.mainImage / native.image / native.export` 这组单项查询现在也补了更统一的状态字段，例如 `hasBase / hasImage / imageName / imagePath / hasAddress / hasSymbol / resolved`，脚本侧判空时不必再分别盯着 `null` 和文本 `<null>` 两套信号。
+- `native.imageInfo / native.mainImage / native.image / native.symbol / native.export` 这组基础单项查询现在也进一步补了统一顶层摘要字段，例如 `resolvedImageName / resolvedImagePath / resolvedBase / resolvedName / resolvedModuleName / resolvedAddress / hasName / hasModuleName`，脚本侧取镜像和符号摘要时不必每次先钻进内层对象。
 - `native.symbolInfo / native.exportInfo / native.dependencyInfo / native.rpathInfo / native.importInfo / native.segmentInfo / native.sectionInfo / native.loadCommandInfo` 这组单项查询现在也补了统一顶层状态字段，例如 `has*Info / resolved / resolvedName / resolvedModuleName / resolvedAddress / resolvedPath / sourceKind / hasAddress`，脚本侧做命中判断和提取关键摘要时不必每次先解包内层对象。
 - `native.dyldInfo / native.linkedit / native.functionStarts / native.codeSignature / native.dataInCode / native.exportsTrie / native.chainedFixups` 这组较重的单项查询现在也补了统一顶层状态字段和关键计数，例如 `has* / resolved / commandName / tableCount / startCount / blobKind / entryCount / segmentCount / importCount`，脚本侧先做快速判定时不必总是深入内层大对象。
 - `native.encryptionInfo / native.entryPoint / native.sourceVersion / native.buildVersion / native.dylinker / native.installName / native.uuid` 这组单项查询现在也补了统一顶层状态字段，例如 `has* / resolved / resolvedModuleName / cryptid / entryoffHex / version / platform / resolvedPath / kindName / uuid`，脚本侧做空值判断和取关键摘要时不必先读内层对象。
@@ -393,6 +394,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `--preflight-json` / `--inject-json` / `--command-json` 里的 `environment.hookStrategy`、`environment.hookEnvironment`、`preflight.targetHookStrategy`、`preflight.targetHookEnvironment` 现在也已经对齐带上这批 hook capability / risk 字段；controller 文本模式下的 injection environment、target hook strategy、doctor 摘要也会直接打印 `query/install/status/stop` 能力位，不必再只从 `allowed/query-only/blocked` 三种文案猜实际可做的命令类别。
 - `PAC.isImageArm64e(moduleName)` / `pac.image <module>` 现在可以直接判断单个镜像是否是 `arm64e`，比只看当前进程主镜像更适合排查某个目标 dylib 是否已经进入 PAC 风险面。
 - `PAC.arm64eImages([query])` / `pac.images [filter]` 现在可以直接列出当前进程里的 `arm64e` 镜像，适合先收敛 PAC 风险面，再决定具体看哪个模块。
+- `pac.available / pac.arm64e / pac.image / pac.strip / pac.stripdata` 这组 PAC 单项查询现在也补了统一顶层状态字段，例如 `resolved / hasImage / resolvedModuleName / strippedAddress / changed`，脚本侧判定模块是否命中、以及 strip 前后地址是否变化时不必只看文本。
 - `quickjs-runtime` 里的 `callNative()` 现在明确沿用 canonical code pointer 路径，避免 PAC 场景下把已规范化的入口又当成 raw 指针处理。
 - Mach 注入链路现在会回读远程 bootstrap 状态；可用 `IOS_RUSTFRIDA_BOOTSTRAP_WAIT_MS` 控制轮询等待时长，设为 `0` 表示关闭等待。
 - Mach bootstrap 远程内存现已拆成代码段和参数/状态段，分别走 `RX` / `RW` 权限，不再依赖单块 `RWX` payload。
