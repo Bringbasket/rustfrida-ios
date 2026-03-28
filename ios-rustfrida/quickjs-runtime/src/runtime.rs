@@ -4580,6 +4580,166 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const symbolInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbol_info', moduleName: null, symbolName: 'ViewController' });
+                            if (symbolInfo.symbolInfo === null) {
+                                if (!(symbolInfo.resolvedAddress === null
+                                    && symbolInfo.resolvedOffsetHex === null
+                                    && symbolInfo.hasDemangledName === false)) {
+                                    return false;
+                                }
+                            } else if (!(symbolInfo.resolvedAddress === symbolInfo.symbolInfo.address
+                                && symbolInfo.resolvedOffsetHex === symbolInfo.symbolInfo.offsetHex
+                                && symbolInfo.hasDemangledName === (symbolInfo.symbolInfo.hasDemangledName === true))) {
+                                return false;
+                            }
+
+                            const protocolInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' });
+                            if (protocolInfo.protocolInfo === null) {
+                                if (!(protocolInfo.resolvedSourceSymbolName === null
+                                    && protocolInfo.resolvedSourceAddress === null
+                                    && protocolInfo.resolvedSourceOffsetHex === null
+                                    && protocolInfo.resolvedSourceDemangledName === null
+                                    && protocolInfo.hasSourceSymbolName === false
+                                    && protocolInfo.hasSourceDemangledName === false)) {
+                                    return false;
+                                }
+                            } else if (!(protocolInfo.resolvedSourceSymbolName === protocolInfo.protocolInfo.sourceSymbolName
+                                && protocolInfo.resolvedSourceAddress === protocolInfo.protocolInfo.sourceAddress
+                                && protocolInfo.resolvedSourceOffsetHex === protocolInfo.protocolInfo.sourceOffsetHex
+                                && protocolInfo.resolvedSourceDemangledName === protocolInfo.protocolInfo.sourceDemangledName
+                                && protocolInfo.hasSourceSymbolName === (protocolInfo.protocolInfo.hasSourceSymbolName === true)
+                                && protocolInfo.hasSourceDemangledName === (protocolInfo.protocolInfo.hasSourceDemangledName === true))) {
+                                return false;
+                            }
+
+                            const conformanceInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformance_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' });
+                            if (conformanceInfo.conformanceInfo === null) {
+                                if (!(conformanceInfo.resolvedSourceSymbolName === null
+                                    && conformanceInfo.resolvedSourceAddress === null
+                                    && conformanceInfo.resolvedSourceOffsetHex === null
+                                    && conformanceInfo.resolvedSourceDemangledName === null
+                                    && conformanceInfo.hasSourceSymbolName === false
+                                    && conformanceInfo.hasSourceDemangledName === false)) {
+                                    return false;
+                                }
+                            } else if (!(conformanceInfo.resolvedSourceSymbolName === conformanceInfo.conformanceInfo.sourceSymbolName
+                                && conformanceInfo.resolvedSourceAddress === conformanceInfo.conformanceInfo.sourceAddress
+                                && conformanceInfo.resolvedSourceOffsetHex === conformanceInfo.conformanceInfo.sourceOffsetHex
+                                && conformanceInfo.resolvedSourceDemangledName === conformanceInfo.conformanceInfo.sourceDemangledName
+                                && conformanceInfo.hasSourceSymbolName === (conformanceInfo.conformanceInfo.hasSourceSymbolName === true)
+                                && conformanceInfo.hasSourceDemangledName === (conformanceInfo.conformanceInfo.hasSourceDemangledName === true))) {
+                                return false;
+                            }
+
+                            const metadataInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' });
+                            if (metadataInfo.metadataInfo === null) {
+                                if (!(metadataInfo.resolvedSourceSymbolName === null
+                                    && metadataInfo.resolvedSourceAddress === null
+                                    && metadataInfo.resolvedSourceOffsetHex === null
+                                    && metadataInfo.resolvedSourceDemangledName === null
+                                    && metadataInfo.hasSourceSymbolName === false
+                                    && metadataInfo.hasSourceDemangledName === false)) {
+                                    return false;
+                                }
+                            } else if (!(metadataInfo.resolvedSourceSymbolName === metadataInfo.metadataInfo.sourceSymbolName
+                                && metadataInfo.resolvedSourceAddress === metadataInfo.metadataInfo.sourceAddress
+                                && metadataInfo.resolvedSourceOffsetHex === metadataInfo.metadataInfo.sourceOffsetHex
+                                && metadataInfo.resolvedSourceDemangledName === metadataInfo.metadataInfo.sourceDemangledName
+                                && metadataInfo.hasSourceSymbolName === (metadataInfo.metadataInfo.hasSourceSymbolName === true)
+                                && metadataInfo.hasSourceDemangledName === (metadataInfo.metadataInfo.hasSourceDemangledName === true))) {
+                                return false;
+                            }
+
+                            const typeInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_info', moduleName: null, typeName: 'ViewController' });
+                            if (typeInfo.typeInfo === null) {
+                                if (!(typeInfo.resolvedSourceSymbolName === null
+                                    && typeInfo.resolvedSourceAddress === null
+                                    && typeInfo.resolvedSourceOffsetHex === null
+                                    && typeInfo.resolvedSourceDemangledName === null
+                                    && typeInfo.hasSourceSymbolName === false
+                                    && typeInfo.hasSourceDemangledName === false)) {
+                                    return false;
+                                }
+                            } else if (!(typeInfo.resolvedSourceSymbolName === typeInfo.typeInfo.sourceSymbolName
+                                && typeInfo.resolvedSourceAddress === typeInfo.typeInfo.sourceAddress
+                                && typeInfo.resolvedSourceOffsetHex === typeInfo.typeInfo.sourceOffsetHex
+                                && typeInfo.resolvedSourceDemangledName === typeInfo.typeInfo.sourceDemangledName
+                                && typeInfo.hasSourceSymbolName === (typeInfo.typeInfo.hasSourceSymbolName === true)
+                                && typeInfo.hasSourceDemangledName === (typeInfo.typeInfo.hasSourceDemangledName === true))) {
+                                return false;
+                            }
+
+                            const methodInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' });
+                            if (methodInfo.methodInfo === null) {
+                                if (!(methodInfo.resolvedAddress === null
+                                    && methodInfo.resolvedOffsetHex === null
+                                    && methodInfo.hasDemangledName === false)) {
+                                    return false;
+                                }
+                            } else if (!(methodInfo.resolvedAddress === methodInfo.methodInfo.address
+                                && methodInfo.resolvedOffsetHex === methodInfo.methodInfo.offsetHex
+                                && methodInfo.hasDemangledName === (methodInfo.methodInfo.hasDemangledName === true))) {
+                                return false;
+                            }
+
+                            const vtableInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewController', memberName: 'viewDidLoad' });
+                            if (vtableInfo.vtableInfo === null) {
+                                if (!(vtableInfo.resolvedAddress === null
+                                    && vtableInfo.resolvedOffsetHex === null
+                                    && vtableInfo.hasDemangledName === false)) {
+                                    return false;
+                                }
+                            } else if (!(vtableInfo.resolvedAddress === vtableInfo.vtableInfo.address
+                                && vtableInfo.resolvedOffsetHex === vtableInfo.vtableInfo.offsetHex
+                                && vtableInfo.hasDemangledName === (vtableInfo.vtableInfo.hasDemangledName === true))) {
+                                return false;
+                            }
+
+                            const witnessInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' });
+                            if (witnessInfo.witnessTableInfo === null) {
+                                if (!(witnessInfo.resolvedAddress === null
+                                    && witnessInfo.resolvedOffsetHex === null
+                                    && witnessInfo.hasDemangledName === false)) {
+                                    return false;
+                                }
+                            } else if (!(witnessInfo.resolvedAddress === witnessInfo.witnessTableInfo.address
+                                && witnessInfo.resolvedOffsetHex === witnessInfo.witnessTableInfo.offsetHex
+                                && witnessInfo.hasDemangledName === (witnessInfo.witnessTableInfo.hasDemangledName === true))) {
+                                return false;
+                            }
+
+                            const typeLayoutInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' });
+                            if (typeLayoutInfo.typeLayout === null) {
+                                return typeLayoutInfo.firstMetadataName === null
+                                    && typeLayoutInfo.lastMetadataName === null
+                                    && typeLayoutInfo.firstMetadataAccessorName === null
+                                    && typeLayoutInfo.lastMetadataAccessorName === null
+                                    && typeLayoutInfo.firstNominalDescriptorName === null
+                                    && typeLayoutInfo.lastNominalDescriptorName === null
+                                    && typeLayoutInfo.firstVtableMemberName === null
+                                    && typeLayoutInfo.lastVtableMemberName === null
+                                    && typeLayoutInfo.firstWitnessProtocolName === null
+                                    && typeLayoutInfo.lastWitnessProtocolName === null;
+                            }
+                            return typeLayoutInfo.firstMetadataName === typeLayoutInfo.typeLayout.firstMetadataName
+                                && typeLayoutInfo.lastMetadataName === typeLayoutInfo.typeLayout.lastMetadataName
+                                && typeLayoutInfo.firstMetadataAccessorName === typeLayoutInfo.typeLayout.firstMetadataAccessorName
+                                && typeLayoutInfo.lastMetadataAccessorName === typeLayoutInfo.typeLayout.lastMetadataAccessorName
+                                && typeLayoutInfo.firstNominalDescriptorName === typeLayoutInfo.typeLayout.firstNominalDescriptorName
+                                && typeLayoutInfo.lastNominalDescriptorName === typeLayoutInfo.typeLayout.lastNominalDescriptorName
+                                && typeLayoutInfo.firstVtableMemberName === typeLayoutInfo.typeLayout.firstVtableMemberName
+                                && typeLayoutInfo.lastVtableMemberName === typeLayoutInfo.typeLayout.lastVtableMemberName
+                                && typeLayoutInfo.firstWitnessProtocolName === typeLayoutInfo.typeLayout.firstWitnessProtocolName
+                                && typeLayoutInfo.lastWitnessProtocolName === typeLayoutInfo.typeLayout.lastWitnessProtocolName;
+                        })()"#
+                    )
+                    .expect("agent swift info summary fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' });
                             if (result.kind !== 'swift.types' || result.query !== 'ViewController' || result.hasQuery !== true) {
