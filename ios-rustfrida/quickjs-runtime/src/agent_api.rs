@@ -1656,10 +1656,32 @@ function normalizeImage(image) {
     }
     const path = String(image.path || image.name || '');
     const pathParts = path.split('/').filter(Boolean);
+    const name = pathParts.length === 0 ? path : pathParts[pathParts.length - 1];
+    const directoryPath = pathParts.length <= 1 ? '' : '/' + pathParts.slice(0, -1).join('/');
     const size = Number(image.size || 0);
+    let pathKind = 'other';
+    if (path.length === 0) {
+        pathKind = 'unknown';
+    } else if (path.startsWith('/System/') || path.startsWith('/usr/lib/')) {
+        pathKind = 'system';
+    } else if (path.startsWith('/private/var/containers/') || path.startsWith('/var/containers/')) {
+        pathKind = 'app';
+    } else if (path.startsWith('/Applications/')) {
+        pathKind = 'application';
+    } else if (path.startsWith('/private/var/jb/') || path.startsWith('/var/jb/') || path.startsWith('/private/preboot/')) {
+        pathKind = 'jailbreak';
+    }
     return {
         path,
-        name: pathParts.length === 0 ? path : pathParts[pathParts.length - 1],
+        hasPath: path.length !== 0,
+        name,
+        hasName: name.length !== 0,
+        directoryPath,
+        hasDirectoryPath: directoryPath.length !== 0,
+        pathKind,
+        isSystemPath: pathKind === 'system',
+        isAppPath: pathKind === 'app' || pathKind === 'application',
+        isJailbreakPath: pathKind === 'jailbreak',
         base: image.base.toString(),
         slide: formatSlide(image.slide),
         size,
@@ -3979,6 +4001,46 @@ function handleSpecResult(spec) {
     case 'native.images': {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter).trim().toLowerCase();
         const images = Native.images(filter).map((image) => normalizeImage(image));
+        const imageNames = [];
+        const pathKinds = [];
+        let systemImageCount = 0;
+        let appImageCount = 0;
+        let jailbreakImageCount = 0;
+        for (const image of images) {
+            if (image.isSystemPath) {
+                systemImageCount += 1;
+            }
+            if (image.isAppPath) {
+                appImageCount += 1;
+            }
+            if (image.isJailbreakPath) {
+                jailbreakImageCount += 1;
+            }
+            let imageNameSummary = imageNames.find((item) => item.name === image.name);
+            if (imageNameSummary === undefined) {
+                imageNameSummary = {
+                    name: image.name,
+                    count: 0,
+                    firstPath: image.path,
+                    lastPath: image.path,
+                };
+                imageNames.push(imageNameSummary);
+            }
+            imageNameSummary.count += 1;
+            imageNameSummary.lastPath = image.path;
+            let pathKindSummary = pathKinds.find((item) => item.pathKind === image.pathKind);
+            if (pathKindSummary === undefined) {
+                pathKindSummary = {
+                    pathKind: image.pathKind,
+                    count: 0,
+                    firstImageName: image.name,
+                    lastImageName: image.name,
+                };
+                pathKinds.push(pathKindSummary);
+            }
+            pathKindSummary.count += 1;
+            pathKindSummary.lastImageName = image.name;
+        }
         return {
             kind: 'native.images',
             filter,
@@ -3987,6 +4049,15 @@ function handleSpecResult(spec) {
             hasImages: images.length !== 0,
             firstImageName: images.length === 0 ? null : images[0].name,
             lastImageName: images.length === 0 ? null : images[images.length - 1].name,
+            firstPathKind: images.length === 0 ? null : images[0].pathKind,
+            lastPathKind: images.length === 0 ? null : images[images.length - 1].pathKind,
+            uniqueImageCount: imageNames.length,
+            uniquePathKindCount: pathKinds.length,
+            systemImageCount,
+            appImageCount,
+            jailbreakImageCount,
+            imageNames,
+            pathKinds,
             images,
             text: images.map((image) => image.text).join('\n'),
         };
