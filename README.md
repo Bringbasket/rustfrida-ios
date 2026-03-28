@@ -361,6 +361,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `swift.methodOwners` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSourceKindCount / sourceDemangledCount / sourceKinds` 这类摘要，适合脚本先看某个方法名反查到的 owner 类型分布和 Swift 符号来源，而不必自己扫完整数组。
 - `swift.typeMethods` 列表结果现在也会额外补 `uniqueModuleCount / uniqueMethodCount / demangledCount / methodNames` 这类摘要，适合脚本先看某个类型查询命中的方法名分布和 demangle 覆盖情况，而不必自己扫完整数组。
 - `swift.methods` 列表结果现在也会额外补 `uniqueModuleCount / uniqueMethodCount / demangledCount / methodNames` 这类摘要，适合脚本先看某个类型下目标方法在不同模块里的分布和 demangle 覆盖情况，而不必自己扫完整数组。
+- `swift.symbols` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / demangledCount / symbolNames` 这类摘要，适合脚本先看 Swift 符号名在不同模块里的分布和 demangle 覆盖情况，而不必自己扫完整数组。
 - `swift.symbolInfo` 现在可以直接结构化返回单个 Swift symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个 Swift 符号时不必再先全量 `swift.symbols` 再脚本过滤。
 - `native.symbolInfo` 现在可以直接结构化返回单个 native symbol 的 `moduleBase / address / offsetHex / name`，后续排查某个本地符号时不必再先全量 `native.symbols` 再脚本过滤。
 - `swift.typeLayoutInfo` 现在可以直接结构化返回单个 Swift type layout 的 `metadata / metadataAccessors / nominalDescriptors / metadataCaches / associatedTypeDescriptors / vtableEntries / witnessTables` 以及对应计数，后续排查某个类型布局时不必再先全量 `swift.typeLayout` 再脚本过滤。

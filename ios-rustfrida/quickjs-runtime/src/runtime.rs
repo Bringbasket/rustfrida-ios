@@ -3264,7 +3264,48 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbols', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.symbols' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.symbols.length && typeof result.hasSymbols === 'boolean' && ((result.symbols.length === 0 && result.hasSymbols === false && result.firstSymbolName === null && result.lastSymbolName === null) || (result.hasSymbols === true && typeof result.firstSymbolName === 'string' && typeof result.lastSymbolName === 'string' && typeof result.symbols[0].moduleBase === 'string' && typeof result.symbols[0].offsetHex === 'string')); })()")
+                    .eval(
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbols', moduleName: null, query: 'ViewController' });
+                            if (result.kind !== 'swift.symbols' || result.query !== 'ViewController' || result.hasQuery !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.symbols.length || typeof result.hasSymbols !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueSymbolCount !== 'number' ||
+                                    typeof result.demangledCount !== 'number' ||
+                                    typeof result.hasDemangledSymbols !== 'boolean' ||
+                                    !Array.isArray(result.symbolNames)) {
+                                return false;
+                            }
+                            if (result.symbols.length === 0) {
+                                return result.hasSymbols === false &&
+                                    result.firstSymbolName === null &&
+                                    result.lastSymbolName === null;
+                            }
+                            const symbol = result.symbols[0];
+                            const symbolSummary = result.symbolNames.length === 0 ? null : result.symbolNames[0];
+                            return result.hasSymbols === true &&
+                                typeof result.firstSymbolName === 'string' &&
+                                typeof result.lastSymbolName === 'string' &&
+                                typeof result.firstModuleName === 'string' &&
+                                typeof result.lastModuleName === 'string' &&
+                                typeof symbol.moduleBase === 'string' &&
+                                typeof symbol.name === 'string' &&
+                                typeof symbol.hasName === 'boolean' &&
+                                typeof symbol.hasDemangledName === 'boolean' &&
+                                typeof symbol.offsetHex === 'string' &&
+                                (symbolSummary === null || (
+                                    typeof symbolSummary.symbolName === 'string' &&
+                                    typeof symbolSummary.count === 'number' &&
+                                    typeof symbolSummary.firstModuleName === 'string' &&
+                                    typeof symbolSummary.lastModuleName === 'string' &&
+                                    typeof symbolSummary.hasDemangledName === 'boolean'
+                                ));
+                        })()"
+                    )
                     .expect("agent swift symbols result"),
                 "true"
             );
