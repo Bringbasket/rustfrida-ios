@@ -4581,6 +4581,8 @@ function handleSpecResult(spec) {
             imp: pointer,
             hasImp: pointer !== null,
             resolved: pointer !== null,
+            resolvedClassName: pointer === null ? null : className,
+            resolvedSelectorName: pointer === null ? null : selectorName,
             resolvedImp: pointer,
             text: pointer === null ? '<null>' : pointer,
         };
@@ -4634,6 +4636,7 @@ function handleSpecResult(spec) {
             imagePath: normalized,
             hasImagePath: normalized !== null,
             resolved: normalized !== null,
+            resolvedClassName: normalized === null ? null : className,
             resolvedImagePath: normalized,
             text: normalized === null ? '<null>' : normalized,
         };
@@ -4652,6 +4655,8 @@ function handleSpecResult(spec) {
             imagePath: normalized,
             hasImagePath: normalized !== null,
             resolved: normalized !== null,
+            resolvedClassName: normalized === null ? null : className,
+            resolvedSelectorName: normalized === null ? null : selectorName,
             resolvedImagePath: normalized,
             text: normalized === null ? '<null>' : normalized,
         };
@@ -4666,6 +4671,7 @@ function handleSpecResult(spec) {
             name: normalized,
             hasName: normalized !== null,
             resolved: normalized !== null,
+            resolvedSelector: normalized === null ? null : selector.toString(),
             resolvedName: normalized,
             text: normalized === null ? '<null>' : normalized,
         };
@@ -4680,6 +4686,7 @@ function handleSpecResult(spec) {
             className: normalized,
             hasClassName: normalized !== null,
             resolved: normalized !== null,
+            resolvedObject: normalized === null ? null : object.toString(),
             resolvedClassName: normalized,
             text: normalized === null ? '<null>' : normalized,
         };
@@ -5020,6 +5027,8 @@ function handleSpecResult(spec) {
             hasImages: images.length !== 0,
             firstImageName: images.length === 0 ? null : images[0].name,
             lastImageName: images.length === 0 ? null : images[images.length - 1].name,
+            firstImagePath: images.length === 0 ? null : images[0].path,
+            lastImagePath: images.length === 0 ? null : images[images.length - 1].path,
             firstPathKind: images.length === 0 ? null : images[0].pathKind,
             lastPathKind: images.length === 0 ? null : images[images.length - 1].pathKind,
             uniqueImageCount: imageNames.length,
@@ -5043,6 +5052,7 @@ function handleSpecResult(spec) {
             base: normalized,
             hasBase: normalized !== null,
             resolved: normalized !== null,
+            resolvedModuleName: normalized === null ? null : moduleName,
             resolvedBase: normalized,
             text: normalized === null ? '<null>' : normalized,
         };
@@ -6332,7 +6342,7 @@ function handleSpecResult(spec) {
     }
     case 'swift.available': {
         const available = !!Swift.available;
-        return { kind: 'swift.available', available, resolved: true, text: String(available) };
+        return { kind: 'swift.available', available, resolved: true, resolvedAvailable: available, text: String(available) };
     }
     case 'swift.demangle': {
         const symbol = String(spec.symbol || '');
@@ -6342,7 +6352,10 @@ function handleSpecResult(spec) {
             kind: 'swift.demangle',
             symbol,
             demangled: normalized,
+            hasDemangled: normalized !== null,
             resolved: normalized !== null,
+            resolvedInputSymbol: normalized === null ? null : symbol,
+            resolvedDemangled: normalized,
             resolvedSymbol: normalized,
             text: normalized === null ? '<unavailable>' : normalized,
         };

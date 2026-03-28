@@ -2185,7 +2185,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.classImage NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_image', className: 'NSObject' }); return value === result.text && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedImagePath === null) || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedImagePath === result.imagePath)); })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.classImage NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_image', className: 'NSObject' }); return value === result.text && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedClassName === null && result.resolvedImagePath === null) || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedClassName === result.className && result.resolvedImagePath === result.imagePath)); })()"
                     )
                     .expect("agent objc classImage"),
                 "true"
@@ -2193,7 +2193,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodImage NSObject init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_image', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return value === result.text && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedImagePath === null) || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedImagePath === result.imagePath)); })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodImage NSObject init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_image', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return value === result.text && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedClassName === null && result.resolvedSelectorName === null && result.resolvedImagePath === null) || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedClassName === result.className && result.resolvedSelectorName === result.selectorName && result.resolvedImagePath === result.imagePath)); })()"
                     )
                     .expect("agent objc methodImage"),
                 "true"
@@ -2201,7 +2201,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodImp NSObject init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_imp', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return value === result.text && typeof result.hasImp === 'boolean' && typeof result.resolved === 'boolean' && ((result.imp === null && result.hasImp === false && result.resolved === false && result.resolvedImp === null) || (typeof result.imp === 'string' && result.hasImp === true && result.resolved === true && result.resolvedImp === result.imp)); })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodImp NSObject init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_imp', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return value === result.text && typeof result.hasImp === 'boolean' && typeof result.resolved === 'boolean' && ((result.imp === null && result.hasImp === false && result.resolved === false && result.resolvedClassName === null && result.resolvedSelectorName === null && result.resolvedImp === null) || (typeof result.imp === 'string' && result.hasImp === true && result.resolved === true && result.resolvedClassName === result.className && result.resolvedSelectorName === result.selectorName && result.resolvedImp === result.imp)); })()"
                     )
                     .expect("agent objc methodImp"),
                 "true"
@@ -2217,7 +2217,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.selectorName 0x0'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector_name', selector: '0x0' }); return value === result.text && result.name === null && result.hasName === false && result.resolved === false && result.resolvedName === null; })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.selectorName 0x0'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector_name', selector: '0x0' }); return value === result.text && result.name === null && result.hasName === false && result.resolved === false && result.resolvedSelector === null && result.resolvedName === null; })()"
                     )
                     .expect("agent objc selectorName"),
                 "true"
@@ -2225,7 +2225,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.objectClassName 0x0'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.object_class_name', object: '0x0' }); return value === result.text && result.className === null && result.hasClassName === false && result.resolved === false && result.resolvedClassName === null; })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.objectClassName 0x0'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.object_class_name', object: '0x0' }); return value === result.text && result.className === null && result.hasClassName === false && result.resolved === false && result.resolvedObject === null && result.resolvedClassName === null; })()"
                     )
                     .expect("agent objc objectClassName"),
                 "true"
@@ -2359,7 +2359,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('swift.available'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.available' }); return value === result.text && result.available === Swift.available && result.resolved === true; })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('swift.available'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.available' }); return value === result.text && result.available === Swift.available && result.resolved === true && result.resolvedAvailable === result.available; })()"
                     )
                     .expect("agent swift available"),
                 "true"
@@ -2375,7 +2375,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.demangle', symbol: '$s4Demo6methodyyF' }); return value === result.text && ((result.demangled === null && result.resolved === false && result.resolvedSymbol === null && result.text === '<unavailable>') || (typeof result.demangled === 'string' && result.resolved === true && result.resolvedSymbol === result.demangled)); })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.demangle', symbol: '$s4Demo6methodyyF' }); return value === result.text && ((result.demangled === null && result.hasDemangled === false && result.resolved === false && result.resolvedInputSymbol === null && result.resolvedDemangled === null && result.resolvedSymbol === null && result.text === '<unavailable>') || (typeof result.demangled === 'string' && result.hasDemangled === true && result.resolved === true && result.resolvedInputSymbol === result.symbol && result.resolvedDemangled === result.demangled && result.resolvedSymbol === result.demangled)); })()"
                     )
                     .expect("agent swift demangle result"),
                 "true"
@@ -2820,7 +2820,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_image', className: 'NSObject' }); return result.kind === 'objc.class_image' && result.className === 'NSObject' && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedImagePath === null && result.text === '<null>') || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedImagePath === result.imagePath && result.text === result.imagePath)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_image', className: 'NSObject' }); return result.kind === 'objc.class_image' && result.className === 'NSObject' && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedClassName === null && result.resolvedImagePath === null && result.text === '<null>') || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedClassName === result.className && result.resolvedImagePath === result.imagePath && result.text === result.imagePath)); })()"
                     )
                     .expect("agent objc classImage result"),
                 "true"
@@ -2828,7 +2828,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_image', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return result.kind === 'objc.method_image' && result.className === 'NSObject' && result.selectorName === 'init' && result.isClassMethod === false && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedImagePath === null && result.text === '<null>') || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedImagePath === result.imagePath && result.text === result.imagePath)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_image', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return result.kind === 'objc.method_image' && result.className === 'NSObject' && result.selectorName === 'init' && result.isClassMethod === false && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedClassName === null && result.resolvedSelectorName === null && result.resolvedImagePath === null && result.text === '<null>') || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedClassName === result.className && result.resolvedSelectorName === result.selectorName && result.resolvedImagePath === result.imagePath && result.text === result.imagePath)); })()"
                     )
                     .expect("agent objc methodImage result"),
                 "true"
@@ -2836,7 +2836,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_imp', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return result.kind === 'objc.method_imp' && result.className === 'NSObject' && result.selectorName === 'init' && result.isClassMethod === false && typeof result.hasImp === 'boolean' && typeof result.resolved === 'boolean' && ((result.imp === null && result.hasImp === false && result.resolved === false && result.resolvedImp === null && result.text === '<null>') || (typeof result.imp === 'string' && result.hasImp === true && result.resolved === true && result.resolvedImp === result.imp && result.text === result.imp)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_imp', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return result.kind === 'objc.method_imp' && result.className === 'NSObject' && result.selectorName === 'init' && result.isClassMethod === false && typeof result.hasImp === 'boolean' && typeof result.resolved === 'boolean' && ((result.imp === null && result.hasImp === false && result.resolved === false && result.resolvedClassName === null && result.resolvedSelectorName === null && result.resolvedImp === null && result.text === '<null>') || (typeof result.imp === 'string' && result.hasImp === true && result.resolved === true && result.resolvedClassName === result.className && result.resolvedSelectorName === result.selectorName && result.resolvedImp === result.imp && result.text === result.imp)); })()"
                     )
                     .expect("agent objc methodImp result"),
                 "true"
@@ -2844,7 +2844,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector_name', selector: '0x0' }); return result.kind === 'objc.selector_name' && result.selector === '0x0' && result.name === null && result.hasName === false && result.resolved === false && result.resolvedName === null && result.text === '<null>'; })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector_name', selector: '0x0' }); return result.kind === 'objc.selector_name' && result.selector === '0x0' && result.name === null && result.hasName === false && result.resolved === false && result.resolvedSelector === null && result.resolvedName === null && result.text === '<null>'; })()"
                     )
                     .expect("agent objc selectorName result"),
                 "true"
@@ -2852,7 +2852,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.object_class_name', object: '0x0' }); return result.kind === 'objc.object_class_name' && result.object === '0x0' && result.className === null && result.hasClassName === false && result.resolved === false && result.resolvedClassName === null && result.text === '<null>'; })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.object_class_name', object: '0x0' }); return result.kind === 'objc.object_class_name' && result.object === '0x0' && result.className === null && result.hasClassName === false && result.resolved === false && result.resolvedObject === null && result.resolvedClassName === null && result.text === '<null>'; })()"
                     )
                     .expect("agent objc objectClassName result"),
                 "true"
@@ -3459,7 +3459,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.base', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.base' && result.moduleName === 'libsystem_malloc.dylib' && typeof result.hasBase === 'boolean' && typeof result.resolved === 'boolean' && ((result.base === null && result.hasBase === false && result.resolved === false && result.resolvedBase === null && result.text === '<null>') || (typeof result.base === 'string' && result.hasBase === true && result.resolved === true && result.resolvedBase === result.base && result.text === result.base)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.base', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.base' && result.moduleName === 'libsystem_malloc.dylib' && typeof result.hasBase === 'boolean' && typeof result.resolved === 'boolean' && ((result.base === null && result.hasBase === false && result.resolved === false && result.resolvedModuleName === null && result.resolvedBase === null && result.text === '<null>') || (typeof result.base === 'string' && result.hasBase === true && result.resolved === true && result.resolvedModuleName === result.moduleName && result.resolvedBase === result.base && result.text === result.base)); })()"
                     )
                     .expect("agent native base result"),
                 "true"
@@ -3511,7 +3511,9 @@ undefined;
                             if (result.images.length === 0) {
                                 return result.hasImages === false &&
                                     result.firstImageName === null &&
-                                    result.lastImageName === null;
+                                    result.lastImageName === null &&
+                                    result.firstImagePath === null &&
+                                    result.lastImagePath === null;
                             }
                             const image = result.images[0];
                             const imageNameSummary = result.imageNames.length === 0 ? null : result.imageNames[0];
@@ -3519,6 +3521,8 @@ undefined;
                             return result.hasImages === true &&
                                 typeof result.firstImageName === 'string' &&
                                 typeof result.lastImageName === 'string' &&
+                                typeof result.firstImagePath === 'string' &&
+                                typeof result.lastImagePath === 'string' &&
                                 typeof result.firstPathKind === 'string' &&
                                 typeof result.lastPathKind === 'string' &&
                                 typeof image.path === 'string' &&
