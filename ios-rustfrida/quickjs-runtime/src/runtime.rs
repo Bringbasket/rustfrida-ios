@@ -2564,7 +2564,74 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_methods', protocolName: 'NSObject', isRequired: false, isInstanceMethod: false, filter: 'description' }); return result.kind === 'objc.protocol_methods' && result.protocolName === 'NSObject' && result.isRequired === false && result.isInstanceMethod === false && result.filter === 'description' && result.hasFilter === true && result.count === result.methods.length && typeof result.hasMethods === 'boolean' && ((result.methods.length === 0 && result.hasMethods === false && result.firstSelector === null && result.lastSelector === null) || (result.hasMethods === true && typeof result.firstSelector === 'string' && typeof result.lastSelector === 'string' && typeof result.methods[0].typeEncoding === 'string' && typeof result.methods[0].returnTypeName === 'string' && Array.isArray(result.methods[0].argumentTypeNames) && typeof result.methods[0].methodTypeInfo === 'object' && Array.isArray(result.methods[0].selectorParts) && typeof result.methods[0].selectorPartCount === 'number' && typeof result.methods[0].hasSelectorArguments === 'boolean' && typeof result.methods[0].isUnarySelector === 'boolean' && typeof result.methods[0].isKeywordSelector === 'boolean' && typeof result.methods[0].hasExplicitArguments === 'boolean' && typeof result.methods[0].hiddenArgumentCount === 'number' && typeof result.methods[0].returnsVoid === 'boolean' && typeof result.methods[0].returnsObject === 'boolean' && typeof result.methods[0].returnsBlock === 'boolean')) && result.text === result.methods.map((method) => method.text).join('\\n'); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_methods', protocolName: 'NSObject', isRequired: false, isInstanceMethod: false, filter: 'description' });
+                            if (result.kind !== 'objc.protocol_methods' || result.protocolName !== 'NSObject' || result.isRequired !== false || result.isInstanceMethod !== false || result.filter !== 'description' || result.hasFilter !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.methods.length || typeof result.hasMethods !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueSelectorCount !== 'number' ||
+                                    typeof result.uniqueReturnTypeCount !== 'number' ||
+                                    typeof result.keywordSelectorCount !== 'number' ||
+                                    typeof result.unarySelectorCount !== 'number' ||
+                                    typeof result.explicitArgumentMethodCount !== 'number' ||
+                                    typeof result.hiddenArgumentMethodCount !== 'number' ||
+                                    typeof result.returnsVoidCount !== 'number' ||
+                                    typeof result.returnsObjectCount !== 'number' ||
+                                    typeof result.returnsBlockCount !== 'number' ||
+                                    typeof result.totalExplicitArgumentCount !== 'number' ||
+                                    typeof result.totalHiddenArgumentCount !== 'number' ||
+                                    typeof result.maxSelectorPartCount !== 'number' ||
+                                    typeof result.maxExplicitArgumentCount !== 'number' ||
+                                    !Array.isArray(result.selectors) ||
+                                    !Array.isArray(result.returnTypes)) {
+                                return false;
+                            }
+                            if (result.methods.length === 0) {
+                                return result.hasMethods === false &&
+                                    result.firstSelector === null &&
+                                    result.lastSelector === null;
+                            }
+                            const method = result.methods[0];
+                            const selectorSummary = result.selectors.length === 0 ? null : result.selectors[0];
+                            const returnTypeSummary = result.returnTypes.length === 0 ? null : result.returnTypes[0];
+                            return result.hasMethods === true &&
+                                typeof result.firstSelector === 'string' &&
+                                typeof result.lastSelector === 'string' &&
+                                typeof method.typeEncoding === 'string' &&
+                                typeof method.returnTypeName === 'string' &&
+                                Array.isArray(method.argumentTypeNames) &&
+                                typeof method.methodTypeInfo === 'object' &&
+                                Array.isArray(method.selectorParts) &&
+                                typeof method.selectorPartCount === 'number' &&
+                                typeof method.hasSelectorArguments === 'boolean' &&
+                                typeof method.isUnarySelector === 'boolean' &&
+                                typeof method.isKeywordSelector === 'boolean' &&
+                                typeof method.hasExplicitArguments === 'boolean' &&
+                                typeof method.hiddenArgumentCount === 'number' &&
+                                typeof method.returnsVoid === 'boolean' &&
+                                typeof method.returnsObject === 'boolean' &&
+                                typeof method.returnsBlock === 'boolean' &&
+                                (selectorSummary === null || (
+                                    typeof selectorSummary.selector === 'string' &&
+                                    typeof selectorSummary.count === 'number' &&
+                                    typeof selectorSummary.returnTypeName === 'string' &&
+                                    typeof selectorSummary.keywordSelector === 'boolean' &&
+                                    typeof selectorSummary.isRequired === 'boolean' &&
+                                    typeof selectorSummary.isInstanceMethod === 'boolean'
+                                )) &&
+                                (returnTypeSummary === null || (
+                                    typeof returnTypeSummary.returnTypeName === 'string' &&
+                                    typeof returnTypeSummary.count === 'number' &&
+                                    typeof returnTypeSummary.firstSelector === 'string' &&
+                                    typeof returnTypeSummary.lastSelector === 'string' &&
+                                    typeof returnTypeSummary.returnsObject === 'boolean' &&
+                                    typeof returnTypeSummary.returnsBlock === 'boolean'
+                                )) &&
+                                result.text === result.methods.map((method) => method.text).join('\\n');
+                        })()"
                     )
                     .expect("agent objc protocolMethods result"),
                 "true"
