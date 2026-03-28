@@ -2822,7 +2822,78 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return result.kind === 'objc.ivars' && result.className === 'NSObject' && result.filter === 'delegate' && result.hasFilter === true && result.count === result.ivars.length && typeof result.hasIvars === 'boolean' && result.text === result.ivars.map((ivar) => ivar.text).join('\\n') && ((result.ivars.length === 0 && result.hasIvars === false && result.firstIvar === null && result.lastIvar === null) || (result.hasIvars === true && typeof result.firstIvar === 'string' && typeof result.lastIvar === 'string' && typeof result.ivars[0].offsetHex === 'string' && typeof result.ivars[0].typeName === 'string' && typeof result.ivars[0].typeInfo === 'object' && typeof result.ivars[0].kind === 'string' && Array.isArray(result.ivars[0].qualifiers) && Array.isArray(result.ivars[0].qualifierNames) && typeof result.ivars[0].qualifierCount === 'number' && typeof result.ivars[0].hasQualifiers === 'boolean' && typeof result.ivars[0].objectProtocolCount === 'number' && typeof result.ivars[0].hasObjectClassName === 'boolean' && (result.ivars[0].pointeeTypeName === null || typeof result.ivars[0].pointeeTypeName === 'string') && typeof result.ivars[0].hasPointeeType === 'boolean' && typeof result.ivars[0].isPointer === 'boolean' && typeof result.ivars[0].isArray === 'boolean' && (result.ivars[0].arrayCount === null || typeof result.ivars[0].arrayCount === 'number') && (result.ivars[0].memberName === null || typeof result.ivars[0].memberName === 'string') && typeof result.ivars[0].hasMemberName === 'boolean')); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' });
+                            if (result.kind !== 'objc.ivars' || result.className !== 'NSObject' || result.filter !== 'delegate' || result.hasFilter !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.ivars.length || typeof result.hasIvars !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueKindCount !== 'number' ||
+                                    typeof result.uniqueObjectClassCount !== 'number' ||
+                                    typeof result.totalQualifierCount !== 'number' ||
+                                    typeof result.totalObjectProtocolCount !== 'number' ||
+                                    typeof result.pointerIvarCount !== 'number' ||
+                                    typeof result.arrayIvarCount !== 'number' ||
+                                    typeof result.objectIvarCount !== 'number' ||
+                                    typeof result.blockIvarCount !== 'number' ||
+                                    typeof result.ivarsWithQualifiersCount !== 'number' ||
+                                    typeof result.ivarsWithObjectProtocolsCount !== 'number' ||
+                                    typeof result.ivarsWithObjectClassCount !== 'number' ||
+                                    typeof result.ivarsWithPointeeTypeCount !== 'number' ||
+                                    typeof result.ivarsWithMemberNameCount !== 'number' ||
+                                    !Array.isArray(result.kinds) ||
+                                    !Array.isArray(result.objectClasses)) {
+                                return false;
+                            }
+                            if (result.ivars.length === 0) {
+                                return result.hasIvars === false &&
+                                    result.firstIvar === null &&
+                                    result.lastIvar === null &&
+                                    result.minOffsetHex === null &&
+                                    result.maxOffsetHex === null;
+                            }
+                            const kindSummary = result.kinds.length === 0 ? null : result.kinds[0];
+                            const objectClassSummary = result.objectClasses.length === 0 ? null : result.objectClasses[0];
+                            return result.hasIvars === true &&
+                                typeof result.firstIvar === 'string' &&
+                                typeof result.lastIvar === 'string' &&
+                                typeof result.minOffsetHex === 'string' &&
+                                typeof result.maxOffsetHex === 'string' &&
+                                result.text === result.ivars.map((ivar) => ivar.text).join('\\n') &&
+                                (result.firstObjectClassName === null || typeof result.firstObjectClassName === 'string') &&
+                                (result.lastObjectClassName === null || typeof result.lastObjectClassName === 'string') &&
+                                (kindSummary === null || (
+                                    typeof kindSummary.kind === 'string' &&
+                                    typeof kindSummary.count === 'number' &&
+                                    typeof kindSummary.firstIvar === 'string' &&
+                                    typeof kindSummary.lastIvar === 'string'
+                                )) &&
+                                (objectClassSummary === null || (
+                                    typeof objectClassSummary.objectClassName === 'string' &&
+                                    typeof objectClassSummary.count === 'number' &&
+                                    typeof objectClassSummary.firstIvar === 'string' &&
+                                    typeof objectClassSummary.lastIvar === 'string'
+                                )) &&
+                                typeof result.ivars[0].offsetHex === 'string' &&
+                                typeof result.ivars[0].typeName === 'string' &&
+                                typeof result.ivars[0].typeInfo === 'object' &&
+                                typeof result.ivars[0].kind === 'string' &&
+                                Array.isArray(result.ivars[0].qualifiers) &&
+                                Array.isArray(result.ivars[0].qualifierNames) &&
+                                typeof result.ivars[0].qualifierCount === 'number' &&
+                                typeof result.ivars[0].hasQualifiers === 'boolean' &&
+                                typeof result.ivars[0].objectProtocolCount === 'number' &&
+                                typeof result.ivars[0].hasObjectClassName === 'boolean' &&
+                                (result.ivars[0].pointeeTypeName === null || typeof result.ivars[0].pointeeTypeName === 'string') &&
+                                typeof result.ivars[0].hasPointeeType === 'boolean' &&
+                                typeof result.ivars[0].isPointer === 'boolean' &&
+                                typeof result.ivars[0].isArray === 'boolean' &&
+                                (result.ivars[0].arrayCount === null || typeof result.ivars[0].arrayCount === 'number') &&
+                                (result.ivars[0].memberName === null || typeof result.ivars[0].memberName === 'string') &&
+                                typeof result.ivars[0].hasMemberName === 'boolean';
+                        })()"
                     )
                     .expect("agent objc ivars result"),
                 "true"

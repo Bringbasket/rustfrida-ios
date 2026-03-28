@@ -2455,6 +2455,113 @@ function normalizeObjcIvar(ivar) {
     return normalized;
 }
 
+function summarizeObjcIvars(ivars) {
+    const kinds = [];
+    const objectClasses = [];
+    let totalQualifierCount = 0;
+    let totalObjectProtocolCount = 0;
+    let pointerIvarCount = 0;
+    let arrayIvarCount = 0;
+    let objectIvarCount = 0;
+    let blockIvarCount = 0;
+    let ivarsWithQualifiersCount = 0;
+    let ivarsWithObjectProtocolsCount = 0;
+    let ivarsWithObjectClassCount = 0;
+    let ivarsWithPointeeTypeCount = 0;
+    let ivarsWithMemberNameCount = 0;
+    let firstObjectClassName = null;
+    let lastObjectClassName = null;
+    let minOffset = null;
+    let maxOffset = null;
+    for (const ivar of ivars) {
+        const offset = BigInt(ivar.offset);
+        totalQualifierCount += ivar.qualifierCount;
+        totalObjectProtocolCount += ivar.objectProtocolCount;
+        if (minOffset === null || offset < minOffset) {
+            minOffset = offset;
+        }
+        if (maxOffset === null || offset > maxOffset) {
+            maxOffset = offset;
+        }
+        if (ivar.isPointer) {
+            pointerIvarCount += 1;
+        }
+        if (ivar.isArray) {
+            arrayIvarCount += 1;
+        }
+        if (ivar.isObject) {
+            objectIvarCount += 1;
+        }
+        if (ivar.isBlock) {
+            blockIvarCount += 1;
+        }
+        if (ivar.hasQualifiers) {
+            ivarsWithQualifiersCount += 1;
+        }
+        if (ivar.objectProtocolCount !== 0) {
+            ivarsWithObjectProtocolsCount += 1;
+        }
+        if (ivar.hasObjectClassName) {
+            ivarsWithObjectClassCount += 1;
+            if (firstObjectClassName === null) {
+                firstObjectClassName = ivar.objectClassName;
+            }
+            lastObjectClassName = ivar.objectClassName;
+            let objectClassSummary = objectClasses.find((item) => item.objectClassName === ivar.objectClassName);
+            if (objectClassSummary === undefined) {
+                objectClassSummary = {
+                    objectClassName: ivar.objectClassName,
+                    count: 0,
+                    firstIvar: ivar.name,
+                    lastIvar: ivar.name,
+                };
+                objectClasses.push(objectClassSummary);
+            }
+            objectClassSummary.count += 1;
+            objectClassSummary.lastIvar = ivar.name;
+        }
+        if (ivar.hasPointeeType) {
+            ivarsWithPointeeTypeCount += 1;
+        }
+        if (ivar.hasMemberName) {
+            ivarsWithMemberNameCount += 1;
+        }
+        let kindSummary = kinds.find((item) => item.kind === ivar.kind);
+        if (kindSummary === undefined) {
+            kindSummary = {
+                kind: ivar.kind,
+                count: 0,
+                firstIvar: ivar.name,
+                lastIvar: ivar.name,
+            };
+            kinds.push(kindSummary);
+        }
+        kindSummary.count += 1;
+        kindSummary.lastIvar = ivar.name;
+    }
+    return {
+        totalQualifierCount,
+        totalObjectProtocolCount,
+        pointerIvarCount,
+        arrayIvarCount,
+        objectIvarCount,
+        blockIvarCount,
+        ivarsWithQualifiersCount,
+        ivarsWithObjectProtocolsCount,
+        ivarsWithObjectClassCount,
+        ivarsWithPointeeTypeCount,
+        ivarsWithMemberNameCount,
+        firstObjectClassName,
+        lastObjectClassName,
+        minOffsetHex: minOffset === null ? null : '0x' + minOffset.toString(16),
+        maxOffsetHex: maxOffset === null ? null : '0x' + maxOffset.toString(16),
+        uniqueKindCount: kinds.length,
+        uniqueObjectClassCount: objectClasses.length,
+        kinds,
+        objectClasses,
+    };
+}
+
 function normalizeObjcIvarInfo(ivar) {
     const offset = typeof ivar.offset === 'bigint' ? ivar.offset : BigInt(ivar.offset || 0);
     const typeInfo = parseObjcTypeEncodingInfo(ivar.typeEncoding);
@@ -4301,6 +4408,7 @@ function handleSpecResult(spec) {
         const className = String(spec.className || '');
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const ivars = ObjC.ivars(className, filter).map((ivar) => normalizeObjcIvar(ivar));
+        const summary = summarizeObjcIvars(ivars);
         return {
             kind: 'objc.ivars',
             className,
@@ -4310,6 +4418,25 @@ function handleSpecResult(spec) {
             hasIvars: ivars.length !== 0,
             firstIvar: ivars.length === 0 ? null : ivars[0].name,
             lastIvar: ivars.length === 0 ? null : ivars[ivars.length - 1].name,
+            firstObjectClassName: summary.firstObjectClassName,
+            lastObjectClassName: summary.lastObjectClassName,
+            minOffsetHex: summary.minOffsetHex,
+            maxOffsetHex: summary.maxOffsetHex,
+            uniqueKindCount: summary.uniqueKindCount,
+            uniqueObjectClassCount: summary.uniqueObjectClassCount,
+            totalQualifierCount: summary.totalQualifierCount,
+            totalObjectProtocolCount: summary.totalObjectProtocolCount,
+            pointerIvarCount: summary.pointerIvarCount,
+            arrayIvarCount: summary.arrayIvarCount,
+            objectIvarCount: summary.objectIvarCount,
+            blockIvarCount: summary.blockIvarCount,
+            ivarsWithQualifiersCount: summary.ivarsWithQualifiersCount,
+            ivarsWithObjectProtocolsCount: summary.ivarsWithObjectProtocolsCount,
+            ivarsWithObjectClassCount: summary.ivarsWithObjectClassCount,
+            ivarsWithPointeeTypeCount: summary.ivarsWithPointeeTypeCount,
+            ivarsWithMemberNameCount: summary.ivarsWithMemberNameCount,
+            kinds: summary.kinds,
+            objectClasses: summary.objectClasses,
             ivars,
             text: ivars.map((ivar) => ivar.text).join('\n'),
         };
