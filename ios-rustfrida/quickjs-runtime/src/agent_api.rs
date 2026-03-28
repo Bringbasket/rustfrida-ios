@@ -6193,12 +6193,61 @@ function handleSpecResult(spec) {
     }
     case 'swift.type_kinds': {
         const kinds = Swift.typeKinds();
+        const prefixes = [];
+        let metadataKindCount = 0;
+        let nominalKindCount = 0;
+        let protocolKindCount = 0;
+        let witnessKindCount = 0;
+        let accessorKindCount = 0;
+        let vtableKindCount = 0;
+        for (const rawKind of kinds) {
+            const kind = String(rawKind);
+            const prefix = kind.indexOf('-') === -1 ? kind : kind.slice(0, kind.indexOf('-'));
+            let summary = prefixes.find((item) => item.prefix === prefix);
+            if (summary === undefined) {
+                summary = {
+                    prefix,
+                    count: 0,
+                    firstKind: kind,
+                    lastKind: kind,
+                };
+                prefixes.push(summary);
+            }
+            summary.count += 1;
+            summary.lastKind = kind;
+            if (kind.indexOf('metadata') !== -1) {
+                metadataKindCount += 1;
+            }
+            if (kind.indexOf('nominal') !== -1) {
+                nominalKindCount += 1;
+            }
+            if (kind.indexOf('protocol') !== -1) {
+                protocolKindCount += 1;
+            }
+            if (kind.indexOf('witness') !== -1) {
+                witnessKindCount += 1;
+            }
+            if (kind.indexOf('accessor') !== -1) {
+                accessorKindCount += 1;
+            }
+            if (kind.indexOf('vtable') !== -1) {
+                vtableKindCount += 1;
+            }
+        }
         return {
             kind: 'swift.type_kinds',
             count: kinds.length,
             hasKinds: kinds.length !== 0,
             firstKind: kinds.length === 0 ? null : kinds[0],
             lastKind: kinds.length === 0 ? null : kinds[kinds.length - 1],
+            uniquePrefixCount: prefixes.length,
+            metadataKindCount,
+            nominalKindCount,
+            protocolKindCount,
+            witnessKindCount,
+            accessorKindCount,
+            vtableKindCount,
+            prefixes,
             kinds,
             text: kinds.join('\n'),
         };
