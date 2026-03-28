@@ -2379,7 +2379,43 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.classes', filter: null }); return result.kind === 'objc.classes' && result.filter === null && result.hasFilter === false && result.count === result.classes.length && typeof result.hasClasses === 'boolean' && ((result.classes.length === 0 && result.hasClasses === false && result.firstClass === null && result.lastClass === null) || (result.hasClasses === true && typeof result.firstClass === 'string' && typeof result.lastClass === 'string')) && result.text === result.classes.join('\\n'); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.classes', filter: null });
+                            if (result.kind !== 'objc.classes' || result.filter !== null || result.hasFilter !== false) {
+                                return false;
+                            }
+                            if (result.count !== result.classes.length || typeof result.hasClasses !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueImagePathCount !== 'number' ||
+                                    typeof result.classesWithImagePathCount !== 'number' ||
+                                    typeof result.rootClassCount !== 'number' ||
+                                    typeof result.classesWithProtocolsCount !== 'number' ||
+                                    typeof result.classesWithPropertiesCount !== 'number' ||
+                                    typeof result.classesWithIvarsCount !== 'number' ||
+                                    typeof result.classesWithMethodsCount !== 'number' ||
+                                    !Array.isArray(result.imagePaths)) {
+                                return false;
+                            }
+                            if (result.classes.length === 0) {
+                                return result.hasClasses === false &&
+                                    result.firstClass === null &&
+                                    result.lastClass === null;
+                            }
+                            const imageSummary = result.imagePaths.length === 0 ? null : result.imagePaths[0];
+                            return result.hasClasses === true &&
+                                typeof result.firstClass === 'string' &&
+                                typeof result.lastClass === 'string' &&
+                                result.text === result.classes.join('\\n') &&
+                                (result.firstImagePath === null || typeof result.firstImagePath === 'string') &&
+                                (result.lastImagePath === null || typeof result.lastImagePath === 'string') &&
+                                (imageSummary === null || (
+                                    typeof imageSummary.imagePath === 'string' &&
+                                    typeof imageSummary.count === 'number' &&
+                                    typeof imageSummary.firstClass === 'string' &&
+                                    typeof imageSummary.lastClass === 'string'
+                                ));
+                        })()"
                     )
                     .expect("agent objc classes result"),
                 "true"

@@ -3563,6 +3563,56 @@ function handleSpecResult(spec) {
     case 'objc.classes': {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter).trim();
         const classes = ObjC.classes(filter);
+        const imagePaths = [];
+        let classesWithImagePathCount = 0;
+        let rootClassCount = 0;
+        let classesWithProtocolsCount = 0;
+        let classesWithPropertiesCount = 0;
+        let classesWithIvarsCount = 0;
+        let classesWithMethodsCount = 0;
+        let firstImagePath = null;
+        let lastImagePath = null;
+        for (const className of classes) {
+            const info = ObjC.classInfo(className, false);
+            const normalized = info === null ? null : normalizeObjcClassInfo(info);
+            if (normalized === null) {
+                continue;
+            }
+            if (normalized.hasImagePath) {
+                classesWithImagePathCount += 1;
+                if (firstImagePath === null) {
+                    firstImagePath = normalized.imagePath;
+                }
+                lastImagePath = normalized.imagePath;
+                let imageSummary = imagePaths.find((item) => item.imagePath === normalized.imagePath);
+                if (imageSummary === undefined) {
+                    imageSummary = {
+                        imagePath: normalized.imagePath,
+                        count: 0,
+                        firstClass: normalized.className,
+                        lastClass: normalized.className,
+                    };
+                    imagePaths.push(imageSummary);
+                }
+                imageSummary.count += 1;
+                imageSummary.lastClass = normalized.className;
+            }
+            if (normalized.isRootClass) {
+                rootClassCount += 1;
+            }
+            if (normalized.hasProtocols) {
+                classesWithProtocolsCount += 1;
+            }
+            if (normalized.hasProperties) {
+                classesWithPropertiesCount += 1;
+            }
+            if (normalized.hasIvars) {
+                classesWithIvarsCount += 1;
+            }
+            if (normalized.hasMethods) {
+                classesWithMethodsCount += 1;
+            }
+        }
         return {
             kind: 'objc.classes',
             filter,
@@ -3571,6 +3621,16 @@ function handleSpecResult(spec) {
             hasClasses: classes.length !== 0,
             firstClass: classes.length === 0 ? null : classes[0],
             lastClass: classes.length === 0 ? null : classes[classes.length - 1],
+            firstImagePath,
+            lastImagePath,
+            uniqueImagePathCount: imagePaths.length,
+            classesWithImagePathCount,
+            rootClassCount,
+            classesWithProtocolsCount,
+            classesWithPropertiesCount,
+            classesWithIvarsCount,
+            classesWithMethodsCount,
+            imagePaths,
             classes,
             text: classes.join('\n'),
         };
