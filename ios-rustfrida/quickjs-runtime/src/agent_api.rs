@@ -7495,15 +7495,18 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const entries = Swift.vtable(query, moduleName).map((entry) => normalizeSwiftVtableEntry(entry));
         const sourceKinds = [];
+        const memberNames = [];
         const types = [];
         const moduleSummaries = [];
         const moduleNames = new Set();
         const typeNames = new Set();
+        const uniqueMemberNames = new Set();
         let dispatchThunkCount = 0;
         let demangledCount = 0;
         for (const entry of entries) {
             moduleNames.add(entry.moduleName);
             typeNames.add(entry.typeName);
+            uniqueMemberNames.add(entry.memberName);
             if (entry.isDispatchThunk) {
                 dispatchThunkCount += 1;
             }
@@ -7549,6 +7552,29 @@ function handleSpecResult(spec) {
             if (entry.isDispatchThunk) {
                 typeSummary.dispatchThunkCount += 1;
             }
+            let memberSummary = memberNames.find((item) => item.memberName === entry.memberName);
+            if (memberSummary === undefined) {
+                memberSummary = {
+                    memberName: entry.memberName,
+                    count: 0,
+                    firstTypeName: entry.typeName,
+                    lastTypeName: entry.typeName,
+                    firstModuleName: entry.moduleName,
+                    lastModuleName: entry.moduleName,
+                    dispatchThunkCount: 0,
+                    demangledCount: 0,
+                };
+                memberNames.push(memberSummary);
+            }
+            memberSummary.count += 1;
+            memberSummary.lastTypeName = entry.typeName;
+            memberSummary.lastModuleName = entry.moduleName;
+            if (entry.isDispatchThunk) {
+                memberSummary.dispatchThunkCount += 1;
+            }
+            if (entry.hasDemangledName) {
+                memberSummary.demangledCount += 1;
+            }
             const key = entry.sourceKind === null ? '<none>' : String(entry.sourceKind);
             let sourceSummary = sourceKinds.find((item) => item.sourceKind === key);
             if (sourceSummary === undefined) {
@@ -7580,6 +7606,7 @@ function handleSpecResult(spec) {
             firstModuleName: entries.length === 0 ? null : entries[0].moduleName,
             lastModuleName: entries.length === 0 ? null : entries[entries.length - 1].moduleName,
             uniqueTypeCount: entries.length === 0 ? 0 : typeNames.size,
+            uniqueMemberCount: entries.length === 0 ? 0 : uniqueMemberNames.size,
             uniqueModuleCount: entries.length === 0 ? 0 : moduleNames.size,
             uniqueSourceKindCount: sourceKinds.length,
             dispatchThunkCount,
@@ -7587,6 +7614,7 @@ function handleSpecResult(spec) {
             demangledCount,
             hasDemangledEntries: demangledCount !== 0,
             moduleNames: moduleSummaries,
+            memberNames,
             types,
             sourceKinds,
             entries,
@@ -7633,16 +7661,19 @@ function handleSpecResult(spec) {
         const sourceKinds = [];
         const protocols = [];
         const typeSummaries = [];
+        const witnessKeys = [];
         const moduleSummaries = [];
         const moduleNames = new Set();
         const typeNames = new Set();
         const protocolNames = new Set();
+        const uniqueWitnessKeys = new Set();
         let accessorCount = 0;
         let demangledCount = 0;
         for (const entry of entries) {
             moduleNames.add(entry.moduleName);
             typeNames.add(entry.typeName);
             protocolNames.add(entry.protocolName);
+            uniqueWitnessKeys.add(entry.witnessKey);
             if (entry.isAccessor) {
                 accessorCount += 1;
             }
@@ -7711,6 +7742,26 @@ function handleSpecResult(spec) {
             if (entry.isAccessor) {
                 protocolSummary.accessorCount += 1;
             }
+            let witnessKeySummary = witnessKeys.find((item) => item.witnessKey === entry.witnessKey);
+            if (witnessKeySummary === undefined) {
+                witnessKeySummary = {
+                    witnessKey: entry.witnessKey,
+                    count: 0,
+                    firstModuleName: entry.moduleName,
+                    lastModuleName: entry.moduleName,
+                    accessorCount: 0,
+                    demangledCount: 0,
+                };
+                witnessKeys.push(witnessKeySummary);
+            }
+            witnessKeySummary.count += 1;
+            witnessKeySummary.lastModuleName = entry.moduleName;
+            if (entry.isAccessor) {
+                witnessKeySummary.accessorCount += 1;
+            }
+            if (entry.hasDemangledName) {
+                witnessKeySummary.demangledCount += 1;
+            }
             const key = entry.sourceKind === null ? '<none>' : String(entry.sourceKind);
             let sourceSummary = sourceKinds.find((item) => item.sourceKind === key);
             if (sourceSummary === undefined) {
@@ -7743,6 +7794,7 @@ function handleSpecResult(spec) {
             lastModuleName: entries.length === 0 ? null : entries[entries.length - 1].moduleName,
             uniqueTypeCount: entries.length === 0 ? 0 : typeNames.size,
             uniqueProtocolCount: entries.length === 0 ? 0 : protocolNames.size,
+            uniqueWitnessKeyCount: entries.length === 0 ? 0 : uniqueWitnessKeys.size,
             uniqueModuleCount: entries.length === 0 ? 0 : moduleNames.size,
             uniqueSourceKindCount: sourceKinds.length,
             accessorCount,
@@ -7752,6 +7804,7 @@ function handleSpecResult(spec) {
             typeNames: typeSummaries,
             moduleNames: moduleSummaries,
             protocols,
+            witnessKeys,
             sourceKinds,
             entries,
             text: entries.map((entry) => entry.text).join('\n'),

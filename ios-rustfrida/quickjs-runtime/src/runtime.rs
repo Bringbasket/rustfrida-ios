@@ -5300,6 +5300,7 @@ undefined;
                                 return false;
                             }
                             if (typeof result.uniqueTypeCount !== 'number' ||
+                                    typeof result.uniqueMemberCount !== 'number' ||
                                     typeof result.uniqueModuleCount !== 'number' ||
                                     typeof result.uniqueSourceKindCount !== 'number' ||
                                     typeof result.dispatchThunkCount !== 'number' ||
@@ -5307,6 +5308,7 @@ undefined;
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledEntries !== 'boolean' ||
                                     !Array.isArray(result.moduleNames) ||
+                                    !Array.isArray(result.memberNames) ||
                                     !Array.isArray(result.types) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
@@ -5320,6 +5322,7 @@ undefined;
                             }
                             const entry = result.entries[0];
                             const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
+                            const memberSummary = result.memberNames.length === 0 ? null : result.memberNames[0];
                             const typeSummary = result.types.length === 0 ? null : result.types[0];
                             const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
                             return result.hasEntries === true &&
@@ -5349,6 +5352,16 @@ undefined;
                                     typeof moduleSummary.lastMemberName === 'string' &&
                                     typeof moduleSummary.dispatchThunkCount === 'number' &&
                                     typeof moduleSummary.demangledCount === 'number'
+                                )) &&
+                                (memberSummary === null || (
+                                    typeof memberSummary.memberName === 'string' &&
+                                    typeof memberSummary.count === 'number' &&
+                                    typeof memberSummary.firstTypeName === 'string' &&
+                                    typeof memberSummary.lastTypeName === 'string' &&
+                                    typeof memberSummary.firstModuleName === 'string' &&
+                                    typeof memberSummary.lastModuleName === 'string' &&
+                                    typeof memberSummary.dispatchThunkCount === 'number' &&
+                                    typeof memberSummary.demangledCount === 'number'
                                 )) &&
                                 (typeSummary === null || (
                                     typeof typeSummary.typeName === 'string' &&
@@ -5389,6 +5402,7 @@ undefined;
                             }
                             if (typeof result.uniqueTypeCount !== 'number' ||
                                     typeof result.uniqueProtocolCount !== 'number' ||
+                                    typeof result.uniqueWitnessKeyCount !== 'number' ||
                                     typeof result.uniqueModuleCount !== 'number' ||
                                     typeof result.uniqueSourceKindCount !== 'number' ||
                                     typeof result.accessorCount !== 'number' ||
@@ -5398,6 +5412,7 @@ undefined;
                                     !Array.isArray(result.typeNames) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.protocols) ||
+                                    !Array.isArray(result.witnessKeys) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
@@ -5412,6 +5427,7 @@ undefined;
                             const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
                             const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const protocolSummary = result.protocols.length === 0 ? null : result.protocols[0];
+                            const witnessKeySummary = result.witnessKeys.length === 0 ? null : result.witnessKeys[0];
                             const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
                             return result.hasEntries === true &&
                                 typeof result.firstTypeName === 'string' &&
@@ -5457,6 +5473,14 @@ undefined;
                                     typeof protocolSummary.firstTypeName === 'string' &&
                                     typeof protocolSummary.lastTypeName === 'string' &&
                                     typeof protocolSummary.accessorCount === 'number'
+                                )) &&
+                                (witnessKeySummary === null || (
+                                    typeof witnessKeySummary.witnessKey === 'string' &&
+                                    typeof witnessKeySummary.count === 'number' &&
+                                    typeof witnessKeySummary.firstModuleName === 'string' &&
+                                    typeof witnessKeySummary.lastModuleName === 'string' &&
+                                    typeof witnessKeySummary.accessorCount === 'number' &&
+                                    typeof witnessKeySummary.demangledCount === 'number'
                                 )) &&
                                 (sourceSummary === null || (
                                     typeof sourceSummary.sourceKind === 'string' &&
