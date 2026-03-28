@@ -2421,6 +2421,27 @@ function normalizeFunctionStarts(functionStarts) {
         : [];
     const firstStart = starts.length === 0 ? null : starts[0];
     const lastStart = starts.length === 0 ? null : starts[starts.length - 1];
+    const gaps = [];
+    for (let i = 1; i < starts.length; i++) {
+        const previous = BigInt(starts[i - 1].offsetHex);
+        const current = BigInt(starts[i].offsetHex);
+        gaps.push({
+            fromOffsetHex: starts[i - 1].offsetHex,
+            toOffsetHex: starts[i].offsetHex,
+            deltaHex: '0x' + (current - previous).toString(16),
+        });
+    }
+    const firstGap = gaps.length === 0 ? null : gaps[0];
+    const lastGap = gaps.length === 0 ? null : gaps[gaps.length - 1];
+    const largestGap = gaps.reduce((largest, gap) => {
+        if (largest === null) {
+            return gap;
+        }
+        return BigInt(gap.deltaHex) > BigInt(largest.deltaHex) ? gap : largest;
+    }, null);
+    const totalSpan = firstStart === null || lastStart === null
+        ? 0n
+        : BigInt(lastStart.offsetHex) - BigInt(firstStart.offsetHex);
     return {
         moduleName: String(functionStarts.moduleName || ''),
         moduleBase: functionStarts.moduleBase ? functionStarts.moduleBase.toString() : null,
@@ -2435,6 +2456,16 @@ function normalizeFunctionStarts(functionStarts) {
         firstStartAddress: firstStart === null ? null : firstStart.address,
         lastStartOffsetHex: lastStart === null ? null : lastStart.offsetHex,
         lastStartAddress: lastStart === null ? null : lastStart.address,
+        totalSpanHex: '0x' + totalSpan.toString(16),
+        gapCount: gaps.length,
+        hasGaps: gaps.length !== 0,
+        firstGapHex: firstGap === null ? null : firstGap.deltaHex,
+        lastGapHex: lastGap === null ? null : lastGap.deltaHex,
+        largestGapHex: largestGap === null ? null : largestGap.deltaHex,
+        firstGapFromOffsetHex: firstGap === null ? null : firstGap.fromOffsetHex,
+        firstGapToOffsetHex: firstGap === null ? null : firstGap.toOffsetHex,
+        lastGapFromOffsetHex: lastGap === null ? null : lastGap.fromOffsetHex,
+        lastGapToOffsetHex: lastGap === null ? null : lastGap.toOffsetHex,
         starts,
         text: formatFunctionStarts(functionStarts),
     };
