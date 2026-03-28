@@ -5118,12 +5118,14 @@ undefined;
                                 if (!(symbolInfo.resolvedModuleBase === null
                                     && symbolInfo.resolvedAddress === null
                                     && symbolInfo.resolvedOffsetHex === null
+                                    && symbolInfo.hasName === false
                                     && symbolInfo.hasDemangledName === false)) {
                                     return false;
                                 }
                             } else if (!(symbolInfo.resolvedModuleBase === symbolInfo.symbolInfo.moduleBase
                                 && symbolInfo.resolvedAddress === symbolInfo.symbolInfo.address
                                 && symbolInfo.resolvedOffsetHex === symbolInfo.symbolInfo.offsetHex
+                                && symbolInfo.hasName === (symbolInfo.symbolInfo.hasName === true)
                                 && symbolInfo.hasDemangledName === (symbolInfo.symbolInfo.hasDemangledName === true))) {
                                 return false;
                             }
@@ -5135,6 +5137,7 @@ undefined;
                                     && protocolInfo.resolvedSourceAddress === null
                                     && protocolInfo.resolvedSourceOffsetHex === null
                                     && protocolInfo.resolvedSourceDemangledName === null
+                                    && protocolInfo.hasName === false
                                     && protocolInfo.hasSourceSymbolName === false
                                     && protocolInfo.hasSourceDemangledName === false)) {
                                     return false;
@@ -5144,6 +5147,7 @@ undefined;
                                 && protocolInfo.resolvedSourceAddress === protocolInfo.protocolInfo.sourceAddress
                                 && protocolInfo.resolvedSourceOffsetHex === protocolInfo.protocolInfo.sourceOffsetHex
                                 && protocolInfo.resolvedSourceDemangledName === protocolInfo.protocolInfo.sourceDemangledName
+                                && protocolInfo.hasName === (protocolInfo.protocolInfo.hasName === true)
                                 && protocolInfo.hasSourceSymbolName === (protocolInfo.protocolInfo.hasSourceSymbolName === true)
                                 && protocolInfo.hasSourceDemangledName === (protocolInfo.protocolInfo.hasSourceDemangledName === true))) {
                                 return false;
@@ -5156,6 +5160,8 @@ undefined;
                                     && conformanceInfo.resolvedSourceAddress === null
                                     && conformanceInfo.resolvedSourceOffsetHex === null
                                     && conformanceInfo.resolvedSourceDemangledName === null
+                                    && conformanceInfo.hasTypeName === false
+                                    && conformanceInfo.hasProtocolName === false
                                     && conformanceInfo.hasSourceSymbolName === false
                                     && conformanceInfo.hasSourceDemangledName === false)) {
                                     return false;
@@ -5165,6 +5171,8 @@ undefined;
                                 && conformanceInfo.resolvedSourceAddress === conformanceInfo.conformanceInfo.sourceAddress
                                 && conformanceInfo.resolvedSourceOffsetHex === conformanceInfo.conformanceInfo.sourceOffsetHex
                                 && conformanceInfo.resolvedSourceDemangledName === conformanceInfo.conformanceInfo.sourceDemangledName
+                                && conformanceInfo.hasTypeName === (conformanceInfo.conformanceInfo.hasTypeName === true)
+                                && conformanceInfo.hasProtocolName === (conformanceInfo.conformanceInfo.hasProtocolName === true)
                                 && conformanceInfo.hasSourceSymbolName === (conformanceInfo.conformanceInfo.hasSourceSymbolName === true)
                                 && conformanceInfo.hasSourceDemangledName === (conformanceInfo.conformanceInfo.hasSourceDemangledName === true))) {
                                 return false;
@@ -5177,6 +5185,7 @@ undefined;
                                     && metadataInfo.resolvedSourceAddress === null
                                     && metadataInfo.resolvedSourceOffsetHex === null
                                     && metadataInfo.resolvedSourceDemangledName === null
+                                    && metadataInfo.hasName === false
                                     && metadataInfo.hasSourceSymbolName === false
                                     && metadataInfo.hasSourceDemangledName === false)) {
                                     return false;
@@ -5186,6 +5195,7 @@ undefined;
                                 && metadataInfo.resolvedSourceAddress === metadataInfo.metadataInfo.sourceAddress
                                 && metadataInfo.resolvedSourceOffsetHex === metadataInfo.metadataInfo.sourceOffsetHex
                                 && metadataInfo.resolvedSourceDemangledName === metadataInfo.metadataInfo.sourceDemangledName
+                                && metadataInfo.hasName === (metadataInfo.metadataInfo.hasName === true)
                                 && metadataInfo.hasSourceSymbolName === (metadataInfo.metadataInfo.hasSourceSymbolName === true)
                                 && metadataInfo.hasSourceDemangledName === (metadataInfo.metadataInfo.hasSourceDemangledName === true))) {
                                 return false;
@@ -5198,6 +5208,7 @@ undefined;
                                     && typeInfo.resolvedSourceAddress === null
                                     && typeInfo.resolvedSourceOffsetHex === null
                                     && typeInfo.resolvedSourceDemangledName === null
+                                    && typeInfo.hasName === false
                                     && typeInfo.hasSourceSymbolName === false
                                     && typeInfo.hasSourceDemangledName === false)) {
                                     return false;
@@ -5207,6 +5218,7 @@ undefined;
                                 && typeInfo.resolvedSourceAddress === typeInfo.typeInfo.sourceAddress
                                 && typeInfo.resolvedSourceOffsetHex === typeInfo.typeInfo.sourceOffsetHex
                                 && typeInfo.resolvedSourceDemangledName === typeInfo.typeInfo.sourceDemangledName
+                                && typeInfo.hasName === (typeInfo.typeInfo.hasName === true)
                                 && typeInfo.hasSourceSymbolName === (typeInfo.typeInfo.hasSourceSymbolName === true)
                                 && typeInfo.hasSourceDemangledName === (typeInfo.typeInfo.hasSourceDemangledName === true))) {
                                 return false;
@@ -5217,12 +5229,14 @@ undefined;
                                 if (!(methodInfo.resolvedModuleBase === null
                                     && methodInfo.resolvedAddress === null
                                     && methodInfo.resolvedOffsetHex === null
+                                    && methodInfo.hasName === false
                                     && methodInfo.hasDemangledName === false)) {
                                     return false;
                                 }
                             } else if (!(methodInfo.resolvedModuleBase === methodInfo.methodInfo.moduleBase
                                 && methodInfo.resolvedAddress === methodInfo.methodInfo.address
                                 && methodInfo.resolvedOffsetHex === methodInfo.methodInfo.offsetHex
+                                && methodInfo.hasName === (methodInfo.methodInfo.hasName === true)
                                 && methodInfo.hasDemangledName === (methodInfo.methodInfo.hasDemangledName === true))) {
                                 return false;
                             }
@@ -5232,12 +5246,20 @@ undefined;
                                 if (!(vtableInfo.resolvedModuleBase === null
                                     && vtableInfo.resolvedAddress === null
                                     && vtableInfo.resolvedOffsetHex === null
+                                    && vtableInfo.resolvedMemberKey === null
+                                    && vtableInfo.hasTypeName === false
+                                    && vtableInfo.hasMemberName === false
+                                    && vtableInfo.hasName === false
                                     && vtableInfo.hasDemangledName === false)) {
                                     return false;
                                 }
                             } else if (!(vtableInfo.resolvedModuleBase === vtableInfo.vtableInfo.moduleBase
                                 && vtableInfo.resolvedAddress === vtableInfo.vtableInfo.address
                                 && vtableInfo.resolvedOffsetHex === vtableInfo.vtableInfo.offsetHex
+                                && vtableInfo.resolvedMemberKey === vtableInfo.vtableInfo.memberKey
+                                && vtableInfo.hasTypeName === (vtableInfo.vtableInfo.hasTypeName === true)
+                                && vtableInfo.hasMemberName === (vtableInfo.vtableInfo.hasMemberName === true)
+                                && vtableInfo.hasName === (vtableInfo.vtableInfo.hasName === true)
                                 && vtableInfo.hasDemangledName === (vtableInfo.vtableInfo.hasDemangledName === true))) {
                                 return false;
                             }
@@ -5247,12 +5269,20 @@ undefined;
                                 if (!(witnessInfo.resolvedModuleBase === null
                                     && witnessInfo.resolvedAddress === null
                                     && witnessInfo.resolvedOffsetHex === null
+                                    && witnessInfo.resolvedWitnessKey === null
+                                    && witnessInfo.hasTypeName === false
+                                    && witnessInfo.hasProtocolName === false
+                                    && witnessInfo.hasName === false
                                     && witnessInfo.hasDemangledName === false)) {
                                     return false;
                                 }
                             } else if (!(witnessInfo.resolvedModuleBase === witnessInfo.witnessTableInfo.moduleBase
                                 && witnessInfo.resolvedAddress === witnessInfo.witnessTableInfo.address
                                 && witnessInfo.resolvedOffsetHex === witnessInfo.witnessTableInfo.offsetHex
+                                && witnessInfo.resolvedWitnessKey === witnessInfo.witnessTableInfo.witnessKey
+                                && witnessInfo.hasTypeName === (witnessInfo.witnessTableInfo.hasTypeName === true)
+                                && witnessInfo.hasProtocolName === (witnessInfo.witnessTableInfo.hasProtocolName === true)
+                                && witnessInfo.hasName === (witnessInfo.witnessTableInfo.hasName === true)
                                 && witnessInfo.hasDemangledName === (witnessInfo.witnessTableInfo.hasDemangledName === true))) {
                                 return false;
                             }
@@ -5260,6 +5290,7 @@ undefined;
                             const typeLayoutInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' });
                             if (typeLayoutInfo.typeLayout === null) {
                                 return typeLayoutInfo.resolvedModuleBase === null
+                                    && typeLayoutInfo.hasName === false
                                     && typeLayoutInfo.firstMetadataName === null
                                     && typeLayoutInfo.lastMetadataName === null
                                     && typeLayoutInfo.firstMetadataAccessorName === null
@@ -5276,6 +5307,7 @@ undefined;
                                     && typeLayoutInfo.lastWitnessProtocolName === null;
                             }
                             return typeLayoutInfo.resolvedModuleBase === typeLayoutInfo.typeLayout.moduleBase
+                                && typeLayoutInfo.hasName === (typeLayoutInfo.typeLayout.hasName === true)
                                 && typeLayoutInfo.firstMetadataName === typeLayoutInfo.typeLayout.firstMetadataName
                                 && typeLayoutInfo.lastMetadataName === typeLayoutInfo.typeLayout.lastMetadataName
                                 && typeLayoutInfo.firstMetadataAccessorName === typeLayoutInfo.typeLayout.firstMetadataAccessorName
