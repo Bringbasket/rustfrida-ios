@@ -6388,6 +6388,7 @@ function handleSpecResult(spec) {
             return largest;
         }, null);
         const protectionSummaries = [];
+        const segmentNames = [];
         for (const segment of segments) {
             let summary = protectionSummaries.find((item) => item.initprotFlags === segment.initprotFlags && item.maxprotFlags === segment.maxprotFlags);
             if (summary === undefined) {
@@ -6413,6 +6414,33 @@ function handleSpecResult(spec) {
             }
             if (segment.isExecutable) {
                 summary.executableCount += 1;
+            }
+            let segmentNameSummary = segmentNames.find((item) => item.segmentName === segment.name);
+            if (segmentNameSummary === undefined) {
+                segmentNameSummary = {
+                    segmentName: segment.name,
+                    count: 0,
+                    firstVmaddr: segment.vmaddr,
+                    lastVmaddr: segment.vmaddr,
+                    firstFileoffHex: segment.fileoffHex,
+                    lastFileoffHex: segment.fileoffHex,
+                    readableCount: 0,
+                    writableCount: 0,
+                    executableCount: 0,
+                };
+                segmentNames.push(segmentNameSummary);
+            }
+            segmentNameSummary.count += 1;
+            segmentNameSummary.lastVmaddr = segment.vmaddr;
+            segmentNameSummary.lastFileoffHex = segment.fileoffHex;
+            if (segment.isReadable) {
+                segmentNameSummary.readableCount += 1;
+            }
+            if (segment.isWritable) {
+                segmentNameSummary.writableCount += 1;
+            }
+            if (segment.isExecutable) {
+                segmentNameSummary.executableCount += 1;
             }
         }
         return {
@@ -6440,7 +6468,9 @@ function handleSpecResult(spec) {
             hasWritableSegments: writableSegments.length !== 0,
             executableSegmentCount: executableSegments.length,
             hasExecutableSegments: executableSegments.length !== 0,
+            uniqueSegmentNameCount: segmentNames.length,
             uniqueProtectionCount: protectionSummaries.length,
+            segmentNames,
             protections: protectionSummaries.map((summary) => ({
                 initprotFlags: summary.initprotFlags,
                 maxprotFlags: summary.maxprotFlags,
@@ -6500,6 +6530,7 @@ function handleSpecResult(spec) {
             return largest;
         }, null);
         const segmentSummaries = [];
+        const sectionNames = [];
         for (const section of sections) {
             let summary = segmentSummaries.find((item) => item.segmentName === section.segmentName);
             if (summary === undefined) {
@@ -6526,6 +6557,33 @@ function handleSpecResult(spec) {
             }
             if (section.isSymbolPointers) {
                 summary.symbolPointerCount += 1;
+            }
+            let sectionNameSummary = sectionNames.find((item) => item.sectionName === section.name);
+            if (sectionNameSummary === undefined) {
+                sectionNameSummary = {
+                    sectionName: section.name,
+                    count: 0,
+                    firstSegmentName: section.segmentName,
+                    lastSegmentName: section.segmentName,
+                    firstFullName: section.fullName,
+                    lastFullName: section.fullName,
+                    zeroFillCount: 0,
+                    cstringCount: 0,
+                    symbolPointerCount: 0,
+                };
+                sectionNames.push(sectionNameSummary);
+            }
+            sectionNameSummary.count += 1;
+            sectionNameSummary.lastSegmentName = section.segmentName;
+            sectionNameSummary.lastFullName = section.fullName;
+            if (section.isZeroFillLike) {
+                sectionNameSummary.zeroFillCount += 1;
+            }
+            if (section.isCStringLike) {
+                sectionNameSummary.cstringCount += 1;
+            }
+            if (section.isSymbolPointers) {
+                sectionNameSummary.symbolPointerCount += 1;
             }
         }
         const sectionTypeSummaries = [];
@@ -6568,10 +6626,12 @@ function handleSpecResult(spec) {
             symbolPointerSectionCount: symbolPointerSections.length,
             hasSymbolPointerSections: symbolPointerSections.length !== 0,
             uniqueSegmentCount: segmentSummaries.length,
+            uniqueSectionNameCount: sectionNames.length,
             uniqueSectionTypeCount: sectionTypeSummaries.length,
             largestSectionName: largestSection === null ? null : largestSection.name,
             largestSectionFullName: largestSection === null ? null : largestSection.fullName,
             largestSectionSizeHex: largestSection === null ? null : largestSection.sizeHex,
+            sectionNames,
             segments: segmentSummaries.map((summary) => ({
                 segmentName: summary.segmentName,
                 count: summary.count,
@@ -6648,6 +6708,7 @@ function handleSpecResult(spec) {
         }, null);
         const totalCommandSize = commands.reduce((sum, command) => sum + BigInt(command.cmdsize || 0), 0n);
         const commandKinds = [];
+        const commandNames = [];
         for (const command of commands) {
             let summary = commandKinds.find((item) => item.name === command.name);
             if (summary === undefined) {
@@ -6669,6 +6730,27 @@ function handleSpecResult(spec) {
             summary.hasDetail = summary.hasDetail || command.hasDetail;
             if (command.isReqDyld) {
                 summary.reqDyldCount += 1;
+            }
+            let commandNameSummary = commandNames.find((item) => item.commandName === command.name);
+            if (commandNameSummary === undefined) {
+                commandNameSummary = {
+                    commandName: command.name,
+                    count: 0,
+                    firstIndex: command.index,
+                    lastIndex: command.index,
+                    firstOffsetHex: command.offsetHex,
+                    lastOffsetHex: command.offsetHex,
+                    hasDetail: false,
+                    reqDyldCount: 0,
+                };
+                commandNames.push(commandNameSummary);
+            }
+            commandNameSummary.count += 1;
+            commandNameSummary.lastIndex = command.index;
+            commandNameSummary.lastOffsetHex = command.offsetHex;
+            commandNameSummary.hasDetail = commandNameSummary.hasDetail || command.hasDetail;
+            if (command.isReqDyld) {
+                commandNameSummary.reqDyldCount += 1;
             }
         }
         return {
@@ -6696,6 +6778,7 @@ function handleSpecResult(spec) {
             hasDetailedCommands: detailedCommands.length !== 0,
             uniqueCommandNameCount: commandKinds.length,
             hasDuplicateCommandNames: commandKinds.some((item) => item.count > 1),
+            commandNames,
             commandKinds: commandKinds.map((summary) => ({
                 name: summary.name,
                 count: summary.count,

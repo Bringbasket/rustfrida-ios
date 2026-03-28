@@ -3924,6 +3924,8 @@ undefined;
                                 && typeof result.hasWritableSegments === 'boolean'
                                 && typeof result.executableSegmentCount === 'number'
                                 && typeof result.hasExecutableSegments === 'boolean'
+                                && typeof result.uniqueSegmentNameCount === 'number'
+                                && Array.isArray(result.segmentNames)
                                 && typeof result.uniqueProtectionCount === 'number'
                                 && Array.isArray(result.protections))) {
                                 return false;
@@ -3972,6 +3974,20 @@ undefined;
                                     return false;
                                 }
                             }
+                            if (result.segmentNames.length !== 0) {
+                                const segmentName = result.segmentNames[0];
+                                if (!(typeof segmentName.segmentName === 'string'
+                                    && typeof segmentName.count === 'number'
+                                    && typeof segmentName.firstVmaddr === 'string'
+                                    && typeof segmentName.lastVmaddr === 'string'
+                                    && typeof segmentName.firstFileoffHex === 'string'
+                                    && typeof segmentName.lastFileoffHex === 'string'
+                                    && typeof segmentName.readableCount === 'number'
+                                    && typeof segmentName.writableCount === 'number'
+                                    && typeof segmentName.executableCount === 'number')) {
+                                    return false;
+                                }
+                            }
                             return true;
                         })()"#
                     )
@@ -4007,10 +4023,12 @@ undefined;
                                 && typeof result.symbolPointerSectionCount === 'number'
                                 && typeof result.hasSymbolPointerSections === 'boolean'
                                 && typeof result.uniqueSegmentCount === 'number'
+                                && typeof result.uniqueSectionNameCount === 'number'
                                 && typeof result.uniqueSectionTypeCount === 'number'
                                 && (result.largestSectionName === null || typeof result.largestSectionName === 'string')
                                 && (result.largestSectionFullName === null || typeof result.largestSectionFullName === 'string')
                                 && (result.largestSectionSizeHex === null || typeof result.largestSectionSizeHex === 'string')
+                                && Array.isArray(result.sectionNames)
                                 && Array.isArray(result.segments)
                                 && Array.isArray(result.sectionTypes))) {
                                 return false;
@@ -4072,6 +4090,20 @@ undefined;
                                     return false;
                                 }
                             }
+                            if (result.sectionNames.length !== 0) {
+                                const sectionName = result.sectionNames[0];
+                                if (!(typeof sectionName.sectionName === 'string'
+                                    && typeof sectionName.count === 'number'
+                                    && typeof sectionName.firstSegmentName === 'string'
+                                    && typeof sectionName.lastSegmentName === 'string'
+                                    && typeof sectionName.firstFullName === 'string'
+                                    && typeof sectionName.lastFullName === 'string'
+                                    && typeof sectionName.zeroFillCount === 'number'
+                                    && typeof sectionName.cstringCount === 'number'
+                                    && typeof sectionName.symbolPointerCount === 'number')) {
+                                    return false;
+                                }
+                            }
                             return true;
                         })()"#
                     )
@@ -4113,6 +4145,7 @@ undefined;
                                 && typeof result.hasDetailedCommands === 'boolean'
                                 && typeof result.uniqueCommandNameCount === 'number'
                                 && typeof result.hasDuplicateCommandNames === 'boolean'
+                                && Array.isArray(result.commandNames)
                                 && Array.isArray(result.commandKinds))) {
                                 return false;
                             }
@@ -4147,6 +4180,19 @@ undefined;
                                     && typeof kind.lastOffsetHex === 'string'
                                     && typeof kind.hasDetail === 'boolean'
                                     && typeof kind.reqDyldCount === 'number')) {
+                                    return false;
+                                }
+                            }
+                            if (result.commandNames.length !== 0) {
+                                const commandName = result.commandNames[0];
+                                if (!(typeof commandName.commandName === 'string'
+                                    && typeof commandName.count === 'number'
+                                    && typeof commandName.firstIndex === 'number'
+                                    && typeof commandName.lastIndex === 'number'
+                                    && typeof commandName.firstOffsetHex === 'string'
+                                    && typeof commandName.lastOffsetHex === 'string'
+                                    && typeof commandName.hasDetail === 'boolean'
+                                    && typeof commandName.reqDyldCount === 'number')) {
                                     return false;
                                 }
                             }
