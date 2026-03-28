@@ -2225,7 +2225,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.properties NSObject meta delegate'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return value === result.text && result.count === result.properties.length; })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.properties NSObject meta delegate'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'NSObject', isClassProperty: true, filter: 'delegate' }); return value === result.text && typeof result.hasClassInfo === 'boolean' && typeof result.resolved === 'boolean' && ((result.classInfo === null && result.hasClassInfo === false && result.resolved === false && result.resolvedClassName === null && result.resolvedClassPointer === null && result.hasImagePath === false && result.imagePath === null && result.declaredProtocolCount === 0 && result.ownerHasProtocols === false && result.ownerHasProperties === false && result.ownerHasIvars === false && result.ownerHasMethods === false && result.ownerIvarCount === 0 && result.ownerTotalPropertyCount === 0 && result.ownerTotalMethodCount === 0) || (result.classInfo.className === 'NSObject' && result.hasClassInfo === true && result.resolved === true && result.resolvedClassName === result.classInfo.className && result.resolvedClassPointer === result.classInfo.classPointer && result.hasImagePath === (result.classInfo.hasImagePath === true) && result.imagePath === result.classInfo.imagePath && result.declaredProtocolCount === result.classInfo.protocolCount && result.ownerHasProtocols === (result.classInfo.hasProtocols === true) && result.ownerHasProperties === (result.classInfo.hasProperties === true) && result.ownerHasIvars === (result.classInfo.hasIvars === true) && result.ownerHasMethods === (result.classInfo.hasMethods === true) && result.ownerIvarCount === result.classInfo.ivarCount && result.ownerTotalPropertyCount === result.classInfo.totalPropertyCount && result.ownerTotalMethodCount === result.classInfo.totalMethodCount)) && result.count === result.properties.length; })()"
                     )
                     .expect("agent objc properties"),
                 "true"
@@ -2249,7 +2249,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.ivars NSObject delegate'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return value === result.text && result.count === result.ivars.length; })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.ivars NSObject delegate'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' }); return value === result.text && typeof result.hasClassInfo === 'boolean' && typeof result.resolved === 'boolean' && ((result.classInfo === null && result.hasClassInfo === false && result.resolved === false && result.resolvedClassName === null && result.resolvedClassPointer === null && result.hasImagePath === false && result.imagePath === null && result.declaredProtocolCount === 0 && result.ownerHasProtocols === false && result.ownerHasProperties === false && result.ownerHasIvars === false && result.ownerHasMethods === false && result.ownerIvarCount === 0 && result.ownerTotalPropertyCount === 0 && result.ownerTotalMethodCount === 0) || (result.classInfo.className === 'NSObject' && result.hasClassInfo === true && result.resolved === true && result.resolvedClassName === result.classInfo.className && result.resolvedClassPointer === result.classInfo.classPointer && result.hasImagePath === (result.classInfo.hasImagePath === true) && result.imagePath === result.classInfo.imagePath && result.declaredProtocolCount === result.classInfo.protocolCount && result.ownerHasProtocols === (result.classInfo.hasProtocols === true) && result.ownerHasProperties === (result.classInfo.hasProperties === true) && result.ownerHasIvars === (result.classInfo.hasIvars === true) && result.ownerHasMethods === (result.classInfo.hasMethods === true) && result.ownerIvarCount === result.classInfo.ivarCount && result.ownerTotalPropertyCount === result.classInfo.totalPropertyCount && result.ownerTotalMethodCount === result.classInfo.totalMethodCount)) && result.count === result.ivars.length; })()"
                     )
                     .expect("agent objc ivars"),
                 "true"
@@ -2257,7 +2257,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.findMethods NSObject init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.methods', className: 'NSObject', isClassMethod: false, filter: 'init' }); return value === result.text && result.filter === 'init' && result.count === result.methods.length; })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.findMethods NSObject init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.methods', className: 'NSObject', isClassMethod: false, filter: 'init' }); return value === result.text && result.filter === 'init' && typeof result.hasClassInfo === 'boolean' && typeof result.resolved === 'boolean' && ((result.classInfo === null && result.hasClassInfo === false && result.resolved === false && result.resolvedClassName === null && result.resolvedClassPointer === null && result.hasImagePath === false && result.imagePath === null && result.declaredProtocolCount === 0 && result.ownerHasProtocols === false && result.ownerHasProperties === false && result.ownerHasIvars === false && result.ownerHasMethods === false && result.ownerIvarCount === 0 && result.ownerTotalPropertyCount === 0 && result.ownerTotalMethodCount === 0) || (result.classInfo.className === 'NSObject' && result.hasClassInfo === true && result.resolved === true && result.resolvedClassName === result.classInfo.className && result.resolvedClassPointer === result.classInfo.classPointer && result.hasImagePath === (result.classInfo.hasImagePath === true) && result.imagePath === result.classInfo.imagePath && result.declaredProtocolCount === result.classInfo.protocolCount && result.ownerHasProtocols === (result.classInfo.hasProtocols === true) && result.ownerHasProperties === (result.classInfo.hasProperties === true) && result.ownerHasIvars === (result.classInfo.hasIvars === true) && result.ownerHasMethods === (result.classInfo.hasMethods === true) && result.ownerIvarCount === result.classInfo.ivarCount && result.ownerTotalPropertyCount === result.classInfo.totalPropertyCount && result.ownerTotalMethodCount === result.classInfo.totalMethodCount)) && result.count === result.methods.length; })()"
                     )
                     .expect("agent objc findMethods"),
                 "true"
@@ -2747,7 +2747,7 @@ undefined;
                             if (result.kind !== 'objc.protocol_methods' || result.protocolName !== 'NSObject' || result.isRequired !== false || result.isInstanceMethod !== false || result.filter !== 'description' || result.hasFilter !== true) {
                                 return false;
                             }
-                            if (result.count !== result.methods.length || typeof result.hasMethods !== 'boolean') {
+                            if (result.count !== result.methods.length || typeof result.hasMethods !== 'boolean' || typeof result.hasProtocolInfo !== 'boolean' || typeof result.resolved !== 'boolean') {
                                 return false;
                             }
                             if (typeof result.uniqueSelectorCount !== 'number' ||
@@ -2763,8 +2763,32 @@ undefined;
                                     typeof result.totalHiddenArgumentCount !== 'number' ||
                                     typeof result.maxSelectorPartCount !== 'number' ||
                                     typeof result.maxExplicitArgumentCount !== 'number' ||
+                                    typeof result.adoptedProtocolCount !== 'number' ||
+                                    typeof result.ownerHasAdoptedProtocols !== 'boolean' ||
+                                    typeof result.ownerHasMethods !== 'boolean' ||
+                                    typeof result.ownerHasProperties !== 'boolean' ||
+                                    typeof result.protocolTotalMethodCount !== 'number' ||
+                                    typeof result.protocolPropertyCount !== 'number' ||
                                     !Array.isArray(result.selectors) ||
                                     !Array.isArray(result.returnTypes)) {
+                                return false;
+                            }
+                            if (result.protocolInfo === null) {
+                                if (result.hasProtocolInfo !== false || result.resolved !== false || result.resolvedProtocolName !== null || result.resolvedProtocolPointer !== null || result.hasImagePath !== false || result.imagePath !== null || result.adoptedProtocolCount !== 0 || result.ownerHasAdoptedProtocols !== false || result.ownerHasMethods !== false || result.ownerHasProperties !== false || result.protocolTotalMethodCount !== 0 || result.protocolPropertyCount !== 0) {
+                                    return false;
+                                }
+                            } else if (!(result.hasProtocolInfo === true &&
+                                    result.resolved === true &&
+                                    result.resolvedProtocolName === result.protocolInfo.protocolName &&
+                                    result.resolvedProtocolPointer === result.protocolInfo.protocolPointer &&
+                                    result.hasImagePath === (result.protocolInfo.hasImagePath === true) &&
+                                    result.imagePath === result.protocolInfo.imagePath &&
+                                    result.adoptedProtocolCount === result.protocolInfo.adoptedProtocolCount &&
+                                    result.ownerHasAdoptedProtocols === (result.protocolInfo.hasAdoptedProtocols === true) &&
+                                    result.ownerHasMethods === (result.protocolInfo.totalMethodCount !== 0) &&
+                                    result.ownerHasProperties === (result.protocolInfo.hasProperties === true) &&
+                                    result.protocolTotalMethodCount === result.protocolInfo.totalMethodCount &&
+                                    result.protocolPropertyCount === result.protocolInfo.propertyCount)) {
                                 return false;
                             }
                             if (result.methods.length === 0) {
@@ -2830,7 +2854,7 @@ undefined;
                             if (result.kind !== 'objc.protocol_properties' || result.protocolName !== 'NSObject' || result.filter !== 'description' || result.hasFilter !== true) {
                                 return false;
                             }
-                            if (result.count !== result.properties.length || typeof result.hasProperties !== 'boolean') {
+                            if (result.count !== result.properties.length || typeof result.hasProperties !== 'boolean' || typeof result.hasProtocolInfo !== 'boolean' || typeof result.resolved !== 'boolean') {
                                 return false;
                             }
                             if (typeof result.uniqueOwnershipCount !== 'number' ||
@@ -2852,8 +2876,32 @@ undefined;
                                     typeof result.propertiesWithTypeInfoCount !== 'number' ||
                                     typeof result.propertiesWithParsedTokensCount !== 'number' ||
                                     typeof result.totalObjectProtocolCount !== 'number' ||
+                                    typeof result.adoptedProtocolCount !== 'number' ||
+                                    typeof result.ownerHasAdoptedProtocols !== 'boolean' ||
+                                    typeof result.ownerHasMethods !== 'boolean' ||
+                                    typeof result.ownerHasProperties !== 'boolean' ||
+                                    typeof result.protocolTotalMethodCount !== 'number' ||
+                                    typeof result.protocolPropertyCount !== 'number' ||
                                     !Array.isArray(result.ownerships) ||
                                     !Array.isArray(result.objectClasses)) {
+                                return false;
+                            }
+                            if (result.protocolInfo === null) {
+                                if (result.hasProtocolInfo !== false || result.resolved !== false || result.resolvedProtocolName !== null || result.resolvedProtocolPointer !== null || result.hasImagePath !== false || result.imagePath !== null || result.adoptedProtocolCount !== 0 || result.ownerHasAdoptedProtocols !== false || result.ownerHasMethods !== false || result.ownerHasProperties !== false || result.protocolTotalMethodCount !== 0 || result.protocolPropertyCount !== 0) {
+                                    return false;
+                                }
+                            } else if (!(result.hasProtocolInfo === true &&
+                                    result.resolved === true &&
+                                    result.resolvedProtocolName === result.protocolInfo.protocolName &&
+                                    result.resolvedProtocolPointer === result.protocolInfo.protocolPointer &&
+                                    result.hasImagePath === (result.protocolInfo.hasImagePath === true) &&
+                                    result.imagePath === result.protocolInfo.imagePath &&
+                                    result.adoptedProtocolCount === result.protocolInfo.adoptedProtocolCount &&
+                                    result.ownerHasAdoptedProtocols === (result.protocolInfo.hasAdoptedProtocols === true) &&
+                                    result.ownerHasMethods === (result.protocolInfo.totalMethodCount !== 0) &&
+                                    result.ownerHasProperties === (result.protocolInfo.hasProperties === true) &&
+                                    result.protocolTotalMethodCount === result.protocolInfo.totalMethodCount &&
+                                    result.protocolPropertyCount === result.protocolInfo.propertyCount)) {
                                 return false;
                             }
                             if (result.properties.length === 0) {
@@ -3344,7 +3392,7 @@ undefined;
                             if (result.kind !== 'objc.ivars' || result.className !== 'NSObject' || result.filter !== 'delegate' || result.hasFilter !== true) {
                                 return false;
                             }
-                            if (result.count !== result.ivars.length || typeof result.hasIvars !== 'boolean') {
+                            if (result.count !== result.ivars.length || typeof result.hasIvars !== 'boolean' || typeof result.hasClassInfo !== 'boolean' || typeof result.resolved !== 'boolean') {
                                 return false;
                             }
                             if (typeof result.uniqueKindCount !== 'number' ||
@@ -3360,8 +3408,36 @@ undefined;
                                     typeof result.ivarsWithObjectClassCount !== 'number' ||
                                     typeof result.ivarsWithPointeeTypeCount !== 'number' ||
                                     typeof result.ivarsWithMemberNameCount !== 'number' ||
+                                    typeof result.declaredProtocolCount !== 'number' ||
+                                    typeof result.ownerHasProtocols !== 'boolean' ||
+                                    typeof result.ownerHasProperties !== 'boolean' ||
+                                    typeof result.ownerHasIvars !== 'boolean' ||
+                                    typeof result.ownerHasMethods !== 'boolean' ||
+                                    typeof result.ownerIvarCount !== 'number' ||
+                                    typeof result.ownerTotalPropertyCount !== 'number' ||
+                                    typeof result.ownerTotalMethodCount !== 'number' ||
                                     !Array.isArray(result.kinds) ||
                                     !Array.isArray(result.objectClasses)) {
+                                return false;
+                            }
+                            if (result.classInfo === null) {
+                                if (result.hasClassInfo !== false || result.resolved !== false || result.resolvedClassName !== null || result.resolvedClassPointer !== null || result.hasImagePath !== false || result.imagePath !== null || result.declaredProtocolCount !== 0 || result.ownerHasProtocols !== false || result.ownerHasProperties !== false || result.ownerHasIvars !== false || result.ownerHasMethods !== false || result.ownerIvarCount !== 0 || result.ownerTotalPropertyCount !== 0 || result.ownerTotalMethodCount !== 0) {
+                                    return false;
+                                }
+                            } else if (!(result.hasClassInfo === true &&
+                                    result.resolved === true &&
+                                    result.resolvedClassName === result.classInfo.className &&
+                                    result.resolvedClassPointer === result.classInfo.classPointer &&
+                                    result.hasImagePath === (result.classInfo.hasImagePath === true) &&
+                                    result.imagePath === result.classInfo.imagePath &&
+                                    result.declaredProtocolCount === result.classInfo.protocolCount &&
+                                    result.ownerHasProtocols === (result.classInfo.hasProtocols === true) &&
+                                    result.ownerHasProperties === (result.classInfo.hasProperties === true) &&
+                                    result.ownerHasIvars === (result.classInfo.hasIvars === true) &&
+                                    result.ownerHasMethods === (result.classInfo.hasMethods === true) &&
+                                    result.ownerIvarCount === result.classInfo.ivarCount &&
+                                    result.ownerTotalPropertyCount === result.classInfo.totalPropertyCount &&
+                                    result.ownerTotalMethodCount === result.classInfo.totalMethodCount)) {
                                 return false;
                             }
                             if (result.ivars.length === 0) {

@@ -4755,11 +4755,28 @@ function handleSpecResult(spec) {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const methods = ObjC.methods(className, isClassMethod, filter).map((method) => normalizeObjcMethod(method));
         const summary = summarizeObjcMethods(methods);
+        const classInfo = ObjC.classInfo(className, isClassMethod);
+        const normalizedClassInfo = classInfo === null ? null : normalizeObjcClassInfo(classInfo);
         return {
             kind: 'objc.methods',
             className,
             isClassMethod,
             filter,
+            classInfo: normalizedClassInfo,
+            hasClassInfo: normalizedClassInfo !== null,
+            resolved: normalizedClassInfo !== null,
+            resolvedClassName: normalizedClassInfo === null ? null : normalizedClassInfo.className,
+            resolvedClassPointer: normalizedClassInfo === null ? null : normalizedClassInfo.classPointer,
+            hasImagePath: normalizedClassInfo !== null && normalizedClassInfo.hasImagePath === true,
+            imagePath: normalizedClassInfo === null ? null : normalizedClassInfo.imagePath,
+            declaredProtocolCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.protocolCount,
+            ownerHasProtocols: normalizedClassInfo !== null && normalizedClassInfo.hasProtocols === true,
+            ownerHasProperties: normalizedClassInfo !== null && normalizedClassInfo.hasProperties === true,
+            ownerHasIvars: normalizedClassInfo !== null && normalizedClassInfo.hasIvars === true,
+            ownerHasMethods: normalizedClassInfo !== null && normalizedClassInfo.hasMethods === true,
+            ownerIvarCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.ivarCount,
+            ownerTotalPropertyCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.totalPropertyCount,
+            ownerTotalMethodCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.totalMethodCount,
             hasFilter: filter !== null && filter.length !== 0,
             count: methods.length,
             hasMethods: methods.length !== 0,
@@ -4790,11 +4807,28 @@ function handleSpecResult(spec) {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const properties = ObjC.properties(className, isClassProperty, filter).map((property) => normalizeObjcProperty(property));
         const summary = summarizeObjcProperties(properties);
+        const classInfo = ObjC.classInfo(className, isClassProperty);
+        const normalizedClassInfo = classInfo === null ? null : normalizeObjcClassInfo(classInfo);
         return {
             kind: 'objc.properties',
             className,
             isClassProperty,
             filter,
+            classInfo: normalizedClassInfo,
+            hasClassInfo: normalizedClassInfo !== null,
+            resolved: normalizedClassInfo !== null,
+            resolvedClassName: normalizedClassInfo === null ? null : normalizedClassInfo.className,
+            resolvedClassPointer: normalizedClassInfo === null ? null : normalizedClassInfo.classPointer,
+            hasImagePath: normalizedClassInfo !== null && normalizedClassInfo.hasImagePath === true,
+            imagePath: normalizedClassInfo === null ? null : normalizedClassInfo.imagePath,
+            declaredProtocolCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.protocolCount,
+            ownerHasProtocols: normalizedClassInfo !== null && normalizedClassInfo.hasProtocols === true,
+            ownerHasProperties: normalizedClassInfo !== null && normalizedClassInfo.hasProperties === true,
+            ownerHasIvars: normalizedClassInfo !== null && normalizedClassInfo.hasIvars === true,
+            ownerHasMethods: normalizedClassInfo !== null && normalizedClassInfo.hasMethods === true,
+            ownerIvarCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.ivarCount,
+            ownerTotalPropertyCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.totalPropertyCount,
+            ownerTotalMethodCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.totalMethodCount,
             hasFilter: filter !== null && filter.length !== 0,
             count: properties.length,
             hasProperties: properties.length !== 0,
@@ -4877,10 +4911,27 @@ function handleSpecResult(spec) {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const ivars = ObjC.ivars(className, filter).map((ivar) => normalizeObjcIvar(ivar));
         const summary = summarizeObjcIvars(ivars);
+        const classInfo = ObjC.classInfo(className, false);
+        const normalizedClassInfo = classInfo === null ? null : normalizeObjcClassInfo(classInfo);
         return {
             kind: 'objc.ivars',
             className,
             filter,
+            classInfo: normalizedClassInfo,
+            hasClassInfo: normalizedClassInfo !== null,
+            resolved: normalizedClassInfo !== null,
+            resolvedClassName: normalizedClassInfo === null ? null : normalizedClassInfo.className,
+            resolvedClassPointer: normalizedClassInfo === null ? null : normalizedClassInfo.classPointer,
+            hasImagePath: normalizedClassInfo !== null && normalizedClassInfo.hasImagePath === true,
+            imagePath: normalizedClassInfo === null ? null : normalizedClassInfo.imagePath,
+            declaredProtocolCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.protocolCount,
+            ownerHasProtocols: normalizedClassInfo !== null && normalizedClassInfo.hasProtocols === true,
+            ownerHasProperties: normalizedClassInfo !== null && normalizedClassInfo.hasProperties === true,
+            ownerHasIvars: normalizedClassInfo !== null && normalizedClassInfo.hasIvars === true,
+            ownerHasMethods: normalizedClassInfo !== null && normalizedClassInfo.hasMethods === true,
+            ownerIvarCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.ivarCount,
+            ownerTotalPropertyCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.totalPropertyCount,
+            ownerTotalMethodCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.totalMethodCount,
             hasFilter: filter !== null && filter.length !== 0,
             count: ivars.length,
             hasIvars: ivars.length !== 0,
