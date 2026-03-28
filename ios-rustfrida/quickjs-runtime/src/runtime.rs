@@ -2169,6 +2169,22 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.classExists NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_exists', className: 'NSObject' }); return value === result.text && result.resolved === true && result.exists === (result.resolvedClassName !== null); })()"
+                    )
+                    .expect("agent objc classExists"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.selector init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector', selectorName: 'init' }); return value === result.text && typeof result.hasPointer === 'boolean' && typeof result.resolved === 'boolean' && ((result.pointer === null && result.hasPointer === false && result.resolved === false && result.resolvedSelectorName === null && result.resolvedPointer === null && result.text === '<null>') || (typeof result.pointer === 'string' && result.hasPointer === true && result.resolved === true && result.resolvedSelectorName === 'init' && result.resolvedPointer === result.pointer)); })()"
+                    )
+                    .expect("agent objc selector"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.classImage NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_image', className: 'NSObject' }); return value === result.text && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedImagePath === null) || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedImagePath === result.imagePath)); })()"
                     )
                     .expect("agent objc classImage"),
@@ -2343,9 +2359,25 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('swift.available'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.available' }); return value === result.text && result.available === Swift.available && result.resolved === true; })()"
+                    )
+                    .expect("agent swift available"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF'); return value === '<unavailable>' || value.indexOf('Demo') !== -1 || value.indexOf('method') !== -1; })()"
                     )
                     .expect("agent swift demangle"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('swift.demangle $s4Demo6methodyyF'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.demangle', symbol: '$s4Demo6methodyyF' }); return value === result.text && ((result.demangled === null && result.resolved === false && result.resolvedSymbol === null && result.text === '<unavailable>') || (typeof result.demangled === 'string' && result.resolved === true && result.resolvedSymbol === result.demangled)); })()"
+                    )
+                    .expect("agent swift demangle result"),
                 "true"
             );
             assert_eq!(
@@ -3195,7 +3227,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.base', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.base' && result.moduleName === 'libsystem_malloc.dylib' && typeof result.hasBase === 'boolean' && typeof result.resolved === 'boolean' && ((result.base === null && result.hasBase === false && result.resolved === false && result.text === '<null>') || (typeof result.base === 'string' && result.hasBase === true && result.resolved === true && result.text === result.base)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.base', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.base' && result.moduleName === 'libsystem_malloc.dylib' && typeof result.hasBase === 'boolean' && typeof result.resolved === 'boolean' && ((result.base === null && result.hasBase === false && result.resolved === false && result.resolvedBase === null && result.text === '<null>') || (typeof result.base === 'string' && result.hasBase === true && result.resolved === true && result.resolvedBase === result.base && result.text === result.base)); })()"
                     )
                     .expect("agent native base result"),
                 "true"
@@ -4992,6 +5024,30 @@ undefined;
                 runtime
                     .eval("(function() { const malloc = Module.findExportByName(null, 'malloc'); if (malloc === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.symbol', address: malloc.toString() }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol', address: malloc.toString() }); return value === result.text; })()")
                     .expect("agent spec native symbol"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.base', moduleName: 'libsystem_malloc.dylib' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.base', moduleName: 'libsystem_malloc.dylib' }); return value === result.text; })()")
+                    .expect("agent spec native base"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.demangle', symbol: '$s4Demo6methodyyF' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.demangle', symbol: '$s4Demo6methodyyF' }); return value === result.text; })()")
+                    .expect("agent spec swift demangle"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.selector', selectorName: 'init' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector', selectorName: 'init' }); return value === result.text; })()")
+                    .expect("agent spec objc selector"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector', selectorName: 'init' }); return result.kind === 'objc.selector' && result.selectorName === 'init' && typeof result.hasPointer === 'boolean' && typeof result.resolved === 'boolean' && ((result.pointer === null && result.hasPointer === false && result.resolved === false && result.resolvedSelectorName === null && result.resolvedPointer === null && result.text === '<null>') || (typeof result.pointer === 'string' && result.hasPointer === true && result.resolved === true && result.resolvedSelectorName === 'init' && result.resolvedPointer === result.pointer && result.text === result.pointer)); })()")
+                    .expect("agent objc selector result"),
                 "true"
             );
             assert_eq!(

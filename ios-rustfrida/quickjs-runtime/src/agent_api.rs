@@ -4501,12 +4501,29 @@ function handleSpecResult(spec) {
     case 'objc.class_exists': {
         const className = String(spec.className || '');
         const exists = !!ObjC.classExists(className);
-        return { kind: 'objc.class_exists', className, exists, text: String(exists) };
+        return {
+            kind: 'objc.class_exists',
+            className,
+            exists,
+            resolved: true,
+            resolvedClassName: exists ? className : null,
+            text: String(exists),
+        };
     }
     case 'objc.selector': {
         const selectorName = String(spec.selectorName || '');
-        const pointer = ObjC.selector(selectorName).toString();
-        return { kind: 'objc.selector', selectorName, pointer, text: pointer };
+        const selector = ObjC.selector(selectorName);
+        const pointer = selector === null ? null : selector.toString();
+        return {
+            kind: 'objc.selector',
+            selectorName,
+            pointer,
+            hasPointer: pointer !== null,
+            resolved: pointer !== null,
+            resolvedSelectorName: pointer === null ? null : selectorName,
+            resolvedPointer: pointer,
+            text: pointer === null ? '<null>' : pointer,
+        };
     }
     case 'objc.method_imp': {
         const className = String(spec.className || '');
@@ -4939,6 +4956,7 @@ function handleSpecResult(spec) {
             base: normalized,
             hasBase: normalized !== null,
             resolved: normalized !== null,
+            resolvedBase: normalized,
             text: normalized === null ? '<null>' : normalized,
         };
     }
@@ -6015,12 +6033,20 @@ function handleSpecResult(spec) {
     }
     case 'swift.available': {
         const available = !!Swift.available;
-        return { kind: 'swift.available', available, text: String(available) };
+        return { kind: 'swift.available', available, resolved: true, text: String(available) };
     }
     case 'swift.demangle': {
         const symbol = String(spec.symbol || '');
         const demangled = Swift.demangle(symbol);
-        return { kind: 'swift.demangle', symbol, demangled: demangled === null || demangled === undefined ? null : String(demangled), text: demangled === null || demangled === undefined ? '<unavailable>' : String(demangled) };
+        const normalized = demangled === null || demangled === undefined ? null : String(demangled);
+        return {
+            kind: 'swift.demangle',
+            symbol,
+            demangled: normalized,
+            resolved: normalized !== null,
+            resolvedSymbol: normalized,
+            text: normalized === null ? '<unavailable>' : normalized,
+        };
     }
     case 'swift.symbols': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
