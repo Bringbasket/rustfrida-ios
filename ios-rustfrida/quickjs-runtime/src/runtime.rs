@@ -3111,7 +3111,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.base', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.base' && result.moduleName === 'libsystem_malloc.dylib' && (result.base === null || typeof result.base === 'string'); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.base', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.base' && result.moduleName === 'libsystem_malloc.dylib' && typeof result.hasBase === 'boolean' && typeof result.resolved === 'boolean' && ((result.base === null && result.hasBase === false && result.resolved === false && result.text === '<null>') || (typeof result.base === 'string' && result.hasBase === true && result.resolved === true && result.text === result.base)); })()"
                     )
                     .expect("agent native base result"),
                 "true"
@@ -3119,7 +3119,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); return result.kind === 'native.main_image' && (result.image === null || (typeof result.image.name === 'string' && result.image.name.length !== 0)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); return result.kind === 'native.main_image' && typeof result.hasImage === 'boolean' && ((result.image === null && result.hasImage === false && result.imageName === null && result.imagePath === null && result.text === '<null>') || (result.hasImage === true && typeof result.imageName === 'string' && typeof result.imagePath === 'string' && typeof result.image.name === 'string' && result.image.name.length !== 0 && result.text === result.image.text)); })()"
                     )
                     .expect("agent native main image result"),
                 "true"
@@ -3127,7 +3127,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const address = Module.findExportByName(null, 'malloc'); if (address === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image', address: address.toString() }); return result.kind === 'native.image' && result.address === address.toString() && ((result.image === null && result.text === '<null>') || (typeof result.image.name === 'string' && typeof result.image.path === 'string' && typeof result.image.base === 'string' && typeof result.image.sizeHex === 'string' && result.text === result.image.text)); })()"
+                        "(function() { const address = Module.findExportByName(null, 'malloc'); if (address === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image', address: address.toString() }); return result.kind === 'native.image' && result.address === address.toString() && typeof result.hasImage === 'boolean' && ((result.image === null && result.hasImage === false && result.imageName === null && result.imagePath === null && result.text === '<null>') || (result.hasImage === true && typeof result.imageName === 'string' && typeof result.imagePath === 'string' && typeof result.image.name === 'string' && typeof result.image.path === 'string' && typeof result.image.base === 'string' && typeof result.image.sizeHex === 'string' && result.text === result.image.text)); })()"
                     )
                     .expect("agent native image result"),
                 "true"
@@ -3239,7 +3239,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export', moduleName: null, symbolName: 'malloc' }); return result.kind === 'native.export' && result.symbolName === 'malloc' && ((result.address === null && result.symbol === null && result.text === '<null>') || (typeof result.address === 'string' && typeof result.symbol.moduleName === 'string' && result.text === result.symbol.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export', moduleName: null, symbolName: 'malloc' }); return result.kind === 'native.export' && result.symbolName === 'malloc' && typeof result.hasAddress === 'boolean' && typeof result.hasSymbol === 'boolean' && typeof result.resolved === 'boolean' && ((result.address === null && result.symbol === null && result.hasAddress === false && result.hasSymbol === false && result.resolved === false && result.text === '<null>') || (typeof result.address === 'string' && result.hasAddress === true && result.hasSymbol === true && typeof result.symbol.moduleName === 'string' && result.resolved === (result.symbol.resolved === true) && result.text === result.symbol.text)); })()"
                     )
                     .expect("agent native export result"),
                 "true"
@@ -3298,7 +3298,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image_info', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.image_info' && result.moduleName === 'libsystem_malloc.dylib' && ((result.image === null && result.text === '<null>') || (typeof result.image.name === 'string' && typeof result.image.path === 'string' && typeof result.image.base === 'string' && typeof result.image.sizeHex === 'string' && result.text === result.image.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image_info', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.image_info' && result.moduleName === 'libsystem_malloc.dylib' && typeof result.hasImage === 'boolean' && ((result.image === null && result.hasImage === false && result.imageName === null && result.imagePath === null && result.text === '<null>') || (result.hasImage === true && typeof result.imageName === 'string' && typeof result.imagePath === 'string' && typeof result.image.name === 'string' && typeof result.image.path === 'string' && typeof result.image.base === 'string' && typeof result.image.sizeHex === 'string' && result.text === result.image.text)); })()"
                     )
                     .expect("agent native imageInfo result"),
                 "true"

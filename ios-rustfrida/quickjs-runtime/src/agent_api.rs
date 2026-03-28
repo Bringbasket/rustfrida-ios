@@ -4822,29 +4822,55 @@ function handleSpecResult(spec) {
     case 'native.base': {
         const moduleName = String(spec.moduleName || '');
         const base = Native.base(moduleName);
+        const normalized = base === null ? null : base.toString();
         return {
             kind: 'native.base',
             moduleName,
-            base: base === null ? null : base.toString(),
-            text: base === null ? '<null>' : base.toString(),
+            base: normalized,
+            hasBase: normalized !== null,
+            resolved: normalized !== null,
+            text: normalized === null ? '<null>' : normalized,
         };
     }
     case 'native.image_info': {
         const moduleName = String(spec.moduleName || '');
         const image = Native.imageInfo(moduleName);
         const normalized = image === null ? null : normalizeImage(image);
-        return { kind: 'native.image_info', moduleName, image: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.image_info',
+            moduleName,
+            image: normalized,
+            hasImage: normalized !== null,
+            imageName: normalized === null ? null : normalized.name,
+            imagePath: normalized === null ? null : normalized.path,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.main_image': {
         const imageValue = Native.mainImage();
         const image = imageValue === null ? null : normalizeImage(imageValue);
-        return { kind: 'native.main_image', image, text: image === null ? '<null>' : image.text };
+        return {
+            kind: 'native.main_image',
+            image,
+            hasImage: image !== null,
+            imageName: image === null ? null : image.name,
+            imagePath: image === null ? null : image.path,
+            text: image === null ? '<null>' : image.text,
+        };
     }
     case 'native.image': {
         const address = parseAddressArg(spec.address, 'native.image usage: native.image <address>');
         const image = Native.image(address);
         const normalized = image === null ? null : normalizeImage(image);
-        return { kind: 'native.image', address: address.toString(), image: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.image',
+            address: address.toString(),
+            image: normalized,
+            hasImage: normalized !== null,
+            imageName: normalized === null ? null : normalized.name,
+            imagePath: normalized === null ? null : normalized.path,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.symbol': {
         const address = parseAddressArg(spec.address, 'native.symbol usage: native.symbol <address>');
@@ -4862,6 +4888,9 @@ function handleSpecResult(spec) {
             symbolName,
             address: address === null ? null : address.toString(),
             symbol,
+            hasAddress: address !== null,
+            hasSymbol: symbol !== null,
+            resolved: symbol !== null && symbol.resolved === true,
             text: symbol === null ? '<null>' : symbol.text,
         };
     }

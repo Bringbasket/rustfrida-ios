@@ -375,6 +375,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.symbols` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / symbolNames` 这类摘要，适合脚本先看本地符号名在不同镜像里的分布，而不必自己扫完整数组。
 - `native.exports` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / symbolNames` 这类摘要，适合脚本先看某个镜像导出符号名的分布，而不必自己扫完整数组。
 - `native.images` 列表结果现在也会额外补 `uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNames / pathKinds` 这类摘要，适合脚本先看镜像整体分布，再决定要不要展开完整列表。
+- `native.base / native.imageInfo / native.mainImage / native.image / native.export` 这组单项查询现在也补了更统一的状态字段，例如 `hasBase / hasImage / imageName / imagePath / hasAddress / hasSymbol / resolved`，脚本侧判空时不必再分别盯着 `null` 和文本 `<null>` 两套信号。
 - `swift.typeLayoutInfo` 现在可以直接结构化返回单个 Swift type layout 的 `metadata / metadataAccessors / nominalDescriptors / metadataCaches / associatedTypeDescriptors / vtableEntries / witnessTables` 以及对应计数，后续排查某个类型布局时不必再先全量 `swift.typeLayout` 再脚本过滤。
 - `swift.typeLayout` 列表结果现在也会额外补 `uniqueModuleCount`，以及 `layoutsWithMetadataCount / layoutsWithVtableEntriesCount / layoutsWithWitnessTablesCount` 这类“有多少个类型布局带某类块”的摘要，同时还会带 `metadataEntryCount / vtableEntryCount / witnessTableEntryCount` 这类总条目数，适合脚本先看整体布局分布，再决定是否展开单个类型。
 - `swift.vtableInfo` 现在可以直接结构化返回单个 Swift vtable entry 的 `moduleBase / typeName / memberName / sourceKind / address / offsetHex / isDispatchThunk`，后续排查某个类型的具体虚表成员时不必再先全量 `swift.vtable` 再脚本过滤。
