@@ -2569,7 +2569,42 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbols', moduleName: null, query: 'malloc' }); return result.kind === 'native.symbols' && result.query === 'malloc' && result.hasQuery === true && result.count === result.symbols.length && typeof result.hasSymbols === 'boolean' && ((result.symbols.length === 0 && result.hasSymbols === false && result.firstSymbolName === null && result.lastSymbolName === null) || (result.hasSymbols === true && typeof result.firstSymbolName === 'string' && typeof result.lastSymbolName === 'string' && typeof result.symbols[0].moduleBase === 'string' && typeof result.symbols[0].offsetHex === 'string')); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbols', moduleName: null, query: 'malloc' });
+                            if (result.kind !== 'native.symbols' || result.query !== 'malloc' || result.hasQuery !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.symbols.length || typeof result.hasSymbols !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueSymbolCount !== 'number' ||
+                                    !Array.isArray(result.symbolNames)) {
+                                return false;
+                            }
+                            if (result.symbols.length === 0) {
+                                return result.hasSymbols === false &&
+                                    result.firstSymbolName === null &&
+                                    result.lastSymbolName === null;
+                            }
+                            const symbol = result.symbols[0];
+                            const symbolSummary = result.symbolNames.length === 0 ? null : result.symbolNames[0];
+                            return result.hasSymbols === true &&
+                                typeof result.firstSymbolName === 'string' &&
+                                typeof result.lastSymbolName === 'string' &&
+                                typeof result.firstModuleName === 'string' &&
+                                typeof result.lastModuleName === 'string' &&
+                                typeof symbol.moduleBase === 'string' &&
+                                typeof symbol.offsetHex === 'string' &&
+                                typeof symbol.hasModuleName === 'boolean' &&
+                                typeof symbol.hasName === 'boolean' &&
+                                (symbolSummary === null || (
+                                    typeof symbolSummary.symbolName === 'string' &&
+                                    typeof symbolSummary.count === 'number' &&
+                                    typeof symbolSummary.firstModuleName === 'string' &&
+                                    typeof symbolSummary.lastModuleName === 'string'
+                                ));
+                        })()"
                     )
                     .expect("agent native symbols result"),
                 "true"
