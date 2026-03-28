@@ -3089,7 +3089,17 @@ function handleSpecResult(spec) {
     case 'native.images': {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter).trim().toLowerCase();
         const images = Native.images(filter).map((image) => normalizeImage(image));
-        return { kind: 'native.images', filter, count: images.length, images, text: images.map((image) => image.text).join('\n') };
+        return {
+            kind: 'native.images',
+            filter,
+            hasFilter: filter !== null && filter.length !== 0,
+            count: images.length,
+            hasImages: images.length !== 0,
+            firstImageName: images.length === 0 ? null : images[0].name,
+            lastImageName: images.length === 0 ? null : images[images.length - 1].name,
+            images,
+            text: images.map((image) => image.text).join('\n'),
+        };
     }
     case 'native.base': {
         const moduleName = String(spec.moduleName || '');
@@ -3141,7 +3151,18 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const symbols = Native.symbols(query, moduleName).map((symbol) => normalizeNativeSymbol(symbol));
-        return { kind: 'native.symbols', moduleName, query, count: symbols.length, symbols, text: symbols.map((symbol) => symbol.text).join('\n') };
+        return {
+            kind: 'native.symbols',
+            moduleName,
+            query,
+            hasQuery: query.length !== 0,
+            count: symbols.length,
+            hasSymbols: symbols.length !== 0,
+            firstSymbolName: symbols.length === 0 ? null : symbols[0].name,
+            lastSymbolName: symbols.length === 0 ? null : symbols[symbols.length - 1].name,
+            symbols,
+            text: symbols.map((symbol) => symbol.text).join('\n'),
+        };
     }
     case 'native.symbol_info': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
@@ -3304,7 +3325,18 @@ function handleSpecResult(spec) {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const rpaths = Native.rpaths(moduleName, query).map((rpath) => normalizeRpath(rpath));
-        return { kind: 'native.rpaths', moduleName, query, count: rpaths.length, rpaths, text: rpaths.map((rpath) => rpath.text).join('\n') };
+        return {
+            kind: 'native.rpaths',
+            moduleName,
+            query,
+            hasQuery: query !== null && query.length !== 0,
+            count: rpaths.length,
+            hasRpaths: rpaths.length !== 0,
+            firstRpath: rpaths.length === 0 ? null : rpaths[0].path,
+            lastRpath: rpaths.length === 0 ? null : rpaths[rpaths.length - 1].path,
+            rpaths,
+            text: rpaths.map((rpath) => rpath.text).join('\n'),
+        };
     }
     case 'native.rpath_info': {
         const moduleName = String(spec.moduleName || '');
@@ -3352,7 +3384,16 @@ function handleSpecResult(spec) {
     case 'native.segments': {
         const moduleName = String(spec.moduleName || '');
         const segments = Native.segments(moduleName).map((segment) => normalizeSegment(segment));
-        return { kind: 'native.segments', moduleName, count: segments.length, segments, text: segments.map((segment) => segment.text).join('\n') };
+        return {
+            kind: 'native.segments',
+            moduleName,
+            count: segments.length,
+            hasSegments: segments.length !== 0,
+            firstSegmentName: segments.length === 0 ? null : segments[0].name,
+            lastSegmentName: segments.length === 0 ? null : segments[segments.length - 1].name,
+            segments,
+            text: segments.map((segment) => segment.text).join('\n'),
+        };
     }
     case 'native.segment_info': {
         const moduleName = String(spec.moduleName || '');
@@ -3370,7 +3411,16 @@ function handleSpecResult(spec) {
     case 'native.sections': {
         const moduleName = String(spec.moduleName || '');
         const sections = Native.sections(moduleName).map((section) => normalizeSection(section));
-        return { kind: 'native.sections', moduleName, count: sections.length, sections, text: sections.map((section) => section.text).join('\n') };
+        return {
+            kind: 'native.sections',
+            moduleName,
+            count: sections.length,
+            hasSections: sections.length !== 0,
+            firstSectionName: sections.length === 0 ? null : sections[0].name,
+            lastSectionName: sections.length === 0 ? null : sections[sections.length - 1].name,
+            sections,
+            text: sections.map((section) => section.text).join('\n'),
+        };
     }
     case 'native.section_info': {
         const moduleName = String(spec.moduleName || '');
@@ -3390,7 +3440,16 @@ function handleSpecResult(spec) {
     case 'native.load_commands': {
         const moduleName = String(spec.moduleName || '');
         const commands = Native.loadCommands(moduleName).map((command) => normalizeLoadCommand(command));
-        return { kind: 'native.load_commands', moduleName, count: commands.length, commands, text: commands.map((command) => command.text).join('\n') };
+        return {
+            kind: 'native.load_commands',
+            moduleName,
+            count: commands.length,
+            hasCommands: commands.length !== 0,
+            firstCommandName: commands.length === 0 ? null : commands[0].name,
+            lastCommandName: commands.length === 0 ? null : commands[commands.length - 1].name,
+            commands,
+            text: commands.map((command) => command.text).join('\n'),
+        };
     }
     case 'native.load_command_info': {
         const moduleName = String(spec.moduleName || '');
