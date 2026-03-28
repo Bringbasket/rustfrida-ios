@@ -3160,7 +3160,18 @@ function handleSpecResult(spec) {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const symbols = Native.exports(moduleName, query).map((symbol) => normalizeNativeSymbol(symbol));
-        return { kind: 'native.exports', moduleName, query, count: symbols.length, symbols, text: symbols.map((symbol) => symbol.text).join('\n') };
+        return {
+            kind: 'native.exports',
+            moduleName,
+            query,
+            hasQuery: query !== null && query.length !== 0,
+            count: symbols.length,
+            hasSymbols: symbols.length !== 0,
+            firstSymbolName: symbols.length === 0 ? null : symbols[0].name,
+            lastSymbolName: symbols.length === 0 ? null : symbols[symbols.length - 1].name,
+            symbols,
+            text: symbols.map((symbol) => symbol.text).join('\n'),
+        };
     }
     case 'native.export_info': {
         const moduleName = String(spec.moduleName || '');
@@ -3179,7 +3190,18 @@ function handleSpecResult(spec) {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const dependencies = Native.dependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
-        return { kind: 'native.dependencies', moduleName, query, count: dependencies.length, dependencies, text: dependencies.map((dependency) => dependency.text).join('\n') };
+        return {
+            kind: 'native.dependencies',
+            moduleName,
+            query,
+            hasQuery: query !== null && query.length !== 0,
+            count: dependencies.length,
+            hasDependencies: dependencies.length !== 0,
+            firstDependencyName: dependencies.length === 0 ? null : dependencies[0].name,
+            lastDependencyName: dependencies.length === 0 ? null : dependencies[dependencies.length - 1].name,
+            dependencies,
+            text: dependencies.map((dependency) => dependency.text).join('\n'),
+        };
     }
     case 'native.dependency_info': {
         const moduleName = String(spec.moduleName || '');
@@ -3301,7 +3323,18 @@ function handleSpecResult(spec) {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const imports = Native.imports(moduleName, query).map((imp) => normalizeImport(imp));
-        return { kind: 'native.imports', moduleName, query, count: imports.length, imports, text: imports.map((imp) => imp.text).join('\n') };
+        return {
+            kind: 'native.imports',
+            moduleName,
+            query,
+            hasQuery: query !== null && query.length !== 0,
+            count: imports.length,
+            hasImports: imports.length !== 0,
+            firstImportName: imports.length === 0 ? null : imports[0].name,
+            lastImportName: imports.length === 0 ? null : imports[imports.length - 1].name,
+            imports,
+            text: imports.map((imp) => imp.text).join('\n'),
+        };
     }
     case 'native.import_info': {
         const moduleName = String(spec.moduleName || '');
