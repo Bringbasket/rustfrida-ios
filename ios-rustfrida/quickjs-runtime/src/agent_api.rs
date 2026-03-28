@@ -2187,21 +2187,42 @@ function normalizeNativeSymbol(symbol) {
 
 function normalizeImport(imp) {
     const name = String(imp.name || '');
+    const normalizedName = name.startsWith('_') ? name.slice(1) : name;
     const dylibOrdinal = Number(imp.dylibOrdinal || 0);
     const dylibName = imp.dylibName === undefined || imp.dylibName === null ? null : String(imp.dylibName);
+    const hasDylibName = dylibName !== null;
+    const usesOrdinalOnly = dylibName === null;
+    const isMainExecutableImport = dylibOrdinal === -1;
+    const isFlatLookupImport = dylibOrdinal === -2;
+    const isSelfImport = dylibOrdinal === 0 || dylibName === '<self>';
+    const sourceKind = usesOrdinalOnly
+        ? 'ordinal-only'
+        : isMainExecutableImport || dylibName === '<main-executable>'
+            ? 'main-executable'
+            : isFlatLookupImport || dylibName === '<dynamic-lookup>'
+                ? 'flat-lookup'
+                : isSelfImport
+                    ? 'self'
+                    : 'dylib';
+    const source = dylibName === null ? 'ordinal=' + String(dylibOrdinal) : dylibName;
     return {
         moduleName: String(imp.moduleName || ''),
         moduleBase: imp.moduleBase ? imp.moduleBase.toString() : null,
         name,
+        normalizedName,
         hasName: name.length !== 0,
+        hasNormalizedName: normalizedName.length !== 0,
+        nameLength: name.length,
         dylibOrdinal,
         dylibName,
-        hasDylibName: dylibName !== null,
-        usesOrdinalOnly: dylibName === null,
-        isMainExecutableImport: dylibOrdinal === -1,
-        isFlatLookupImport: dylibOrdinal === -2,
+        hasDylibName,
+        usesOrdinalOnly,
+        isMainExecutableImport,
+        isFlatLookupImport,
+        isSelfImport,
         weakImport: !!imp.weakImport,
-        source: dylibName === null ? 'ordinal=' + String(dylibOrdinal) : dylibName,
+        sourceKind,
+        source,
         text: formatImport(imp),
     };
 }
@@ -4004,6 +4025,51 @@ function handleSpecResult(spec) {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const imports = Native.imports(moduleName, query).map((imp) => normalizeImport(imp));
+        const weakImports = imports.filter((imp) => imp.weakImport);
+        const ordinalOnlyImports = imports.filter((imp) => imp.usesOrdinalOnly);
+        const mainExecutableImports = imports.filter((imp) => imp.isMainExecutableImport);
+        const flatLookupImports = imports.filter((imp) => imp.isFlatLookupImport);
+        const selfImports = imports.filter((imp) => imp.isSelfImport);
+        const longestImport = imports.reduce((longest, imp) => {
+            if (longest === null || imp.nameLength > longest.nameLength) {
+                return imp;
+            }
+            return longest;
+        }, null);
+        const sourceSummaries = [];
+        for (const imp of imports) {
+            let summary = sourceSummaries.find((item) => item.source === imp.source && item.sourceKind === imp.sourceKind);
+            if (summary === undefined) {
+                summary = {
+                    source: imp.source,
+                    sourceKind: imp.sourceKind,
+                    dylibOrdinal: imp.dylibOrdinal,
+                    hasDylibName: imp.hasDylibName,
+                    usesOrdinalOnly: imp.usesOrdinalOnly,
+                    count: 0,
+                    weakImportCount: 0,
+                    firstImportName: imp.name,
+                    lastImportName: imp.name,
+                };
+                sourceSummaries.push(summary);
+            }
+            summary.count += 1;
+            summary.lastImportName = imp.name;
+            if (imp.weakImport) {
+                summary.weakImportCount += 1;
+            }
+        }
+        const dylibSources = sourceSummaries.map((summary) => ({
+            source: summary.source,
+            sourceKind: summary.sourceKind,
+            dylibOrdinal: summary.dylibOrdinal,
+            hasDylibName: summary.hasDylibName,
+            usesOrdinalOnly: summary.usesOrdinalOnly,
+            count: summary.count,
+            weakImportCount: summary.weakImportCount,
+            firstImportName: summary.firstImportName,
+            lastImportName: summary.lastImportName,
+        }));
         return {
             kind: 'native.imports',
             moduleName,
@@ -4013,6 +4079,23 @@ function handleSpecResult(spec) {
             hasImports: imports.length !== 0,
             firstImportName: imports.length === 0 ? null : imports[0].name,
             lastImportName: imports.length === 0 ? null : imports[imports.length - 1].name,
+            firstSource: imports.length === 0 ? null : imports[0].source,
+            lastSource: imports.length === 0 ? null : imports[imports.length - 1].source,
+            longestImportName: longestImport === null ? null : longestImport.name,
+            longestImportNameLength: longestImport === null ? null : longestImport.nameLength,
+            weakImportCount: weakImports.length,
+            hasWeakImports: weakImports.length !== 0,
+            ordinalOnlyCount: ordinalOnlyImports.length,
+            hasOrdinalOnlyImports: ordinalOnlyImports.length !== 0,
+            mainExecutableImportCount: mainExecutableImports.length,
+            hasMainExecutableImports: mainExecutableImports.length !== 0,
+            flatLookupImportCount: flatLookupImports.length,
+            hasFlatLookupImports: flatLookupImports.length !== 0,
+            selfImportCount: selfImports.length,
+            hasSelfImports: selfImports.length !== 0,
+            uniqueDylibOrdinalCount: Array.from(new Set(imports.map((imp) => imp.dylibOrdinal))).length,
+            uniqueSourceCount: dylibSources.length,
+            dylibSources,
             imports,
             text: imports.map((imp) => imp.text).join('\n'),
         };

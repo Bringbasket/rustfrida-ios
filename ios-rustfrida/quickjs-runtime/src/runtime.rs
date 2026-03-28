@@ -2927,7 +2927,74 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: main.image.name, query: null }); return result.kind === 'native.imports' && result.hasQuery === false && result.count === result.imports.length && typeof result.hasImports === 'boolean' && ((result.imports.length === 0 && result.hasImports === false && result.firstImportName === null && result.lastImportName === null) || (result.hasImports === true && typeof result.firstImportName === 'string' && typeof result.lastImportName === 'string' && typeof result.imports[0].dylibOrdinal === 'number' && typeof result.imports[0].weakImport === 'boolean' && typeof result.imports[0].hasName === 'boolean' && typeof result.imports[0].hasDylibName === 'boolean' && typeof result.imports[0].usesOrdinalOnly === 'boolean' && typeof result.imports[0].isMainExecutableImport === 'boolean' && typeof result.imports[0].isFlatLookupImport === 'boolean' && typeof result.imports[0].source === 'string')); })()"
+                        r#"(function() {
+                            const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' });
+                            if (main.image === null) {
+                                return true;
+                            }
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: main.image.name, query: null });
+                            if (!(result.kind === 'native.imports'
+                                && result.hasQuery === false
+                                && result.count === result.imports.length
+                                && typeof result.hasImports === 'boolean'
+                                && (result.firstSource === null || typeof result.firstSource === 'string')
+                                && (result.lastSource === null || typeof result.lastSource === 'string')
+                                && (result.longestImportName === null || typeof result.longestImportName === 'string')
+                                && (result.longestImportNameLength === null || typeof result.longestImportNameLength === 'number')
+                                && typeof result.weakImportCount === 'number'
+                                && typeof result.hasWeakImports === 'boolean'
+                                && typeof result.ordinalOnlyCount === 'number'
+                                && typeof result.hasOrdinalOnlyImports === 'boolean'
+                                && typeof result.mainExecutableImportCount === 'number'
+                                && typeof result.hasMainExecutableImports === 'boolean'
+                                && typeof result.flatLookupImportCount === 'number'
+                                && typeof result.hasFlatLookupImports === 'boolean'
+                                && typeof result.selfImportCount === 'number'
+                                && typeof result.hasSelfImports === 'boolean'
+                                && typeof result.uniqueDylibOrdinalCount === 'number'
+                                && typeof result.uniqueSourceCount === 'number'
+                                && Array.isArray(result.dylibSources))) {
+                                return false;
+                            }
+                            if (result.imports.length === 0) {
+                                return result.hasImports === false && result.firstImportName === null && result.lastImportName === null;
+                            }
+                            if (!(result.hasImports === true
+                                && typeof result.firstImportName === 'string'
+                                && typeof result.lastImportName === 'string')) {
+                                return false;
+                            }
+                            const imp = result.imports[0];
+                            if (!(typeof imp.dylibOrdinal === 'number'
+                                && typeof imp.weakImport === 'boolean'
+                                && typeof imp.hasName === 'boolean'
+                                && typeof imp.hasNormalizedName === 'boolean'
+                                && typeof imp.nameLength === 'number'
+                                && typeof imp.hasDylibName === 'boolean'
+                                && typeof imp.usesOrdinalOnly === 'boolean'
+                                && typeof imp.isMainExecutableImport === 'boolean'
+                                && typeof imp.isFlatLookupImport === 'boolean'
+                                && typeof imp.isSelfImport === 'boolean'
+                                && typeof imp.sourceKind === 'string'
+                                && typeof imp.source === 'string')) {
+                                return false;
+                            }
+                            if (result.dylibSources.length !== 0) {
+                                const source = result.dylibSources[0];
+                                if (!(typeof source.source === 'string'
+                                    && typeof source.sourceKind === 'string'
+                                    && typeof source.dylibOrdinal === 'number'
+                                    && typeof source.hasDylibName === 'boolean'
+                                    && typeof source.usesOrdinalOnly === 'boolean'
+                                    && typeof source.count === 'number'
+                                    && typeof source.weakImportCount === 'number'
+                                    && typeof source.firstImportName === 'string'
+                                    && typeof source.lastImportName === 'string')) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        })()"#
                     )
                     .expect("agent native imports result"),
                 "true"
