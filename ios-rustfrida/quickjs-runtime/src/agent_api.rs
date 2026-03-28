@@ -3320,11 +3320,15 @@ function normalizeLoadCommand(command) {
 
 function normalizeSwiftSymbol(symbol) {
     const offset = typeof symbol.offset === 'bigint' ? symbol.offset : BigInt(symbol.offset || 0);
+    const name = String(symbol.name || '');
+    const demangledName = symbol.demangledName === undefined ? null : symbol.demangledName;
     return {
         moduleName: String(symbol.moduleName || ''),
         moduleBase: symbol.moduleBase ? symbol.moduleBase.toString() : null,
-        name: String(symbol.name || ''),
-        demangledName: symbol.demangledName === undefined ? null : symbol.demangledName,
+        name,
+        hasName: name.length !== 0,
+        demangledName,
+        hasDemangledName: demangledName !== null && String(demangledName).length !== 0,
         address: symbol.address.toString(),
         offsetHex: '0x' + offset.toString(16),
         text: formatSwiftSymbol(symbol),
@@ -5255,6 +5259,31 @@ function handleSpecResult(spec) {
         const typeName = String(spec.typeName || '');
         const methodQuery = String(spec.methodQuery || '');
         const methods = Swift.methods(typeName, methodQuery, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
+        const moduleNames = new Set();
+        const methodNames = [];
+        let demangledCount = 0;
+        for (const method of methods) {
+            moduleNames.add(method.moduleName);
+            if (method.hasDemangledName) {
+                demangledCount += 1;
+            }
+            let summary = methodNames.find((item) => item.methodName === method.name);
+            if (summary === undefined) {
+                summary = {
+                    methodName: method.name,
+                    count: 0,
+                    firstModuleName: method.moduleName,
+                    lastModuleName: method.moduleName,
+                    hasDemangledName: false,
+                };
+                methodNames.push(summary);
+            }
+            summary.count += 1;
+            summary.lastModuleName = method.moduleName;
+            if (method.hasDemangledName) {
+                summary.hasDemangledName = true;
+            }
+        }
         return {
             kind: 'swift.methods',
             moduleName,
@@ -5265,6 +5294,13 @@ function handleSpecResult(spec) {
             hasMethods: methods.length !== 0,
             firstMethodName: methods.length === 0 ? null : methods[0].name,
             lastMethodName: methods.length === 0 ? null : methods[methods.length - 1].name,
+            firstModuleName: methods.length === 0 ? null : methods[0].moduleName,
+            lastModuleName: methods.length === 0 ? null : methods[methods.length - 1].moduleName,
+            uniqueModuleCount: methods.length === 0 ? 0 : moduleNames.size,
+            uniqueMethodCount: methodNames.length,
+            demangledCount,
+            hasDemangledMethods: demangledCount !== 0,
+            methodNames,
             methods,
             text: methods.map((symbol) => symbol.text).join('\n'),
         };

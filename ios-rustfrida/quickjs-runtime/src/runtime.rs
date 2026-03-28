@@ -3549,7 +3549,48 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.methods', moduleName: null, typeName: 'ViewController', methodQuery: 'viewDidLoad' }); return result.kind === 'swift.methods' && result.typeName === 'ViewController' && result.methodQuery === 'viewDidLoad' && result.hasMethodQuery === true && result.count === result.methods.length && typeof result.hasMethods === 'boolean' && ((result.methods.length === 0 && result.hasMethods === false && result.firstMethodName === null && result.lastMethodName === null) || (result.hasMethods === true && typeof result.firstMethodName === 'string' && typeof result.lastMethodName === 'string' && typeof result.methods[0].moduleBase === 'string' && typeof result.methods[0].offsetHex === 'string')); })()")
+                    .eval(
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.methods', moduleName: null, typeName: 'ViewController', methodQuery: 'viewDidLoad' });
+                            if (result.kind !== 'swift.methods' || result.typeName !== 'ViewController' || result.methodQuery !== 'viewDidLoad' || result.hasMethodQuery !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.methods.length || typeof result.hasMethods !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueMethodCount !== 'number' ||
+                                    typeof result.demangledCount !== 'number' ||
+                                    typeof result.hasDemangledMethods !== 'boolean' ||
+                                    !Array.isArray(result.methodNames)) {
+                                return false;
+                            }
+                            if (result.methods.length === 0) {
+                                return result.hasMethods === false &&
+                                    result.firstMethodName === null &&
+                                    result.lastMethodName === null;
+                            }
+                            const method = result.methods[0];
+                            const methodSummary = result.methodNames.length === 0 ? null : result.methodNames[0];
+                            return result.hasMethods === true &&
+                                typeof result.firstMethodName === 'string' &&
+                                typeof result.lastMethodName === 'string' &&
+                                typeof result.firstModuleName === 'string' &&
+                                typeof result.lastModuleName === 'string' &&
+                                typeof method.moduleBase === 'string' &&
+                                typeof method.name === 'string' &&
+                                typeof method.hasName === 'boolean' &&
+                                typeof method.hasDemangledName === 'boolean' &&
+                                typeof method.offsetHex === 'string' &&
+                                (methodSummary === null || (
+                                    typeof methodSummary.methodName === 'string' &&
+                                    typeof methodSummary.count === 'number' &&
+                                    typeof methodSummary.firstModuleName === 'string' &&
+                                    typeof methodSummary.lastModuleName === 'string' &&
+                                    typeof methodSummary.hasDemangledName === 'boolean'
+                                ));
+                        })()"
+                    )
                     .expect("agent swift methods result"),
                 "true"
             );
