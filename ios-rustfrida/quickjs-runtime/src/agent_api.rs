@@ -4024,6 +4024,23 @@ function handleSpecResult(spec) {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const symbols = Native.exports(moduleName, query).map((symbol) => normalizeNativeSymbol(symbol));
+        const moduleNames = new Set();
+        const symbolNames = [];
+        for (const symbol of symbols) {
+            moduleNames.add(symbol.moduleName);
+            let summary = symbolNames.find((item) => item.symbolName === symbol.name);
+            if (summary === undefined) {
+                summary = {
+                    symbolName: symbol.name,
+                    count: 0,
+                    firstModuleName: symbol.moduleName,
+                    lastModuleName: symbol.moduleName,
+                };
+                symbolNames.push(summary);
+            }
+            summary.count += 1;
+            summary.lastModuleName = symbol.moduleName;
+        }
         return {
             kind: 'native.exports',
             moduleName,
@@ -4033,6 +4050,11 @@ function handleSpecResult(spec) {
             hasSymbols: symbols.length !== 0,
             firstSymbolName: symbols.length === 0 ? null : symbols[0].name,
             lastSymbolName: symbols.length === 0 ? null : symbols[symbols.length - 1].name,
+            firstModuleName: symbols.length === 0 ? null : symbols[0].moduleName,
+            lastModuleName: symbols.length === 0 ? null : symbols[symbols.length - 1].moduleName,
+            uniqueModuleCount: symbols.length === 0 ? 0 : moduleNames.size,
+            uniqueSymbolCount: symbolNames.length,
+            symbolNames,
             symbols,
             text: symbols.map((symbol) => symbol.text).join('\n'),
         };
