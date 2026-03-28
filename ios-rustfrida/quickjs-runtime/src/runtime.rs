@@ -5705,9 +5705,12 @@ undefined;
                                 return false;
                             }
                             if (typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueOwnerCount !== 'number' ||
                                     typeof result.uniqueSourceKindCount !== 'number' ||
                                     typeof result.sourceDemangledCount !== 'number' ||
                                     typeof result.hasSourceDemangledOwners !== 'boolean' ||
+                                    !Array.isArray(result.ownerNames) ||
+                                    !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
@@ -5717,6 +5720,8 @@ undefined;
                                     result.lastOwnerName === null;
                             }
                             const owner = result.owners[0];
+                            const ownerSummary = result.ownerNames.length === 0 ? null : result.ownerNames[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
                             return result.hasOwners === true &&
                                 typeof result.firstOwnerName === 'string' &&
@@ -5730,6 +5735,20 @@ undefined;
                                 typeof owner.hasSourceDemangledName === 'boolean' &&
                                 typeof owner.sourceSymbolName === 'string' &&
                                 typeof owner.sourceOffsetHex === 'string' &&
+                                (ownerSummary === null || (
+                                    typeof ownerSummary.ownerName === 'string' &&
+                                    typeof ownerSummary.count === 'number' &&
+                                    typeof ownerSummary.firstModuleName === 'string' &&
+                                    typeof ownerSummary.lastModuleName === 'string' &&
+                                    typeof ownerSummary.hasSourceDemangledName === 'boolean'
+                                )) &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstOwnerName === 'string' &&
+                                    typeof moduleSummary.lastOwnerName === 'string' &&
+                                    typeof moduleSummary.sourceDemangledCount === 'number'
+                                )) &&
                                 (sourceSummary === null || (
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
@@ -5756,6 +5775,7 @@ undefined;
                                     typeof result.uniqueMethodCount !== 'number' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledMethods !== 'boolean' ||
+                                    !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.methodNames)) {
                                 return false;
                             }
@@ -5765,6 +5785,7 @@ undefined;
                                     result.lastMethodName === null;
                             }
                             const method = result.methods[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const methodSummary = result.methodNames.length === 0 ? null : result.methodNames[0];
                             return result.hasMethods === true &&
                                 typeof result.firstMethodName === 'string' &&
@@ -5776,6 +5797,13 @@ undefined;
                                 typeof method.hasName === 'boolean' &&
                                 typeof method.hasDemangledName === 'boolean' &&
                                 typeof method.offsetHex === 'string' &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstMethodName === 'string' &&
+                                    typeof moduleSummary.lastMethodName === 'string' &&
+                                    typeof moduleSummary.demangledCount === 'number'
+                                )) &&
                                 (methodSummary === null || (
                                     typeof methodSummary.methodName === 'string' &&
                                     typeof methodSummary.count === 'number' &&
@@ -5803,6 +5831,7 @@ undefined;
                                     typeof result.uniqueMethodCount !== 'number' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledMethods !== 'boolean' ||
+                                    !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.methodNames)) {
                                 return false;
                             }
@@ -5812,6 +5841,7 @@ undefined;
                                     result.lastMethodName === null;
                             }
                             const method = result.methods[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const methodSummary = result.methodNames.length === 0 ? null : result.methodNames[0];
                             return result.hasMethods === true &&
                                 typeof result.firstMethodName === 'string' &&
@@ -5823,6 +5853,13 @@ undefined;
                                 typeof method.hasName === 'boolean' &&
                                 typeof method.hasDemangledName === 'boolean' &&
                                 typeof method.offsetHex === 'string' &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstMethodName === 'string' &&
+                                    typeof moduleSummary.lastMethodName === 'string' &&
+                                    typeof moduleSummary.demangledCount === 'number'
+                                )) &&
                                 (methodSummary === null || (
                                     typeof methodSummary.methodName === 'string' &&
                                     typeof methodSummary.count === 'number' &&

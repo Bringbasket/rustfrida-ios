@@ -7360,12 +7360,46 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const owners = Swift.methodOwners(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
         const sourceKinds = [];
+        const ownerNames = [];
+        const moduleSummaries = [];
         const moduleNames = new Set();
         let demangledCount = 0;
         for (const owner of owners) {
             moduleNames.add(owner.moduleName);
             if (owner.hasSourceDemangledName) {
                 demangledCount += 1;
+            }
+            let ownerSummary = ownerNames.find((item) => item.ownerName === owner.name);
+            if (ownerSummary === undefined) {
+                ownerSummary = {
+                    ownerName: owner.name,
+                    count: 0,
+                    firstModuleName: owner.moduleName,
+                    lastModuleName: owner.moduleName,
+                    hasSourceDemangledName: false,
+                };
+                ownerNames.push(ownerSummary);
+            }
+            ownerSummary.count += 1;
+            ownerSummary.lastModuleName = owner.moduleName;
+            if (owner.hasSourceDemangledName) {
+                ownerSummary.hasSourceDemangledName = true;
+            }
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === owner.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: owner.moduleName,
+                    count: 0,
+                    firstOwnerName: owner.name,
+                    lastOwnerName: owner.name,
+                    sourceDemangledCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastOwnerName = owner.name;
+            if (owner.hasSourceDemangledName) {
+                moduleSummary.sourceDemangledCount += 1;
             }
             const key = owner.sourceKind === null ? '<none>' : String(owner.sourceKind);
             let summary = sourceKinds.find((item) => item.sourceKind === key);
@@ -7393,9 +7427,12 @@ function handleSpecResult(spec) {
             firstModuleName: owners.length === 0 ? null : owners[0].moduleName,
             lastModuleName: owners.length === 0 ? null : owners[owners.length - 1].moduleName,
             uniqueModuleCount: owners.length === 0 ? 0 : moduleNames.size,
+            uniqueOwnerCount: ownerNames.length,
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledOwners: demangledCount !== 0,
+            ownerNames,
+            moduleNames: moduleSummaries,
             sourceKinds,
             owners,
             text: owners.map((typeInfo) => typeInfo.text).join('\n'),
@@ -7406,12 +7443,29 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const methods = Swift.typeMethods(query, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
         const moduleNames = new Set();
+        const moduleSummaries = [];
         const methodNames = [];
         let demangledCount = 0;
         for (const method of methods) {
             moduleNames.add(method.moduleName);
             if (method.hasDemangledName) {
                 demangledCount += 1;
+            }
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === method.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: method.moduleName,
+                    count: 0,
+                    firstMethodName: method.name,
+                    lastMethodName: method.name,
+                    demangledCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastMethodName = method.name;
+            if (method.hasDemangledName) {
+                moduleSummary.demangledCount += 1;
             }
             let summary = methodNames.find((item) => item.methodName === method.name);
             if (summary === undefined) {
@@ -7445,6 +7499,7 @@ function handleSpecResult(spec) {
             uniqueMethodCount: methodNames.length,
             demangledCount,
             hasDemangledMethods: demangledCount !== 0,
+            moduleNames: moduleSummaries,
             methodNames,
             methods,
             text: methods.map((symbol) => symbol.text).join('\n'),
@@ -7456,12 +7511,29 @@ function handleSpecResult(spec) {
         const methodQuery = String(spec.methodQuery || '');
         const methods = Swift.methods(typeName, methodQuery, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
         const moduleNames = new Set();
+        const moduleSummaries = [];
         const methodNames = [];
         let demangledCount = 0;
         for (const method of methods) {
             moduleNames.add(method.moduleName);
             if (method.hasDemangledName) {
                 demangledCount += 1;
+            }
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === method.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: method.moduleName,
+                    count: 0,
+                    firstMethodName: method.name,
+                    lastMethodName: method.name,
+                    demangledCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastMethodName = method.name;
+            if (method.hasDemangledName) {
+                moduleSummary.demangledCount += 1;
             }
             let summary = methodNames.find((item) => item.methodName === method.name);
             if (summary === undefined) {
@@ -7496,6 +7568,7 @@ function handleSpecResult(spec) {
             uniqueMethodCount: methodNames.length,
             demangledCount,
             hasDemangledMethods: demangledCount !== 0,
+            moduleNames: moduleSummaries,
             methodNames,
             methods,
             text: methods.map((symbol) => symbol.text).join('\n'),
