@@ -3333,46 +3333,72 @@ function normalizeSwiftSymbol(symbol) {
 
 function normalizeSwiftType(typeInfo) {
     const sourceOffset = typeof typeInfo.sourceOffset === 'bigint' ? typeInfo.sourceOffset : BigInt(typeInfo.sourceOffset || 0);
+    const name = String(typeInfo.name || '');
+    const sourceSymbolName = typeInfo.sourceSymbolName === undefined ? null : String(typeInfo.sourceSymbolName);
+    const sourceKind = typeInfo.sourceKind === undefined ? null : typeInfo.sourceKind;
+    const sourceDemangledName = typeInfo.sourceDemangledName === undefined ? null : typeInfo.sourceDemangledName;
     return {
         moduleName: String(typeInfo.moduleName || ''),
         moduleBase: typeInfo.moduleBase ? typeInfo.moduleBase.toString() : null,
-        name: String(typeInfo.name || ''),
-        sourceSymbolName: typeInfo.sourceSymbolName === undefined ? null : String(typeInfo.sourceSymbolName),
-        sourceKind: typeInfo.sourceKind === undefined ? null : typeInfo.sourceKind,
+        name,
+        hasName: name.length !== 0,
+        sourceSymbolName,
+        hasSourceSymbolName: sourceSymbolName !== null && sourceSymbolName.length !== 0,
+        sourceKind,
+        hasSourceKind: sourceKind !== null && String(sourceKind).length !== 0,
         sourceAddress: typeInfo.sourceAddress.toString(),
         sourceOffsetHex: '0x' + sourceOffset.toString(16),
-        sourceDemangledName: typeInfo.sourceDemangledName === undefined ? null : typeInfo.sourceDemangledName,
+        sourceDemangledName,
+        hasSourceDemangledName: sourceDemangledName !== null && String(sourceDemangledName).length !== 0,
         text: formatSwiftType(typeInfo),
     };
 }
 
 function normalizeSwiftProtocol(protocolInfo) {
     const sourceOffset = typeof protocolInfo.sourceOffset === 'bigint' ? protocolInfo.sourceOffset : BigInt(protocolInfo.sourceOffset || 0);
+    const name = String(protocolInfo.name || '');
+    const sourceSymbolName = protocolInfo.sourceSymbolName === undefined ? null : String(protocolInfo.sourceSymbolName);
+    const sourceKind = protocolInfo.sourceKind === undefined ? null : protocolInfo.sourceKind;
+    const sourceDemangledName = protocolInfo.sourceDemangledName === undefined ? null : protocolInfo.sourceDemangledName;
     return {
         moduleName: String(protocolInfo.moduleName || ''),
         moduleBase: protocolInfo.moduleBase ? protocolInfo.moduleBase.toString() : null,
-        name: String(protocolInfo.name || ''),
-        sourceSymbolName: protocolInfo.sourceSymbolName === undefined ? null : String(protocolInfo.sourceSymbolName),
-        sourceKind: protocolInfo.sourceKind === undefined ? null : protocolInfo.sourceKind,
+        name,
+        hasName: name.length !== 0,
+        sourceSymbolName,
+        hasSourceSymbolName: sourceSymbolName !== null && sourceSymbolName.length !== 0,
+        sourceKind,
+        hasSourceKind: sourceKind !== null && String(sourceKind).length !== 0,
         sourceAddress: protocolInfo.sourceAddress.toString(),
         sourceOffsetHex: '0x' + sourceOffset.toString(16),
-        sourceDemangledName: protocolInfo.sourceDemangledName === undefined ? null : protocolInfo.sourceDemangledName,
+        sourceDemangledName,
+        hasSourceDemangledName: sourceDemangledName !== null && String(sourceDemangledName).length !== 0,
         text: formatSwiftProtocol(protocolInfo),
     };
 }
 
 function normalizeSwiftConformance(conformance) {
     const sourceOffset = typeof conformance.sourceOffset === 'bigint' ? conformance.sourceOffset : BigInt(conformance.sourceOffset || 0);
+    const typeName = String(conformance.typeName || '');
+    const protocolName = String(conformance.protocolName || '');
+    const sourceSymbolName = conformance.sourceSymbolName === undefined ? null : String(conformance.sourceSymbolName);
+    const sourceKind = conformance.sourceKind === undefined ? null : conformance.sourceKind;
+    const sourceDemangledName = conformance.sourceDemangledName === undefined ? null : conformance.sourceDemangledName;
     return {
         moduleName: String(conformance.moduleName || ''),
         moduleBase: conformance.moduleBase ? conformance.moduleBase.toString() : null,
-        typeName: String(conformance.typeName || ''),
-        protocolName: String(conformance.protocolName || ''),
-        sourceSymbolName: conformance.sourceSymbolName === undefined ? null : String(conformance.sourceSymbolName),
-        sourceKind: conformance.sourceKind === undefined ? null : conformance.sourceKind,
+        typeName,
+        hasTypeName: typeName.length !== 0,
+        protocolName,
+        hasProtocolName: protocolName.length !== 0,
+        sourceSymbolName,
+        hasSourceSymbolName: sourceSymbolName !== null && sourceSymbolName.length !== 0,
+        sourceKind,
+        hasSourceKind: sourceKind !== null && String(sourceKind).length !== 0,
         sourceAddress: conformance.sourceAddress.toString(),
         sourceOffsetHex: '0x' + sourceOffset.toString(16),
-        sourceDemangledName: conformance.sourceDemangledName === undefined ? null : conformance.sourceDemangledName,
+        sourceDemangledName,
+        hasSourceDemangledName: sourceDemangledName !== null && String(sourceDemangledName).length !== 0,
         text: formatSwiftConformance(conformance),
     };
 }
@@ -4646,6 +4672,28 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const protocols = Swift.protocols(query, moduleName).map((protocolInfo) => normalizeSwiftProtocol(protocolInfo));
+        const sourceKinds = [];
+        const moduleNames = new Set();
+        let demangledCount = 0;
+        for (const protocol of protocols) {
+            moduleNames.add(protocol.moduleName);
+            if (protocol.hasSourceDemangledName) {
+                demangledCount += 1;
+            }
+            const key = protocol.sourceKind === null ? '<none>' : String(protocol.sourceKind);
+            let summary = sourceKinds.find((item) => item.sourceKind === key);
+            if (summary === undefined) {
+                summary = {
+                    sourceKind: key,
+                    count: 0,
+                    firstProtocol: protocol.name,
+                    lastProtocol: protocol.name,
+                };
+                sourceKinds.push(summary);
+            }
+            summary.count += 1;
+            summary.lastProtocol = protocol.name;
+        }
         return {
             kind: 'swift.protocols',
             moduleName,
@@ -4655,6 +4703,13 @@ function handleSpecResult(spec) {
             hasProtocols: protocols.length !== 0,
             firstProtocol: protocols.length === 0 ? null : protocols[0].name,
             lastProtocol: protocols.length === 0 ? null : protocols[protocols.length - 1].name,
+            firstModuleName: protocols.length === 0 ? null : protocols[0].moduleName,
+            lastModuleName: protocols.length === 0 ? null : protocols[protocols.length - 1].moduleName,
+            uniqueModuleCount: protocols.length === 0 ? 0 : moduleNames.size,
+            uniqueSourceKindCount: sourceKinds.length,
+            sourceDemangledCount: demangledCount,
+            hasSourceDemangledProtocols: demangledCount !== 0,
+            sourceKinds,
             protocols,
             text: protocols.map((protocolInfo) => protocolInfo.text).join('\n'),
         };
@@ -4663,6 +4718,41 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const conformances = Swift.conformances(query, moduleName).map((conformance) => normalizeSwiftConformance(conformance));
+        const sourceKinds = [];
+        const protocols = [];
+        const moduleNames = new Set();
+        let demangledCount = 0;
+        for (const conformance of conformances) {
+            moduleNames.add(conformance.moduleName);
+            if (conformance.hasSourceDemangledName) {
+                demangledCount += 1;
+            }
+            let protocolSummary = protocols.find((item) => item.protocolName === conformance.protocolName);
+            if (protocolSummary === undefined) {
+                protocolSummary = {
+                    protocolName: conformance.protocolName,
+                    count: 0,
+                    firstTypeName: conformance.typeName,
+                    lastTypeName: conformance.typeName,
+                };
+                protocols.push(protocolSummary);
+            }
+            protocolSummary.count += 1;
+            protocolSummary.lastTypeName = conformance.typeName;
+            const key = conformance.sourceKind === null ? '<none>' : String(conformance.sourceKind);
+            let sourceSummary = sourceKinds.find((item) => item.sourceKind === key);
+            if (sourceSummary === undefined) {
+                sourceSummary = {
+                    sourceKind: key,
+                    count: 0,
+                    firstTypeName: conformance.typeName,
+                    lastTypeName: conformance.typeName,
+                };
+                sourceKinds.push(sourceSummary);
+            }
+            sourceSummary.count += 1;
+            sourceSummary.lastTypeName = conformance.typeName;
+        }
         return {
             kind: 'swift.conformances',
             moduleName,
@@ -4672,6 +4762,15 @@ function handleSpecResult(spec) {
             hasConformances: conformances.length !== 0,
             firstTypeName: conformances.length === 0 ? null : conformances[0].typeName,
             lastTypeName: conformances.length === 0 ? null : conformances[conformances.length - 1].typeName,
+            firstProtocolName: conformances.length === 0 ? null : conformances[0].protocolName,
+            lastProtocolName: conformances.length === 0 ? null : conformances[conformances.length - 1].protocolName,
+            uniqueProtocolCount: protocols.length,
+            uniqueModuleCount: conformances.length === 0 ? 0 : moduleNames.size,
+            uniqueSourceKindCount: sourceKinds.length,
+            sourceDemangledCount: demangledCount,
+            hasSourceDemangledConformances: demangledCount !== 0,
+            protocols,
+            sourceKinds,
             conformances,
             text: conformances.map((conformance) => conformance.text).join('\n'),
         };
@@ -4680,6 +4779,28 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const metadata = Swift.metadata(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
+        const sourceKinds = [];
+        const moduleNames = new Set();
+        let demangledCount = 0;
+        for (const typeInfo of metadata) {
+            moduleNames.add(typeInfo.moduleName);
+            if (typeInfo.hasSourceDemangledName) {
+                demangledCount += 1;
+            }
+            const key = typeInfo.sourceKind === null ? '<none>' : String(typeInfo.sourceKind);
+            let summary = sourceKinds.find((item) => item.sourceKind === key);
+            if (summary === undefined) {
+                summary = {
+                    sourceKind: key,
+                    count: 0,
+                    firstTypeName: typeInfo.name,
+                    lastTypeName: typeInfo.name,
+                };
+                sourceKinds.push(summary);
+            }
+            summary.count += 1;
+            summary.lastTypeName = typeInfo.name;
+        }
         return {
             kind: 'swift.metadata',
             moduleName,
@@ -4689,6 +4810,13 @@ function handleSpecResult(spec) {
             hasMetadata: metadata.length !== 0,
             firstTypeName: metadata.length === 0 ? null : metadata[0].name,
             lastTypeName: metadata.length === 0 ? null : metadata[metadata.length - 1].name,
+            firstModuleName: metadata.length === 0 ? null : metadata[0].moduleName,
+            lastModuleName: metadata.length === 0 ? null : metadata[metadata.length - 1].moduleName,
+            uniqueModuleCount: metadata.length === 0 ? 0 : moduleNames.size,
+            uniqueSourceKindCount: sourceKinds.length,
+            sourceDemangledCount: demangledCount,
+            hasSourceDemangledMetadata: demangledCount !== 0,
+            sourceKinds,
             metadata,
             text: metadata.map((typeInfo) => typeInfo.text).join('\n'),
         };

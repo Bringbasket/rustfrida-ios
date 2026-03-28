@@ -353,6 +353,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `swift.protocolInfo` 现在可以直接结构化返回单个 Swift protocol 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName`，后续排查某个协议声明时不必再先全量 `swift.protocols` 再脚本过滤。
 - `swift.conformanceInfo` 现在可以直接结构化返回单个 Swift conformance 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName / typeName / protocolName`，后续排查某个类型对某个协议的符合性时不必再先全量 `swift.conformances` 再脚本过滤。
 - `swift.metadataInfo` 现在可以直接结构化返回单个 Swift metadata entry 的 `moduleBase / name / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName`，后续排查某个类型的 metadata 符号时不必再先全量 `swift.metadata` 再脚本过滤。
+- `swift.protocols / swift.conformances / swift.metadata` 这三类列表结果现在也会额外补 `uniqueModuleCount / uniqueSourceKindCount / sourceDemangledCount / sourceKinds` 这类摘要；其中 `swift.conformances` 还会补 `uniqueProtocolCount / protocols`，适合脚本先看 Swift 符号来源和协议分布，而不必自己扫完整数组。
 - `swift.typeInfo` 现在可以直接结构化返回单个 Swift type 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName / name`，后续排查某个类型声明时不必再先全量 `swift.types` 再脚本过滤。
 - `swift.methodInfo` 现在可以直接结构化返回单个 Swift method symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个类型里的目标方法时不必再先全量 `swift.methods` 再脚本过滤。
 - `swift.symbolInfo` 现在可以直接结构化返回单个 Swift symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个 Swift 符号时不必再先全量 `swift.symbols` 再脚本过滤。
