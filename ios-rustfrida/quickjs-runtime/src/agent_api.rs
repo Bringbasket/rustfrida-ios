@@ -495,6 +495,19 @@ function formatDyldInfo(dyldInfo) {
     ].join(' ');
 }
 
+function normalizeDyldInfoRegion(name, offset, size) {
+    const offsetValue = BigInt(offset || 0);
+    const sizeValue = BigInt(size || 0);
+    return {
+        name,
+        offsetHex: '0x' + offsetValue.toString(16),
+        sizeHex: '0x' + sizeValue.toString(16),
+        endHex: formatHexAdd(offset, size),
+        hasData: sizeValue !== 0n,
+        isEmpty: sizeValue === 0n,
+    };
+}
+
 function formatLinkedit(linkedit) {
     const symtab = linkedit.symoff === null || linkedit.symoff === undefined
         ? 'symtab=<none>'
@@ -2245,15 +2258,30 @@ function normalizeEntryPoint(entryPoint) {
 }
 
 function normalizeDyldInfo(dyldInfo) {
+    const regionSpecs = [
+        { name: 'rebase', offset: dyldInfo.rebaseOff, size: dyldInfo.rebaseSize },
+        { name: 'bind', offset: dyldInfo.bindOff, size: dyldInfo.bindSize },
+        { name: 'weakBind', offset: dyldInfo.weakBindOff, size: dyldInfo.weakBindSize },
+        { name: 'lazyBind', offset: dyldInfo.lazyBindOff, size: dyldInfo.lazyBindSize },
+        { name: 'export', offset: dyldInfo.exportOff, size: dyldInfo.exportSize },
+    ];
+    const regions = regionSpecs.map((region) => normalizeDyldInfoRegion(region.name, region.offset, region.size));
+    const nonEmptyRegions = regionSpecs.filter((region) => BigInt(region.size || 0) !== 0n);
     const rebaseSize = BigInt(dyldInfo.rebaseSize || 0);
     const bindSize = BigInt(dyldInfo.bindSize || 0);
     const weakBindSize = BigInt(dyldInfo.weakBindSize || 0);
     const lazyBindSize = BigInt(dyldInfo.lazyBindSize || 0);
     const exportSize = BigInt(dyldInfo.exportSize || 0);
-    const regionCount = [rebaseSize, bindSize, weakBindSize, lazyBindSize, exportSize]
-        .filter((size) => size !== 0n)
-        .length;
+    const regionCount = nonEmptyRegions.length;
     const totalSize = rebaseSize + bindSize + weakBindSize + lazyBindSize + exportSize;
+    const firstRegion = nonEmptyRegions.length === 0 ? null : nonEmptyRegions[0];
+    const lastRegion = nonEmptyRegions.length === 0 ? null : nonEmptyRegions[nonEmptyRegions.length - 1];
+    const largestRegion = nonEmptyRegions.reduce((largest, region) => {
+        if (largest === null) {
+            return region;
+        }
+        return BigInt(region.size || 0) > BigInt(largest.size || 0) ? region : largest;
+    }, null);
     return {
         moduleName: String(dyldInfo.moduleName || ''),
         moduleBase: dyldInfo.moduleBase ? dyldInfo.moduleBase.toString() : null,
@@ -2281,7 +2309,15 @@ function normalizeDyldInfo(dyldInfo) {
         exportEndHex: formatHexAdd(dyldInfo.exportOff, dyldInfo.exportSize),
         hasExportInfo: exportSize !== 0n,
         hasAnyBindInfo: bindSize !== 0n || weakBindSize !== 0n || lazyBindSize !== 0n,
+        totalRegionCount: regions.length,
         regionCount,
+        hasRegions: regionCount !== 0,
+        firstRegionName: firstRegion === null ? null : firstRegion.name,
+        lastRegionName: lastRegion === null ? null : lastRegion.name,
+        largestRegionName: largestRegion === null ? null : largestRegion.name,
+        largestRegionSizeHex: largestRegion === null ? null : '0x' + BigInt(largestRegion.size || 0).toString(16),
+        nonEmptyRegionNames: nonEmptyRegions.map((region) => region.name),
+        regions,
         totalSizeHex: '0x' + totalSize.toString(16),
         text: formatDyldInfo(dyldInfo),
     };
