@@ -4989,9 +4989,23 @@ undefined;
                                 && typeof result.hasFlatLookupImports === 'boolean'
                                 && typeof result.selfImportCount === 'number'
                                 && typeof result.hasSelfImports === 'boolean'
+                                && typeof result.tokenSourceCount === 'number'
+                                && typeof result.hasTokenSources === 'boolean'
+                                && typeof result.loaderPathImportCount === 'number'
+                                && typeof result.hasLoaderPathImports === 'boolean'
+                                && typeof result.executablePathImportCount === 'number'
+                                && typeof result.hasExecutablePathImports === 'boolean'
+                                && typeof result.rpathTokenImportCount === 'number'
+                                && typeof result.hasRpathTokenImports === 'boolean'
                                 && typeof result.uniqueDylibOrdinalCount === 'number'
                                 && typeof result.uniqueSourceCount === 'number'
-                                && Array.isArray(result.dylibSources))) {
+                                && typeof result.uniqueSourceKindCount === 'number'
+                                && typeof result.uniqueSourcePathKindCount === 'number'
+                                && typeof result.uniqueNormalizedNameCount === 'number'
+                                && Array.isArray(result.dylibSources)
+                                && Array.isArray(result.sourceKinds)
+                                && Array.isArray(result.sourcePathKinds)
+                                && Array.isArray(result.normalizedNames))) {
                                 return false;
                             }
                             if (result.imports.length === 0) {
@@ -5014,7 +5028,12 @@ undefined;
                                 && typeof imp.isFlatLookupImport === 'boolean'
                                 && typeof imp.isSelfImport === 'boolean'
                                 && typeof imp.sourceKind === 'string'
-                                && typeof imp.source === 'string')) {
+                                && typeof imp.source === 'string'
+                                && typeof imp.sourcePathKind === 'string'
+                                && typeof imp.isTokenSource === 'boolean'
+                                && typeof imp.usesLoaderPath === 'boolean'
+                                && typeof imp.usesExecutablePath === 'boolean'
+                                && typeof imp.usesRpathToken === 'boolean')) {
                                 return false;
                             }
                             if (result.dylibSources.length !== 0) {
@@ -5028,6 +5047,38 @@ undefined;
                                     && typeof source.weakImportCount === 'number'
                                     && typeof source.firstImportName === 'string'
                                     && typeof source.lastImportName === 'string')) {
+                                    return false;
+                                }
+                            }
+                            if (result.sourceKinds.length !== 0) {
+                                const sourceKind = result.sourceKinds[0];
+                                if (!(typeof sourceKind.sourceKind === 'string'
+                                    && typeof sourceKind.count === 'number'
+                                    && typeof sourceKind.firstImportName === 'string'
+                                    && typeof sourceKind.lastImportName === 'string'
+                                    && typeof sourceKind.weakImportCount === 'number'
+                                    && typeof sourceKind.tokenSourceCount === 'number')) {
+                                    return false;
+                                }
+                            }
+                            if (result.sourcePathKinds.length !== 0) {
+                                const pathKind = result.sourcePathKinds[0];
+                                if (!(typeof pathKind.sourcePathKind === 'string'
+                                    && typeof pathKind.count === 'number'
+                                    && typeof pathKind.firstImportName === 'string'
+                                    && typeof pathKind.lastImportName === 'string'
+                                    && typeof pathKind.firstSource === 'string'
+                                    && typeof pathKind.lastSource === 'string')) {
+                                    return false;
+                                }
+                            }
+                            if (result.normalizedNames.length !== 0) {
+                                const normalized = result.normalizedNames[0];
+                                if (!(typeof normalized.normalizedName === 'string'
+                                    && typeof normalized.count === 'number'
+                                    && typeof normalized.firstSource === 'string'
+                                    && typeof normalized.lastSource === 'string'
+                                    && typeof normalized.weakImportCount === 'number')) {
                                     return false;
                                 }
                             }

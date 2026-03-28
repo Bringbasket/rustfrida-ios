@@ -2862,6 +2862,7 @@ function normalizeImport(imp) {
     const dylibOrdinal = Number(imp.dylibOrdinal || 0);
     const dylibName = imp.dylibName === undefined || imp.dylibName === null ? null : String(imp.dylibName);
     const hasDylibName = dylibName !== null;
+    const sourcePathKind = dylibName === null ? 'ordinal-only' : classifyLibraryPathKind(dylibName);
     const usesOrdinalOnly = dylibName === null;
     const isMainExecutableImport = dylibOrdinal === -1;
     const isFlatLookupImport = dylibOrdinal === -2;
@@ -2894,6 +2895,11 @@ function normalizeImport(imp) {
         weakImport: !!imp.weakImport,
         sourceKind,
         source,
+        sourcePathKind,
+        isTokenSource: dylibName !== null && dylibName.startsWith('@'),
+        usesLoaderPath: dylibName !== null && dylibName.startsWith('@loader_path'),
+        usesExecutablePath: dylibName !== null && dylibName.startsWith('@executable_path'),
+        usesRpathToken: dylibName !== null && dylibName.startsWith('@rpath'),
         text: formatImport(imp),
     };
 }
@@ -6024,6 +6030,10 @@ function handleSpecResult(spec) {
         const mainExecutableImports = imports.filter((imp) => imp.isMainExecutableImport);
         const flatLookupImports = imports.filter((imp) => imp.isFlatLookupImport);
         const selfImports = imports.filter((imp) => imp.isSelfImport);
+        const tokenSourceImports = imports.filter((imp) => imp.isTokenSource);
+        const loaderPathImports = imports.filter((imp) => imp.usesLoaderPath);
+        const executablePathImports = imports.filter((imp) => imp.usesExecutablePath);
+        const rpathTokenImports = imports.filter((imp) => imp.usesRpathToken);
         const longestImport = imports.reduce((longest, imp) => {
             if (longest === null || imp.nameLength > longest.nameLength) {
                 return imp;
@@ -6031,6 +6041,9 @@ function handleSpecResult(spec) {
             return longest;
         }, null);
         const sourceSummaries = [];
+        const sourceKindSummaries = [];
+        const sourcePathKindSummaries = [];
+        const normalizedNames = [];
         for (const imp of imports) {
             let summary = sourceSummaries.find((item) => item.source === imp.source && item.sourceKind === imp.sourceKind);
             if (summary === undefined) {
@@ -6051,6 +6064,57 @@ function handleSpecResult(spec) {
             summary.lastImportName = imp.name;
             if (imp.weakImport) {
                 summary.weakImportCount += 1;
+            }
+            let sourceKindSummary = sourceKindSummaries.find((item) => item.sourceKind === imp.sourceKind);
+            if (sourceKindSummary === undefined) {
+                sourceKindSummary = {
+                    sourceKind: imp.sourceKind,
+                    count: 0,
+                    firstImportName: imp.name,
+                    lastImportName: imp.name,
+                    weakImportCount: 0,
+                    tokenSourceCount: 0,
+                };
+                sourceKindSummaries.push(sourceKindSummary);
+            }
+            sourceKindSummary.count += 1;
+            sourceKindSummary.lastImportName = imp.name;
+            if (imp.weakImport) {
+                sourceKindSummary.weakImportCount += 1;
+            }
+            if (imp.isTokenSource) {
+                sourceKindSummary.tokenSourceCount += 1;
+            }
+            let sourcePathKindSummary = sourcePathKindSummaries.find((item) => item.sourcePathKind === imp.sourcePathKind);
+            if (sourcePathKindSummary === undefined) {
+                sourcePathKindSummary = {
+                    sourcePathKind: imp.sourcePathKind,
+                    count: 0,
+                    firstImportName: imp.name,
+                    lastImportName: imp.name,
+                    firstSource: imp.source,
+                    lastSource: imp.source,
+                };
+                sourcePathKindSummaries.push(sourcePathKindSummary);
+            }
+            sourcePathKindSummary.count += 1;
+            sourcePathKindSummary.lastImportName = imp.name;
+            sourcePathKindSummary.lastSource = imp.source;
+            let normalizedSummary = normalizedNames.find((item) => item.normalizedName === imp.normalizedName);
+            if (normalizedSummary === undefined) {
+                normalizedSummary = {
+                    normalizedName: imp.normalizedName,
+                    count: 0,
+                    firstSource: imp.source,
+                    lastSource: imp.source,
+                    weakImportCount: 0,
+                };
+                normalizedNames.push(normalizedSummary);
+            }
+            normalizedSummary.count += 1;
+            normalizedSummary.lastSource = imp.source;
+            if (imp.weakImport) {
+                normalizedSummary.weakImportCount += 1;
             }
         }
         const dylibSources = sourceSummaries.map((summary) => ({
@@ -6087,9 +6151,23 @@ function handleSpecResult(spec) {
             hasFlatLookupImports: flatLookupImports.length !== 0,
             selfImportCount: selfImports.length,
             hasSelfImports: selfImports.length !== 0,
+            tokenSourceCount: tokenSourceImports.length,
+            hasTokenSources: tokenSourceImports.length !== 0,
+            loaderPathImportCount: loaderPathImports.length,
+            hasLoaderPathImports: loaderPathImports.length !== 0,
+            executablePathImportCount: executablePathImports.length,
+            hasExecutablePathImports: executablePathImports.length !== 0,
+            rpathTokenImportCount: rpathTokenImports.length,
+            hasRpathTokenImports: rpathTokenImports.length !== 0,
             uniqueDylibOrdinalCount: Array.from(new Set(imports.map((imp) => imp.dylibOrdinal))).length,
             uniqueSourceCount: dylibSources.length,
+            uniqueSourceKindCount: sourceKindSummaries.length,
+            uniqueSourcePathKindCount: sourcePathKindSummaries.length,
+            uniqueNormalizedNameCount: normalizedNames.length,
             dylibSources,
+            sourceKinds: sourceKindSummaries,
+            sourcePathKinds: sourcePathKindSummaries,
+            normalizedNames,
             imports,
             text: imports.map((imp) => imp.text).join('\n'),
         };
