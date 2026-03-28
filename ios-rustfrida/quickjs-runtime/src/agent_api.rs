@@ -3484,7 +3484,17 @@ function handleSpecResult(spec) {
     case 'pac.images': {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const images = PAC.arm64eImages(filter).map((image) => normalizeImage(image));
-        return { kind: 'pac.images', filter, count: images.length, images, text: images.map((image) => image.text).join('\n') };
+        return {
+            kind: 'pac.images',
+            filter,
+            hasFilter: filter !== null && filter.length !== 0,
+            count: images.length,
+            hasImages: images.length !== 0,
+            firstImageName: images.length === 0 ? null : images[0].name,
+            lastImageName: images.length === 0 ? null : images[images.length - 1].name,
+            images,
+            text: images.map((image) => image.text).join('\n'),
+        };
     }
     case 'pac.strip': {
         const address = parseAddressArg(spec.address, 'pac.strip usage: pac.strip <address>');
@@ -3509,7 +3519,18 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const symbols = Swift.symbols(query, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
-        return { kind: 'swift.symbols', moduleName, query, count: symbols.length, symbols, text: symbols.map((symbol) => symbol.text).join('\n') };
+        return {
+            kind: 'swift.symbols',
+            moduleName,
+            query,
+            hasQuery: query.length !== 0,
+            count: symbols.length,
+            hasSymbols: symbols.length !== 0,
+            firstSymbolName: symbols.length === 0 ? null : symbols[0].name,
+            lastSymbolName: symbols.length === 0 ? null : symbols[symbols.length - 1].name,
+            symbols,
+            text: symbols.map((symbol) => symbol.text).join('\n'),
+        };
     }
     case 'swift.symbol_info': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
@@ -3556,19 +3577,52 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const protocols = Swift.protocols(query, moduleName).map((protocolInfo) => normalizeSwiftProtocol(protocolInfo));
-        return { kind: 'swift.protocols', moduleName, query, count: protocols.length, protocols, text: protocols.map((protocolInfo) => protocolInfo.text).join('\n') };
+        return {
+            kind: 'swift.protocols',
+            moduleName,
+            query,
+            hasQuery: query !== null && query.length !== 0,
+            count: protocols.length,
+            hasProtocols: protocols.length !== 0,
+            firstProtocol: protocols.length === 0 ? null : protocols[0].name,
+            lastProtocol: protocols.length === 0 ? null : protocols[protocols.length - 1].name,
+            protocols,
+            text: protocols.map((protocolInfo) => protocolInfo.text).join('\n'),
+        };
     }
     case 'swift.conformances': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const conformances = Swift.conformances(query, moduleName).map((conformance) => normalizeSwiftConformance(conformance));
-        return { kind: 'swift.conformances', moduleName, query, count: conformances.length, conformances, text: conformances.map((conformance) => conformance.text).join('\n') };
+        return {
+            kind: 'swift.conformances',
+            moduleName,
+            query,
+            hasQuery: query.length !== 0,
+            count: conformances.length,
+            hasConformances: conformances.length !== 0,
+            firstTypeName: conformances.length === 0 ? null : conformances[0].typeName,
+            lastTypeName: conformances.length === 0 ? null : conformances[conformances.length - 1].typeName,
+            conformances,
+            text: conformances.map((conformance) => conformance.text).join('\n'),
+        };
     }
     case 'swift.metadata': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const metadata = Swift.metadata(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
-        return { kind: 'swift.metadata', moduleName, query, count: metadata.length, metadata, text: metadata.map((typeInfo) => typeInfo.text).join('\n') };
+        return {
+            kind: 'swift.metadata',
+            moduleName,
+            query,
+            hasQuery: query.length !== 0,
+            count: metadata.length,
+            hasMetadata: metadata.length !== 0,
+            firstTypeName: metadata.length === 0 ? null : metadata[0].name,
+            lastTypeName: metadata.length === 0 ? null : metadata[metadata.length - 1].name,
+            metadata,
+            text: metadata.map((typeInfo) => typeInfo.text).join('\n'),
+        };
     }
     case 'swift.metadata_info': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
@@ -3615,7 +3669,18 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const entries = Swift.vtable(query, moduleName).map((entry) => normalizeSwiftVtableEntry(entry));
-        return { kind: 'swift.vtable', moduleName, query, count: entries.length, entries, text: entries.map((entry) => entry.text).join('\n') };
+        return {
+            kind: 'swift.vtable',
+            moduleName,
+            query,
+            hasQuery: query.length !== 0,
+            count: entries.length,
+            hasEntries: entries.length !== 0,
+            firstMemberName: entries.length === 0 ? null : entries[0].memberName,
+            lastMemberName: entries.length === 0 ? null : entries[entries.length - 1].memberName,
+            entries,
+            text: entries.map((entry) => entry.text).join('\n'),
+        };
     }
     case 'swift.vtable_info': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
@@ -3636,7 +3701,18 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const entries = Swift.witnessTable(query, moduleName).map((entry) => normalizeSwiftWitnessTable(entry));
-        return { kind: 'swift.witness_table', moduleName, query, count: entries.length, entries, text: entries.map((entry) => entry.text).join('\n') };
+        return {
+            kind: 'swift.witness_table',
+            moduleName,
+            query,
+            hasQuery: query.length !== 0,
+            count: entries.length,
+            hasEntries: entries.length !== 0,
+            firstProtocolName: entries.length === 0 ? null : entries[0].protocolName,
+            lastProtocolName: entries.length === 0 ? null : entries[entries.length - 1].protocolName,
+            entries,
+            text: entries.map((entry) => entry.text).join('\n'),
+        };
     }
     case 'swift.witness_table_info': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
@@ -3657,7 +3733,18 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const layouts = Swift.typeLayout(query, moduleName).map((layout) => normalizeSwiftTypeLayout(layout));
-        return { kind: 'swift.type_layout', moduleName, query, count: layouts.length, layouts, text: layouts.map((layout) => layout.text).join('\n') };
+        return {
+            kind: 'swift.type_layout',
+            moduleName,
+            query,
+            hasQuery: query.length !== 0,
+            count: layouts.length,
+            hasLayouts: layouts.length !== 0,
+            firstTypeName: layouts.length === 0 ? null : layouts[0].name,
+            lastTypeName: layouts.length === 0 ? null : layouts[layouts.length - 1].name,
+            layouts,
+            text: layouts.map((layout) => layout.text).join('\n'),
+        };
     }
     case 'swift.type_layout_info': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
@@ -3676,37 +3763,102 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const types = Swift.types(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
-        return { kind: 'swift.types', moduleName, query, count: types.length, types, text: types.map((typeInfo) => typeInfo.text).join('\n') };
+        return {
+            kind: 'swift.types',
+            moduleName,
+            query,
+            hasQuery: query.length !== 0,
+            count: types.length,
+            hasTypes: types.length !== 0,
+            firstTypeName: types.length === 0 ? null : types[0].name,
+            lastTypeName: types.length === 0 ? null : types[types.length - 1].name,
+            types,
+            text: types.map((typeInfo) => typeInfo.text).join('\n'),
+        };
     }
     case 'swift.type_kinds': {
         const kinds = Swift.typeKinds();
-        return { kind: 'swift.type_kinds', count: kinds.length, kinds, text: kinds.join('\n') };
+        return {
+            kind: 'swift.type_kinds',
+            count: kinds.length,
+            hasKinds: kinds.length !== 0,
+            firstKind: kinds.length === 0 ? null : kinds[0],
+            lastKind: kinds.length === 0 ? null : kinds[kinds.length - 1],
+            kinds,
+            text: kinds.join('\n'),
+        };
     }
     case 'swift.types_of_kind': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const sourceKind = String(spec.sourceKind || '');
         const query = String(spec.query || '');
         const types = Swift.typesOfKind(sourceKind, query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
-        return { kind: 'swift.types_of_kind', moduleName, sourceKind, query, count: types.length, types, text: types.map((typeInfo) => typeInfo.text).join('\n') };
+        return {
+            kind: 'swift.types_of_kind',
+            moduleName,
+            sourceKind,
+            query,
+            hasQuery: query.length !== 0,
+            count: types.length,
+            hasTypes: types.length !== 0,
+            firstTypeName: types.length === 0 ? null : types[0].name,
+            lastTypeName: types.length === 0 ? null : types[types.length - 1].name,
+            types,
+            text: types.map((typeInfo) => typeInfo.text).join('\n'),
+        };
     }
     case 'swift.method_owners': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const owners = Swift.methodOwners(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
-        return { kind: 'swift.method_owners', moduleName, query, count: owners.length, owners, text: owners.map((typeInfo) => typeInfo.text).join('\n') };
+        return {
+            kind: 'swift.method_owners',
+            moduleName,
+            query,
+            hasQuery: query.length !== 0,
+            count: owners.length,
+            hasOwners: owners.length !== 0,
+            firstOwnerName: owners.length === 0 ? null : owners[0].name,
+            lastOwnerName: owners.length === 0 ? null : owners[owners.length - 1].name,
+            owners,
+            text: owners.map((typeInfo) => typeInfo.text).join('\n'),
+        };
     }
     case 'swift.type_methods': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const methods = Swift.typeMethods(query, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
-        return { kind: 'swift.type_methods', moduleName, query, count: methods.length, methods, text: methods.map((symbol) => symbol.text).join('\n') };
+        return {
+            kind: 'swift.type_methods',
+            moduleName,
+            query,
+            hasQuery: query.length !== 0,
+            count: methods.length,
+            hasMethods: methods.length !== 0,
+            firstMethodName: methods.length === 0 ? null : methods[0].name,
+            lastMethodName: methods.length === 0 ? null : methods[methods.length - 1].name,
+            methods,
+            text: methods.map((symbol) => symbol.text).join('\n'),
+        };
     }
     case 'swift.methods': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const typeName = String(spec.typeName || '');
         const methodQuery = String(spec.methodQuery || '');
         const methods = Swift.methods(typeName, methodQuery, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
-        return { kind: 'swift.methods', moduleName, typeName, methodQuery, count: methods.length, methods, text: methods.map((symbol) => symbol.text).join('\n') };
+        return {
+            kind: 'swift.methods',
+            moduleName,
+            typeName,
+            methodQuery,
+            hasMethodQuery: methodQuery.length !== 0,
+            count: methods.length,
+            hasMethods: methods.length !== 0,
+            firstMethodName: methods.length === 0 ? null : methods[0].name,
+            lastMethodName: methods.length === 0 ? null : methods[methods.length - 1].name,
+            methods,
+            text: methods.map((symbol) => symbol.text).join('\n'),
+        };
     }
     default:
         throw new Error('unsupported agent helper command spec: ' + String(spec.kind));

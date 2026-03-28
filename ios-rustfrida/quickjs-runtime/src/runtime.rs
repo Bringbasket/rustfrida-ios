@@ -2339,6 +2339,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.images', filter: null }); return result.kind === 'pac.images' && result.filter === null && result.hasFilter === false && result.count === result.images.length && typeof result.hasImages === 'boolean' && ((result.images.length === 0 && result.hasImages === false && result.firstImageName === null && result.lastImageName === null) || (result.hasImages === true && typeof result.firstImageName === 'string' && typeof result.lastImageName === 'string' && typeof result.images[0].path === 'string')); })()"
+                    )
+                    .expect("agent pac images result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.classes', filter: null }); return result.kind === 'objc.classes' && result.filter === null && result.count === result.classes.length && result.text === result.classes.join('\\n'); })()"
                     )
                     .expect("agent objc classes result"),
@@ -2804,19 +2812,25 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null }); return result.kind === 'swift.protocols' && result.query === null && result.count === result.protocols.length && (result.protocols.length === 0 || (typeof result.protocols[0].moduleBase === 'string' && typeof result.protocols[0].sourceSymbolName === 'string' && typeof result.protocols[0].sourceOffsetHex === 'string')); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbols', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.symbols' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.symbols.length && typeof result.hasSymbols === 'boolean' && ((result.symbols.length === 0 && result.hasSymbols === false && result.firstSymbolName === null && result.lastSymbolName === null) || (result.hasSymbols === true && typeof result.firstSymbolName === 'string' && typeof result.lastSymbolName === 'string' && typeof result.symbols[0].moduleBase === 'string' && typeof result.symbols[0].offsetHex === 'string')); })()")
+                    .expect("agent swift symbols result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null }); return result.kind === 'swift.protocols' && result.query === null && result.hasQuery === false && result.count === result.protocols.length && typeof result.hasProtocols === 'boolean' && ((result.protocols.length === 0 && result.hasProtocols === false && result.firstProtocol === null && result.lastProtocol === null) || (result.hasProtocols === true && typeof result.firstProtocol === 'string' && typeof result.lastProtocol === 'string' && typeof result.protocols[0].moduleBase === 'string' && typeof result.protocols[0].sourceSymbolName === 'string' && typeof result.protocols[0].sourceOffsetHex === 'string')); })()")
                     .expect("agent swift protocols result"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformances', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.conformances' && result.query === 'ViewController' && result.count === result.conformances.length && (result.conformances.length === 0 || (typeof result.conformances[0].moduleBase === 'string' && typeof result.conformances[0].sourceSymbolName === 'string' && typeof result.conformances[0].sourceOffsetHex === 'string' && typeof result.conformances[0].protocolName === 'string')); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformances', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.conformances' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.conformances.length && typeof result.hasConformances === 'boolean' && ((result.conformances.length === 0 && result.hasConformances === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasConformances === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.conformances[0].moduleBase === 'string' && typeof result.conformances[0].sourceSymbolName === 'string' && typeof result.conformances[0].sourceOffsetHex === 'string' && typeof result.conformances[0].protocolName === 'string')); })()")
                     .expect("agent swift conformances result"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.metadata' && result.query === 'ViewController' && result.count === result.metadata.length && (result.metadata.length === 0 || (typeof result.metadata[0].moduleBase === 'string' && typeof result.metadata[0].sourceSymbolName === 'string' && typeof result.metadata[0].sourceOffsetHex === 'string' && typeof result.metadata[0].sourceKind === 'string')); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.metadata' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.metadata.length && typeof result.hasMetadata === 'boolean' && ((result.metadata.length === 0 && result.hasMetadata === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasMetadata === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.metadata[0].moduleBase === 'string' && typeof result.metadata[0].sourceSymbolName === 'string' && typeof result.metadata[0].sourceOffsetHex === 'string' && typeof result.metadata[0].sourceKind === 'string')); })()")
                     .expect("agent swift metadata result"),
                 "true"
             );
@@ -2828,7 +2842,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.vtable' && result.query === 'ViewController' && result.count === result.entries.length && (result.entries.length === 0 || (typeof result.entries[0].moduleBase === 'string' && typeof result.entries[0].memberName === 'string' && typeof result.entries[0].offsetHex === 'string' && typeof result.entries[0].isDispatchThunk === 'boolean')); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.vtable' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.entries.length && typeof result.hasEntries === 'boolean' && ((result.entries.length === 0 && result.hasEntries === false && result.firstMemberName === null && result.lastMemberName === null) || (result.hasEntries === true && typeof result.firstMemberName === 'string' && typeof result.lastMemberName === 'string' && typeof result.entries[0].moduleBase === 'string' && typeof result.entries[0].memberName === 'string' && typeof result.entries[0].offsetHex === 'string' && typeof result.entries[0].isDispatchThunk === 'boolean')); })()")
                     .expect("agent swift vtable result"),
                 "true"
             );
@@ -2840,7 +2854,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' }); return result.kind === 'swift.witness_table' && result.query === 'Renderable' && result.count === result.entries.length && (result.entries.length === 0 || (typeof result.entries[0].moduleBase === 'string' && typeof result.entries[0].protocolName === 'string' && typeof result.entries[0].offsetHex === 'string' && typeof result.entries[0].isAccessor === 'boolean')); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' }); return result.kind === 'swift.witness_table' && result.query === 'Renderable' && result.hasQuery === true && result.count === result.entries.length && typeof result.hasEntries === 'boolean' && ((result.entries.length === 0 && result.hasEntries === false && result.firstProtocolName === null && result.lastProtocolName === null) || (result.hasEntries === true && typeof result.firstProtocolName === 'string' && typeof result.lastProtocolName === 'string' && typeof result.entries[0].moduleBase === 'string' && typeof result.entries[0].protocolName === 'string' && typeof result.entries[0].offsetHex === 'string' && typeof result.entries[0].isAccessor === 'boolean')); })()")
                     .expect("agent swift witness table result"),
                 "true"
             );
@@ -2852,7 +2866,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.type_layout' && result.query === 'ViewController' && result.count === result.layouts.length && (result.layouts.length === 0 || (typeof result.layouts[0].moduleBase === 'string' && Array.isArray(result.layouts[0].metadata) && typeof result.layouts[0].vtableCount === 'number' && typeof result.layouts[0].witnessTableCount === 'number')); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.type_layout' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.layouts.length && typeof result.hasLayouts === 'boolean' && ((result.layouts.length === 0 && result.hasLayouts === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasLayouts === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.layouts[0].moduleBase === 'string' && Array.isArray(result.layouts[0].metadata) && typeof result.layouts[0].vtableCount === 'number' && typeof result.layouts[0].witnessTableCount === 'number')); })()")
                     .expect("agent swift type layout result"),
                 "true"
             );
@@ -2865,9 +2879,39 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.types' && result.count === result.types.length && (result.types.length === 0 || (typeof result.types[0].moduleBase === 'string' && typeof result.types[0].sourceSymbolName === 'string' && typeof result.types[0].sourceOffsetHex === 'string')); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.types' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.types.length && typeof result.hasTypes === 'boolean' && ((result.types.length === 0 && result.hasTypes === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasTypes === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.types[0].moduleBase === 'string' && typeof result.types[0].sourceSymbolName === 'string' && typeof result.types[0].sourceOffsetHex === 'string')); })()"
                     )
                     .expect("agent swift types result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_kinds' }); return result.kind === 'swift.type_kinds' && result.count === result.kinds.length && typeof result.hasKinds === 'boolean' && ((result.kinds.length === 0 && result.hasKinds === false && result.firstKind === null && result.lastKind === null) || (result.hasKinds === true && typeof result.firstKind === 'string' && typeof result.lastKind === 'string')); })()")
+                    .expect("agent swift type kinds result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types_of_kind', moduleName: null, sourceKind: 'metadata-accessor', query: 'ViewController' }); return result.kind === 'swift.types_of_kind' && result.sourceKind === 'metadata-accessor' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.types.length && typeof result.hasTypes === 'boolean' && ((result.types.length === 0 && result.hasTypes === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasTypes === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.types[0].moduleBase === 'string')); })()")
+                    .expect("agent swift types of kind result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_owners', moduleName: null, query: 'viewDidLoad' }); return result.kind === 'swift.method_owners' && result.query === 'viewDidLoad' && result.hasQuery === true && result.count === result.owners.length && typeof result.hasOwners === 'boolean' && ((result.owners.length === 0 && result.hasOwners === false && result.firstOwnerName === null && result.lastOwnerName === null) || (result.hasOwners === true && typeof result.firstOwnerName === 'string' && typeof result.lastOwnerName === 'string' && typeof result.owners[0].moduleBase === 'string')); })()")
+                    .expect("agent swift method owners result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_methods', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.type_methods' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.methods.length && typeof result.hasMethods === 'boolean' && ((result.methods.length === 0 && result.hasMethods === false && result.firstMethodName === null && result.lastMethodName === null) || (result.hasMethods === true && typeof result.firstMethodName === 'string' && typeof result.lastMethodName === 'string' && typeof result.methods[0].moduleBase === 'string' && typeof result.methods[0].offsetHex === 'string')); })()")
+                    .expect("agent swift type methods result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.methods', moduleName: null, typeName: 'ViewController', methodQuery: 'viewDidLoad' }); return result.kind === 'swift.methods' && result.typeName === 'ViewController' && result.methodQuery === 'viewDidLoad' && result.hasMethodQuery === true && result.count === result.methods.length && typeof result.hasMethods === 'boolean' && ((result.methods.length === 0 && result.hasMethods === false && result.firstMethodName === null && result.lastMethodName === null) || (result.hasMethods === true && typeof result.firstMethodName === 'string' && typeof result.lastMethodName === 'string' && typeof result.methods[0].moduleBase === 'string' && typeof result.methods[0].offsetHex === 'string')); })()")
+                    .expect("agent swift methods result"),
                 "true"
             );
             assert_eq!(
