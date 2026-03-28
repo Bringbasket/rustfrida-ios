@@ -6934,12 +6934,46 @@ function handleSpecResult(spec) {
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
         const protocols = Swift.protocols(query, moduleName).map((protocolInfo) => normalizeSwiftProtocol(protocolInfo));
         const sourceKinds = [];
+        const moduleSummaries = [];
+        const protocolNames = [];
         const moduleNames = new Set();
         let demangledCount = 0;
         for (const protocol of protocols) {
             moduleNames.add(protocol.moduleName);
             if (protocol.hasSourceDemangledName) {
                 demangledCount += 1;
+            }
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === protocol.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: protocol.moduleName,
+                    count: 0,
+                    firstProtocol: protocol.name,
+                    lastProtocol: protocol.name,
+                    sourceDemangledCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastProtocol = protocol.name;
+            if (protocol.hasSourceDemangledName) {
+                moduleSummary.sourceDemangledCount += 1;
+            }
+            let protocolSummary = protocolNames.find((item) => item.protocolName === protocol.name);
+            if (protocolSummary === undefined) {
+                protocolSummary = {
+                    protocolName: protocol.name,
+                    count: 0,
+                    firstModuleName: protocol.moduleName,
+                    lastModuleName: protocol.moduleName,
+                    hasSourceDemangledName: false,
+                };
+                protocolNames.push(protocolSummary);
+            }
+            protocolSummary.count += 1;
+            protocolSummary.lastModuleName = protocol.moduleName;
+            if (protocol.hasSourceDemangledName) {
+                protocolSummary.hasSourceDemangledName = true;
             }
             const key = protocol.sourceKind === null ? '<none>' : String(protocol.sourceKind);
             let summary = sourceKinds.find((item) => item.sourceKind === key);
@@ -6967,9 +7001,12 @@ function handleSpecResult(spec) {
             firstModuleName: protocols.length === 0 ? null : protocols[0].moduleName,
             lastModuleName: protocols.length === 0 ? null : protocols[protocols.length - 1].moduleName,
             uniqueModuleCount: protocols.length === 0 ? 0 : moduleNames.size,
+            uniqueProtocolCount: protocolNames.length,
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledProtocols: demangledCount !== 0,
+            moduleNames: moduleSummaries,
+            protocolNames,
             sourceKinds,
             protocols,
             text: protocols.map((protocolInfo) => protocolInfo.text).join('\n'),
@@ -6981,12 +7018,54 @@ function handleSpecResult(spec) {
         const conformances = Swift.conformances(query, moduleName).map((conformance) => normalizeSwiftConformance(conformance));
         const sourceKinds = [];
         const protocols = [];
+        const typeSummaries = [];
+        const moduleSummaries = [];
         const moduleNames = new Set();
+        const typeNames = new Set();
         let demangledCount = 0;
         for (const conformance of conformances) {
             moduleNames.add(conformance.moduleName);
+            typeNames.add(conformance.typeName);
             if (conformance.hasSourceDemangledName) {
                 demangledCount += 1;
+            }
+            let typeSummary = typeSummaries.find((item) => item.typeName === conformance.typeName);
+            if (typeSummary === undefined) {
+                typeSummary = {
+                    typeName: conformance.typeName,
+                    count: 0,
+                    firstProtocolName: conformance.protocolName,
+                    lastProtocolName: conformance.protocolName,
+                    firstModuleName: conformance.moduleName,
+                    lastModuleName: conformance.moduleName,
+                    hasSourceDemangledName: false,
+                };
+                typeSummaries.push(typeSummary);
+            }
+            typeSummary.count += 1;
+            typeSummary.lastProtocolName = conformance.protocolName;
+            typeSummary.lastModuleName = conformance.moduleName;
+            if (conformance.hasSourceDemangledName) {
+                typeSummary.hasSourceDemangledName = true;
+            }
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === conformance.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: conformance.moduleName,
+                    count: 0,
+                    firstTypeName: conformance.typeName,
+                    lastTypeName: conformance.typeName,
+                    firstProtocolName: conformance.protocolName,
+                    lastProtocolName: conformance.protocolName,
+                    sourceDemangledCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastTypeName = conformance.typeName;
+            moduleSummary.lastProtocolName = conformance.protocolName;
+            if (conformance.hasSourceDemangledName) {
+                moduleSummary.sourceDemangledCount += 1;
             }
             let protocolSummary = protocols.find((item) => item.protocolName === conformance.protocolName);
             if (protocolSummary === undefined) {
@@ -7025,11 +7104,14 @@ function handleSpecResult(spec) {
             lastTypeName: conformances.length === 0 ? null : conformances[conformances.length - 1].typeName,
             firstProtocolName: conformances.length === 0 ? null : conformances[0].protocolName,
             lastProtocolName: conformances.length === 0 ? null : conformances[conformances.length - 1].protocolName,
+            uniqueTypeCount: conformances.length === 0 ? 0 : typeNames.size,
             uniqueProtocolCount: protocols.length,
             uniqueModuleCount: conformances.length === 0 ? 0 : moduleNames.size,
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledConformances: demangledCount !== 0,
+            typeNames: typeSummaries,
+            moduleNames: moduleSummaries,
             protocols,
             sourceKinds,
             conformances,
@@ -7041,12 +7123,48 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const metadata = Swift.metadata(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
         const sourceKinds = [];
+        const moduleSummaries = [];
+        const typeSummaries = [];
         const moduleNames = new Set();
+        const typeNames = new Set();
         let demangledCount = 0;
         for (const typeInfo of metadata) {
             moduleNames.add(typeInfo.moduleName);
+            typeNames.add(typeInfo.name);
             if (typeInfo.hasSourceDemangledName) {
                 demangledCount += 1;
+            }
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === typeInfo.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: typeInfo.moduleName,
+                    count: 0,
+                    firstTypeName: typeInfo.name,
+                    lastTypeName: typeInfo.name,
+                    sourceDemangledCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastTypeName = typeInfo.name;
+            if (typeInfo.hasSourceDemangledName) {
+                moduleSummary.sourceDemangledCount += 1;
+            }
+            let typeSummary = typeSummaries.find((item) => item.typeName === typeInfo.name);
+            if (typeSummary === undefined) {
+                typeSummary = {
+                    typeName: typeInfo.name,
+                    count: 0,
+                    firstModuleName: typeInfo.moduleName,
+                    lastModuleName: typeInfo.moduleName,
+                    hasSourceDemangledName: false,
+                };
+                typeSummaries.push(typeSummary);
+            }
+            typeSummary.count += 1;
+            typeSummary.lastModuleName = typeInfo.moduleName;
+            if (typeInfo.hasSourceDemangledName) {
+                typeSummary.hasSourceDemangledName = true;
             }
             const key = typeInfo.sourceKind === null ? '<none>' : String(typeInfo.sourceKind);
             let summary = sourceKinds.find((item) => item.sourceKind === key);
@@ -7074,9 +7192,12 @@ function handleSpecResult(spec) {
             firstModuleName: metadata.length === 0 ? null : metadata[0].moduleName,
             lastModuleName: metadata.length === 0 ? null : metadata[metadata.length - 1].moduleName,
             uniqueModuleCount: metadata.length === 0 ? 0 : moduleNames.size,
+            uniqueTypeCount: metadata.length === 0 ? 0 : typeNames.size,
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledMetadata: demangledCount !== 0,
+            moduleNames: moduleSummaries,
+            typeNames: typeSummaries,
             sourceKinds,
             metadata,
             text: metadata.map((typeInfo) => typeInfo.text).join('\n'),
@@ -7653,12 +7774,48 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const types = Swift.types(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
         const sourceKinds = [];
+        const moduleSummaries = [];
+        const typeSummaries = [];
         const moduleNames = new Set();
+        const typeNames = new Set();
         let demangledCount = 0;
         for (const typeInfo of types) {
             moduleNames.add(typeInfo.moduleName);
+            typeNames.add(typeInfo.name);
             if (typeInfo.hasSourceDemangledName) {
                 demangledCount += 1;
+            }
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === typeInfo.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: typeInfo.moduleName,
+                    count: 0,
+                    firstTypeName: typeInfo.name,
+                    lastTypeName: typeInfo.name,
+                    sourceDemangledCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastTypeName = typeInfo.name;
+            if (typeInfo.hasSourceDemangledName) {
+                moduleSummary.sourceDemangledCount += 1;
+            }
+            let typeSummary = typeSummaries.find((item) => item.typeName === typeInfo.name);
+            if (typeSummary === undefined) {
+                typeSummary = {
+                    typeName: typeInfo.name,
+                    count: 0,
+                    firstModuleName: typeInfo.moduleName,
+                    lastModuleName: typeInfo.moduleName,
+                    hasSourceDemangledName: false,
+                };
+                typeSummaries.push(typeSummary);
+            }
+            typeSummary.count += 1;
+            typeSummary.lastModuleName = typeInfo.moduleName;
+            if (typeInfo.hasSourceDemangledName) {
+                typeSummary.hasSourceDemangledName = true;
             }
             const key = typeInfo.sourceKind === null ? '<none>' : String(typeInfo.sourceKind);
             let summary = sourceKinds.find((item) => item.sourceKind === key);
@@ -7686,9 +7843,12 @@ function handleSpecResult(spec) {
             firstModuleName: types.length === 0 ? null : types[0].moduleName,
             lastModuleName: types.length === 0 ? null : types[types.length - 1].moduleName,
             uniqueModuleCount: types.length === 0 ? 0 : moduleNames.size,
+            uniqueTypeCount: types.length === 0 ? 0 : typeNames.size,
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledTypes: demangledCount !== 0,
+            moduleNames: moduleSummaries,
+            typeNames: typeSummaries,
             sourceKinds,
             types,
             text: types.map((typeInfo) => typeInfo.text).join('\n'),
@@ -7761,12 +7921,48 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const types = Swift.typesOfKind(sourceKind, query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
         const sourceKinds = [];
+        const moduleSummaries = [];
+        const typeSummaries = [];
         const moduleNames = new Set();
+        const typeNames = new Set();
         let demangledCount = 0;
         for (const typeInfo of types) {
             moduleNames.add(typeInfo.moduleName);
+            typeNames.add(typeInfo.name);
             if (typeInfo.hasSourceDemangledName) {
                 demangledCount += 1;
+            }
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === typeInfo.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: typeInfo.moduleName,
+                    count: 0,
+                    firstTypeName: typeInfo.name,
+                    lastTypeName: typeInfo.name,
+                    sourceDemangledCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastTypeName = typeInfo.name;
+            if (typeInfo.hasSourceDemangledName) {
+                moduleSummary.sourceDemangledCount += 1;
+            }
+            let typeSummary = typeSummaries.find((item) => item.typeName === typeInfo.name);
+            if (typeSummary === undefined) {
+                typeSummary = {
+                    typeName: typeInfo.name,
+                    count: 0,
+                    firstModuleName: typeInfo.moduleName,
+                    lastModuleName: typeInfo.moduleName,
+                    hasSourceDemangledName: false,
+                };
+                typeSummaries.push(typeSummary);
+            }
+            typeSummary.count += 1;
+            typeSummary.lastModuleName = typeInfo.moduleName;
+            if (typeInfo.hasSourceDemangledName) {
+                typeSummary.hasSourceDemangledName = true;
             }
             const key = typeInfo.sourceKind === null ? '<none>' : String(typeInfo.sourceKind);
             let summary = sourceKinds.find((item) => item.sourceKind === key);
@@ -7795,9 +7991,12 @@ function handleSpecResult(spec) {
             firstModuleName: types.length === 0 ? null : types[0].moduleName,
             lastModuleName: types.length === 0 ? null : types[types.length - 1].moduleName,
             uniqueModuleCount: types.length === 0 ? 0 : moduleNames.size,
+            uniqueTypeCount: types.length === 0 ? 0 : typeNames.size,
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledTypes: demangledCount !== 0,
+            moduleNames: moduleSummaries,
+            typeNames: typeSummaries,
             sourceKinds,
             types,
             text: types.map((typeInfo) => typeInfo.text).join('\n'),

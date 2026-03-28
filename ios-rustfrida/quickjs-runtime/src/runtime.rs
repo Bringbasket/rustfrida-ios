@@ -5181,19 +5181,19 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null }); return result.kind === 'swift.protocols' && result.query === null && result.hasQuery === false && result.count === result.protocols.length && typeof result.hasProtocols === 'boolean' && typeof result.uniqueModuleCount === 'number' && typeof result.uniqueSourceKindCount === 'number' && typeof result.sourceDemangledCount === 'number' && typeof result.hasSourceDemangledProtocols === 'boolean' && Array.isArray(result.sourceKinds) && ((result.protocols.length === 0 && result.hasProtocols === false && result.firstProtocol === null && result.lastProtocol === null) || (result.hasProtocols === true && typeof result.firstProtocol === 'string' && typeof result.lastProtocol === 'string' && typeof result.firstModuleName === 'string' && typeof result.lastModuleName === 'string' && typeof result.protocols[0].moduleBase === 'string' && typeof result.protocols[0].hasName === 'boolean' && typeof result.protocols[0].hasSourceKind === 'boolean' && typeof result.protocols[0].hasSourceSymbolName === 'boolean' && typeof result.protocols[0].hasSourceDemangledName === 'boolean' && typeof result.protocols[0].sourceSymbolName === 'string' && typeof result.protocols[0].sourceOffsetHex === 'string' && (result.sourceKinds.length === 0 || (typeof result.sourceKinds[0].sourceKind === 'string' && typeof result.sourceKinds[0].count === 'number' && typeof result.sourceKinds[0].firstProtocol === 'string' && typeof result.sourceKinds[0].lastProtocol === 'string')))); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null }); return result.kind === 'swift.protocols' && result.query === null && result.hasQuery === false && result.count === result.protocols.length && typeof result.hasProtocols === 'boolean' && typeof result.uniqueModuleCount === 'number' && typeof result.uniqueProtocolCount === 'number' && typeof result.uniqueSourceKindCount === 'number' && typeof result.sourceDemangledCount === 'number' && typeof result.hasSourceDemangledProtocols === 'boolean' && Array.isArray(result.moduleNames) && Array.isArray(result.protocolNames) && Array.isArray(result.sourceKinds) && ((result.protocols.length === 0 && result.hasProtocols === false && result.firstProtocol === null && result.lastProtocol === null) || (result.hasProtocols === true && typeof result.firstProtocol === 'string' && typeof result.lastProtocol === 'string' && typeof result.firstModuleName === 'string' && typeof result.lastModuleName === 'string' && typeof result.protocols[0].moduleBase === 'string' && typeof result.protocols[0].hasName === 'boolean' && typeof result.protocols[0].hasSourceKind === 'boolean' && typeof result.protocols[0].hasSourceSymbolName === 'boolean' && typeof result.protocols[0].hasSourceDemangledName === 'boolean' && typeof result.protocols[0].sourceSymbolName === 'string' && typeof result.protocols[0].sourceOffsetHex === 'string' && (result.moduleNames.length === 0 || (typeof result.moduleNames[0].moduleName === 'string' && typeof result.moduleNames[0].count === 'number' && typeof result.moduleNames[0].firstProtocol === 'string' && typeof result.moduleNames[0].lastProtocol === 'string' && typeof result.moduleNames[0].sourceDemangledCount === 'number')) && (result.protocolNames.length === 0 || (typeof result.protocolNames[0].protocolName === 'string' && typeof result.protocolNames[0].count === 'number' && typeof result.protocolNames[0].firstModuleName === 'string' && typeof result.protocolNames[0].lastModuleName === 'string' && typeof result.protocolNames[0].hasSourceDemangledName === 'boolean')) && (result.sourceKinds.length === 0 || (typeof result.sourceKinds[0].sourceKind === 'string' && typeof result.sourceKinds[0].count === 'number' && typeof result.sourceKinds[0].firstProtocol === 'string' && typeof result.sourceKinds[0].lastProtocol === 'string')))); })()")
                     .expect("agent swift protocols result"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformances', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.conformances' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.conformances.length && typeof result.hasConformances === 'boolean' && typeof result.uniqueProtocolCount === 'number' && typeof result.uniqueModuleCount === 'number' && typeof result.uniqueSourceKindCount === 'number' && typeof result.sourceDemangledCount === 'number' && typeof result.hasSourceDemangledConformances === 'boolean' && Array.isArray(result.protocols) && Array.isArray(result.sourceKinds) && ((result.conformances.length === 0 && result.hasConformances === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasConformances === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.firstProtocolName === 'string' && typeof result.lastProtocolName === 'string' && typeof result.conformances[0].moduleBase === 'string' && typeof result.conformances[0].hasTypeName === 'boolean' && typeof result.conformances[0].hasProtocolName === 'boolean' && typeof result.conformances[0].hasSourceKind === 'boolean' && typeof result.conformances[0].hasSourceSymbolName === 'boolean' && typeof result.conformances[0].hasSourceDemangledName === 'boolean' && typeof result.conformances[0].sourceSymbolName === 'string' && typeof result.conformances[0].sourceOffsetHex === 'string' && typeof result.conformances[0].protocolName === 'string' && (result.protocols.length === 0 || (typeof result.protocols[0].protocolName === 'string' && typeof result.protocols[0].count === 'number' && typeof result.protocols[0].firstTypeName === 'string' && typeof result.protocols[0].lastTypeName === 'string')) && (result.sourceKinds.length === 0 || (typeof result.sourceKinds[0].sourceKind === 'string' && typeof result.sourceKinds[0].count === 'number' && typeof result.sourceKinds[0].firstTypeName === 'string' && typeof result.sourceKinds[0].lastTypeName === 'string')))); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformances', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.conformances' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.conformances.length && typeof result.hasConformances === 'boolean' && typeof result.uniqueTypeCount === 'number' && typeof result.uniqueProtocolCount === 'number' && typeof result.uniqueModuleCount === 'number' && typeof result.uniqueSourceKindCount === 'number' && typeof result.sourceDemangledCount === 'number' && typeof result.hasSourceDemangledConformances === 'boolean' && Array.isArray(result.typeNames) && Array.isArray(result.moduleNames) && Array.isArray(result.protocols) && Array.isArray(result.sourceKinds) && ((result.conformances.length === 0 && result.hasConformances === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasConformances === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.firstProtocolName === 'string' && typeof result.lastProtocolName === 'string' && typeof result.conformances[0].moduleBase === 'string' && typeof result.conformances[0].hasTypeName === 'boolean' && typeof result.conformances[0].hasProtocolName === 'boolean' && typeof result.conformances[0].hasSourceKind === 'boolean' && typeof result.conformances[0].hasSourceSymbolName === 'boolean' && typeof result.conformances[0].hasSourceDemangledName === 'boolean' && typeof result.conformances[0].sourceSymbolName === 'string' && typeof result.conformances[0].sourceOffsetHex === 'string' && typeof result.conformances[0].protocolName === 'string' && (result.typeNames.length === 0 || (typeof result.typeNames[0].typeName === 'string' && typeof result.typeNames[0].count === 'number' && typeof result.typeNames[0].firstProtocolName === 'string' && typeof result.typeNames[0].lastProtocolName === 'string' && typeof result.typeNames[0].firstModuleName === 'string' && typeof result.typeNames[0].lastModuleName === 'string' && typeof result.typeNames[0].hasSourceDemangledName === 'boolean')) && (result.moduleNames.length === 0 || (typeof result.moduleNames[0].moduleName === 'string' && typeof result.moduleNames[0].count === 'number' && typeof result.moduleNames[0].firstTypeName === 'string' && typeof result.moduleNames[0].lastTypeName === 'string' && typeof result.moduleNames[0].firstProtocolName === 'string' && typeof result.moduleNames[0].lastProtocolName === 'string' && typeof result.moduleNames[0].sourceDemangledCount === 'number')) && (result.protocols.length === 0 || (typeof result.protocols[0].protocolName === 'string' && typeof result.protocols[0].count === 'number' && typeof result.protocols[0].firstTypeName === 'string' && typeof result.protocols[0].lastTypeName === 'string')) && (result.sourceKinds.length === 0 || (typeof result.sourceKinds[0].sourceKind === 'string' && typeof result.sourceKinds[0].count === 'number' && typeof result.sourceKinds[0].firstTypeName === 'string' && typeof result.sourceKinds[0].lastTypeName === 'string')))); })()")
                     .expect("agent swift conformances result"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.metadata' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.metadata.length && typeof result.hasMetadata === 'boolean' && typeof result.uniqueModuleCount === 'number' && typeof result.uniqueSourceKindCount === 'number' && typeof result.sourceDemangledCount === 'number' && typeof result.hasSourceDemangledMetadata === 'boolean' && Array.isArray(result.sourceKinds) && ((result.metadata.length === 0 && result.hasMetadata === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasMetadata === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.firstModuleName === 'string' && typeof result.lastModuleName === 'string' && typeof result.metadata[0].moduleBase === 'string' && typeof result.metadata[0].hasName === 'boolean' && typeof result.metadata[0].hasSourceKind === 'boolean' && typeof result.metadata[0].hasSourceSymbolName === 'boolean' && typeof result.metadata[0].hasSourceDemangledName === 'boolean' && typeof result.metadata[0].sourceSymbolName === 'string' && typeof result.metadata[0].sourceOffsetHex === 'string' && typeof result.metadata[0].sourceKind === 'string' && (result.sourceKinds.length === 0 || (typeof result.sourceKinds[0].sourceKind === 'string' && typeof result.sourceKinds[0].count === 'number' && typeof result.sourceKinds[0].firstTypeName === 'string' && typeof result.sourceKinds[0].lastTypeName === 'string')))); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.metadata' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.metadata.length && typeof result.hasMetadata === 'boolean' && typeof result.uniqueModuleCount === 'number' && typeof result.uniqueTypeCount === 'number' && typeof result.uniqueSourceKindCount === 'number' && typeof result.sourceDemangledCount === 'number' && typeof result.hasSourceDemangledMetadata === 'boolean' && Array.isArray(result.moduleNames) && Array.isArray(result.typeNames) && Array.isArray(result.sourceKinds) && ((result.metadata.length === 0 && result.hasMetadata === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasMetadata === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.firstModuleName === 'string' && typeof result.lastModuleName === 'string' && typeof result.metadata[0].moduleBase === 'string' && typeof result.metadata[0].hasName === 'boolean' && typeof result.metadata[0].hasSourceKind === 'boolean' && typeof result.metadata[0].hasSourceSymbolName === 'boolean' && typeof result.metadata[0].hasSourceDemangledName === 'boolean' && typeof result.metadata[0].sourceSymbolName === 'string' && typeof result.metadata[0].sourceOffsetHex === 'string' && typeof result.metadata[0].sourceKind === 'string' && (result.moduleNames.length === 0 || (typeof result.moduleNames[0].moduleName === 'string' && typeof result.moduleNames[0].count === 'number' && typeof result.moduleNames[0].firstTypeName === 'string' && typeof result.moduleNames[0].lastTypeName === 'string' && typeof result.moduleNames[0].sourceDemangledCount === 'number')) && (result.typeNames.length === 0 || (typeof result.typeNames[0].typeName === 'string' && typeof result.typeNames[0].count === 'number' && typeof result.typeNames[0].firstModuleName === 'string' && typeof result.typeNames[0].lastModuleName === 'string' && typeof result.typeNames[0].hasSourceDemangledName === 'boolean')) && (result.sourceKinds.length === 0 || (typeof result.sourceKinds[0].sourceKind === 'string' && typeof result.sourceKinds[0].count === 'number' && typeof result.sourceKinds[0].firstTypeName === 'string' && typeof result.sourceKinds[0].lastTypeName === 'string')))); })()")
                     .expect("agent swift metadata result"),
                 "true"
             );
@@ -5721,9 +5721,12 @@ undefined;
                                 return false;
                             }
                             if (typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueTypeCount !== 'number' ||
                                     typeof result.uniqueSourceKindCount !== 'number' ||
                                     typeof result.sourceDemangledCount !== 'number' ||
                                     typeof result.hasSourceDemangledTypes !== 'boolean' ||
+                                    !Array.isArray(result.moduleNames) ||
+                                    !Array.isArray(result.typeNames) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
@@ -5733,6 +5736,8 @@ undefined;
                                     result.lastTypeName === null;
                             }
                             const typeInfo = result.types[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
+                            const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
                             const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
                             return result.hasTypes === true &&
                                 typeof result.firstTypeName === 'string' &&
@@ -5746,6 +5751,20 @@ undefined;
                                 typeof typeInfo.hasSourceKind === 'boolean' &&
                                 typeof typeInfo.hasSourceSymbolName === 'boolean' &&
                                 typeof typeInfo.hasSourceDemangledName === 'boolean' &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstTypeName === 'string' &&
+                                    typeof moduleSummary.lastTypeName === 'string' &&
+                                    typeof moduleSummary.sourceDemangledCount === 'number'
+                                )) &&
+                                (typeSummary === null || (
+                                    typeof typeSummary.typeName === 'string' &&
+                                    typeof typeSummary.count === 'number' &&
+                                    typeof typeSummary.firstModuleName === 'string' &&
+                                    typeof typeSummary.lastModuleName === 'string' &&
+                                    typeof typeSummary.hasSourceDemangledName === 'boolean'
+                                )) &&
                                 (sourceSummary === null || (
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
@@ -5775,9 +5794,12 @@ undefined;
                                 return false;
                             }
                             if (typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueTypeCount !== 'number' ||
                                     typeof result.uniqueSourceKindCount !== 'number' ||
                                     typeof result.sourceDemangledCount !== 'number' ||
                                     typeof result.hasSourceDemangledTypes !== 'boolean' ||
+                                    !Array.isArray(result.moduleNames) ||
+                                    !Array.isArray(result.typeNames) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
@@ -5787,6 +5809,8 @@ undefined;
                                     result.lastTypeName === null;
                             }
                             const typeInfo = result.types[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
+                            const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
                             const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
                             return result.hasTypes === true &&
                                 typeof result.firstTypeName === 'string' &&
@@ -5798,6 +5822,20 @@ undefined;
                                 typeof typeInfo.hasSourceKind === 'boolean' &&
                                 typeof typeInfo.hasSourceSymbolName === 'boolean' &&
                                 typeof typeInfo.hasSourceDemangledName === 'boolean' &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstTypeName === 'string' &&
+                                    typeof moduleSummary.lastTypeName === 'string' &&
+                                    typeof moduleSummary.sourceDemangledCount === 'number'
+                                )) &&
+                                (typeSummary === null || (
+                                    typeof typeSummary.typeName === 'string' &&
+                                    typeof typeSummary.count === 'number' &&
+                                    typeof typeSummary.firstModuleName === 'string' &&
+                                    typeof typeSummary.lastModuleName === 'string' &&
+                                    typeof typeSummary.hasSourceDemangledName === 'boolean'
+                                )) &&
                                 (sourceSummary === null || (
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
