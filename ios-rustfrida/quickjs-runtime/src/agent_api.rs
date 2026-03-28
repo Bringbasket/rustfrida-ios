@@ -4943,6 +4943,12 @@ function handleSpecResult(spec) {
             moduleName,
             symbolName,
             symbolInfo: normalized,
+            hasSymbolInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            resolvedAddress: normalized === null ? null : normalized.address,
+            hasAddress: normalized !== null,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -4995,6 +5001,12 @@ function handleSpecResult(spec) {
             moduleName,
             symbolName,
             exportInfo: normalized,
+            hasExportInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            resolvedAddress: normalized === null ? null : normalized.address,
+            hasAddress: normalized !== null,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5025,6 +5037,14 @@ function handleSpecResult(spec) {
             moduleName,
             pathOrName,
             dependencyInfo: normalized,
+            hasDependencyInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedPath: normalized === null ? null : normalized.path,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            kindName: normalized === null ? null : normalized.kind,
+            hasTimestamp: normalized !== null && normalized.hasTimestamp === true,
+            versionMismatch: normalized !== null && normalized.versionMismatch === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5139,6 +5159,10 @@ function handleSpecResult(spec) {
             moduleName,
             path,
             rpathInfo: normalized,
+            hasRpathInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedPath: normalized === null ? null : normalized.path,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5231,6 +5255,14 @@ function handleSpecResult(spec) {
             moduleName,
             symbolName,
             importInfo: normalized,
+            hasImportInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedNormalizedName: normalized === null ? null : normalized.normalizedName,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            source: normalized === null ? null : normalized.source,
+            sourceKind: normalized === null ? null : normalized.sourceKind,
+            weakImport: normalized !== null && normalized.weakImport === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5334,6 +5366,16 @@ function handleSpecResult(spec) {
             moduleName,
             segmentName,
             segmentInfo: normalized,
+            hasSegmentInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            hasVmRange: normalized !== null && normalized.hasVmRange === true,
+            hasFileData: normalized !== null && normalized.hasFileData === true,
+            isEmpty: normalized !== null && normalized.isEmpty === true,
+            isReadable: normalized !== null && normalized.isReadable === true,
+            isWritable: normalized !== null && normalized.isWritable === true,
+            isExecutable: normalized !== null && normalized.isExecutable === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5460,6 +5502,17 @@ function handleSpecResult(spec) {
             segmentName,
             sectionName,
             sectionInfo: normalized,
+            hasSectionInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedSegmentName: normalized === null ? null : normalized.segmentName,
+            resolvedSectionName: normalized === null ? null : normalized.name,
+            resolvedFullName: normalized === null ? null : normalized.fullName,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            sectionTypeName: normalized === null ? null : normalized.sectionTypeName,
+            hasData: normalized !== null && normalized.hasData === true,
+            isZeroFillLike: normalized !== null && normalized.isZeroFillLike === true,
+            isCStringLike: normalized !== null && normalized.isCStringLike === true,
+            isSymbolPointers: normalized !== null && normalized.isSymbolPointers === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5554,6 +5607,14 @@ function handleSpecResult(spec) {
             moduleName,
             commandOrIndex,
             loadCommandInfo: normalized,
+            hasLoadCommandInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedIndex: normalized === null ? null : normalized.index,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            isReqDyld: normalized !== null && normalized.isReqDyld === true,
+            hasPayload: normalized !== null && normalized.hasPayload === true,
+            hasDetail: normalized !== null && normalized.hasDetail === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
