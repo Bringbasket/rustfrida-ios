@@ -2722,7 +2722,91 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.sections', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.sections' && result.moduleName === 'libsystem_malloc.dylib' && result.count === result.sections.length && typeof result.hasSections === 'boolean' && ((result.sections.length === 0 && result.hasSections === false && result.firstSectionName === null && result.lastSectionName === null) || (result.hasSections === true && typeof result.firstSectionName === 'string' && typeof result.lastSectionName === 'string' && typeof result.sections[0].segmentName === 'string' && typeof result.sections[0].offsetHex === 'string')); })()"
+                        r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.sections', moduleName: 'libsystem_malloc.dylib' });
+                            if (!(result.kind === 'native.sections'
+                                && result.moduleName === 'libsystem_malloc.dylib'
+                                && result.count === result.sections.length
+                                && typeof result.hasSections === 'boolean'
+                                && (result.firstSectionFullName === null || typeof result.firstSectionFullName === 'string')
+                                && (result.lastSectionFullName === null || typeof result.lastSectionFullName === 'string')
+                                && typeof result.totalSizeHex === 'string'
+                                && typeof result.nonEmptySectionCount === 'number'
+                                && typeof result.hasNonEmptySections === 'boolean'
+                                && typeof result.zeroFillSectionCount === 'number'
+                                && typeof result.hasZeroFillSections === 'boolean'
+                                && typeof result.cstringSectionCount === 'number'
+                                && typeof result.hasCStringSections === 'boolean'
+                                && typeof result.symbolPointerSectionCount === 'number'
+                                && typeof result.hasSymbolPointerSections === 'boolean'
+                                && typeof result.uniqueSegmentCount === 'number'
+                                && typeof result.uniqueSectionTypeCount === 'number'
+                                && (result.largestSectionName === null || typeof result.largestSectionName === 'string')
+                                && (result.largestSectionFullName === null || typeof result.largestSectionFullName === 'string')
+                                && (result.largestSectionSizeHex === null || typeof result.largestSectionSizeHex === 'string')
+                                && Array.isArray(result.segments)
+                                && Array.isArray(result.sectionTypes))) {
+                                return false;
+                            }
+                            if (result.sections.length === 0) {
+                                return result.hasSections === false && result.firstSectionName === null && result.lastSectionName === null;
+                            }
+                            if (!(result.hasSections === true
+                                && typeof result.firstSectionName === 'string'
+                                && typeof result.lastSectionName === 'string')) {
+                                return false;
+                            }
+                            const section = result.sections[0];
+                            if (!(typeof section.segmentName === 'string'
+                                && typeof section.name === 'string'
+                                && typeof section.fullName === 'string'
+                                && typeof section.hasSegmentName === 'boolean'
+                                && typeof section.hasName === 'boolean'
+                                && typeof section.addr === 'string'
+                                && typeof section.sizeHex === 'string'
+                                && typeof section.endAddr === 'string'
+                                && typeof section.offsetHex === 'string'
+                                && typeof section.alignPower === 'number'
+                                && typeof section.alignmentBytesHex === 'string'
+                                && typeof section.flagsHex === 'string'
+                                && typeof section.sectionType === 'number'
+                                && typeof section.sectionTypeName === 'string'
+                                && typeof section.sectionAttributesHex === 'string'
+                                && typeof section.hasData === 'boolean'
+                                && typeof section.isEmpty === 'boolean'
+                                && typeof section.isZeroFillLike === 'boolean'
+                                && typeof section.isCStringLike === 'boolean'
+                                && typeof section.isSymbolPointers === 'boolean')) {
+                                return false;
+                            }
+                            if (result.segments.length !== 0) {
+                                const segment = result.segments[0];
+                                if (!(typeof segment.segmentName === 'string'
+                                    && typeof segment.count === 'number'
+                                    && typeof segment.totalSizeHex === 'string'
+                                    && typeof segment.firstSectionName === 'string'
+                                    && typeof segment.lastSectionName === 'string'
+                                    && typeof segment.zeroFillCount === 'number'
+                                    && typeof segment.cstringCount === 'number'
+                                    && typeof segment.symbolPointerCount === 'number')) {
+                                    return false;
+                                }
+                            }
+                            if (result.sectionTypes.length !== 0) {
+                                const type = result.sectionTypes[0];
+                                if (!(typeof type.sectionType === 'number'
+                                    && typeof type.sectionTypeName === 'string'
+                                    && typeof type.count === 'number'
+                                    && typeof type.totalSizeHex === 'string'
+                                    && typeof type.firstFullName === 'string'
+                                    && typeof type.lastFullName === 'string'
+                                    && typeof type.firstSegmentName === 'string'
+                                    && typeof type.lastSegmentName === 'string')) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        })()"#
                     )
                     .expect("agent native sections result"),
                 "true"

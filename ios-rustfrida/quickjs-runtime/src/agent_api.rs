@@ -752,6 +752,36 @@ function formatSection(section) {
     ].join(' ');
 }
 
+function formatSectionType(flags) {
+    const type = Number(flags || 0) & 0xff;
+    switch (type) {
+    case 0x0: return 'S_REGULAR';
+    case 0x1: return 'S_ZEROFILL';
+    case 0x2: return 'S_CSTRING_LITERALS';
+    case 0x3: return 'S_4BYTE_LITERALS';
+    case 0x4: return 'S_8BYTE_LITERALS';
+    case 0x5: return 'S_LITERAL_POINTERS';
+    case 0x6: return 'S_NON_LAZY_SYMBOL_POINTERS';
+    case 0x7: return 'S_LAZY_SYMBOL_POINTERS';
+    case 0x8: return 'S_SYMBOL_STUBS';
+    case 0x9: return 'S_MOD_INIT_FUNC_POINTERS';
+    case 0xa: return 'S_MOD_TERM_FUNC_POINTERS';
+    case 0xb: return 'S_COALESCED';
+    case 0xc: return 'S_GB_ZEROFILL';
+    case 0xd: return 'S_INTERPOSING';
+    case 0xe: return 'S_16BYTE_LITERALS';
+    case 0xf: return 'S_DTRACE_DOF';
+    case 0x10: return 'S_LAZY_DYLIB_SYMBOL_POINTERS';
+    case 0x11: return 'S_THREAD_LOCAL_REGULAR';
+    case 0x12: return 'S_THREAD_LOCAL_ZEROFILL';
+    case 0x13: return 'S_THREAD_LOCAL_VARIABLES';
+    case 0x14: return 'S_THREAD_LOCAL_VARIABLE_POINTERS';
+    case 0x15: return 'S_THREAD_LOCAL_INIT_FUNCTION_POINTERS';
+    case 0x16: return 'S_INIT_FUNC_OFFSETS';
+    default: return 'S_UNKNOWN';
+    }
+}
+
 function formatLoadCommand(command) {
     const parts = [
         '#' + String(command.index),
@@ -3223,16 +3253,41 @@ function normalizeSegment(segment) {
 }
 
 function normalizeSection(section) {
+    const segmentName = String(section.segmentName || '');
+    const name = String(section.name || '');
+    const size = BigInt(section.size || 0);
+    const alignPower = Number(section.align || 0);
+    const flags = BigInt(section.flags || 0);
+    const type = Number(flags & 0xffn);
+    const typeName = formatSectionType(section.flags);
+    const alignmentBytes = 1n << BigInt(alignPower);
+    const isZeroFillLike = typeName === 'S_ZEROFILL' || typeName === 'S_GB_ZEROFILL' || typeName === 'S_THREAD_LOCAL_ZEROFILL';
+    const isCStringLike = typeName === 'S_CSTRING_LITERALS';
+    const isSymbolPointers = typeName === 'S_NON_LAZY_SYMBOL_POINTERS' || typeName === 'S_LAZY_SYMBOL_POINTERS' || typeName === 'S_LAZY_DYLIB_SYMBOL_POINTERS' || typeName === 'S_THREAD_LOCAL_VARIABLE_POINTERS';
     return {
         moduleName: String(section.moduleName || ''),
         moduleBase: section.moduleBase ? section.moduleBase.toString() : null,
-        segmentName: String(section.segmentName || ''),
-        name: String(section.name || ''),
+        segmentName,
+        name,
+        fullName: segmentName + ',' + name,
+        hasSegmentName: segmentName.length !== 0,
+        hasName: name.length !== 0,
         addr: section.addr.toString(),
-        sizeHex: '0x' + BigInt(section.size || 0).toString(16),
+        sizeHex: '0x' + size.toString(16),
+        endAddr: formatHexAdd(section.addr, section.size),
         offsetHex: '0x' + BigInt(section.offset || 0).toString(16),
         align: String(section.align),
-        flagsHex: '0x' + BigInt(section.flags || 0).toString(16),
+        alignPower,
+        alignmentBytesHex: '0x' + alignmentBytes.toString(16),
+        flagsHex: '0x' + flags.toString(16),
+        sectionType: type,
+        sectionTypeName: typeName,
+        sectionAttributesHex: '0x' + (flags & ~0xffn).toString(16),
+        hasData: size !== 0n,
+        isEmpty: size === 0n,
+        isZeroFillLike,
+        isCStringLike,
+        isSymbolPointers,
         text: formatSection(section),
     };
 }
@@ -4261,6 +4316,67 @@ function handleSpecResult(spec) {
     case 'native.sections': {
         const moduleName = String(spec.moduleName || '');
         const sections = Native.sections(moduleName).map((section) => normalizeSection(section));
+        const zeroFillSections = sections.filter((section) => section.isZeroFillLike);
+        const cstringSections = sections.filter((section) => section.isCStringLike);
+        const symbolPointerSections = sections.filter((section) => section.isSymbolPointers);
+        const nonEmptySections = sections.filter((section) => section.hasData);
+        const totalSize = sections.reduce((sum, section) => sum + BigInt(section.sizeHex), 0n);
+        const largestSection = sections.reduce((largest, section) => {
+            if (largest === null || BigInt(section.sizeHex) > BigInt(largest.sizeHex)) {
+                return section;
+            }
+            return largest;
+        }, null);
+        const segmentSummaries = [];
+        for (const section of sections) {
+            let summary = segmentSummaries.find((item) => item.segmentName === section.segmentName);
+            if (summary === undefined) {
+                summary = {
+                    segmentName: section.segmentName,
+                    count: 0,
+                    totalSize: 0n,
+                    firstSectionName: section.name,
+                    lastSectionName: section.name,
+                    zeroFillCount: 0,
+                    cstringCount: 0,
+                    symbolPointerCount: 0,
+                };
+                segmentSummaries.push(summary);
+            }
+            summary.count += 1;
+            summary.totalSize += BigInt(section.sizeHex);
+            summary.lastSectionName = section.name;
+            if (section.isZeroFillLike) {
+                summary.zeroFillCount += 1;
+            }
+            if (section.isCStringLike) {
+                summary.cstringCount += 1;
+            }
+            if (section.isSymbolPointers) {
+                summary.symbolPointerCount += 1;
+            }
+        }
+        const sectionTypeSummaries = [];
+        for (const section of sections) {
+            let summary = sectionTypeSummaries.find((item) => item.sectionType === section.sectionType);
+            if (summary === undefined) {
+                summary = {
+                    sectionType: section.sectionType,
+                    sectionTypeName: section.sectionTypeName,
+                    count: 0,
+                    totalSize: 0n,
+                    firstFullName: section.fullName,
+                    lastFullName: section.fullName,
+                    firstSegmentName: section.segmentName,
+                    lastSegmentName: section.segmentName,
+                };
+                sectionTypeSummaries.push(summary);
+            }
+            summary.count += 1;
+            summary.totalSize += BigInt(section.sizeHex);
+            summary.lastFullName = section.fullName;
+            summary.lastSegmentName = section.segmentName;
+        }
         return {
             kind: 'native.sections',
             moduleName,
@@ -4268,6 +4384,42 @@ function handleSpecResult(spec) {
             hasSections: sections.length !== 0,
             firstSectionName: sections.length === 0 ? null : sections[0].name,
             lastSectionName: sections.length === 0 ? null : sections[sections.length - 1].name,
+            firstSectionFullName: sections.length === 0 ? null : sections[0].fullName,
+            lastSectionFullName: sections.length === 0 ? null : sections[sections.length - 1].fullName,
+            totalSizeHex: '0x' + totalSize.toString(16),
+            nonEmptySectionCount: nonEmptySections.length,
+            hasNonEmptySections: nonEmptySections.length !== 0,
+            zeroFillSectionCount: zeroFillSections.length,
+            hasZeroFillSections: zeroFillSections.length !== 0,
+            cstringSectionCount: cstringSections.length,
+            hasCStringSections: cstringSections.length !== 0,
+            symbolPointerSectionCount: symbolPointerSections.length,
+            hasSymbolPointerSections: symbolPointerSections.length !== 0,
+            uniqueSegmentCount: segmentSummaries.length,
+            uniqueSectionTypeCount: sectionTypeSummaries.length,
+            largestSectionName: largestSection === null ? null : largestSection.name,
+            largestSectionFullName: largestSection === null ? null : largestSection.fullName,
+            largestSectionSizeHex: largestSection === null ? null : largestSection.sizeHex,
+            segments: segmentSummaries.map((summary) => ({
+                segmentName: summary.segmentName,
+                count: summary.count,
+                totalSizeHex: '0x' + summary.totalSize.toString(16),
+                firstSectionName: summary.firstSectionName,
+                lastSectionName: summary.lastSectionName,
+                zeroFillCount: summary.zeroFillCount,
+                cstringCount: summary.cstringCount,
+                symbolPointerCount: summary.symbolPointerCount,
+            })),
+            sectionTypes: sectionTypeSummaries.map((summary) => ({
+                sectionType: summary.sectionType,
+                sectionTypeName: summary.sectionTypeName,
+                count: summary.count,
+                totalSizeHex: '0x' + summary.totalSize.toString(16),
+                firstFullName: summary.firstFullName,
+                lastFullName: summary.lastFullName,
+                firstSegmentName: summary.firstSegmentName,
+                lastSegmentName: summary.lastSegmentName,
+            })),
             sections,
             text: sections.map((section) => section.text).join('\n'),
         };
