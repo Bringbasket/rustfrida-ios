@@ -1728,6 +1728,98 @@ function normalizeObjcMethod(method) {
     return normalized;
 }
 
+function summarizeObjcMethods(methods) {
+    const selectors = [];
+    const returnTypes = [];
+    let keywordSelectorCount = 0;
+    let unarySelectorCount = 0;
+    let explicitArgumentMethodCount = 0;
+    let hiddenArgumentMethodCount = 0;
+    let returnsVoidCount = 0;
+    let returnsObjectCount = 0;
+    let returnsBlockCount = 0;
+    let totalExplicitArgumentCount = 0;
+    let totalHiddenArgumentCount = 0;
+    let maxSelectorPartCount = 0;
+    let maxExplicitArgumentCount = 0;
+    for (const method of methods) {
+        totalExplicitArgumentCount += method.explicitArgumentCount;
+        totalHiddenArgumentCount += method.hiddenArgumentCount;
+        if (method.selectorPartCount > maxSelectorPartCount) {
+            maxSelectorPartCount = method.selectorPartCount;
+        }
+        if (method.explicitArgumentCount > maxExplicitArgumentCount) {
+            maxExplicitArgumentCount = method.explicitArgumentCount;
+        }
+        if (method.isKeywordSelector) {
+            keywordSelectorCount += 1;
+        }
+        if (method.isUnarySelector) {
+            unarySelectorCount += 1;
+        }
+        if (method.hasExplicitArguments) {
+            explicitArgumentMethodCount += 1;
+        }
+        if (method.hasHiddenArguments) {
+            hiddenArgumentMethodCount += 1;
+        }
+        if (method.returnsVoid) {
+            returnsVoidCount += 1;
+        }
+        if (method.returnsObject) {
+            returnsObjectCount += 1;
+        }
+        if (method.returnsBlock) {
+            returnsBlockCount += 1;
+        }
+        let selectorSummary = selectors.find((item) => item.selector === method.selector);
+        if (selectorSummary === undefined) {
+            selectorSummary = {
+                selector: method.selector,
+                count: 0,
+                firstImp: method.imp,
+                lastImp: method.imp,
+                returnTypeName: method.returnTypeName,
+                keywordSelector: method.isKeywordSelector,
+            };
+            selectors.push(selectorSummary);
+        }
+        selectorSummary.count += 1;
+        selectorSummary.lastImp = method.imp;
+        let returnTypeSummary = returnTypes.find((item) => item.returnTypeName === method.returnTypeName);
+        if (returnTypeSummary === undefined) {
+            returnTypeSummary = {
+                returnTypeName: method.returnTypeName,
+                count: 0,
+                firstSelector: method.selector,
+                lastSelector: method.selector,
+                returnsObject: method.returnsObject,
+                returnsBlock: method.returnsBlock,
+            };
+            returnTypes.push(returnTypeSummary);
+        }
+        returnTypeSummary.count += 1;
+        returnTypeSummary.lastSelector = method.selector;
+    }
+    return {
+        uniqueSelectorCount: selectors.length,
+        uniqueReturnTypeCount: returnTypes.length,
+        keywordSelectorCount,
+        unarySelectorCount,
+        explicitArgumentMethodCount,
+        hiddenArgumentMethodCount,
+        returnsVoidCount,
+        returnsObjectCount,
+        returnsBlockCount,
+        totalExplicitArgumentCount,
+        totalHiddenArgumentCount,
+        maxSelectorPartCount,
+        maxExplicitArgumentCount,
+        selectors,
+        returnTypes,
+    };
+}
+
 function normalizeObjcMethodInfo(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
     const selectorInfo = parseObjcSelectorInfo(method.selector);
@@ -4332,6 +4424,7 @@ function handleSpecResult(spec) {
         const isClassMethod = !!spec.isClassMethod;
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const methods = ObjC.methods(className, isClassMethod, filter).map((method) => normalizeObjcMethod(method));
+        const summary = summarizeObjcMethods(methods);
         return {
             kind: 'objc.methods',
             className,
@@ -4342,6 +4435,21 @@ function handleSpecResult(spec) {
             hasMethods: methods.length !== 0,
             firstSelector: methods.length === 0 ? null : methods[0].selector,
             lastSelector: methods.length === 0 ? null : methods[methods.length - 1].selector,
+            uniqueSelectorCount: summary.uniqueSelectorCount,
+            uniqueReturnTypeCount: summary.uniqueReturnTypeCount,
+            keywordSelectorCount: summary.keywordSelectorCount,
+            unarySelectorCount: summary.unarySelectorCount,
+            explicitArgumentMethodCount: summary.explicitArgumentMethodCount,
+            hiddenArgumentMethodCount: summary.hiddenArgumentMethodCount,
+            returnsVoidCount: summary.returnsVoidCount,
+            returnsObjectCount: summary.returnsObjectCount,
+            returnsBlockCount: summary.returnsBlockCount,
+            totalExplicitArgumentCount: summary.totalExplicitArgumentCount,
+            totalHiddenArgumentCount: summary.totalHiddenArgumentCount,
+            maxSelectorPartCount: summary.maxSelectorPartCount,
+            maxExplicitArgumentCount: summary.maxExplicitArgumentCount,
+            selectors: summary.selectors,
+            returnTypes: summary.returnTypes,
             methods,
             text: methods.map((method) => method.text).join('\n'),
         };
