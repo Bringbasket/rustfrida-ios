@@ -82,6 +82,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
             | "pac.images"
             | "swift.available"
             | "swift.protocols"
+            | "swift.typeSourceKinds"
             | "swift.typeKinds"
     ) || command.starts_with("objc.classExists ")
         || command.starts_with("objc.findClasses ")
@@ -225,6 +226,7 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         "pac.images" => return Some(json!({ "kind": "pac.images", "filter": null })),
         "swift.available" => return Some(json!({ "kind": "swift.available" })),
         "swift.protocols" => return Some(json!({ "kind": "swift.protocols", "moduleName": null, "query": null })),
+        "swift.typeSourceKinds" => return Some(json!({ "kind": "swift.type_kinds" })),
         "swift.typeKinds" => return Some(json!({ "kind": "swift.type_kinds" })),
         _ => {}
     }
@@ -2360,6 +2362,10 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("swift.findTypesOfKind metadata-accessor ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.typeSourceKinds"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(

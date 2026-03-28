@@ -306,6 +306,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `swift.typeLayoutInfo <type>`
   - `swift.typeLayoutInfo <module> -- <type>`
   - `swift.typeKinds`
+  - `swift.typeSourceKinds`
   - `swift.methodOwners <method>`
   - `swift.methodOwners <module> -- <method>`
   - `swift.typesOfKind <kind> <query>`
@@ -370,6 +371,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `swift.typeInfo` 现在可以直接结构化返回单个 Swift type 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName / name`，后续排查某个类型声明时不必再先全量 `swift.types` 再脚本过滤。
 - `swift.types` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSourceKindCount / sourceDemangledCount / sourceKinds` 这类摘要，适合脚本先看类型列表的模块分布和 Swift 符号来源，而不必自己扫完整数组。
 - `swift.typeKinds` 结果现在也会额外补 `uniquePrefixCount / metadataKindCount / nominalKindCount / protocolKindCount / witnessKindCount / accessorKindCount / vtableKindCount / prefixes` 这类摘要，便于脚本先看当前支持的 Swift kind 名字大致落在哪些类别，而不必自己按字符串前缀再聚合一次。
+- `swift.typeSourceKinds` 现在也已接到 controller CLI / REPL / `--command-json`，作为 `swift.typeKinds` 的别名，方便直接按 JS API 里的 `Swift.typeSourceKinds()` 名字调用。
 - `swift.typesOfKind` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSourceKindCount / sourceDemangledCount / sourceKinds` 这类摘要，适合脚本先看某一类 Swift 类型符号的模块分布和来源，再决定是否展开完整数组。
 - `swift.methodInfo` 现在可以直接结构化返回单个 Swift method symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个类型里的目标方法时不必再先全量 `swift.methods` 再脚本过滤。
 - `swift.methodOwners` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSourceKindCount / sourceDemangledCount / sourceKinds` 这类摘要，适合脚本先看某个方法名反查到的 owner 类型分布和 Swift 符号来源，而不必自己扫完整数组。

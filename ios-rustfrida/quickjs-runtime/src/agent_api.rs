@@ -8559,7 +8559,7 @@ function legacyToSpec(command) {
         };
     }
 
-    if (trimmed === 'swift.typeKinds') {
+    if (trimmed === 'swift.typeKinds' || trimmed === 'swift.typeSourceKinds') {
         return { kind: 'swift.type_kinds' };
     }
 

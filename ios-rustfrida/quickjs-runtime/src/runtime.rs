@@ -2400,6 +2400,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.typeSourceKinds'); return value.indexOf('metadata-accessor') !== -1; })()")
+                    .expect("agent swift type source kinds alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof __iosRustFridaAgentApi.handleSpecResult")
                     .expect("agent handleSpecResult type"),
                 "function"

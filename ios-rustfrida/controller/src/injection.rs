@@ -3783,7 +3783,7 @@ fn print_controller_help() {
     println!("  swift.typeLayoutInfo <type>|swift.typeLayoutInfo <module> -- <type>");
     println!("  swift.vtableInfo <type> <member>|swift.vtableInfo <module> -- <type> <member>");
     println!("  swift.symbols <query>|swift.symbols <module> -- <query>");
-    println!("  swift.typeKinds");
+    println!("  swift.typeKinds|swift.typeSourceKinds");
     println!("  swift.methodOwners <method>|swift.methodOwners <module> -- <method>");
     println!("  swift.types <query>|swift.types <module> -- <query>");
     println!("  swift.typesOfKind <kind> <query>|swift.typesOfKind <module> -- <kind> <query>");
@@ -4517,6 +4517,10 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("swift.typesOfKind metadata-accessor ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.typeSourceKinds"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
