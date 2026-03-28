@@ -5235,6 +5235,28 @@ function handleSpecResult(spec) {
         const sourceKind = String(spec.sourceKind || '');
         const query = String(spec.query || '');
         const types = Swift.typesOfKind(sourceKind, query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
+        const sourceKinds = [];
+        const moduleNames = new Set();
+        let demangledCount = 0;
+        for (const typeInfo of types) {
+            moduleNames.add(typeInfo.moduleName);
+            if (typeInfo.hasSourceDemangledName) {
+                demangledCount += 1;
+            }
+            const key = typeInfo.sourceKind === null ? '<none>' : String(typeInfo.sourceKind);
+            let summary = sourceKinds.find((item) => item.sourceKind === key);
+            if (summary === undefined) {
+                summary = {
+                    sourceKind: key,
+                    count: 0,
+                    firstTypeName: typeInfo.name,
+                    lastTypeName: typeInfo.name,
+                };
+                sourceKinds.push(summary);
+            }
+            summary.count += 1;
+            summary.lastTypeName = typeInfo.name;
+        }
         return {
             kind: 'swift.types_of_kind',
             moduleName,
@@ -5245,6 +5267,13 @@ function handleSpecResult(spec) {
             hasTypes: types.length !== 0,
             firstTypeName: types.length === 0 ? null : types[0].name,
             lastTypeName: types.length === 0 ? null : types[types.length - 1].name,
+            firstModuleName: types.length === 0 ? null : types[0].moduleName,
+            lastModuleName: types.length === 0 ? null : types[types.length - 1].moduleName,
+            uniqueModuleCount: types.length === 0 ? 0 : moduleNames.size,
+            uniqueSourceKindCount: sourceKinds.length,
+            sourceDemangledCount: demangledCount,
+            hasSourceDemangledTypes: demangledCount !== 0,
+            sourceKinds,
             types,
             text: types.map((typeInfo) => typeInfo.text).join('\n'),
         };
