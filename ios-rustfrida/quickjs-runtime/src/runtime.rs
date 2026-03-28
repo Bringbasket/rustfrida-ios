@@ -2018,6 +2018,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('objc.findProtocols NS'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocols', filter: 'NS' }); return value === result.text && result.filter === 'NS'; })()")
+                    .expect("agent objc findProtocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("__iosRustFridaAgentApi.handle('pac.strip 0x1234')")
                     .expect("agent pac strip"),
                 "0x1234"
@@ -2149,6 +2155,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.findMethods NSObject init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.methods', className: 'NSObject', isClassMethod: false, filter: 'init' }); return value === result.text && result.filter === 'init' && result.count === result.methods.length; })()"
+                    )
+                    .expect("agent objc findMethods"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.classImage NSObject'); return value === '<null>' || value.indexOf('/') !== -1; })()"
                     )
                     .expect("agent objc classImage"),
@@ -2250,6 +2264,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.findProtocols Renderable'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: 'Renderable' }); return value === result.text && result.query === 'Renderable' && result.count === result.protocols.length; })()")
+                    .expect("agent swift findProtocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.conformances ViewController'); return value === '' || value.indexOf(' : ') !== -1; })()")
                     .expect("agent swift conformances"),
                 "true"
@@ -2314,6 +2334,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.types ViewController'); return value === '' || value.indexOf('ViewController') !== -1; })()")
                     .expect("agent swift types"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.findTypes ViewController'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return value === result.text && result.query === 'ViewController' && result.count === result.types.length; })()")
+                    .expect("agent swift findTypes"),
                 "true"
             );
             assert_eq!(
@@ -2938,6 +2964,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.findMethods ViewController viewDidLoad'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.methods', moduleName: null, typeName: 'ViewController', methodQuery: 'viewDidLoad' }); return value === result.text && result.typeName === 'ViewController' && result.methodQuery === 'viewDidLoad' && result.count === result.methods.length; })()")
+                    .expect("agent swift findMethods"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("__iosRustFridaAgentApi.handle('native.hookenv').indexOf('active=') !== -1")
                     .expect("agent native hook env"),
                 "true"
@@ -3000,6 +3032,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.symbolInfo malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }); return value === result.text && (result.symbolInfo === null || result.symbolInfo.name.indexOf('malloc') !== -1); })()")
                     .expect("agent native symbolInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.findSymbols malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbols', moduleName: null, query: 'malloc' }); return value === result.text && result.query === 'malloc' && result.count === result.symbols.length; })()")
+                    .expect("agent native findSymbols"),
                 "true"
             );
             assert_eq!(

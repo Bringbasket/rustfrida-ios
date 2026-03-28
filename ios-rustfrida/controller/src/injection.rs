@@ -3718,6 +3718,7 @@ fn print_controller_help() {
     println!("  objc.methods <class> [meta] [filter]");
     println!("  objc.properties <class> [meta] [filter]");
     println!("  objc.ivars <class> [filter]");
+    println!("  objc.findMethods/findProperties/findIvars/findMethodOwners/findProtocols ... (query aliases)");
     println!("  native.base <module>");
     println!("  native.imageInfo <module>");
     println!("  native.export <symbol>|native.export <module> -- <symbol>");
@@ -3751,6 +3752,7 @@ fn print_controller_help() {
     println!("  native.segmentInfo <module> -- <segment>");
     println!("  native.symbolInfo <symbol>|native.symbolInfo <module> -- <symbol>");
     println!("  native.symbols <query>|native.symbols <module> -- <query>");
+    println!("  native.findSymbols/findExports/findDependencies ... (query aliases)");
     println!("  native.images [filter]");
     println!("  native.mainImage");
     println!("  native.image <address>");
@@ -3786,6 +3788,7 @@ fn print_controller_help() {
     println!("  swift.typesOfKind <kind> <query>|swift.typesOfKind <module> -- <kind> <query>");
     println!("  swift.typeMethods <type>|swift.typeMethods <module> -- <type>");
     println!("  swift.methods <type> <method>|swift.methods <module> -- <type> <method>");
+    println!("  swift.findSymbols/findProtocols/findConformances/findMetadata/findVtable/findWitnessTable/findTypeLayout/findTypes/findTypesOfKind/findMethodOwners/findTypeMethods/findMethods ... (query aliases)");
     println!("  exit");
 }
 
@@ -4024,6 +4027,58 @@ mod tests {
             AgentCommand::from_legacy("objc.protocols"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({ "kind": "objc.protocols", "filter": null })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findMethods UIView init"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.methods",
+                    "className": "UIView",
+                    "isClassMethod": false,
+                    "filter": "init",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findSymbols malloc"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.symbols",
+                    "moduleName": null,
+                    "query": "malloc",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.findTypes ViewController"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "swift.types",
+                    "moduleName": null,
+                    "query": "ViewController",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.findMethods ViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "swift.methods",
+                    "moduleName": null,
+                    "typeName": "ViewController",
+                    "methodQuery": "viewDidLoad",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.findProtocols Renderable"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "swift.protocols",
+                    "moduleName": null,
+                    "query": "Renderable",
+                })
             })
         );
         assert!(matches!(
@@ -4472,10 +4527,12 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.propertyInfo UIView view"));
         assert!(!command_requires_inline_hooks("objc.ivarInfo UIView _viewFlags"));
         assert!(!command_requires_inline_hooks("objc.ivars UIView delegate"));
+        assert!(!command_requires_inline_hooks("objc.findMethods UIView init"));
         assert!(!command_requires_inline_hooks("objc.methodInfo UIView viewDidLoad"));
         assert!(!command_requires_inline_hooks("native.imageInfo UIKit"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
+        assert!(!command_requires_inline_hooks("native.findSymbols malloc"));
         assert!(!command_requires_inline_hooks("native.exportInfo UIKit -- malloc"));
         assert!(!command_requires_inline_hooks(
             "native.dependencyInfo UIKit -- libSystem.B.dylib"
@@ -4530,6 +4587,10 @@ mod tests {
         assert!(!command_requires_inline_hooks("swift.typeLayout ViewController"));
         assert!(!command_requires_inline_hooks("swift.typeLayoutInfo ViewController"));
         assert!(!command_requires_inline_hooks("swift.types ViewController"));
+        assert!(!command_requires_inline_hooks("swift.findTypes ViewController"));
+        assert!(!command_requires_inline_hooks(
+            "swift.findMethods ViewController viewDidLoad"
+        ));
     }
 
     #[test]

@@ -140,6 +140,31 @@ function parseObjcMethods(raw) {
     };
 }
 
+function parseObjcFindMethods(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) {
+        throw new Error('objc.findMethods usage: objc.findMethods <class> <query> [meta]');
+    }
+    let isClassMethod = false;
+    let end = parts.length;
+    const last = parts[parts.length - 1];
+    if (last === 'meta' || last === 'class' || last === '+') {
+        isClassMethod = true;
+        end -= 1;
+    } else if (last === 'instance' || last === 'inst' || last === '-') {
+        isClassMethod = false;
+        end -= 1;
+    }
+    if (end <= 1) {
+        throw new Error('objc.findMethods usage: objc.findMethods <class> <query> [meta]');
+    }
+    return {
+        className: parts[0],
+        isClassMethod,
+        filter: parts.slice(1, end).join(' '),
+    };
+}
+
 function parseObjcProperties(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -166,6 +191,31 @@ function parseObjcProperties(raw) {
     };
 }
 
+function parseObjcFindProperties(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) {
+        throw new Error('objc.findProperties usage: objc.findProperties <class> <query> [meta]');
+    }
+    let isClassProperty = false;
+    let end = parts.length;
+    const last = parts[parts.length - 1];
+    if (last === 'meta' || last === 'class' || last === '+') {
+        isClassProperty = true;
+        end -= 1;
+    } else if (last === 'instance' || last === 'inst' || last === '-') {
+        isClassProperty = false;
+        end -= 1;
+    }
+    if (end <= 1) {
+        throw new Error('objc.findProperties usage: objc.findProperties <class> <query> [meta]');
+    }
+    return {
+        className: parts[0],
+        isClassProperty,
+        filter: parts.slice(1, end).join(' '),
+    };
+}
+
 function parseObjcIvars(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) {
@@ -174,6 +224,17 @@ function parseObjcIvars(raw) {
     return {
         className: parts[0],
         filter: parts.length <= 1 ? null : parts.slice(1).join(' '),
+    };
+}
+
+function parseObjcFindIvars(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) {
+        throw new Error('objc.findIvars usage: objc.findIvars <class> <query>');
+    }
+    return {
+        className: parts[0],
+        filter: parts.slice(1).join(' '),
     };
 }
 
@@ -3958,6 +4019,10 @@ function legacyToSpec(command) {
         return { kind: 'objc.protocols', filter: trimmed.slice('objc.protocols '.length) };
     }
 
+    if (trimmed.startsWith('objc.findProtocols ')) {
+        return { kind: 'objc.protocols', filter: trimmed.slice('objc.findProtocols '.length) };
+    }
+
     if (trimmed.startsWith('objc.classProtocols ')) {
         const parsed = parseObjcClassProtocols(trimmed.slice('objc.classProtocols '.length));
         return { kind: 'objc.class_protocols', className: parsed.className, filter: parsed.filter };
@@ -4092,8 +4157,28 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('objc.findMethods ')) {
+        const parsed = parseObjcFindMethods(trimmed.slice('objc.findMethods '.length));
+        return {
+            kind: 'objc.methods',
+            className: parsed.className,
+            isClassMethod: parsed.isClassMethod,
+            filter: parsed.filter,
+        };
+    }
+
     if (trimmed.startsWith('objc.properties ')) {
         const parsed = parseObjcProperties(trimmed.slice('objc.properties '.length));
+        return {
+            kind: 'objc.properties',
+            className: parsed.className,
+            isClassProperty: parsed.isClassProperty,
+            filter: parsed.filter,
+        };
+    }
+
+    if (trimmed.startsWith('objc.findProperties ')) {
+        const parsed = parseObjcFindProperties(trimmed.slice('objc.findProperties '.length));
         return {
             kind: 'objc.properties',
             className: parsed.className,
@@ -4121,6 +4206,15 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('objc.findIvars ')) {
+        const parsed = parseObjcFindIvars(trimmed.slice('objc.findIvars '.length));
+        return {
+            kind: 'objc.ivars',
+            className: parsed.className,
+            filter: parsed.filter,
+        };
+    }
+
     if (trimmed.startsWith('objc.ivarInfo ')) {
         const parsed = parseObjcIvarInfo(trimmed.slice('objc.ivarInfo '.length));
         return {
@@ -4132,6 +4226,15 @@ function legacyToSpec(command) {
 
     if (trimmed.startsWith('objc.methodOwners ')) {
         const parsed = parseObjcMethodOwners(trimmed.slice('objc.methodOwners '.length));
+        return {
+            kind: 'objc.method_owners',
+            query: parsed.query,
+            isClassMethod: parsed.isClassMethod,
+        };
+    }
+
+    if (trimmed.startsWith('objc.findMethodOwners ')) {
+        const parsed = parseObjcMethodOwners(trimmed.slice('objc.findMethodOwners '.length));
         return {
             kind: 'objc.method_owners',
             query: parsed.query,
@@ -4206,6 +4309,18 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findSymbols ')) {
+        const parsed = splitModuleQuery(
+            trimmed.slice('native.findSymbols '.length),
+            'native.findSymbols usage: native.findSymbols <query> | native.findSymbols <module> -- <query>'
+        );
+        return {
+            kind: 'native.symbols',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('native.symbolInfo ')) {
         const parsed = splitModuleQuery(
             trimmed.slice('native.symbolInfo '.length),
@@ -4227,6 +4342,15 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findExports ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.findExports '.length));
+        return {
+            kind: 'native.exports',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('native.exportInfo ')) {
         const parsed = parseNativeExports(trimmed.slice('native.exportInfo '.length));
         if (parsed.query === null) {
@@ -4241,6 +4365,15 @@ function legacyToSpec(command) {
 
     if (trimmed.startsWith('native.dependencies ')) {
         const parsed = parseNativeExports(trimmed.slice('native.dependencies '.length));
+        return {
+            kind: 'native.dependencies',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.findDependencies ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.findDependencies '.length));
         return {
             kind: 'native.dependencies',
             moduleName: parsed.moduleName,
@@ -4586,6 +4719,16 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('swift.findSymbols ')) {
+        const usage = 'swift.findSymbols usage: swift.findSymbols <query> | swift.findSymbols <module> -- <query>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.findSymbols '.length), usage);
+        return {
+            kind: 'swift.symbols',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('swift.symbolInfo ')) {
         const usage = 'swift.symbolInfo usage: swift.symbolInfo <symbol> | swift.symbolInfo <module> -- <symbol>';
         const parsed = splitModuleQuery(trimmed.slice('swift.symbolInfo '.length), usage);
@@ -4635,6 +4778,16 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('swift.findProtocols ')) {
+        const usage = 'swift.findProtocols usage: swift.findProtocols <query> | swift.findProtocols <module> -- <query>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.findProtocols '.length), usage);
+        return {
+            kind: 'swift.protocols',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('swift.conformances ')) {
         const usage = 'swift.conformances usage: swift.conformances <type> | swift.conformances <module> -- <type>';
         const parsed = splitModuleQuery(trimmed.slice('swift.conformances '.length), usage);
@@ -4645,9 +4798,29 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('swift.findConformances ')) {
+        const usage = 'swift.findConformances usage: swift.findConformances <type> | swift.findConformances <module> -- <type>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.findConformances '.length), usage);
+        return {
+            kind: 'swift.conformances',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('swift.metadata ')) {
         const usage = 'swift.metadata usage: swift.metadata <type> | swift.metadata <module> -- <type>';
         const parsed = splitModuleQuery(trimmed.slice('swift.metadata '.length), usage);
+        return {
+            kind: 'swift.metadata',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.findMetadata ')) {
+        const usage = 'swift.findMetadata usage: swift.findMetadata <type> | swift.findMetadata <module> -- <type>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.findMetadata '.length), usage);
         return {
             kind: 'swift.metadata',
             moduleName: parsed.moduleName,
@@ -4696,6 +4869,16 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('swift.findVtable ')) {
+        const usage = 'swift.findVtable usage: swift.findVtable <type> | swift.findVtable <module> -- <type>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.findVtable '.length), usage);
+        return {
+            kind: 'swift.vtable',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('swift.vtableInfo ')) {
         const usage = 'swift.vtableInfo usage: swift.vtableInfo <type> <member> | swift.vtableInfo <module> -- <type> <member>';
         const parsed = splitSwiftMethods(trimmed.slice('swift.vtableInfo '.length), usage);
@@ -4710,6 +4893,16 @@ function legacyToSpec(command) {
     if (trimmed.startsWith('swift.witnessTable ')) {
         const usage = 'swift.witnessTable usage: swift.witnessTable <type|protocol> | swift.witnessTable <module> -- <type|protocol>';
         const parsed = splitModuleQuery(trimmed.slice('swift.witnessTable '.length), usage);
+        return {
+            kind: 'swift.witness_table',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.findWitnessTable ')) {
+        const usage = 'swift.findWitnessTable usage: swift.findWitnessTable <type|protocol> | swift.findWitnessTable <module> -- <type|protocol>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.findWitnessTable '.length), usage);
         return {
             kind: 'swift.witness_table',
             moduleName: parsed.moduleName,
@@ -4738,6 +4931,16 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('swift.findTypeLayout ')) {
+        const usage = 'swift.findTypeLayout usage: swift.findTypeLayout <type> | swift.findTypeLayout <module> -- <type>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.findTypeLayout '.length), usage);
+        return {
+            kind: 'swift.type_layout',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('swift.typeLayoutInfo ')) {
         const usage = 'swift.typeLayoutInfo usage: swift.typeLayoutInfo <type> | swift.typeLayoutInfo <module> -- <type>';
         const parsed = splitModuleQuery(trimmed.slice('swift.typeLayoutInfo '.length), usage);
@@ -4751,6 +4954,16 @@ function legacyToSpec(command) {
     if (trimmed.startsWith('swift.types ')) {
         const usage = 'swift.types usage: swift.types <query> | swift.types <module> -- <query>';
         const parsed = splitModuleQuery(trimmed.slice('swift.types '.length), usage);
+        return {
+            kind: 'swift.types',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.findTypes ')) {
+        const usage = 'swift.findTypes usage: swift.findTypes <query> | swift.findTypes <module> -- <query>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.findTypes '.length), usage);
         return {
             kind: 'swift.types',
             moduleName: parsed.moduleName,
@@ -4773,9 +4986,30 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('swift.findTypesOfKind ')) {
+        const usage = 'swift.findTypesOfKind usage: swift.findTypesOfKind <kind> <query> | swift.findTypesOfKind <module> -- <kind> <query>';
+        const parsed = splitSwiftTypeKindQuery(trimmed.slice('swift.findTypesOfKind '.length), usage);
+        return {
+            kind: 'swift.types_of_kind',
+            moduleName: parsed.moduleName,
+            sourceKind: parsed.sourceKind,
+            query: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('swift.methodOwners ')) {
         const usage = 'swift.methodOwners usage: swift.methodOwners <method> | swift.methodOwners <module> -- <method>';
         const parsed = splitModuleQuery(trimmed.slice('swift.methodOwners '.length), usage);
+        return {
+            kind: 'swift.method_owners',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('swift.findMethodOwners ')) {
+        const usage = 'swift.findMethodOwners usage: swift.findMethodOwners <method> | swift.findMethodOwners <module> -- <method>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.findMethodOwners '.length), usage);
         return {
             kind: 'swift.method_owners',
             moduleName: parsed.moduleName,
@@ -4793,9 +5027,30 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('swift.findTypeMethods ')) {
+        const usage = 'swift.findTypeMethods usage: swift.findTypeMethods <type> | swift.findTypeMethods <module> -- <type>';
+        const parsed = splitModuleQuery(trimmed.slice('swift.findTypeMethods '.length), usage);
+        return {
+            kind: 'swift.type_methods',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('swift.methods ')) {
         const usage = 'swift.methods usage: swift.methods <type> <method> | swift.methods <module> -- <type> <method>';
         const parsed = splitSwiftMethods(trimmed.slice('swift.methods '.length), usage);
+        return {
+            kind: 'swift.methods',
+            moduleName: parsed.moduleName,
+            typeName: parsed.typeName,
+            methodQuery: parsed.methodQuery,
+        };
+    }
+
+    if (trimmed.startsWith('swift.findMethods ')) {
+        const usage = 'swift.findMethods usage: swift.findMethods <type> <method> | swift.findMethods <module> -- <type> <method>';
+        const parsed = splitSwiftMethods(trimmed.slice('swift.findMethods '.length), usage);
         return {
             kind: 'swift.methods',
             moduleName: parsed.moduleName,

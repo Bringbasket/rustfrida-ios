@@ -103,12 +103,17 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.objectClassName ")
         || command.starts_with("objc.methodImp ")
         || command.starts_with("objc.methods ")
+        || command.starts_with("objc.findMethods ")
         || command.starts_with("objc.properties ")
+        || command.starts_with("objc.findProperties ")
         || command.starts_with("objc.ivarInfo ")
         || command.starts_with("objc.ivars ")
+        || command.starts_with("objc.findIvars ")
         || command.starts_with("objc.methodOwners ")
+        || command.starts_with("objc.findMethodOwners ")
         || command.starts_with("objc.classes ")
         || command.starts_with("objc.protocols ")
+        || command.starts_with("objc.findProtocols ")
         || command.starts_with("native.base ")
         || command.starts_with("native.imageInfo ")
         || command.starts_with("native.export ")
@@ -145,6 +150,9 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.segmentInfo ")
         || command.starts_with("native.symbol ")
         || command.starts_with("native.symbols ")
+        || command.starts_with("native.findSymbols ")
+        || command.starts_with("native.findExports ")
+        || command.starts_with("native.findDependencies ")
         || command.starts_with("pac.images ")
         || command.starts_with("pac.image ")
         || command.starts_with("pac.strip ")
@@ -171,6 +179,18 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("swift.typeMethods ")
         || command.starts_with("swift.types ")
         || command.starts_with("swift.methods ")
+        || command.starts_with("swift.findSymbols ")
+        || command.starts_with("swift.findProtocols ")
+        || command.starts_with("swift.findConformances ")
+        || command.starts_with("swift.findMetadata ")
+        || command.starts_with("swift.findVtable ")
+        || command.starts_with("swift.findWitnessTable ")
+        || command.starts_with("swift.findTypeLayout ")
+        || command.starts_with("swift.findTypes ")
+        || command.starts_with("swift.findTypesOfKind ")
+        || command.starts_with("swift.findMethodOwners ")
+        || command.starts_with("swift.findTypeMethods ")
+        || command.starts_with("swift.findMethods ")
 }
 
 fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
@@ -200,6 +220,17 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "objc.protocols",
             "filter": filter.trim(),
+        }));
+    }
+
+    if let Some(filter) = command.strip_prefix("objc.findProtocols ") {
+        let filter = filter.trim();
+        if filter.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "objc.protocols",
+            "filter": filter,
         }));
     }
 
@@ -377,8 +408,28 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("objc.findMethods ") {
+        let (class_name, filter, is_class_method) = parse_objc_find_methods(raw)?;
+        return Some(json!({
+            "kind": "objc.methods",
+            "className": class_name,
+            "isClassMethod": is_class_method,
+            "filter": filter,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("objc.properties ") {
         let (class_name, is_class_property, filter) = parse_objc_properties(raw)?;
+        return Some(json!({
+            "kind": "objc.properties",
+            "className": class_name,
+            "isClassProperty": is_class_property,
+            "filter": filter,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.findProperties ") {
+        let (class_name, filter, is_class_property) = parse_objc_find_properties(raw)?;
         return Some(json!({
             "kind": "objc.properties",
             "className": class_name,
@@ -405,7 +456,25 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("objc.findIvars ") {
+        let (class_name, filter) = parse_objc_find_ivars(raw)?;
+        return Some(json!({
+            "kind": "objc.ivars",
+            "className": class_name,
+            "filter": filter,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("objc.methodOwners ") {
+        let (query, is_class_method) = parse_objc_method_owners(raw)?;
+        return Some(json!({
+            "kind": "objc.method_owners",
+            "query": query,
+            "isClassMethod": is_class_method,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.findMethodOwners ") {
         let (query, is_class_method) = parse_objc_method_owners(raw)?;
         return Some(json!({
             "kind": "objc.method_owners",
@@ -471,6 +540,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("native.findSymbols ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "native.symbols",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("native.symbolInfo ") {
         let (module_name, symbol_name) = parse_module_query(raw)?;
         return Some(json!({
@@ -481,6 +559,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(raw) = command.strip_prefix("native.exports ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        return Some(json!({
+            "kind": "native.exports",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.findExports ") {
         let (module_name, query) = parse_native_exports(raw)?;
         return Some(json!({
             "kind": "native.exports",
@@ -500,6 +587,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(raw) = command.strip_prefix("native.dependencies ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        return Some(json!({
+            "kind": "native.dependencies",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.findDependencies ") {
         let (module_name, query) = parse_native_exports(raw)?;
         return Some(json!({
             "kind": "native.dependencies",
@@ -946,6 +1042,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("swift.findSymbols ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.symbols",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("swift.symbolInfo ") {
         let (module_name, symbol_name) = parse_module_query(raw)?;
         return Some(json!({
@@ -955,7 +1060,70 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("swift.findProtocols ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.protocols",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findConformances ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.conformances",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findMetadata ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.metadata",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findVtable ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.vtable",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findWitnessTable ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.witness_table",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findTypeLayout ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.type_layout",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("swift.types ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.types",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findTypes ") {
         let (module_name, query) = parse_module_query(raw)?;
         return Some(json!({
             "kind": "swift.types",
@@ -974,7 +1142,26 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("swift.findTypesOfKind ") {
+        let (module_name, source_kind, query) = parse_swift_type_kind_query(raw)?;
+        return Some(json!({
+            "kind": "swift.types_of_kind",
+            "moduleName": module_name,
+            "sourceKind": source_kind,
+            "query": query,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("swift.methodOwners ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.method_owners",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findMethodOwners ") {
         let (module_name, query) = parse_module_query(raw)?;
         return Some(json!({
             "kind": "swift.method_owners",
@@ -992,7 +1179,26 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("swift.findTypeMethods ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.type_methods",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("swift.methods ") {
+        let (module_name, type_name, method_query) = parse_swift_methods(raw)?;
+        return Some(json!({
+            "kind": "swift.methods",
+            "moduleName": module_name,
+            "typeName": type_name,
+            "methodQuery": method_query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findMethods ") {
         let (module_name, type_name, method_query) = parse_swift_methods(raw)?;
         return Some(json!({
             "kind": "swift.methods",
@@ -1117,6 +1323,35 @@ fn parse_objc_methods(raw: &str) -> Option<(String, bool, Option<String>)> {
     Some((parts[0].to_string(), is_class_method, filter))
 }
 
+fn parse_objc_find_methods(raw: &str) -> Option<(String, String, bool)> {
+    let parts = raw.split_whitespace().collect::<Vec<_>>();
+    if parts.len() < 2 {
+        return None;
+    }
+
+    let mut is_class_method = false;
+    let mut end = parts.len();
+    if let Some(last) = parts.last() {
+        match *last {
+            "meta" | "class" | "+" => {
+                is_class_method = true;
+                end -= 1;
+            }
+            "instance" | "inst" | "-" => {
+                is_class_method = false;
+                end -= 1;
+            }
+            _ => {}
+        }
+    }
+
+    if end <= 1 {
+        return None;
+    }
+
+    Some((parts[0].to_string(), parts[1..end].join(" "), is_class_method))
+}
+
 fn parse_objc_properties(raw: &str) -> Option<(String, bool, Option<String>)> {
     let parts = raw.split_whitespace().collect::<Vec<_>>();
     if parts.is_empty() {
@@ -1141,6 +1376,35 @@ fn parse_objc_properties(raw: &str) -> Option<(String, bool, Option<String>)> {
     Some((parts[0].to_string(), is_class_property, filter))
 }
 
+fn parse_objc_find_properties(raw: &str) -> Option<(String, String, bool)> {
+    let parts = raw.split_whitespace().collect::<Vec<_>>();
+    if parts.len() < 2 {
+        return None;
+    }
+
+    let mut is_class_property = false;
+    let mut end = parts.len();
+    if let Some(last) = parts.last() {
+        match *last {
+            "meta" | "class" | "+" => {
+                is_class_property = true;
+                end -= 1;
+            }
+            "instance" | "inst" | "-" => {
+                is_class_property = false;
+                end -= 1;
+            }
+            _ => {}
+        }
+    }
+
+    if end <= 1 {
+        return None;
+    }
+
+    Some((parts[0].to_string(), parts[1..end].join(" "), is_class_property))
+}
+
 fn parse_objc_ivars(raw: &str) -> Option<(String, Option<String>)> {
     let parts = raw.split_whitespace().collect::<Vec<_>>();
     if parts.is_empty() {
@@ -1149,6 +1413,15 @@ fn parse_objc_ivars(raw: &str) -> Option<(String, Option<String>)> {
 
     let filter = (parts.len() > 1).then(|| parts[1..].join(" "));
     Some((parts[0].to_string(), filter))
+}
+
+fn parse_objc_find_ivars(raw: &str) -> Option<(String, String)> {
+    let parts = raw.split_whitespace().collect::<Vec<_>>();
+    if parts.len() < 2 {
+        return None;
+    }
+
+    Some((parts[0].to_string(), parts[1..].join(" ")))
 }
 
 fn parse_objc_member_info(raw: &str) -> Option<(String, String)> {
@@ -1714,6 +1987,22 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("objc.findMethods NSObject init"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findProperties NSObject delegate"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findIvars NSObject isa"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findMethodOwners init"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("objc.classImage NSObject"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -1735,6 +2024,18 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("native.symbolInfo malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.findSymbols malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.findExports libobjc.A.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.findDependencies libobjc.A.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -1798,11 +2099,23 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findTypes ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.typeMethods ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findTypeMethods ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.typesOfKind metadata-accessor ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findTypesOfKind metadata-accessor ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -1811,6 +2124,42 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("swift.methodOwners viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findMethodOwners viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findProtocols Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findConformances ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findMetadata ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findVtable ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findWitnessTable Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findTypeLayout ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findSymbols ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findMethods ViewController viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert_eq!(
