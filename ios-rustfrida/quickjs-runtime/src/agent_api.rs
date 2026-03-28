@@ -5241,6 +5241,31 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const methods = Swift.typeMethods(query, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
+        const moduleNames = new Set();
+        const methodNames = [];
+        let demangledCount = 0;
+        for (const method of methods) {
+            moduleNames.add(method.moduleName);
+            if (method.hasDemangledName) {
+                demangledCount += 1;
+            }
+            let summary = methodNames.find((item) => item.methodName === method.name);
+            if (summary === undefined) {
+                summary = {
+                    methodName: method.name,
+                    count: 0,
+                    firstModuleName: method.moduleName,
+                    lastModuleName: method.moduleName,
+                    hasDemangledName: false,
+                };
+                methodNames.push(summary);
+            }
+            summary.count += 1;
+            summary.lastModuleName = method.moduleName;
+            if (method.hasDemangledName) {
+                summary.hasDemangledName = true;
+            }
+        }
         return {
             kind: 'swift.type_methods',
             moduleName,
@@ -5250,6 +5275,13 @@ function handleSpecResult(spec) {
             hasMethods: methods.length !== 0,
             firstMethodName: methods.length === 0 ? null : methods[0].name,
             lastMethodName: methods.length === 0 ? null : methods[methods.length - 1].name,
+            firstModuleName: methods.length === 0 ? null : methods[0].moduleName,
+            lastModuleName: methods.length === 0 ? null : methods[methods.length - 1].moduleName,
+            uniqueModuleCount: methods.length === 0 ? 0 : moduleNames.size,
+            uniqueMethodCount: methodNames.length,
+            demangledCount,
+            hasDemangledMethods: demangledCount !== 0,
+            methodNames,
             methods,
             text: methods.map((symbol) => symbol.text).join('\n'),
         };
