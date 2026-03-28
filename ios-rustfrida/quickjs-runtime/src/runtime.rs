@@ -3537,7 +3537,49 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_owners', moduleName: null, query: 'viewDidLoad' }); return result.kind === 'swift.method_owners' && result.query === 'viewDidLoad' && result.hasQuery === true && result.count === result.owners.length && typeof result.hasOwners === 'boolean' && ((result.owners.length === 0 && result.hasOwners === false && result.firstOwnerName === null && result.lastOwnerName === null) || (result.hasOwners === true && typeof result.firstOwnerName === 'string' && typeof result.lastOwnerName === 'string' && typeof result.owners[0].moduleBase === 'string')); })()")
+                    .eval(
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_owners', moduleName: null, query: 'viewDidLoad' });
+                            if (result.kind !== 'swift.method_owners' || result.query !== 'viewDidLoad' || result.hasQuery !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.owners.length || typeof result.hasOwners !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueSourceKindCount !== 'number' ||
+                                    typeof result.sourceDemangledCount !== 'number' ||
+                                    typeof result.hasSourceDemangledOwners !== 'boolean' ||
+                                    !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.owners.length === 0) {
+                                return result.hasOwners === false &&
+                                    result.firstOwnerName === null &&
+                                    result.lastOwnerName === null;
+                            }
+                            const owner = result.owners[0];
+                            const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
+                            return result.hasOwners === true &&
+                                typeof result.firstOwnerName === 'string' &&
+                                typeof result.lastOwnerName === 'string' &&
+                                typeof result.firstModuleName === 'string' &&
+                                typeof result.lastModuleName === 'string' &&
+                                typeof owner.moduleBase === 'string' &&
+                                typeof owner.hasName === 'boolean' &&
+                                typeof owner.hasSourceKind === 'boolean' &&
+                                typeof owner.hasSourceSymbolName === 'boolean' &&
+                                typeof owner.hasSourceDemangledName === 'boolean' &&
+                                typeof owner.sourceSymbolName === 'string' &&
+                                typeof owner.sourceOffsetHex === 'string' &&
+                                (sourceSummary === null || (
+                                    typeof sourceSummary.sourceKind === 'string' &&
+                                    typeof sourceSummary.count === 'number' &&
+                                    typeof sourceSummary.firstOwnerName === 'string' &&
+                                    typeof sourceSummary.lastOwnerName === 'string'
+                                ));
+                        })()"
+                    )
                     .expect("agent swift method owners result"),
                 "true"
             );

@@ -5224,6 +5224,28 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const owners = Swift.methodOwners(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
+        const sourceKinds = [];
+        const moduleNames = new Set();
+        let demangledCount = 0;
+        for (const owner of owners) {
+            moduleNames.add(owner.moduleName);
+            if (owner.hasSourceDemangledName) {
+                demangledCount += 1;
+            }
+            const key = owner.sourceKind === null ? '<none>' : String(owner.sourceKind);
+            let summary = sourceKinds.find((item) => item.sourceKind === key);
+            if (summary === undefined) {
+                summary = {
+                    sourceKind: key,
+                    count: 0,
+                    firstOwnerName: owner.name,
+                    lastOwnerName: owner.name,
+                };
+                sourceKinds.push(summary);
+            }
+            summary.count += 1;
+            summary.lastOwnerName = owner.name;
+        }
         return {
             kind: 'swift.method_owners',
             moduleName,
@@ -5233,6 +5255,13 @@ function handleSpecResult(spec) {
             hasOwners: owners.length !== 0,
             firstOwnerName: owners.length === 0 ? null : owners[0].name,
             lastOwnerName: owners.length === 0 ? null : owners[owners.length - 1].name,
+            firstModuleName: owners.length === 0 ? null : owners[0].moduleName,
+            lastModuleName: owners.length === 0 ? null : owners[owners.length - 1].moduleName,
+            uniqueModuleCount: owners.length === 0 ? 0 : moduleNames.size,
+            uniqueSourceKindCount: sourceKinds.length,
+            sourceDemangledCount: demangledCount,
+            hasSourceDemangledOwners: demangledCount !== 0,
+            sourceKinds,
             owners,
             text: owners.map((typeInfo) => typeInfo.text).join('\n'),
         };
