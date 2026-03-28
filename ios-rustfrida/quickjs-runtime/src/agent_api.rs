@@ -2557,12 +2557,20 @@ function normalizeCodeSignature(codeSignature) {
 }
 
 function normalizeDataInCodeEntry(entry) {
+    const kindName = String(entry.kindName || 'DICE_KIND_UNKNOWN');
+    const length = Number(entry.length || 0);
     return {
         offsetHex: '0x' + BigInt(entry.offset || 0).toString(16),
         address: entry.address.toString(),
-        length: Number(entry.length || 0),
+        endOffsetHex: formatHexAdd(entry.offset, length),
+        endAddress: formatHexAdd(entry.address, length),
+        length,
         kind: Number(entry.kind || 0),
-        kindName: String(entry.kindName || 'DICE_KIND_UNKNOWN'),
+        kindName,
+        hasKnownKind: kindName !== 'DICE_KIND_UNKNOWN',
+        isData: kindName === 'DICE_KIND_DATA',
+        isJumpTable: kindName === 'DICE_KIND_JUMP_TABLE8' || kindName === 'DICE_KIND_JUMP_TABLE16' || kindName === 'DICE_KIND_JUMP_TABLE32' || kindName === 'DICE_KIND_ABS_JUMP_TABLE32',
+        isAbsJumpTable: kindName === 'DICE_KIND_ABS_JUMP_TABLE32',
         text: formatDataInCodeEntry(entry),
     };
 }
@@ -2573,7 +2581,53 @@ function normalizeDataInCode(dataInCode) {
         : [];
     const firstEntry = entries.length === 0 ? null : entries[0];
     const lastEntry = entries.length === 0 ? null : entries[entries.length - 1];
+    const largestEntry = entries.reduce((largest, entry) => {
+        if (largest === null || entry.length > largest.length) {
+            return entry;
+        }
+        return largest;
+    }, null);
     const totalEntryLength = entries.reduce((sum, entry) => sum + BigInt(entry.length || 0), 0n);
+    const totalSpan = entries.length === 0
+        ? 0n
+        : (BigInt(lastEntry.offsetHex) + BigInt(lastEntry.length || 0)) - BigInt(firstEntry.offsetHex);
+    const kindSummaries = [];
+    for (const entry of entries) {
+        let summary = kindSummaries.find((item) => item.kind === entry.kind && item.kindName === entry.kindName);
+        if (summary === undefined) {
+            summary = {
+                kind: entry.kind,
+                kindName: entry.kindName,
+                count: 0,
+                totalLength: 0n,
+                firstOffsetHex: entry.offsetHex,
+                lastOffsetHex: entry.offsetHex,
+                hasKnownKind: entry.hasKnownKind,
+                isData: entry.isData,
+                isJumpTable: entry.isJumpTable,
+                isAbsJumpTable: entry.isAbsJumpTable,
+            };
+            kindSummaries.push(summary);
+        }
+        summary.count += 1;
+        summary.totalLength += BigInt(entry.length || 0);
+        summary.lastOffsetHex = entry.offsetHex;
+    }
+    const kinds = kindSummaries.map((summary) => ({
+        kind: summary.kind,
+        kindName: summary.kindName,
+        count: summary.count,
+        totalLengthHex: '0x' + summary.totalLength.toString(16),
+        firstOffsetHex: summary.firstOffsetHex,
+        lastOffsetHex: summary.lastOffsetHex,
+        hasKnownKind: summary.hasKnownKind,
+        isData: summary.isData,
+        isJumpTable: summary.isJumpTable,
+        isAbsJumpTable: summary.isAbsJumpTable,
+    }));
+    const dataEntryCount = entries.filter((entry) => entry.isData).length;
+    const jumpTableEntryCount = entries.filter((entry) => entry.isJumpTable).length;
+    const unknownEntryCount = entries.filter((entry) => !entry.hasKnownKind).length;
     return {
         moduleName: String(dataInCode.moduleName || ''),
         moduleBase: dataInCode.moduleBase ? dataInCode.moduleBase.toString() : null,
@@ -2584,11 +2638,27 @@ function normalizeDataInCode(dataInCode) {
         dataEnd: formatHexAdd(dataInCode.dataAddress, dataInCode.datasize),
         count: entries.length,
         hasEntries: entries.length !== 0,
+        hasData: BigInt(dataInCode.datasize || 0) !== 0n,
         totalEntryLength: '0x' + totalEntryLength.toString(16),
+        totalSpanHex: '0x' + totalSpan.toString(16),
         firstEntryOffsetHex: firstEntry === null ? null : firstEntry.offsetHex,
         firstEntryAddress: firstEntry === null ? null : firstEntry.address,
+        firstKindName: firstEntry === null ? null : firstEntry.kindName,
         lastEntryOffsetHex: lastEntry === null ? null : lastEntry.offsetHex,
         lastEntryAddress: lastEntry === null ? null : lastEntry.address,
+        lastKindName: lastEntry === null ? null : lastEntry.kindName,
+        largestEntryOffsetHex: largestEntry === null ? null : largestEntry.offsetHex,
+        largestEntryAddress: largestEntry === null ? null : largestEntry.address,
+        largestEntryLength: largestEntry === null ? null : largestEntry.length,
+        uniqueKindCount: kinds.length,
+        hasMultipleKinds: kinds.length > 1,
+        dataEntryCount,
+        hasDataEntries: dataEntryCount !== 0,
+        jumpTableEntryCount,
+        hasJumpTables: jumpTableEntryCount !== 0,
+        unknownEntryCount,
+        hasUnknownKinds: unknownEntryCount !== 0,
+        kinds,
         entries,
         text: formatDataInCode(dataInCode),
     };
