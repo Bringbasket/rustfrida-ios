@@ -2665,21 +2665,31 @@ function normalizeDataInCode(dataInCode) {
 }
 
 function normalizeExportsTrieEntry(entry) {
+    const name = String(entry.name || '');
+    const kind = String(entry.kind || 'unknown');
+    const hasAddress = entry.address !== null && entry.address !== undefined;
+    const hasOffset = entry.offset !== null && entry.offset !== undefined;
+    const hasOther = entry.other !== null && entry.other !== undefined;
+    const hasImportName = entry.importName !== null && entry.importName !== undefined;
     return {
-        name: String(entry.name || ''),
+        name,
+        nameLength: name.length,
+        hasName: name.length !== 0,
         flagsHex: '0x' + BigInt(entry.flags || 0).toString(16),
-        kind: String(entry.kind || 'unknown'),
-        address: entry.address === null || entry.address === undefined ? null : entry.address.toString(),
-        hasAddress: entry.address !== null && entry.address !== undefined,
+        kind,
+        address: hasAddress ? entry.address.toString() : null,
+        hasAddress,
         offsetHex: entry.offset === null || entry.offset === undefined ? null : '0x' + BigInt(entry.offset).toString(16),
-        hasOffset: entry.offset !== null && entry.offset !== undefined,
+        hasOffset,
         otherHex: entry.other === null || entry.other === undefined ? null : '0x' + BigInt(entry.other).toString(16),
+        hasOther,
+        otherRole: entry.isReexport ? 'reexport-ordinal' : entry.isStubAndResolver ? 'resolver-offset' : hasOther ? 'other' : 'none',
         importName: entry.importName === null || entry.importName === undefined ? null : String(entry.importName),
-        hasImportName: entry.importName !== null && entry.importName !== undefined,
+        hasImportName,
         isWeakDefinition: !!entry.isWeakDefinition,
         isReexport: !!entry.isReexport,
         isStubAndResolver: !!entry.isStubAndResolver,
-        hasResolver: entry.other !== null && entry.other !== undefined,
+        hasResolver: !!entry.isStubAndResolver && hasOther,
         text: formatExportsTrieEntry(entry),
     };
 }
@@ -2688,9 +2698,94 @@ function normalizeExportsTrie(exportsTrie) {
     const entries = Array.isArray(exportsTrie.entries)
         ? exportsTrie.entries.map((entry) => normalizeExportsTrieEntry(entry))
         : [];
+    const entriesWithAddress = entries.filter((entry) => entry.hasAddress);
+    const entriesWithOffset = entries.filter((entry) => entry.hasOffset);
+    const entriesWithImportName = entries.filter((entry) => entry.hasImportName);
+    const entriesWithResolver = entries.filter((entry) => entry.hasResolver);
     const reexportCount = entries.filter((entry) => entry.isReexport).length;
     const stubAndResolverCount = entries.filter((entry) => entry.isStubAndResolver).length;
     const weakDefinitionCount = entries.filter((entry) => entry.isWeakDefinition).length;
+    const longestExport = entries.reduce((longest, entry) => {
+        if (longest === null || entry.nameLength > longest.nameLength) {
+            return entry;
+        }
+        return longest;
+    }, null);
+    const lowestAddressEntry = entriesWithAddress.reduce((lowest, entry) => {
+        if (lowest === null || BigInt(entry.address) < BigInt(lowest.address)) {
+            return entry;
+        }
+        return lowest;
+    }, null);
+    const highestAddressEntry = entriesWithAddress.reduce((highest, entry) => {
+        if (highest === null || BigInt(entry.address) > BigInt(highest.address)) {
+            return entry;
+        }
+        return highest;
+    }, null);
+    const lowestOffsetEntry = entriesWithOffset.reduce((lowest, entry) => {
+        if (lowest === null || BigInt(entry.offsetHex) < BigInt(lowest.offsetHex)) {
+            return entry;
+        }
+        return lowest;
+    }, null);
+    const highestOffsetEntry = entriesWithOffset.reduce((highest, entry) => {
+        if (highest === null || BigInt(entry.offsetHex) > BigInt(highest.offsetHex)) {
+            return entry;
+        }
+        return highest;
+    }, null);
+    const addressSpanHex = lowestAddressEntry === null || highestAddressEntry === null
+        ? '0x0'
+        : '0x' + (BigInt(highestAddressEntry.address) - BigInt(lowestAddressEntry.address)).toString(16);
+    const offsetSpanHex = lowestOffsetEntry === null || highestOffsetEntry === null
+        ? '0x0'
+        : '0x' + (BigInt(highestOffsetEntry.offsetHex) - BigInt(lowestOffsetEntry.offsetHex)).toString(16);
+    const kindSummaries = [];
+    for (const entry of entries) {
+        let summary = kindSummaries.find((item) => item.kind === entry.kind);
+        if (summary === undefined) {
+            summary = {
+                kind: entry.kind,
+                count: 0,
+                firstExportName: entry.name,
+                lastExportName: entry.name,
+                hasAddress: false,
+                hasOffset: false,
+                hasImportName: false,
+                weakDefinitionCount: 0,
+                reexportCount: 0,
+                stubAndResolverCount: 0,
+            };
+            kindSummaries.push(summary);
+        }
+        summary.count += 1;
+        summary.lastExportName = entry.name;
+        summary.hasAddress = summary.hasAddress || entry.hasAddress;
+        summary.hasOffset = summary.hasOffset || entry.hasOffset;
+        summary.hasImportName = summary.hasImportName || entry.hasImportName;
+        if (entry.isWeakDefinition) {
+            summary.weakDefinitionCount += 1;
+        }
+        if (entry.isReexport) {
+            summary.reexportCount += 1;
+        }
+        if (entry.isStubAndResolver) {
+            summary.stubAndResolverCount += 1;
+        }
+    }
+    const kinds = kindSummaries.map((summary) => ({
+        kind: summary.kind,
+        count: summary.count,
+        firstExportName: summary.firstExportName,
+        lastExportName: summary.lastExportName,
+        hasAddress: summary.hasAddress,
+        hasOffset: summary.hasOffset,
+        hasImportName: summary.hasImportName,
+        weakDefinitionCount: summary.weakDefinitionCount,
+        reexportCount: summary.reexportCount,
+        stubAndResolverCount: summary.stubAndResolverCount,
+    }));
     return {
         moduleName: String(exportsTrie.moduleName || ''),
         moduleBase: exportsTrie.moduleBase ? exportsTrie.moduleBase.toString() : null,
@@ -2701,8 +2796,30 @@ function normalizeExportsTrie(exportsTrie) {
         dataEnd: formatHexAdd(exportsTrie.dataAddress, exportsTrie.datasize),
         count: entries.length,
         hasEntries: entries.length !== 0,
+        hasData: BigInt(exportsTrie.datasize || 0) !== 0n,
         firstExportName: entries.length === 0 ? null : entries[0].name,
+        firstKind: entries.length === 0 ? null : entries[0].kind,
         lastExportName: entries.length === 0 ? null : entries[entries.length - 1].name,
+        lastKind: entries.length === 0 ? null : entries[entries.length - 1].kind,
+        longestExportName: longestExport === null ? null : longestExport.name,
+        longestExportNameLength: longestExport === null ? null : longestExport.nameLength,
+        uniqueKindCount: kinds.length,
+        hasMultipleKinds: kinds.length > 1,
+        kinds,
+        addressEntryCount: entriesWithAddress.length,
+        hasAddressEntries: entriesWithAddress.length !== 0,
+        lowestAddress: lowestAddressEntry === null ? null : lowestAddressEntry.address,
+        highestAddress: highestAddressEntry === null ? null : highestAddressEntry.address,
+        addressSpanHex,
+        offsetEntryCount: entriesWithOffset.length,
+        hasOffsetEntries: entriesWithOffset.length !== 0,
+        lowestOffsetHex: lowestOffsetEntry === null ? null : lowestOffsetEntry.offsetHex,
+        highestOffsetHex: highestOffsetEntry === null ? null : highestOffsetEntry.offsetHex,
+        offsetSpanHex,
+        importNameCount: entriesWithImportName.length,
+        hasImportNames: entriesWithImportName.length !== 0,
+        resolverCount: entriesWithResolver.length,
+        hasResolvers: entriesWithResolver.length !== 0,
         reexportCount,
         hasReexports: reexportCount !== 0,
         stubAndResolverCount,
