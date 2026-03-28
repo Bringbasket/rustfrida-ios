@@ -3582,6 +3582,18 @@ undefined;
                                     typeof result.returnsVoidCount !== 'number' ||
                                     typeof result.returnsObjectCount !== 'number' ||
                                     typeof result.returnsBlockCount !== 'number' ||
+                                    typeof result.uniqueImagePathCount !== 'number' ||
+                                    typeof result.ownersWithImagePathCount !== 'number' ||
+                                    typeof result.classesWithProtocolsCount !== 'number' ||
+                                    typeof result.classesWithPropertiesCount !== 'number' ||
+                                    typeof result.classesWithIvarsCount !== 'number' ||
+                                    typeof result.classesWithMethodsCount !== 'number' ||
+                                    typeof result.totalProtocolCount !== 'number' ||
+                                    typeof result.totalPropertyCount !== 'number' ||
+                                    typeof result.totalIvarCount !== 'number' ||
+                                    typeof result.totalMethodCount !== 'number' ||
+                                    typeof result.totalInstanceSize !== 'number' ||
+                                    !Array.isArray(result.imagePaths) ||
                                     !Array.isArray(result.owners) ||
                                     !Array.isArray(result.selectors)) {
                                 return false;
@@ -3591,7 +3603,9 @@ undefined;
                                     result.firstOwner === null &&
                                     result.lastOwner === null &&
                                     result.firstSelector === null &&
-                                    result.lastSelector === null;
+                                    result.lastSelector === null &&
+                                    result.firstImagePath === null &&
+                                    result.lastImagePath === null;
                             }
                             const method = result.methods[0];
                             const ownerSummary = result.owners.length === 0 ? null : result.owners[0];
@@ -3601,6 +3615,8 @@ undefined;
                                 typeof result.lastOwner === 'string' &&
                                 typeof result.firstSelector === 'string' &&
                                 typeof result.lastSelector === 'string' &&
+                                (result.firstImagePath === null || typeof result.firstImagePath === 'string') &&
+                                (result.lastImagePath === null || typeof result.lastImagePath === 'string') &&
                                 typeof method.className === 'string' &&
                                 typeof method.selector === 'string' &&
                                 typeof method.returnTypeName === 'string' &&

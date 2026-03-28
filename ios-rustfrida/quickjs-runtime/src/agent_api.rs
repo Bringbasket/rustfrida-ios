@@ -5005,6 +5005,7 @@ function handleSpecResult(spec) {
         const methods = ObjC.methodOwners(query, isClassMethod).map((method) => normalizeObjcMethod(method));
         const owners = [];
         const selectors = [];
+        const ownerClassNames = [];
         let keywordSelectorCount = 0;
         let unarySelectorCount = 0;
         let explicitArgumentMethodCount = 0;
@@ -5040,6 +5041,7 @@ function handleSpecResult(spec) {
                     keywordSelectorCount: 0,
                 };
                 owners.push(ownerSummary);
+                ownerClassNames.push(method.className);
             }
             ownerSummary.count += 1;
             ownerSummary.lastSelector = method.selector;
@@ -5060,6 +5062,7 @@ function handleSpecResult(spec) {
             selectorSummary.count += 1;
             selectorSummary.lastOwner = method.className;
         }
+        const summary = summarizeObjcClassNames(ownerClassNames);
         return {
             kind: 'objc.method_owners',
             query,
@@ -5079,6 +5082,20 @@ function handleSpecResult(spec) {
             returnsVoidCount,
             returnsObjectCount,
             returnsBlockCount,
+            firstImagePath: summary.firstImagePath,
+            lastImagePath: summary.lastImagePath,
+            uniqueImagePathCount: summary.uniqueImagePathCount,
+            ownersWithImagePathCount: summary.classesWithImagePathCount,
+            classesWithProtocolsCount: summary.classesWithProtocolsCount,
+            classesWithPropertiesCount: summary.classesWithPropertiesCount,
+            classesWithIvarsCount: summary.classesWithIvarsCount,
+            classesWithMethodsCount: summary.classesWithMethodsCount,
+            totalProtocolCount: summary.totalProtocolCount,
+            totalPropertyCount: summary.totalPropertyCount,
+            totalIvarCount: summary.totalIvarCount,
+            totalMethodCount: summary.totalMethodCount,
+            totalInstanceSize: summary.totalInstanceSize,
+            imagePaths: summary.imagePaths,
             owners,
             selectors,
             methods,
