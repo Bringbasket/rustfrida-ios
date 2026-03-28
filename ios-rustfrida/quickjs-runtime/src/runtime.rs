@@ -3518,7 +3518,47 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.types' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.types.length && typeof result.hasTypes === 'boolean' && ((result.types.length === 0 && result.hasTypes === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasTypes === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.types[0].moduleBase === 'string' && typeof result.types[0].sourceSymbolName === 'string' && typeof result.types[0].sourceOffsetHex === 'string')); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' });
+                            if (result.kind !== 'swift.types' || result.query !== 'ViewController' || result.hasQuery !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.types.length || typeof result.hasTypes !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueSourceKindCount !== 'number' ||
+                                    typeof result.sourceDemangledCount !== 'number' ||
+                                    typeof result.hasSourceDemangledTypes !== 'boolean' ||
+                                    !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.types.length === 0) {
+                                return result.hasTypes === false &&
+                                    result.firstTypeName === null &&
+                                    result.lastTypeName === null;
+                            }
+                            const typeInfo = result.types[0];
+                            const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
+                            return result.hasTypes === true &&
+                                typeof result.firstTypeName === 'string' &&
+                                typeof result.lastTypeName === 'string' &&
+                                typeof result.firstModuleName === 'string' &&
+                                typeof result.lastModuleName === 'string' &&
+                                typeof typeInfo.moduleBase === 'string' &&
+                                typeof typeInfo.sourceSymbolName === 'string' &&
+                                typeof typeInfo.sourceOffsetHex === 'string' &&
+                                typeof typeInfo.hasName === 'boolean' &&
+                                typeof typeInfo.hasSourceKind === 'boolean' &&
+                                typeof typeInfo.hasSourceSymbolName === 'boolean' &&
+                                typeof typeInfo.hasSourceDemangledName === 'boolean' &&
+                                (sourceSummary === null || (
+                                    typeof sourceSummary.sourceKind === 'string' &&
+                                    typeof sourceSummary.count === 'number' &&
+                                    typeof sourceSummary.firstTypeName === 'string' &&
+                                    typeof sourceSummary.lastTypeName === 'string'
+                                ));
+                        })()"
                     )
                     .expect("agent swift types result"),
                 "true"
