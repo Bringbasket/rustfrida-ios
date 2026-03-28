@@ -5052,13 +5052,33 @@ function handleSpecResult(spec) {
         const moduleName = String(spec.moduleName || '');
         const encryptionInfo = Native.encryptionInfo(moduleName);
         const normalized = encryptionInfo === null ? null : normalizeEncryptionInfo(encryptionInfo);
-        return { kind: 'native.encryption_info', moduleName, encryptionInfo: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.encryption_info',
+            moduleName,
+            encryptionInfo: normalized,
+            hasEncryptionInfo: normalized !== null,
+            resolved: normalized !== null,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            cryptid: normalized === null ? null : normalized.cryptid,
+            hasEncryptedRange: normalized !== null && normalized.cryptid !== 0,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.entry_point': {
         const moduleName = String(spec.moduleName || '');
         const entryPoint = Native.entryPoint(moduleName);
         const normalized = entryPoint === null ? null : normalizeEntryPoint(entryPoint);
-        return { kind: 'native.entry_point', moduleName, entryPoint: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.entry_point',
+            moduleName,
+            entryPoint: normalized,
+            hasEntryPoint: normalized !== null,
+            resolved: normalized !== null,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            entryoffHex: normalized === null ? null : normalized.entryoffHex,
+            stacksizeHex: normalized === null ? null : normalized.stacksizeHex,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.dyld_info': {
         const moduleName = String(spec.moduleName || '');
@@ -5220,31 +5240,88 @@ function handleSpecResult(spec) {
         const moduleName = String(spec.moduleName || '');
         const sourceVersion = Native.sourceVersion(moduleName);
         const normalized = sourceVersion === null ? null : normalizeSourceVersion(sourceVersion);
-        return { kind: 'native.source_version', moduleName, sourceVersion: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.source_version',
+            moduleName,
+            sourceVersion: normalized,
+            hasSourceVersion: normalized !== null,
+            resolved: normalized !== null,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            version: normalized === null ? null : normalized.version,
+            hasVersion: normalized !== null && normalized.version.length !== 0,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.build_version': {
         const moduleName = String(spec.moduleName || '');
         const buildVersion = Native.buildVersion(moduleName);
         const normalized = buildVersion === null ? null : normalizeBuildVersion(buildVersion);
-        return { kind: 'native.build_version', moduleName, buildVersion: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.build_version',
+            moduleName,
+            buildVersion: normalized,
+            hasBuildVersion: normalized !== null,
+            resolved: normalized !== null,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            platform: normalized === null ? null : normalized.platform,
+            hasTools: normalized !== null && normalized.hasTools === true,
+            firstTool: normalized === null ? null : normalized.firstTool,
+            lastTool: normalized === null ? null : normalized.lastTool,
+            toolCount: normalized === null ? 0 : normalized.tools.length,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.dylinker': {
         const moduleName = String(spec.moduleName || '');
         const dylinker = Native.dylinker(moduleName);
         const normalized = dylinker === null ? null : normalizeDylinker(dylinker);
-        return { kind: 'native.dylinker', moduleName, dylinker: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.dylinker',
+            moduleName,
+            dylinker: normalized,
+            hasDylinker: normalized !== null,
+            resolved: normalized !== null,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedPath: normalized === null ? null : normalized.path,
+            kindName: normalized === null ? null : normalized.kind,
+            hasPath: normalized !== null && normalized.hasPath === true,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.install_name': {
         const moduleName = String(spec.moduleName || '');
         const installName = Native.installName(moduleName);
         const normalized = installName === null ? null : normalizeInstallName(installName);
-        return { kind: 'native.install_name', moduleName, installName: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.install_name',
+            moduleName,
+            installName: normalized,
+            hasInstallName: normalized !== null,
+            resolved: normalized !== null,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            resolvedName: normalized === null ? null : normalized.name,
+            resolvedPath: normalized === null ? null : normalized.path,
+            hasPath: normalized !== null && normalized.hasPath === true,
+            hasTimestamp: normalized !== null && normalized.hasTimestamp === true,
+            versionMismatch: normalized !== null && normalized.versionMismatch === true,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.uuid': {
         const moduleName = String(spec.moduleName || '');
         const imageUuid = Native.uuid(moduleName);
         const normalized = imageUuid === null ? null : normalizeUuid(imageUuid);
-        return { kind: 'native.uuid', moduleName, imageUuid: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.uuid',
+            moduleName,
+            imageUuid: normalized,
+            hasUuid: normalized !== null,
+            resolved: normalized !== null,
+            resolvedModuleName: normalized === null ? null : normalized.moduleName,
+            uuid: normalized === null ? null : normalized.uuid,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.rpaths': {
         const moduleName = String(spec.moduleName || '');
