@@ -4204,10 +4204,23 @@ function handleSpecResult(spec) {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const protocols = ObjC.classProtocols(className, filter).map((name) => String(name));
         const summary = summarizeObjcProtocols(protocols);
+        const classInfo = ObjC.classInfo(className, false);
+        const normalizedClassInfo = classInfo === null ? null : normalizeObjcClassInfo(classInfo);
         return {
             kind: 'objc.class_protocols',
             className,
             filter,
+            classInfo: normalizedClassInfo,
+            hasClassInfo: normalizedClassInfo !== null,
+            resolved: normalizedClassInfo !== null,
+            resolvedClassName: normalizedClassInfo === null ? null : normalizedClassInfo.className,
+            resolvedClassPointer: normalizedClassInfo === null ? null : normalizedClassInfo.classPointer,
+            hasImagePath: normalizedClassInfo !== null && normalizedClassInfo.hasImagePath === true,
+            imagePath: normalizedClassInfo === null ? null : normalizedClassInfo.imagePath,
+            declaredProtocolCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.protocolCount,
+            ownerHasProtocols: normalizedClassInfo !== null && normalizedClassInfo.hasProtocols === true,
+            ownerTotalPropertyCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.totalPropertyCount,
+            ownerTotalMethodCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.totalMethodCount,
             hasFilter: filter !== null && filter.length !== 0,
             count: protocols.length,
             hasProtocols: protocols.length !== 0,
@@ -4303,10 +4316,25 @@ function handleSpecResult(spec) {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const protocols = ObjC.protocolProtocols(protocolName, filter).map((name) => String(name));
         const summary = summarizeObjcProtocols(protocols);
+        const protocolInfo = ObjC.protocolInfo(protocolName);
+        const normalizedProtocolInfo = protocolInfo === null ? null : normalizeObjcProtocolInfo(protocolInfo);
         return {
             kind: 'objc.protocol_protocols',
             protocolName,
             filter,
+            protocolInfo: normalizedProtocolInfo,
+            hasProtocolInfo: normalizedProtocolInfo !== null,
+            resolved: normalizedProtocolInfo !== null,
+            resolvedProtocolName: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.protocolName,
+            resolvedProtocolPointer: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.protocolPointer,
+            hasImagePath: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasImagePath === true,
+            imagePath: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.imagePath,
+            adoptedProtocolCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.adoptedProtocolCount,
+            protocolTotalMethodCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.totalMethodCount,
+            protocolPropertyCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.propertyCount,
+            ownerHasAdoptedProtocols: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasAdoptedProtocols === true,
+            ownerHasMethods: normalizedProtocolInfo !== null && normalizedProtocolInfo.totalMethodCount !== 0,
+            ownerHasProperties: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasProperties === true,
             hasFilter: filter !== null && filter.length !== 0,
             count: protocols.length,
             hasProtocols: protocols.length !== 0,
@@ -4338,12 +4366,27 @@ function handleSpecResult(spec) {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const methods = ObjC.protocolMethods(protocolName, isRequired, isInstanceMethod, filter).map((method) => normalizeObjcProtocolMethod(method));
         const summary = summarizeObjcProtocolMethods(methods);
+        const protocolInfo = ObjC.protocolInfo(protocolName);
+        const normalizedProtocolInfo = protocolInfo === null ? null : normalizeObjcProtocolInfo(protocolInfo);
         return {
             kind: 'objc.protocol_methods',
             protocolName,
             isRequired,
             isInstanceMethod,
             filter,
+            protocolInfo: normalizedProtocolInfo,
+            hasProtocolInfo: normalizedProtocolInfo !== null,
+            resolved: normalizedProtocolInfo !== null,
+            resolvedProtocolName: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.protocolName,
+            resolvedProtocolPointer: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.protocolPointer,
+            hasImagePath: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasImagePath === true,
+            imagePath: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.imagePath,
+            adoptedProtocolCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.adoptedProtocolCount,
+            protocolTotalMethodCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.totalMethodCount,
+            protocolPropertyCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.propertyCount,
+            ownerHasAdoptedProtocols: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasAdoptedProtocols === true,
+            ownerHasMethods: normalizedProtocolInfo !== null && normalizedProtocolInfo.totalMethodCount !== 0,
+            ownerHasProperties: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasProperties === true,
             hasFilter: filter !== null && filter.length !== 0,
             count: methods.length,
             hasMethods: methods.length !== 0,
@@ -4412,10 +4455,25 @@ function handleSpecResult(spec) {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const properties = ObjC.protocolProperties(protocolName, filter).map((property) => normalizeObjcProtocolProperty(property));
         const summary = summarizeObjcProperties(properties);
+        const protocolInfo = ObjC.protocolInfo(protocolName);
+        const normalizedProtocolInfo = protocolInfo === null ? null : normalizeObjcProtocolInfo(protocolInfo);
         return {
             kind: 'objc.protocol_properties',
             protocolName,
             filter,
+            protocolInfo: normalizedProtocolInfo,
+            hasProtocolInfo: normalizedProtocolInfo !== null,
+            resolved: normalizedProtocolInfo !== null,
+            resolvedProtocolName: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.protocolName,
+            resolvedProtocolPointer: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.protocolPointer,
+            hasImagePath: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasImagePath === true,
+            imagePath: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.imagePath,
+            adoptedProtocolCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.adoptedProtocolCount,
+            protocolTotalMethodCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.totalMethodCount,
+            protocolPropertyCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.propertyCount,
+            ownerHasAdoptedProtocols: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasAdoptedProtocols === true,
+            ownerHasMethods: normalizedProtocolInfo !== null && normalizedProtocolInfo.totalMethodCount !== 0,
+            ownerHasProperties: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasProperties === true,
             hasFilter: filter !== null && filter.length !== 0,
             count: properties.length,
             hasProperties: properties.length !== 0,
