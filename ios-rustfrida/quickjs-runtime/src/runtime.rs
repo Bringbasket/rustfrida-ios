@@ -3050,21 +3050,29 @@ undefined;
                                     return result.resolvedClassName === null &&
                                         result.resolvedMethodPointer === null &&
                                         result.resolvedImp === null &&
+                                        result.resolvedTypeEncoding === null &&
                                         result.resolvedReturnTypeName === null &&
+                                        result.resolvedSignature === null &&
                                         result.resolvedImagePath === null &&
                                         result.argumentCount === 0 &&
                                         result.explicitArgumentCount === 0 &&
                                         result.hiddenArgumentCount === 0 &&
+                                        result.selectorPartCount === 0 &&
+                                        result.hasImagePath === false &&
                                         result.hasHiddenArguments === false;
                                 }
                                 return result.resolvedClassName === info.className &&
                                     result.resolvedMethodPointer === info.methodPointer &&
                                     result.resolvedImp === info.imp &&
+                                    result.resolvedTypeEncoding === info.typeEncoding &&
                                     result.resolvedReturnTypeName === info.returnTypeName &&
+                                    result.resolvedSignature === info.signature &&
                                     result.resolvedImagePath === info.imagePath &&
                                     result.argumentCount === info.argumentCount &&
                                     result.explicitArgumentCount === info.explicitArgumentCount &&
                                     result.hiddenArgumentCount === info.hiddenArgumentCount &&
+                                    result.selectorPartCount === info.selectorPartCount &&
+                                    result.hasImagePath === (info.imagePath !== null) &&
                                     result.hasHiddenArguments === (info.hasHiddenArguments === true);
                             }
 
@@ -3072,19 +3080,27 @@ undefined;
                                 const info = result.methodInfo;
                                 if (info === null) {
                                     return result.resolvedProtocolName === null &&
+                                        result.resolvedTypeEncoding === null &&
                                         result.resolvedReturnTypeName === null &&
+                                        result.resolvedSignature === null &&
                                         result.resolvedImagePath === null &&
                                         result.argumentCount === 0 &&
                                         result.explicitArgumentCount === 0 &&
                                         result.hiddenArgumentCount === 0 &&
+                                        result.selectorPartCount === 0 &&
+                                        result.hasImagePath === false &&
                                         result.hasHiddenArguments === false;
                                 }
                                 return result.resolvedProtocolName === info.protocolName &&
+                                    result.resolvedTypeEncoding === info.typeEncoding &&
                                     result.resolvedReturnTypeName === info.returnTypeName &&
+                                    result.resolvedSignature === info.signature &&
                                     result.resolvedImagePath === info.imagePath &&
                                     result.argumentCount === info.argumentCount &&
                                     result.explicitArgumentCount === info.explicitArgumentCount &&
                                     result.hiddenArgumentCount === info.hiddenArgumentCount &&
+                                    result.selectorPartCount === info.selectorPartCount &&
+                                    result.hasImagePath === (info.imagePath !== null) &&
                                     result.hasHiddenArguments === (info.hasHiddenArguments === true);
                             }
 
