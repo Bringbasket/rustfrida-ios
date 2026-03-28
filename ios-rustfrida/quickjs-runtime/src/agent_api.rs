@@ -5064,43 +5064,157 @@ function handleSpecResult(spec) {
         const moduleName = String(spec.moduleName || '');
         const dyldInfo = Native.dyldInfo(moduleName);
         const normalized = dyldInfo === null ? null : normalizeDyldInfo(dyldInfo);
-        return { kind: 'native.dyld_info', moduleName, dyldInfo: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.dyld_info',
+            moduleName,
+            dyldInfo: normalized,
+            hasDyldInfo: normalized !== null,
+            resolved: normalized !== null,
+            commandName: normalized === null ? null : normalized.commandName,
+            totalRegionCount: normalized === null ? 0 : normalized.totalRegionCount,
+            regionCount: normalized === null ? 0 : normalized.regionCount,
+            hasRegions: normalized !== null && normalized.hasRegions === true,
+            hasRebaseInfo: normalized !== null && normalized.hasRebaseInfo === true,
+            hasBindInfo: normalized !== null && normalized.hasBindInfo === true,
+            hasWeakBindInfo: normalized !== null && normalized.hasWeakBindInfo === true,
+            hasLazyBindInfo: normalized !== null && normalized.hasLazyBindInfo === true,
+            hasExportInfo: normalized !== null && normalized.hasExportInfo === true,
+            hasAnyBindInfo: normalized !== null && normalized.hasAnyBindInfo === true,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.linkedit': {
         const moduleName = String(spec.moduleName || '');
         const linkedit = Native.linkedit(moduleName);
         const normalized = linkedit === null ? null : normalizeLinkedit(linkedit);
-        return { kind: 'native.linkedit', moduleName, linkedit: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.linkedit',
+            moduleName,
+            linkedit: normalized,
+            hasLinkedit: normalized !== null,
+            resolved: normalized !== null,
+            tableCount: normalized === null ? 0 : normalized.tableCount,
+            hasTables: normalized !== null && normalized.hasTables === true,
+            firstTableName: normalized === null ? null : normalized.firstTableName,
+            lastTableName: normalized === null ? null : normalized.lastTableName,
+            hasSymtab: normalized !== null && normalized.hasSymtab === true,
+            hasStrtab: normalized !== null && normalized.hasStrtab === true,
+            hasIndirectSymbols: normalized !== null && normalized.hasIndirectSymbols === true,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.function_starts': {
         const moduleName = String(spec.moduleName || '');
         const functionStarts = Native.functionStarts(moduleName);
         const normalized = functionStarts === null ? null : normalizeFunctionStarts(functionStarts);
-        return { kind: 'native.function_starts', moduleName, functionStarts: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.function_starts',
+            moduleName,
+            functionStarts: normalized,
+            hasFunctionStarts: normalized !== null,
+            resolved: normalized !== null,
+            startCount: normalized === null ? 0 : normalized.count,
+            hasStarts: normalized !== null && normalized.hasStarts === true,
+            gapCount: normalized === null ? 0 : normalized.gapCount,
+            hasGaps: normalized !== null && normalized.hasGaps === true,
+            firstStartOffsetHex: normalized === null ? null : normalized.firstStartOffsetHex,
+            lastStartOffsetHex: normalized === null ? null : normalized.lastStartOffsetHex,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.code_signature': {
         const moduleName = String(spec.moduleName || '');
         const codeSignature = Native.codeSignature(moduleName);
         const normalized = codeSignature === null ? null : normalizeCodeSignature(codeSignature);
-        return { kind: 'native.code_signature', moduleName, codeSignature: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.code_signature',
+            moduleName,
+            codeSignature: normalized,
+            hasCodeSignature: normalized !== null,
+            resolved: normalized !== null,
+            blobKind: normalized === null ? null : normalized.blobKind,
+            magicCategory: normalized === null ? null : normalized.magicCategory,
+            hasData: normalized !== null && normalized.hasData === true,
+            hasMagic: normalized !== null && normalized.hasMagic === true,
+            hasBlobLength: normalized !== null && normalized.hasBlobLength === true,
+            isSuperBlob: normalized !== null && normalized.isSuperBlob === true,
+            isDetachedSignature: normalized !== null && normalized.isDetachedSignature === true,
+            isBlobWrapper: normalized !== null && normalized.isBlobWrapper === true,
+            isCodeDirectory: normalized !== null && normalized.isCodeDirectory === true,
+            isEntitlements: normalized !== null && normalized.isEntitlements === true,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.data_in_code': {
         const moduleName = String(spec.moduleName || '');
         const dataInCode = Native.dataInCode(moduleName);
         const normalized = dataInCode === null ? null : normalizeDataInCode(dataInCode);
-        return { kind: 'native.data_in_code', moduleName, dataInCode: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.data_in_code',
+            moduleName,
+            dataInCode: normalized,
+            hasDataInCode: normalized !== null,
+            resolved: normalized !== null,
+            entryCount: normalized === null ? 0 : normalized.count,
+            hasEntries: normalized !== null && normalized.hasEntries === true,
+            uniqueKindCount: normalized === null ? 0 : normalized.uniqueKindCount,
+            hasDataEntries: normalized !== null && normalized.hasDataEntries === true,
+            hasJumpTables: normalized !== null && normalized.hasJumpTables === true,
+            hasUnknownKinds: normalized !== null && normalized.hasUnknownKinds === true,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.exports_trie': {
         const moduleName = String(spec.moduleName || '');
         const exportsTrie = Native.exportsTrie(moduleName);
         const normalized = exportsTrie === null ? null : normalizeExportsTrie(exportsTrie);
-        return { kind: 'native.exports_trie', moduleName, exportsTrie: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.exports_trie',
+            moduleName,
+            exportsTrie: normalized,
+            hasExportsTrie: normalized !== null,
+            resolved: normalized !== null,
+            entryCount: normalized === null ? 0 : normalized.count,
+            hasEntries: normalized !== null && normalized.hasEntries === true,
+            uniqueKindCount: normalized === null ? 0 : normalized.uniqueKindCount,
+            hasAddressEntries: normalized !== null && normalized.hasAddressEntries === true,
+            hasOffsetEntries: normalized !== null && normalized.hasOffsetEntries === true,
+            hasImportNames: normalized !== null && normalized.hasImportNames === true,
+            hasResolvers: normalized !== null && normalized.hasResolvers === true,
+            hasReexports: normalized !== null && normalized.hasReexports === true,
+            hasStubAndResolvers: normalized !== null && normalized.hasStubAndResolvers === true,
+            hasWeakDefinitions: normalized !== null && normalized.hasWeakDefinitions === true,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.chained_fixups': {
         const moduleName = String(spec.moduleName || '');
         const chainedFixups = Native.chainedFixups(moduleName);
         const normalized = chainedFixups === null ? null : normalizeChainedFixups(chainedFixups);
-        return { kind: 'native.chained_fixups', moduleName, chainedFixups: normalized, text: normalized === null ? '<null>' : normalized.text };
+        return {
+            kind: 'native.chained_fixups',
+            moduleName,
+            chainedFixups: normalized,
+            hasChainedFixups: normalized !== null,
+            resolved: normalized !== null,
+            segmentCount: normalized === null ? 0 : normalized.segmentCount,
+            hasSegments: normalized !== null && normalized.hasSegments === true,
+            segmentWithFixupsCount: normalized === null ? 0 : normalized.segmentWithFixupsCount,
+            hasSegmentsWithFixups: normalized !== null && normalized.hasSegmentsWithFixups === true,
+            pointerFormatCount: normalized === null ? 0 : normalized.pointerFormatCount,
+            hasMultiplePointerFormats: normalized !== null && normalized.hasMultiplePointerFormats === true,
+            importCount: normalized === null ? 0 : normalized.importCount,
+            hasImports: normalized !== null && normalized.hasImports === true,
+            namedImportCount: normalized === null ? 0 : normalized.namedImportCount,
+            hasNamedImports: normalized !== null && normalized.hasNamedImports === true,
+            weakImportCount: normalized === null ? 0 : normalized.weakImportCount,
+            hasWeakImports: normalized !== null && normalized.hasWeakImports === true,
+            addendImportCount: normalized === null ? 0 : normalized.addendImportCount,
+            hasAddendImports: normalized !== null && normalized.hasAddendImports === true,
+            negativeAddendImportCount: normalized === null ? 0 : normalized.negativeAddendImportCount,
+            hasNegativeAddends: normalized !== null && normalized.hasNegativeAddends === true,
+            text: normalized === null ? '<null>' : normalized.text,
+        };
     }
     case 'native.source_version': {
         const moduleName = String(spec.moduleName || '');
