@@ -2671,6 +2671,13 @@ function normalizeExportsTrieEntry(entry) {
     const hasOffset = entry.offset !== null && entry.offset !== undefined;
     const hasOther = entry.other !== null && entry.other !== undefined;
     const hasImportName = entry.importName !== null && entry.importName !== undefined;
+    const otherRole = !hasOther
+        ? 'none'
+        : entry.isReexport
+            ? 'reexport-ordinal'
+            : entry.isStubAndResolver
+                ? 'resolver-offset'
+                : 'other';
     return {
         name,
         nameLength: name.length,
@@ -2683,7 +2690,7 @@ function normalizeExportsTrieEntry(entry) {
         hasOffset,
         otherHex: entry.other === null || entry.other === undefined ? null : '0x' + BigInt(entry.other).toString(16),
         hasOther,
-        otherRole: entry.isReexport ? 'reexport-ordinal' : entry.isStubAndResolver ? 'resolver-offset' : hasOther ? 'other' : 'none',
+        otherRole,
         importName: entry.importName === null || entry.importName === undefined ? null : String(entry.importName),
         hasImportName,
         isWeakDefinition: !!entry.isWeakDefinition,
