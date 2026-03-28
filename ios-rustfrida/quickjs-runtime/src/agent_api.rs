@@ -5547,6 +5547,7 @@ function handleSpecResult(spec) {
         const versionMismatchDependencies = dependencies.filter((dependency) => dependency.versionMismatch);
         const pathKindSummaries = [];
         const kindSummaries = [];
+        const dependencyNames = [];
         for (const dependency of dependencies) {
             let pathKindSummary = pathKindSummaries.find((item) => item.pathKind === dependency.pathKind);
             if (pathKindSummary === undefined) {
@@ -5583,6 +5584,29 @@ function handleSpecResult(spec) {
             if (dependency.versionMismatch) {
                 kindSummary.versionMismatchCount += 1;
             }
+            let dependencyNameSummary = dependencyNames.find((item) => item.dependencyName === dependency.name);
+            if (dependencyNameSummary === undefined) {
+                dependencyNameSummary = {
+                    dependencyName: dependency.name,
+                    count: 0,
+                    firstPath: dependency.path,
+                    lastPath: dependency.path,
+                    firstKind: dependency.kind,
+                    lastKind: dependency.kind,
+                    timestampedCount: 0,
+                    versionMismatchCount: 0,
+                };
+                dependencyNames.push(dependencyNameSummary);
+            }
+            dependencyNameSummary.count += 1;
+            dependencyNameSummary.lastPath = dependency.path;
+            dependencyNameSummary.lastKind = dependency.kind;
+            if (dependency.hasTimestamp) {
+                dependencyNameSummary.timestampedCount += 1;
+            }
+            if (dependency.versionMismatch) {
+                dependencyNameSummary.versionMismatchCount += 1;
+            }
         }
         return {
             kind: 'native.dependencies',
@@ -5597,6 +5621,7 @@ function handleSpecResult(spec) {
             lastPath: dependencies.length === 0 ? null : dependencies[dependencies.length - 1].path,
             uniquePathKindCount: pathKindSummaries.length,
             uniqueKindCount: kindSummaries.length,
+            uniqueDependencyNameCount: dependencyNames.length,
             weakDependencyCount: weakDependencies.length,
             hasWeakDependencies: weakDependencies.length !== 0,
             reexportDependencyCount: reexportDependencies.length,
@@ -5611,6 +5636,7 @@ function handleSpecResult(spec) {
             hasVersionMismatches: versionMismatchDependencies.length !== 0,
             pathKinds: pathKindSummaries,
             kinds: kindSummaries,
+            dependencyNames,
             dependencies,
             text: dependencies.map((dependency) => dependency.text).join('\n'),
         };
@@ -6159,6 +6185,7 @@ function handleSpecResult(spec) {
         const sourceSummaries = [];
         const sourceKindSummaries = [];
         const sourcePathKindSummaries = [];
+        const importNames = [];
         const normalizedNames = [];
         for (const imp of imports) {
             let summary = sourceSummaries.find((item) => item.source === imp.source && item.sourceKind === imp.sourceKind);
@@ -6180,6 +6207,25 @@ function handleSpecResult(spec) {
             summary.lastImportName = imp.name;
             if (imp.weakImport) {
                 summary.weakImportCount += 1;
+            }
+            let importNameSummary = importNames.find((item) => item.importName === imp.name);
+            if (importNameSummary === undefined) {
+                importNameSummary = {
+                    importName: imp.name,
+                    count: 0,
+                    firstSource: imp.source,
+                    lastSource: imp.source,
+                    firstNormalizedName: imp.normalizedName,
+                    lastNormalizedName: imp.normalizedName,
+                    weakImportCount: 0,
+                };
+                importNames.push(importNameSummary);
+            }
+            importNameSummary.count += 1;
+            importNameSummary.lastSource = imp.source;
+            importNameSummary.lastNormalizedName = imp.normalizedName;
+            if (imp.weakImport) {
+                importNameSummary.weakImportCount += 1;
             }
             let sourceKindSummary = sourceKindSummaries.find((item) => item.sourceKind === imp.sourceKind);
             if (sourceKindSummary === undefined) {
@@ -6279,10 +6325,12 @@ function handleSpecResult(spec) {
             uniqueSourceCount: dylibSources.length,
             uniqueSourceKindCount: sourceKindSummaries.length,
             uniqueSourcePathKindCount: sourcePathKindSummaries.length,
+            uniqueImportNameCount: importNames.length,
             uniqueNormalizedNameCount: normalizedNames.length,
             dylibSources,
             sourceKinds: sourceKindSummaries,
             sourcePathKinds: sourcePathKindSummaries,
+            importNames,
             normalizedNames,
             imports,
             text: imports.map((imp) => imp.text).join('\n'),
