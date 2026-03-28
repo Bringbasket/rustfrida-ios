@@ -3294,7 +3294,71 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.vtable' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.entries.length && typeof result.hasEntries === 'boolean' && ((result.entries.length === 0 && result.hasEntries === false && result.firstMemberName === null && result.lastMemberName === null) || (result.hasEntries === true && typeof result.firstMemberName === 'string' && typeof result.lastMemberName === 'string' && typeof result.entries[0].moduleBase === 'string' && typeof result.entries[0].memberName === 'string' && typeof result.entries[0].offsetHex === 'string' && typeof result.entries[0].isDispatchThunk === 'boolean')); })()")
+                    .eval(
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' });
+                            if (result.kind !== 'swift.vtable' || result.query !== 'ViewController' || result.hasQuery !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.entries.length || typeof result.hasEntries !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueTypeCount !== 'number' ||
+                                    typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueSourceKindCount !== 'number' ||
+                                    typeof result.dispatchThunkCount !== 'number' ||
+                                    typeof result.hasDispatchThunks !== 'boolean' ||
+                                    typeof result.demangledCount !== 'number' ||
+                                    typeof result.hasDemangledEntries !== 'boolean' ||
+                                    !Array.isArray(result.types) ||
+                                    !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.entries.length === 0) {
+                                return result.hasEntries === false &&
+                                    result.firstTypeName === null &&
+                                    result.lastTypeName === null &&
+                                    result.firstMemberName === null &&
+                                    result.lastMemberName === null;
+                            }
+                            const entry = result.entries[0];
+                            const typeSummary = result.types.length === 0 ? null : result.types[0];
+                            const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
+                            return result.hasEntries === true &&
+                                typeof result.firstTypeName === 'string' &&
+                                typeof result.lastTypeName === 'string' &&
+                                typeof result.firstMemberName === 'string' &&
+                                typeof result.lastMemberName === 'string' &&
+                                typeof result.firstModuleName === 'string' &&
+                                typeof result.lastModuleName === 'string' &&
+                                typeof entry.moduleBase === 'string' &&
+                                typeof entry.typeName === 'string' &&
+                                typeof entry.hasTypeName === 'boolean' &&
+                                typeof entry.memberName === 'string' &&
+                                typeof entry.hasMemberName === 'boolean' &&
+                                typeof entry.memberKey === 'string' &&
+                                typeof entry.hasName === 'boolean' &&
+                                typeof entry.hasDemangledName === 'boolean' &&
+                                typeof entry.hasSourceKind === 'boolean' &&
+                                typeof entry.offsetHex === 'string' &&
+                                typeof entry.isDispatchThunk === 'boolean' &&
+                                (typeSummary === null || (
+                                    typeof typeSummary.typeName === 'string' &&
+                                    typeof typeSummary.count === 'number' &&
+                                    typeof typeSummary.firstMemberName === 'string' &&
+                                    typeof typeSummary.lastMemberName === 'string' &&
+                                    typeof typeSummary.dispatchThunkCount === 'number'
+                                )) &&
+                                (sourceSummary === null || (
+                                    typeof sourceSummary.sourceKind === 'string' &&
+                                    typeof sourceSummary.count === 'number' &&
+                                    typeof sourceSummary.firstTypeName === 'string' &&
+                                    typeof sourceSummary.lastTypeName === 'string' &&
+                                    typeof sourceSummary.firstMemberName === 'string' &&
+                                    typeof sourceSummary.lastMemberName === 'string'
+                                ));
+                        })()"
+                    )
                     .expect("agent swift vtable result"),
                 "true"
             );
@@ -3306,7 +3370,72 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' }); return result.kind === 'swift.witness_table' && result.query === 'Renderable' && result.hasQuery === true && result.count === result.entries.length && typeof result.hasEntries === 'boolean' && ((result.entries.length === 0 && result.hasEntries === false && result.firstProtocolName === null && result.lastProtocolName === null) || (result.hasEntries === true && typeof result.firstProtocolName === 'string' && typeof result.lastProtocolName === 'string' && typeof result.entries[0].moduleBase === 'string' && typeof result.entries[0].protocolName === 'string' && typeof result.entries[0].offsetHex === 'string' && typeof result.entries[0].isAccessor === 'boolean')); })()")
+                    .eval(
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' });
+                            if (result.kind !== 'swift.witness_table' || result.query !== 'Renderable' || result.hasQuery !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.entries.length || typeof result.hasEntries !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueTypeCount !== 'number' ||
+                                    typeof result.uniqueProtocolCount !== 'number' ||
+                                    typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueSourceKindCount !== 'number' ||
+                                    typeof result.accessorCount !== 'number' ||
+                                    typeof result.hasAccessors !== 'boolean' ||
+                                    typeof result.demangledCount !== 'number' ||
+                                    typeof result.hasDemangledEntries !== 'boolean' ||
+                                    !Array.isArray(result.protocols) ||
+                                    !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.entries.length === 0) {
+                                return result.hasEntries === false &&
+                                    result.firstTypeName === null &&
+                                    result.lastTypeName === null &&
+                                    result.firstProtocolName === null &&
+                                    result.lastProtocolName === null;
+                            }
+                            const entry = result.entries[0];
+                            const protocolSummary = result.protocols.length === 0 ? null : result.protocols[0];
+                            const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
+                            return result.hasEntries === true &&
+                                typeof result.firstTypeName === 'string' &&
+                                typeof result.lastTypeName === 'string' &&
+                                typeof result.firstProtocolName === 'string' &&
+                                typeof result.lastProtocolName === 'string' &&
+                                typeof result.firstModuleName === 'string' &&
+                                typeof result.lastModuleName === 'string' &&
+                                typeof entry.moduleBase === 'string' &&
+                                typeof entry.typeName === 'string' &&
+                                typeof entry.hasTypeName === 'boolean' &&
+                                typeof entry.protocolName === 'string' &&
+                                typeof entry.hasProtocolName === 'boolean' &&
+                                typeof entry.witnessKey === 'string' &&
+                                typeof entry.hasName === 'boolean' &&
+                                typeof entry.hasDemangledName === 'boolean' &&
+                                typeof entry.hasSourceKind === 'boolean' &&
+                                typeof entry.offsetHex === 'string' &&
+                                typeof entry.isAccessor === 'boolean' &&
+                                (protocolSummary === null || (
+                                    typeof protocolSummary.protocolName === 'string' &&
+                                    typeof protocolSummary.count === 'number' &&
+                                    typeof protocolSummary.firstTypeName === 'string' &&
+                                    typeof protocolSummary.lastTypeName === 'string' &&
+                                    typeof protocolSummary.accessorCount === 'number'
+                                )) &&
+                                (sourceSummary === null || (
+                                    typeof sourceSummary.sourceKind === 'string' &&
+                                    typeof sourceSummary.count === 'number' &&
+                                    typeof sourceSummary.firstTypeName === 'string' &&
+                                    typeof sourceSummary.lastTypeName === 'string' &&
+                                    typeof sourceSummary.firstProtocolName === 'string' &&
+                                    typeof sourceSummary.lastProtocolName === 'string'
+                                ));
+                        })()"
+                    )
                     .expect("agent swift witness table result"),
                 "true"
             );

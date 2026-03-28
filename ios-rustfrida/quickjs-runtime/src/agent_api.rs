@@ -3405,14 +3405,25 @@ function normalizeSwiftConformance(conformance) {
 
 function normalizeSwiftVtableEntry(entry) {
     const offset = typeof entry.offset === 'bigint' ? entry.offset : BigInt(entry.offset || 0);
+    const typeName = String(entry.typeName || '');
+    const memberName = String(entry.memberName || '');
+    const name = String(entry.name || '');
+    const demangledName = entry.demangledName === undefined ? null : entry.demangledName;
+    const sourceKind = entry.sourceKind === undefined ? null : entry.sourceKind;
     return {
         moduleName: String(entry.moduleName || ''),
         moduleBase: entry.moduleBase ? entry.moduleBase.toString() : null,
-        typeName: String(entry.typeName || ''),
-        memberName: String(entry.memberName || ''),
-        name: String(entry.name || ''),
-        demangledName: entry.demangledName === undefined ? null : entry.demangledName,
-        sourceKind: entry.sourceKind === undefined ? null : entry.sourceKind,
+        typeName,
+        hasTypeName: typeName.length !== 0,
+        memberName,
+        hasMemberName: memberName.length !== 0,
+        memberKey: typeName.length === 0 ? memberName : typeName + '.' + memberName,
+        name,
+        hasName: name.length !== 0,
+        demangledName,
+        hasDemangledName: demangledName !== null && String(demangledName).length !== 0,
+        sourceKind,
+        hasSourceKind: sourceKind !== null && String(sourceKind).length !== 0,
         address: entry.address.toString(),
         offsetHex: '0x' + offset.toString(16),
         isDispatchThunk: !!entry.isDispatchThunk,
@@ -3422,14 +3433,25 @@ function normalizeSwiftVtableEntry(entry) {
 
 function normalizeSwiftWitnessTable(entry) {
     const offset = typeof entry.offset === 'bigint' ? entry.offset : BigInt(entry.offset || 0);
+    const typeName = String(entry.typeName || '');
+    const protocolName = String(entry.protocolName || '');
+    const name = String(entry.name || '');
+    const demangledName = entry.demangledName === undefined ? null : entry.demangledName;
+    const sourceKind = entry.sourceKind === undefined ? null : entry.sourceKind;
     return {
         moduleName: String(entry.moduleName || ''),
         moduleBase: entry.moduleBase ? entry.moduleBase.toString() : null,
-        typeName: String(entry.typeName || ''),
-        protocolName: String(entry.protocolName || ''),
-        name: String(entry.name || ''),
-        demangledName: entry.demangledName === undefined ? null : entry.demangledName,
-        sourceKind: entry.sourceKind === undefined ? null : entry.sourceKind,
+        typeName,
+        hasTypeName: typeName.length !== 0,
+        protocolName,
+        hasProtocolName: protocolName.length !== 0,
+        witnessKey: typeName.length === 0 ? protocolName : typeName + ':' + protocolName,
+        name,
+        hasName: name.length !== 0,
+        demangledName,
+        hasDemangledName: demangledName !== null && String(demangledName).length !== 0,
+        sourceKind,
+        hasSourceKind: sourceKind !== null && String(sourceKind).length !== 0,
         address: entry.address.toString(),
         offsetHex: '0x' + offset.toString(16),
         isAccessor: !!entry.isAccessor,
@@ -4866,6 +4888,54 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const entries = Swift.vtable(query, moduleName).map((entry) => normalizeSwiftVtableEntry(entry));
+        const sourceKinds = [];
+        const types = [];
+        const moduleNames = new Set();
+        const typeNames = new Set();
+        let dispatchThunkCount = 0;
+        let demangledCount = 0;
+        for (const entry of entries) {
+            moduleNames.add(entry.moduleName);
+            typeNames.add(entry.typeName);
+            if (entry.isDispatchThunk) {
+                dispatchThunkCount += 1;
+            }
+            if (entry.hasDemangledName) {
+                demangledCount += 1;
+            }
+            let typeSummary = types.find((item) => item.typeName === entry.typeName);
+            if (typeSummary === undefined) {
+                typeSummary = {
+                    typeName: entry.typeName,
+                    count: 0,
+                    firstMemberName: entry.memberName,
+                    lastMemberName: entry.memberName,
+                    dispatchThunkCount: 0,
+                };
+                types.push(typeSummary);
+            }
+            typeSummary.count += 1;
+            typeSummary.lastMemberName = entry.memberName;
+            if (entry.isDispatchThunk) {
+                typeSummary.dispatchThunkCount += 1;
+            }
+            const key = entry.sourceKind === null ? '<none>' : String(entry.sourceKind);
+            let sourceSummary = sourceKinds.find((item) => item.sourceKind === key);
+            if (sourceSummary === undefined) {
+                sourceSummary = {
+                    sourceKind: key,
+                    count: 0,
+                    firstTypeName: entry.typeName,
+                    lastTypeName: entry.typeName,
+                    firstMemberName: entry.memberName,
+                    lastMemberName: entry.memberName,
+                };
+                sourceKinds.push(sourceSummary);
+            }
+            sourceSummary.count += 1;
+            sourceSummary.lastTypeName = entry.typeName;
+            sourceSummary.lastMemberName = entry.memberName;
+        }
         return {
             kind: 'swift.vtable',
             moduleName,
@@ -4873,8 +4943,21 @@ function handleSpecResult(spec) {
             hasQuery: query.length !== 0,
             count: entries.length,
             hasEntries: entries.length !== 0,
+            firstTypeName: entries.length === 0 ? null : entries[0].typeName,
+            lastTypeName: entries.length === 0 ? null : entries[entries.length - 1].typeName,
             firstMemberName: entries.length === 0 ? null : entries[0].memberName,
             lastMemberName: entries.length === 0 ? null : entries[entries.length - 1].memberName,
+            firstModuleName: entries.length === 0 ? null : entries[0].moduleName,
+            lastModuleName: entries.length === 0 ? null : entries[entries.length - 1].moduleName,
+            uniqueTypeCount: entries.length === 0 ? 0 : typeNames.size,
+            uniqueModuleCount: entries.length === 0 ? 0 : moduleNames.size,
+            uniqueSourceKindCount: sourceKinds.length,
+            dispatchThunkCount,
+            hasDispatchThunks: dispatchThunkCount !== 0,
+            demangledCount,
+            hasDemangledEntries: demangledCount !== 0,
+            types,
+            sourceKinds,
             entries,
             text: entries.map((entry) => entry.text).join('\n'),
         };
@@ -4898,6 +4981,56 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const entries = Swift.witnessTable(query, moduleName).map((entry) => normalizeSwiftWitnessTable(entry));
+        const sourceKinds = [];
+        const protocols = [];
+        const moduleNames = new Set();
+        const typeNames = new Set();
+        const protocolNames = new Set();
+        let accessorCount = 0;
+        let demangledCount = 0;
+        for (const entry of entries) {
+            moduleNames.add(entry.moduleName);
+            typeNames.add(entry.typeName);
+            protocolNames.add(entry.protocolName);
+            if (entry.isAccessor) {
+                accessorCount += 1;
+            }
+            if (entry.hasDemangledName) {
+                demangledCount += 1;
+            }
+            let protocolSummary = protocols.find((item) => item.protocolName === entry.protocolName);
+            if (protocolSummary === undefined) {
+                protocolSummary = {
+                    protocolName: entry.protocolName,
+                    count: 0,
+                    firstTypeName: entry.typeName,
+                    lastTypeName: entry.typeName,
+                    accessorCount: 0,
+                };
+                protocols.push(protocolSummary);
+            }
+            protocolSummary.count += 1;
+            protocolSummary.lastTypeName = entry.typeName;
+            if (entry.isAccessor) {
+                protocolSummary.accessorCount += 1;
+            }
+            const key = entry.sourceKind === null ? '<none>' : String(entry.sourceKind);
+            let sourceSummary = sourceKinds.find((item) => item.sourceKind === key);
+            if (sourceSummary === undefined) {
+                sourceSummary = {
+                    sourceKind: key,
+                    count: 0,
+                    firstTypeName: entry.typeName,
+                    lastTypeName: entry.typeName,
+                    firstProtocolName: entry.protocolName,
+                    lastProtocolName: entry.protocolName,
+                };
+                sourceKinds.push(sourceSummary);
+            }
+            sourceSummary.count += 1;
+            sourceSummary.lastTypeName = entry.typeName;
+            sourceSummary.lastProtocolName = entry.protocolName;
+        }
         return {
             kind: 'swift.witness_table',
             moduleName,
@@ -4905,8 +5038,22 @@ function handleSpecResult(spec) {
             hasQuery: query.length !== 0,
             count: entries.length,
             hasEntries: entries.length !== 0,
+            firstTypeName: entries.length === 0 ? null : entries[0].typeName,
+            lastTypeName: entries.length === 0 ? null : entries[entries.length - 1].typeName,
             firstProtocolName: entries.length === 0 ? null : entries[0].protocolName,
             lastProtocolName: entries.length === 0 ? null : entries[entries.length - 1].protocolName,
+            firstModuleName: entries.length === 0 ? null : entries[0].moduleName,
+            lastModuleName: entries.length === 0 ? null : entries[entries.length - 1].moduleName,
+            uniqueTypeCount: entries.length === 0 ? 0 : typeNames.size,
+            uniqueProtocolCount: entries.length === 0 ? 0 : protocolNames.size,
+            uniqueModuleCount: entries.length === 0 ? 0 : moduleNames.size,
+            uniqueSourceKindCount: sourceKinds.length,
+            accessorCount,
+            hasAccessors: accessorCount !== 0,
+            demangledCount,
+            hasDemangledEntries: demangledCount !== 0,
+            protocols,
+            sourceKinds,
             entries,
             text: entries.map((entry) => entry.text).join('\n'),
         };
