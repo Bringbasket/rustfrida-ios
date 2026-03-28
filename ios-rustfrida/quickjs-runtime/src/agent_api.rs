@@ -3208,15 +3208,27 @@ function normalizeSection(section) {
 }
 
 function normalizeLoadCommand(command) {
+    const name = String(command.name || '');
+    const detail = command.detail === undefined ? null : command.detail;
+    const cmd = BigInt(command.cmd || 0);
+    const cmdsize = Number(command.cmdsize || 0);
+    const offset = BigInt(command.offset || 0);
+    const isReqDyld = (cmd & 0x80000000n) !== 0n;
     return {
         moduleName: String(command.moduleName || ''),
         moduleBase: command.moduleBase ? command.moduleBase.toString() : null,
         index: Number(command.index || 0),
-        name: String(command.name || ''),
-        cmdHex: '0x' + BigInt(command.cmd || 0).toString(16),
-        cmdsize: Number(command.cmdsize || 0),
-        offsetHex: '0x' + BigInt(command.offset || 0).toString(16),
-        detail: command.detail === undefined ? null : command.detail,
+        name,
+        hasName: name.length !== 0,
+        cmdHex: '0x' + cmd.toString(16),
+        cmdBaseHex: '0x' + (cmd & 0x7fffffffn).toString(16),
+        isReqDyld,
+        cmdsize,
+        hasPayload: cmdsize > 8,
+        offsetHex: '0x' + offset.toString(16),
+        endOffsetHex: '0x' + (offset + BigInt(cmdsize)).toString(16),
+        detail,
+        hasDetail: detail !== null && String(detail).length !== 0,
         text: formatLoadCommand(command),
     };
 }
@@ -4172,6 +4184,45 @@ function handleSpecResult(spec) {
     case 'native.load_commands': {
         const moduleName = String(spec.moduleName || '');
         const commands = Native.loadCommands(moduleName).map((command) => normalizeLoadCommand(command));
+        const reqDyldCommands = commands.filter((command) => command.isReqDyld);
+        const detailedCommands = commands.filter((command) => command.hasDetail);
+        const largestCommand = commands.reduce((largest, command) => {
+            if (largest === null || command.cmdsize > largest.cmdsize) {
+                return command;
+            }
+            return largest;
+        }, null);
+        const smallestCommand = commands.reduce((smallest, command) => {
+            if (smallest === null || command.cmdsize < smallest.cmdsize) {
+                return command;
+            }
+            return smallest;
+        }, null);
+        const totalCommandSize = commands.reduce((sum, command) => sum + BigInt(command.cmdsize || 0), 0n);
+        const commandKinds = [];
+        for (const command of commands) {
+            let summary = commandKinds.find((item) => item.name === command.name);
+            if (summary === undefined) {
+                summary = {
+                    name: command.name,
+                    count: 0,
+                    firstIndex: command.index,
+                    lastIndex: command.index,
+                    firstOffsetHex: command.offsetHex,
+                    lastOffsetHex: command.offsetHex,
+                    hasDetail: false,
+                    reqDyldCount: 0,
+                };
+                commandKinds.push(summary);
+            }
+            summary.count += 1;
+            summary.lastIndex = command.index;
+            summary.lastOffsetHex = command.offsetHex;
+            summary.hasDetail = summary.hasDetail || command.hasDetail;
+            if (command.isReqDyld) {
+                summary.reqDyldCount += 1;
+            }
+        }
         return {
             kind: 'native.load_commands',
             moduleName,
@@ -4179,6 +4230,34 @@ function handleSpecResult(spec) {
             hasCommands: commands.length !== 0,
             firstCommandName: commands.length === 0 ? null : commands[0].name,
             lastCommandName: commands.length === 0 ? null : commands[commands.length - 1].name,
+            firstCommandIndex: commands.length === 0 ? null : commands[0].index,
+            lastCommandIndex: commands.length === 0 ? null : commands[commands.length - 1].index,
+            firstCommandOffsetHex: commands.length === 0 ? null : commands[0].offsetHex,
+            lastCommandOffsetHex: commands.length === 0 ? null : commands[commands.length - 1].offsetHex,
+            totalCommandSizeHex: '0x' + totalCommandSize.toString(16),
+            averageCommandSize: commands.length === 0 ? 0 : Number(totalCommandSize / BigInt(commands.length)),
+            largestCommandName: largestCommand === null ? null : largestCommand.name,
+            largestCommandSize: largestCommand === null ? null : largestCommand.cmdsize,
+            largestCommandIndex: largestCommand === null ? null : largestCommand.index,
+            smallestCommandName: smallestCommand === null ? null : smallestCommand.name,
+            smallestCommandSize: smallestCommand === null ? null : smallestCommand.cmdsize,
+            smallestCommandIndex: smallestCommand === null ? null : smallestCommand.index,
+            reqDyldCommandCount: reqDyldCommands.length,
+            hasReqDyldCommands: reqDyldCommands.length !== 0,
+            detailedCommandCount: detailedCommands.length,
+            hasDetailedCommands: detailedCommands.length !== 0,
+            uniqueCommandNameCount: commandKinds.length,
+            hasDuplicateCommandNames: commandKinds.some((item) => item.count > 1),
+            commandKinds: commandKinds.map((summary) => ({
+                name: summary.name,
+                count: summary.count,
+                firstIndex: summary.firstIndex,
+                lastIndex: summary.lastIndex,
+                firstOffsetHex: summary.firstOffsetHex,
+                lastOffsetHex: summary.lastOffsetHex,
+                hasDetail: summary.hasDetail,
+                reqDyldCount: summary.reqDyldCount,
+            })),
             commands,
             text: commands.map((command) => command.text).join('\n'),
         };

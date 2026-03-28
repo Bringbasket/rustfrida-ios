@@ -2665,7 +2665,69 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'native.load_commands' && result.moduleName === 'libsystem_malloc.dylib' && result.count === result.commands.length && typeof result.hasCommands === 'boolean' && ((result.commands.length === 0 && result.hasCommands === false && result.firstCommandName === null && result.lastCommandName === null) || (result.hasCommands === true && typeof result.firstCommandName === 'string' && typeof result.lastCommandName === 'string' && typeof result.commands[0].name === 'string' && typeof result.commands[0].cmdHex === 'string')); })()"
+                        r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: 'libsystem_malloc.dylib' });
+                            if (!(result.kind === 'native.load_commands'
+                                && result.moduleName === 'libsystem_malloc.dylib'
+                                && result.count === result.commands.length
+                                && typeof result.hasCommands === 'boolean'
+                                && (result.firstCommandIndex === null || typeof result.firstCommandIndex === 'number')
+                                && (result.lastCommandIndex === null || typeof result.lastCommandIndex === 'number')
+                                && (result.firstCommandOffsetHex === null || typeof result.firstCommandOffsetHex === 'string')
+                                && (result.lastCommandOffsetHex === null || typeof result.lastCommandOffsetHex === 'string')
+                                && typeof result.totalCommandSizeHex === 'string'
+                                && typeof result.averageCommandSize === 'number'
+                                && (result.largestCommandName === null || typeof result.largestCommandName === 'string')
+                                && (result.largestCommandSize === null || typeof result.largestCommandSize === 'number')
+                                && (result.largestCommandIndex === null || typeof result.largestCommandIndex === 'number')
+                                && (result.smallestCommandName === null || typeof result.smallestCommandName === 'string')
+                                && (result.smallestCommandSize === null || typeof result.smallestCommandSize === 'number')
+                                && (result.smallestCommandIndex === null || typeof result.smallestCommandIndex === 'number')
+                                && typeof result.reqDyldCommandCount === 'number'
+                                && typeof result.hasReqDyldCommands === 'boolean'
+                                && typeof result.detailedCommandCount === 'number'
+                                && typeof result.hasDetailedCommands === 'boolean'
+                                && typeof result.uniqueCommandNameCount === 'number'
+                                && typeof result.hasDuplicateCommandNames === 'boolean'
+                                && Array.isArray(result.commandKinds))) {
+                                return false;
+                            }
+                            if (result.commands.length === 0) {
+                                return result.hasCommands === false && result.firstCommandName === null && result.lastCommandName === null;
+                            }
+                            if (!(result.hasCommands === true
+                                && typeof result.firstCommandName === 'string'
+                                && typeof result.lastCommandName === 'string')) {
+                                return false;
+                            }
+                            const command = result.commands[0];
+                            if (!(typeof command.name === 'string'
+                                && typeof command.hasName === 'boolean'
+                                && typeof command.cmdHex === 'string'
+                                && typeof command.cmdBaseHex === 'string'
+                                && typeof command.isReqDyld === 'boolean'
+                                && typeof command.cmdsize === 'number'
+                                && typeof command.hasPayload === 'boolean'
+                                && typeof command.offsetHex === 'string'
+                                && typeof command.endOffsetHex === 'string'
+                                && typeof command.hasDetail === 'boolean')) {
+                                return false;
+                            }
+                            if (result.commandKinds.length !== 0) {
+                                const kind = result.commandKinds[0];
+                                if (!(typeof kind.name === 'string'
+                                    && typeof kind.count === 'number'
+                                    && typeof kind.firstIndex === 'number'
+                                    && typeof kind.lastIndex === 'number'
+                                    && typeof kind.firstOffsetHex === 'string'
+                                    && typeof kind.lastOffsetHex === 'string'
+                                    && typeof kind.hasDetail === 'boolean'
+                                    && typeof kind.reqDyldCount === 'number')) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        })()"#
                     )
                     .expect("agent native load commands result"),
                 "true"
