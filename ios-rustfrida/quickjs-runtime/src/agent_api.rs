@@ -2842,11 +2842,18 @@ function normalizeChainedFixupsPage(page) {
     const chainStarts = Array.isArray(page.chainStarts)
         ? page.chainStarts.map((value) => '0x' + BigInt(value || 0).toString(16))
         : [];
+    const hasPageStart = page.pageStart !== null && page.pageStart !== undefined;
     return {
         pageIndex: Number(page.pageIndex || 0),
         hasFixups: !!page.hasFixups,
         pageStartHex: page.pageStart === null || page.pageStart === undefined ? null : '0x' + BigInt(page.pageStart).toString(16),
+        hasPageStart,
         usesMultipleStarts: !!page.usesMultipleStarts,
+        chainStartCount: chainStarts.length,
+        hasChainStarts: chainStarts.length !== 0,
+        effectiveStartCount: chainStarts.length !== 0 ? chainStarts.length : (page.hasFixups ? 1 : 0),
+        firstChainStartHex: chainStarts.length === 0 ? null : chainStarts[0],
+        lastChainStartHex: chainStarts.length === 0 ? null : chainStarts[chainStarts.length - 1],
         chainStarts,
     };
 }
@@ -2855,6 +2862,15 @@ function normalizeChainedFixupsSegment(segment) {
     const pages = Array.isArray(segment.pages)
         ? segment.pages.map((page) => normalizeChainedFixupsPage(page))
         : [];
+    const fixupPages = pages.filter((page) => page.hasFixups);
+    const multiStartPages = pages.filter((page) => page.usesMultipleStarts);
+    const chainStartCount = pages.reduce((sum, page) => sum + Number(page.effectiveStartCount || 0), 0);
+    const largestPage = pages.reduce((largest, page) => {
+        if (largest === null || Number(page.effectiveStartCount || 0) > Number(largest.effectiveStartCount || 0)) {
+            return page;
+        }
+        return largest;
+    }, null);
     return {
         segmentIndex: Number(segment.segmentIndex || 0),
         offsetInStartsHex: '0x' + BigInt(segment.offsetInStarts || 0).toString(16),
@@ -2867,15 +2883,26 @@ function normalizeChainedFixupsSegment(segment) {
         pageCount: Number(segment.pageCount || 0),
         fixupPageCount: Number(segment.fixupPageCount || 0),
         multiPageCount: Number(segment.multiPageCount || 0),
+        hasFixupPages: fixupPages.length !== 0,
         hasPages: pages.length !== 0,
         firstPageIndex: pages.length === 0 ? null : pages[0].pageIndex,
         lastPageIndex: pages.length === 0 ? null : pages[pages.length - 1].pageIndex,
+        firstFixupPageIndex: fixupPages.length === 0 ? null : fixupPages[0].pageIndex,
+        lastFixupPageIndex: fixupPages.length === 0 ? null : fixupPages[fixupPages.length - 1].pageIndex,
+        pageWithFixupsCount: fixupPages.length,
+        pageWithoutFixupsCount: pages.length - fixupPages.length,
+        multiStartPageCount: multiStartPages.length,
+        chainStartCount,
+        largestPageIndex: largestPage === null ? null : largestPage.pageIndex,
+        largestPageStartCount: largestPage === null ? null : Number(largestPage.effectiveStartCount || 0),
         pages,
         text: formatChainedFixupsSegment(segment),
     };
 }
 
 function normalizeChainedFixupsImport(imp) {
+    const hasAddend = imp.addend !== null && imp.addend !== undefined;
+    const hasName = imp.name !== null && imp.name !== undefined;
     return {
         index: Number(imp.index || 0),
         libOrdinalRawHex: '0x' + BigInt(imp.libOrdinalRaw || 0).toString(16),
@@ -2883,9 +2910,11 @@ function normalizeChainedFixupsImport(imp) {
         weakImport: !!imp.weakImport,
         nameOffsetHex: '0x' + BigInt(imp.nameOffset || 0).toString(16),
         name: imp.name === null || imp.name === undefined ? null : String(imp.name),
-        hasName: imp.name !== null && imp.name !== undefined,
+        hasName,
+        nameLength: hasName ? String(imp.name).length : 0,
         addend: imp.addend === null || imp.addend === undefined ? null : imp.addend.toString(),
-        hasAddend: imp.addend !== null && imp.addend !== undefined,
+        hasAddend,
+        addendSign: !hasAddend ? 'none' : BigInt(imp.addend) === 0n ? 'zero' : BigInt(imp.addend) > 0n ? 'positive' : 'negative',
         text: formatChainedFixupsImport(imp),
     };
 }
@@ -2897,6 +2926,89 @@ function normalizeChainedFixups(chainedFixups) {
     const imports = Array.isArray(chainedFixups.imports)
         ? chainedFixups.imports.map((imp) => normalizeChainedFixupsImport(imp))
         : [];
+    const pointerFormatSummaries = [];
+    for (const segment of segments) {
+        let summary = pointerFormatSummaries.find((item) => item.pointerFormat === segment.pointerFormat);
+        if (summary === undefined) {
+            summary = {
+                pointerFormat: segment.pointerFormat,
+                pointerFormatName: segment.pointerFormatName,
+                count: 0,
+                segmentIndices: [],
+                totalPageCount: 0,
+                totalFixupPageCount: 0,
+            };
+            pointerFormatSummaries.push(summary);
+        }
+        summary.count += 1;
+        summary.segmentIndices.push(segment.segmentIndex);
+        summary.totalPageCount += segment.pageCount;
+        summary.totalFixupPageCount += segment.fixupPageCount;
+    }
+    const pointerFormats = pointerFormatSummaries.map((summary) => ({
+        pointerFormat: summary.pointerFormat,
+        pointerFormatName: summary.pointerFormatName,
+        count: summary.count,
+        firstSegmentIndex: summary.segmentIndices.length === 0 ? null : summary.segmentIndices[0],
+        lastSegmentIndex: summary.segmentIndices.length === 0 ? null : summary.segmentIndices[summary.segmentIndices.length - 1],
+        totalPageCount: summary.totalPageCount,
+        totalFixupPageCount: summary.totalFixupPageCount,
+    }));
+    const dominantPointerFormat = pointerFormats.reduce((dominant, summary) => {
+        if (dominant === null || summary.count > dominant.count) {
+            return summary;
+        }
+        return dominant;
+    }, null);
+    const totalPageCount = segments.reduce((sum, segment) => sum + Number(segment.pageCount || 0), 0);
+    const totalFixupPageCount = segments.reduce((sum, segment) => sum + Number(segment.fixupPageCount || 0), 0);
+    const totalMultiStartPageCount = segments.reduce((sum, segment) => sum + Number(segment.multiStartPageCount || 0), 0);
+    const totalChainStartCount = segments.reduce((sum, segment) => sum + Number(segment.chainStartCount || 0), 0);
+    const segmentsWithFixups = segments.filter((segment) => segment.hasFixupPages);
+    const largestSegment = segments.reduce((largest, segment) => {
+        if (largest === null || BigInt(segment.sizeHex) > BigInt(largest.sizeHex)) {
+            return segment;
+        }
+        return largest;
+    }, null);
+    const namedImports = imports.filter((imp) => imp.hasName);
+    const weakImports = imports.filter((imp) => imp.weakImport);
+    const addendImports = imports.filter((imp) => imp.hasAddend);
+    const negativeAddendImports = imports.filter((imp) => imp.addendSign === 'negative');
+    const libOrdinalSummaries = [];
+    for (const imp of imports) {
+        let summary = libOrdinalSummaries.find((item) => item.libOrdinal === imp.libOrdinal);
+        if (summary === undefined) {
+            summary = {
+                libOrdinal: imp.libOrdinal,
+                count: 0,
+                weakImportCount: 0,
+                namedImportCount: 0,
+                addendImportCount: 0,
+            };
+            libOrdinalSummaries.push(summary);
+        }
+        summary.count += 1;
+        if (imp.weakImport) {
+            summary.weakImportCount += 1;
+        }
+        if (imp.hasName) {
+            summary.namedImportCount += 1;
+        }
+        if (imp.hasAddend) {
+            summary.addendImportCount += 1;
+        }
+    }
+    const libOrdinals = libOrdinalSummaries.map((summary) => ({
+        libOrdinal: summary.libOrdinal,
+        count: summary.count,
+        weakImportCount: summary.weakImportCount,
+        namedImportCount: summary.namedImportCount,
+        addendImportCount: summary.addendImportCount,
+    }));
+    const startsOffset = BigInt(chainedFixups.startsOffset || 0);
+    const importsOffset = BigInt(chainedFixups.importsOffset || 0);
+    const symbolsOffset = BigInt(chainedFixups.symbolsOffset || 0);
     return {
         moduleName: String(chainedFixups.moduleName || ''),
         moduleBase: chainedFixups.moduleBase ? chainedFixups.moduleBase.toString() : null,
@@ -2905,6 +3017,7 @@ function normalizeChainedFixups(chainedFixups) {
         linkeditBase: chainedFixups.linkeditBase.toString(),
         dataAddress: chainedFixups.dataAddress.toString(),
         dataEnd: formatHexAdd(chainedFixups.dataAddress, chainedFixups.datasize),
+        hasData: BigInt(chainedFixups.datasize || 0) !== 0n,
         fixupsVersion: Number(chainedFixups.fixupsVersion || 0),
         startsOffsetHex: '0x' + BigInt(chainedFixups.startsOffset || 0).toString(16),
         startsAddress: formatHexAdd(chainedFixups.dataAddress, chainedFixups.startsOffset),
@@ -2912,6 +3025,11 @@ function normalizeChainedFixups(chainedFixups) {
         importsAddress: formatHexAdd(chainedFixups.dataAddress, chainedFixups.importsOffset),
         symbolsOffsetHex: '0x' + BigInt(chainedFixups.symbolsOffset || 0).toString(16),
         symbolsAddress: formatHexAdd(chainedFixups.dataAddress, chainedFixups.symbolsOffset),
+        startsBeforeImports: startsOffset <= importsOffset,
+        importsBeforeSymbols: importsOffset <= symbolsOffset,
+        offsetsMonotonic: startsOffset <= importsOffset && importsOffset <= symbolsOffset,
+        startsToImportsDeltaHex: '0x' + (importsOffset >= startsOffset ? importsOffset - startsOffset : startsOffset - importsOffset).toString(16),
+        importsToSymbolsDeltaHex: '0x' + (symbolsOffset >= importsOffset ? symbolsOffset - importsOffset : importsOffset - symbolsOffset).toString(16),
         importsCount: Number(chainedFixups.importsCount || 0),
         importsFormat: Number(chainedFixups.importsFormat || 0),
         importsFormatName: String(chainedFixups.importsFormatName || 'DYLD_CHAINED_IMPORT_UNKNOWN'),
@@ -2921,10 +3039,36 @@ function normalizeChainedFixups(chainedFixups) {
         hasSegments: segments.length !== 0,
         firstSegmentIndex: segments.length === 0 ? null : segments[0].segmentIndex,
         lastSegmentIndex: segments.length === 0 ? null : segments[segments.length - 1].segmentIndex,
+        totalPageCount,
+        totalFixupPageCount,
+        totalMultiStartPageCount,
+        totalChainStartCount,
+        segmentWithFixupsCount: segmentsWithFixups.length,
+        hasSegmentsWithFixups: segmentsWithFixups.length !== 0,
+        largestSegmentIndex: largestSegment === null ? null : largestSegment.segmentIndex,
+        largestSegmentSizeHex: largestSegment === null ? null : largestSegment.sizeHex,
+        pointerFormatCount: pointerFormats.length,
+        hasMultiplePointerFormats: pointerFormats.length > 1,
+        firstPointerFormatName: segments.length === 0 ? null : segments[0].pointerFormatName,
+        lastPointerFormatName: segments.length === 0 ? null : segments[segments.length - 1].pointerFormatName,
+        dominantPointerFormatName: dominantPointerFormat === null ? null : dominantPointerFormat.pointerFormatName,
+        pointerFormats,
         importCount: imports.length,
         hasImports: imports.length !== 0,
         firstImportName: imports.length === 0 ? null : imports[0].name,
         lastImportName: imports.length === 0 ? null : imports[imports.length - 1].name,
+        namedImportCount: namedImports.length,
+        hasNamedImports: namedImports.length !== 0,
+        weakImportCount: weakImports.length,
+        hasWeakImports: weakImports.length !== 0,
+        addendImportCount: addendImports.length,
+        hasAddendImports: addendImports.length !== 0,
+        negativeAddendImportCount: negativeAddendImports.length,
+        hasNegativeAddends: negativeAddendImports.length !== 0,
+        uniqueLibOrdinalCount: libOrdinals.length,
+        firstLibOrdinal: imports.length === 0 ? null : imports[0].libOrdinal,
+        lastLibOrdinal: imports.length === 0 ? null : imports[imports.length - 1].libOrdinal,
+        libOrdinals,
         segments,
         imports,
         text: formatChainedFixups(chainedFixups),

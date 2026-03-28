@@ -2753,7 +2753,125 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.chained_fixups', moduleName: main.image.name }); return result.kind === 'native.chained_fixups' && (result.chainedFixups === null || (typeof result.chainedFixups.dataoffHex === 'string' && typeof result.chainedFixups.dataEnd === 'string' && typeof result.chainedFixups.startsAddress === 'string' && typeof result.chainedFixups.importsAddress === 'string' && typeof result.chainedFixups.symbolsAddress === 'string' && typeof result.chainedFixups.segmentCount === 'number' && typeof result.chainedFixups.hasSegments === 'boolean' && (result.chainedFixups.firstSegmentIndex === null || typeof result.chainedFixups.firstSegmentIndex === 'number') && (result.chainedFixups.lastSegmentIndex === null || typeof result.chainedFixups.lastSegmentIndex === 'number') && typeof result.chainedFixups.importCount === 'number' && typeof result.chainedFixups.hasImports === 'boolean' && (result.chainedFixups.firstImportName === null || typeof result.chainedFixups.firstImportName === 'string') && (result.chainedFixups.lastImportName === null || typeof result.chainedFixups.lastImportName === 'string') && Array.isArray(result.chainedFixups.segments) && Array.isArray(result.chainedFixups.imports) && (result.chainedFixups.segments.length === 0 || (typeof result.chainedFixups.segments[0].hasPages === 'boolean' && (result.chainedFixups.segments[0].firstPageIndex === null || typeof result.chainedFixups.segments[0].firstPageIndex === 'number') && (result.chainedFixups.segments[0].lastPageIndex === null || typeof result.chainedFixups.segments[0].lastPageIndex === 'number'))) && (result.chainedFixups.imports.length === 0 || (typeof result.chainedFixups.imports[0].hasName === 'boolean' && typeof result.chainedFixups.imports[0].hasAddend === 'boolean')))); })()"
+                        r#"(function() {
+                            const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' });
+                            if (main.image === null) {
+                                return true;
+                            }
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.chained_fixups', moduleName: main.image.name });
+                            if (result.kind !== 'native.chained_fixups') {
+                                return false;
+                            }
+                            if (result.chainedFixups === null) {
+                                return true;
+                            }
+                            const fixups = result.chainedFixups;
+                            if (!(typeof fixups.dataoffHex === 'string'
+                                && typeof fixups.dataEnd === 'string'
+                                && typeof fixups.hasData === 'boolean'
+                                && typeof fixups.startsAddress === 'string'
+                                && typeof fixups.importsAddress === 'string'
+                                && typeof fixups.symbolsAddress === 'string'
+                                && typeof fixups.startsBeforeImports === 'boolean'
+                                && typeof fixups.importsBeforeSymbols === 'boolean'
+                                && typeof fixups.offsetsMonotonic === 'boolean'
+                                && typeof fixups.startsToImportsDeltaHex === 'string'
+                                && typeof fixups.importsToSymbolsDeltaHex === 'string'
+                                && typeof fixups.segmentCount === 'number'
+                                && typeof fixups.hasSegments === 'boolean'
+                                && (fixups.firstSegmentIndex === null || typeof fixups.firstSegmentIndex === 'number')
+                                && (fixups.lastSegmentIndex === null || typeof fixups.lastSegmentIndex === 'number')
+                                && typeof fixups.totalPageCount === 'number'
+                                && typeof fixups.totalFixupPageCount === 'number'
+                                && typeof fixups.totalMultiStartPageCount === 'number'
+                                && typeof fixups.totalChainStartCount === 'number'
+                                && typeof fixups.segmentWithFixupsCount === 'number'
+                                && typeof fixups.hasSegmentsWithFixups === 'boolean'
+                                && (fixups.largestSegmentIndex === null || typeof fixups.largestSegmentIndex === 'number')
+                                && (fixups.largestSegmentSizeHex === null || typeof fixups.largestSegmentSizeHex === 'string')
+                                && typeof fixups.pointerFormatCount === 'number'
+                                && typeof fixups.hasMultiplePointerFormats === 'boolean'
+                                && (fixups.firstPointerFormatName === null || typeof fixups.firstPointerFormatName === 'string')
+                                && (fixups.lastPointerFormatName === null || typeof fixups.lastPointerFormatName === 'string')
+                                && (fixups.dominantPointerFormatName === null || typeof fixups.dominantPointerFormatName === 'string')
+                                && typeof fixups.importCount === 'number'
+                                && typeof fixups.hasImports === 'boolean'
+                                && (fixups.firstImportName === null || typeof fixups.firstImportName === 'string')
+                                && (fixups.lastImportName === null || typeof fixups.lastImportName === 'string')
+                                && typeof fixups.namedImportCount === 'number'
+                                && typeof fixups.hasNamedImports === 'boolean'
+                                && typeof fixups.weakImportCount === 'number'
+                                && typeof fixups.hasWeakImports === 'boolean'
+                                && typeof fixups.addendImportCount === 'number'
+                                && typeof fixups.hasAddendImports === 'boolean'
+                                && typeof fixups.negativeAddendImportCount === 'number'
+                                && typeof fixups.hasNegativeAddends === 'boolean'
+                                && typeof fixups.uniqueLibOrdinalCount === 'number'
+                                && (fixups.firstLibOrdinal === null || typeof fixups.firstLibOrdinal === 'number')
+                                && (fixups.lastLibOrdinal === null || typeof fixups.lastLibOrdinal === 'number')
+                                && Array.isArray(fixups.pointerFormats)
+                                && Array.isArray(fixups.libOrdinals)
+                                && Array.isArray(fixups.segments)
+                                && Array.isArray(fixups.imports))) {
+                                return false;
+                            }
+                            if (fixups.segments.length !== 0) {
+                                const segment = fixups.segments[0];
+                                if (!(typeof segment.hasFixupPages === 'boolean'
+                                    && (segment.firstPageIndex === null || typeof segment.firstPageIndex === 'number')
+                                    && (segment.lastPageIndex === null || typeof segment.lastPageIndex === 'number')
+                                    && (segment.firstFixupPageIndex === null || typeof segment.firstFixupPageIndex === 'number')
+                                    && (segment.lastFixupPageIndex === null || typeof segment.lastFixupPageIndex === 'number')
+                                    && typeof segment.pageWithFixupsCount === 'number'
+                                    && typeof segment.multiStartPageCount === 'number'
+                                    && typeof segment.chainStartCount === 'number'
+                                    && (segment.largestPageIndex === null || typeof segment.largestPageIndex === 'number')
+                                    && (segment.largestPageStartCount === null || typeof segment.largestPageStartCount === 'number'))) {
+                                    return false;
+                                }
+                                if (segment.pages.length !== 0) {
+                                    const page = segment.pages[0];
+                                    if (!(typeof page.hasPageStart === 'boolean'
+                                        && typeof page.chainStartCount === 'number'
+                                        && typeof page.hasChainStarts === 'boolean'
+                                        && typeof page.effectiveStartCount === 'number'
+                                        && (page.firstChainStartHex === null || typeof page.firstChainStartHex === 'string')
+                                        && (page.lastChainStartHex === null || typeof page.lastChainStartHex === 'string'))) {
+                                        return false;
+                                    }
+                                }
+                            }
+                            if (fixups.imports.length !== 0) {
+                                const imp = fixups.imports[0];
+                                if (!(typeof imp.hasName === 'boolean'
+                                    && typeof imp.nameLength === 'number'
+                                    && typeof imp.hasAddend === 'boolean'
+                                    && typeof imp.addendSign === 'string')) {
+                                    return false;
+                                }
+                            }
+                            if (fixups.pointerFormats.length !== 0) {
+                                const format = fixups.pointerFormats[0];
+                                if (!(typeof format.count === 'number'
+                                    && (format.firstSegmentIndex === null || typeof format.firstSegmentIndex === 'number')
+                                    && (format.lastSegmentIndex === null || typeof format.lastSegmentIndex === 'number')
+                                    && typeof format.totalPageCount === 'number'
+                                    && typeof format.totalFixupPageCount === 'number')) {
+                                    return false;
+                                }
+                            }
+                            if (fixups.libOrdinals.length !== 0) {
+                                const ordinal = fixups.libOrdinals[0];
+                                if (!(typeof ordinal.libOrdinal === 'number'
+                                    && typeof ordinal.count === 'number'
+                                    && typeof ordinal.weakImportCount === 'number'
+                                    && typeof ordinal.namedImportCount === 'number'
+                                    && typeof ordinal.addendImportCount === 'number')) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        })()"#
                     )
                     .expect("agent native chained fixups result"),
                 "true"
