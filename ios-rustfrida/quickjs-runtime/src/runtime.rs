@@ -4283,6 +4283,186 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            function checkImageInfo(result) {
+                                const info = result.image;
+                                if (info === null) {
+                                    return result.resolvedDirectoryPath === null
+                                        && result.resolvedPathKind === null
+                                        && result.resolvedSlide === null
+                                        && result.resolvedSizeHex === null
+                                        && result.hasDirectoryPath === false
+                                        && result.isSystemPath === false
+                                        && result.isAppPath === false
+                                        && result.isJailbreakPath === false;
+                                }
+                                return result.resolvedDirectoryPath === info.directoryPath
+                                    && result.resolvedPathKind === info.pathKind
+                                    && result.resolvedSlide === info.slide
+                                    && result.resolvedSizeHex === info.sizeHex
+                                    && result.hasDirectoryPath === (info.hasDirectoryPath === true)
+                                    && result.isSystemPath === (info.isSystemPath === true)
+                                    && result.isAppPath === (info.isAppPath === true)
+                                    && result.isJailbreakPath === (info.isJailbreakPath === true);
+                            }
+
+                            function checkSymbolInfo(result) {
+                                const info = result.symbolInfo;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedOffsetHex === null
+                                        && result.hasName === false
+                                        && result.hasModuleName === false;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedOffsetHex === info.offsetHex
+                                    && result.hasName === (info.hasName === true)
+                                    && result.hasModuleName === (info.hasModuleName === true);
+                            }
+
+                            function checkExportInfo(result) {
+                                const info = result.exportInfo;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedOffsetHex === null
+                                        && result.hasName === false
+                                        && result.hasModuleName === false;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedOffsetHex === info.offsetHex
+                                    && result.hasName === (info.hasName === true)
+                                    && result.hasModuleName === (info.hasModuleName === true);
+                            }
+
+                            function checkDependencyInfo(result) {
+                                const info = result.dependencyInfo;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedOrdinal === null
+                                        && result.resolvedCurrentVersion === null
+                                        && result.resolvedCompatibilityVersion === null
+                                        && result.isWeakDependency === false
+                                        && result.isReexportDependency === false
+                                        && result.isUpwardDependency === false
+                                        && result.isLoadDependency === false;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedOrdinal === info.ordinal
+                                    && result.resolvedCurrentVersion === info.currentVersion
+                                    && result.resolvedCompatibilityVersion === info.compatibilityVersion
+                                    && result.isWeakDependency === (info.isWeakDependency === true)
+                                    && result.isReexportDependency === (info.isReexportDependency === true)
+                                    && result.isUpwardDependency === (info.isUpwardDependency === true)
+                                    && result.isLoadDependency === (info.isLoadDependency === true);
+                            }
+
+                            function checkRpathInfo(result) {
+                                const info = result.rpathInfo;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.hasPath === false;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.hasPath === (info.path.length !== 0);
+                            }
+
+                            function checkImportInfo(result) {
+                                const info = result.importInfo;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedDylibOrdinal === null
+                                        && result.resolvedDylibName === null
+                                        && result.hasDylibName === false
+                                        && result.usesOrdinalOnly === false
+                                        && result.isMainExecutableImport === false
+                                        && result.isFlatLookupImport === false
+                                        && result.isSelfImport === false;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedDylibOrdinal === info.dylibOrdinal
+                                    && result.resolvedDylibName === info.dylibName
+                                    && result.hasDylibName === (info.hasDylibName === true)
+                                    && result.usesOrdinalOnly === (info.usesOrdinalOnly === true)
+                                    && result.isMainExecutableImport === (info.isMainExecutableImport === true)
+                                    && result.isFlatLookupImport === (info.isFlatLookupImport === true)
+                                    && result.isSelfImport === (info.isSelfImport === true);
+                            }
+
+                            function checkSegmentInfo(result) {
+                                const info = result.segmentInfo;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedVmaddr === null
+                                        && result.resolvedVmEnd === null
+                                        && result.resolvedFileoffHex === null
+                                        && result.resolvedFilesizeHex === null
+                                        && result.resolvedInitprotFlags === null
+                                        && result.resolvedMaxprotFlags === null;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedVmaddr === info.vmaddr
+                                    && result.resolvedVmEnd === info.vmEnd
+                                    && result.resolvedFileoffHex === info.fileoffHex
+                                    && result.resolvedFilesizeHex === info.filesizeHex
+                                    && result.resolvedInitprotFlags === info.initprotFlags
+                                    && result.resolvedMaxprotFlags === info.maxprotFlags;
+                            }
+
+                            function checkSectionInfo(result) {
+                                const info = result.sectionInfo;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedAddr === null
+                                        && result.resolvedEndAddr === null
+                                        && result.resolvedOffsetHex === null
+                                        && result.resolvedAlignmentBytesHex === null
+                                        && result.resolvedSectionType === null
+                                        && result.resolvedSectionTypeName === null;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedAddr === info.addr
+                                    && result.resolvedEndAddr === info.endAddr
+                                    && result.resolvedOffsetHex === info.offsetHex
+                                    && result.resolvedAlignmentBytesHex === info.alignmentBytesHex
+                                    && result.resolvedSectionType === info.sectionType
+                                    && result.resolvedSectionTypeName === info.sectionTypeName;
+                            }
+
+                            function checkLoadCommandInfo(result) {
+                                const info = result.loadCommandInfo;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedCmdHex === null
+                                        && result.resolvedCmdBaseHex === null
+                                        && result.resolvedOffsetHex === null
+                                        && result.resolvedEndOffsetHex === null
+                                        && result.resolvedDetail === null;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedCmdHex === info.cmdHex
+                                    && result.resolvedCmdBaseHex === info.cmdBaseHex
+                                    && result.resolvedOffsetHex === info.offsetHex
+                                    && result.resolvedEndOffsetHex === info.endOffsetHex
+                                    && result.resolvedDetail === info.detail;
+                            }
+
+                            return checkImageInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image_info', moduleName: 'libsystem_malloc.dylib' }))
+                                && checkSymbolInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }))
+                                && checkExportInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }))
+                                && checkDependencyInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependency_info', moduleName: 'libsystem_malloc.dylib', pathOrName: 'libSystem.B.dylib' }))
+                                && checkRpathInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.rpath_info', moduleName: 'libsystem_malloc.dylib', path: '@loader_path' }))
+                                && checkImportInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.import_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }))
+                                && checkSegmentInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.segment_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT' }))
+                                && checkSectionInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }))
+                                && checkLoadCommandInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }));
+                        })()"#
+                    )
+                    .expect("agent native medium single result summaries"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.build_version', moduleName: main.image.name }); return result.kind === 'native.build_version' && typeof result.hasBuildVersion === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasTools === 'boolean' && typeof result.toolCount === 'number' && ((result.buildVersion === null && result.hasBuildVersion === false && result.resolved === false && result.resolvedModuleName === null && result.platform === null && result.hasTools === false && result.firstTool === null && result.lastTool === null && result.toolCount === 0 && result.text === '<null>') || (typeof result.buildVersion.platform === 'string' && typeof result.buildVersion.hasTools === 'boolean' && (result.buildVersion.firstTool === null || typeof result.buildVersion.firstTool === 'string') && (result.buildVersion.lastTool === null || typeof result.buildVersion.lastTool === 'string') && Array.isArray(result.buildVersion.tools) && result.hasBuildVersion === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.platform === 'string' && result.resolvedModuleName === result.buildVersion.moduleName && result.platform === result.buildVersion.platform && result.hasTools === (result.buildVersion.hasTools === true) && result.firstTool === result.buildVersion.firstTool && result.lastTool === result.buildVersion.lastTool && result.toolCount === result.buildVersion.tools.length && result.text === result.buildVersion.text)); })()"
                     )
                     .expect("agent native build version result"),
