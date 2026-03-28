@@ -2476,6 +2476,52 @@ function normalizeCodeSignature(codeSignature) {
     const datasize = BigInt(codeSignature.datasize || 0);
     const length = codeSignature.length === null || codeSignature.length === undefined ? null : BigInt(codeSignature.length);
     const magicName = codeSignature.magicName === undefined ? null : codeSignature.magicName;
+    const knownMagic = magicName !== null && magicName !== 'CSMAGIC_UNKNOWN';
+    const blobLengthRelation = length === null
+        ? 'missing'
+        : length === datasize
+            ? 'equal'
+            : length < datasize
+                ? 'smaller'
+                : 'larger';
+    const blobKind = magicName === null
+        ? 'none'
+        : magicName === 'CSMAGIC_BLOBWRAPPER'
+            ? 'blob-wrapper'
+            : magicName === 'CSMAGIC_EMBEDDED_SIGNATURE_OLD'
+                ? 'embedded-signature-old'
+                : magicName === 'CSMAGIC_REQUIREMENT'
+                    ? 'requirement'
+                    : magicName === 'CSMAGIC_REQUIREMENTS'
+                        ? 'requirements'
+                        : magicName === 'CSMAGIC_CODEDIRECTORY'
+                            ? 'code-directory'
+                            : magicName === 'CSMAGIC_EMBEDDED_ENTITLEMENTS'
+                                ? 'entitlements'
+                                : magicName === 'CSMAGIC_EMBEDDED_SIGNATURE'
+                                    ? 'embedded-signature'
+                                    : magicName === 'CSMAGIC_DETACHED_SIGNATURE'
+                                        ? 'detached-signature'
+                                        : magicName === 'CSMAGIC_EMBEDDED_ENTITLEMENTS_DER'
+                                            ? 'entitlements-der'
+                                            : magicName === 'CSMAGIC_EMBEDDED_LAUNCH_CONSTRAINT'
+                                                ? 'launch-constraint'
+                                                : 'unknown';
+    const magicCategory = magicName === null
+        ? 'none'
+        : magicName === 'CSMAGIC_BLOBWRAPPER'
+            ? 'wrapper'
+            : magicName === 'CSMAGIC_EMBEDDED_SIGNATURE_OLD' || magicName === 'CSMAGIC_EMBEDDED_SIGNATURE' || magicName === 'CSMAGIC_DETACHED_SIGNATURE'
+                ? 'signature'
+                : magicName === 'CSMAGIC_REQUIREMENT' || magicName === 'CSMAGIC_REQUIREMENTS'
+                    ? 'requirements'
+                    : magicName === 'CSMAGIC_CODEDIRECTORY'
+                        ? 'code-directory'
+                        : magicName === 'CSMAGIC_EMBEDDED_ENTITLEMENTS' || magicName === 'CSMAGIC_EMBEDDED_ENTITLEMENTS_DER'
+                            ? 'entitlements'
+                            : magicName === 'CSMAGIC_EMBEDDED_LAUNCH_CONSTRAINT'
+                                ? 'launch-constraint'
+                                : 'unknown';
     return {
         moduleName: String(codeSignature.moduleName || ''),
         moduleBase: codeSignature.moduleBase ? codeSignature.moduleBase.toString() : null,
@@ -2487,11 +2533,25 @@ function normalizeCodeSignature(codeSignature) {
         magicHex: codeSignature.magic === null || codeSignature.magic === undefined ? null : '0x' + BigInt(codeSignature.magic).toString(16),
         magicName,
         hasMagic: magicName !== null,
+        hasMagicName: magicName !== null,
+        knownMagic,
+        magicCategory,
+        blobKind,
         lengthHex: length === null ? null : '0x' + length.toString(16),
         count: codeSignature.count === null || codeSignature.count === undefined ? null : Number(codeSignature.count),
+        hasCount: codeSignature.count !== null && codeSignature.count !== undefined,
+        hasData: datasize !== 0n,
         hasBlobLength: length !== null,
         blobLengthMatchesDataSize: length === null ? null : length === datasize,
+        blobLengthRelation,
         isSuperBlob: magicName === 'CSMAGIC_EMBEDDED_SIGNATURE',
+        countMatchesSuperBlob: magicName === null ? null : (magicName === 'CSMAGIC_EMBEDDED_SIGNATURE' || magicName === 'CSMAGIC_DETACHED_SIGNATURE')
+            ? codeSignature.count !== null && codeSignature.count !== undefined
+            : codeSignature.count === null || codeSignature.count === undefined,
+        isDetachedSignature: magicName === 'CSMAGIC_DETACHED_SIGNATURE',
+        isBlobWrapper: magicName === 'CSMAGIC_BLOBWRAPPER',
+        isCodeDirectory: magicName === 'CSMAGIC_CODEDIRECTORY',
+        isEntitlements: magicName === 'CSMAGIC_EMBEDDED_ENTITLEMENTS' || magicName === 'CSMAGIC_EMBEDDED_ENTITLEMENTS_DER',
         text: formatCodeSignature(codeSignature),
     };
 }
