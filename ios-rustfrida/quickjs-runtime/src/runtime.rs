@@ -3093,20 +3093,40 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedClassName === null &&
                                         result.resolvedPropertyPointer === null &&
+                                        result.resolvedTypeName === null &&
+                                        result.resolvedOwnership === null &&
+                                        result.resolvedObjectClassName === null &&
+                                        result.resolvedGetterName === null &&
+                                        result.resolvedSetterName === null &&
+                                        result.resolvedIvarName === null &&
                                         result.getterName === null &&
                                         result.setterName === null &&
                                         result.ivarName === null &&
                                         result.objectProtocolCount === 0 &&
                                         result.parsedTokenCount === 0 &&
+                                        result.hasGetterName === false &&
+                                        result.hasSetterName === false &&
+                                        result.hasBackingIvar === false &&
+                                        result.hasObjectClassName === false &&
                                         result.resolvedImagePath === null;
                                 }
                                 return result.resolvedClassName === info.className &&
                                     result.resolvedPropertyPointer === info.propertyPointer &&
+                                    result.resolvedTypeName === info.typeName &&
+                                    result.resolvedOwnership === info.ownership &&
+                                    result.resolvedObjectClassName === info.objectClassName &&
+                                    result.resolvedGetterName === info.getterName &&
+                                    result.resolvedSetterName === info.setterName &&
+                                    result.resolvedIvarName === info.ivarName &&
                                     result.getterName === info.getterName &&
                                     result.setterName === info.setterName &&
                                     result.ivarName === info.ivarName &&
                                     result.objectProtocolCount === info.objectProtocolCount &&
                                     result.parsedTokenCount === info.parsedTokenCount &&
+                                    result.hasGetterName === (info.hasGetterName === true) &&
+                                    result.hasSetterName === (info.hasSetterName === true) &&
+                                    result.hasBackingIvar === (info.hasBackingIvar === true) &&
+                                    result.hasObjectClassName === (info.hasObjectClassName === true) &&
                                     result.resolvedImagePath === info.imagePath;
                             }
 
@@ -3115,19 +3135,41 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedProtocolName === null &&
                                         result.resolvedPropertyPointer === null &&
+                                        result.resolvedTypeName === null &&
+                                        result.resolvedOwnership === null &&
+                                        result.resolvedObjectClassName === null &&
+                                        result.resolvedGetterName === null &&
+                                        result.resolvedSetterName === null &&
+                                        result.resolvedIvarName === null &&
                                         result.getterName === null &&
                                         result.setterName === null &&
                                         result.ivarName === null &&
                                         result.objectProtocolCount === 0 &&
-                                        result.parsedTokenCount === 0;
+                                        result.parsedTokenCount === 0 &&
+                                        result.hasGetterName === false &&
+                                        result.hasSetterName === false &&
+                                        result.hasBackingIvar === false &&
+                                        result.hasObjectClassName === false &&
+                                        result.resolvedImagePath === null;
                                 }
                                 return result.resolvedProtocolName === info.protocolName &&
                                     result.resolvedPropertyPointer === info.propertyPointer &&
+                                    result.resolvedTypeName === info.typeName &&
+                                    result.resolvedOwnership === info.ownership &&
+                                    result.resolvedObjectClassName === info.objectClassName &&
+                                    result.resolvedGetterName === info.getterName &&
+                                    result.resolvedSetterName === info.setterName &&
+                                    result.resolvedIvarName === info.ivarName &&
                                     result.getterName === info.getterName &&
                                     result.setterName === info.setterName &&
                                     result.ivarName === info.ivarName &&
                                     result.objectProtocolCount === info.objectProtocolCount &&
-                                    result.parsedTokenCount === info.parsedTokenCount;
+                                    result.parsedTokenCount === info.parsedTokenCount &&
+                                    result.hasGetterName === (info.hasGetterName === true) &&
+                                    result.hasSetterName === (info.hasSetterName === true) &&
+                                    result.hasBackingIvar === (info.hasBackingIvar === true) &&
+                                    result.hasObjectClassName === (info.hasObjectClassName === true) &&
+                                    result.resolvedImagePath === info.imagePath;
                             }
 
                             function checkIvar(result) {
@@ -3137,9 +3179,14 @@ undefined;
                                         result.resolvedIvarPointer === null &&
                                         result.resolvedOffset === null &&
                                         result.resolvedOffsetHex === null &&
+                                        result.resolvedTypeName === null &&
+                                        result.resolvedKindName === null &&
+                                        result.resolvedObjectClassName === null &&
+                                        result.resolvedMemberName === null &&
                                         result.objectProtocolCount === 0 &&
                                         result.arrayCount === null &&
                                         result.qualifierCount === 0 &&
+                                        result.hasObjectClassName === false &&
                                         result.hasMemberName === false &&
                                         result.resolvedImagePath === null;
                                 }
@@ -3147,9 +3194,14 @@ undefined;
                                     result.resolvedIvarPointer === info.ivarPointer &&
                                     result.resolvedOffset === info.offset &&
                                     result.resolvedOffsetHex === info.offsetHex &&
+                                    result.resolvedTypeName === info.typeName &&
+                                    result.resolvedKindName === info.kind &&
+                                    result.resolvedObjectClassName === info.objectClassName &&
+                                    result.resolvedMemberName === info.memberName &&
                                     result.objectProtocolCount === info.objectProtocolCount &&
                                     result.arrayCount === info.arrayCount &&
                                     result.qualifierCount === info.qualifierCount &&
+                                    result.hasObjectClassName === (info.hasObjectClassName === true) &&
                                     result.hasMemberName === (info.hasMemberName === true) &&
                                     result.resolvedImagePath === info.imagePath;
                             }
