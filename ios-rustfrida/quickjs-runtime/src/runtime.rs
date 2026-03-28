@@ -3447,7 +3447,65 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.type_layout' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.layouts.length && typeof result.hasLayouts === 'boolean' && ((result.layouts.length === 0 && result.hasLayouts === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasLayouts === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.layouts[0].moduleBase === 'string' && Array.isArray(result.layouts[0].metadata) && typeof result.layouts[0].hasMetadata === 'boolean' && (result.layouts[0].firstMetadataName === null || typeof result.layouts[0].firstMetadataName === 'string') && (result.layouts[0].lastMetadataName === null || typeof result.layouts[0].lastMetadataName === 'string') && typeof result.layouts[0].hasVtableEntries === 'boolean' && (result.layouts[0].firstVtableMemberName === null || typeof result.layouts[0].firstVtableMemberName === 'string') && (result.layouts[0].lastVtableMemberName === null || typeof result.layouts[0].lastVtableMemberName === 'string') && typeof result.layouts[0].hasWitnessTables === 'boolean' && (result.layouts[0].firstWitnessProtocolName === null || typeof result.layouts[0].firstWitnessProtocolName === 'string') && (result.layouts[0].lastWitnessProtocolName === null || typeof result.layouts[0].lastWitnessProtocolName === 'string') && typeof result.layouts[0].vtableCount === 'number' && typeof result.layouts[0].witnessTableCount === 'number')); })()")
+                    .eval(
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout', moduleName: null, query: 'ViewController' });
+                            if (result.kind !== 'swift.type_layout' || result.query !== 'ViewController' || result.hasQuery !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.layouts.length || typeof result.hasLayouts !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.layoutsWithMetadataCount !== 'number' ||
+                                    typeof result.layoutsWithMetadataAccessorsCount !== 'number' ||
+                                    typeof result.layoutsWithNominalDescriptorsCount !== 'number' ||
+                                    typeof result.layoutsWithMetadataCachesCount !== 'number' ||
+                                    typeof result.layoutsWithAssociatedTypeDescriptorsCount !== 'number' ||
+                                    typeof result.layoutsWithVtableEntriesCount !== 'number' ||
+                                    typeof result.layoutsWithWitnessTablesCount !== 'number' ||
+                                    typeof result.metadataEntryCount !== 'number' ||
+                                    typeof result.metadataAccessorEntryCount !== 'number' ||
+                                    typeof result.nominalDescriptorEntryCount !== 'number' ||
+                                    typeof result.metadataCacheEntryCount !== 'number' ||
+                                    typeof result.associatedTypeDescriptorEntryCount !== 'number' ||
+                                    typeof result.vtableEntryCount !== 'number' ||
+                                    typeof result.witnessTableEntryCount !== 'number') {
+                                return false;
+                            }
+                            if (result.layouts.length === 0) {
+                                return result.hasLayouts === false &&
+                                    result.firstTypeName === null &&
+                                    result.lastTypeName === null;
+                            }
+                            const layout = result.layouts[0];
+                            return result.hasLayouts === true &&
+                                typeof result.firstTypeName === 'string' &&
+                                typeof result.lastTypeName === 'string' &&
+                                typeof result.firstModuleName === 'string' &&
+                                typeof result.lastModuleName === 'string' &&
+                                typeof layout.moduleBase === 'string' &&
+                                typeof layout.name === 'string' &&
+                                typeof layout.hasName === 'boolean' &&
+                                Array.isArray(layout.metadata) &&
+                                typeof layout.hasMetadata === 'boolean' &&
+                                (layout.firstMetadataName === null || typeof layout.firstMetadataName === 'string') &&
+                                (layout.lastMetadataName === null || typeof layout.lastMetadataName === 'string') &&
+                                typeof layout.hasVtableEntries === 'boolean' &&
+                                (layout.firstVtableMemberName === null || typeof layout.firstVtableMemberName === 'string') &&
+                                (layout.lastVtableMemberName === null || typeof layout.lastVtableMemberName === 'string') &&
+                                typeof layout.hasWitnessTables === 'boolean' &&
+                                (layout.firstWitnessProtocolName === null || typeof layout.firstWitnessProtocolName === 'string') &&
+                                (layout.lastWitnessProtocolName === null || typeof layout.lastWitnessProtocolName === 'string') &&
+                                typeof layout.metadataCount === 'number' &&
+                                typeof layout.metadataAccessorCount === 'number' &&
+                                typeof layout.nominalDescriptorCount === 'number' &&
+                                typeof layout.metadataCacheCount === 'number' &&
+                                typeof layout.associatedTypeDescriptorCount === 'number' &&
+                                typeof layout.vtableCount === 'number' &&
+                                typeof layout.witnessTableCount === 'number';
+                        })()"
+                    )
                     .expect("agent swift type layout result"),
                 "true"
             );

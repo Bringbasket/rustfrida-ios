@@ -3460,6 +3460,7 @@ function normalizeSwiftWitnessTable(entry) {
 }
 
 function normalizeSwiftTypeLayout(layout) {
+    const name = String(layout.name || '');
     const metadata = Array.isArray(layout.metadata)
         ? layout.metadata.map((typeInfo) => normalizeSwiftType(typeInfo))
         : [];
@@ -3485,7 +3486,8 @@ function normalizeSwiftTypeLayout(layout) {
     const normalized = {
         moduleName: String(layout.moduleName || ''),
         moduleBase: layout.moduleBase ? layout.moduleBase.toString() : null,
-        name: String(layout.name || ''),
+        name,
+        hasName: name.length !== 0,
         metadata,
         hasMetadata: metadata.length !== 0,
         firstMetadataName: metadata.length === 0 ? null : metadata[0].name,
@@ -5077,6 +5079,52 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const layouts = Swift.typeLayout(query, moduleName).map((layout) => normalizeSwiftTypeLayout(layout));
+        const moduleNames = new Set();
+        let layoutsWithMetadataCount = 0;
+        let layoutsWithMetadataAccessorsCount = 0;
+        let layoutsWithNominalDescriptorsCount = 0;
+        let layoutsWithMetadataCachesCount = 0;
+        let layoutsWithAssociatedTypeDescriptorsCount = 0;
+        let layoutsWithVtableEntriesCount = 0;
+        let layoutsWithWitnessTablesCount = 0;
+        let metadataEntryCount = 0;
+        let metadataAccessorEntryCount = 0;
+        let nominalDescriptorEntryCount = 0;
+        let metadataCacheEntryCount = 0;
+        let associatedTypeDescriptorEntryCount = 0;
+        let vtableEntryCount = 0;
+        let witnessTableEntryCount = 0;
+        for (const layout of layouts) {
+            moduleNames.add(layout.moduleName);
+            if (layout.hasMetadata) {
+                layoutsWithMetadataCount += 1;
+            }
+            if (layout.hasMetadataAccessors) {
+                layoutsWithMetadataAccessorsCount += 1;
+            }
+            if (layout.hasNominalDescriptors) {
+                layoutsWithNominalDescriptorsCount += 1;
+            }
+            if (layout.hasMetadataCaches) {
+                layoutsWithMetadataCachesCount += 1;
+            }
+            if (layout.hasAssociatedTypeDescriptors) {
+                layoutsWithAssociatedTypeDescriptorsCount += 1;
+            }
+            if (layout.hasVtableEntries) {
+                layoutsWithVtableEntriesCount += 1;
+            }
+            if (layout.hasWitnessTables) {
+                layoutsWithWitnessTablesCount += 1;
+            }
+            metadataEntryCount += layout.metadataCount;
+            metadataAccessorEntryCount += layout.metadataAccessorCount;
+            nominalDescriptorEntryCount += layout.nominalDescriptorCount;
+            metadataCacheEntryCount += layout.metadataCacheCount;
+            associatedTypeDescriptorEntryCount += layout.associatedTypeDescriptorCount;
+            vtableEntryCount += layout.vtableCount;
+            witnessTableEntryCount += layout.witnessTableCount;
+        }
         return {
             kind: 'swift.type_layout',
             moduleName,
@@ -5086,6 +5134,23 @@ function handleSpecResult(spec) {
             hasLayouts: layouts.length !== 0,
             firstTypeName: layouts.length === 0 ? null : layouts[0].name,
             lastTypeName: layouts.length === 0 ? null : layouts[layouts.length - 1].name,
+            firstModuleName: layouts.length === 0 ? null : layouts[0].moduleName,
+            lastModuleName: layouts.length === 0 ? null : layouts[layouts.length - 1].moduleName,
+            uniqueModuleCount: layouts.length === 0 ? 0 : moduleNames.size,
+            layoutsWithMetadataCount,
+            layoutsWithMetadataAccessorsCount,
+            layoutsWithNominalDescriptorsCount,
+            layoutsWithMetadataCachesCount,
+            layoutsWithAssociatedTypeDescriptorsCount,
+            layoutsWithVtableEntriesCount,
+            layoutsWithWitnessTablesCount,
+            metadataEntryCount,
+            metadataAccessorEntryCount,
+            nominalDescriptorEntryCount,
+            metadataCacheEntryCount,
+            associatedTypeDescriptorEntryCount,
+            vtableEntryCount,
+            witnessTableEntryCount,
             layouts,
             text: layouts.map((layout) => layout.text).join('\n'),
         };
