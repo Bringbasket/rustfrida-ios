@@ -123,30 +123,49 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.dependencies ")
         || command.starts_with("native.dependencyInfo ")
         || command.starts_with("native.encryptionInfo ")
+        || command.starts_with("native.findEncryptionInfo ")
         || command.starts_with("native.entryPoint ")
+        || command.starts_with("native.findEntryPoint ")
         || command.starts_with("native.dyldInfo ")
+        || command.starts_with("native.findDyldInfo ")
         || command.starts_with("native.linkedit ")
+        || command.starts_with("native.findLinkedit ")
         || command.starts_with("native.functionStarts ")
+        || command.starts_with("native.findFunctionStarts ")
         || command.starts_with("native.codeSignature ")
+        || command.starts_with("native.findCodeSignature ")
         || command.starts_with("native.dataInCode ")
+        || command.starts_with("native.findDataInCode ")
         || command.starts_with("native.exportsTrie ")
+        || command.starts_with("native.findExportsTrie ")
         || command.starts_with("native.chainedFixups ")
+        || command.starts_with("native.findChainedFixups ")
         || command.starts_with("native.sourceVersion ")
+        || command.starts_with("native.findSourceVersion ")
         || command.starts_with("native.buildVersion ")
+        || command.starts_with("native.findBuildVersion ")
         || command.starts_with("native.dylinker ")
+        || command.starts_with("native.findDylinker ")
         || command.starts_with("native.installName ")
+        || command.starts_with("native.findInstallName ")
         || command.starts_with("native.uuid ")
+        || command.starts_with("native.findUuid ")
         || command.starts_with("native.rpaths ")
+        || command.starts_with("native.findRpaths ")
         || command.starts_with("native.rpathInfo ")
         || command.starts_with("native.imports ")
+        || command.starts_with("native.findImports ")
         || command.starts_with("native.importInfo ")
         || command.starts_with("native.images ")
         || command.starts_with("native.image ")
         || command.starts_with("native.loadcmds ")
+        || command.starts_with("native.findLoadCommands ")
         || command.starts_with("native.loadCommandInfo ")
         || command.starts_with("native.sections ")
+        || command.starts_with("native.findSections ")
         || command.starts_with("native.sectionInfo ")
         || command.starts_with("native.segments ")
+        || command.starts_with("native.findSegments ")
         || command.starts_with("native.segmentInfo ")
         || command.starts_with("native.symbol ")
         || command.starts_with("native.symbols ")
@@ -625,7 +644,29 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("native.findEncryptionInfo ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.encryption_info",
+            "moduleName": module_name,
+        }));
+    }
+
     if let Some(module_name) = command.strip_prefix("native.entryPoint ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.entry_point",
+            "moduleName": module_name,
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.findEntryPoint ") {
         let module_name = module_name.trim();
         if module_name.is_empty() {
             return None;
@@ -647,7 +688,29 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("native.findDyldInfo ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.dyld_info",
+            "moduleName": module_name,
+        }));
+    }
+
     if let Some(module_name) = command.strip_prefix("native.linkedit ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.linkedit",
+            "moduleName": module_name,
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.findLinkedit ") {
         let module_name = module_name.trim();
         if module_name.is_empty() {
             return None;
@@ -669,7 +732,29 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("native.findFunctionStarts ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.function_starts",
+            "moduleName": module_name,
+        }));
+    }
+
     if let Some(module_name) = command.strip_prefix("native.codeSignature ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.code_signature",
+            "moduleName": module_name,
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.findCodeSignature ") {
         let module_name = module_name.trim();
         if module_name.is_empty() {
             return None;
@@ -691,7 +776,29 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("native.findDataInCode ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.data_in_code",
+            "moduleName": module_name,
+        }));
+    }
+
     if let Some(module_name) = command.strip_prefix("native.exportsTrie ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.exports_trie",
+            "moduleName": module_name,
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.findExportsTrie ") {
         let module_name = module_name.trim();
         if module_name.is_empty() {
             return None;
@@ -713,7 +820,29 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("native.findChainedFixups ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.chained_fixups",
+            "moduleName": module_name,
+        }));
+    }
+
     if let Some(module_name) = command.strip_prefix("native.sourceVersion ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.source_version",
+            "moduleName": module_name,
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.findSourceVersion ") {
         let module_name = module_name.trim();
         if module_name.is_empty() {
             return None;
@@ -735,7 +864,29 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("native.findBuildVersion ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.build_version",
+            "moduleName": module_name,
+        }));
+    }
+
     if let Some(module_name) = command.strip_prefix("native.dylinker ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.dylinker",
+            "moduleName": module_name,
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.findDylinker ") {
         let module_name = module_name.trim();
         if module_name.is_empty() {
             return None;
@@ -757,6 +908,17 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("native.findInstallName ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.install_name",
+            "moduleName": module_name,
+        }));
+    }
+
     if let Some(module_name) = command.strip_prefix("native.uuid ") {
         let module_name = module_name.trim();
         if module_name.is_empty() {
@@ -768,7 +930,27 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("native.findUuid ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.uuid",
+            "moduleName": module_name,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("native.rpaths ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        return Some(json!({
+            "kind": "native.rpaths",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.findRpaths ") {
         let (module_name, query) = parse_native_exports(raw)?;
         return Some(json!({
             "kind": "native.rpaths",
@@ -796,6 +978,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("native.findImports ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        return Some(json!({
+            "kind": "native.imports",
+            "moduleName": module_name,
+            "query": query,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("native.importInfo ") {
         let (module_name, query) = parse_native_exports(raw)?;
         let symbol_name = query?;
@@ -813,6 +1004,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("native.findSegments ") {
+        return Some(json!({
+            "kind": "native.segments",
+            "moduleName": module_name.trim(),
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("native.segmentInfo ") {
         let (module_name, query) = parse_native_exports(raw)?;
         let segment_name = query?;
@@ -824,6 +1022,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(module_name) = command.strip_prefix("native.sections ") {
+        return Some(json!({
+            "kind": "native.sections",
+            "moduleName": module_name.trim(),
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.findSections ") {
         return Some(json!({
             "kind": "native.sections",
             "moduleName": module_name.trim(),
@@ -848,6 +1053,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(module_name) = command.strip_prefix("native.loadcmds ") {
+        return Some(json!({
+            "kind": "native.load_commands",
+            "moduleName": module_name.trim(),
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.findLoadCommands ") {
         return Some(json!({
             "kind": "native.load_commands",
             "moduleName": module_name.trim(),
@@ -2036,6 +2248,22 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("native.findDependencies libobjc.A.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.findDyldInfo libobjc.A.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.findLinkedit libobjc.A.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.findLoadCommands libobjc.A.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.findImports libobjc.A.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(

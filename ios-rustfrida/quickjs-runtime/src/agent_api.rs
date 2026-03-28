@@ -4404,10 +4404,32 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findEncryptionInfo ')) {
+        const moduleName = trimmed.slice('native.findEncryptionInfo '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findEncryptionInfo usage: native.findEncryptionInfo <module>');
+        }
+        return {
+            kind: 'native.encryption_info',
+            moduleName,
+        };
+    }
+
     if (trimmed.startsWith('native.entryPoint ')) {
         const moduleName = trimmed.slice('native.entryPoint '.length).trim();
         if (moduleName.length === 0) {
             throw new Error('native.entryPoint usage: native.entryPoint <module>');
+        }
+        return {
+            kind: 'native.entry_point',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.findEntryPoint ')) {
+        const moduleName = trimmed.slice('native.findEntryPoint '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findEntryPoint usage: native.findEntryPoint <module>');
         }
         return {
             kind: 'native.entry_point',
@@ -4426,10 +4448,32 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findDyldInfo ')) {
+        const moduleName = trimmed.slice('native.findDyldInfo '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findDyldInfo usage: native.findDyldInfo <module>');
+        }
+        return {
+            kind: 'native.dyld_info',
+            moduleName,
+        };
+    }
+
     if (trimmed.startsWith('native.linkedit ')) {
         const moduleName = trimmed.slice('native.linkedit '.length).trim();
         if (moduleName.length === 0) {
             throw new Error('native.linkedit usage: native.linkedit <module>');
+        }
+        return {
+            kind: 'native.linkedit',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.findLinkedit ')) {
+        const moduleName = trimmed.slice('native.findLinkedit '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findLinkedit usage: native.findLinkedit <module>');
         }
         return {
             kind: 'native.linkedit',
@@ -4448,10 +4492,32 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findFunctionStarts ')) {
+        const moduleName = trimmed.slice('native.findFunctionStarts '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findFunctionStarts usage: native.findFunctionStarts <module>');
+        }
+        return {
+            kind: 'native.function_starts',
+            moduleName,
+        };
+    }
+
     if (trimmed.startsWith('native.codeSignature ')) {
         const moduleName = trimmed.slice('native.codeSignature '.length).trim();
         if (moduleName.length === 0) {
             throw new Error('native.codeSignature usage: native.codeSignature <module>');
+        }
+        return {
+            kind: 'native.code_signature',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.findCodeSignature ')) {
+        const moduleName = trimmed.slice('native.findCodeSignature '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findCodeSignature usage: native.findCodeSignature <module>');
         }
         return {
             kind: 'native.code_signature',
@@ -4470,10 +4536,32 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findDataInCode ')) {
+        const moduleName = trimmed.slice('native.findDataInCode '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findDataInCode usage: native.findDataInCode <module>');
+        }
+        return {
+            kind: 'native.data_in_code',
+            moduleName,
+        };
+    }
+
     if (trimmed.startsWith('native.exportsTrie ')) {
         const moduleName = trimmed.slice('native.exportsTrie '.length).trim();
         if (moduleName.length === 0) {
             throw new Error('native.exportsTrie usage: native.exportsTrie <module>');
+        }
+        return {
+            kind: 'native.exports_trie',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.findExportsTrie ')) {
+        const moduleName = trimmed.slice('native.findExportsTrie '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findExportsTrie usage: native.findExportsTrie <module>');
         }
         return {
             kind: 'native.exports_trie',
@@ -4492,10 +4580,32 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findChainedFixups ')) {
+        const moduleName = trimmed.slice('native.findChainedFixups '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findChainedFixups usage: native.findChainedFixups <module>');
+        }
+        return {
+            kind: 'native.chained_fixups',
+            moduleName,
+        };
+    }
+
     if (trimmed.startsWith('native.sourceVersion ')) {
         const moduleName = trimmed.slice('native.sourceVersion '.length).trim();
         if (moduleName.length === 0) {
             throw new Error('native.sourceVersion usage: native.sourceVersion <module>');
+        }
+        return {
+            kind: 'native.source_version',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.findSourceVersion ')) {
+        const moduleName = trimmed.slice('native.findSourceVersion '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findSourceVersion usage: native.findSourceVersion <module>');
         }
         return {
             kind: 'native.source_version',
@@ -4514,10 +4624,32 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findBuildVersion ')) {
+        const moduleName = trimmed.slice('native.findBuildVersion '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findBuildVersion usage: native.findBuildVersion <module>');
+        }
+        return {
+            kind: 'native.build_version',
+            moduleName,
+        };
+    }
+
     if (trimmed.startsWith('native.dylinker ')) {
         const moduleName = trimmed.slice('native.dylinker '.length).trim();
         if (moduleName.length === 0) {
             throw new Error('native.dylinker usage: native.dylinker <module>');
+        }
+        return {
+            kind: 'native.dylinker',
+            moduleName,
+        };
+    }
+
+    if (trimmed.startsWith('native.findDylinker ')) {
+        const moduleName = trimmed.slice('native.findDylinker '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findDylinker usage: native.findDylinker <module>');
         }
         return {
             kind: 'native.dylinker',
@@ -4536,6 +4668,17 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findInstallName ')) {
+        const moduleName = trimmed.slice('native.findInstallName '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findInstallName usage: native.findInstallName <module>');
+        }
+        return {
+            kind: 'native.install_name',
+            moduleName,
+        };
+    }
+
     if (trimmed.startsWith('native.uuid ')) {
         const moduleName = trimmed.slice('native.uuid '.length).trim();
         if (moduleName.length === 0) {
@@ -4547,8 +4690,28 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findUuid ')) {
+        const moduleName = trimmed.slice('native.findUuid '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findUuid usage: native.findUuid <module>');
+        }
+        return {
+            kind: 'native.uuid',
+            moduleName,
+        };
+    }
+
     if (trimmed.startsWith('native.rpaths ')) {
         const parsed = parseNativeExports(trimmed.slice('native.rpaths '.length));
+        return {
+            kind: 'native.rpaths',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.findRpaths ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.findRpaths '.length));
         return {
             kind: 'native.rpaths',
             moduleName: parsed.moduleName,
@@ -4570,6 +4733,15 @@ function legacyToSpec(command) {
 
     if (trimmed.startsWith('native.imports ')) {
         const parsed = parseNativeExports(trimmed.slice('native.imports '.length));
+        return {
+            kind: 'native.imports',
+            moduleName: parsed.moduleName,
+            query: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.findImports ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.findImports '.length));
         return {
             kind: 'native.imports',
             moduleName: parsed.moduleName,
@@ -4601,6 +4773,18 @@ function legacyToSpec(command) {
         return { kind: 'native.segments', moduleName: parsed.moduleName };
     }
 
+    if (trimmed.startsWith('native.findSegments ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.findSegments '.length));
+        if (parsed.query !== null) {
+            return {
+                kind: 'native.segment_info',
+                moduleName: parsed.moduleName,
+                segmentName: parsed.query,
+            };
+        }
+        return { kind: 'native.segments', moduleName: parsed.moduleName };
+    }
+
     if (trimmed.startsWith('native.segmentInfo ')) {
         const parsed = parseNativeExports(trimmed.slice('native.segmentInfo '.length));
         if (parsed.query === null) {
@@ -4621,6 +4805,14 @@ function legacyToSpec(command) {
         return { kind: 'native.sections', moduleName };
     }
 
+    if (trimmed.startsWith('native.findSections ')) {
+        const moduleName = trimmed.slice('native.findSections '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findSections usage: native.findSections <module>');
+        }
+        return { kind: 'native.sections', moduleName };
+    }
+
     if (trimmed.startsWith('native.sectionInfo ')) {
         const parsed = parseNativeSectionInfo(trimmed.slice('native.sectionInfo '.length));
         return {
@@ -4635,6 +4827,14 @@ function legacyToSpec(command) {
         const moduleName = trimmed.slice('native.loadcmds '.length).trim();
         if (moduleName.length === 0) {
             throw new Error('native.loadcmds usage: native.loadcmds <module>');
+        }
+        return { kind: 'native.load_commands', moduleName };
+    }
+
+    if (trimmed.startsWith('native.findLoadCommands ')) {
+        const moduleName = trimmed.slice('native.findLoadCommands '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findLoadCommands usage: native.findLoadCommands <module>');
         }
         return { kind: 'native.load_commands', moduleName };
     }

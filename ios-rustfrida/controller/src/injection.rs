@@ -3752,7 +3752,7 @@ fn print_controller_help() {
     println!("  native.segmentInfo <module> -- <segment>");
     println!("  native.symbolInfo <symbol>|native.symbolInfo <module> -- <symbol>");
     println!("  native.symbols <query>|native.symbols <module> -- <query>");
-    println!("  native.findSymbols/findExports/findDependencies ... (query aliases)");
+    println!("  native.findSymbols/findExports/findDependencies/findEncryptionInfo/findEntryPoint/findDyldInfo/findLinkedit/findFunctionStarts/findCodeSignature/findDataInCode/findExportsTrie/findChainedFixups/findSourceVersion/findBuildVersion/findDylinker/findInstallName/findUuid/findRpaths/findImports/findSegments/findSections/findLoadCommands ... (aliases)");
     println!("  native.images [filter]");
     println!("  native.mainImage");
     println!("  native.image <address>");
@@ -4046,6 +4046,34 @@ mod tests {
                 spec: json!({
                     "kind": "native.symbols",
                     "moduleName": null,
+                    "query": "malloc",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findDyldInfo DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.dyld_info",
+                    "moduleName": "DemoBinary",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findLoadCommands DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.load_commands",
+                    "moduleName": "DemoBinary",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findImports DemoBinary -- malloc"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.imports",
+                    "moduleName": "DemoBinary",
                     "query": "malloc",
                 })
             })
@@ -4533,6 +4561,9 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
         assert!(!command_requires_inline_hooks("native.findSymbols malloc"));
+        assert!(!command_requires_inline_hooks("native.findDyldInfo UIKit"));
+        assert!(!command_requires_inline_hooks("native.findLoadCommands UIKit"));
+        assert!(!command_requires_inline_hooks("native.findImports UIKit -- malloc"));
         assert!(!command_requires_inline_hooks("native.exportInfo UIKit -- malloc"));
         assert!(!command_requires_inline_hooks(
             "native.dependencyInfo UIKit -- libSystem.B.dylib"

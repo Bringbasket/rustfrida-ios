@@ -3042,6 +3042,24 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.findDyldInfo ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dyld_info', moduleName: base }); return value === result.text && (result.dyldInfo === null || typeof result.dyldInfo.commandName === 'string'); })()")
+                    .expect("agent native findDyldInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.findLoadCommands ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: base }); return value === result.text && result.count === result.commands.length; })()")
+                    .expect("agent native findLoadCommands"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.findImports libsystem_malloc.dylib -- malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: 'libsystem_malloc.dylib', query: 'malloc' }); return value === result.text && result.moduleName === 'libsystem_malloc.dylib' && result.query === 'malloc' && result.count === result.imports.length; })()")
+                    .expect("agent native findImports"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.exports libsystem_malloc.dylib -- malloc'); return value === '' || value.indexOf('malloc') !== -1; })()")
                     .expect("agent native exports by query"),
                 "true"

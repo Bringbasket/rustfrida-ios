@@ -312,7 +312,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `swift.typeMethods <module> -- <type>`
   - `swift.methods <type> <method>`
   - `swift.methods <module> -- <type> <method>`
-  - `objc.find*` / `native.find*` / `swift.find*` 这批查询别名现在也可直接走 controller CLI / REPL / `--command-json`，会映射到对应的 `objc.*` / `native.*` / `swift.*` 查询命令
+  - `objc.find*` / `native.find*` / `swift.find*` 这批只读查询/信息别名现在也可直接走 controller CLI / REPL / `--command-json`，会映射到对应的 `objc.*` / `native.*` / `swift.*` 命令
 
 说明：
 
