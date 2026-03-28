@@ -4011,6 +4011,10 @@ function legacyToSpec(command) {
         return { kind: 'objc.classes', filter: trimmed.slice('objc.classes '.length) };
     }
 
+    if (trimmed.startsWith('objc.findClasses ')) {
+        return { kind: 'objc.classes', filter: trimmed.slice('objc.findClasses '.length) };
+    }
+
     if (trimmed === 'objc.protocols') {
         return { kind: 'objc.protocols', filter: null };
     }

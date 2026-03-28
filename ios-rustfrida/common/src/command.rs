@@ -84,6 +84,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
             | "swift.protocols"
             | "swift.typeKinds"
     ) || command.starts_with("objc.classExists ")
+        || command.starts_with("objc.findClasses ")
         || command.starts_with("objc.classProtocols ")
         || command.starts_with("objc.classInfo ")
         || command.starts_with("objc.protocolInfo ")
@@ -232,6 +233,17 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "objc.classes",
             "filter": filter.trim(),
+        }));
+    }
+
+    if let Some(filter) = command.strip_prefix("objc.findClasses ") {
+        let filter = filter.trim();
+        if filter.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "objc.classes",
+            "filter": filter,
         }));
     }
 
@@ -2196,6 +2208,10 @@ mod tests {
         );
         assert!(matches!(
             AgentCommand::from_legacy("objc.methodOwners init"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findClasses NSObject"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(

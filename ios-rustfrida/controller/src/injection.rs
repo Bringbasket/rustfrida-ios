@@ -3692,6 +3692,7 @@ fn print_controller_help() {
     println!("  jsrepl");
     println!("  objc.classes");
     println!("  objc.classes [filter]");
+    println!("  objc.findClasses <query>");
     println!("  objc.protocols");
     println!("  objc.protocols [filter]");
     println!("  objc.classProtocols <class> [filter]");
@@ -4027,6 +4028,15 @@ mod tests {
             AgentCommand::from_legacy("objc.protocols"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({ "kind": "objc.protocols", "filter": null })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findClasses UIView"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.classes",
+                    "filter": "UIView",
+                })
             })
         );
         assert_eq!(
@@ -4528,6 +4538,7 @@ mod tests {
         assert!(command_requires_inline_hooks("shook Demo -- Foo bar"));
         assert!(command_requires_inline_hooks("hfl libobjc.A.dylib 0x1234"));
         assert!(!command_requires_inline_hooks("objc.classes UIView"));
+        assert!(!command_requires_inline_hooks("objc.findClasses UIView"));
         assert!(!command_requires_inline_hooks("objc.protocols NS"));
         assert!(!command_requires_inline_hooks("objc.classProtocols UIView"));
         assert!(!command_requires_inline_hooks("objc.classProtocols UIView UI"));

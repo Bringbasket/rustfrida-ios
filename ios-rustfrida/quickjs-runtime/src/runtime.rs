@@ -2012,6 +2012,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('objc.findClasses NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.classes', filter: 'NSObject' }); return value === result.text && result.filter === 'NSObject'; })()")
+                    .expect("agent objc findClasses"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('objc.protocols NS'); return value === '' || value.indexOf('NS') !== -1; })()")
                     .expect("agent objc protocols filtered"),
                 "true"
