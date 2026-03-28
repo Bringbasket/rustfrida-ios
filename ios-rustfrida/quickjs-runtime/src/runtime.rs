@@ -2407,7 +2407,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.available' }); return result.kind === 'pac.available' && result.available === PAC.available && result.resolved === true && result.text === String(PAC.available); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.available' }); return result.kind === 'pac.available' && result.available === PAC.available && result.resolved === true && result.resolvedAvailable === result.available && result.text === String(PAC.available); })()"
                     )
                     .expect("agent pac available result"),
                 "true"
@@ -2415,7 +2415,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.arm64e' }); return result.kind === 'pac.arm64e' && typeof result.arm64e === 'boolean' && result.resolved === true && result.text === String(result.arm64e); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.arm64e' }); return result.kind === 'pac.arm64e' && typeof result.arm64e === 'boolean' && result.resolved === true && result.resolvedArm64e === result.arm64e && result.text === String(result.arm64e); })()"
                     )
                     .expect("agent pac arm64e result"),
                 "true"
@@ -2423,7 +2423,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.image', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'pac.image' && result.moduleName === 'libsystem_malloc.dylib' && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && ((result.arm64e === null && result.hasImage === false && result.resolved === false && result.resolvedModuleName === null && result.text === '<null>') || (typeof result.arm64e === 'boolean' && result.hasImage === true && result.resolved === true && result.resolvedModuleName === result.moduleName && result.text === String(result.arm64e))); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.image', moduleName: 'libsystem_malloc.dylib' }); return result.kind === 'pac.image' && result.moduleName === 'libsystem_malloc.dylib' && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && ((result.arm64e === null && result.hasImage === false && result.resolved === false && result.resolvedModuleName === null && result.resolvedArm64e === null && result.text === '<null>') || (typeof result.arm64e === 'boolean' && result.hasImage === true && result.resolved === true && result.resolvedModuleName === result.moduleName && result.resolvedArm64e === result.arm64e && result.text === String(result.arm64e))); })()"
                     )
                     .expect("agent pac image result"),
                 "true"

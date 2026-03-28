@@ -6218,11 +6218,11 @@ function handleSpecResult(spec) {
     }
     case 'pac.available': {
         const available = !!PAC.available;
-        return { kind: 'pac.available', available, resolved: true, text: String(available) };
+        return { kind: 'pac.available', available, resolved: true, resolvedAvailable: available, text: String(available) };
     }
     case 'pac.arm64e': {
         const arm64e = !!PAC.isProcessArm64e();
-        return { kind: 'pac.arm64e', arm64e, resolved: true, text: String(arm64e) };
+        return { kind: 'pac.arm64e', arm64e, resolved: true, resolvedArm64e: arm64e, text: String(arm64e) };
     }
     case 'pac.image': {
         const moduleName = String(spec.moduleName || '');
@@ -6234,6 +6234,7 @@ function handleSpecResult(spec) {
             hasImage: arm64e !== null,
             resolved: arm64e !== null,
             resolvedModuleName: arm64e === null ? null : moduleName,
+            resolvedArm64e: arm64e === null ? null : !!arm64e,
             text: arm64e === null ? '<null>' : String(!!arm64e),
         };
     }

@@ -409,6 +409,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `PAC.isImageArm64e(moduleName)` / `pac.image <module>` 现在可以直接判断单个镜像是否是 `arm64e`，比只看当前进程主镜像更适合排查某个目标 dylib 是否已经进入 PAC 风险面。
 - `PAC.arm64eImages([query])` / `pac.images [filter]` 现在可以直接列出当前进程里的 `arm64e` 镜像，适合先收敛 PAC 风险面，再决定具体看哪个模块。
 - `pac.available / pac.arm64e / pac.image / pac.strip / pac.stripdata` 这组 PAC 单项查询现在也补了统一顶层状态字段，例如 `resolved / hasImage / resolvedModuleName / strippedAddress / changed`，脚本侧判定模块是否命中、以及 strip 前后地址是否变化时不必只看文本。
+- 在这之上，`pac.available / pac.arm64e / pac.image` 现在也继续补了 `resolvedAvailable / resolvedArm64e` 这类直接值字段，脚本侧做 capability / arm64e 判定时不必再在主字段和 resolved 语义之间自己对齐。
 - `pac.images` 结果现在也会额外补 `firstImagePath / lastImagePath / uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNames / pathKinds` 这类摘要，适合脚本先看当前 `arm64e` 风险面主要集中在哪类镜像路径，而不必自己再对 PAC 镜像列表做一轮聚合。
 - `quickjs-runtime` 里的 `callNative()` 现在明确沿用 canonical code pointer 路径，避免 PAC 场景下把已规范化的入口又当成 raw 指针处理。
 - Mach 注入链路现在会回读远程 bootstrap 状态；可用 `IOS_RUSTFRIDA_BOOTSTRAP_WAIT_MS` 控制轮询等待时长，设为 `0` 表示关闭等待。
