@@ -4145,6 +4145,8 @@ undefined;
                             const dyld = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dyld_info', moduleName });
                             if (dyld.dyldInfo === null) {
                                 if (!(dyld.resolvedModuleName === null
+                                    && dyld.resolvedModuleBase === null
+                                    && dyld.resolvedCommandHex === null
                                     && dyld.resolvedCommandName === null
                                     && dyld.nonEmptyRegionCount === 0
                                     && dyld.firstRegionName === null
@@ -4155,6 +4157,8 @@ undefined;
                                     return false;
                                 }
                             } else if (!(dyld.resolvedModuleName === dyld.dyldInfo.moduleName
+                                && dyld.resolvedModuleBase === dyld.dyldInfo.moduleBase
+                                && dyld.resolvedCommandHex === dyld.dyldInfo.commandHex
                                 && dyld.resolvedCommandName === dyld.dyldInfo.commandName
                                 && dyld.nonEmptyRegionCount === dyld.dyldInfo.nonEmptyRegionNames.length
                                 && dyld.firstRegionName === dyld.dyldInfo.firstRegionName
@@ -4168,14 +4172,24 @@ undefined;
                             const linkedit = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.linkedit', moduleName });
                             if (linkedit.linkedit === null) {
                                 if (!(linkedit.resolvedModuleName === null
+                                    && linkedit.resolvedModuleBase === null
                                     && linkedit.resolvedVmaddr === null
+                                    && linkedit.resolvedVmsizeHex === null
+                                    && linkedit.resolvedFileoffHex === null
+                                    && linkedit.resolvedFilesizeHex === null
                                     && linkedit.resolvedComputedBase === null
+                                    && linkedit.resolvedComputedEnd === null
                                     && linkedit.totalTableCount === 0)) {
                                     return false;
                                 }
                             } else if (!(linkedit.resolvedModuleName === linkedit.linkedit.moduleName
+                                && linkedit.resolvedModuleBase === linkedit.linkedit.moduleBase
                                 && linkedit.resolvedVmaddr === linkedit.linkedit.vmaddr
+                                && linkedit.resolvedVmsizeHex === linkedit.linkedit.vmsizeHex
+                                && linkedit.resolvedFileoffHex === linkedit.linkedit.fileoffHex
+                                && linkedit.resolvedFilesizeHex === linkedit.linkedit.filesizeHex
                                 && linkedit.resolvedComputedBase === linkedit.linkedit.computedBase
+                                && linkedit.resolvedComputedEnd === linkedit.linkedit.computedEnd
                                 && linkedit.totalTableCount === linkedit.linkedit.totalTableCount)) {
                                 return false;
                             }
@@ -4183,14 +4197,28 @@ undefined;
                             const starts = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.function_starts', moduleName });
                             if (starts.functionStarts === null) {
                                 if (!(starts.resolvedModuleName === null
+                                    && starts.resolvedModuleBase === null
+                                    && starts.resolvedDataoffHex === null
+                                    && starts.resolvedDatasizeHex === null
+                                    && starts.resolvedDataAddress === null
+                                    && starts.resolvedDataEnd === null
+                                    && starts.firstStartOffsetHex === null
                                     && starts.firstStartAddress === null
+                                    && starts.lastStartOffsetHex === null
                                     && starts.lastStartAddress === null
                                     && starts.totalSpanHex === null
                                     && starts.largestGapHex === null)) {
                                     return false;
                                 }
                             } else if (!(starts.resolvedModuleName === starts.functionStarts.moduleName
+                                && starts.resolvedModuleBase === starts.functionStarts.moduleBase
+                                && starts.resolvedDataoffHex === starts.functionStarts.dataoffHex
+                                && starts.resolvedDatasizeHex === starts.functionStarts.datasizeHex
+                                && starts.resolvedDataAddress === starts.functionStarts.dataAddress
+                                && starts.resolvedDataEnd === starts.functionStarts.dataEnd
+                                && starts.firstStartOffsetHex === starts.functionStarts.firstStartOffsetHex
                                 && starts.firstStartAddress === starts.functionStarts.firstStartAddress
+                                && starts.lastStartOffsetHex === starts.functionStarts.lastStartOffsetHex
                                 && starts.lastStartAddress === starts.functionStarts.lastStartAddress
                                 && starts.totalSpanHex === starts.functionStarts.totalSpanHex
                                 && starts.largestGapHex === starts.functionStarts.largestGapHex)) {
@@ -4200,6 +4228,11 @@ undefined;
                             const codeSignature = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.code_signature', moduleName });
                             if (codeSignature.codeSignature === null) {
                                 if (!(codeSignature.resolvedModuleName === null
+                                    && codeSignature.resolvedModuleBase === null
+                                    && codeSignature.resolvedDataoffHex === null
+                                    && codeSignature.resolvedDatasizeHex === null
+                                    && codeSignature.resolvedDataAddress === null
+                                    && codeSignature.resolvedDataEnd === null
                                     && codeSignature.resolvedMagicHex === null
                                     && codeSignature.resolvedMagicName === null
                                     && codeSignature.resolvedLengthHex === null
@@ -4209,6 +4242,11 @@ undefined;
                                     return false;
                                 }
                             } else if (!(codeSignature.resolvedModuleName === codeSignature.codeSignature.moduleName
+                                && codeSignature.resolvedModuleBase === codeSignature.codeSignature.moduleBase
+                                && codeSignature.resolvedDataoffHex === codeSignature.codeSignature.dataoffHex
+                                && codeSignature.resolvedDatasizeHex === codeSignature.codeSignature.datasizeHex
+                                && codeSignature.resolvedDataAddress === codeSignature.codeSignature.dataAddress
+                                && codeSignature.resolvedDataEnd === codeSignature.codeSignature.dataEnd
                                 && codeSignature.resolvedMagicHex === codeSignature.codeSignature.magicHex
                                 && codeSignature.resolvedMagicName === codeSignature.codeSignature.magicName
                                 && codeSignature.resolvedLengthHex === codeSignature.codeSignature.lengthHex
@@ -4221,7 +4259,14 @@ undefined;
                             const dataInCode = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.data_in_code', moduleName });
                             if (dataInCode.dataInCode === null) {
                                 if (!(dataInCode.resolvedModuleName === null
+                                    && dataInCode.resolvedModuleBase === null
+                                    && dataInCode.resolvedDataoffHex === null
+                                    && dataInCode.resolvedDatasizeHex === null
+                                    && dataInCode.resolvedDataAddress === null
+                                    && dataInCode.resolvedDataEnd === null
+                                    && dataInCode.firstEntryOffsetHex === null
                                     && dataInCode.firstKindName === null
+                                    && dataInCode.lastEntryOffsetHex === null
                                     && dataInCode.lastKindName === null
                                     && dataInCode.largestEntryOffsetHex === null
                                     && dataInCode.largestEntryLength === null
@@ -4229,7 +4274,14 @@ undefined;
                                     return false;
                                 }
                             } else if (!(dataInCode.resolvedModuleName === dataInCode.dataInCode.moduleName
+                                && dataInCode.resolvedModuleBase === dataInCode.dataInCode.moduleBase
+                                && dataInCode.resolvedDataoffHex === dataInCode.dataInCode.dataoffHex
+                                && dataInCode.resolvedDatasizeHex === dataInCode.dataInCode.datasizeHex
+                                && dataInCode.resolvedDataAddress === dataInCode.dataInCode.dataAddress
+                                && dataInCode.resolvedDataEnd === dataInCode.dataInCode.dataEnd
+                                && dataInCode.firstEntryOffsetHex === dataInCode.dataInCode.firstEntryOffsetHex
                                 && dataInCode.firstKindName === dataInCode.dataInCode.firstKindName
+                                && dataInCode.lastEntryOffsetHex === dataInCode.dataInCode.lastEntryOffsetHex
                                 && dataInCode.lastKindName === dataInCode.dataInCode.lastKindName
                                 && dataInCode.largestEntryOffsetHex === dataInCode.dataInCode.largestEntryOffsetHex
                                 && dataInCode.largestEntryLength === dataInCode.dataInCode.largestEntryLength
@@ -4240,16 +4292,30 @@ undefined;
                             const exportsTrie = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.exports_trie', moduleName });
                             if (exportsTrie.exportsTrie === null) {
                                 if (!(exportsTrie.resolvedModuleName === null
+                                    && exportsTrie.resolvedModuleBase === null
+                                    && exportsTrie.resolvedDataoffHex === null
+                                    && exportsTrie.resolvedDatasizeHex === null
+                                    && exportsTrie.resolvedDataAddress === null
+                                    && exportsTrie.resolvedDataEnd === null
                                     && exportsTrie.firstExportName === null
+                                    && exportsTrie.firstKind === null
                                     && exportsTrie.lastExportName === null
+                                    && exportsTrie.lastKind === null
                                     && exportsTrie.longestExportName === null
                                     && exportsTrie.addressSpanHex === null
                                     && exportsTrie.offsetSpanHex === null)) {
                                     return false;
                                 }
                             } else if (!(exportsTrie.resolvedModuleName === exportsTrie.exportsTrie.moduleName
+                                && exportsTrie.resolvedModuleBase === exportsTrie.exportsTrie.moduleBase
+                                && exportsTrie.resolvedDataoffHex === exportsTrie.exportsTrie.dataoffHex
+                                && exportsTrie.resolvedDatasizeHex === exportsTrie.exportsTrie.datasizeHex
+                                && exportsTrie.resolvedDataAddress === exportsTrie.exportsTrie.dataAddress
+                                && exportsTrie.resolvedDataEnd === exportsTrie.exportsTrie.dataEnd
                                 && exportsTrie.firstExportName === exportsTrie.exportsTrie.firstExportName
+                                && exportsTrie.firstKind === exportsTrie.exportsTrie.firstKind
                                 && exportsTrie.lastExportName === exportsTrie.exportsTrie.lastExportName
+                                && exportsTrie.lastKind === exportsTrie.exportsTrie.lastKind
                                 && exportsTrie.longestExportName === exportsTrie.exportsTrie.longestExportName
                                 && exportsTrie.addressSpanHex === exportsTrie.exportsTrie.addressSpanHex
                                 && exportsTrie.offsetSpanHex === exportsTrie.exportsTrie.offsetSpanHex)) {
@@ -4259,6 +4325,17 @@ undefined;
                             const fixups = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.chained_fixups', moduleName });
                             if (fixups.chainedFixups === null) {
                                 return fixups.resolvedModuleName === null
+                                    && fixups.resolvedModuleBase === null
+                                    && fixups.resolvedDataoffHex === null
+                                    && fixups.resolvedDatasizeHex === null
+                                    && fixups.resolvedDataAddress === null
+                                    && fixups.resolvedDataEnd === null
+                                    && fixups.resolvedStartsOffsetHex === null
+                                    && fixups.resolvedImportsOffsetHex === null
+                                    && fixups.resolvedSymbolsOffsetHex === null
+                                    && fixups.resolvedStartsAddress === null
+                                    && fixups.resolvedImportsAddress === null
+                                    && fixups.resolvedSymbolsAddress === null
                                     && fixups.totalPageCount === 0
                                     && fixups.totalFixupPageCount === 0
                                     && fixups.totalChainStartCount === 0
@@ -4268,6 +4345,17 @@ undefined;
                                     && fixups.uniqueLibOrdinalCount === 0;
                             }
                             return fixups.resolvedModuleName === fixups.chainedFixups.moduleName
+                                && fixups.resolvedModuleBase === fixups.chainedFixups.moduleBase
+                                && fixups.resolvedDataoffHex === fixups.chainedFixups.dataoffHex
+                                && fixups.resolvedDatasizeHex === fixups.chainedFixups.datasizeHex
+                                && fixups.resolvedDataAddress === fixups.chainedFixups.dataAddress
+                                && fixups.resolvedDataEnd === fixups.chainedFixups.dataEnd
+                                && fixups.resolvedStartsOffsetHex === fixups.chainedFixups.startsOffsetHex
+                                && fixups.resolvedImportsOffsetHex === fixups.chainedFixups.importsOffsetHex
+                                && fixups.resolvedSymbolsOffsetHex === fixups.chainedFixups.symbolsOffsetHex
+                                && fixups.resolvedStartsAddress === fixups.chainedFixups.startsAddress
+                                && fixups.resolvedImportsAddress === fixups.chainedFixups.importsAddress
+                                && fixups.resolvedSymbolsAddress === fixups.chainedFixups.symbolsAddress
                                 && fixups.totalPageCount === fixups.chainedFixups.totalPageCount
                                 && fixups.totalFixupPageCount === fixups.chainedFixups.totalFixupPageCount
                                 && fixups.totalChainStartCount === fixups.chainedFixups.totalChainStartCount
