@@ -6240,6 +6240,46 @@ function handleSpecResult(spec) {
     case 'pac.images': {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const images = PAC.arm64eImages(filter).map((image) => normalizeImage(image));
+        const imageNames = [];
+        const pathKinds = [];
+        let systemImageCount = 0;
+        let appImageCount = 0;
+        let jailbreakImageCount = 0;
+        for (const image of images) {
+            if (image.isSystemPath) {
+                systemImageCount += 1;
+            }
+            if (image.isAppPath) {
+                appImageCount += 1;
+            }
+            if (image.isJailbreakPath) {
+                jailbreakImageCount += 1;
+            }
+            let imageNameSummary = imageNames.find((item) => item.name === image.name);
+            if (imageNameSummary === undefined) {
+                imageNameSummary = {
+                    name: image.name,
+                    count: 0,
+                    firstPath: image.path,
+                    lastPath: image.path,
+                };
+                imageNames.push(imageNameSummary);
+            }
+            imageNameSummary.count += 1;
+            imageNameSummary.lastPath = image.path;
+            let pathKindSummary = pathKinds.find((item) => item.pathKind === image.pathKind);
+            if (pathKindSummary === undefined) {
+                pathKindSummary = {
+                    pathKind: image.pathKind,
+                    count: 0,
+                    firstImageName: image.name,
+                    lastImageName: image.name,
+                };
+                pathKinds.push(pathKindSummary);
+            }
+            pathKindSummary.count += 1;
+            pathKindSummary.lastImageName = image.name;
+        }
         return {
             kind: 'pac.images',
             filter,
@@ -6248,6 +6288,17 @@ function handleSpecResult(spec) {
             hasImages: images.length !== 0,
             firstImageName: images.length === 0 ? null : images[0].name,
             lastImageName: images.length === 0 ? null : images[images.length - 1].name,
+            firstImagePath: images.length === 0 ? null : images[0].path,
+            lastImagePath: images.length === 0 ? null : images[images.length - 1].path,
+            firstPathKind: images.length === 0 ? null : images[0].pathKind,
+            lastPathKind: images.length === 0 ? null : images[images.length - 1].pathKind,
+            uniqueImageCount: imageNames.length,
+            uniquePathKindCount: pathKinds.length,
+            systemImageCount,
+            appImageCount,
+            jailbreakImageCount,
+            imageNames,
+            pathKinds,
             images,
             text: images.map((image) => image.text).join('\n'),
         };
