@@ -2113,7 +2113,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.superclass NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.superclass', className: 'NSObject' }); return value === result.text && (result.superclass === null || typeof result.superclass === 'string'); })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.superclass NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.superclass', className: 'NSObject' }); return value === result.text && typeof result.classExists === 'boolean' && typeof result.resolved === 'boolean' && ((result.superclass === null && result.classExists === false && result.resolved === false && result.resolvedSuperclassName === null && result.hasSuperclass === false && result.isRootClass === false) || (result.superclass === null && result.classExists === true && result.resolved === true && result.resolvedSuperclassName === null && result.hasSuperclass === false && result.isRootClass === true) || (typeof result.superclass === 'string' && result.classExists === true && result.resolved === true && result.resolvedSuperclassName === result.superclass && result.hasSuperclass === true && result.isRootClass === false)); })()"
                     )
                     .expect("agent objc superclass"),
                 "true"
@@ -2169,7 +2169,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.classImage NSObject'); return value === '<null>' || value.indexOf('/') !== -1; })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.classImage NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_image', className: 'NSObject' }); return value === result.text && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedImagePath === null) || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedImagePath === result.imagePath)); })()"
                     )
                     .expect("agent objc classImage"),
                 "true"
@@ -2177,9 +2177,17 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodImage NSObject init'); return value === '<null>' || value.indexOf('/') !== -1; })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodImage NSObject init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_image', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return value === result.text && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedImagePath === null) || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedImagePath === result.imagePath)); })()"
                     )
                     .expect("agent objc methodImage"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodImp NSObject init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_imp', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return value === result.text && typeof result.hasImp === 'boolean' && typeof result.resolved === 'boolean' && ((result.imp === null && result.hasImp === false && result.resolved === false && result.resolvedImp === null) || (typeof result.imp === 'string' && result.hasImp === true && result.resolved === true && result.resolvedImp === result.imp)); })()"
+                    )
+                    .expect("agent objc methodImp"),
                 "true"
             );
             assert_eq!(
@@ -2192,15 +2200,19 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("__iosRustFridaAgentApi.handle('objc.selectorName 0x0')")
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.selectorName 0x0'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector_name', selector: '0x0' }); return value === result.text && result.name === null && result.hasName === false && result.resolved === false && result.resolvedName === null; })()"
+                    )
                     .expect("agent objc selectorName"),
-                "<null>"
+                "true"
             );
             assert_eq!(
                 runtime
-                    .eval("__iosRustFridaAgentApi.handle('objc.objectClassName 0x0')")
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.objectClassName 0x0'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.object_class_name', object: '0x0' }); return value === result.text && result.className === null && result.hasClassName === false && result.resolved === false && result.resolvedClassName === null; })()"
+                    )
                     .expect("agent objc objectClassName"),
-                "<null>"
+                "true"
             );
             assert_eq!(
                 runtime
@@ -2736,9 +2748,49 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.superclass', className: 'NSObject' }); return result.kind === 'objc.superclass' && result.className === 'NSObject' && typeof result.hasSuperclass === 'boolean' && typeof result.isRootClass === 'boolean' && ((result.superclass === null && result.hasSuperclass === false && result.isRootClass === true && result.text === '<null>') || (typeof result.superclass === 'string' && result.hasSuperclass === true && result.isRootClass === false && result.text === result.superclass)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.superclass', className: 'NSObject' }); return result.kind === 'objc.superclass' && result.className === 'NSObject' && typeof result.classExists === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasSuperclass === 'boolean' && typeof result.isRootClass === 'boolean' && ((result.superclass === null && result.classExists === false && result.resolved === false && result.resolvedSuperclassName === null && result.hasSuperclass === false && result.isRootClass === false && result.text === '<null>') || (result.superclass === null && result.classExists === true && result.resolved === true && result.resolvedSuperclassName === null && result.hasSuperclass === false && result.isRootClass === true && result.text === '<null>') || (typeof result.superclass === 'string' && result.classExists === true && result.resolved === true && result.resolvedSuperclassName === result.superclass && result.hasSuperclass === true && result.isRootClass === false && result.text === result.superclass)); })()"
                     )
                     .expect("agent objc superclass result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_image', className: 'NSObject' }); return result.kind === 'objc.class_image' && result.className === 'NSObject' && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedImagePath === null && result.text === '<null>') || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedImagePath === result.imagePath && result.text === result.imagePath)); })()"
+                    )
+                    .expect("agent objc classImage result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_image', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return result.kind === 'objc.method_image' && result.className === 'NSObject' && result.selectorName === 'init' && result.isClassMethod === false && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedImagePath === null && result.text === '<null>') || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedImagePath === result.imagePath && result.text === result.imagePath)); })()"
+                    )
+                    .expect("agent objc methodImage result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_imp', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return result.kind === 'objc.method_imp' && result.className === 'NSObject' && result.selectorName === 'init' && result.isClassMethod === false && typeof result.hasImp === 'boolean' && typeof result.resolved === 'boolean' && ((result.imp === null && result.hasImp === false && result.resolved === false && result.resolvedImp === null && result.text === '<null>') || (typeof result.imp === 'string' && result.hasImp === true && result.resolved === true && result.resolvedImp === result.imp && result.text === result.imp)); })()"
+                    )
+                    .expect("agent objc methodImp result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector_name', selector: '0x0' }); return result.kind === 'objc.selector_name' && result.selector === '0x0' && result.name === null && result.hasName === false && result.resolved === false && result.resolvedName === null && result.text === '<null>'; })()"
+                    )
+                    .expect("agent objc selectorName result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.object_class_name', object: '0x0' }); return result.kind === 'objc.object_class_name' && result.object === '0x0' && result.className === null && result.hasClassName === false && result.resolved === false && result.resolvedClassName === null && result.text === '<null>'; })()"
+                    )
+                    .expect("agent objc objectClassName result"),
                 "true"
             );
             assert_eq!(

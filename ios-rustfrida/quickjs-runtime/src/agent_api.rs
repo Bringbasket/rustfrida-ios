@@ -4451,14 +4451,18 @@ function handleSpecResult(spec) {
     }
     case 'objc.superclass': {
         const className = String(spec.className || '');
+        const classExists = !!ObjC.classExists(className);
         const superclass = ObjC.superclass(className);
         const normalized = superclass === null ? null : String(superclass);
         return {
             kind: 'objc.superclass',
             className,
             superclass: normalized,
+            classExists,
+            resolved: classExists,
+            resolvedSuperclassName: normalized,
             hasSuperclass: normalized !== null,
-            isRootClass: normalized === null,
+            isRootClass: classExists && normalized === null,
             text: normalized === null ? '<null>' : normalized,
         };
     }
@@ -4516,6 +4520,9 @@ function handleSpecResult(spec) {
             selectorName,
             isClassMethod,
             imp: pointer,
+            hasImp: pointer !== null,
+            resolved: pointer !== null,
+            resolvedImp: pointer,
             text: pointer === null ? '<null>' : pointer,
         };
     }
@@ -4548,11 +4555,15 @@ function handleSpecResult(spec) {
     case 'objc.class_image': {
         const className = String(spec.className || '');
         const imagePath = ObjC.classImage(className);
+        const normalized = imagePath === null ? null : String(imagePath);
         return {
             kind: 'objc.class_image',
             className,
-            imagePath: imagePath === null ? null : String(imagePath),
-            text: imagePath === null ? '<null>' : String(imagePath),
+            imagePath: normalized,
+            hasImagePath: normalized !== null,
+            resolved: normalized !== null,
+            resolvedImagePath: normalized,
+            text: normalized === null ? '<null>' : normalized,
         };
     }
     case 'objc.method_image': {
@@ -4560,33 +4571,45 @@ function handleSpecResult(spec) {
         const selectorName = String(spec.selectorName || '');
         const isClassMethod = !!spec.isClassMethod;
         const imagePath = ObjC.methodImage(className, selectorName, isClassMethod);
+        const normalized = imagePath === null ? null : String(imagePath);
         return {
             kind: 'objc.method_image',
             className,
             selectorName,
             isClassMethod,
-            imagePath: imagePath === null ? null : String(imagePath),
-            text: imagePath === null ? '<null>' : String(imagePath),
+            imagePath: normalized,
+            hasImagePath: normalized !== null,
+            resolved: normalized !== null,
+            resolvedImagePath: normalized,
+            text: normalized === null ? '<null>' : normalized,
         };
     }
     case 'objc.selector_name': {
         const selector = parseAddressArg(spec.selector, 'objc.selectorName usage: objc.selectorName <selector>');
         const name = ObjC.selectorName(selector);
+        const normalized = name === null ? null : String(name);
         return {
             kind: 'objc.selector_name',
             selector: selector.toString(),
-            name: name === null ? null : String(name),
-            text: name === null ? '<null>' : String(name),
+            name: normalized,
+            hasName: normalized !== null,
+            resolved: normalized !== null,
+            resolvedName: normalized,
+            text: normalized === null ? '<null>' : normalized,
         };
     }
     case 'objc.object_class_name': {
         const object = parseAddressArg(spec.object, 'objc.objectClassName usage: objc.objectClassName <object>');
         const className = ObjC.objectClassName(object);
+        const normalized = className === null ? null : String(className);
         return {
             kind: 'objc.object_class_name',
             object: object.toString(),
-            className: className === null ? null : String(className),
-            text: className === null ? '<null>' : String(className),
+            className: normalized,
+            hasClassName: normalized !== null,
+            resolved: normalized !== null,
+            resolvedClassName: normalized,
+            text: normalized === null ? '<null>' : normalized,
         };
     }
     case 'objc.methods': {
