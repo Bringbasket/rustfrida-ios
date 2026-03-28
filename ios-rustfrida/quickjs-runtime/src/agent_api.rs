@@ -8219,6 +8219,14 @@ function legacyToSpec(command) {
         return { kind: 'native.load_commands', moduleName };
     }
 
+    if (trimmed.startsWith('native.loadCommands ')) {
+        const moduleName = trimmed.slice('native.loadCommands '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.loadCommands usage: native.loadCommands <module>');
+        }
+        return { kind: 'native.load_commands', moduleName };
+    }
+
     if (trimmed.startsWith('native.findLoadCommands ')) {
         const moduleName = trimmed.slice('native.findLoadCommands '.length).trim();
         if (moduleName.length === 0) {

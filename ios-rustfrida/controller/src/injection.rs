@@ -3745,7 +3745,7 @@ fn print_controller_help() {
     println!("  native.rpathInfo <module> -- <path>");
     println!("  native.imports <module>|native.imports <module> -- <query>");
     println!("  native.importInfo <module> -- <symbol>");
-    println!("  native.loadcmds <module>");
+    println!("  native.loadcmds <module>|native.loadCommands <module>");
     println!("  native.loadCommandInfo <module> -- <name|cmd|index>");
     println!("  native.sections <module>");
     println!("  native.sectionInfo <module> -- <segment> <section>");
@@ -4071,6 +4071,15 @@ mod tests {
         );
         assert_eq!(
             AgentCommand::from_legacy("native.findLoadCommands DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.load_commands",
+                    "moduleName": "DemoBinary",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.loadCommands DemoBinary"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
                     "kind": "native.load_commands",
@@ -4578,6 +4587,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.findSymbols malloc"));
         assert!(!command_requires_inline_hooks("native.findDyldInfo UIKit"));
         assert!(!command_requires_inline_hooks("native.findLoadCommands UIKit"));
+        assert!(!command_requires_inline_hooks("native.loadCommands UIKit"));
         assert!(!command_requires_inline_hooks("native.findImports UIKit -- malloc"));
         assert!(!command_requires_inline_hooks("native.exportInfo UIKit -- malloc"));
         assert!(!command_requires_inline_hooks(

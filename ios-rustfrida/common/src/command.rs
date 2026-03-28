@@ -161,6 +161,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.images ")
         || command.starts_with("native.image ")
         || command.starts_with("native.loadcmds ")
+        || command.starts_with("native.loadCommands ")
         || command.starts_with("native.findLoadCommands ")
         || command.starts_with("native.loadCommandInfo ")
         || command.starts_with("native.sections ")
@@ -1067,6 +1068,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(module_name) = command.strip_prefix("native.loadcmds ") {
+        return Some(json!({
+            "kind": "native.load_commands",
+            "moduleName": module_name.trim(),
+        }));
+    }
+
+    if let Some(module_name) = command.strip_prefix("native.loadCommands ") {
         return Some(json!({
             "kind": "native.load_commands",
             "moduleName": module_name.trim(),
@@ -1982,6 +1990,10 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("native.sectionInfo DemoBinary -- __TEXT __text"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.loadCommands DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(

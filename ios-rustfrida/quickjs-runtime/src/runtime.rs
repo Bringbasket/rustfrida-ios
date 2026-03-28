@@ -5745,6 +5745,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.loadCommands ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: base }); return value === result.text && result.count === result.commands.length; })()")
+                    .expect("agent native loadCommands alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.findImports libsystem_malloc.dylib -- malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: 'libsystem_malloc.dylib', query: 'malloc' }); return value === result.text && result.moduleName === 'libsystem_malloc.dylib' && result.query === 'malloc' && result.count === result.imports.length; })()")
                     .expect("agent native findImports"),
                 "true"

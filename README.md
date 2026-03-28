@@ -232,6 +232,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `native.imports <module> -- <query>`
   - `native.importInfo <module> -- <symbol>`
   - `native.loadcmds <module>`
+  - `native.loadCommands <module>`
   - `native.loadCommandInfo <module> -- <name|cmd|index>`
   - `native.sections <module>`
   - `native.sectionInfo <module> -- <segment> <section>`
@@ -472,6 +473,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.exportInfo <module> -- <symbol>` / `Native.exportInfo(moduleName, symbolName)` 现在可以直接结构化返回单条 export entry 的 `moduleBase / name / address / offsetHex`；匹配时会兼容 `_foo` / `foo` 这类常见导出名差异，不必先全量 `native.exports` 再脚本过滤。
 - `native.imports <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；当前实现基于 Mach-O undefined symbol 表，结构化结果会带 `imports / dylibOrdinal / dylibName / weakImport`，并额外补 `normalizedName / sourceKind / isSelfImport / isMainExecutableImport / isFlatLookupImport` 这类 entry 摘要，以及 `weakImportCount / ordinalOnlyCount / mainExecutableImportCount / flatLookupImportCount / selfImportCount / uniqueDylibOrdinalCount / uniqueSourceCount / dylibSources / longestImportName*` 这类汇总字段，适合先看一个镜像依赖了哪些外部符号、主要来自哪些 dylib/source，再决定后续 trace/hook 目标。
 - `native.loadcmds <module>` 现在也会在 `--command-json` 里补更适合脚本消费的摘要：单条 command 会带 `cmdBaseHex / isReqDyld / hasPayload / endOffsetHex / hasDetail`，汇总层会补 `totalCommandSizeHex / averageCommandSize / largestCommand* / smallestCommand* / reqDyldCommandCount / detailedCommandCount / uniqueCommandNameCount / hasDuplicateCommandNames / commandKinds`，适合快速看 Mach-O load command 布局和重复命令分布，而不必再手动遍历整个数组。
+- `native.loadCommands <module>` 现在也已接到 controller CLI / REPL / `--command-json`，作为 `native.loadcmds <module>` 的别名，方便直接按 JS API 里的 `Native.loadCommands(moduleName)` 名字调用。
 - `native.segments <module>` 现在也会在 `--command-json` 里补更适合脚本消费的摘要：单条 segment 会带 `vmEnd / fileEndHex / hasFileData / isZeroFillLike / vmSizeMatchesFileSize / maxprotFlags / initprotFlags / isReadable / isWritable / isExecutable`，汇总层会补 `totalVmSizeHex / totalFileSizeHex / largestVmSegment* / largestFileSegment* / fileBackedSegmentCount / zeroFillSegmentCount / readableSegmentCount / writableSegmentCount / executableSegmentCount / uniqueProtectionCount / protections`，适合快速看 Mach-O segment 布局、权限分布和 zero-fill 段情况。
 - `native.sections <module>` 现在也会在 `--command-json` 里补更适合脚本消费的摘要：单条 section 会带 `fullName / endAddr / alignPower / alignmentBytesHex / sectionType / sectionTypeName / sectionAttributesHex / hasData / isZeroFillLike / isCStringLike / isSymbolPointers`，汇总层会补 `totalSizeHex / nonEmptySectionCount / zeroFillSectionCount / cstringSectionCount / symbolPointerSectionCount / uniqueSegmentCount / uniqueSectionTypeCount / largestSection* / segments / sectionTypes`，适合快速看 Mach-O section 布局、segment 归属和类型分布。
 - `native.importInfo <module> -- <symbol>` 现在可以直接结构化返回单个 import entry 的 `moduleBase / name / dylibOrdinal / dylibName / weakImport`，后续排查某个镜像依赖的具体外部符号时不必再先全量 `native.imports` 再脚本过滤。
