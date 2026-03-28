@@ -6099,6 +6099,7 @@ function handleSpecResult(spec) {
             return longest;
         }, null);
         const pathKindSummaries = [];
+        const rpathPaths = [];
         for (const rpath of rpaths) {
             let summary = pathKindSummaries.find((item) => item.pathKind === rpath.pathKind);
             if (summary === undefined) {
@@ -6116,6 +6117,34 @@ function handleSpecResult(spec) {
             if (rpath.isTokenPath) {
                 summary.tokenPathCount += 1;
             }
+            let rpathPathSummary = rpathPaths.find((item) => item.path === rpath.path);
+            if (rpathPathSummary === undefined) {
+                rpathPathSummary = {
+                    path: rpath.path,
+                    count: 0,
+                    firstPathKind: rpath.pathKind,
+                    lastPathKind: rpath.pathKind,
+                    tokenPathCount: 0,
+                    loaderPathCount: 0,
+                    executablePathCount: 0,
+                    rpathTokenCount: 0,
+                };
+                rpathPaths.push(rpathPathSummary);
+            }
+            rpathPathSummary.count += 1;
+            rpathPathSummary.lastPathKind = rpath.pathKind;
+            if (rpath.isTokenPath) {
+                rpathPathSummary.tokenPathCount += 1;
+            }
+            if (rpath.usesLoaderPath) {
+                rpathPathSummary.loaderPathCount += 1;
+            }
+            if (rpath.usesExecutablePath) {
+                rpathPathSummary.executablePathCount += 1;
+            }
+            if (rpath.usesRpathToken) {
+                rpathPathSummary.rpathTokenCount += 1;
+            }
         }
         return {
             kind: 'native.rpaths',
@@ -6128,6 +6157,7 @@ function handleSpecResult(spec) {
             lastRpath: rpaths.length === 0 ? null : rpaths[rpaths.length - 1].path,
             firstPathKind: rpaths.length === 0 ? null : rpaths[0].pathKind,
             lastPathKind: rpaths.length === 0 ? null : rpaths[rpaths.length - 1].pathKind,
+            uniqueRpathCount: rpathPaths.length,
             uniquePathKindCount: pathKindSummaries.length,
             tokenPathCount: tokenRpaths.length,
             hasTokenPaths: tokenRpaths.length !== 0,
@@ -6139,6 +6169,7 @@ function handleSpecResult(spec) {
             hasRpathTokens: rpathTokenRpaths.length !== 0,
             longestRpath: longestRpath === null ? null : longestRpath.path,
             longestRpathLength: longestRpath === null ? null : longestRpath.path.length,
+            rpathPaths,
             pathKinds: pathKindSummaries,
             rpaths,
             text: rpaths.map((rpath) => rpath.text).join('\n'),
