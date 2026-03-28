@@ -2323,10 +2323,55 @@ function normalizeDyldInfo(dyldInfo) {
     };
 }
 
+function normalizeLinkeditTable(name, offset, address, count, size) {
+    const hasOffset = offset !== null && offset !== undefined;
+    const hasAddress = address !== null && address !== undefined;
+    const hasCount = count !== null && count !== undefined;
+    const hasSize = size !== null && size !== undefined;
+    return {
+        name,
+        offsetHex: hasOffset ? '0x' + BigInt(offset).toString(16) : null,
+        address: hasAddress ? String(address) : null,
+        count: hasCount ? Number(count) : null,
+        sizeHex: hasSize ? '0x' + BigInt(size).toString(16) : null,
+        hasOffset,
+        hasAddress,
+        hasCount,
+        hasSize,
+        isPresent: hasOffset || hasAddress || hasCount || hasSize,
+    };
+}
+
 function normalizeLinkedit(linkedit) {
     const symoff = linkedit.symoff === null || linkedit.symoff === undefined ? null : BigInt(linkedit.symoff);
     const stroff = linkedit.stroff === null || linkedit.stroff === undefined ? null : BigInt(linkedit.stroff);
     const indirectsymoff = linkedit.indirectsymoff === null || linkedit.indirectsymoff === undefined ? null : BigInt(linkedit.indirectsymoff);
+    const tables = [
+        normalizeLinkeditTable(
+            'symtab',
+            linkedit.symoff,
+            symoff === null ? null : formatHexAdd(linkedit.computedBase, linkedit.symoff),
+            linkedit.nsyms,
+            null
+        ),
+        normalizeLinkeditTable(
+            'strtab',
+            linkedit.stroff,
+            stroff === null ? null : formatHexAdd(linkedit.computedBase, linkedit.stroff),
+            null,
+            linkedit.strsize
+        ),
+        normalizeLinkeditTable(
+            'indirectsym',
+            linkedit.indirectsymoff,
+            indirectsymoff === null ? null : formatHexAdd(linkedit.computedBase, linkedit.indirectsymoff),
+            linkedit.nindirectsyms,
+            null
+        ),
+    ];
+    const presentTables = tables.filter((table) => table.isPresent);
+    const firstTable = presentTables.length === 0 ? null : presentTables[0];
+    const lastTable = presentTables.length === 0 ? null : presentTables[presentTables.length - 1];
     return {
         moduleName: String(linkedit.moduleName || ''),
         moduleBase: linkedit.moduleBase ? linkedit.moduleBase.toString() : null,
@@ -2350,6 +2395,14 @@ function normalizeLinkedit(linkedit) {
         nindirectsyms: linkedit.nindirectsyms === null || linkedit.nindirectsyms === undefined ? null : Number(linkedit.nindirectsyms),
         hasIndirectSymbols: indirectsymoff !== null,
         indirectsymAddress: indirectsymoff === null ? null : formatHexAdd(linkedit.computedBase, indirectsymoff),
+        totalTableCount: tables.length,
+        tableCount: presentTables.length,
+        hasTables: presentTables.length !== 0,
+        tableNames: tables.map((table) => table.name),
+        nonEmptyTableNames: presentTables.map((table) => table.name),
+        firstTableName: firstTable === null ? null : firstTable.name,
+        lastTableName: lastTable === null ? null : lastTable.name,
+        tables,
         text: formatLinkedit(linkedit),
     };
 }
