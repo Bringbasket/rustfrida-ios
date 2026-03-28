@@ -4463,6 +4463,106 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' });
+                            if (main.image === null) {
+                                return true;
+                            }
+                            const moduleName = main.image.name;
+
+                            function checkEncryptionInfo(result) {
+                                const info = result.encryptionInfo;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedCryptoffHex === null
+                                        && result.resolvedCryptsizeHex === null;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedCryptoffHex === info.cryptoffHex
+                                    && result.resolvedCryptsizeHex === info.cryptsizeHex;
+                            }
+
+                            function checkEntryPoint(result) {
+                                const info = result.entryPoint;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase;
+                            }
+
+                            function checkSourceVersion(result) {
+                                const info = result.sourceVersion;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedVersion === null;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedVersion === info.version;
+                            }
+
+                            function checkBuildVersion(result) {
+                                const info = result.buildVersion;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedPlatform === null
+                                        && result.resolvedMinOs === null
+                                        && result.resolvedSdk === null;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedPlatform === info.platform
+                                    && result.resolvedMinOs === info.minOs
+                                    && result.resolvedSdk === info.sdk;
+                            }
+
+                            function checkDylinker(result) {
+                                const info = result.dylinker;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.hasName === false;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.hasName === (info.name.length !== 0);
+                            }
+
+                            function checkInstallName(result) {
+                                const info = result.installName;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedCurrentVersion === null
+                                        && result.resolvedCompatibilityVersion === null
+                                        && result.resolvedTimestamp === null;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedCurrentVersion === info.currentVersion
+                                    && result.resolvedCompatibilityVersion === info.compatibilityVersion
+                                    && result.resolvedTimestamp === info.timestamp;
+                            }
+
+                            function checkUuid(result) {
+                                const info = result.imageUuid;
+                                if (info === null) {
+                                    return result.resolvedModuleBase === null
+                                        && result.resolvedUuid === null;
+                                }
+                                return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedUuid === info.uuid;
+                            }
+
+                            return checkEncryptionInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName }))
+                                && checkEntryPoint(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.entry_point', moduleName }))
+                                && checkSourceVersion(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.source_version', moduleName }))
+                                && checkBuildVersion(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.build_version', moduleName }))
+                                && checkDylinker(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dylinker', moduleName }))
+                                && checkInstallName(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.install_name', moduleName }))
+                                && checkUuid(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.uuid', moduleName }));
+                        })()"#
+                    )
+                    .expect("agent native light single result summaries"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.build_version', moduleName: main.image.name }); return result.kind === 'native.build_version' && typeof result.hasBuildVersion === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasTools === 'boolean' && typeof result.toolCount === 'number' && ((result.buildVersion === null && result.hasBuildVersion === false && result.resolved === false && result.resolvedModuleName === null && result.platform === null && result.hasTools === false && result.firstTool === null && result.lastTool === null && result.toolCount === 0 && result.text === '<null>') || (typeof result.buildVersion.platform === 'string' && typeof result.buildVersion.hasTools === 'boolean' && (result.buildVersion.firstTool === null || typeof result.buildVersion.firstTool === 'string') && (result.buildVersion.lastTool === null || typeof result.buildVersion.lastTool === 'string') && Array.isArray(result.buildVersion.tools) && result.hasBuildVersion === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.platform === 'string' && result.resolvedModuleName === result.buildVersion.moduleName && result.platform === result.buildVersion.platform && result.hasTools === (result.buildVersion.hasTools === true) && result.firstTool === result.buildVersion.firstTool && result.lastTool === result.buildVersion.lastTool && result.toolCount === result.buildVersion.tools.length && result.text === result.buildVersion.text)); })()"
                     )
                     .expect("agent native build version result"),
