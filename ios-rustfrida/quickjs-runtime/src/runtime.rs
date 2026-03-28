@@ -2423,7 +2423,48 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocols', filter: null }); return result.kind === 'objc.protocols' && result.filter === null && result.hasFilter === false && result.count === result.protocols.length && typeof result.hasProtocols === 'boolean' && (result.firstProtocol === null || typeof result.firstProtocol === 'string') && (result.lastProtocol === null || typeof result.lastProtocol === 'string') && result.text === result.protocols.join('\\n'); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocols', filter: null });
+                            if (result.kind !== 'objc.protocols' || result.filter !== null || result.hasFilter !== false) {
+                                return false;
+                            }
+                            if (result.count !== result.protocols.length || typeof result.hasProtocols !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueImagePathCount !== 'number' ||
+                                    typeof result.protocolsWithImagePathCount !== 'number' ||
+                                    typeof result.protocolsWithAdoptedProtocolsCount !== 'number' ||
+                                    typeof result.protocolsWithRequiredMethodsCount !== 'number' ||
+                                    typeof result.protocolsWithOptionalMethodsCount !== 'number' ||
+                                    typeof result.protocolsWithInstanceMethodsCount !== 'number' ||
+                                    typeof result.protocolsWithClassMethodsCount !== 'number' ||
+                                    typeof result.protocolsWithPropertiesCount !== 'number' ||
+                                    typeof result.totalAdoptedProtocolCount !== 'number' ||
+                                    typeof result.totalRequiredMethodCount !== 'number' ||
+                                    typeof result.totalOptionalMethodCount !== 'number' ||
+                                    typeof result.totalPropertyCount !== 'number' ||
+                                    !Array.isArray(result.imagePaths)) {
+                                return false;
+                            }
+                            if (result.protocols.length === 0) {
+                                return result.hasProtocols === false &&
+                                    result.firstProtocol === null &&
+                                    result.lastProtocol === null;
+                            }
+                            const imageSummary = result.imagePaths.length === 0 ? null : result.imagePaths[0];
+                            return result.hasProtocols === true &&
+                                typeof result.firstProtocol === 'string' &&
+                                typeof result.lastProtocol === 'string' &&
+                                result.text === result.protocols.join('\\n') &&
+                                (result.firstImagePath === null || typeof result.firstImagePath === 'string') &&
+                                (result.lastImagePath === null || typeof result.lastImagePath === 'string') &&
+                                (imageSummary === null || (
+                                    typeof imageSummary.imagePath === 'string' &&
+                                    typeof imageSummary.count === 'number' &&
+                                    typeof imageSummary.firstProtocol === 'string' &&
+                                    typeof imageSummary.lastProtocol === 'string'
+                                ));
+                        })()"
                     )
                     .expect("agent objc protocols result"),
                 "true"
@@ -2447,7 +2488,33 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_protocols', className: 'NSObject', filter: 'NS' }); return result.kind === 'objc.class_protocols' && result.className === 'NSObject' && result.filter === 'NS' && result.hasFilter === true && result.count === result.protocols.length && typeof result.hasProtocols === 'boolean' && (result.firstProtocol === null || typeof result.firstProtocol === 'string') && (result.lastProtocol === null || typeof result.lastProtocol === 'string') && result.text === result.protocols.join('\\n'); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_protocols', className: 'NSObject', filter: 'NS' });
+                            if (result.kind !== 'objc.class_protocols' || result.className !== 'NSObject' || result.filter !== 'NS' || result.hasFilter !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.protocols.length || typeof result.hasProtocols !== 'boolean') {
+                                return false;
+                            }
+                            return typeof result.uniqueImagePathCount === 'number' &&
+                                typeof result.protocolsWithImagePathCount === 'number' &&
+                                typeof result.protocolsWithAdoptedProtocolsCount === 'number' &&
+                                typeof result.protocolsWithRequiredMethodsCount === 'number' &&
+                                typeof result.protocolsWithOptionalMethodsCount === 'number' &&
+                                typeof result.protocolsWithInstanceMethodsCount === 'number' &&
+                                typeof result.protocolsWithClassMethodsCount === 'number' &&
+                                typeof result.protocolsWithPropertiesCount === 'number' &&
+                                typeof result.totalAdoptedProtocolCount === 'number' &&
+                                typeof result.totalRequiredMethodCount === 'number' &&
+                                typeof result.totalOptionalMethodCount === 'number' &&
+                                typeof result.totalPropertyCount === 'number' &&
+                                Array.isArray(result.imagePaths) &&
+                                result.text === result.protocols.join('\\n') &&
+                                (result.firstProtocol === null || typeof result.firstProtocol === 'string') &&
+                                (result.lastProtocol === null || typeof result.lastProtocol === 'string') &&
+                                (result.firstImagePath === null || typeof result.firstImagePath === 'string') &&
+                                (result.lastImagePath === null || typeof result.lastImagePath === 'string');
+                        })()"
                     )
                     .expect("agent objc classProtocols result"),
                 "true"
@@ -2463,7 +2530,33 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_protocols', protocolName: 'NSObject', filter: 'NS' }); return result.kind === 'objc.protocol_protocols' && result.protocolName === 'NSObject' && result.filter === 'NS' && result.hasFilter === true && result.count === result.protocols.length && typeof result.hasProtocols === 'boolean' && (result.firstProtocol === null || typeof result.firstProtocol === 'string') && (result.lastProtocol === null || typeof result.lastProtocol === 'string') && result.text === result.protocols.join('\\n'); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_protocols', protocolName: 'NSObject', filter: 'NS' });
+                            if (result.kind !== 'objc.protocol_protocols' || result.protocolName !== 'NSObject' || result.filter !== 'NS' || result.hasFilter !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.protocols.length || typeof result.hasProtocols !== 'boolean') {
+                                return false;
+                            }
+                            return typeof result.uniqueImagePathCount === 'number' &&
+                                typeof result.protocolsWithImagePathCount === 'number' &&
+                                typeof result.protocolsWithAdoptedProtocolsCount === 'number' &&
+                                typeof result.protocolsWithRequiredMethodsCount === 'number' &&
+                                typeof result.protocolsWithOptionalMethodsCount === 'number' &&
+                                typeof result.protocolsWithInstanceMethodsCount === 'number' &&
+                                typeof result.protocolsWithClassMethodsCount === 'number' &&
+                                typeof result.protocolsWithPropertiesCount === 'number' &&
+                                typeof result.totalAdoptedProtocolCount === 'number' &&
+                                typeof result.totalRequiredMethodCount === 'number' &&
+                                typeof result.totalOptionalMethodCount === 'number' &&
+                                typeof result.totalPropertyCount === 'number' &&
+                                Array.isArray(result.imagePaths) &&
+                                result.text === result.protocols.join('\\n') &&
+                                (result.firstProtocol === null || typeof result.firstProtocol === 'string') &&
+                                (result.lastProtocol === null || typeof result.lastProtocol === 'string') &&
+                                (result.firstImagePath === null || typeof result.firstImagePath === 'string') &&
+                                (result.lastImagePath === null || typeof result.lastImagePath === 'string');
+                        })()"
                     )
                     .expect("agent objc protocolProtocols result"),
                 "true"

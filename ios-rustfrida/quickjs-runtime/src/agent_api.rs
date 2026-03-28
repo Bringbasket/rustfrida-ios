@@ -1833,6 +1833,88 @@ function normalizeObjcProtocolInfo(info) {
     return normalized;
 }
 
+function summarizeObjcProtocols(protocols) {
+    const imagePaths = [];
+    let protocolsWithImagePathCount = 0;
+    let protocolsWithAdoptedProtocolsCount = 0;
+    let protocolsWithRequiredMethodsCount = 0;
+    let protocolsWithOptionalMethodsCount = 0;
+    let protocolsWithInstanceMethodsCount = 0;
+    let protocolsWithClassMethodsCount = 0;
+    let protocolsWithPropertiesCount = 0;
+    let firstImagePath = null;
+    let lastImagePath = null;
+    let totalAdoptedProtocolCount = 0;
+    let totalRequiredMethodCount = 0;
+    let totalOptionalMethodCount = 0;
+    let totalPropertyCount = 0;
+    for (const protocolName of protocols) {
+        const info = ObjC.protocolInfo(protocolName);
+        const normalized = info === null ? null : normalizeObjcProtocolInfo(info);
+        if (normalized === null) {
+            continue;
+        }
+        totalAdoptedProtocolCount += normalized.adoptedProtocolCount;
+        totalRequiredMethodCount += normalized.requiredInstanceMethodCount + normalized.requiredClassMethodCount;
+        totalOptionalMethodCount += normalized.optionalInstanceMethodCount + normalized.optionalClassMethodCount;
+        totalPropertyCount += normalized.propertyCount;
+        if (normalized.hasImagePath) {
+            protocolsWithImagePathCount += 1;
+            if (firstImagePath === null) {
+                firstImagePath = normalized.imagePath;
+            }
+            lastImagePath = normalized.imagePath;
+            let imageSummary = imagePaths.find((item) => item.imagePath === normalized.imagePath);
+            if (imageSummary === undefined) {
+                imageSummary = {
+                    imagePath: normalized.imagePath,
+                    count: 0,
+                    firstProtocol: normalized.protocolName,
+                    lastProtocol: normalized.protocolName,
+                };
+                imagePaths.push(imageSummary);
+            }
+            imageSummary.count += 1;
+            imageSummary.lastProtocol = normalized.protocolName;
+        }
+        if (normalized.hasAdoptedProtocols) {
+            protocolsWithAdoptedProtocolsCount += 1;
+        }
+        if (normalized.hasRequiredMethods) {
+            protocolsWithRequiredMethodsCount += 1;
+        }
+        if (normalized.hasOptionalMethods) {
+            protocolsWithOptionalMethodsCount += 1;
+        }
+        if (normalized.hasInstanceMethods) {
+            protocolsWithInstanceMethodsCount += 1;
+        }
+        if (normalized.hasClassMethods) {
+            protocolsWithClassMethodsCount += 1;
+        }
+        if (normalized.hasProperties) {
+            protocolsWithPropertiesCount += 1;
+        }
+    }
+    return {
+        firstImagePath,
+        lastImagePath,
+        uniqueImagePathCount: imagePaths.length,
+        protocolsWithImagePathCount,
+        protocolsWithAdoptedProtocolsCount,
+        protocolsWithRequiredMethodsCount,
+        protocolsWithOptionalMethodsCount,
+        protocolsWithInstanceMethodsCount,
+        protocolsWithClassMethodsCount,
+        protocolsWithPropertiesCount,
+        totalAdoptedProtocolCount,
+        totalRequiredMethodCount,
+        totalOptionalMethodCount,
+        totalPropertyCount,
+        imagePaths,
+    };
+}
+
 function normalizeObjcProtocolMethod(method) {
     const methodTypeInfo = parseObjcMethodTypeEncoding(method.typeEncoding);
     const selectorInfo = parseObjcSelectorInfo(method.selector);
@@ -3638,6 +3720,7 @@ function handleSpecResult(spec) {
     case 'objc.protocols': {
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter).trim();
         const protocols = ObjC.protocols(filter).map((name) => String(name));
+        const summary = summarizeObjcProtocols(protocols);
         return {
             kind: 'objc.protocols',
             filter,
@@ -3646,6 +3729,21 @@ function handleSpecResult(spec) {
             hasProtocols: protocols.length !== 0,
             firstProtocol: protocols.length === 0 ? null : protocols[0],
             lastProtocol: protocols.length === 0 ? null : protocols[protocols.length - 1],
+            firstImagePath: summary.firstImagePath,
+            lastImagePath: summary.lastImagePath,
+            uniqueImagePathCount: summary.uniqueImagePathCount,
+            protocolsWithImagePathCount: summary.protocolsWithImagePathCount,
+            protocolsWithAdoptedProtocolsCount: summary.protocolsWithAdoptedProtocolsCount,
+            protocolsWithRequiredMethodsCount: summary.protocolsWithRequiredMethodsCount,
+            protocolsWithOptionalMethodsCount: summary.protocolsWithOptionalMethodsCount,
+            protocolsWithInstanceMethodsCount: summary.protocolsWithInstanceMethodsCount,
+            protocolsWithClassMethodsCount: summary.protocolsWithClassMethodsCount,
+            protocolsWithPropertiesCount: summary.protocolsWithPropertiesCount,
+            totalAdoptedProtocolCount: summary.totalAdoptedProtocolCount,
+            totalRequiredMethodCount: summary.totalRequiredMethodCount,
+            totalOptionalMethodCount: summary.totalOptionalMethodCount,
+            totalPropertyCount: summary.totalPropertyCount,
+            imagePaths: summary.imagePaths,
             protocols,
             text: protocols.join('\n'),
         };
@@ -3654,6 +3752,7 @@ function handleSpecResult(spec) {
         const className = String(spec.className || '');
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const protocols = ObjC.classProtocols(className, filter).map((name) => String(name));
+        const summary = summarizeObjcProtocols(protocols);
         return {
             kind: 'objc.class_protocols',
             className,
@@ -3663,6 +3762,21 @@ function handleSpecResult(spec) {
             hasProtocols: protocols.length !== 0,
             firstProtocol: protocols.length === 0 ? null : protocols[0],
             lastProtocol: protocols.length === 0 ? null : protocols[protocols.length - 1],
+            firstImagePath: summary.firstImagePath,
+            lastImagePath: summary.lastImagePath,
+            uniqueImagePathCount: summary.uniqueImagePathCount,
+            protocolsWithImagePathCount: summary.protocolsWithImagePathCount,
+            protocolsWithAdoptedProtocolsCount: summary.protocolsWithAdoptedProtocolsCount,
+            protocolsWithRequiredMethodsCount: summary.protocolsWithRequiredMethodsCount,
+            protocolsWithOptionalMethodsCount: summary.protocolsWithOptionalMethodsCount,
+            protocolsWithInstanceMethodsCount: summary.protocolsWithInstanceMethodsCount,
+            protocolsWithClassMethodsCount: summary.protocolsWithClassMethodsCount,
+            protocolsWithPropertiesCount: summary.protocolsWithPropertiesCount,
+            totalAdoptedProtocolCount: summary.totalAdoptedProtocolCount,
+            totalRequiredMethodCount: summary.totalRequiredMethodCount,
+            totalOptionalMethodCount: summary.totalOptionalMethodCount,
+            totalPropertyCount: summary.totalPropertyCount,
+            imagePaths: summary.imagePaths,
             protocols,
             text: protocols.join('\n'),
         };
@@ -3695,6 +3809,7 @@ function handleSpecResult(spec) {
         const protocolName = String(spec.protocolName || '');
         const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
         const protocols = ObjC.protocolProtocols(protocolName, filter).map((name) => String(name));
+        const summary = summarizeObjcProtocols(protocols);
         return {
             kind: 'objc.protocol_protocols',
             protocolName,
@@ -3704,6 +3819,21 @@ function handleSpecResult(spec) {
             hasProtocols: protocols.length !== 0,
             firstProtocol: protocols.length === 0 ? null : protocols[0],
             lastProtocol: protocols.length === 0 ? null : protocols[protocols.length - 1],
+            firstImagePath: summary.firstImagePath,
+            lastImagePath: summary.lastImagePath,
+            uniqueImagePathCount: summary.uniqueImagePathCount,
+            protocolsWithImagePathCount: summary.protocolsWithImagePathCount,
+            protocolsWithAdoptedProtocolsCount: summary.protocolsWithAdoptedProtocolsCount,
+            protocolsWithRequiredMethodsCount: summary.protocolsWithRequiredMethodsCount,
+            protocolsWithOptionalMethodsCount: summary.protocolsWithOptionalMethodsCount,
+            protocolsWithInstanceMethodsCount: summary.protocolsWithInstanceMethodsCount,
+            protocolsWithClassMethodsCount: summary.protocolsWithClassMethodsCount,
+            protocolsWithPropertiesCount: summary.protocolsWithPropertiesCount,
+            totalAdoptedProtocolCount: summary.totalAdoptedProtocolCount,
+            totalRequiredMethodCount: summary.totalRequiredMethodCount,
+            totalOptionalMethodCount: summary.totalOptionalMethodCount,
+            totalPropertyCount: summary.totalPropertyCount,
+            imagePaths: summary.imagePaths,
             protocols,
             text: protocols.join('\n'),
         };
