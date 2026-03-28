@@ -5170,6 +5170,7 @@ undefined;
                                     typeof result.hasDispatchThunks !== 'boolean' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledEntries !== 'boolean' ||
+                                    !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.types) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
@@ -5182,6 +5183,7 @@ undefined;
                                     result.lastMemberName === null;
                             }
                             const entry = result.entries[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const typeSummary = result.types.length === 0 ? null : result.types[0];
                             const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
                             return result.hasEntries === true &&
@@ -5202,6 +5204,16 @@ undefined;
                                 typeof entry.hasSourceKind === 'boolean' &&
                                 typeof entry.offsetHex === 'string' &&
                                 typeof entry.isDispatchThunk === 'boolean' &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstTypeName === 'string' &&
+                                    typeof moduleSummary.lastTypeName === 'string' &&
+                                    typeof moduleSummary.firstMemberName === 'string' &&
+                                    typeof moduleSummary.lastMemberName === 'string' &&
+                                    typeof moduleSummary.dispatchThunkCount === 'number' &&
+                                    typeof moduleSummary.demangledCount === 'number'
+                                )) &&
                                 (typeSummary === null || (
                                     typeof typeSummary.typeName === 'string' &&
                                     typeof typeSummary.count === 'number' &&
@@ -5247,6 +5259,8 @@ undefined;
                                     typeof result.hasAccessors !== 'boolean' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledEntries !== 'boolean' ||
+                                    !Array.isArray(result.typeNames) ||
+                                    !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.protocols) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
@@ -5259,6 +5273,8 @@ undefined;
                                     result.lastProtocolName === null;
                             }
                             const entry = result.entries[0];
+                            const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const protocolSummary = result.protocols.length === 0 ? null : result.protocols[0];
                             const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
                             return result.hasEntries === true &&
@@ -5279,6 +5295,26 @@ undefined;
                                 typeof entry.hasSourceKind === 'boolean' &&
                                 typeof entry.offsetHex === 'string' &&
                                 typeof entry.isAccessor === 'boolean' &&
+                                (typeSummary === null || (
+                                    typeof typeSummary.typeName === 'string' &&
+                                    typeof typeSummary.count === 'number' &&
+                                    typeof typeSummary.firstProtocolName === 'string' &&
+                                    typeof typeSummary.lastProtocolName === 'string' &&
+                                    typeof typeSummary.firstModuleName === 'string' &&
+                                    typeof typeSummary.lastModuleName === 'string' &&
+                                    typeof typeSummary.accessorCount === 'number' &&
+                                    typeof typeSummary.demangledCount === 'number'
+                                )) &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstTypeName === 'string' &&
+                                    typeof moduleSummary.lastTypeName === 'string' &&
+                                    typeof moduleSummary.firstProtocolName === 'string' &&
+                                    typeof moduleSummary.lastProtocolName === 'string' &&
+                                    typeof moduleSummary.accessorCount === 'number' &&
+                                    typeof moduleSummary.demangledCount === 'number'
+                                )) &&
                                 (protocolSummary === null || (
                                     typeof protocolSummary.protocolName === 'string' &&
                                     typeof protocolSummary.count === 'number' &&
@@ -5330,7 +5366,9 @@ undefined;
                                     typeof result.metadataCacheEntryCount !== 'number' ||
                                     typeof result.associatedTypeDescriptorEntryCount !== 'number' ||
                                     typeof result.vtableEntryCount !== 'number' ||
-                                    typeof result.witnessTableEntryCount !== 'number') {
+                                    typeof result.witnessTableEntryCount !== 'number' ||
+                                    !Array.isArray(result.moduleNames) ||
+                                    !Array.isArray(result.typeNames)) {
                                 return false;
                             }
                             if (result.layouts.length === 0) {
@@ -5339,6 +5377,8 @@ undefined;
                                     result.lastTypeName === null;
                             }
                             const layout = result.layouts[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
+                            const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
                             return result.hasLayouts === true &&
                                 typeof result.firstTypeName === 'string' &&
                                 typeof result.lastTypeName === 'string' &&
@@ -5363,7 +5403,32 @@ undefined;
                                 typeof layout.metadataCacheCount === 'number' &&
                                 typeof layout.associatedTypeDescriptorCount === 'number' &&
                                 typeof layout.vtableCount === 'number' &&
-                                typeof layout.witnessTableCount === 'number';
+                                typeof layout.witnessTableCount === 'number' &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstTypeName === 'string' &&
+                                    typeof moduleSummary.lastTypeName === 'string' &&
+                                    typeof moduleSummary.layoutsWithMetadataCount === 'number' &&
+                                    typeof moduleSummary.layoutsWithVtableEntriesCount === 'number' &&
+                                    typeof moduleSummary.layoutsWithWitnessTablesCount === 'number' &&
+                                    typeof moduleSummary.metadataEntryCount === 'number' &&
+                                    typeof moduleSummary.vtableEntryCount === 'number' &&
+                                    typeof moduleSummary.witnessTableEntryCount === 'number'
+                                )) &&
+                                (typeSummary === null || (
+                                    typeof typeSummary.typeName === 'string' &&
+                                    typeof typeSummary.count === 'number' &&
+                                    typeof typeSummary.firstModuleName === 'string' &&
+                                    typeof typeSummary.lastModuleName === 'string' &&
+                                    typeof typeSummary.metadataEntryCount === 'number' &&
+                                    typeof typeSummary.metadataAccessorEntryCount === 'number' &&
+                                    typeof typeSummary.nominalDescriptorEntryCount === 'number' &&
+                                    typeof typeSummary.metadataCacheEntryCount === 'number' &&
+                                    typeof typeSummary.associatedTypeDescriptorEntryCount === 'number' &&
+                                    typeof typeSummary.vtableEntryCount === 'number' &&
+                                    typeof typeSummary.witnessTableEntryCount === 'number'
+                                ));
                         })()"
                     )
                     .expect("agent swift type layout result"),

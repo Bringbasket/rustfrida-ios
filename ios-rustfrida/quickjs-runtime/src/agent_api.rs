@@ -6854,6 +6854,7 @@ function handleSpecResult(spec) {
         const entries = Swift.vtable(query, moduleName).map((entry) => normalizeSwiftVtableEntry(entry));
         const sourceKinds = [];
         const types = [];
+        const moduleSummaries = [];
         const moduleNames = new Set();
         const typeNames = new Set();
         let dispatchThunkCount = 0;
@@ -6866,6 +6867,29 @@ function handleSpecResult(spec) {
             }
             if (entry.hasDemangledName) {
                 demangledCount += 1;
+            }
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === entry.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: entry.moduleName,
+                    count: 0,
+                    firstTypeName: entry.typeName,
+                    lastTypeName: entry.typeName,
+                    firstMemberName: entry.memberName,
+                    lastMemberName: entry.memberName,
+                    dispatchThunkCount: 0,
+                    demangledCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastTypeName = entry.typeName;
+            moduleSummary.lastMemberName = entry.memberName;
+            if (entry.isDispatchThunk) {
+                moduleSummary.dispatchThunkCount += 1;
+            }
+            if (entry.hasDemangledName) {
+                moduleSummary.demangledCount += 1;
             }
             let typeSummary = types.find((item) => item.typeName === entry.typeName);
             if (typeSummary === undefined) {
@@ -6920,6 +6944,7 @@ function handleSpecResult(spec) {
             hasDispatchThunks: dispatchThunkCount !== 0,
             demangledCount,
             hasDemangledEntries: demangledCount !== 0,
+            moduleNames: moduleSummaries,
             types,
             sourceKinds,
             entries,
@@ -6965,6 +6990,8 @@ function handleSpecResult(spec) {
         const entries = Swift.witnessTable(query, moduleName).map((entry) => normalizeSwiftWitnessTable(entry));
         const sourceKinds = [];
         const protocols = [];
+        const typeSummaries = [];
+        const moduleSummaries = [];
         const moduleNames = new Set();
         const typeNames = new Set();
         const protocolNames = new Set();
@@ -6979,6 +7006,52 @@ function handleSpecResult(spec) {
             }
             if (entry.hasDemangledName) {
                 demangledCount += 1;
+            }
+            let typeSummary = typeSummaries.find((item) => item.typeName === entry.typeName);
+            if (typeSummary === undefined) {
+                typeSummary = {
+                    typeName: entry.typeName,
+                    count: 0,
+                    firstProtocolName: entry.protocolName,
+                    lastProtocolName: entry.protocolName,
+                    firstModuleName: entry.moduleName,
+                    lastModuleName: entry.moduleName,
+                    accessorCount: 0,
+                    demangledCount: 0,
+                };
+                typeSummaries.push(typeSummary);
+            }
+            typeSummary.count += 1;
+            typeSummary.lastProtocolName = entry.protocolName;
+            typeSummary.lastModuleName = entry.moduleName;
+            if (entry.isAccessor) {
+                typeSummary.accessorCount += 1;
+            }
+            if (entry.hasDemangledName) {
+                typeSummary.demangledCount += 1;
+            }
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === entry.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: entry.moduleName,
+                    count: 0,
+                    firstTypeName: entry.typeName,
+                    lastTypeName: entry.typeName,
+                    firstProtocolName: entry.protocolName,
+                    lastProtocolName: entry.protocolName,
+                    accessorCount: 0,
+                    demangledCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastTypeName = entry.typeName;
+            moduleSummary.lastProtocolName = entry.protocolName;
+            if (entry.isAccessor) {
+                moduleSummary.accessorCount += 1;
+            }
+            if (entry.hasDemangledName) {
+                moduleSummary.demangledCount += 1;
             }
             let protocolSummary = protocols.find((item) => item.protocolName === entry.protocolName);
             if (protocolSummary === undefined) {
@@ -7034,6 +7107,8 @@ function handleSpecResult(spec) {
             hasAccessors: accessorCount !== 0,
             demangledCount,
             hasDemangledEntries: demangledCount !== 0,
+            typeNames: typeSummaries,
+            moduleNames: moduleSummaries,
             protocols,
             sourceKinds,
             entries,
@@ -7077,6 +7152,8 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const layouts = Swift.typeLayout(query, moduleName).map((layout) => normalizeSwiftTypeLayout(layout));
+        const moduleSummaries = [];
+        const typeSummaries = [];
         const moduleNames = new Set();
         let layoutsWithMetadataCount = 0;
         let layoutsWithMetadataAccessorsCount = 0;
@@ -7094,6 +7171,62 @@ function handleSpecResult(spec) {
         let witnessTableEntryCount = 0;
         for (const layout of layouts) {
             moduleNames.add(layout.moduleName);
+            let moduleSummary = moduleSummaries.find((item) => item.moduleName === layout.moduleName);
+            if (moduleSummary === undefined) {
+                moduleSummary = {
+                    moduleName: layout.moduleName,
+                    count: 0,
+                    firstTypeName: layout.name,
+                    lastTypeName: layout.name,
+                    layoutsWithMetadataCount: 0,
+                    layoutsWithVtableEntriesCount: 0,
+                    layoutsWithWitnessTablesCount: 0,
+                    metadataEntryCount: 0,
+                    vtableEntryCount: 0,
+                    witnessTableEntryCount: 0,
+                };
+                moduleSummaries.push(moduleSummary);
+            }
+            moduleSummary.count += 1;
+            moduleSummary.lastTypeName = layout.name;
+            if (layout.hasMetadata) {
+                moduleSummary.layoutsWithMetadataCount += 1;
+            }
+            if (layout.hasVtableEntries) {
+                moduleSummary.layoutsWithVtableEntriesCount += 1;
+            }
+            if (layout.hasWitnessTables) {
+                moduleSummary.layoutsWithWitnessTablesCount += 1;
+            }
+            moduleSummary.metadataEntryCount += layout.metadataCount;
+            moduleSummary.vtableEntryCount += layout.vtableCount;
+            moduleSummary.witnessTableEntryCount += layout.witnessTableCount;
+            let typeSummary = typeSummaries.find((item) => item.typeName === layout.name);
+            if (typeSummary === undefined) {
+                typeSummary = {
+                    typeName: layout.name,
+                    count: 0,
+                    firstModuleName: layout.moduleName,
+                    lastModuleName: layout.moduleName,
+                    metadataEntryCount: 0,
+                    metadataAccessorEntryCount: 0,
+                    nominalDescriptorEntryCount: 0,
+                    metadataCacheEntryCount: 0,
+                    associatedTypeDescriptorEntryCount: 0,
+                    vtableEntryCount: 0,
+                    witnessTableEntryCount: 0,
+                };
+                typeSummaries.push(typeSummary);
+            }
+            typeSummary.count += 1;
+            typeSummary.lastModuleName = layout.moduleName;
+            typeSummary.metadataEntryCount += layout.metadataCount;
+            typeSummary.metadataAccessorEntryCount += layout.metadataAccessorCount;
+            typeSummary.nominalDescriptorEntryCount += layout.nominalDescriptorCount;
+            typeSummary.metadataCacheEntryCount += layout.metadataCacheCount;
+            typeSummary.associatedTypeDescriptorEntryCount += layout.associatedTypeDescriptorCount;
+            typeSummary.vtableEntryCount += layout.vtableCount;
+            typeSummary.witnessTableEntryCount += layout.witnessTableCount;
             if (layout.hasMetadata) {
                 layoutsWithMetadataCount += 1;
             }
@@ -7149,6 +7282,8 @@ function handleSpecResult(spec) {
             associatedTypeDescriptorEntryCount,
             vtableEntryCount,
             witnessTableEntryCount,
+            moduleNames: moduleSummaries,
+            typeNames: typeSummaries,
             layouts,
             text: layouts.map((layout) => layout.text).join('\n'),
         };
