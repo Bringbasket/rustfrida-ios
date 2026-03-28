@@ -3972,6 +3972,153 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' });
+                            if (main.image === null) {
+                                return true;
+                            }
+                            const moduleName = main.image.name;
+                            const dyld = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dyld_info', moduleName });
+                            if (dyld.dyldInfo === null) {
+                                if (!(dyld.resolvedModuleName === null
+                                    && dyld.resolvedCommandName === null
+                                    && dyld.nonEmptyRegionCount === 0
+                                    && dyld.firstRegionName === null
+                                    && dyld.lastRegionName === null
+                                    && dyld.largestRegionName === null
+                                    && dyld.largestRegionSizeHex === null
+                                    && dyld.totalSizeHex === null)) {
+                                    return false;
+                                }
+                            } else if (!(dyld.resolvedModuleName === dyld.dyldInfo.moduleName
+                                && dyld.resolvedCommandName === dyld.dyldInfo.commandName
+                                && dyld.nonEmptyRegionCount === dyld.dyldInfo.nonEmptyRegionNames.length
+                                && dyld.firstRegionName === dyld.dyldInfo.firstRegionName
+                                && dyld.lastRegionName === dyld.dyldInfo.lastRegionName
+                                && dyld.largestRegionName === dyld.dyldInfo.largestRegionName
+                                && dyld.largestRegionSizeHex === dyld.dyldInfo.largestRegionSizeHex
+                                && dyld.totalSizeHex === dyld.dyldInfo.totalSizeHex)) {
+                                return false;
+                            }
+
+                            const linkedit = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.linkedit', moduleName });
+                            if (linkedit.linkedit === null) {
+                                if (!(linkedit.resolvedModuleName === null
+                                    && linkedit.resolvedVmaddr === null
+                                    && linkedit.resolvedComputedBase === null
+                                    && linkedit.totalTableCount === 0)) {
+                                    return false;
+                                }
+                            } else if (!(linkedit.resolvedModuleName === linkedit.linkedit.moduleName
+                                && linkedit.resolvedVmaddr === linkedit.linkedit.vmaddr
+                                && linkedit.resolvedComputedBase === linkedit.linkedit.computedBase
+                                && linkedit.totalTableCount === linkedit.linkedit.totalTableCount)) {
+                                return false;
+                            }
+
+                            const starts = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.function_starts', moduleName });
+                            if (starts.functionStarts === null) {
+                                if (!(starts.resolvedModuleName === null
+                                    && starts.firstStartAddress === null
+                                    && starts.lastStartAddress === null
+                                    && starts.totalSpanHex === null
+                                    && starts.largestGapHex === null)) {
+                                    return false;
+                                }
+                            } else if (!(starts.resolvedModuleName === starts.functionStarts.moduleName
+                                && starts.firstStartAddress === starts.functionStarts.firstStartAddress
+                                && starts.lastStartAddress === starts.functionStarts.lastStartAddress
+                                && starts.totalSpanHex === starts.functionStarts.totalSpanHex
+                                && starts.largestGapHex === starts.functionStarts.largestGapHex)) {
+                                return false;
+                            }
+
+                            const codeSignature = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.code_signature', moduleName });
+                            if (codeSignature.codeSignature === null) {
+                                if (!(codeSignature.resolvedModuleName === null
+                                    && codeSignature.resolvedMagicHex === null
+                                    && codeSignature.resolvedMagicName === null
+                                    && codeSignature.resolvedLengthHex === null
+                                    && codeSignature.resolvedCount === null
+                                    && codeSignature.knownMagic === false
+                                    && codeSignature.countMatchesSuperBlob === false)) {
+                                    return false;
+                                }
+                            } else if (!(codeSignature.resolvedModuleName === codeSignature.codeSignature.moduleName
+                                && codeSignature.resolvedMagicHex === codeSignature.codeSignature.magicHex
+                                && codeSignature.resolvedMagicName === codeSignature.codeSignature.magicName
+                                && codeSignature.resolvedLengthHex === codeSignature.codeSignature.lengthHex
+                                && codeSignature.resolvedCount === codeSignature.codeSignature.count
+                                && codeSignature.knownMagic === (codeSignature.codeSignature.knownMagic === true)
+                                && codeSignature.countMatchesSuperBlob === (codeSignature.codeSignature.countMatchesSuperBlob === true))) {
+                                return false;
+                            }
+
+                            const dataInCode = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.data_in_code', moduleName });
+                            if (dataInCode.dataInCode === null) {
+                                if (!(dataInCode.resolvedModuleName === null
+                                    && dataInCode.firstKindName === null
+                                    && dataInCode.lastKindName === null
+                                    && dataInCode.largestEntryOffsetHex === null
+                                    && dataInCode.largestEntryLength === null
+                                    && dataInCode.totalSpanHex === null)) {
+                                    return false;
+                                }
+                            } else if (!(dataInCode.resolvedModuleName === dataInCode.dataInCode.moduleName
+                                && dataInCode.firstKindName === dataInCode.dataInCode.firstKindName
+                                && dataInCode.lastKindName === dataInCode.dataInCode.lastKindName
+                                && dataInCode.largestEntryOffsetHex === dataInCode.dataInCode.largestEntryOffsetHex
+                                && dataInCode.largestEntryLength === dataInCode.dataInCode.largestEntryLength
+                                && dataInCode.totalSpanHex === dataInCode.dataInCode.totalSpanHex)) {
+                                return false;
+                            }
+
+                            const exportsTrie = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.exports_trie', moduleName });
+                            if (exportsTrie.exportsTrie === null) {
+                                if (!(exportsTrie.resolvedModuleName === null
+                                    && exportsTrie.firstExportName === null
+                                    && exportsTrie.lastExportName === null
+                                    && exportsTrie.longestExportName === null
+                                    && exportsTrie.addressSpanHex === null
+                                    && exportsTrie.offsetSpanHex === null)) {
+                                    return false;
+                                }
+                            } else if (!(exportsTrie.resolvedModuleName === exportsTrie.exportsTrie.moduleName
+                                && exportsTrie.firstExportName === exportsTrie.exportsTrie.firstExportName
+                                && exportsTrie.lastExportName === exportsTrie.exportsTrie.lastExportName
+                                && exportsTrie.longestExportName === exportsTrie.exportsTrie.longestExportName
+                                && exportsTrie.addressSpanHex === exportsTrie.exportsTrie.addressSpanHex
+                                && exportsTrie.offsetSpanHex === exportsTrie.exportsTrie.offsetSpanHex)) {
+                                return false;
+                            }
+
+                            const fixups = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.chained_fixups', moduleName });
+                            if (fixups.chainedFixups === null) {
+                                return fixups.resolvedModuleName === null
+                                    && fixups.totalPageCount === 0
+                                    && fixups.totalFixupPageCount === 0
+                                    && fixups.totalChainStartCount === 0
+                                    && fixups.firstPointerFormatName === null
+                                    && fixups.lastPointerFormatName === null
+                                    && fixups.dominantPointerFormatName === null
+                                    && fixups.uniqueLibOrdinalCount === 0;
+                            }
+                            return fixups.resolvedModuleName === fixups.chainedFixups.moduleName
+                                && fixups.totalPageCount === fixups.chainedFixups.totalPageCount
+                                && fixups.totalFixupPageCount === fixups.chainedFixups.totalFixupPageCount
+                                && fixups.totalChainStartCount === fixups.chainedFixups.totalChainStartCount
+                                && fixups.firstPointerFormatName === fixups.chainedFixups.firstPointerFormatName
+                                && fixups.lastPointerFormatName === fixups.chainedFixups.lastPointerFormatName
+                                && fixups.dominantPointerFormatName === fixups.chainedFixups.dominantPointerFormatName
+                                && fixups.uniqueLibOrdinalCount === fixups.chainedFixups.uniqueLibOrdinalCount;
+                        })()"#
+                    )
+                    .expect("agent native heavy single result summaries"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.build_version', moduleName: main.image.name }); return result.kind === 'native.build_version' && typeof result.hasBuildVersion === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasTools === 'boolean' && typeof result.toolCount === 'number' && ((result.buildVersion === null && result.hasBuildVersion === false && result.resolved === false && result.resolvedModuleName === null && result.platform === null && result.hasTools === false && result.firstTool === null && result.lastTool === null && result.toolCount === 0 && result.text === '<null>') || (typeof result.buildVersion.platform === 'string' && typeof result.buildVersion.hasTools === 'boolean' && (result.buildVersion.firstTool === null || typeof result.buildVersion.firstTool === 'string') && (result.buildVersion.lastTool === null || typeof result.buildVersion.lastTool === 'string') && Array.isArray(result.buildVersion.tools) && result.hasBuildVersion === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.platform === 'string' && result.resolvedModuleName === result.buildVersion.moduleName && result.platform === result.buildVersion.platform && result.hasTools === (result.buildVersion.hasTools === true) && result.firstTool === result.buildVersion.firstTool && result.lastTool === result.buildVersion.lastTool && result.toolCount === result.buildVersion.tools.length && result.text === result.buildVersion.text)); })()"
                     )
                     .expect("agent native build version result"),
