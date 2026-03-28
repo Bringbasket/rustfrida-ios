@@ -2604,7 +2604,47 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_chain', className: 'NSObject' }); return result.kind === 'objc.class_chain' && result.className === 'NSObject' && result.count === result.chain.length && result.depth === result.chain.length && typeof result.hasChain === 'boolean' && typeof result.includesSelf === 'boolean' && (result.rootClass === null || typeof result.rootClass === 'string') && result.text === result.chain.join('\\n'); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_chain', className: 'NSObject' });
+                            if (result.kind !== 'objc.class_chain' || result.className !== 'NSObject') {
+                                return false;
+                            }
+                            if (result.count !== result.chain.length || result.depth !== result.chain.length) {
+                                return false;
+                            }
+                            if (typeof result.hasChain !== 'boolean' ||
+                                    typeof result.includesSelf !== 'boolean' ||
+                                    typeof result.uniqueImagePathCount !== 'number' ||
+                                    typeof result.classesWithImagePathCount !== 'number' ||
+                                    typeof result.rootClassCount !== 'number' ||
+                                    typeof result.classesWithProtocolsCount !== 'number' ||
+                                    typeof result.classesWithPropertiesCount !== 'number' ||
+                                    typeof result.classesWithIvarsCount !== 'number' ||
+                                    typeof result.classesWithMethodsCount !== 'number' ||
+                                    typeof result.totalProtocolCount !== 'number' ||
+                                    typeof result.totalPropertyCount !== 'number' ||
+                                    typeof result.totalIvarCount !== 'number' ||
+                                    typeof result.totalMethodCount !== 'number' ||
+                                    typeof result.totalInstanceSize !== 'number' ||
+                                    !Array.isArray(result.imagePaths)) {
+                                return false;
+                            }
+                            if (result.chain.length === 0) {
+                                return result.hasChain === false && result.rootClass === null;
+                            }
+                            const imageSummary = result.imagePaths.length === 0 ? null : result.imagePaths[0];
+                            return result.hasChain === true &&
+                                typeof result.rootClass === 'string' &&
+                                result.text === result.chain.join('\\n') &&
+                                (result.firstImagePath === null || typeof result.firstImagePath === 'string') &&
+                                (result.lastImagePath === null || typeof result.lastImagePath === 'string') &&
+                                (imageSummary === null || (
+                                    typeof imageSummary.imagePath === 'string' &&
+                                    typeof imageSummary.count === 'number' &&
+                                    typeof imageSummary.firstClass === 'string' &&
+                                    typeof imageSummary.lastClass === 'string'
+                                ));
+                        })()"
                     )
                     .expect("agent objc classChain result"),
                 "true"
