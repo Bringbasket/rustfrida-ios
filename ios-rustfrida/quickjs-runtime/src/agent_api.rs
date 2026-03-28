@@ -3894,6 +3894,63 @@ function handleSpecResult(spec) {
         const query = String(spec.query || '');
         const isClassMethod = !!spec.isClassMethod;
         const methods = ObjC.methodOwners(query, isClassMethod).map((method) => normalizeObjcMethod(method));
+        const owners = [];
+        const selectors = [];
+        let keywordSelectorCount = 0;
+        let unarySelectorCount = 0;
+        let explicitArgumentMethodCount = 0;
+        let returnsVoidCount = 0;
+        let returnsObjectCount = 0;
+        let returnsBlockCount = 0;
+        for (const method of methods) {
+            if (method.isKeywordSelector) {
+                keywordSelectorCount += 1;
+            }
+            if (method.isUnarySelector) {
+                unarySelectorCount += 1;
+            }
+            if (method.hasExplicitArguments) {
+                explicitArgumentMethodCount += 1;
+            }
+            if (method.returnsVoid) {
+                returnsVoidCount += 1;
+            }
+            if (method.returnsObject) {
+                returnsObjectCount += 1;
+            }
+            if (method.returnsBlock) {
+                returnsBlockCount += 1;
+            }
+            let ownerSummary = owners.find((item) => item.className === method.className);
+            if (ownerSummary === undefined) {
+                ownerSummary = {
+                    className: method.className,
+                    count: 0,
+                    firstSelector: method.selector,
+                    lastSelector: method.selector,
+                    keywordSelectorCount: 0,
+                };
+                owners.push(ownerSummary);
+            }
+            ownerSummary.count += 1;
+            ownerSummary.lastSelector = method.selector;
+            if (method.isKeywordSelector) {
+                ownerSummary.keywordSelectorCount += 1;
+            }
+            let selectorSummary = selectors.find((item) => item.selector === method.selector);
+            if (selectorSummary === undefined) {
+                selectorSummary = {
+                    selector: method.selector,
+                    count: 0,
+                    firstOwner: method.className,
+                    lastOwner: method.className,
+                    keywordSelector: method.isKeywordSelector,
+                };
+                selectors.push(selectorSummary);
+            }
+            selectorSummary.count += 1;
+            selectorSummary.lastOwner = method.className;
+        }
         return {
             kind: 'objc.method_owners',
             query,
@@ -3903,6 +3960,18 @@ function handleSpecResult(spec) {
             hasMethods: methods.length !== 0,
             firstOwner: methods.length === 0 ? null : methods[0].className,
             lastOwner: methods.length === 0 ? null : methods[methods.length - 1].className,
+            firstSelector: methods.length === 0 ? null : methods[0].selector,
+            lastSelector: methods.length === 0 ? null : methods[methods.length - 1].selector,
+            uniqueOwnerCount: owners.length,
+            uniqueSelectorCount: selectors.length,
+            keywordSelectorCount,
+            unarySelectorCount,
+            explicitArgumentMethodCount,
+            returnsVoidCount,
+            returnsObjectCount,
+            returnsBlockCount,
+            owners,
+            selectors,
             methods,
             text: methods.map((method) => method.text).join('\n'),
         };

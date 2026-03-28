@@ -347,6 +347,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `objc.propertyInfo` 现在可以直接结构化返回单个 property 的 `propertyPointer / imagePath / attributes`，并复用同一套 `attributeInfo` 解析字段，后续排查某个属性时不必再先全量 `objc.properties` 再脚本过滤。
 - `objc.ivarInfo` 现在可以直接结构化返回单个 ivar 的 `ivarPointer / offset / imagePath / typeEncoding`，并补出解析后的 `typeName / typeInfo / objectClassName / objectProtocols`，后续排查实例布局时不必再先全量 `objc.ivars` 再脚本筛选。
 - `objc.methods` / `objc.methodOwners` / `objc.protocolMethods` / `objc.ivars` 这几类查询现在也会在结构化结果里补出解码后的 `returnTypeName / argumentTypeNames / signature / typeName / typeInfo / methodTypeInfo` 等字段，不再只能盯着原始 type encoding 字符串自己拆。
+- `objc.methodOwners` 列表结果现在也会额外补 `uniqueOwnerCount / uniqueSelectorCount / owners / selectors`，以及 `keywordSelectorCount / explicitArgumentMethodCount / returnsObjectCount` 这类摘要，适合脚本先看某个 selector 被哪些类实现、以及这些实现的大致签名分布，而不必自己扫完整数组。
 - `objc.classInfo` 现在可以直接结构化返回 class / metaclass 的 `classPointer / superclassName / superclassPointer / instanceSize / imagePath / isMetaClass`，后续排查 ObjC 类层级和 metaclass 边界时不必再手工拼多个命令。
 - `objc.protocolInfo` 现在可以直接结构化返回协议指针、adopted protocols、required/optional 的 instance/class method 计数、property 数量以及 image 路径，后续排查协议继承和声明面时不必再手工拼多条 `protocol*` 命令。
 - `objc.methodInfo` 现在可以直接结构化返回单个方法的 `methodPointer / imp / typeEncoding / imagePath / isClassMethod`，后续排查某个 selector 时不必再手工拼 `objc.methodImp`、`objc.methodImage` 和 `objc.methods`。

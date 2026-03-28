@@ -2523,7 +2523,64 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_owners', query: 'init', isClassMethod: false }); return result.kind === 'objc.method_owners' && result.query === 'init' && result.isClassMethod === false && result.hasQuery === true && result.count === result.methods.length && typeof result.hasMethods === 'boolean' && ((result.methods.length === 0 && result.hasMethods === false && result.firstOwner === null && result.lastOwner === null) || (result.hasMethods === true && typeof result.firstOwner === 'string' && typeof result.lastOwner === 'string' && typeof result.methods[0].className === 'string' && typeof result.methods[0].selector === 'string')); })()"
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_owners', query: 'init', isClassMethod: false });
+                            if (result.kind !== 'objc.method_owners' || result.query !== 'init' || result.isClassMethod !== false || result.hasQuery !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.methods.length || typeof result.hasMethods !== 'boolean') {
+                                return false;
+                            }
+                            if (typeof result.uniqueOwnerCount !== 'number' ||
+                                    typeof result.uniqueSelectorCount !== 'number' ||
+                                    typeof result.keywordSelectorCount !== 'number' ||
+                                    typeof result.unarySelectorCount !== 'number' ||
+                                    typeof result.explicitArgumentMethodCount !== 'number' ||
+                                    typeof result.returnsVoidCount !== 'number' ||
+                                    typeof result.returnsObjectCount !== 'number' ||
+                                    typeof result.returnsBlockCount !== 'number' ||
+                                    !Array.isArray(result.owners) ||
+                                    !Array.isArray(result.selectors)) {
+                                return false;
+                            }
+                            if (result.methods.length === 0) {
+                                return result.hasMethods === false &&
+                                    result.firstOwner === null &&
+                                    result.lastOwner === null &&
+                                    result.firstSelector === null &&
+                                    result.lastSelector === null;
+                            }
+                            const method = result.methods[0];
+                            const ownerSummary = result.owners.length === 0 ? null : result.owners[0];
+                            const selectorSummary = result.selectors.length === 0 ? null : result.selectors[0];
+                            return result.hasMethods === true &&
+                                typeof result.firstOwner === 'string' &&
+                                typeof result.lastOwner === 'string' &&
+                                typeof result.firstSelector === 'string' &&
+                                typeof result.lastSelector === 'string' &&
+                                typeof method.className === 'string' &&
+                                typeof method.selector === 'string' &&
+                                typeof method.returnTypeName === 'string' &&
+                                Array.isArray(method.argumentTypeNames) &&
+                                typeof method.hasExplicitArguments === 'boolean' &&
+                                typeof method.returnsVoid === 'boolean' &&
+                                typeof method.returnsObject === 'boolean' &&
+                                typeof method.returnsBlock === 'boolean' &&
+                                (ownerSummary === null || (
+                                    typeof ownerSummary.className === 'string' &&
+                                    typeof ownerSummary.count === 'number' &&
+                                    typeof ownerSummary.firstSelector === 'string' &&
+                                    typeof ownerSummary.lastSelector === 'string' &&
+                                    typeof ownerSummary.keywordSelectorCount === 'number'
+                                )) &&
+                                (selectorSummary === null || (
+                                    typeof selectorSummary.selector === 'string' &&
+                                    typeof selectorSummary.count === 'number' &&
+                                    typeof selectorSummary.firstOwner === 'string' &&
+                                    typeof selectorSummary.lastOwner === 'string' &&
+                                    typeof selectorSummary.keywordSelector === 'boolean'
+                                ));
+                        })()"
                     )
                     .expect("agent objc method owners result"),
                 "true"
