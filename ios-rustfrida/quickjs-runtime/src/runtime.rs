@@ -5034,14 +5034,32 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.available' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.available' }); return value === result.text; })()")
+                    .expect("agent spec swift available"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.demangle', symbol: '$s4Demo6methodyyF' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.demangle', symbol: '$s4Demo6methodyyF' }); return value === result.text; })()")
                     .expect("agent spec swift demangle"),
                 "true"
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.class_exists', className: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_exists', className: 'NSObject' }); return value === result.text; })()")
+                    .expect("agent spec objc classExists"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.selector', selectorName: 'init' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector', selectorName: 'init' }); return value === result.text; })()")
                     .expect("agent spec objc selector"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_exists', className: 'NSObject' }); return result.kind === 'objc.class_exists' && result.className === 'NSObject' && result.resolved === true && result.exists === (result.resolvedClassName !== null) && result.text === String(result.exists); })()")
+                    .expect("agent objc classExists result"),
                 "true"
             );
             assert_eq!(
