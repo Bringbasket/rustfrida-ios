@@ -4253,7 +4253,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.function_starts', moduleName: main.image.name }); return result.kind === 'native.function_starts' && typeof result.hasFunctionStarts === 'boolean' && typeof result.resolved === 'boolean' && typeof result.startCount === 'number' && typeof result.hasStarts === 'boolean' && typeof result.gapCount === 'number' && typeof result.hasGaps === 'boolean' && ((result.functionStarts === null && result.hasFunctionStarts === false && result.resolved === false && result.startCount === 0 && result.hasStarts === false && result.gapCount === 0 && result.hasGaps === false && result.firstStartOffsetHex === null && result.lastStartOffsetHex === null && result.text === '<null>') || (typeof result.functionStarts.dataoffHex === 'string' && typeof result.functionStarts.dataEnd === 'string' && typeof result.functionStarts.count === 'number' && typeof result.functionStarts.hasStarts === 'boolean' && (result.functionStarts.firstStartOffsetHex === null || typeof result.functionStarts.firstStartOffsetHex === 'string') && (result.functionStarts.firstStartAddress === null || typeof result.functionStarts.firstStartAddress === 'string') && (result.functionStarts.lastStartOffsetHex === null || typeof result.functionStarts.lastStartOffsetHex === 'string') && (result.functionStarts.lastStartAddress === null || typeof result.functionStarts.lastStartAddress === 'string') && typeof result.functionStarts.totalSpanHex === 'string' && typeof result.functionStarts.gapCount === 'number' && typeof result.functionStarts.hasGaps === 'boolean' && result.hasFunctionStarts === true && result.resolved === true && result.startCount === result.functionStarts.count && result.hasStarts === (result.functionStarts.hasStarts === true) && result.gapCount === result.functionStarts.gapCount && result.hasGaps === (result.functionStarts.hasGaps === true) && result.firstStartOffsetHex === result.functionStarts.firstStartOffsetHex && result.lastStartOffsetHex === result.functionStarts.lastStartOffsetHex && (result.functionStarts.firstGapHex === null || typeof result.functionStarts.firstGapHex === 'string') && (result.functionStarts.lastGapHex === null || typeof result.functionStarts.lastGapHex === 'string') && (result.functionStarts.largestGapHex === null || typeof result.functionStarts.largestGapHex === 'string') && Array.isArray(result.functionStarts.starts) && result.text === result.functionStarts.text)); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.function_starts', moduleName: main.image.name }); return result.kind === 'native.function_starts' && typeof result.hasFunctionStarts === 'boolean' && typeof result.resolved === 'boolean' && typeof result.startCount === 'number' && typeof result.hasStarts === 'boolean' && typeof result.gapCount === 'number' && typeof result.hasGaps === 'boolean' && ((result.functionStarts === null && result.hasFunctionStarts === false && result.resolved === false && result.moduleBase === null && result.dataoffHex === null && result.datasizeHex === null && result.linkeditBase === null && result.dataAddress === null && result.dataEnd === null && result.startCount === 0 && result.hasStarts === false && result.gapCount === 0 && result.hasGaps === false && result.firstStartOffsetHex === null && result.firstStartAddress === null && result.lastStartOffsetHex === null && result.lastStartAddress === null && result.firstGapHex === null && result.lastGapHex === null && result.firstGapFromOffsetHex === null && result.firstGapToOffsetHex === null && result.lastGapFromOffsetHex === null && result.lastGapToOffsetHex === null && result.largestGapHex === null && result.text === '<null>') || (typeof result.moduleBase === 'string' && typeof result.dataoffHex === 'string' && typeof result.datasizeHex === 'string' && typeof result.linkeditBase === 'string' && typeof result.dataAddress === 'string' && typeof result.dataEnd === 'string' && typeof result.functionStarts.dataoffHex === 'string' && typeof result.functionStarts.dataEnd === 'string' && typeof result.functionStarts.count === 'number' && typeof result.functionStarts.hasStarts === 'boolean' && (result.functionStarts.firstStartOffsetHex === null || typeof result.functionStarts.firstStartOffsetHex === 'string') && (result.functionStarts.firstStartAddress === null || typeof result.functionStarts.firstStartAddress === 'string') && (result.functionStarts.lastStartOffsetHex === null || typeof result.functionStarts.lastStartOffsetHex === 'string') && (result.functionStarts.lastStartAddress === null || typeof result.functionStarts.lastStartAddress === 'string') && typeof result.functionStarts.totalSpanHex === 'string' && typeof result.functionStarts.gapCount === 'number' && typeof result.functionStarts.hasGaps === 'boolean' && result.hasFunctionStarts === true && result.resolved === true && result.moduleBase === result.functionStarts.moduleBase && result.dataoffHex === result.functionStarts.dataoffHex && result.datasizeHex === result.functionStarts.datasizeHex && result.linkeditBase === result.functionStarts.linkeditBase && result.dataAddress === result.functionStarts.dataAddress && result.dataEnd === result.functionStarts.dataEnd && result.startCount === result.functionStarts.count && result.hasStarts === (result.functionStarts.hasStarts === true) && result.gapCount === result.functionStarts.gapCount && result.hasGaps === (result.functionStarts.hasGaps === true) && result.firstStartOffsetHex === result.functionStarts.firstStartOffsetHex && result.firstStartAddress === result.functionStarts.firstStartAddress && result.lastStartOffsetHex === result.functionStarts.lastStartOffsetHex && result.lastStartAddress === result.functionStarts.lastStartAddress && result.firstGapHex === result.functionStarts.firstGapHex && result.lastGapHex === result.functionStarts.lastGapHex && result.firstGapFromOffsetHex === result.functionStarts.firstGapFromOffsetHex && result.firstGapToOffsetHex === result.functionStarts.firstGapToOffsetHex && result.lastGapFromOffsetHex === result.functionStarts.lastGapFromOffsetHex && result.lastGapToOffsetHex === result.functionStarts.lastGapToOffsetHex && (result.functionStarts.firstGapHex === null || typeof result.functionStarts.firstGapHex === 'string') && (result.functionStarts.lastGapHex === null || typeof result.functionStarts.lastGapHex === 'string') && (result.functionStarts.largestGapHex === null || typeof result.functionStarts.largestGapHex === 'string') && Array.isArray(result.functionStarts.starts) && result.text === result.functionStarts.text)); })()"
                     )
                     .expect("agent native function starts result"),
                 "true"
@@ -4618,28 +4618,52 @@ undefined;
                             if (starts.functionStarts === null) {
                                 if (!(starts.resolvedModuleName === null
                                     && starts.resolvedModuleBase === null
+                                    && starts.moduleBase === null
                                     && starts.resolvedDataoffHex === null
+                                    && starts.dataoffHex === null
                                     && starts.resolvedDatasizeHex === null
+                                    && starts.datasizeHex === null
+                                    && starts.linkeditBase === null
                                     && starts.resolvedDataAddress === null
+                                    && starts.dataAddress === null
                                     && starts.resolvedDataEnd === null
+                                    && starts.dataEnd === null
                                     && starts.firstStartOffsetHex === null
                                     && starts.firstStartAddress === null
                                     && starts.lastStartOffsetHex === null
                                     && starts.lastStartAddress === null
+                                    && starts.firstGapHex === null
+                                    && starts.lastGapHex === null
+                                    && starts.firstGapFromOffsetHex === null
+                                    && starts.firstGapToOffsetHex === null
+                                    && starts.lastGapFromOffsetHex === null
+                                    && starts.lastGapToOffsetHex === null
                                     && starts.totalSpanHex === null
                                     && starts.largestGapHex === null)) {
                                     return false;
                                 }
                             } else if (!(starts.resolvedModuleName === starts.functionStarts.moduleName
                                 && starts.resolvedModuleBase === starts.functionStarts.moduleBase
+                                && starts.moduleBase === starts.functionStarts.moduleBase
                                 && starts.resolvedDataoffHex === starts.functionStarts.dataoffHex
+                                && starts.dataoffHex === starts.functionStarts.dataoffHex
                                 && starts.resolvedDatasizeHex === starts.functionStarts.datasizeHex
+                                && starts.datasizeHex === starts.functionStarts.datasizeHex
+                                && starts.linkeditBase === starts.functionStarts.linkeditBase
                                 && starts.resolvedDataAddress === starts.functionStarts.dataAddress
+                                && starts.dataAddress === starts.functionStarts.dataAddress
                                 && starts.resolvedDataEnd === starts.functionStarts.dataEnd
+                                && starts.dataEnd === starts.functionStarts.dataEnd
                                 && starts.firstStartOffsetHex === starts.functionStarts.firstStartOffsetHex
                                 && starts.firstStartAddress === starts.functionStarts.firstStartAddress
                                 && starts.lastStartOffsetHex === starts.functionStarts.lastStartOffsetHex
                                 && starts.lastStartAddress === starts.functionStarts.lastStartAddress
+                                && starts.firstGapHex === starts.functionStarts.firstGapHex
+                                && starts.lastGapHex === starts.functionStarts.lastGapHex
+                                && starts.firstGapFromOffsetHex === starts.functionStarts.firstGapFromOffsetHex
+                                && starts.firstGapToOffsetHex === starts.functionStarts.firstGapToOffsetHex
+                                && starts.lastGapFromOffsetHex === starts.functionStarts.lastGapFromOffsetHex
+                                && starts.lastGapToOffsetHex === starts.functionStarts.lastGapToOffsetHex
                                 && starts.totalSpanHex === starts.functionStarts.totalSpanHex
                                 && starts.largestGapHex === starts.functionStarts.largestGapHex)) {
                                 return false;
