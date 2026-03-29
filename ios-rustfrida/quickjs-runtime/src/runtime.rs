@@ -5815,8 +5815,113 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_info', moduleName: null, typeName: 'ViewController' }); return result.kind === 'swift.type_info' && result.typeName === 'ViewController' && typeof result.hasTypeInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasSourceKind === 'boolean' && ((result.typeInfo === null && result.hasTypeInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.sourceKind === null && result.text === '<null>') || (result.hasTypeInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.typeInfo.moduleBase === 'string' && typeof result.typeInfo.sourceSymbolName === 'string' && typeof result.typeInfo.sourceOffsetHex === 'string' && result.hasSourceKind === (result.typeInfo.hasSourceKind === true) && result.sourceKind === result.typeInfo.sourceKind && result.text === result.typeInfo.text)); })()")
+                    .eval(
+                        r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_info', moduleName: null, typeName: 'ViewController' });
+                            if (result.kind !== 'swift.type_info' || result.typeName !== 'ViewController') {
+                                return false;
+                            }
+                            if (typeof result.hasTypeInfo !== 'boolean' ||
+                                    typeof result.resolved !== 'boolean' ||
+                                    typeof result.hasSourceKind !== 'boolean' ||
+                                    typeof result.hasQualifiedName !== 'boolean' ||
+                                    typeof result.hasSignature !== 'boolean' ||
+                                    typeof result.hasContextModuleName !== 'boolean' ||
+                                    typeof result.hasDetailKind !== 'boolean' ||
+                                    typeof result.isMetadata !== 'boolean' ||
+                                    typeof result.isMetadataAccessor !== 'boolean' ||
+                                    typeof result.isNominalDescriptor !== 'boolean') {
+                                return false;
+                            }
+                            if (result.typeInfo === null) {
+                                return result.hasTypeInfo === false &&
+                                    result.resolved === false &&
+                                    result.resolvedName === null &&
+                                    result.resolvedModuleName === null &&
+                                    result.sourceKind === null &&
+                                    result.qualifiedName === null &&
+                                    result.signature === null &&
+                                    result.contextModuleName === null &&
+                                    result.detailKind === null &&
+                                    result.hasQualifiedName === false &&
+                                    result.hasSignature === false &&
+                                    result.hasContextModuleName === false &&
+                                    result.hasDetailKind === false &&
+                                    result.isMetadata === false &&
+                                    result.isMetadataAccessor === false &&
+                                    result.isNominalDescriptor === false &&
+                                    result.text === '<null>';
+                            }
+                            return result.hasTypeInfo === true &&
+                                result.resolved === true &&
+                                typeof result.resolvedName === 'string' &&
+                                typeof result.resolvedModuleName === 'string' &&
+                                typeof result.typeInfo.moduleBase === 'string' &&
+                                typeof result.typeInfo.sourceSymbolName === 'string' &&
+                                typeof result.typeInfo.sourceOffsetHex === 'string' &&
+                                (result.qualifiedName === null || typeof result.qualifiedName === 'string') &&
+                                (result.signature === null || typeof result.signature === 'string') &&
+                                (result.contextModuleName === null || typeof result.contextModuleName === 'string') &&
+                                (result.detailKind === null || typeof result.detailKind === 'string') &&
+                                result.hasSourceKind === (result.typeInfo.hasSourceKind === true) &&
+                                result.sourceKind === result.typeInfo.sourceKind &&
+                                result.qualifiedName === result.typeInfo.qualifiedName &&
+                                result.signature === result.typeInfo.signature &&
+                                result.contextModuleName === result.typeInfo.contextModuleName &&
+                                result.detailKind === result.typeInfo.detailKind &&
+                                result.hasQualifiedName === (result.typeInfo.hasQualifiedName === true) &&
+                                result.hasSignature === (result.typeInfo.hasSignature === true) &&
+                                result.hasContextModuleName === (result.typeInfo.hasContextModuleName === true) &&
+                                result.hasDetailKind === (result.typeInfo.hasDetailKind === true) &&
+                                result.isMetadata === (result.typeInfo.isMetadata === true) &&
+                                result.isMetadataAccessor === (result.typeInfo.isMetadataAccessor === true) &&
+                                result.isNominalDescriptor === (result.typeInfo.isNominalDescriptor === true) &&
+                                result.text === result.typeInfo.text;
+                        })()"#
+                    )
                     .expect("agent swift typeInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.typeInfo;
+                            Swift.typeInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: 'ViewController',
+                                    sourceSymbolName: '$s4Demo14ViewControllerVN',
+                                    sourceKind: 'nominal-type',
+                                    sourceAddress: 0x180000a00n,
+                                    sourceOffset: 0xa00n,
+                                    sourceDemangledName: 'Demo.ViewController',
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_info', moduleName: null, typeName: 'ViewController' });
+                                return result.typeInfo !== null
+                                    && result.resolvedName === 'ViewController'
+                                    && result.qualifiedName === 'Demo.ViewController'
+                                    && result.signature === 'Demo.ViewController'
+                                    && result.contextModuleName === 'Demo'
+                                    && result.detailKind === 'symbol'
+                                    && result.hasQualifiedName === true
+                                    && result.hasSignature === true
+                                    && result.hasContextModuleName === true
+                                    && result.hasDetailKind === true
+                                    && result.isMetadata === false
+                                    && result.isMetadataAccessor === false
+                                    && result.isNominalDescriptor === false
+                                    && result.typeInfo.qualifiedName === 'Demo.ViewController'
+                                    && result.typeInfo.contextModuleName === 'Demo';
+                            } finally {
+                                Swift.typeInfo = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift typeInfo semantics"),
                 "true"
             );
             assert_eq!(
@@ -7481,9 +7586,20 @@ undefined;
                                     && typeInfo.resolvedSourceAddress === null
                                     && typeInfo.resolvedSourceOffsetHex === null
                                     && typeInfo.resolvedSourceDemangledName === null
+                                    && typeInfo.qualifiedName === null
+                                    && typeInfo.signature === null
+                                    && typeInfo.contextModuleName === null
+                                    && typeInfo.detailKind === null
                                     && typeInfo.hasName === false
                                     && typeInfo.hasSourceSymbolName === false
-                                    && typeInfo.hasSourceDemangledName === false)) {
+                                    && typeInfo.hasSourceDemangledName === false
+                                    && typeInfo.hasQualifiedName === false
+                                    && typeInfo.hasSignature === false
+                                    && typeInfo.hasContextModuleName === false
+                                    && typeInfo.hasDetailKind === false
+                                    && typeInfo.isMetadata === false
+                                    && typeInfo.isMetadataAccessor === false
+                                    && typeInfo.isNominalDescriptor === false)) {
                                     return false;
                                 }
                             } else if (!(typeInfo.resolvedModuleBase === typeInfo.typeInfo.moduleBase
@@ -7491,9 +7607,20 @@ undefined;
                                 && typeInfo.resolvedSourceAddress === typeInfo.typeInfo.sourceAddress
                                 && typeInfo.resolvedSourceOffsetHex === typeInfo.typeInfo.sourceOffsetHex
                                 && typeInfo.resolvedSourceDemangledName === typeInfo.typeInfo.sourceDemangledName
+                                && typeInfo.qualifiedName === typeInfo.typeInfo.qualifiedName
+                                && typeInfo.signature === typeInfo.typeInfo.signature
+                                && typeInfo.contextModuleName === typeInfo.typeInfo.contextModuleName
+                                && typeInfo.detailKind === typeInfo.typeInfo.detailKind
                                 && typeInfo.hasName === (typeInfo.typeInfo.hasName === true)
                                 && typeInfo.hasSourceSymbolName === (typeInfo.typeInfo.hasSourceSymbolName === true)
-                                && typeInfo.hasSourceDemangledName === (typeInfo.typeInfo.hasSourceDemangledName === true))) {
+                                && typeInfo.hasSourceDemangledName === (typeInfo.typeInfo.hasSourceDemangledName === true)
+                                && typeInfo.hasQualifiedName === (typeInfo.typeInfo.hasQualifiedName === true)
+                                && typeInfo.hasSignature === (typeInfo.typeInfo.hasSignature === true)
+                                && typeInfo.hasContextModuleName === (typeInfo.typeInfo.hasContextModuleName === true)
+                                && typeInfo.hasDetailKind === (typeInfo.typeInfo.hasDetailKind === true)
+                                && typeInfo.isMetadata === (typeInfo.typeInfo.isMetadata === true)
+                                && typeInfo.isMetadataAccessor === (typeInfo.typeInfo.isMetadataAccessor === true)
+                                && typeInfo.isNominalDescriptor === (typeInfo.typeInfo.isNominalDescriptor === true))) {
                                 return false;
                             }
 
@@ -7649,7 +7776,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() {
+                        r#"(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' });
                             if (result.kind !== 'swift.types' || result.query !== 'ViewController' || result.hasQuery !== true) {
                                 return false;
@@ -7662,8 +7789,12 @@ undefined;
                                     typeof result.uniqueSourceKindCount !== 'number' ||
                                     typeof result.sourceDemangledCount !== 'number' ||
                                     typeof result.hasSourceDemangledTypes !== 'boolean' ||
+                                    typeof result.uniqueContextModuleCount !== 'number' ||
+                                    typeof result.uniqueDetailKindCount !== 'number' ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.typeNames) ||
+                                    !Array.isArray(result.contextModules) ||
+                                    !Array.isArray(result.detailKinds) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
@@ -7675,6 +7806,8 @@ undefined;
                             const typeInfo = result.types[0];
                             const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
+                            const contextSummary = result.contextModules.length === 0 ? null : result.contextModules[0];
+                            const detailSummary = result.detailKinds.length === 0 ? null : result.detailKinds[0];
                             const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
                             return result.hasTypes === true &&
                                 typeof result.firstTypeName === 'string' &&
@@ -7688,6 +7821,17 @@ undefined;
                                 typeof typeInfo.hasSourceKind === 'boolean' &&
                                 typeof typeInfo.hasSourceSymbolName === 'boolean' &&
                                 typeof typeInfo.hasSourceDemangledName === 'boolean' &&
+                                typeof typeInfo.hasQualifiedName === 'boolean' &&
+                                typeof typeInfo.hasSignature === 'boolean' &&
+                                typeof typeInfo.hasContextModuleName === 'boolean' &&
+                                typeof typeInfo.hasDetailKind === 'boolean' &&
+                                typeof typeInfo.isMetadata === 'boolean' &&
+                                typeof typeInfo.isMetadataAccessor === 'boolean' &&
+                                typeof typeInfo.isNominalDescriptor === 'boolean' &&
+                                (typeInfo.qualifiedName === null || typeof typeInfo.qualifiedName === 'string') &&
+                                (typeInfo.signature === null || typeof typeInfo.signature === 'string') &&
+                                (typeInfo.contextModuleName === null || typeof typeInfo.contextModuleName === 'string') &&
+                                (typeInfo.detailKind === null || typeof typeInfo.detailKind === 'string') &&
                                 (moduleSummary === null || (
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
@@ -7702,15 +7846,76 @@ undefined;
                                     typeof typeSummary.lastModuleName === 'string' &&
                                     typeof typeSummary.hasSourceDemangledName === 'boolean'
                                 )) &&
+                                (contextSummary === null || (
+                                    typeof contextSummary.contextModuleName === 'string' &&
+                                    typeof contextSummary.count === 'number' &&
+                                    typeof contextSummary.firstTypeName === 'string' &&
+                                    typeof contextSummary.lastTypeName === 'string'
+                                )) &&
+                                (detailSummary === null || (
+                                    typeof detailSummary.detailKind === 'string' &&
+                                    typeof detailSummary.count === 'number' &&
+                                    typeof detailSummary.firstTypeName === 'string' &&
+                                    typeof detailSummary.lastTypeName === 'string'
+                                )) &&
                                 (sourceSummary === null || (
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
                                     typeof sourceSummary.firstTypeName === 'string' &&
                                     typeof sourceSummary.lastTypeName === 'string'
                                 ));
-                        })()"
+                        })()"#
                     )
                     .expect("agent swift types result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.types;
+                            Swift.types = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'ViewController',
+                                        sourceSymbolName: '$s4Demo14ViewControllerVN',
+                                        sourceKind: 'nominal-type',
+                                        sourceAddress: 0x180001300n,
+                                        sourceOffset: 0x1300n,
+                                        sourceDemangledName: 'Demo.ViewController',
+                                    },
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'Helper',
+                                        sourceSymbolName: '$s4Demo6HelperVMa',
+                                        sourceKind: 'metadata-accessor',
+                                        sourceAddress: 0x180001400n,
+                                        sourceOffset: 0x1400n,
+                                        sourceDemangledName: 'type metadata accessor for Demo.Helper',
+                                    }
+                                ];
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'Demo' });
+                                return result.count === 2
+                                    && result.uniqueContextModuleCount === 1
+                                    && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.contextModules)
+                                    && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2)
+                                    && Array.isArray(result.detailKinds)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'symbol' && entry.count === 1)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'metadata-accessor' && entry.count === 1)
+                                    && result.types.some((entry) => entry.qualifiedName === 'Demo.ViewController' && entry.isMetadata === false)
+                                    && result.types.some((entry) => entry.qualifiedName === 'Demo.Helper' && entry.isMetadataAccessor === true);
+                            } finally {
+                                Swift.types = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift types summary"),
                 "true"
             );
             assert_eq!(
@@ -7722,7 +7927,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() {
+                        r#"(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types_of_kind', moduleName: null, sourceKind: 'metadata-accessor', query: 'ViewController' });
                             if (result.kind !== 'swift.types_of_kind' || result.sourceKind !== 'metadata-accessor' || result.query !== 'ViewController' || result.hasQuery !== true) {
                                 return false;
@@ -7735,8 +7940,12 @@ undefined;
                                     typeof result.uniqueSourceKindCount !== 'number' ||
                                     typeof result.sourceDemangledCount !== 'number' ||
                                     typeof result.hasSourceDemangledTypes !== 'boolean' ||
+                                    typeof result.uniqueContextModuleCount !== 'number' ||
+                                    typeof result.uniqueDetailKindCount !== 'number' ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.typeNames) ||
+                                    !Array.isArray(result.contextModules) ||
+                                    !Array.isArray(result.detailKinds) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
@@ -7748,6 +7957,8 @@ undefined;
                             const typeInfo = result.types[0];
                             const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
+                            const contextSummary = result.contextModules.length === 0 ? null : result.contextModules[0];
+                            const detailSummary = result.detailKinds.length === 0 ? null : result.detailKinds[0];
                             const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
                             return result.hasTypes === true &&
                                 typeof result.firstTypeName === 'string' &&
@@ -7759,6 +7970,13 @@ undefined;
                                 typeof typeInfo.hasSourceKind === 'boolean' &&
                                 typeof typeInfo.hasSourceSymbolName === 'boolean' &&
                                 typeof typeInfo.hasSourceDemangledName === 'boolean' &&
+                                typeof typeInfo.hasQualifiedName === 'boolean' &&
+                                typeof typeInfo.hasSignature === 'boolean' &&
+                                typeof typeInfo.hasContextModuleName === 'boolean' &&
+                                typeof typeInfo.hasDetailKind === 'boolean' &&
+                                typeof typeInfo.isMetadata === 'boolean' &&
+                                typeof typeInfo.isMetadataAccessor === 'boolean' &&
+                                typeof typeInfo.isNominalDescriptor === 'boolean' &&
                                 (moduleSummary === null || (
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
@@ -7773,15 +7991,74 @@ undefined;
                                     typeof typeSummary.lastModuleName === 'string' &&
                                     typeof typeSummary.hasSourceDemangledName === 'boolean'
                                 )) &&
+                                (contextSummary === null || (
+                                    typeof contextSummary.contextModuleName === 'string' &&
+                                    typeof contextSummary.count === 'number' &&
+                                    typeof contextSummary.firstTypeName === 'string' &&
+                                    typeof contextSummary.lastTypeName === 'string'
+                                )) &&
+                                (detailSummary === null || (
+                                    typeof detailSummary.detailKind === 'string' &&
+                                    typeof detailSummary.count === 'number' &&
+                                    typeof detailSummary.firstTypeName === 'string' &&
+                                    typeof detailSummary.lastTypeName === 'string'
+                                )) &&
                                 (sourceSummary === null || (
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
                                     typeof sourceSummary.firstTypeName === 'string' &&
                                     typeof sourceSummary.lastTypeName === 'string'
                                 ));
-                        })()"
+                        })()"#
                     )
                     .expect("agent swift types of kind result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.typesOfKind;
+                            Swift.typesOfKind = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'Helper',
+                                        sourceSymbolName: '$s4Demo6HelperVMa',
+                                        sourceKind: 'metadata-accessor',
+                                        sourceAddress: 0x180001500n,
+                                        sourceOffset: 0x1500n,
+                                        sourceDemangledName: 'type metadata accessor for Demo.Helper',
+                                    },
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'Renderer',
+                                        sourceSymbolName: '$s4Demo8RendererVMa',
+                                        sourceKind: 'metadata-accessor',
+                                        sourceAddress: 0x180001600n,
+                                        sourceOffset: 0x1600n,
+                                        sourceDemangledName: 'type metadata accessor for Demo.Renderer',
+                                    }
+                                ];
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types_of_kind', moduleName: null, sourceKind: 'metadata-accessor', query: 'Demo' });
+                                return result.count === 2
+                                    && result.uniqueContextModuleCount === 1
+                                    && result.uniqueDetailKindCount === 1
+                                    && Array.isArray(result.contextModules)
+                                    && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2)
+                                    && Array.isArray(result.detailKinds)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'metadata-accessor' && entry.count === 2)
+                                    && result.types.every((entry) => entry.isMetadataAccessor === true && entry.contextModuleName === 'Demo');
+                            } finally {
+                                Swift.typesOfKind = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift types of kind summary"),
                 "true"
             );
             assert_eq!(

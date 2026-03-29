@@ -905,6 +905,14 @@ function formatNormalizedSwiftMetadata(typeInfo) {
     return base + demangled + formatSwiftMetadataFlags(typeInfo);
 }
 
+function formatNormalizedSwiftType(typeInfo) {
+    const base = typeInfo.sourceAddress + ' ' + typeInfo.moduleName + '!' + typeInfo.name + ' [' + String(typeInfo.sourceKind || 'symbol') + ']';
+    const demangled = typeInfo.sourceDemangledName === null || typeInfo.sourceDemangledName === undefined
+        ? ''
+        : ' <= ' + typeInfo.sourceDemangledName;
+    return base + demangled + formatSwiftMetadataFlags(typeInfo);
+}
+
 function parseSwiftProtocolDemangledInfo(demangledName, fallbackName) {
     const trimmed = trimSwiftDemangledName(demangledName);
     const parsed = {
@@ -4754,11 +4762,14 @@ function normalizeSwiftType(typeInfo) {
     const sourceSymbolName = typeInfo.sourceSymbolName === undefined ? null : String(typeInfo.sourceSymbolName);
     const sourceKind = typeInfo.sourceKind === undefined ? null : typeInfo.sourceKind;
     const sourceDemangledName = typeInfo.sourceDemangledName === undefined ? null : typeInfo.sourceDemangledName;
-    return {
+    const parsed = parseSwiftMetadataDemangledInfo(sourceDemangledName, name);
+    const normalized = {
         moduleName: String(typeInfo.moduleName || ''),
         moduleBase: typeInfo.moduleBase ? typeInfo.moduleBase.toString() : null,
-        name,
-        hasName: name.length !== 0,
+        name: parsed.name === null ? name : parsed.name,
+        hasName: (parsed.name === null ? name : parsed.name).length !== 0,
+        qualifiedName: parsed.qualifiedName,
+        hasQualifiedName: parsed.hasQualifiedName,
         sourceSymbolName,
         hasSourceSymbolName: sourceSymbolName !== null && sourceSymbolName.length !== 0,
         sourceKind,
@@ -4767,8 +4778,18 @@ function normalizeSwiftType(typeInfo) {
         sourceOffsetHex: '0x' + sourceOffset.toString(16),
         sourceDemangledName,
         hasSourceDemangledName: sourceDemangledName !== null && String(sourceDemangledName).length !== 0,
-        text: formatSwiftType(typeInfo),
+        signature: parsed.signature,
+        hasSignature: parsed.hasSignature,
+        contextModuleName: parsed.contextModuleName,
+        hasContextModuleName: parsed.hasContextModuleName,
+        detailKind: parsed.detailKind,
+        hasDetailKind: parsed.detailKind !== null && String(parsed.detailKind).length !== 0,
+        isMetadata: parsed.isMetadata,
+        isMetadataAccessor: parsed.isMetadataAccessor,
+        isNominalDescriptor: parsed.isNominalDescriptor,
     };
+    normalized.text = formatNormalizedSwiftType(normalized);
+    return normalized;
 }
 
 function normalizeSwiftMetadata(typeInfo) {
@@ -8736,11 +8757,22 @@ function handleSpecResult(spec) {
             resolvedSourceAddress: normalized === null ? null : normalized.sourceAddress,
             resolvedSourceOffsetHex: normalized === null ? null : normalized.sourceOffsetHex,
             resolvedSourceDemangledName: normalized === null ? null : normalized.sourceDemangledName,
+            qualifiedName: normalized === null ? null : normalized.qualifiedName,
+            signature: normalized === null ? null : normalized.signature,
+            contextModuleName: normalized === null ? null : normalized.contextModuleName,
+            detailKind: normalized === null ? null : normalized.detailKind,
             sourceKind: normalized === null ? null : normalized.sourceKind,
             hasName: normalized !== null && normalized.hasName === true,
             hasSourceKind: normalized !== null && normalized.hasSourceKind === true,
             hasSourceSymbolName: normalized !== null && normalized.hasSourceSymbolName === true,
             hasSourceDemangledName: normalized !== null && normalized.hasSourceDemangledName === true,
+            hasQualifiedName: normalized !== null && normalized.hasQualifiedName === true,
+            hasSignature: normalized !== null && normalized.hasSignature === true,
+            hasContextModuleName: normalized !== null && normalized.hasContextModuleName === true,
+            hasDetailKind: normalized !== null && normalized.hasDetailKind === true,
+            isMetadata: normalized !== null && normalized.isMetadata === true,
+            isMetadataAccessor: normalized !== null && normalized.isMetadataAccessor === true,
+            isNominalDescriptor: normalized !== null && normalized.isNominalDescriptor === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -9533,6 +9565,8 @@ function handleSpecResult(spec) {
         const sourceKinds = [];
         const moduleSummaries = [];
         const typeSummaries = [];
+        const contextModules = [];
+        const detailKinds = [];
         const moduleNames = new Set();
         const typeNames = new Set();
         let demangledCount = 0;
@@ -9574,6 +9608,33 @@ function handleSpecResult(spec) {
             if (typeInfo.hasSourceDemangledName) {
                 typeSummary.hasSourceDemangledName = true;
             }
+            if (typeInfo.hasContextModuleName) {
+                let contextSummary = contextModules.find((item) => item.contextModuleName === typeInfo.contextModuleName);
+                if (contextSummary === undefined) {
+                    contextSummary = {
+                        contextModuleName: typeInfo.contextModuleName,
+                        count: 0,
+                        firstTypeName: typeInfo.name,
+                        lastTypeName: typeInfo.name,
+                    };
+                    contextModules.push(contextSummary);
+                }
+                contextSummary.count += 1;
+                contextSummary.lastTypeName = typeInfo.name;
+            }
+            const detailKind = typeInfo.detailKind === null ? '<none>' : String(typeInfo.detailKind);
+            let detailSummary = detailKinds.find((item) => item.detailKind === detailKind);
+            if (detailSummary === undefined) {
+                detailSummary = {
+                    detailKind,
+                    count: 0,
+                    firstTypeName: typeInfo.name,
+                    lastTypeName: typeInfo.name,
+                };
+                detailKinds.push(detailSummary);
+            }
+            detailSummary.count += 1;
+            detailSummary.lastTypeName = typeInfo.name;
             const key = typeInfo.sourceKind === null ? '<none>' : String(typeInfo.sourceKind);
             let summary = sourceKinds.find((item) => item.sourceKind === key);
             if (summary === undefined) {
@@ -9604,8 +9665,12 @@ function handleSpecResult(spec) {
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledTypes: demangledCount !== 0,
+            uniqueContextModuleCount: contextModules.length,
+            uniqueDetailKindCount: detailKinds.length,
             moduleNames: moduleSummaries,
             typeNames: typeSummaries,
+            contextModules,
+            detailKinds,
             sourceKinds,
             types,
             text: types.map((typeInfo) => typeInfo.text).join('\n'),
@@ -9680,6 +9745,8 @@ function handleSpecResult(spec) {
         const sourceKinds = [];
         const moduleSummaries = [];
         const typeSummaries = [];
+        const contextModules = [];
+        const detailKinds = [];
         const moduleNames = new Set();
         const typeNames = new Set();
         let demangledCount = 0;
@@ -9721,6 +9788,33 @@ function handleSpecResult(spec) {
             if (typeInfo.hasSourceDemangledName) {
                 typeSummary.hasSourceDemangledName = true;
             }
+            if (typeInfo.hasContextModuleName) {
+                let contextSummary = contextModules.find((item) => item.contextModuleName === typeInfo.contextModuleName);
+                if (contextSummary === undefined) {
+                    contextSummary = {
+                        contextModuleName: typeInfo.contextModuleName,
+                        count: 0,
+                        firstTypeName: typeInfo.name,
+                        lastTypeName: typeInfo.name,
+                    };
+                    contextModules.push(contextSummary);
+                }
+                contextSummary.count += 1;
+                contextSummary.lastTypeName = typeInfo.name;
+            }
+            const detailKind = typeInfo.detailKind === null ? '<none>' : String(typeInfo.detailKind);
+            let detailSummary = detailKinds.find((item) => item.detailKind === detailKind);
+            if (detailSummary === undefined) {
+                detailSummary = {
+                    detailKind,
+                    count: 0,
+                    firstTypeName: typeInfo.name,
+                    lastTypeName: typeInfo.name,
+                };
+                detailKinds.push(detailSummary);
+            }
+            detailSummary.count += 1;
+            detailSummary.lastTypeName = typeInfo.name;
             const key = typeInfo.sourceKind === null ? '<none>' : String(typeInfo.sourceKind);
             let summary = sourceKinds.find((item) => item.sourceKind === key);
             if (summary === undefined) {
@@ -9752,8 +9846,12 @@ function handleSpecResult(spec) {
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledTypes: demangledCount !== 0,
+            uniqueContextModuleCount: contextModules.length,
+            uniqueDetailKindCount: detailKinds.length,
             moduleNames: moduleSummaries,
             typeNames: typeSummaries,
+            contextModules,
+            detailKinds,
             sourceKinds,
             types,
             text: types.map((typeInfo) => typeInfo.text).join('\n'),
