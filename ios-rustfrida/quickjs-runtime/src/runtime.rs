@@ -6026,11 +6026,66 @@ undefined;
                                     moduleName: 'Demo',
                                     moduleBase: 0x180000000n,
                                     name: 'Demo.ViewController',
-                                    metadata: [],
-                                    metadataAccessors: [],
-                                    nominalDescriptors: [],
-                                    metadataCaches: [],
-                                    associatedTypeDescriptors: [],
+                                    metadata: [
+                                        {
+                                            moduleName: 'Demo',
+                                            moduleBase: 0x180000000n,
+                                            name: 'Demo.ViewController',
+                                            sourceSymbolName: '$s4Demo14ViewControllerCMf',
+                                            sourceKind: 'metadata',
+                                            sourceAddress: 0x180004100n,
+                                            sourceOffset: 0x4100n,
+                                            sourceDemangledName: 'full type metadata for Demo.ViewController in Demo',
+                                        }
+                                    ],
+                                    metadataAccessors: [
+                                        {
+                                            moduleName: 'Demo',
+                                            moduleBase: 0x180000000n,
+                                            name: 'Demo.ViewController',
+                                            sourceSymbolName: '$s4Demo14ViewControllerCMa',
+                                            sourceKind: 'metadata-accessor',
+                                            sourceAddress: 0x180004200n,
+                                            sourceOffset: 0x4200n,
+                                            sourceDemangledName: 'type metadata accessor for Demo.ViewController in Demo',
+                                        }
+                                    ],
+                                    nominalDescriptors: [
+                                        {
+                                            moduleName: 'Demo',
+                                            moduleBase: 0x180000000n,
+                                            name: 'Demo.ViewController',
+                                            sourceSymbolName: '$s4Demo14ViewControllerMn',
+                                            sourceKind: 'nominal-descriptor',
+                                            sourceAddress: 0x180004300n,
+                                            sourceOffset: 0x4300n,
+                                            sourceDemangledName: 'nominal type descriptor for Demo.ViewController in Demo',
+                                        }
+                                    ],
+                                    metadataCaches: [
+                                        {
+                                            moduleName: 'Demo',
+                                            moduleBase: 0x180000000n,
+                                            name: 'Demo.ViewController',
+                                            sourceSymbolName: '$s4Demo14ViewControllerCMX',
+                                            sourceKind: 'metadata-cache',
+                                            sourceAddress: 0x180004400n,
+                                            sourceOffset: 0x4400n,
+                                            sourceDemangledName: null,
+                                        }
+                                    ],
+                                    associatedTypeDescriptors: [
+                                        {
+                                            moduleName: 'Demo',
+                                            moduleBase: 0x180000000n,
+                                            name: 'Demo.ViewController',
+                                            sourceSymbolName: '$s4Demo14ViewControllerHn',
+                                            sourceKind: 'associated-type-descriptor',
+                                            sourceAddress: 0x180004500n,
+                                            sourceOffset: 0x4500n,
+                                            sourceDemangledName: 'nominal type descriptor for Demo.ViewController in Demo',
+                                        }
+                                    ],
                                     vtableEntries: [
                                         {
                                             moduleName: 'Demo',
@@ -6076,6 +6131,25 @@ undefined;
                             try {
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' });
                                 return result.typeLayout !== null
+                                    && result.typeSourceEntryCount === 5
+                                    && result.sourceDemangledCount === 4
+                                    && result.hasSourceDemangledTypes === true
+                                    && result.uniqueSourceKindCount === 5
+                                    && result.uniqueContextModuleCount === 1
+                                    && result.uniqueDetailKindCount === 4
+                                    && Array.isArray(result.sourceKinds)
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'metadata' && entry.count === 1 && entry.metadataCount === 1)
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'metadata-accessor' && entry.count === 1 && entry.metadataAccessorCount === 1)
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'nominal-descriptor' && entry.count === 1 && entry.nominalDescriptorCount === 1)
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'metadata-cache' && entry.count === 1 && entry.metadataCacheCount === 1)
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'associated-type-descriptor' && entry.count === 1 && entry.associatedTypeDescriptorCount === 1)
+                                    && Array.isArray(result.contextModules)
+                                    && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 4 && entry.metadataCount === 1 && entry.metadataAccessorCount === 1 && entry.nominalDescriptorCount === 1 && entry.associatedTypeDescriptorCount === 1)
+                                    && Array.isArray(result.detailKinds)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'metadata' && entry.count === 1 && entry.metadataCount === 1)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'metadata-accessor' && entry.count === 1 && entry.metadataAccessorCount === 1)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'nominal-descriptor' && entry.count === 2 && entry.nominalDescriptorCount === 1 && entry.associatedTypeDescriptorCount === 1)
+                                    && result.detailKinds.some((entry) => entry.detailKind === '<none>' && entry.count === 1 && entry.metadataCacheCount === 1)
                                     && result.parsedVtableMemberCount === 2
                                     && result.vtableAccessorCount === 1
                                     && result.vtableGetterCount === 1
@@ -6090,6 +6164,14 @@ undefined;
                                     && result.vtableMemberKinds.some((entry) => entry.memberKind === 'method' && entry.count === 1)
                                     && Array.isArray(result.witnessProtocols)
                                     && result.witnessProtocols.some((entry) => entry.protocolName === 'Demo.Renderable' && entry.count === 1 && entry.accessorCount === 1)
+                                    && result.typeLayout.typeSourceEntryCount === 5
+                                    && result.typeLayout.sourceDemangledCount === 4
+                                    && result.typeLayout.uniqueSourceKindCount === 5
+                                    && result.typeLayout.uniqueContextModuleCount === 1
+                                    && result.typeLayout.uniqueDetailKindCount === 4
+                                    && Array.isArray(result.typeLayout.sourceKinds)
+                                    && Array.isArray(result.typeLayout.contextModules)
+                                    && Array.isArray(result.typeLayout.detailKinds)
                                     && result.typeLayout.parsedVtableMemberCount === 2
                                     && result.typeLayout.vtableGetterCount === 1
                                     && result.typeLayout.vtableAsyncCount === 1
@@ -7415,8 +7497,211 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout', moduleName: null, query: 'ViewController' });
+                            if (typeof result.typeSourceEntryCount !== 'number' ||
+                                    typeof result.sourceDemangledCount !== 'number' ||
+                                    typeof result.layoutsWithSourceDemangledTypesCount !== 'number' ||
+                                    typeof result.uniqueSourceKindCount !== 'number' ||
+                                    typeof result.uniqueContextModuleCount !== 'number' ||
+                                    typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.sourceKinds) ||
+                                    !Array.isArray(result.contextModules) ||
+                                    !Array.isArray(result.detailKinds)) {
+                                return false;
+                            }
+                            if (result.layouts.length === 0) {
+                                return result.typeSourceEntryCount === 0 &&
+                                    result.sourceDemangledCount === 0 &&
+                                    result.layoutsWithSourceDemangledTypesCount === 0 &&
+                                    result.uniqueSourceKindCount === 0 &&
+                                    result.uniqueContextModuleCount === 0 &&
+                                    result.uniqueDetailKindCount === 0 &&
+                                    result.sourceKinds.length === 0 &&
+                                    result.contextModules.length === 0 &&
+                                    result.detailKinds.length === 0;
+                            }
+                            const layout = result.layouts[0];
+                            return typeof layout.typeSourceEntryCount === 'number' &&
+                                typeof layout.sourceDemangledCount === 'number' &&
+                                typeof layout.hasSourceDemangledTypes === 'boolean' &&
+                                typeof layout.uniqueSourceKindCount === 'number' &&
+                                typeof layout.uniqueContextModuleCount === 'number' &&
+                                typeof layout.uniqueDetailKindCount === 'number' &&
+                                Array.isArray(layout.sourceKinds) &&
+                                Array.isArray(layout.contextModules) &&
+                                Array.isArray(layout.detailKinds);
+                        })()"
+                    )
+                    .expect("agent swift type layout type-source fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.typeLayout;
+                            Swift.typeLayout = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'Demo.ViewController',
+                                        metadata: [
+                                            {
+                                                moduleName: 'Demo',
+                                                moduleBase: 0x180000000n,
+                                                name: 'Demo.ViewController',
+                                                sourceSymbolName: '$s4Demo14ViewControllerCMf',
+                                                sourceKind: 'metadata',
+                                                sourceAddress: 0x180004100n,
+                                                sourceOffset: 0x4100n,
+                                                sourceDemangledName: 'full type metadata for Demo.ViewController in Demo',
+                                            }
+                                        ],
+                                        metadataAccessors: [
+                                            {
+                                                moduleName: 'Demo',
+                                                moduleBase: 0x180000000n,
+                                                name: 'Demo.ViewController',
+                                                sourceSymbolName: '$s4Demo14ViewControllerCMa',
+                                                sourceKind: 'metadata-accessor',
+                                                sourceAddress: 0x180004200n,
+                                                sourceOffset: 0x4200n,
+                                                sourceDemangledName: 'type metadata accessor for Demo.ViewController in Demo',
+                                            }
+                                        ],
+                                        nominalDescriptors: [],
+                                        metadataCaches: [],
+                                        associatedTypeDescriptors: [],
+                                        vtableEntries: [],
+                                        witnessTables: [],
+                                    },
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'Demo.Renderable',
+                                        metadata: [],
+                                        metadataAccessors: [],
+                                        nominalDescriptors: [
+                                            {
+                                                moduleName: 'Demo',
+                                                moduleBase: 0x180000000n,
+                                                name: 'Demo.Renderable',
+                                                sourceSymbolName: '$s4Demo10RenderableMn',
+                                                sourceKind: 'nominal-descriptor',
+                                                sourceAddress: 0x180004300n,
+                                                sourceOffset: 0x4300n,
+                                                sourceDemangledName: 'nominal type descriptor for Demo.Renderable in Demo',
+                                            }
+                                        ],
+                                        metadataCaches: [
+                                            {
+                                                moduleName: 'Demo',
+                                                moduleBase: 0x180000000n,
+                                                name: 'Demo.Renderable',
+                                                sourceSymbolName: '$s4Demo10RenderableCMX',
+                                                sourceKind: 'metadata-cache',
+                                                sourceAddress: 0x180004400n,
+                                                sourceOffset: 0x4400n,
+                                                sourceDemangledName: null,
+                                            }
+                                        ],
+                                        associatedTypeDescriptors: [
+                                            {
+                                                moduleName: 'Demo',
+                                                moduleBase: 0x180000000n,
+                                                name: 'Demo.Renderable',
+                                                sourceSymbolName: '$s4Demo10RenderableHn',
+                                                sourceKind: 'associated-type-descriptor',
+                                                sourceAddress: 0x180004500n,
+                                                sourceOffset: 0x4500n,
+                                                sourceDemangledName: 'nominal type descriptor for Demo.Renderable in Demo',
+                                            }
+                                        ],
+                                        vtableEntries: [],
+                                        witnessTables: [],
+                                    }
+                                ];
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout', moduleName: null, query: 'Demo' });
+                                return result.count === 2
+                                    && result.typeSourceEntryCount === 5
+                                    && result.sourceDemangledCount === 4
+                                    && result.layoutsWithSourceDemangledTypesCount === 2
+                                    && result.uniqueSourceKindCount === 5
+                                    && result.uniqueContextModuleCount === 1
+                                    && result.uniqueDetailKindCount === 4
+                                    && Array.isArray(result.sourceKinds)
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'metadata' && entry.count === 1 && entry.metadataCount === 1)
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'metadata-accessor' && entry.count === 1 && entry.metadataAccessorCount === 1)
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'nominal-descriptor' && entry.count === 1 && entry.nominalDescriptorCount === 1)
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'metadata-cache' && entry.count === 1 && entry.metadataCacheCount === 1)
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'associated-type-descriptor' && entry.count === 1 && entry.associatedTypeDescriptorCount === 1)
+                                    && Array.isArray(result.contextModules)
+                                    && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 4 && entry.metadataCount === 1 && entry.metadataAccessorCount === 1 && entry.nominalDescriptorCount === 1 && entry.associatedTypeDescriptorCount === 1)
+                                    && Array.isArray(result.detailKinds)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'metadata' && entry.count === 1 && entry.metadataCount === 1)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'metadata-accessor' && entry.count === 1 && entry.metadataAccessorCount === 1)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'nominal-descriptor' && entry.count === 2 && entry.nominalDescriptorCount === 1 && entry.associatedTypeDescriptorCount === 1)
+                                    && result.detailKinds.some((entry) => entry.detailKind === '<none>' && entry.count === 1 && entry.metadataCacheCount === 1)
+                                    && result.layouts.some((entry) => entry.name === 'Demo.ViewController' && entry.typeSourceEntryCount === 2)
+                                    && result.layouts.some((entry) => entry.name === 'Demo.Renderable' && entry.typeSourceEntryCount === 3);
+                            } finally {
+                                Swift.typeLayout = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift type layout type-source summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' }); return result.kind === 'swift.type_layout_info' && result.typeName === 'ViewController' && typeof result.hasTypeLayout === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasMetadata === 'boolean' && typeof result.hasMetadataAccessors === 'boolean' && typeof result.hasNominalDescriptors === 'boolean' && typeof result.hasMetadataCaches === 'boolean' && typeof result.hasAssociatedTypeDescriptors === 'boolean' && typeof result.hasVtableEntries === 'boolean' && typeof result.hasWitnessTables === 'boolean' && typeof result.metadataCount === 'number' && typeof result.metadataAccessorCount === 'number' && typeof result.nominalDescriptorCount === 'number' && typeof result.metadataCacheCount === 'number' && typeof result.associatedTypeDescriptorCount === 'number' && typeof result.vtableCount === 'number' && typeof result.witnessTableCount === 'number' && typeof result.parsedVtableMemberCount === 'number' && typeof result.vtableAccessorCount === 'number' && typeof result.vtableGetterCount === 'number' && typeof result.vtableSetterCount === 'number' && typeof result.vtableConstructorCount === 'number' && typeof result.vtableDestructorCount === 'number' && typeof result.vtableAsyncCount === 'number' && typeof result.vtableThrowingCount === 'number' && typeof result.witnessAccessorCount === 'number' && typeof result.uniqueVtableMemberKindCount === 'number' && typeof result.uniqueWitnessProtocolCount === 'number' && Array.isArray(result.vtableMemberKinds) && Array.isArray(result.witnessProtocols) && ((result.typeLayout === null && result.hasTypeLayout === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.metadataCount === 0 && result.metadataAccessorCount === 0 && result.nominalDescriptorCount === 0 && result.metadataCacheCount === 0 && result.associatedTypeDescriptorCount === 0 && result.vtableCount === 0 && result.witnessTableCount === 0 && result.parsedVtableMemberCount === 0 && result.vtableAccessorCount === 0 && result.witnessAccessorCount === 0 && result.vtableMemberKinds.length === 0 && result.witnessProtocols.length === 0 && result.text === '<null>') || (result.hasTypeLayout === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.typeLayout.moduleBase === 'string' && Array.isArray(result.typeLayout.metadata) && typeof result.typeLayout.hasMetadata === 'boolean' && (result.typeLayout.firstMetadataName === null || typeof result.typeLayout.firstMetadataName === 'string') && (result.typeLayout.lastMetadataName === null || typeof result.typeLayout.lastMetadataName === 'string') && typeof result.typeLayout.hasMetadataAccessors === 'boolean' && typeof result.typeLayout.hasNominalDescriptors === 'boolean' && typeof result.typeLayout.hasMetadataCaches === 'boolean' && typeof result.typeLayout.hasAssociatedTypeDescriptors === 'boolean' && typeof result.typeLayout.hasVtableEntries === 'boolean' && typeof result.typeLayout.hasWitnessTables === 'boolean' && typeof result.typeLayout.vtableCount === 'number' && typeof result.typeLayout.witnessTableCount === 'number' && typeof result.typeLayout.parsedVtableMemberCount === 'number' && typeof result.typeLayout.vtableAccessorCount === 'number' && typeof result.typeLayout.witnessAccessorCount === 'number' && Array.isArray(result.typeLayout.vtableMemberKinds) && Array.isArray(result.typeLayout.witnessProtocols) && result.resolvedName === result.typeLayout.name && result.resolvedModuleName === result.typeLayout.moduleName && result.hasMetadata === (result.typeLayout.hasMetadata === true) && result.hasMetadataAccessors === (result.typeLayout.hasMetadataAccessors === true) && result.hasNominalDescriptors === (result.typeLayout.hasNominalDescriptors === true) && result.hasMetadataCaches === (result.typeLayout.hasMetadataCaches === true) && result.hasAssociatedTypeDescriptors === (result.typeLayout.hasAssociatedTypeDescriptors === true) && result.hasVtableEntries === (result.typeLayout.hasVtableEntries === true) && result.hasWitnessTables === (result.typeLayout.hasWitnessTables === true) && result.metadataCount === result.typeLayout.metadataCount && result.metadataAccessorCount === result.typeLayout.metadataAccessorCount && result.nominalDescriptorCount === result.typeLayout.nominalDescriptorCount && result.metadataCacheCount === result.typeLayout.metadataCacheCount && result.associatedTypeDescriptorCount === result.typeLayout.associatedTypeDescriptorCount && result.vtableCount === result.typeLayout.vtableCount && result.witnessTableCount === result.typeLayout.witnessTableCount && result.parsedVtableMemberCount === result.typeLayout.parsedVtableMemberCount && result.vtableAccessorCount === result.typeLayout.vtableAccessorCount && result.witnessAccessorCount === result.typeLayout.witnessAccessorCount && result.uniqueVtableMemberKindCount === result.typeLayout.uniqueVtableMemberKindCount && result.uniqueWitnessProtocolCount === result.typeLayout.uniqueWitnessProtocolCount && result.text === result.typeLayout.text)); })()")
                     .expect("agent swift type layout info result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' });
+                            if (typeof result.typeSourceEntryCount !== 'number' ||
+                                    typeof result.sourceDemangledCount !== 'number' ||
+                                    typeof result.hasSourceDemangledTypes !== 'boolean' ||
+                                    typeof result.uniqueSourceKindCount !== 'number' ||
+                                    typeof result.uniqueContextModuleCount !== 'number' ||
+                                    typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.sourceKinds) ||
+                                    !Array.isArray(result.contextModules) ||
+                                    !Array.isArray(result.detailKinds)) {
+                                return false;
+                            }
+                            if (result.typeLayout === null) {
+                                return result.typeSourceEntryCount === 0 &&
+                                    result.sourceDemangledCount === 0 &&
+                                    result.hasSourceDemangledTypes === false &&
+                                    result.uniqueSourceKindCount === 0 &&
+                                    result.uniqueContextModuleCount === 0 &&
+                                    result.uniqueDetailKindCount === 0 &&
+                                    result.sourceKinds.length === 0 &&
+                                    result.contextModules.length === 0 &&
+                                    result.detailKinds.length === 0;
+                            }
+                            return result.typeSourceEntryCount === result.typeLayout.typeSourceEntryCount &&
+                                result.sourceDemangledCount === result.typeLayout.sourceDemangledCount &&
+                                result.hasSourceDemangledTypes === (result.typeLayout.hasSourceDemangledTypes === true) &&
+                                result.uniqueSourceKindCount === result.typeLayout.uniqueSourceKindCount &&
+                                result.uniqueContextModuleCount === result.typeLayout.uniqueContextModuleCount &&
+                                result.uniqueDetailKindCount === result.typeLayout.uniqueDetailKindCount &&
+                                result.sourceKinds.length === result.typeLayout.sourceKinds.length &&
+                                result.contextModules.length === result.typeLayout.contextModules.length &&
+                                result.detailKinds.length === result.typeLayout.detailKinds.length;
+                        })()"
+                    )
+                    .expect("agent swift type layout info type-source fields"),
                 "true"
             );
             assert_eq!(

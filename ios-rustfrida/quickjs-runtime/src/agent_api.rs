@@ -4792,6 +4792,66 @@ function normalizeSwiftType(typeInfo) {
     return normalized;
 }
 
+function summarizeSwiftTypeSourceBuckets(buckets) {
+    const sourceKinds = [];
+    const contextModules = [];
+    const detailKinds = [];
+    let typeSourceEntryCount = 0;
+    let sourceDemangledCount = 0;
+
+    function createBucketSummary(fieldName, fieldValue) {
+        const summary = {
+            count: 0,
+            metadataCount: 0,
+            metadataAccessorCount: 0,
+            nominalDescriptorCount: 0,
+            metadataCacheCount: 0,
+            associatedTypeDescriptorCount: 0,
+        };
+        summary[fieldName] = fieldValue;
+        return summary;
+    }
+
+    function accumulate(list, fieldName, fieldValue, bucketCountField) {
+        let summary = list.find((item) => item[fieldName] === fieldValue);
+        if (summary === undefined) {
+            summary = createBucketSummary(fieldName, fieldValue);
+            list.push(summary);
+        }
+        summary.count += 1;
+        summary[bucketCountField] += 1;
+    }
+
+    for (const bucket of buckets) {
+        const entries = Array.isArray(bucket.entries) ? bucket.entries : [];
+        for (const typeInfo of entries) {
+            typeSourceEntryCount += 1;
+            if (typeInfo.hasSourceDemangledName) {
+                sourceDemangledCount += 1;
+            }
+            const sourceKind = typeInfo.sourceKind === null ? '<none>' : String(typeInfo.sourceKind);
+            accumulate(sourceKinds, 'sourceKind', sourceKind, bucket.countField);
+            if (typeInfo.hasContextModuleName) {
+                accumulate(contextModules, 'contextModuleName', typeInfo.contextModuleName, bucket.countField);
+            }
+            const detailKind = typeInfo.detailKind === null ? '<none>' : String(typeInfo.detailKind);
+            accumulate(detailKinds, 'detailKind', detailKind, bucket.countField);
+        }
+    }
+
+    return {
+        typeSourceEntryCount,
+        sourceDemangledCount,
+        hasSourceDemangledTypes: sourceDemangledCount !== 0,
+        uniqueSourceKindCount: sourceKinds.length,
+        uniqueContextModuleCount: contextModules.length,
+        uniqueDetailKindCount: detailKinds.length,
+        sourceKinds,
+        contextModules,
+        detailKinds,
+    };
+}
+
 function normalizeSwiftMetadata(typeInfo) {
     const sourceOffset = typeof typeInfo.sourceOffset === 'bigint' ? typeInfo.sourceOffset : BigInt(typeInfo.sourceOffset || 0);
     const name = String(typeInfo.name || '');
@@ -5027,6 +5087,13 @@ function normalizeSwiftTypeLayout(layout) {
     const witnessTables = Array.isArray(layout.witnessTables)
         ? layout.witnessTables.map((entry) => normalizeSwiftWitnessTable(entry))
         : [];
+    const typeSourceSummary = summarizeSwiftTypeSourceBuckets([
+        { entries: metadata, countField: 'metadataCount' },
+        { entries: metadataAccessors, countField: 'metadataAccessorCount' },
+        { entries: nominalDescriptors, countField: 'nominalDescriptorCount' },
+        { entries: metadataCaches, countField: 'metadataCacheCount' },
+        { entries: associatedTypeDescriptors, countField: 'associatedTypeDescriptorCount' },
+    ]);
     const vtableSummary = summarizeSwiftMembers(vtableEntries);
     const witnessProtocols = [];
     const witnessSourceKinds = [];
@@ -5112,6 +5179,15 @@ function normalizeSwiftTypeLayout(layout) {
         nominalDescriptorCount: nominalDescriptors.length,
         metadataCacheCount: metadataCaches.length,
         associatedTypeDescriptorCount: associatedTypeDescriptors.length,
+        typeSourceEntryCount: typeSourceSummary.typeSourceEntryCount,
+        sourceDemangledCount: typeSourceSummary.sourceDemangledCount,
+        hasSourceDemangledTypes: typeSourceSummary.hasSourceDemangledTypes,
+        uniqueSourceKindCount: typeSourceSummary.uniqueSourceKindCount,
+        uniqueContextModuleCount: typeSourceSummary.uniqueContextModuleCount,
+        uniqueDetailKindCount: typeSourceSummary.uniqueDetailKindCount,
+        sourceKinds: typeSourceSummary.sourceKinds,
+        contextModules: typeSourceSummary.contextModules,
+        detailKinds: typeSourceSummary.detailKinds,
         vtableCount: vtableEntries.length,
         witnessTableCount: witnessTables.length,
         parsedVtableMemberCount: vtableSummary.parsedMemberCount,
@@ -9299,6 +9375,17 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const layouts = Swift.typeLayout(query, moduleName).map((layout) => normalizeSwiftTypeLayout(layout));
+        const typeSourceBuckets = [];
+        for (const layout of layouts) {
+            typeSourceBuckets.push(
+                { entries: layout.metadata, countField: 'metadataCount' },
+                { entries: layout.metadataAccessors, countField: 'metadataAccessorCount' },
+                { entries: layout.nominalDescriptors, countField: 'nominalDescriptorCount' },
+                { entries: layout.metadataCaches, countField: 'metadataCacheCount' },
+                { entries: layout.associatedTypeDescriptors, countField: 'associatedTypeDescriptorCount' },
+            );
+        }
+        const typeSourceSummary = summarizeSwiftTypeSourceBuckets(typeSourceBuckets);
         const moduleSummaries = [];
         const typeSummaries = [];
         const moduleNames = new Set();
@@ -9325,6 +9412,7 @@ function handleSpecResult(spec) {
         let vtableAsyncEntryCount = 0;
         let vtableThrowingEntryCount = 0;
         let witnessAccessorCount = 0;
+        let layoutsWithSourceDemangledTypesCount = 0;
         let layoutsWithAccessorVtableEntriesCount = 0;
         let layoutsWithAsyncVtableEntriesCount = 0;
         let layoutsWithThrowingVtableEntriesCount = 0;
@@ -9424,6 +9512,9 @@ function handleSpecResult(spec) {
             vtableAsyncEntryCount += layout.vtableAsyncCount;
             vtableThrowingEntryCount += layout.vtableThrowingCount;
             witnessAccessorCount += layout.witnessAccessorCount;
+            if (layout.hasSourceDemangledTypes) {
+                layoutsWithSourceDemangledTypesCount += 1;
+            }
             if (layout.vtableAccessorCount !== 0) {
                 layoutsWithAccessorVtableEntriesCount += 1;
             }
@@ -9461,6 +9552,12 @@ function handleSpecResult(spec) {
             nominalDescriptorEntryCount,
             metadataCacheEntryCount,
             associatedTypeDescriptorEntryCount,
+            typeSourceEntryCount: typeSourceSummary.typeSourceEntryCount,
+            sourceDemangledCount: typeSourceSummary.sourceDemangledCount,
+            layoutsWithSourceDemangledTypesCount,
+            uniqueSourceKindCount: typeSourceSummary.uniqueSourceKindCount,
+            uniqueContextModuleCount: typeSourceSummary.uniqueContextModuleCount,
+            uniqueDetailKindCount: typeSourceSummary.uniqueDetailKindCount,
             vtableEntryCount,
             witnessTableEntryCount,
             vtableAccessorEntryCount,
@@ -9476,6 +9573,9 @@ function handleSpecResult(spec) {
             layoutsWithAsyncVtableEntriesCount,
             layoutsWithThrowingVtableEntriesCount,
             layoutsWithWitnessAccessorsCount,
+            sourceKinds: typeSourceSummary.sourceKinds,
+            contextModules: typeSourceSummary.contextModules,
+            detailKinds: typeSourceSummary.detailKinds,
             moduleNames: moduleSummaries,
             typeNames: typeSummaries,
             layouts,
@@ -9524,6 +9624,15 @@ function handleSpecResult(spec) {
             nominalDescriptorCount: normalized === null ? 0 : normalized.nominalDescriptorCount,
             metadataCacheCount: normalized === null ? 0 : normalized.metadataCacheCount,
             associatedTypeDescriptorCount: normalized === null ? 0 : normalized.associatedTypeDescriptorCount,
+            typeSourceEntryCount: normalized === null ? 0 : normalized.typeSourceEntryCount,
+            sourceDemangledCount: normalized === null ? 0 : normalized.sourceDemangledCount,
+            hasSourceDemangledTypes: normalized !== null && normalized.hasSourceDemangledTypes === true,
+            uniqueSourceKindCount: normalized === null ? 0 : normalized.uniqueSourceKindCount,
+            uniqueContextModuleCount: normalized === null ? 0 : normalized.uniqueContextModuleCount,
+            uniqueDetailKindCount: normalized === null ? 0 : normalized.uniqueDetailKindCount,
+            sourceKinds: normalized === null ? [] : normalized.sourceKinds,
+            contextModules: normalized === null ? [] : normalized.contextModules,
+            detailKinds: normalized === null ? [] : normalized.detailKinds,
             vtableCount: normalized === null ? 0 : normalized.vtableCount,
             witnessTableCount: normalized === null ? 0 : normalized.witnessTableCount,
             parsedVtableMemberCount: normalized === null ? 0 : normalized.parsedVtableMemberCount,
