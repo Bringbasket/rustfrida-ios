@@ -4113,7 +4113,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); return result.kind === 'native.section_info' && result.moduleName === 'libsystem_malloc.dylib' && result.segmentName === '__TEXT' && result.sectionName === '__text' && typeof result.hasSectionInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasData === 'boolean' && typeof result.isZeroFillLike === 'boolean' && typeof result.isCStringLike === 'boolean' && typeof result.isSymbolPointers === 'boolean' && ((result.sectionInfo === null && result.hasSectionInfo === false && result.resolved === false && result.resolvedSegmentName === null && result.resolvedSectionName === null && result.resolvedFullName === null && result.resolvedModuleName === null && result.sectionTypeName === null && result.hasData === false && result.isZeroFillLike === false && result.isCStringLike === false && result.isSymbolPointers === false && result.text === '<null>') || (typeof result.sectionInfo.moduleBase === 'string' && typeof result.sectionInfo.segmentName === 'string' && typeof result.sectionInfo.offsetHex === 'string' && result.hasSectionInfo === true && result.resolved === true && typeof result.resolvedSegmentName === 'string' && typeof result.resolvedSectionName === 'string' && typeof result.resolvedFullName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.sectionTypeName === 'string' && result.resolvedSegmentName === result.sectionInfo.segmentName && result.resolvedSectionName === result.sectionInfo.name && result.resolvedFullName === result.sectionInfo.fullName && result.resolvedModuleName === result.sectionInfo.moduleName && result.sectionTypeName === result.sectionInfo.sectionTypeName && result.hasData === (result.sectionInfo.hasData === true) && result.isZeroFillLike === (result.sectionInfo.isZeroFillLike === true) && result.isCStringLike === (result.sectionInfo.isCStringLike === true) && result.isSymbolPointers === (result.sectionInfo.isSymbolPointers === true) && result.text === result.sectionInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); return result.kind === 'native.section_info' && result.moduleName === 'libsystem_malloc.dylib' && result.segmentName === '__TEXT' && result.sectionName === '__text' && typeof result.hasSectionInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasData === 'boolean' && typeof result.isZeroFillLike === 'boolean' && typeof result.isCStringLike === 'boolean' && typeof result.isSymbolPointers === 'boolean' && ((result.sectionInfo === null && result.hasSectionInfo === false && result.resolved === false && result.resolvedSegmentName === null && result.resolvedSectionName === null && result.resolvedFullName === null && result.resolvedModuleName === null && result.name === null && result.fullName === null && result.moduleBase === null && result.addr === null && result.endAddr === null && result.offsetHex === null && result.alignmentBytesHex === null && result.sectionType === null && result.sectionTypeName === null && result.hasData === false && result.isZeroFillLike === false && result.isCStringLike === false && result.isSymbolPointers === false && result.text === '<null>') || (typeof result.sectionInfo.moduleBase === 'string' && typeof result.sectionInfo.segmentName === 'string' && typeof result.sectionInfo.offsetHex === 'string' && result.hasSectionInfo === true && result.resolved === true && typeof result.resolvedSegmentName === 'string' && typeof result.resolvedSectionName === 'string' && typeof result.resolvedFullName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.name === 'string' && typeof result.fullName === 'string' && typeof result.moduleBase === 'string' && typeof result.addr === 'string' && typeof result.endAddr === 'string' && typeof result.offsetHex === 'string' && typeof result.alignmentBytesHex === 'string' && typeof result.sectionType === 'number' && typeof result.sectionTypeName === 'string' && result.resolvedSegmentName === result.sectionInfo.segmentName && result.resolvedSectionName === result.sectionInfo.name && result.resolvedFullName === result.sectionInfo.fullName && result.resolvedModuleName === result.sectionInfo.moduleName && result.name === result.sectionInfo.name && result.fullName === result.sectionInfo.fullName && result.moduleBase === result.sectionInfo.moduleBase && result.addr === result.sectionInfo.addr && result.endAddr === result.sectionInfo.endAddr && result.offsetHex === result.sectionInfo.offsetHex && result.alignmentBytesHex === result.sectionInfo.alignmentBytesHex && result.sectionType === result.sectionInfo.sectionType && result.sectionTypeName === result.sectionInfo.sectionTypeName && result.hasData === (result.sectionInfo.hasData === true) && result.isZeroFillLike === (result.sectionInfo.isZeroFillLike === true) && result.isCStringLike === (result.sectionInfo.isCStringLike === true) && result.isSymbolPointers === (result.sectionInfo.isSymbolPointers === true) && result.text === result.sectionInfo.text)); })()"
                     )
                     .expect("agent native sectionInfo result"),
                 "true"
@@ -4915,7 +4915,15 @@ undefined;
                                         && result.resolvedOffsetHex === null
                                         && result.resolvedAlignmentBytesHex === null
                                         && result.resolvedSectionType === null
-                                        && result.resolvedSectionTypeName === null;
+                                        && result.resolvedSectionTypeName === null
+                                        && result.name === null
+                                        && result.fullName === null
+                                        && result.moduleBase === null
+                                        && result.addr === null
+                                        && result.endAddr === null
+                                        && result.offsetHex === null
+                                        && result.alignmentBytesHex === null
+                                        && result.sectionType === null;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedAddr === info.addr
@@ -4923,7 +4931,15 @@ undefined;
                                     && result.resolvedOffsetHex === info.offsetHex
                                     && result.resolvedAlignmentBytesHex === info.alignmentBytesHex
                                     && result.resolvedSectionType === info.sectionType
-                                    && result.resolvedSectionTypeName === info.sectionTypeName;
+                                    && result.resolvedSectionTypeName === info.sectionTypeName
+                                    && result.name === info.name
+                                    && result.fullName === info.fullName
+                                    && result.moduleBase === info.moduleBase
+                                    && result.addr === info.addr
+                                    && result.endAddr === info.endAddr
+                                    && result.offsetHex === info.offsetHex
+                                    && result.alignmentBytesHex === info.alignmentBytesHex
+                                    && result.sectionType === info.sectionType;
                             }
 
                             function checkLoadCommandInfo(result) {
