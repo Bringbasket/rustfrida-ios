@@ -5863,6 +5863,7 @@ function handleSpecResult(spec) {
             hasDataEntries: normalized !== null && normalized.hasDataEntries === true,
             hasJumpTables: normalized !== null && normalized.hasJumpTables === true,
             hasUnknownKinds: normalized !== null && normalized.hasUnknownKinds === true,
+            kinds: normalized === null ? [] : normalized.kinds,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -5899,6 +5900,7 @@ function handleSpecResult(spec) {
             hasReexports: normalized !== null && normalized.hasReexports === true,
             hasStubAndResolvers: normalized !== null && normalized.hasStubAndResolvers === true,
             hasWeakDefinitions: normalized !== null && normalized.hasWeakDefinitions === true,
+            kinds: normalized === null ? [] : normalized.kinds,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
