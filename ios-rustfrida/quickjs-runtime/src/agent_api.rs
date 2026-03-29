@@ -6008,6 +6008,7 @@ function handleSpecResult(spec) {
             toolCount: normalized === null ? 0 : normalized.tools.length,
             uniqueToolCount: normalized === null ? 0 : normalized.uniqueToolCount,
             toolNames: normalized === null ? [] : normalized.toolNames,
+            tools: normalized === null ? [] : normalized.tools,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
