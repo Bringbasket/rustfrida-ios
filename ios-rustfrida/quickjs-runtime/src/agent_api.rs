@@ -5760,8 +5760,11 @@ function handleSpecResult(spec) {
             totalTableCount: normalized === null ? 0 : normalized.totalTableCount,
             tableCount: normalized === null ? 0 : normalized.tableCount,
             hasTables: normalized !== null && normalized.hasTables === true,
+            tableNames: normalized === null ? [] : normalized.tableNames,
+            nonEmptyTableNames: normalized === null ? [] : normalized.nonEmptyTableNames,
             firstTableName: normalized === null ? null : normalized.firstTableName,
             lastTableName: normalized === null ? null : normalized.lastTableName,
+            tables: normalized === null ? [] : normalized.tables,
             hasSymtab: normalized !== null && normalized.hasSymtab === true,
             hasStrtab: normalized !== null && normalized.hasStrtab === true,
             hasIndirectSymbols: normalized !== null && normalized.hasIndirectSymbols === true,
@@ -5938,6 +5941,7 @@ function handleSpecResult(spec) {
             firstPointerFormatName: normalized === null ? null : normalized.firstPointerFormatName,
             lastPointerFormatName: normalized === null ? null : normalized.lastPointerFormatName,
             dominantPointerFormatName: normalized === null ? null : normalized.dominantPointerFormatName,
+            pointerFormats: normalized === null ? [] : normalized.pointerFormats,
             importCount: normalized === null ? 0 : normalized.importCount,
             hasImports: normalized !== null && normalized.hasImports === true,
             namedImportCount: normalized === null ? 0 : normalized.namedImportCount,
@@ -5949,6 +5953,7 @@ function handleSpecResult(spec) {
             negativeAddendImportCount: normalized === null ? 0 : normalized.negativeAddendImportCount,
             hasNegativeAddends: normalized !== null && normalized.hasNegativeAddends === true,
             uniqueLibOrdinalCount: normalized === null ? 0 : normalized.uniqueLibOrdinalCount,
+            libOrdinals: normalized === null ? [] : normalized.libOrdinals,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }

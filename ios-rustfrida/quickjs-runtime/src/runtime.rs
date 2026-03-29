@@ -4245,7 +4245,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.linkedit', moduleName: main.image.name }); return result.kind === 'native.linkedit' && typeof result.hasLinkedit === 'boolean' && typeof result.resolved === 'boolean' && typeof result.tableCount === 'number' && typeof result.hasTables === 'boolean' && typeof result.hasSymtab === 'boolean' && typeof result.hasStrtab === 'boolean' && typeof result.hasIndirectSymbols === 'boolean' && ((result.linkedit === null && result.hasLinkedit === false && result.resolved === false && result.tableCount === 0 && result.hasTables === false && result.firstTableName === null && result.lastTableName === null && result.hasSymtab === false && result.hasStrtab === false && result.hasIndirectSymbols === false && result.text === '<null>') || (typeof result.linkedit.vmaddr === 'string' && typeof result.linkedit.vmsizeHex === 'string' && typeof result.linkedit.vmEnd === 'string' && typeof result.linkedit.fileoffHex === 'string' && typeof result.linkedit.filesizeHex === 'string' && typeof result.linkedit.fileEndHex === 'string' && typeof result.linkedit.computedBase === 'string' && typeof result.linkedit.computedEnd === 'string' && typeof result.linkedit.hasSymtab === 'boolean' && (result.linkedit.symtabAddress === null || typeof result.linkedit.symtabAddress === 'string') && typeof result.linkedit.hasStrtab === 'boolean' && (result.linkedit.strtabAddress === null || typeof result.linkedit.strtabAddress === 'string') && typeof result.linkedit.hasIndirectSymbols === 'boolean' && (result.linkedit.indirectsymAddress === null || typeof result.linkedit.indirectsymAddress === 'string') && typeof result.linkedit.totalTableCount === 'number' && typeof result.linkedit.tableCount === 'number' && typeof result.linkedit.hasTables === 'boolean' && result.hasLinkedit === true && result.resolved === true && result.tableCount === result.linkedit.tableCount && result.hasTables === (result.linkedit.hasTables === true) && result.firstTableName === result.linkedit.firstTableName && result.lastTableName === result.linkedit.lastTableName && result.hasSymtab === (result.linkedit.hasSymtab === true) && result.hasStrtab === (result.linkedit.hasStrtab === true) && result.hasIndirectSymbols === (result.linkedit.hasIndirectSymbols === true) && Array.isArray(result.linkedit.tableNames) && Array.isArray(result.linkedit.nonEmptyTableNames) && (result.linkedit.firstTableName === null || typeof result.linkedit.firstTableName === 'string') && (result.linkedit.lastTableName === null || typeof result.linkedit.lastTableName === 'string') && Array.isArray(result.linkedit.tables) && result.linkedit.totalTableCount === result.linkedit.tables.length && (result.linkedit.tables.length === 0 || (typeof result.linkedit.tables[0].name === 'string' && (result.linkedit.tables[0].offsetHex === null || typeof result.linkedit.tables[0].offsetHex === 'string') && (result.linkedit.tables[0].address === null || typeof result.linkedit.tables[0].address === 'string') && (result.linkedit.tables[0].count === null || typeof result.linkedit.tables[0].count === 'number') && (result.linkedit.tables[0].sizeHex === null || typeof result.linkedit.tables[0].sizeHex === 'string') && typeof result.linkedit.tables[0].isPresent === 'boolean')) && result.text === result.linkedit.text)); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.linkedit', moduleName: main.image.name }); return result.kind === 'native.linkedit' && typeof result.hasLinkedit === 'boolean' && typeof result.resolved === 'boolean' && typeof result.tableCount === 'number' && typeof result.hasTables === 'boolean' && typeof result.hasSymtab === 'boolean' && typeof result.hasStrtab === 'boolean' && typeof result.hasIndirectSymbols === 'boolean' && ((result.linkedit === null && result.hasLinkedit === false && result.resolved === false && result.tableCount === 0 && result.hasTables === false && Array.isArray(result.tableNames) && result.tableNames.length === 0 && Array.isArray(result.nonEmptyTableNames) && result.nonEmptyTableNames.length === 0 && result.firstTableName === null && result.lastTableName === null && Array.isArray(result.tables) && result.tables.length === 0 && result.hasSymtab === false && result.hasStrtab === false && result.hasIndirectSymbols === false && result.text === '<null>') || (typeof result.linkedit.vmaddr === 'string' && typeof result.linkedit.vmsizeHex === 'string' && typeof result.linkedit.vmEnd === 'string' && typeof result.linkedit.fileoffHex === 'string' && typeof result.linkedit.filesizeHex === 'string' && typeof result.linkedit.fileEndHex === 'string' && typeof result.linkedit.computedBase === 'string' && typeof result.linkedit.computedEnd === 'string' && typeof result.linkedit.hasSymtab === 'boolean' && (result.linkedit.symtabAddress === null || typeof result.linkedit.symtabAddress === 'string') && typeof result.linkedit.hasStrtab === 'boolean' && (result.linkedit.strtabAddress === null || typeof result.linkedit.strtabAddress === 'string') && typeof result.linkedit.hasIndirectSymbols === 'boolean' && (result.linkedit.indirectsymAddress === null || typeof result.linkedit.indirectsymAddress === 'string') && typeof result.linkedit.totalTableCount === 'number' && typeof result.linkedit.tableCount === 'number' && typeof result.linkedit.hasTables === 'boolean' && result.hasLinkedit === true && result.resolved === true && result.tableCount === result.linkedit.tableCount && result.hasTables === (result.linkedit.hasTables === true) && Array.isArray(result.tableNames) && result.tableNames.length === result.linkedit.tableNames.length && result.tableNames.join('\\n') === result.linkedit.tableNames.join('\\n') && Array.isArray(result.nonEmptyTableNames) && result.nonEmptyTableNames.length === result.linkedit.nonEmptyTableNames.length && result.nonEmptyTableNames.join('\\n') === result.linkedit.nonEmptyTableNames.join('\\n') && result.firstTableName === result.linkedit.firstTableName && result.lastTableName === result.linkedit.lastTableName && Array.isArray(result.tables) && result.tables.length === result.linkedit.tables.length && JSON.stringify(result.tables) === JSON.stringify(result.linkedit.tables) && result.hasSymtab === (result.linkedit.hasSymtab === true) && result.hasStrtab === (result.linkedit.hasStrtab === true) && result.hasIndirectSymbols === (result.linkedit.hasIndirectSymbols === true) && Array.isArray(result.linkedit.tableNames) && Array.isArray(result.linkedit.nonEmptyTableNames) && (result.linkedit.firstTableName === null || typeof result.linkedit.firstTableName === 'string') && (result.linkedit.lastTableName === null || typeof result.linkedit.lastTableName === 'string') && Array.isArray(result.linkedit.tables) && result.linkedit.totalTableCount === result.linkedit.tables.length && (result.linkedit.tables.length === 0 || (typeof result.linkedit.tables[0].name === 'string' && (result.linkedit.tables[0].offsetHex === null || typeof result.linkedit.tables[0].offsetHex === 'string') && (result.linkedit.tables[0].address === null || typeof result.linkedit.tables[0].address === 'string') && (result.linkedit.tables[0].count === null || typeof result.linkedit.tables[0].count === 'number') && (result.linkedit.tables[0].sizeHex === null || typeof result.linkedit.tables[0].sizeHex === 'string') && typeof result.linkedit.tables[0].isPresent === 'boolean')) && result.text === result.linkedit.text)); })()"
                     )
                     .expect("agent native linkedit result"),
                 "true"
@@ -4312,7 +4312,11 @@ undefined;
                                     result.addendImportCount === 0 &&
                                     result.hasAddendImports === false &&
                                     result.negativeAddendImportCount === 0 &&
-                                    result.hasNegativeAddends === false;
+                                    result.hasNegativeAddends === false &&
+                                    Array.isArray(result.pointerFormats) &&
+                                    result.pointerFormats.length === 0 &&
+                                    Array.isArray(result.libOrdinals) &&
+                                    result.libOrdinals.length === 0;
                             }
                             const fixups = result.chainedFixups;
                             if (!(typeof result.hasChainedFixups === 'boolean'
@@ -4341,6 +4345,9 @@ undefined;
                                 && result.hasSegmentsWithFixups === (fixups.hasSegmentsWithFixups === true)
                                 && result.pointerFormatCount === fixups.pointerFormatCount
                                 && result.hasMultiplePointerFormats === (fixups.hasMultiplePointerFormats === true)
+                                && Array.isArray(result.pointerFormats)
+                                && result.pointerFormats.length === fixups.pointerFormats.length
+                                && JSON.stringify(result.pointerFormats) === JSON.stringify(fixups.pointerFormats)
                                 && result.importCount === fixups.importCount
                                 && result.hasImports === (fixups.hasImports === true)
                                 && result.namedImportCount === fixups.namedImportCount
@@ -4351,6 +4358,9 @@ undefined;
                                 && result.hasAddendImports === (fixups.hasAddendImports === true)
                                 && result.negativeAddendImportCount === fixups.negativeAddendImportCount
                                 && result.hasNegativeAddends === (fixups.hasNegativeAddends === true)
+                                && Array.isArray(result.libOrdinals)
+                                && result.libOrdinals.length === fixups.libOrdinals.length
+                                && JSON.stringify(result.libOrdinals) === JSON.stringify(fixups.libOrdinals)
                                 && typeof fixups.dataoffHex === 'string'
                                 && typeof fixups.dataEnd === 'string'
                                 && typeof fixups.hasData === 'boolean'
@@ -4667,9 +4677,13 @@ undefined;
                                     && fixups.totalPageCount === 0
                                     && fixups.totalFixupPageCount === 0
                                     && fixups.totalChainStartCount === 0
+                                    && Array.isArray(fixups.pointerFormats)
+                                    && fixups.pointerFormats.length === 0
                                     && fixups.firstPointerFormatName === null
                                     && fixups.lastPointerFormatName === null
                                     && fixups.dominantPointerFormatName === null
+                                    && Array.isArray(fixups.libOrdinals)
+                                    && fixups.libOrdinals.length === 0
                                     && fixups.uniqueLibOrdinalCount === 0;
                             }
                             return fixups.resolvedModuleName === fixups.chainedFixups.moduleName
@@ -4687,9 +4701,15 @@ undefined;
                                 && fixups.totalPageCount === fixups.chainedFixups.totalPageCount
                                 && fixups.totalFixupPageCount === fixups.chainedFixups.totalFixupPageCount
                                 && fixups.totalChainStartCount === fixups.chainedFixups.totalChainStartCount
+                                && Array.isArray(fixups.pointerFormats)
+                                && fixups.pointerFormats.length === fixups.chainedFixups.pointerFormats.length
+                                && JSON.stringify(fixups.pointerFormats) === JSON.stringify(fixups.chainedFixups.pointerFormats)
                                 && fixups.firstPointerFormatName === fixups.chainedFixups.firstPointerFormatName
                                 && fixups.lastPointerFormatName === fixups.chainedFixups.lastPointerFormatName
                                 && fixups.dominantPointerFormatName === fixups.chainedFixups.dominantPointerFormatName
+                                && Array.isArray(fixups.libOrdinals)
+                                && fixups.libOrdinals.length === fixups.chainedFixups.libOrdinals.length
+                                && JSON.stringify(fixups.libOrdinals) === JSON.stringify(fixups.chainedFixups.libOrdinals)
                                 && fixups.uniqueLibOrdinalCount === fixups.chainedFixups.uniqueLibOrdinalCount;
                         })()"#
                     )
