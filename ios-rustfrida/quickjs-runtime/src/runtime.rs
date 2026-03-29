@@ -3860,7 +3860,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }); return result.kind === 'native.symbol_info' && result.symbolName === 'malloc' && typeof result.hasSymbolInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasAddress === 'boolean' && ((result.symbolInfo === null && result.hasSymbolInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.resolvedAddress === null && result.hasAddress === false && result.text === '<null>') || (typeof result.symbolInfo.moduleBase === 'string' && typeof result.symbolInfo.name === 'string' && typeof result.symbolInfo.offsetHex === 'string' && result.hasSymbolInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.resolvedAddress === 'string' && result.hasAddress === true && result.resolvedName === result.symbolInfo.name && result.resolvedModuleName === result.symbolInfo.moduleName && result.resolvedAddress === result.symbolInfo.address && result.text === result.symbolInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }); return result.kind === 'native.symbol_info' && result.symbolName === 'malloc' && typeof result.hasSymbolInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasAddress === 'boolean' && ((result.symbolInfo === null && result.hasSymbolInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.resolvedAddress === null && result.name === null && result.moduleBase === null && result.address === null && result.offsetHex === null && result.hasAddress === false && result.text === '<null>') || (typeof result.symbolInfo.moduleBase === 'string' && typeof result.symbolInfo.name === 'string' && typeof result.symbolInfo.offsetHex === 'string' && result.hasSymbolInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.resolvedAddress === 'string' && typeof result.name === 'string' && typeof result.moduleBase === 'string' && typeof result.address === 'string' && typeof result.offsetHex === 'string' && result.hasAddress === true && result.resolvedName === result.symbolInfo.name && result.resolvedModuleName === result.symbolInfo.moduleName && result.resolvedAddress === result.symbolInfo.address && result.name === result.symbolInfo.name && result.moduleBase === result.symbolInfo.moduleBase && result.address === result.symbolInfo.address && result.offsetHex === result.symbolInfo.offsetHex && result.text === result.symbolInfo.text)); })()"
                     )
                     .expect("agent native symbolInfo result"),
                 "true"
@@ -3876,7 +3876,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); return result.kind === 'native.export_info' && result.moduleName === 'libsystem_malloc.dylib' && result.symbolName === 'malloc' && typeof result.hasExportInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasAddress === 'boolean' && ((result.exportInfo === null && result.hasExportInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.resolvedAddress === null && result.hasAddress === false && result.text === '<null>') || (typeof result.exportInfo.moduleBase === 'string' && typeof result.exportInfo.name === 'string' && typeof result.exportInfo.hasModuleName === 'boolean' && typeof result.exportInfo.hasName === 'boolean' && typeof result.exportInfo.offsetHex === 'string' && result.hasExportInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.resolvedAddress === 'string' && result.hasAddress === true && result.resolvedName === result.exportInfo.name && result.resolvedModuleName === result.exportInfo.moduleName && result.resolvedAddress === result.exportInfo.address && result.text === result.exportInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.export_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); return result.kind === 'native.export_info' && result.moduleName === 'libsystem_malloc.dylib' && result.symbolName === 'malloc' && typeof result.hasExportInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasAddress === 'boolean' && ((result.exportInfo === null && result.hasExportInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.resolvedAddress === null && result.name === null && result.moduleBase === null && result.address === null && result.offsetHex === null && result.hasAddress === false && result.text === '<null>') || (typeof result.exportInfo.moduleBase === 'string' && typeof result.exportInfo.name === 'string' && typeof result.exportInfo.hasModuleName === 'boolean' && typeof result.exportInfo.hasName === 'boolean' && typeof result.exportInfo.offsetHex === 'string' && result.hasExportInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.resolvedAddress === 'string' && typeof result.name === 'string' && typeof result.moduleBase === 'string' && typeof result.address === 'string' && typeof result.offsetHex === 'string' && result.hasAddress === true && result.resolvedName === result.exportInfo.name && result.resolvedModuleName === result.exportInfo.moduleName && result.resolvedAddress === result.exportInfo.address && result.name === result.exportInfo.name && result.moduleBase === result.exportInfo.moduleBase && result.address === result.exportInfo.address && result.offsetHex === result.exportInfo.offsetHex && result.text === result.exportInfo.text)); })()"
                     )
                     .expect("agent native exportInfo result"),
                 "true"
@@ -4747,11 +4747,19 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedModuleBase === null
                                         && result.resolvedOffsetHex === null
+                                        && result.name === null
+                                        && result.moduleBase === null
+                                        && result.address === null
+                                        && result.offsetHex === null
                                         && result.hasName === false
                                         && result.hasModuleName === false;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedOffsetHex === info.offsetHex
+                                    && result.name === info.name
+                                    && result.moduleBase === info.moduleBase
+                                    && result.address === info.address
+                                    && result.offsetHex === info.offsetHex
                                     && result.hasName === (info.hasName === true)
                                     && result.hasModuleName === (info.hasModuleName === true);
                             }
@@ -4761,11 +4769,19 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedModuleBase === null
                                         && result.resolvedOffsetHex === null
+                                        && result.name === null
+                                        && result.moduleBase === null
+                                        && result.address === null
+                                        && result.offsetHex === null
                                         && result.hasName === false
                                         && result.hasModuleName === false;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedOffsetHex === info.offsetHex
+                                    && result.name === info.name
+                                    && result.moduleBase === info.moduleBase
+                                    && result.address === info.address
+                                    && result.offsetHex === info.offsetHex
                                     && result.hasName === (info.hasName === true)
                                     && result.hasModuleName === (info.hasModuleName === true);
                             }
