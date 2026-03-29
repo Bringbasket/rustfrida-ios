@@ -4659,6 +4659,52 @@ function normalizeSwiftTypeLayout(layout) {
     const witnessTables = Array.isArray(layout.witnessTables)
         ? layout.witnessTables.map((entry) => normalizeSwiftWitnessTable(entry))
         : [];
+    const vtableSummary = summarizeSwiftMembers(vtableEntries);
+    const witnessProtocols = [];
+    const witnessSourceKinds = [];
+    let witnessAccessorCount = 0;
+    let witnessDemangledCount = 0;
+    for (const witness of witnessTables) {
+        if (witness.isAccessor) {
+            witnessAccessorCount += 1;
+        }
+        if (witness.hasDemangledName) {
+            witnessDemangledCount += 1;
+        }
+        let protocolSummary = witnessProtocols.find((entry) => entry.protocolName === witness.protocolName);
+        if (protocolSummary === undefined) {
+            protocolSummary = {
+                protocolName: witness.protocolName,
+                count: 0,
+                firstTypeName: witness.typeName,
+                lastTypeName: witness.typeName,
+                accessorCount: 0,
+            };
+            witnessProtocols.push(protocolSummary);
+        }
+        protocolSummary.count += 1;
+        protocolSummary.lastTypeName = witness.typeName;
+        if (witness.isAccessor) {
+            protocolSummary.accessorCount += 1;
+        }
+        const sourceKind = witness.sourceKind === null || witness.sourceKind === undefined ? '<none>' : String(witness.sourceKind);
+        let sourceSummary = witnessSourceKinds.find((entry) => entry.sourceKind === sourceKind);
+        if (sourceSummary === undefined) {
+            sourceSummary = {
+                sourceKind,
+                count: 0,
+                firstProtocolName: witness.protocolName,
+                lastProtocolName: witness.protocolName,
+                accessorCount: 0,
+            };
+            witnessSourceKinds.push(sourceSummary);
+        }
+        sourceSummary.count += 1;
+        sourceSummary.lastProtocolName = witness.protocolName;
+        if (witness.isAccessor) {
+            sourceSummary.accessorCount += 1;
+        }
+    }
 
     const normalized = {
         moduleName: String(layout.moduleName || ''),
@@ -4700,6 +4746,35 @@ function normalizeSwiftTypeLayout(layout) {
         associatedTypeDescriptorCount: associatedTypeDescriptors.length,
         vtableCount: vtableEntries.length,
         witnessTableCount: witnessTables.length,
+        parsedVtableMemberCount: vtableSummary.parsedMemberCount,
+        vtableAccessorCount: vtableSummary.accessorCount,
+        vtableGetterCount: vtableSummary.getterCount,
+        vtableSetterCount: vtableSummary.setterCount,
+        vtableModifyAccessorCount: vtableSummary.modifyAccessorCount,
+        vtableReadAccessorCount: vtableSummary.readAccessorCount,
+        vtableConstructorCount: vtableSummary.constructorCount,
+        vtableDestructorCount: vtableSummary.destructorCount,
+        vtableSubscriptCount: vtableSummary.subscriptCount,
+        vtableOperatorCount: vtableSummary.operatorCount,
+        vtableClosureCount: vtableSummary.closureCount,
+        vtableStaticMemberCount: vtableSummary.staticMemberCount,
+        vtableClassMemberCount: vtableSummary.classMemberCount,
+        vtableMutatingMemberCount: vtableSummary.mutatingMemberCount,
+        vtableAsyncCount: vtableSummary.asyncCount,
+        vtableThrowingCount: vtableSummary.throwingCount,
+        vtableDispatchThunkCount: vtableSummary.dispatchThunkCount,
+        uniqueVtableOwnerTypeCount: vtableSummary.uniqueOwnerTypeCount,
+        uniqueVtableMemberKindCount: vtableSummary.uniqueMemberKindCount,
+        uniqueVtableResultTypeCount: vtableSummary.uniqueResultTypeCount,
+        vtableOwnerTypes: vtableSummary.ownerTypes,
+        vtableMemberKinds: vtableSummary.memberKinds,
+        vtableResultTypes: vtableSummary.resultTypes,
+        witnessAccessorCount,
+        witnessDemangledCount,
+        uniqueWitnessProtocolCount: witnessProtocols.length,
+        uniqueWitnessSourceKindCount: witnessSourceKinds.length,
+        witnessProtocols,
+        witnessSourceKinds,
     };
     normalized.text = formatSwiftTypeLayout(normalized);
     return normalized;
@@ -8646,6 +8721,19 @@ function handleSpecResult(spec) {
         let associatedTypeDescriptorEntryCount = 0;
         let vtableEntryCount = 0;
         let witnessTableEntryCount = 0;
+        let vtableAccessorEntryCount = 0;
+        let vtableGetterEntryCount = 0;
+        let vtableSetterEntryCount = 0;
+        let vtableConstructorEntryCount = 0;
+        let vtableDestructorEntryCount = 0;
+        let vtableStaticMemberEntryCount = 0;
+        let vtableAsyncEntryCount = 0;
+        let vtableThrowingEntryCount = 0;
+        let witnessAccessorCount = 0;
+        let layoutsWithAccessorVtableEntriesCount = 0;
+        let layoutsWithAsyncVtableEntriesCount = 0;
+        let layoutsWithThrowingVtableEntriesCount = 0;
+        let layoutsWithWitnessAccessorsCount = 0;
         for (const layout of layouts) {
             moduleNames.add(layout.moduleName);
             let moduleSummary = moduleSummaries.find((item) => item.moduleName === layout.moduleName);
@@ -8732,6 +8820,27 @@ function handleSpecResult(spec) {
             associatedTypeDescriptorEntryCount += layout.associatedTypeDescriptorCount;
             vtableEntryCount += layout.vtableCount;
             witnessTableEntryCount += layout.witnessTableCount;
+            vtableAccessorEntryCount += layout.vtableAccessorCount;
+            vtableGetterEntryCount += layout.vtableGetterCount;
+            vtableSetterEntryCount += layout.vtableSetterCount;
+            vtableConstructorEntryCount += layout.vtableConstructorCount;
+            vtableDestructorEntryCount += layout.vtableDestructorCount;
+            vtableStaticMemberEntryCount += layout.vtableStaticMemberCount;
+            vtableAsyncEntryCount += layout.vtableAsyncCount;
+            vtableThrowingEntryCount += layout.vtableThrowingCount;
+            witnessAccessorCount += layout.witnessAccessorCount;
+            if (layout.vtableAccessorCount !== 0) {
+                layoutsWithAccessorVtableEntriesCount += 1;
+            }
+            if (layout.vtableAsyncCount !== 0) {
+                layoutsWithAsyncVtableEntriesCount += 1;
+            }
+            if (layout.vtableThrowingCount !== 0) {
+                layoutsWithThrowingVtableEntriesCount += 1;
+            }
+            if (layout.witnessAccessorCount !== 0) {
+                layoutsWithWitnessAccessorsCount += 1;
+            }
         }
         return {
             kind: 'swift.type_layout',
@@ -8759,6 +8868,19 @@ function handleSpecResult(spec) {
             associatedTypeDescriptorEntryCount,
             vtableEntryCount,
             witnessTableEntryCount,
+            vtableAccessorEntryCount,
+            vtableGetterEntryCount,
+            vtableSetterEntryCount,
+            vtableConstructorEntryCount,
+            vtableDestructorEntryCount,
+            vtableStaticMemberEntryCount,
+            vtableAsyncEntryCount,
+            vtableThrowingEntryCount,
+            witnessAccessorCount,
+            layoutsWithAccessorVtableEntriesCount,
+            layoutsWithAsyncVtableEntriesCount,
+            layoutsWithThrowingVtableEntriesCount,
+            layoutsWithWitnessAccessorsCount,
             moduleNames: moduleSummaries,
             typeNames: typeSummaries,
             layouts,
@@ -8809,6 +8931,35 @@ function handleSpecResult(spec) {
             associatedTypeDescriptorCount: normalized === null ? 0 : normalized.associatedTypeDescriptorCount,
             vtableCount: normalized === null ? 0 : normalized.vtableCount,
             witnessTableCount: normalized === null ? 0 : normalized.witnessTableCount,
+            parsedVtableMemberCount: normalized === null ? 0 : normalized.parsedVtableMemberCount,
+            vtableAccessorCount: normalized === null ? 0 : normalized.vtableAccessorCount,
+            vtableGetterCount: normalized === null ? 0 : normalized.vtableGetterCount,
+            vtableSetterCount: normalized === null ? 0 : normalized.vtableSetterCount,
+            vtableModifyAccessorCount: normalized === null ? 0 : normalized.vtableModifyAccessorCount,
+            vtableReadAccessorCount: normalized === null ? 0 : normalized.vtableReadAccessorCount,
+            vtableConstructorCount: normalized === null ? 0 : normalized.vtableConstructorCount,
+            vtableDestructorCount: normalized === null ? 0 : normalized.vtableDestructorCount,
+            vtableSubscriptCount: normalized === null ? 0 : normalized.vtableSubscriptCount,
+            vtableOperatorCount: normalized === null ? 0 : normalized.vtableOperatorCount,
+            vtableClosureCount: normalized === null ? 0 : normalized.vtableClosureCount,
+            vtableStaticMemberCount: normalized === null ? 0 : normalized.vtableStaticMemberCount,
+            vtableClassMemberCount: normalized === null ? 0 : normalized.vtableClassMemberCount,
+            vtableMutatingMemberCount: normalized === null ? 0 : normalized.vtableMutatingMemberCount,
+            vtableAsyncCount: normalized === null ? 0 : normalized.vtableAsyncCount,
+            vtableThrowingCount: normalized === null ? 0 : normalized.vtableThrowingCount,
+            vtableDispatchThunkCount: normalized === null ? 0 : normalized.vtableDispatchThunkCount,
+            uniqueVtableOwnerTypeCount: normalized === null ? 0 : normalized.uniqueVtableOwnerTypeCount,
+            uniqueVtableMemberKindCount: normalized === null ? 0 : normalized.uniqueVtableMemberKindCount,
+            uniqueVtableResultTypeCount: normalized === null ? 0 : normalized.uniqueVtableResultTypeCount,
+            vtableOwnerTypes: normalized === null ? [] : normalized.vtableOwnerTypes,
+            vtableMemberKinds: normalized === null ? [] : normalized.vtableMemberKinds,
+            vtableResultTypes: normalized === null ? [] : normalized.vtableResultTypes,
+            witnessAccessorCount: normalized === null ? 0 : normalized.witnessAccessorCount,
+            witnessDemangledCount: normalized === null ? 0 : normalized.witnessDemangledCount,
+            uniqueWitnessProtocolCount: normalized === null ? 0 : normalized.uniqueWitnessProtocolCount,
+            uniqueWitnessSourceKindCount: normalized === null ? 0 : normalized.uniqueWitnessSourceKindCount,
+            witnessProtocols: normalized === null ? [] : normalized.witnessProtocols,
+            witnessSourceKinds: normalized === null ? [] : normalized.witnessSourceKinds,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }

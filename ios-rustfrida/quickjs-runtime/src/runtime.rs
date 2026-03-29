@@ -5743,6 +5743,92 @@ undefined;
                 runtime
                     .eval(
                         "(function() {
+                            const original = Swift.typeLayoutInfo;
+                            Swift.typeLayoutInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: 'Demo.ViewController',
+                                    metadata: [],
+                                    metadataAccessors: [],
+                                    nominalDescriptors: [],
+                                    metadataCaches: [],
+                                    associatedTypeDescriptors: [],
+                                    vtableEntries: [
+                                        {
+                                            moduleName: 'Demo',
+                                            moduleBase: 0x180000000n,
+                                            typeName: 'Demo.ViewController',
+                                            memberName: 'title',
+                                            name: '$s4Demo14ViewControllerC5titleSSvg',
+                                            demangledName: 'Demo.ViewController.title.getter : Swift.String',
+                                            sourceKind: 'member',
+                                            address: 0x180005000n,
+                                            offset: 0x5000n,
+                                            isDispatchThunk: false,
+                                        },
+                                        {
+                                            moduleName: 'Demo',
+                                            moduleBase: 0x180000000n,
+                                            typeName: 'Demo.ViewController',
+                                            memberName: 'shared',
+                                            name: '$s4Demo14ViewControllerC6sharedACyYaKFZ',
+                                            demangledName: 'static Demo.ViewController.shared() async throws -> Demo.ViewController',
+                                            sourceKind: 'member',
+                                            address: 0x180006000n,
+                                            offset: 0x6000n,
+                                            isDispatchThunk: false,
+                                        }
+                                    ],
+                                    witnessTables: [
+                                        {
+                                            moduleName: 'Demo',
+                                            moduleBase: 0x180000000n,
+                                            typeName: 'Demo.ViewController',
+                                            protocolName: 'Demo.Renderable',
+                                            name: '$s4Demo14ViewControllerCAA10RenderableAAWP',
+                                            demangledName: 'protocol witness table accessor for Demo.ViewController : Demo.Renderable in Demo',
+                                            sourceKind: 'protocol-witness-table-accessor',
+                                            address: 0x180007000n,
+                                            offset: 0x7000n,
+                                            isAccessor: true,
+                                        }
+                                    ]
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' });
+                                return result.typeLayout !== null
+                                    && result.parsedVtableMemberCount === 2
+                                    && result.vtableAccessorCount === 1
+                                    && result.vtableGetterCount === 1
+                                    && result.vtableConstructorCount === 0
+                                    && result.vtableAsyncCount === 1
+                                    && result.vtableThrowingCount === 1
+                                    && result.uniqueVtableMemberKindCount >= 2
+                                    && result.witnessAccessorCount === 1
+                                    && result.uniqueWitnessProtocolCount === 1
+                                    && Array.isArray(result.vtableMemberKinds)
+                                    && result.vtableMemberKinds.some((entry) => entry.memberKind === 'getter' && entry.count === 1)
+                                    && result.vtableMemberKinds.some((entry) => entry.memberKind === 'method' && entry.count === 1)
+                                    && Array.isArray(result.witnessProtocols)
+                                    && result.witnessProtocols.some((entry) => entry.protocolName === 'Demo.Renderable' && entry.count === 1 && entry.accessorCount === 1)
+                                    && result.typeLayout.parsedVtableMemberCount === 2
+                                    && result.typeLayout.vtableGetterCount === 1
+                                    && result.typeLayout.vtableAsyncCount === 1
+                                    && result.typeLayout.witnessAccessorCount === 1;
+                            } finally {
+                                Swift.typeLayoutInfo = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift typeLayoutInfo semantics"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbols', moduleName: null, query: 'ViewController' });
                             if (result.kind !== 'swift.symbols' || result.query !== 'ViewController' || result.hasQuery !== true) {
                                 return false;
@@ -6135,6 +6221,19 @@ undefined;
                                     typeof result.associatedTypeDescriptorEntryCount !== 'number' ||
                                     typeof result.vtableEntryCount !== 'number' ||
                                     typeof result.witnessTableEntryCount !== 'number' ||
+                                    typeof result.vtableAccessorEntryCount !== 'number' ||
+                                    typeof result.vtableGetterEntryCount !== 'number' ||
+                                    typeof result.vtableSetterEntryCount !== 'number' ||
+                                    typeof result.vtableConstructorEntryCount !== 'number' ||
+                                    typeof result.vtableDestructorEntryCount !== 'number' ||
+                                    typeof result.vtableStaticMemberEntryCount !== 'number' ||
+                                    typeof result.vtableAsyncEntryCount !== 'number' ||
+                                    typeof result.vtableThrowingEntryCount !== 'number' ||
+                                    typeof result.witnessAccessorCount !== 'number' ||
+                                    typeof result.layoutsWithAccessorVtableEntriesCount !== 'number' ||
+                                    typeof result.layoutsWithAsyncVtableEntriesCount !== 'number' ||
+                                    typeof result.layoutsWithThrowingVtableEntriesCount !== 'number' ||
+                                    typeof result.layoutsWithWitnessAccessorsCount !== 'number' ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.typeNames)) {
                                 return false;
@@ -6172,6 +6271,16 @@ undefined;
                                 typeof layout.associatedTypeDescriptorCount === 'number' &&
                                 typeof layout.vtableCount === 'number' &&
                                 typeof layout.witnessTableCount === 'number' &&
+                                typeof layout.vtableAccessorCount === 'number' &&
+                                typeof layout.vtableGetterCount === 'number' &&
+                                typeof layout.vtableSetterCount === 'number' &&
+                                typeof layout.vtableConstructorCount === 'number' &&
+                                typeof layout.vtableDestructorCount === 'number' &&
+                                typeof layout.vtableAsyncCount === 'number' &&
+                                typeof layout.vtableThrowingCount === 'number' &&
+                                typeof layout.witnessAccessorCount === 'number' &&
+                                Array.isArray(layout.vtableMemberKinds) &&
+                                Array.isArray(layout.witnessProtocols) &&
                                 (moduleSummary === null || (
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
@@ -6204,7 +6313,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' }); return result.kind === 'swift.type_layout_info' && result.typeName === 'ViewController' && typeof result.hasTypeLayout === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasMetadata === 'boolean' && typeof result.hasMetadataAccessors === 'boolean' && typeof result.hasNominalDescriptors === 'boolean' && typeof result.hasMetadataCaches === 'boolean' && typeof result.hasAssociatedTypeDescriptors === 'boolean' && typeof result.hasVtableEntries === 'boolean' && typeof result.hasWitnessTables === 'boolean' && typeof result.metadataCount === 'number' && typeof result.metadataAccessorCount === 'number' && typeof result.nominalDescriptorCount === 'number' && typeof result.metadataCacheCount === 'number' && typeof result.associatedTypeDescriptorCount === 'number' && typeof result.vtableCount === 'number' && typeof result.witnessTableCount === 'number' && ((result.typeLayout === null && result.hasTypeLayout === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.metadataCount === 0 && result.metadataAccessorCount === 0 && result.nominalDescriptorCount === 0 && result.metadataCacheCount === 0 && result.associatedTypeDescriptorCount === 0 && result.vtableCount === 0 && result.witnessTableCount === 0 && result.text === '<null>') || (result.hasTypeLayout === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.typeLayout.moduleBase === 'string' && Array.isArray(result.typeLayout.metadata) && typeof result.typeLayout.hasMetadata === 'boolean' && (result.typeLayout.firstMetadataName === null || typeof result.typeLayout.firstMetadataName === 'string') && (result.typeLayout.lastMetadataName === null || typeof result.typeLayout.lastMetadataName === 'string') && typeof result.typeLayout.hasMetadataAccessors === 'boolean' && typeof result.typeLayout.hasNominalDescriptors === 'boolean' && typeof result.typeLayout.hasMetadataCaches === 'boolean' && typeof result.typeLayout.hasAssociatedTypeDescriptors === 'boolean' && typeof result.typeLayout.hasVtableEntries === 'boolean' && typeof result.typeLayout.hasWitnessTables === 'boolean' && typeof result.typeLayout.vtableCount === 'number' && typeof result.typeLayout.witnessTableCount === 'number' && result.resolvedName === result.typeLayout.name && result.resolvedModuleName === result.typeLayout.moduleName && result.hasMetadata === (result.typeLayout.hasMetadata === true) && result.hasMetadataAccessors === (result.typeLayout.hasMetadataAccessors === true) && result.hasNominalDescriptors === (result.typeLayout.hasNominalDescriptors === true) && result.hasMetadataCaches === (result.typeLayout.hasMetadataCaches === true) && result.hasAssociatedTypeDescriptors === (result.typeLayout.hasAssociatedTypeDescriptors === true) && result.hasVtableEntries === (result.typeLayout.hasVtableEntries === true) && result.hasWitnessTables === (result.typeLayout.hasWitnessTables === true) && result.metadataCount === result.typeLayout.metadataCount && result.metadataAccessorCount === result.typeLayout.metadataAccessorCount && result.nominalDescriptorCount === result.typeLayout.nominalDescriptorCount && result.metadataCacheCount === result.typeLayout.metadataCacheCount && result.associatedTypeDescriptorCount === result.typeLayout.associatedTypeDescriptorCount && result.vtableCount === result.typeLayout.vtableCount && result.witnessTableCount === result.typeLayout.witnessTableCount && result.text === result.typeLayout.text)); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' }); return result.kind === 'swift.type_layout_info' && result.typeName === 'ViewController' && typeof result.hasTypeLayout === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasMetadata === 'boolean' && typeof result.hasMetadataAccessors === 'boolean' && typeof result.hasNominalDescriptors === 'boolean' && typeof result.hasMetadataCaches === 'boolean' && typeof result.hasAssociatedTypeDescriptors === 'boolean' && typeof result.hasVtableEntries === 'boolean' && typeof result.hasWitnessTables === 'boolean' && typeof result.metadataCount === 'number' && typeof result.metadataAccessorCount === 'number' && typeof result.nominalDescriptorCount === 'number' && typeof result.metadataCacheCount === 'number' && typeof result.associatedTypeDescriptorCount === 'number' && typeof result.vtableCount === 'number' && typeof result.witnessTableCount === 'number' && typeof result.parsedVtableMemberCount === 'number' && typeof result.vtableAccessorCount === 'number' && typeof result.vtableGetterCount === 'number' && typeof result.vtableSetterCount === 'number' && typeof result.vtableConstructorCount === 'number' && typeof result.vtableDestructorCount === 'number' && typeof result.vtableAsyncCount === 'number' && typeof result.vtableThrowingCount === 'number' && typeof result.witnessAccessorCount === 'number' && typeof result.uniqueVtableMemberKindCount === 'number' && typeof result.uniqueWitnessProtocolCount === 'number' && Array.isArray(result.vtableMemberKinds) && Array.isArray(result.witnessProtocols) && ((result.typeLayout === null && result.hasTypeLayout === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.metadataCount === 0 && result.metadataAccessorCount === 0 && result.nominalDescriptorCount === 0 && result.metadataCacheCount === 0 && result.associatedTypeDescriptorCount === 0 && result.vtableCount === 0 && result.witnessTableCount === 0 && result.parsedVtableMemberCount === 0 && result.vtableAccessorCount === 0 && result.witnessAccessorCount === 0 && result.vtableMemberKinds.length === 0 && result.witnessProtocols.length === 0 && result.text === '<null>') || (result.hasTypeLayout === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.typeLayout.moduleBase === 'string' && Array.isArray(result.typeLayout.metadata) && typeof result.typeLayout.hasMetadata === 'boolean' && (result.typeLayout.firstMetadataName === null || typeof result.typeLayout.firstMetadataName === 'string') && (result.typeLayout.lastMetadataName === null || typeof result.typeLayout.lastMetadataName === 'string') && typeof result.typeLayout.hasMetadataAccessors === 'boolean' && typeof result.typeLayout.hasNominalDescriptors === 'boolean' && typeof result.typeLayout.hasMetadataCaches === 'boolean' && typeof result.typeLayout.hasAssociatedTypeDescriptors === 'boolean' && typeof result.typeLayout.hasVtableEntries === 'boolean' && typeof result.typeLayout.hasWitnessTables === 'boolean' && typeof result.typeLayout.vtableCount === 'number' && typeof result.typeLayout.witnessTableCount === 'number' && typeof result.typeLayout.parsedVtableMemberCount === 'number' && typeof result.typeLayout.vtableAccessorCount === 'number' && typeof result.typeLayout.witnessAccessorCount === 'number' && Array.isArray(result.typeLayout.vtableMemberKinds) && Array.isArray(result.typeLayout.witnessProtocols) && result.resolvedName === result.typeLayout.name && result.resolvedModuleName === result.typeLayout.moduleName && result.hasMetadata === (result.typeLayout.hasMetadata === true) && result.hasMetadataAccessors === (result.typeLayout.hasMetadataAccessors === true) && result.hasNominalDescriptors === (result.typeLayout.hasNominalDescriptors === true) && result.hasMetadataCaches === (result.typeLayout.hasMetadataCaches === true) && result.hasAssociatedTypeDescriptors === (result.typeLayout.hasAssociatedTypeDescriptors === true) && result.hasVtableEntries === (result.typeLayout.hasVtableEntries === true) && result.hasWitnessTables === (result.typeLayout.hasWitnessTables === true) && result.metadataCount === result.typeLayout.metadataCount && result.metadataAccessorCount === result.typeLayout.metadataAccessorCount && result.nominalDescriptorCount === result.typeLayout.nominalDescriptorCount && result.metadataCacheCount === result.typeLayout.metadataCacheCount && result.associatedTypeDescriptorCount === result.typeLayout.associatedTypeDescriptorCount && result.vtableCount === result.typeLayout.vtableCount && result.witnessTableCount === result.typeLayout.witnessTableCount && result.parsedVtableMemberCount === result.typeLayout.parsedVtableMemberCount && result.vtableAccessorCount === result.typeLayout.vtableAccessorCount && result.witnessAccessorCount === result.typeLayout.witnessAccessorCount && result.uniqueVtableMemberKindCount === result.typeLayout.uniqueVtableMemberKindCount && result.uniqueWitnessProtocolCount === result.typeLayout.uniqueWitnessProtocolCount && result.text === result.typeLayout.text)); })()")
                     .expect("agent swift type layout info result"),
                 "true"
             );
@@ -6403,7 +6512,12 @@ undefined;
                                     && typeLayoutInfo.firstVtableMemberName === null
                                     && typeLayoutInfo.lastVtableMemberName === null
                                     && typeLayoutInfo.firstWitnessProtocolName === null
-                                    && typeLayoutInfo.lastWitnessProtocolName === null;
+                                    && typeLayoutInfo.lastWitnessProtocolName === null
+                                    && typeLayoutInfo.parsedVtableMemberCount === 0
+                                    && typeLayoutInfo.vtableAccessorCount === 0
+                                    && typeLayoutInfo.witnessAccessorCount === 0
+                                    && typeLayoutInfo.vtableMemberKinds.length === 0
+                                    && typeLayoutInfo.witnessProtocols.length === 0;
                             }
                             return typeLayoutInfo.resolvedModuleBase === typeLayoutInfo.typeLayout.moduleBase
                                 && typeLayoutInfo.hasName === (typeLayoutInfo.typeLayout.hasName === true)
@@ -6420,7 +6534,20 @@ undefined;
                                 && typeLayoutInfo.firstVtableMemberName === typeLayoutInfo.typeLayout.firstVtableMemberName
                                 && typeLayoutInfo.lastVtableMemberName === typeLayoutInfo.typeLayout.lastVtableMemberName
                                 && typeLayoutInfo.firstWitnessProtocolName === typeLayoutInfo.typeLayout.firstWitnessProtocolName
-                                && typeLayoutInfo.lastWitnessProtocolName === typeLayoutInfo.typeLayout.lastWitnessProtocolName;
+                                && typeLayoutInfo.lastWitnessProtocolName === typeLayoutInfo.typeLayout.lastWitnessProtocolName
+                                && typeLayoutInfo.parsedVtableMemberCount === typeLayoutInfo.typeLayout.parsedVtableMemberCount
+                                && typeLayoutInfo.vtableAccessorCount === typeLayoutInfo.typeLayout.vtableAccessorCount
+                                && typeLayoutInfo.vtableGetterCount === typeLayoutInfo.typeLayout.vtableGetterCount
+                                && typeLayoutInfo.vtableSetterCount === typeLayoutInfo.typeLayout.vtableSetterCount
+                                && typeLayoutInfo.vtableConstructorCount === typeLayoutInfo.typeLayout.vtableConstructorCount
+                                && typeLayoutInfo.vtableDestructorCount === typeLayoutInfo.typeLayout.vtableDestructorCount
+                                && typeLayoutInfo.vtableAsyncCount === typeLayoutInfo.typeLayout.vtableAsyncCount
+                                && typeLayoutInfo.vtableThrowingCount === typeLayoutInfo.typeLayout.vtableThrowingCount
+                                && typeLayoutInfo.uniqueVtableMemberKindCount === typeLayoutInfo.typeLayout.uniqueVtableMemberKindCount
+                                && typeLayoutInfo.witnessAccessorCount === typeLayoutInfo.typeLayout.witnessAccessorCount
+                                && typeLayoutInfo.uniqueWitnessProtocolCount === typeLayoutInfo.typeLayout.uniqueWitnessProtocolCount
+                                && typeLayoutInfo.vtableMemberKinds.length === typeLayoutInfo.typeLayout.vtableMemberKinds.length
+                                && typeLayoutInfo.witnessProtocols.length === typeLayoutInfo.typeLayout.witnessProtocols.length;
                         })()"#
                     )
                     .expect("agent swift info summary fields"),
