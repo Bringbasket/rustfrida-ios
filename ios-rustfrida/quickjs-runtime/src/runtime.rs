@@ -8064,7 +8064,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() {
+                        r#"(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_owners', moduleName: null, query: 'viewDidLoad' });
                             if (result.kind !== 'swift.method_owners' || result.query !== 'viewDidLoad' || result.hasQuery !== true) {
                                 return false;
@@ -8077,8 +8077,12 @@ undefined;
                                     typeof result.uniqueSourceKindCount !== 'number' ||
                                     typeof result.sourceDemangledCount !== 'number' ||
                                     typeof result.hasSourceDemangledOwners !== 'boolean' ||
+                                    typeof result.uniqueContextModuleCount !== 'number' ||
+                                    typeof result.uniqueDetailKindCount !== 'number' ||
                                     !Array.isArray(result.ownerNames) ||
                                     !Array.isArray(result.moduleNames) ||
+                                    !Array.isArray(result.contextModules) ||
+                                    !Array.isArray(result.detailKinds) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
@@ -8090,6 +8094,8 @@ undefined;
                             const owner = result.owners[0];
                             const ownerSummary = result.ownerNames.length === 0 ? null : result.ownerNames[0];
                             const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
+                            const contextSummary = result.contextModules.length === 0 ? null : result.contextModules[0];
+                            const detailSummary = result.detailKinds.length === 0 ? null : result.detailKinds[0];
                             const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
                             return result.hasOwners === true &&
                                 typeof result.firstOwnerName === 'string' &&
@@ -8101,6 +8107,13 @@ undefined;
                                 typeof owner.hasSourceKind === 'boolean' &&
                                 typeof owner.hasSourceSymbolName === 'boolean' &&
                                 typeof owner.hasSourceDemangledName === 'boolean' &&
+                                typeof owner.hasQualifiedName === 'boolean' &&
+                                typeof owner.hasSignature === 'boolean' &&
+                                typeof owner.hasContextModuleName === 'boolean' &&
+                                typeof owner.hasDetailKind === 'boolean' &&
+                                typeof owner.isMetadata === 'boolean' &&
+                                typeof owner.isMetadataAccessor === 'boolean' &&
+                                typeof owner.isNominalDescriptor === 'boolean' &&
                                 typeof owner.sourceSymbolName === 'string' &&
                                 typeof owner.sourceOffsetHex === 'string' &&
                                 (ownerSummary === null || (
@@ -8117,15 +8130,76 @@ undefined;
                                     typeof moduleSummary.lastOwnerName === 'string' &&
                                     typeof moduleSummary.sourceDemangledCount === 'number'
                                 )) &&
+                                (contextSummary === null || (
+                                    typeof contextSummary.contextModuleName === 'string' &&
+                                    typeof contextSummary.count === 'number' &&
+                                    typeof contextSummary.firstOwnerName === 'string' &&
+                                    typeof contextSummary.lastOwnerName === 'string'
+                                )) &&
+                                (detailSummary === null || (
+                                    typeof detailSummary.detailKind === 'string' &&
+                                    typeof detailSummary.count === 'number' &&
+                                    typeof detailSummary.firstOwnerName === 'string' &&
+                                    typeof detailSummary.lastOwnerName === 'string'
+                                )) &&
                                 (sourceSummary === null || (
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
                                     typeof sourceSummary.firstOwnerName === 'string' &&
                                     typeof sourceSummary.lastOwnerName === 'string'
                                 ));
-                        })()"
+                        })()"#
                     )
                     .expect("agent swift method owners result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.methodOwners;
+                            Swift.methodOwners = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'ViewController',
+                                        sourceSymbolName: '$s4Demo14ViewControllerVN',
+                                        sourceKind: 'nominal-type',
+                                        sourceAddress: 0x180001700n,
+                                        sourceOffset: 0x1700n,
+                                        sourceDemangledName: 'Demo.ViewController',
+                                    },
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'Helper',
+                                        sourceSymbolName: '$s4Demo6HelperVMa',
+                                        sourceKind: 'metadata-accessor',
+                                        sourceAddress: 0x180001800n,
+                                        sourceOffset: 0x1800n,
+                                        sourceDemangledName: 'type metadata accessor for Demo.Helper',
+                                    }
+                                ];
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_owners', moduleName: null, query: 'demoMethod' });
+                                return result.count === 2
+                                    && result.uniqueContextModuleCount === 1
+                                    && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.contextModules)
+                                    && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2)
+                                    && Array.isArray(result.detailKinds)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'symbol' && entry.count === 1)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'metadata-accessor' && entry.count === 1)
+                                    && result.owners.some((entry) => entry.qualifiedName === 'Demo.ViewController' && entry.isMetadata === false)
+                                    && result.owners.some((entry) => entry.qualifiedName === 'Demo.Helper' && entry.isMetadataAccessor === true);
+                            } finally {
+                                Swift.methodOwners = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift method owners summary"),
                 "true"
             );
             assert_eq!(

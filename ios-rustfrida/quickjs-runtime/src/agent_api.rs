@@ -9864,6 +9864,8 @@ function handleSpecResult(spec) {
         const sourceKinds = [];
         const ownerNames = [];
         const moduleSummaries = [];
+        const contextModules = [];
+        const detailKinds = [];
         const moduleNames = new Set();
         let demangledCount = 0;
         for (const owner of owners) {
@@ -9903,6 +9905,33 @@ function handleSpecResult(spec) {
             if (owner.hasSourceDemangledName) {
                 moduleSummary.sourceDemangledCount += 1;
             }
+            if (owner.hasContextModuleName) {
+                let contextSummary = contextModules.find((item) => item.contextModuleName === owner.contextModuleName);
+                if (contextSummary === undefined) {
+                    contextSummary = {
+                        contextModuleName: owner.contextModuleName,
+                        count: 0,
+                        firstOwnerName: owner.name,
+                        lastOwnerName: owner.name,
+                    };
+                    contextModules.push(contextSummary);
+                }
+                contextSummary.count += 1;
+                contextSummary.lastOwnerName = owner.name;
+            }
+            const detailKind = owner.detailKind === null ? '<none>' : String(owner.detailKind);
+            let detailSummary = detailKinds.find((item) => item.detailKind === detailKind);
+            if (detailSummary === undefined) {
+                detailSummary = {
+                    detailKind,
+                    count: 0,
+                    firstOwnerName: owner.name,
+                    lastOwnerName: owner.name,
+                };
+                detailKinds.push(detailSummary);
+            }
+            detailSummary.count += 1;
+            detailSummary.lastOwnerName = owner.name;
             const key = owner.sourceKind === null ? '<none>' : String(owner.sourceKind);
             let summary = sourceKinds.find((item) => item.sourceKind === key);
             if (summary === undefined) {
@@ -9933,8 +9962,12 @@ function handleSpecResult(spec) {
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledOwners: demangledCount !== 0,
+            uniqueContextModuleCount: contextModules.length,
+            uniqueDetailKindCount: detailKinds.length,
             ownerNames,
             moduleNames: moduleSummaries,
+            contextModules,
+            detailKinds,
             sourceKinds,
             owners,
             text: owners.map((typeInfo) => typeInfo.text).join('\n'),
