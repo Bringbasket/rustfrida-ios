@@ -5631,8 +5631,106 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' }); return result.kind === 'swift.protocol_info' && result.protocolName === 'Renderable' && typeof result.hasProtocolInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasSourceKind === 'boolean' && ((result.protocolInfo === null && result.hasProtocolInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.sourceKind === null && result.text === '<null>') || (result.hasProtocolInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.protocolInfo.moduleBase === 'string' && typeof result.protocolInfo.sourceSymbolName === 'string' && typeof result.protocolInfo.sourceOffsetHex === 'string' && result.hasSourceKind === (result.protocolInfo.hasSourceKind === true) && result.sourceKind === result.protocolInfo.sourceKind && result.text === result.protocolInfo.text)); })()")
+                    .eval(
+                        r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' });
+                            if (result.kind !== 'swift.protocol_info' || result.protocolName !== 'Renderable') {
+                                return false;
+                            }
+                            if (typeof result.hasProtocolInfo !== 'boolean' ||
+                                    typeof result.resolved !== 'boolean' ||
+                                    typeof result.hasSourceKind !== 'boolean' ||
+                                    typeof result.hasQualifiedName !== 'boolean' ||
+                                    typeof result.hasSignature !== 'boolean' ||
+                                    typeof result.hasContextModuleName !== 'boolean' ||
+                                    typeof result.hasDetailKind !== 'boolean' ||
+                                    typeof result.isDescriptor !== 'boolean') {
+                                return false;
+                            }
+                            if (result.protocolInfo === null) {
+                                return result.hasProtocolInfo === false &&
+                                    result.resolved === false &&
+                                    result.resolvedName === null &&
+                                    result.resolvedModuleName === null &&
+                                    result.sourceKind === null &&
+                                    result.qualifiedName === null &&
+                                    result.signature === null &&
+                                    result.contextModuleName === null &&
+                                    result.detailKind === null &&
+                                    result.hasQualifiedName === false &&
+                                    result.hasSignature === false &&
+                                    result.hasContextModuleName === false &&
+                                    result.hasDetailKind === false &&
+                                    result.isDescriptor === false &&
+                                    result.text === '<null>';
+                            }
+                            return result.hasProtocolInfo === true &&
+                                result.resolved === true &&
+                                typeof result.resolvedName === 'string' &&
+                                typeof result.resolvedModuleName === 'string' &&
+                                typeof result.protocolInfo.moduleBase === 'string' &&
+                                typeof result.protocolInfo.sourceSymbolName === 'string' &&
+                                typeof result.protocolInfo.sourceOffsetHex === 'string' &&
+                                (result.qualifiedName === null || typeof result.qualifiedName === 'string') &&
+                                (result.signature === null || typeof result.signature === 'string') &&
+                                (result.contextModuleName === null || typeof result.contextModuleName === 'string') &&
+                                (result.detailKind === null || typeof result.detailKind === 'string') &&
+                                result.hasSourceKind === (result.protocolInfo.hasSourceKind === true) &&
+                                result.sourceKind === result.protocolInfo.sourceKind &&
+                                result.qualifiedName === result.protocolInfo.qualifiedName &&
+                                result.signature === result.protocolInfo.signature &&
+                                result.contextModuleName === result.protocolInfo.contextModuleName &&
+                                result.detailKind === result.protocolInfo.detailKind &&
+                                result.hasQualifiedName === (result.protocolInfo.hasQualifiedName === true) &&
+                                result.hasSignature === (result.protocolInfo.hasSignature === true) &&
+                                result.hasContextModuleName === (result.protocolInfo.hasContextModuleName === true) &&
+                                result.hasDetailKind === (result.protocolInfo.hasDetailKind === true) &&
+                                result.isDescriptor === (result.protocolInfo.isDescriptor === true) &&
+                                result.text === result.protocolInfo.text;
+                        })()"#
+                    )
                     .expect("agent swift protocolInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.protocolInfo;
+                            Swift.protocolInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: 'Renderable',
+                                    sourceSymbolName: '$s4Demo10RenderableMp',
+                                    sourceKind: 'protocol-descriptor',
+                                    sourceAddress: 0x180000800n,
+                                    sourceOffset: 0x800n,
+                                    sourceDemangledName: 'protocol descriptor for Demo.Renderable',
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' });
+                                return result.protocolInfo !== null
+                                    && result.resolvedName === 'Renderable'
+                                    && result.qualifiedName === 'Demo.Renderable'
+                                    && result.signature === 'protocol descriptor for Demo.Renderable'
+                                    && result.contextModuleName === 'Demo'
+                                    && result.detailKind === 'descriptor'
+                                    && result.hasQualifiedName === true
+                                    && result.hasSignature === true
+                                    && result.hasContextModuleName === true
+                                    && result.hasDetailKind === true
+                                    && result.isDescriptor === true
+                                    && result.text.indexOf('{kind=descriptor in=Demo}') !== -1
+                                    && result.protocolInfo.qualifiedName === 'Demo.Renderable'
+                                    && result.protocolInfo.contextModuleName === 'Demo';
+                            } finally {
+                                Swift.protocolInfo = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift protocolInfo semantics"),
                 "true"
             );
             assert_eq!(
@@ -6135,8 +6233,143 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null }); return result.kind === 'swift.protocols' && result.query === null && result.hasQuery === false && result.count === result.protocols.length && typeof result.hasProtocols === 'boolean' && typeof result.uniqueModuleCount === 'number' && typeof result.uniqueProtocolCount === 'number' && typeof result.uniqueSourceKindCount === 'number' && typeof result.sourceDemangledCount === 'number' && typeof result.hasSourceDemangledProtocols === 'boolean' && Array.isArray(result.moduleNames) && Array.isArray(result.protocolNames) && Array.isArray(result.sourceKinds) && ((result.protocols.length === 0 && result.hasProtocols === false && result.firstProtocol === null && result.lastProtocol === null) || (result.hasProtocols === true && typeof result.firstProtocol === 'string' && typeof result.lastProtocol === 'string' && typeof result.firstModuleName === 'string' && typeof result.lastModuleName === 'string' && typeof result.protocols[0].moduleBase === 'string' && typeof result.protocols[0].hasName === 'boolean' && typeof result.protocols[0].hasSourceKind === 'boolean' && typeof result.protocols[0].hasSourceSymbolName === 'boolean' && typeof result.protocols[0].hasSourceDemangledName === 'boolean' && typeof result.protocols[0].sourceSymbolName === 'string' && typeof result.protocols[0].sourceOffsetHex === 'string' && (result.moduleNames.length === 0 || (typeof result.moduleNames[0].moduleName === 'string' && typeof result.moduleNames[0].count === 'number' && typeof result.moduleNames[0].firstProtocol === 'string' && typeof result.moduleNames[0].lastProtocol === 'string' && typeof result.moduleNames[0].sourceDemangledCount === 'number')) && (result.protocolNames.length === 0 || (typeof result.protocolNames[0].protocolName === 'string' && typeof result.protocolNames[0].count === 'number' && typeof result.protocolNames[0].firstModuleName === 'string' && typeof result.protocolNames[0].lastModuleName === 'string' && typeof result.protocolNames[0].hasSourceDemangledName === 'boolean')) && (result.sourceKinds.length === 0 || (typeof result.sourceKinds[0].sourceKind === 'string' && typeof result.sourceKinds[0].count === 'number' && typeof result.sourceKinds[0].firstProtocol === 'string' && typeof result.sourceKinds[0].lastProtocol === 'string')))); })()")
+                    .eval(
+                        r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: null });
+                            if (result.kind !== 'swift.protocols' || result.query !== null || result.hasQuery !== false) {
+                                return false;
+                            }
+                            if (result.count !== result.protocols.length ||
+                                    typeof result.hasProtocols !== 'boolean' ||
+                                    typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueProtocolCount !== 'number' ||
+                                    typeof result.uniqueSourceKindCount !== 'number' ||
+                                    typeof result.sourceDemangledCount !== 'number' ||
+                                    typeof result.hasSourceDemangledProtocols !== 'boolean' ||
+                                    typeof result.uniqueContextModuleCount !== 'number' ||
+                                    typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.moduleNames) ||
+                                    !Array.isArray(result.protocolNames) ||
+                                    !Array.isArray(result.contextModules) ||
+                                    !Array.isArray(result.detailKinds) ||
+                                    !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.protocols.length === 0) {
+                                return result.hasProtocols === false &&
+                                    result.firstProtocol === null &&
+                                    result.lastProtocol === null;
+                            }
+                            const entry = result.protocols[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
+                            const protocolSummary = result.protocolNames.length === 0 ? null : result.protocolNames[0];
+                            const contextSummary = result.contextModules.length === 0 ? null : result.contextModules[0];
+                            const detailSummary = result.detailKinds.length === 0 ? null : result.detailKinds[0];
+                            const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
+                            return result.hasProtocols === true &&
+                                typeof result.firstProtocol === 'string' &&
+                                typeof result.lastProtocol === 'string' &&
+                                typeof result.firstModuleName === 'string' &&
+                                typeof result.lastModuleName === 'string' &&
+                                typeof entry.moduleBase === 'string' &&
+                                typeof entry.hasName === 'boolean' &&
+                                typeof entry.hasSourceKind === 'boolean' &&
+                                typeof entry.hasSourceSymbolName === 'boolean' &&
+                                typeof entry.hasSourceDemangledName === 'boolean' &&
+                                typeof entry.hasQualifiedName === 'boolean' &&
+                                typeof entry.hasSignature === 'boolean' &&
+                                typeof entry.hasContextModuleName === 'boolean' &&
+                                typeof entry.hasDetailKind === 'boolean' &&
+                                typeof entry.isDescriptor === 'boolean' &&
+                                typeof entry.sourceSymbolName === 'string' &&
+                                typeof entry.sourceOffsetHex === 'string' &&
+                                (entry.qualifiedName === null || typeof entry.qualifiedName === 'string') &&
+                                (entry.signature === null || typeof entry.signature === 'string') &&
+                                (entry.contextModuleName === null || typeof entry.contextModuleName === 'string') &&
+                                (entry.detailKind === null || typeof entry.detailKind === 'string') &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstProtocol === 'string' &&
+                                    typeof moduleSummary.lastProtocol === 'string' &&
+                                    typeof moduleSummary.sourceDemangledCount === 'number'
+                                )) &&
+                                (protocolSummary === null || (
+                                    typeof protocolSummary.protocolName === 'string' &&
+                                    typeof protocolSummary.count === 'number' &&
+                                    typeof protocolSummary.firstModuleName === 'string' &&
+                                    typeof protocolSummary.lastModuleName === 'string' &&
+                                    typeof protocolSummary.hasSourceDemangledName === 'boolean'
+                                )) &&
+                                (contextSummary === null || (
+                                    typeof contextSummary.contextModuleName === 'string' &&
+                                    typeof contextSummary.count === 'number' &&
+                                    typeof contextSummary.firstProtocol === 'string' &&
+                                    typeof contextSummary.lastProtocol === 'string'
+                                )) &&
+                                (detailSummary === null || (
+                                    typeof detailSummary.detailKind === 'string' &&
+                                    typeof detailSummary.count === 'number' &&
+                                    typeof detailSummary.firstProtocol === 'string' &&
+                                    typeof detailSummary.lastProtocol === 'string'
+                                )) &&
+                                (sourceSummary === null || (
+                                    typeof sourceSummary.sourceKind === 'string' &&
+                                    typeof sourceSummary.count === 'number' &&
+                                    typeof sourceSummary.firstProtocol === 'string' &&
+                                    typeof sourceSummary.lastProtocol === 'string'
+                                ));
+                        })()"#
+                    )
                     .expect("agent swift protocols result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.protocols;
+                            Swift.protocols = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'Renderable',
+                                        sourceSymbolName: '$s4Demo10RenderableMp',
+                                        sourceKind: 'protocol-descriptor',
+                                        sourceAddress: 0x180001000n,
+                                        sourceOffset: 0x1000n,
+                                        sourceDemangledName: 'protocol descriptor for Demo.Renderable',
+                                    },
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'Presentable',
+                                        sourceSymbolName: '$s4Demo11PresentableMp',
+                                        sourceKind: 'protocol-descriptor',
+                                        sourceAddress: 0x180002000n,
+                                        sourceOffset: 0x2000n,
+                                        sourceDemangledName: 'protocol descriptor for Demo.Presentable',
+                                    }
+                                ];
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: 'Demo' });
+                                return result.count === 2
+                                    && result.uniqueContextModuleCount === 1
+                                    && result.uniqueDetailKindCount === 1
+                                    && Array.isArray(result.contextModules)
+                                    && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2)
+                                    && Array.isArray(result.detailKinds)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'descriptor' && entry.count === 2)
+                                    && result.protocols.some((entry) => entry.qualifiedName === 'Demo.Renderable' && entry.contextModuleName === 'Demo' && entry.isDescriptor === true)
+                                    && result.protocols.some((entry) => entry.qualifiedName === 'Demo.Presentable' && entry.contextModuleName === 'Demo' && entry.isDescriptor === true);
+                            } finally {
+                                Swift.protocols = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift protocols summary"),
                 "true"
             );
             assert_eq!(
@@ -6864,9 +7097,18 @@ undefined;
                                     && protocolInfo.resolvedSourceAddress === null
                                     && protocolInfo.resolvedSourceOffsetHex === null
                                     && protocolInfo.resolvedSourceDemangledName === null
+                                    && protocolInfo.qualifiedName === null
+                                    && protocolInfo.signature === null
+                                    && protocolInfo.contextModuleName === null
+                                    && protocolInfo.detailKind === null
                                     && protocolInfo.hasName === false
                                     && protocolInfo.hasSourceSymbolName === false
-                                    && protocolInfo.hasSourceDemangledName === false)) {
+                                    && protocolInfo.hasSourceDemangledName === false
+                                    && protocolInfo.hasQualifiedName === false
+                                    && protocolInfo.hasSignature === false
+                                    && protocolInfo.hasContextModuleName === false
+                                    && protocolInfo.hasDetailKind === false
+                                    && protocolInfo.isDescriptor === false)) {
                                     return false;
                                 }
                             } else if (!(protocolInfo.resolvedModuleBase === protocolInfo.protocolInfo.moduleBase
@@ -6874,9 +7116,18 @@ undefined;
                                 && protocolInfo.resolvedSourceAddress === protocolInfo.protocolInfo.sourceAddress
                                 && protocolInfo.resolvedSourceOffsetHex === protocolInfo.protocolInfo.sourceOffsetHex
                                 && protocolInfo.resolvedSourceDemangledName === protocolInfo.protocolInfo.sourceDemangledName
+                                && protocolInfo.qualifiedName === protocolInfo.protocolInfo.qualifiedName
+                                && protocolInfo.signature === protocolInfo.protocolInfo.signature
+                                && protocolInfo.contextModuleName === protocolInfo.protocolInfo.contextModuleName
+                                && protocolInfo.detailKind === protocolInfo.protocolInfo.detailKind
                                 && protocolInfo.hasName === (protocolInfo.protocolInfo.hasName === true)
                                 && protocolInfo.hasSourceSymbolName === (protocolInfo.protocolInfo.hasSourceSymbolName === true)
-                                && protocolInfo.hasSourceDemangledName === (protocolInfo.protocolInfo.hasSourceDemangledName === true))) {
+                                && protocolInfo.hasSourceDemangledName === (protocolInfo.protocolInfo.hasSourceDemangledName === true)
+                                && protocolInfo.hasQualifiedName === (protocolInfo.protocolInfo.hasQualifiedName === true)
+                                && protocolInfo.hasSignature === (protocolInfo.protocolInfo.hasSignature === true)
+                                && protocolInfo.hasContextModuleName === (protocolInfo.protocolInfo.hasContextModuleName === true)
+                                && protocolInfo.hasDetailKind === (protocolInfo.protocolInfo.hasDetailKind === true)
+                                && protocolInfo.isDescriptor === (protocolInfo.protocolInfo.isDescriptor === true))) {
                                 return false;
                             }
 

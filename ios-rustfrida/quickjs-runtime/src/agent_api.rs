@@ -817,6 +817,80 @@ function formatSwiftProtocol(protocolInfo) {
         : base + ' <= ' + protocolInfo.sourceDemangledName;
 }
 
+function parseSwiftProtocolDemangledInfo(demangledName, fallbackName) {
+    const trimmed = trimSwiftDemangledName(demangledName);
+    const parsed = {
+        name: fallbackName === null || fallbackName === undefined ? null : String(fallbackName),
+        qualifiedName: null,
+        hasQualifiedName: false,
+        signature: trimmed,
+        hasSignature: trimmed !== null,
+        contextModuleName: null,
+        hasContextModuleName: false,
+        detailKind: trimmed === null ? null : 'symbol',
+        isDescriptor: false,
+    };
+
+    if (trimmed === null) {
+        return parsed;
+    }
+
+    let rest = trimmed;
+    if (rest.startsWith('protocol descriptor for ')) {
+        parsed.detailKind = 'descriptor';
+        parsed.isDescriptor = true;
+        rest = rest.slice('protocol descriptor for '.length).trim();
+    }
+
+    if (rest.length !== 0) {
+        parsed.qualifiedName = rest;
+        parsed.hasQualifiedName = true;
+    }
+
+    const fallback = parsed.name === null ? '' : String(parsed.name);
+    if (fallback.length !== 0 && rest.endsWith('.' + fallback) && rest.length > fallback.length + 1) {
+        parsed.contextModuleName = rest.slice(0, rest.length - fallback.length - 1);
+        parsed.hasContextModuleName = parsed.contextModuleName.length !== 0;
+        return parsed;
+    }
+
+    const dotIndex = rest.lastIndexOf('.');
+    if (dotIndex !== -1) {
+        const simpleName = rest.slice(dotIndex + 1).trim();
+        const context = rest.slice(0, dotIndex).trim();
+        if (simpleName.length !== 0) {
+            parsed.name = simpleName;
+        }
+        if (context.length !== 0) {
+            parsed.contextModuleName = context;
+            parsed.hasContextModuleName = true;
+        }
+    } else if ((parsed.name === null || parsed.name.length === 0) && rest.length !== 0) {
+        parsed.name = rest;
+    }
+
+    return parsed;
+}
+
+function formatSwiftProtocolFlags(info) {
+    const flags = [];
+    if (info.detailKind !== null && info.detailKind !== undefined && info.detailKind !== 'symbol') {
+        flags.push('kind=' + info.detailKind);
+    }
+    if (info.hasContextModuleName) {
+        flags.push('in=' + info.contextModuleName);
+    }
+    return flags.length === 0 ? '' : ' {' + flags.join(' ') + '}';
+}
+
+function formatNormalizedSwiftProtocol(protocolInfo) {
+    const base = protocolInfo.sourceAddress + ' ' + protocolInfo.moduleName + '!' + protocolInfo.name + ' [' + String(protocolInfo.sourceKind || 'symbol') + ']';
+    const demangled = protocolInfo.sourceDemangledName === null || protocolInfo.sourceDemangledName === undefined
+        ? ''
+        : ' <= ' + protocolInfo.sourceDemangledName;
+    return base + demangled + formatSwiftProtocolFlags(protocolInfo);
+}
+
 function formatSwiftConformance(conformance) {
     const base = conformance.sourceAddress.toString() + ' ' + conformance.moduleName + '!' + conformance.typeName + ' : ' + conformance.protocolName + ' [' + String(conformance.sourceKind || 'symbol') + ']';
     return conformance.sourceDemangledName === null || conformance.sourceDemangledName === undefined
@@ -4615,11 +4689,14 @@ function normalizeSwiftProtocol(protocolInfo) {
     const sourceSymbolName = protocolInfo.sourceSymbolName === undefined ? null : String(protocolInfo.sourceSymbolName);
     const sourceKind = protocolInfo.sourceKind === undefined ? null : protocolInfo.sourceKind;
     const sourceDemangledName = protocolInfo.sourceDemangledName === undefined ? null : protocolInfo.sourceDemangledName;
-    return {
+    const parsed = parseSwiftProtocolDemangledInfo(sourceDemangledName, name);
+    const normalized = {
         moduleName: String(protocolInfo.moduleName || ''),
         moduleBase: protocolInfo.moduleBase ? protocolInfo.moduleBase.toString() : null,
-        name,
-        hasName: name.length !== 0,
+        name: parsed.name === null ? name : parsed.name,
+        hasName: (parsed.name === null ? name : parsed.name).length !== 0,
+        qualifiedName: parsed.qualifiedName,
+        hasQualifiedName: parsed.hasQualifiedName,
         sourceSymbolName,
         hasSourceSymbolName: sourceSymbolName !== null && sourceSymbolName.length !== 0,
         sourceKind,
@@ -4628,8 +4705,16 @@ function normalizeSwiftProtocol(protocolInfo) {
         sourceOffsetHex: '0x' + sourceOffset.toString(16),
         sourceDemangledName,
         hasSourceDemangledName: sourceDemangledName !== null && String(sourceDemangledName).length !== 0,
-        text: formatSwiftProtocol(protocolInfo),
+        signature: parsed.signature,
+        hasSignature: parsed.hasSignature,
+        contextModuleName: parsed.contextModuleName,
+        hasContextModuleName: parsed.hasContextModuleName,
+        detailKind: parsed.detailKind,
+        hasDetailKind: parsed.detailKind !== null && String(parsed.detailKind).length !== 0,
+        isDescriptor: parsed.isDescriptor,
     };
+    normalized.text = formatNormalizedSwiftProtocol(normalized);
+    return normalized;
 }
 
 function normalizeSwiftConformance(conformance) {
@@ -8021,11 +8106,20 @@ function handleSpecResult(spec) {
             resolvedSourceAddress: normalized === null ? null : normalized.sourceAddress,
             resolvedSourceOffsetHex: normalized === null ? null : normalized.sourceOffsetHex,
             resolvedSourceDemangledName: normalized === null ? null : normalized.sourceDemangledName,
+            qualifiedName: normalized === null ? null : normalized.qualifiedName,
+            signature: normalized === null ? null : normalized.signature,
+            contextModuleName: normalized === null ? null : normalized.contextModuleName,
+            detailKind: normalized === null ? null : normalized.detailKind,
             sourceKind: normalized === null ? null : normalized.sourceKind,
             hasName: normalized !== null && normalized.hasName === true,
             hasSourceKind: normalized !== null && normalized.hasSourceKind === true,
             hasSourceSymbolName: normalized !== null && normalized.hasSourceSymbolName === true,
             hasSourceDemangledName: normalized !== null && normalized.hasSourceDemangledName === true,
+            hasQualifiedName: normalized !== null && normalized.hasQualifiedName === true,
+            hasSignature: normalized !== null && normalized.hasSignature === true,
+            hasContextModuleName: normalized !== null && normalized.hasContextModuleName === true,
+            hasDetailKind: normalized !== null && normalized.hasDetailKind === true,
+            isDescriptor: normalized !== null && normalized.isDescriptor === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -8081,6 +8175,8 @@ function handleSpecResult(spec) {
         const sourceKinds = [];
         const moduleSummaries = [];
         const protocolNames = [];
+        const contextModules = [];
+        const detailKinds = [];
         const moduleNames = new Set();
         let demangledCount = 0;
         for (const protocol of protocols) {
@@ -8120,6 +8216,33 @@ function handleSpecResult(spec) {
             if (protocol.hasSourceDemangledName) {
                 protocolSummary.hasSourceDemangledName = true;
             }
+            if (protocol.hasContextModuleName) {
+                let contextSummary = contextModules.find((item) => item.contextModuleName === protocol.contextModuleName);
+                if (contextSummary === undefined) {
+                    contextSummary = {
+                        contextModuleName: protocol.contextModuleName,
+                        count: 0,
+                        firstProtocol: protocol.name,
+                        lastProtocol: protocol.name,
+                    };
+                    contextModules.push(contextSummary);
+                }
+                contextSummary.count += 1;
+                contextSummary.lastProtocol = protocol.name;
+            }
+            const detailKind = protocol.detailKind === null ? '<none>' : String(protocol.detailKind);
+            let detailSummary = detailKinds.find((item) => item.detailKind === detailKind);
+            if (detailSummary === undefined) {
+                detailSummary = {
+                    detailKind,
+                    count: 0,
+                    firstProtocol: protocol.name,
+                    lastProtocol: protocol.name,
+                };
+                detailKinds.push(detailSummary);
+            }
+            detailSummary.count += 1;
+            detailSummary.lastProtocol = protocol.name;
             const key = protocol.sourceKind === null ? '<none>' : String(protocol.sourceKind);
             let summary = sourceKinds.find((item) => item.sourceKind === key);
             if (summary === undefined) {
@@ -8150,8 +8273,12 @@ function handleSpecResult(spec) {
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledProtocols: demangledCount !== 0,
+            uniqueContextModuleCount: contextModules.length,
+            uniqueDetailKindCount: detailKinds.length,
             moduleNames: moduleSummaries,
             protocolNames,
+            contextModules,
+            detailKinds,
             sourceKinds,
             protocols,
             text: protocols.map((protocolInfo) => protocolInfo.text).join('\n'),
