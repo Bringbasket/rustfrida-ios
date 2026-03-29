@@ -849,6 +849,418 @@ function formatSwiftTypeLayout(layout) {
         + ' witness=' + String(layout.witnessTableCount || 0);
 }
 
+function trimSwiftDemangledName(raw) {
+    if (raw === null || raw === undefined) {
+        return null;
+    }
+    const trimmed = String(raw).trim();
+    return trimmed.length === 0 ? null : trimmed;
+}
+
+function classifySwiftMemberKind(rawKind, memberName) {
+    switch (rawKind) {
+    case 'getter':
+    case 'setter':
+    case 'modify':
+    case 'read':
+    case 'unsafeAddressor':
+    case 'unsafeMutableAddressor':
+    case 'materializeForSet':
+        return rawKind;
+    case 'allocator':
+    case 'initializer':
+    case 'init':
+        return 'constructor';
+    case 'deallocator':
+    case 'deinit':
+        return 'destructor';
+    default:
+        break;
+    }
+
+    if (memberName === 'subscript') {
+        return 'subscript';
+    }
+    if (memberName !== null && /^[=+\-*/%<>!&|^~?.]+$/.test(memberName)) {
+        return 'operator';
+    }
+    return 'method';
+}
+
+function parseSwiftDemangledMemberInfo(demangledName, fallbackName, fallbackOwnerTypeName, fallbackMemberName, options) {
+    const normalizedDemangledName = trimSwiftDemangledName(demangledName);
+    const normalizedFallbackName = fallbackName === null || fallbackName === undefined ? null : String(fallbackName);
+    const normalizedFallbackOwnerTypeName = fallbackOwnerTypeName === null || fallbackOwnerTypeName === undefined
+        ? null
+        : String(fallbackOwnerTypeName);
+    const normalizedFallbackMemberName = fallbackMemberName === null || fallbackMemberName === undefined
+        ? null
+        : String(fallbackMemberName);
+    const extra = options && typeof options === 'object' ? options : {};
+
+    const parsed = {
+        ownerTypeName: normalizedFallbackOwnerTypeName,
+        memberName: normalizedFallbackMemberName,
+        memberKind: normalizedFallbackMemberName === null ? 'symbol' : classifySwiftMemberKind(null, normalizedFallbackMemberName),
+        signature: normalizedDemangledName,
+        hasSignature: normalizedDemangledName !== null,
+        resultTypeName: null,
+        hasResultTypeName: false,
+        isMember: normalizedFallbackOwnerTypeName !== null || normalizedFallbackMemberName !== null,
+        isAccessor: false,
+        isGetter: false,
+        isSetter: false,
+        isModifyAccessor: false,
+        isReadAccessor: false,
+        isConstructor: false,
+        isDestructor: false,
+        isSubscript: normalizedFallbackMemberName === 'subscript',
+        isOperator: normalizedFallbackMemberName !== null && /^[=+\-*/%<>!&|^~?.]+$/.test(normalizedFallbackMemberName),
+        isClosure: false,
+        isStaticMember: false,
+        isClassMember: false,
+        isMutating: false,
+        isDispatchThunk: extra.isDispatchThunk === true,
+        isAsync: false,
+        isThrowing: false,
+        throwsKind: null,
+    };
+
+    if (normalizedDemangledName === null) {
+        return parsed;
+    }
+
+    let signature = normalizedDemangledName;
+    if (signature.startsWith('dispatch thunk of ')) {
+        parsed.isDispatchThunk = true;
+        signature = signature.slice('dispatch thunk of '.length).trim();
+    }
+    parsed.signature = signature;
+    parsed.hasSignature = signature.length !== 0;
+
+    let head = signature;
+    const lastArrow = signature.lastIndexOf(' -> ');
+    if (lastArrow !== -1) {
+        parsed.resultTypeName = signature.slice(lastArrow + 4).trim() || null;
+        head = signature.slice(0, lastArrow).trim();
+    } else {
+        const accessorColon = signature.lastIndexOf(' : ');
+        if (accessorColon !== -1) {
+            parsed.resultTypeName = signature.slice(accessorColon + 3).trim() || null;
+            head = signature.slice(0, accessorColon).trim();
+        }
+    }
+    parsed.hasResultTypeName = parsed.resultTypeName !== null;
+    parsed.isAsync = /(^|\s)async(\s|$)/.test(head);
+    if (/(^|\s)rethrows(\s|$)/.test(head)) {
+        parsed.isThrowing = true;
+        parsed.throwsKind = 'rethrows';
+    } else if (/(^|\s)throws(\s|$)/.test(head)) {
+        parsed.isThrowing = true;
+        parsed.throwsKind = 'throws';
+    }
+
+    let qualifiedHead = head;
+    for (const prefix of ['static ', 'class ', 'mutating ']) {
+        if (qualifiedHead.startsWith(prefix)) {
+            if (prefix === 'static ') {
+                parsed.isStaticMember = true;
+            } else if (prefix === 'class ') {
+                parsed.isClassMember = true;
+            } else if (prefix === 'mutating ') {
+                parsed.isMutating = true;
+            }
+            qualifiedHead = qualifiedHead.slice(prefix.length).trim();
+        }
+    }
+
+    if (qualifiedHead.includes('closure #')) {
+        parsed.isClosure = true;
+        parsed.isMember = true;
+        parsed.memberKind = 'closure';
+        const closureMatch = qualifiedHead.match(/(closure #[0-9]+)\s+in\s+(.+)$/);
+        if (closureMatch) {
+            parsed.memberName = closureMatch[1];
+            const ownerMatch = closureMatch[2].match(/([A-Za-z0-9_$]+(?:\.[A-Za-z0-9_$]+)+)\.([^.]+?)(?:\(|$)/);
+            if (ownerMatch) {
+                parsed.ownerTypeName = ownerMatch[1];
+            }
+        } else if (parsed.memberName === null) {
+            parsed.memberName = 'closure';
+        }
+        return parsed;
+    }
+
+    const strippedHead = qualifiedHead.replace(/\s+(async|throws|rethrows)\b/g, '').trim();
+    let ownerTypeName = normalizedFallbackOwnerTypeName;
+    let memberName = normalizedFallbackMemberName;
+    let rawKind = null;
+    let signatureHead = strippedHead;
+
+    if (signatureHead.endsWith('.getter')) {
+        rawKind = 'getter';
+        signatureHead = signatureHead.slice(0, -'.getter'.length);
+    } else if (signatureHead.endsWith('.setter')) {
+        rawKind = 'setter';
+        signatureHead = signatureHead.slice(0, -'.setter'.length);
+    } else if (signatureHead.endsWith('.modify')) {
+        rawKind = 'modify';
+        signatureHead = signatureHead.slice(0, -'.modify'.length);
+    } else if (signatureHead.endsWith('.read')) {
+        rawKind = 'read';
+        signatureHead = signatureHead.slice(0, -'.read'.length);
+    } else if (signatureHead.endsWith('.unsafeAddressor')) {
+        rawKind = 'unsafeAddressor';
+        signatureHead = signatureHead.slice(0, -'.unsafeAddressor'.length);
+    } else if (signatureHead.endsWith('.unsafeMutableAddressor')) {
+        rawKind = 'unsafeMutableAddressor';
+        signatureHead = signatureHead.slice(0, -'.unsafeMutableAddressor'.length);
+    } else if (signatureHead.endsWith('.materializeForSet')) {
+        rawKind = 'materializeForSet';
+        signatureHead = signatureHead.slice(0, -'.materializeForSet'.length);
+    }
+
+    if (signatureHead.includes('.Type.')) {
+        const parts = signatureHead.split('.Type.');
+        if (parts.length === 2) {
+            ownerTypeName = parts[0].trim() || ownerTypeName;
+            const tail = parts[1].trim();
+            const tailName = tail.includes('(') ? tail.slice(0, tail.indexOf('(')).trim() : tail;
+            memberName = tailName.length === 0 ? memberName : tailName;
+        }
+    } else {
+        const parts = signatureHead.split('.');
+        if (parts.length >= 2) {
+            const tail = parts[parts.length - 1].trim();
+            const tailName = tail.includes('(') ? tail.slice(0, tail.indexOf('(')).trim() : tail;
+            if (tailName.length !== 0) {
+                memberName = tailName;
+            }
+            ownerTypeName = parts.slice(0, -1).join('.').trim() || ownerTypeName;
+        }
+    }
+
+    if (memberName === 'init' || memberName === 'allocator' || memberName === 'initializer') {
+        rawKind = memberName;
+    } else if (memberName === 'deinit' || memberName === 'deallocator') {
+        rawKind = memberName;
+    }
+
+    const memberKind = classifySwiftMemberKind(rawKind, memberName);
+    parsed.ownerTypeName = ownerTypeName;
+    parsed.memberName = memberName;
+    parsed.memberKind = memberKind;
+    parsed.isMember = ownerTypeName !== null || memberName !== null || memberKind !== 'symbol';
+    parsed.isAccessor = ['getter', 'setter', 'modify', 'read', 'unsafeAddressor', 'unsafeMutableAddressor', 'materializeForSet'].includes(memberKind);
+    parsed.isGetter = memberKind === 'getter';
+    parsed.isSetter = memberKind === 'setter';
+    parsed.isModifyAccessor = memberKind === 'modify';
+    parsed.isReadAccessor = memberKind === 'read';
+    parsed.isConstructor = memberKind === 'constructor';
+    parsed.isDestructor = memberKind === 'destructor';
+    parsed.isSubscript = parsed.isSubscript || memberKind === 'subscript';
+    parsed.isOperator = parsed.isOperator || memberKind === 'operator';
+    return parsed;
+}
+
+function formatSwiftMemberFlags(info) {
+    const flags = [];
+    if (info.memberKind !== null && info.memberKind !== undefined && info.memberKind !== 'symbol') {
+        flags.push('kind=' + info.memberKind);
+    }
+    if (info.isDispatchThunk) {
+        flags.push('dispatch-thunk');
+    }
+    if (info.isStaticMember) {
+        flags.push('static');
+    }
+    if (info.isClassMember) {
+        flags.push('class');
+    }
+    if (info.isMutating) {
+        flags.push('mutating');
+    }
+    if (info.isAsync) {
+        flags.push('async');
+    }
+    if (info.isThrowing) {
+        flags.push(info.throwsKind || 'throws');
+    }
+    if (info.hasOwnerTypeName) {
+        flags.push('owner=' + info.ownerTypeName);
+    }
+    if (info.hasResultTypeName) {
+        flags.push('result=' + info.resultTypeName);
+    }
+    return flags.length === 0 ? '' : ' {' + flags.join(' ') + '}';
+}
+
+function formatNormalizedSwiftSymbol(symbol) {
+    const base = symbol.address + ' ' + symbol.moduleName + '!' + symbol.name;
+    const demangled = symbol.demangledName === null || symbol.demangledName === undefined
+        ? ''
+        : ' => ' + symbol.demangledName;
+    return base + demangled + formatSwiftMemberFlags(symbol);
+}
+
+function formatNormalizedSwiftVtableEntry(entry) {
+    const base = entry.address + ' ' + entry.moduleName + '!' + entry.typeName + '.' + entry.memberName + ' [' + String(entry.sourceKind || 'member') + ']';
+    const demangled = entry.demangledName === null || entry.demangledName === undefined
+        ? ''
+        : ' <= ' + entry.demangledName;
+    return base + demangled + formatSwiftMemberFlags(entry);
+}
+
+function summarizeSwiftMembers(items) {
+    const ownerTypes = [];
+    const memberKinds = [];
+    const resultTypes = [];
+    let parsedMemberCount = 0;
+    let accessorCount = 0;
+    let getterCount = 0;
+    let setterCount = 0;
+    let modifyAccessorCount = 0;
+    let readAccessorCount = 0;
+    let constructorCount = 0;
+    let destructorCount = 0;
+    let subscriptCount = 0;
+    let operatorCount = 0;
+    let closureCount = 0;
+    let staticMemberCount = 0;
+    let classMemberCount = 0;
+    let mutatingMemberCount = 0;
+    let asyncCount = 0;
+    let throwingCount = 0;
+    let dispatchThunkCount = 0;
+    for (const item of items) {
+        if (item.isMember) {
+            parsedMemberCount += 1;
+        }
+        if (item.isAccessor) {
+            accessorCount += 1;
+        }
+        if (item.isGetter) {
+            getterCount += 1;
+        }
+        if (item.isSetter) {
+            setterCount += 1;
+        }
+        if (item.isModifyAccessor) {
+            modifyAccessorCount += 1;
+        }
+        if (item.isReadAccessor) {
+            readAccessorCount += 1;
+        }
+        if (item.isConstructor) {
+            constructorCount += 1;
+        }
+        if (item.isDestructor) {
+            destructorCount += 1;
+        }
+        if (item.isSubscript) {
+            subscriptCount += 1;
+        }
+        if (item.isOperator) {
+            operatorCount += 1;
+        }
+        if (item.isClosure) {
+            closureCount += 1;
+        }
+        if (item.isStaticMember) {
+            staticMemberCount += 1;
+        }
+        if (item.isClassMember) {
+            classMemberCount += 1;
+        }
+        if (item.isMutating) {
+            mutatingMemberCount += 1;
+        }
+        if (item.isAsync) {
+            asyncCount += 1;
+        }
+        if (item.isThrowing) {
+            throwingCount += 1;
+        }
+        if (item.isDispatchThunk) {
+            dispatchThunkCount += 1;
+        }
+        if (item.hasOwnerTypeName) {
+            let summary = ownerTypes.find((entry) => entry.ownerTypeName === item.ownerTypeName);
+            if (summary === undefined) {
+                summary = {
+                    ownerTypeName: item.ownerTypeName,
+                    count: 0,
+                    firstMemberName: item.memberName,
+                    lastMemberName: item.memberName,
+                };
+                ownerTypes.push(summary);
+            }
+            summary.count += 1;
+            summary.lastMemberName = item.memberName;
+        }
+        const memberKind = item.memberKind === null || item.memberKind === undefined ? 'symbol' : String(item.memberKind);
+        let kindSummary = memberKinds.find((entry) => entry.memberKind === memberKind);
+        if (kindSummary === undefined) {
+            kindSummary = {
+                memberKind,
+                count: 0,
+                firstMemberName: item.memberName,
+                lastMemberName: item.memberName,
+                asyncCount: 0,
+                throwingCount: 0,
+            };
+            memberKinds.push(kindSummary);
+        }
+        kindSummary.count += 1;
+        kindSummary.lastMemberName = item.memberName;
+        if (item.isAsync) {
+            kindSummary.asyncCount += 1;
+        }
+        if (item.isThrowing) {
+            kindSummary.throwingCount += 1;
+        }
+        if (item.hasResultTypeName) {
+            let resultTypeSummary = resultTypes.find((entry) => entry.resultTypeName === item.resultTypeName);
+            if (resultTypeSummary === undefined) {
+                resultTypeSummary = {
+                    resultTypeName: item.resultTypeName,
+                    count: 0,
+                    firstMemberName: item.memberName,
+                    lastMemberName: item.memberName,
+                };
+                resultTypes.push(resultTypeSummary);
+            }
+            resultTypeSummary.count += 1;
+            resultTypeSummary.lastMemberName = item.memberName;
+        }
+    }
+    return {
+        parsedMemberCount,
+        accessorCount,
+        getterCount,
+        setterCount,
+        modifyAccessorCount,
+        readAccessorCount,
+        constructorCount,
+        destructorCount,
+        subscriptCount,
+        operatorCount,
+        closureCount,
+        staticMemberCount,
+        classMemberCount,
+        mutatingMemberCount,
+        asyncCount,
+        throwingCount,
+        dispatchThunkCount,
+        uniqueOwnerTypeCount: ownerTypes.length,
+        uniqueMemberKindCount: memberKinds.length,
+        uniqueResultTypeCount: resultTypes.length,
+        ownerTypes,
+        memberKinds,
+        resultTypes,
+    };
+}
+
 function formatObjcMethod(method) {
     const prefix = method.isClassMethod ? '+' : '-';
     const details = [];
@@ -4028,7 +4440,8 @@ function normalizeSwiftSymbol(symbol) {
     const offset = typeof symbol.offset === 'bigint' ? symbol.offset : BigInt(symbol.offset || 0);
     const name = String(symbol.name || '');
     const demangledName = symbol.demangledName === undefined ? null : symbol.demangledName;
-    return {
+    const memberInfo = parseSwiftDemangledMemberInfo(demangledName, name, null, null, { isDispatchThunk: false });
+    const normalized = {
         moduleName: String(symbol.moduleName || ''),
         moduleBase: symbol.moduleBase ? symbol.moduleBase.toString() : null,
         name,
@@ -4037,8 +4450,36 @@ function normalizeSwiftSymbol(symbol) {
         hasDemangledName: demangledName !== null && String(demangledName).length !== 0,
         address: symbol.address.toString(),
         offsetHex: '0x' + offset.toString(16),
-        text: formatSwiftSymbol(symbol),
+        ownerTypeName: memberInfo.ownerTypeName,
+        hasOwnerTypeName: memberInfo.ownerTypeName !== null,
+        memberName: memberInfo.memberName,
+        hasMemberName: memberInfo.memberName !== null,
+        memberKind: memberInfo.memberKind,
+        signature: memberInfo.signature,
+        hasSignature: memberInfo.hasSignature,
+        resultTypeName: memberInfo.resultTypeName,
+        hasResultTypeName: memberInfo.hasResultTypeName,
+        isMember: memberInfo.isMember,
+        isAccessor: memberInfo.isAccessor,
+        isGetter: memberInfo.isGetter,
+        isSetter: memberInfo.isSetter,
+        isModifyAccessor: memberInfo.isModifyAccessor,
+        isReadAccessor: memberInfo.isReadAccessor,
+        isConstructor: memberInfo.isConstructor,
+        isDestructor: memberInfo.isDestructor,
+        isSubscript: memberInfo.isSubscript,
+        isOperator: memberInfo.isOperator,
+        isClosure: memberInfo.isClosure,
+        isStaticMember: memberInfo.isStaticMember,
+        isClassMember: memberInfo.isClassMember,
+        isMutating: memberInfo.isMutating,
+        isDispatchThunk: memberInfo.isDispatchThunk,
+        isAsync: memberInfo.isAsync,
+        isThrowing: memberInfo.isThrowing,
+        throwsKind: memberInfo.throwsKind,
     };
+    normalized.text = formatNormalizedSwiftSymbol(normalized);
+    return normalized;
 }
 
 function normalizeSwiftType(typeInfo) {
@@ -4120,7 +4561,8 @@ function normalizeSwiftVtableEntry(entry) {
     const name = String(entry.name || '');
     const demangledName = entry.demangledName === undefined ? null : entry.demangledName;
     const sourceKind = entry.sourceKind === undefined ? null : entry.sourceKind;
-    return {
+    const memberInfo = parseSwiftDemangledMemberInfo(demangledName, name, typeName, memberName, { isDispatchThunk: !!entry.isDispatchThunk });
+    const normalized = {
         moduleName: String(entry.moduleName || ''),
         moduleBase: entry.moduleBase ? entry.moduleBase.toString() : null,
         typeName,
@@ -4137,8 +4579,33 @@ function normalizeSwiftVtableEntry(entry) {
         address: entry.address.toString(),
         offsetHex: '0x' + offset.toString(16),
         isDispatchThunk: !!entry.isDispatchThunk,
-        text: formatSwiftVtableEntry(entry),
+        ownerTypeName: memberInfo.ownerTypeName,
+        hasOwnerTypeName: memberInfo.ownerTypeName !== null,
+        memberKind: memberInfo.memberKind,
+        signature: memberInfo.signature,
+        hasSignature: memberInfo.hasSignature,
+        resultTypeName: memberInfo.resultTypeName,
+        hasResultTypeName: memberInfo.hasResultTypeName,
+        isMember: memberInfo.isMember,
+        isAccessor: memberInfo.isAccessor,
+        isGetter: memberInfo.isGetter,
+        isSetter: memberInfo.isSetter,
+        isModifyAccessor: memberInfo.isModifyAccessor,
+        isReadAccessor: memberInfo.isReadAccessor,
+        isConstructor: memberInfo.isConstructor,
+        isDestructor: memberInfo.isDestructor,
+        isSubscript: memberInfo.isSubscript,
+        isOperator: memberInfo.isOperator,
+        isClosure: memberInfo.isClosure,
+        isStaticMember: memberInfo.isStaticMember,
+        isClassMember: memberInfo.isClassMember,
+        isMutating: memberInfo.isMutating,
+        isAsync: memberInfo.isAsync,
+        isThrowing: memberInfo.isThrowing,
+        throwsKind: memberInfo.throwsKind,
     };
+    normalized.text = formatNormalizedSwiftVtableEntry(normalized);
+    return normalized;
 }
 
 function normalizeSwiftWitnessTable(entry) {
@@ -7187,6 +7654,7 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const symbols = Swift.symbols(query, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
+        const memberSummary = summarizeSwiftMembers(symbols);
         const moduleNames = new Set();
         const moduleSummaries = [];
         const symbolNames = [];
@@ -7244,6 +7712,27 @@ function handleSpecResult(spec) {
             uniqueSymbolCount: symbolNames.length,
             demangledCount,
             hasDemangledSymbols: demangledCount !== 0,
+            parsedMemberCount: memberSummary.parsedMemberCount,
+            accessorCount: memberSummary.accessorCount,
+            getterCount: memberSummary.getterCount,
+            setterCount: memberSummary.setterCount,
+            constructorCount: memberSummary.constructorCount,
+            destructorCount: memberSummary.destructorCount,
+            subscriptCount: memberSummary.subscriptCount,
+            operatorCount: memberSummary.operatorCount,
+            closureCount: memberSummary.closureCount,
+            staticMemberCount: memberSummary.staticMemberCount,
+            classMemberCount: memberSummary.classMemberCount,
+            mutatingMemberCount: memberSummary.mutatingMemberCount,
+            asyncCount: memberSummary.asyncCount,
+            throwingCount: memberSummary.throwingCount,
+            dispatchThunkCount: memberSummary.dispatchThunkCount,
+            uniqueOwnerTypeCount: memberSummary.uniqueOwnerTypeCount,
+            uniqueMemberKindCount: memberSummary.uniqueMemberKindCount,
+            uniqueResultTypeCount: memberSummary.uniqueResultTypeCount,
+            ownerTypes: memberSummary.ownerTypes,
+            memberKinds: memberSummary.memberKinds,
+            resultTypes: memberSummary.resultTypes,
             moduleNames: moduleSummaries,
             symbolNames,
             symbols,
@@ -7268,8 +7757,35 @@ function handleSpecResult(spec) {
             resolvedDemangledName: normalized === null ? null : normalized.demangledName,
             resolvedAddress: normalized === null ? null : normalized.address,
             resolvedOffsetHex: normalized === null ? null : normalized.offsetHex,
+            ownerTypeName: normalized === null ? null : normalized.ownerTypeName,
+            memberName: normalized === null ? null : normalized.memberName,
+            memberKind: normalized === null ? null : normalized.memberKind,
+            signature: normalized === null ? null : normalized.signature,
+            resultTypeName: normalized === null ? null : normalized.resultTypeName,
             hasName: normalized !== null && normalized.hasName === true,
             hasDemangledName: normalized !== null && normalized.hasDemangledName === true,
+            hasOwnerTypeName: normalized !== null && normalized.hasOwnerTypeName === true,
+            hasMemberName: normalized !== null && normalized.hasMemberName === true,
+            hasSignature: normalized !== null && normalized.hasSignature === true,
+            hasResultTypeName: normalized !== null && normalized.hasResultTypeName === true,
+            isMember: normalized !== null && normalized.isMember === true,
+            isAccessor: normalized !== null && normalized.isAccessor === true,
+            isGetter: normalized !== null && normalized.isGetter === true,
+            isSetter: normalized !== null && normalized.isSetter === true,
+            isModifyAccessor: normalized !== null && normalized.isModifyAccessor === true,
+            isReadAccessor: normalized !== null && normalized.isReadAccessor === true,
+            isConstructor: normalized !== null && normalized.isConstructor === true,
+            isDestructor: normalized !== null && normalized.isDestructor === true,
+            isSubscript: normalized !== null && normalized.isSubscript === true,
+            isOperator: normalized !== null && normalized.isOperator === true,
+            isClosure: normalized !== null && normalized.isClosure === true,
+            isStaticMember: normalized !== null && normalized.isStaticMember === true,
+            isClassMember: normalized !== null && normalized.isClassMember === true,
+            isMutating: normalized !== null && normalized.isMutating === true,
+            isDispatchThunk: normalized !== null && normalized.isDispatchThunk === true,
+            isAsync: normalized !== null && normalized.isAsync === true,
+            isThrowing: normalized !== null && normalized.isThrowing === true,
+            throwsKind: normalized === null ? null : normalized.throwsKind,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -7679,8 +8195,35 @@ function handleSpecResult(spec) {
             resolvedDemangledName: normalized === null ? null : normalized.demangledName,
             resolvedAddress: normalized === null ? null : normalized.address,
             resolvedOffsetHex: normalized === null ? null : normalized.offsetHex,
+            ownerTypeName: normalized === null ? null : normalized.ownerTypeName,
+            memberName: normalized === null ? null : normalized.memberName,
+            memberKind: normalized === null ? null : normalized.memberKind,
+            signature: normalized === null ? null : normalized.signature,
+            resultTypeName: normalized === null ? null : normalized.resultTypeName,
             hasName: normalized !== null && normalized.hasName === true,
             hasDemangledName: normalized !== null && normalized.hasDemangledName === true,
+            hasOwnerTypeName: normalized !== null && normalized.hasOwnerTypeName === true,
+            hasMemberName: normalized !== null && normalized.hasMemberName === true,
+            hasSignature: normalized !== null && normalized.hasSignature === true,
+            hasResultTypeName: normalized !== null && normalized.hasResultTypeName === true,
+            isMember: normalized !== null && normalized.isMember === true,
+            isAccessor: normalized !== null && normalized.isAccessor === true,
+            isGetter: normalized !== null && normalized.isGetter === true,
+            isSetter: normalized !== null && normalized.isSetter === true,
+            isModifyAccessor: normalized !== null && normalized.isModifyAccessor === true,
+            isReadAccessor: normalized !== null && normalized.isReadAccessor === true,
+            isConstructor: normalized !== null && normalized.isConstructor === true,
+            isDestructor: normalized !== null && normalized.isDestructor === true,
+            isSubscript: normalized !== null && normalized.isSubscript === true,
+            isOperator: normalized !== null && normalized.isOperator === true,
+            isClosure: normalized !== null && normalized.isClosure === true,
+            isStaticMember: normalized !== null && normalized.isStaticMember === true,
+            isClassMember: normalized !== null && normalized.isClassMember === true,
+            isMutating: normalized !== null && normalized.isMutating === true,
+            isDispatchThunk: normalized !== null && normalized.isDispatchThunk === true,
+            isAsync: normalized !== null && normalized.isAsync === true,
+            isThrowing: normalized !== null && normalized.isThrowing === true,
+            throwsKind: normalized === null ? null : normalized.throwsKind,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -7688,6 +8231,7 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const entries = Swift.vtable(query, moduleName).map((entry) => normalizeSwiftVtableEntry(entry));
+        const memberSummary = summarizeSwiftMembers(entries);
         const sourceKinds = [];
         const memberNames = [];
         const types = [];
@@ -7807,6 +8351,26 @@ function handleSpecResult(spec) {
             hasDispatchThunks: dispatchThunkCount !== 0,
             demangledCount,
             hasDemangledEntries: demangledCount !== 0,
+            parsedMemberCount: memberSummary.parsedMemberCount,
+            accessorCount: memberSummary.accessorCount,
+            getterCount: memberSummary.getterCount,
+            setterCount: memberSummary.setterCount,
+            constructorCount: memberSummary.constructorCount,
+            destructorCount: memberSummary.destructorCount,
+            subscriptCount: memberSummary.subscriptCount,
+            operatorCount: memberSummary.operatorCount,
+            closureCount: memberSummary.closureCount,
+            staticMemberCount: memberSummary.staticMemberCount,
+            classMemberCount: memberSummary.classMemberCount,
+            mutatingMemberCount: memberSummary.mutatingMemberCount,
+            asyncCount: memberSummary.asyncCount,
+            throwingCount: memberSummary.throwingCount,
+            uniqueOwnerTypeCount: memberSummary.uniqueOwnerTypeCount,
+            uniqueMemberKindCount: memberSummary.uniqueMemberKindCount,
+            uniqueResultTypeCount: memberSummary.uniqueResultTypeCount,
+            ownerTypes: memberSummary.ownerTypes,
+            memberKinds: memberSummary.memberKinds,
+            resultTypes: memberSummary.resultTypes,
             moduleNames: moduleSummaries,
             memberNames,
             types,
@@ -7838,13 +8402,37 @@ function handleSpecResult(spec) {
             resolvedDemangledName: normalized === null ? null : normalized.demangledName,
             resolvedAddress: normalized === null ? null : normalized.address,
             resolvedOffsetHex: normalized === null ? null : normalized.offsetHex,
+            ownerTypeName: normalized === null ? null : normalized.ownerTypeName,
+            memberKind: normalized === null ? null : normalized.memberKind,
+            signature: normalized === null ? null : normalized.signature,
+            resultTypeName: normalized === null ? null : normalized.resultTypeName,
             sourceKind: normalized === null ? null : normalized.sourceKind,
             hasTypeName: normalized !== null && normalized.hasTypeName === true,
             hasMemberName: normalized !== null && normalized.hasMemberName === true,
             hasName: normalized !== null && normalized.hasName === true,
             hasSourceKind: normalized !== null && normalized.hasSourceKind === true,
             hasDemangledName: normalized !== null && normalized.hasDemangledName === true,
+            hasOwnerTypeName: normalized !== null && normalized.hasOwnerTypeName === true,
+            hasSignature: normalized !== null && normalized.hasSignature === true,
+            hasResultTypeName: normalized !== null && normalized.hasResultTypeName === true,
+            isMember: normalized !== null && normalized.isMember === true,
+            isAccessor: normalized !== null && normalized.isAccessor === true,
+            isGetter: normalized !== null && normalized.isGetter === true,
+            isSetter: normalized !== null && normalized.isSetter === true,
+            isModifyAccessor: normalized !== null && normalized.isModifyAccessor === true,
+            isReadAccessor: normalized !== null && normalized.isReadAccessor === true,
+            isConstructor: normalized !== null && normalized.isConstructor === true,
+            isDestructor: normalized !== null && normalized.isDestructor === true,
+            isSubscript: normalized !== null && normalized.isSubscript === true,
+            isOperator: normalized !== null && normalized.isOperator === true,
+            isClosure: normalized !== null && normalized.isClosure === true,
+            isStaticMember: normalized !== null && normalized.isStaticMember === true,
+            isClassMember: normalized !== null && normalized.isClassMember === true,
+            isMutating: normalized !== null && normalized.isMutating === true,
             isDispatchThunk: normalized !== null && normalized.isDispatchThunk === true,
+            isAsync: normalized !== null && normalized.isAsync === true,
+            isThrowing: normalized !== null && normalized.isThrowing === true,
+            throwsKind: normalized === null ? null : normalized.throwsKind,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -8544,6 +9132,7 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
         const methods = Swift.typeMethods(query, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
+        const memberSummary = summarizeSwiftMembers(methods);
         const moduleNames = new Set();
         const moduleSummaries = [];
         const methodNames = [];
@@ -8601,6 +9190,27 @@ function handleSpecResult(spec) {
             uniqueMethodCount: methodNames.length,
             demangledCount,
             hasDemangledMethods: demangledCount !== 0,
+            parsedMemberCount: memberSummary.parsedMemberCount,
+            accessorCount: memberSummary.accessorCount,
+            getterCount: memberSummary.getterCount,
+            setterCount: memberSummary.setterCount,
+            constructorCount: memberSummary.constructorCount,
+            destructorCount: memberSummary.destructorCount,
+            subscriptCount: memberSummary.subscriptCount,
+            operatorCount: memberSummary.operatorCount,
+            closureCount: memberSummary.closureCount,
+            staticMemberCount: memberSummary.staticMemberCount,
+            classMemberCount: memberSummary.classMemberCount,
+            mutatingMemberCount: memberSummary.mutatingMemberCount,
+            asyncCount: memberSummary.asyncCount,
+            throwingCount: memberSummary.throwingCount,
+            dispatchThunkCount: memberSummary.dispatchThunkCount,
+            uniqueOwnerTypeCount: memberSummary.uniqueOwnerTypeCount,
+            uniqueMemberKindCount: memberSummary.uniqueMemberKindCount,
+            uniqueResultTypeCount: memberSummary.uniqueResultTypeCount,
+            ownerTypes: memberSummary.ownerTypes,
+            memberKinds: memberSummary.memberKinds,
+            resultTypes: memberSummary.resultTypes,
             moduleNames: moduleSummaries,
             methodNames,
             methods,
@@ -8612,6 +9222,7 @@ function handleSpecResult(spec) {
         const typeName = String(spec.typeName || '');
         const methodQuery = String(spec.methodQuery || '');
         const methods = Swift.methods(typeName, methodQuery, moduleName).map((symbol) => normalizeSwiftSymbol(symbol));
+        const memberSummary = summarizeSwiftMembers(methods);
         const moduleNames = new Set();
         const moduleSummaries = [];
         const methodNames = [];
@@ -8670,6 +9281,27 @@ function handleSpecResult(spec) {
             uniqueMethodCount: methodNames.length,
             demangledCount,
             hasDemangledMethods: demangledCount !== 0,
+            parsedMemberCount: memberSummary.parsedMemberCount,
+            accessorCount: memberSummary.accessorCount,
+            getterCount: memberSummary.getterCount,
+            setterCount: memberSummary.setterCount,
+            constructorCount: memberSummary.constructorCount,
+            destructorCount: memberSummary.destructorCount,
+            subscriptCount: memberSummary.subscriptCount,
+            operatorCount: memberSummary.operatorCount,
+            closureCount: memberSummary.closureCount,
+            staticMemberCount: memberSummary.staticMemberCount,
+            classMemberCount: memberSummary.classMemberCount,
+            mutatingMemberCount: memberSummary.mutatingMemberCount,
+            asyncCount: memberSummary.asyncCount,
+            throwingCount: memberSummary.throwingCount,
+            dispatchThunkCount: memberSummary.dispatchThunkCount,
+            uniqueOwnerTypeCount: memberSummary.uniqueOwnerTypeCount,
+            uniqueMemberKindCount: memberSummary.uniqueMemberKindCount,
+            uniqueResultTypeCount: memberSummary.uniqueResultTypeCount,
+            ownerTypes: memberSummary.ownerTypes,
+            memberKinds: memberSummary.memberKinds,
+            resultTypes: memberSummary.resultTypes,
             moduleNames: moduleSummaries,
             methodNames,
             methods,

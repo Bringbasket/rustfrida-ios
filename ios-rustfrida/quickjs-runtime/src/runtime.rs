@@ -5649,14 +5649,94 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' }); return result.kind === 'swift.method_info' && result.typeName === 'ViewController' && result.methodName === 'viewDidLoad' && typeof result.hasMethodInfo === 'boolean' && typeof result.resolved === 'boolean' && ((result.methodInfo === null && result.hasMethodInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.resolvedDemangledName === null && result.text === '<null>') || (result.hasMethodInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.methodInfo.moduleBase === 'string' && typeof result.methodInfo.name === 'string' && typeof result.methodInfo.offsetHex === 'string' && result.resolvedName === result.methodInfo.name && result.resolvedModuleName === result.methodInfo.moduleName && result.resolvedDemangledName === result.methodInfo.demangledName && result.text === result.methodInfo.text)); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' }); return result.kind === 'swift.method_info' && result.typeName === 'ViewController' && result.methodName === 'viewDidLoad' && typeof result.hasMethodInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.isMember === 'boolean' && typeof result.isAccessor === 'boolean' && typeof result.isAsync === 'boolean' && typeof result.isThrowing === 'boolean' && ((result.methodInfo === null && result.hasMethodInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.resolvedDemangledName === null && result.ownerTypeName === null && result.memberName === null && result.memberKind === null && result.signature === null && result.resultTypeName === null && result.text === '<null>') || (result.hasMethodInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.methodInfo.moduleBase === 'string' && typeof result.methodInfo.name === 'string' && typeof result.methodInfo.offsetHex === 'string' && typeof result.methodInfo.memberKind === 'string' && typeof result.methodInfo.isMember === 'boolean' && typeof result.methodInfo.isAccessor === 'boolean' && typeof result.methodInfo.isAsync === 'boolean' && typeof result.methodInfo.isThrowing === 'boolean' && result.resolvedName === result.methodInfo.name && result.resolvedModuleName === result.methodInfo.moduleName && result.resolvedDemangledName === result.methodInfo.demangledName && result.memberKind === result.methodInfo.memberKind && result.ownerTypeName === result.methodInfo.ownerTypeName && result.memberName === result.methodInfo.memberName && result.signature === result.methodInfo.signature && result.resultTypeName === result.methodInfo.resultTypeName && result.text === result.methodInfo.text)); })()")
                     .expect("agent swift methodInfo result"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbol_info', moduleName: null, symbolName: 'ViewController' }); return result.kind === 'swift.symbol_info' && result.symbolName === 'ViewController' && typeof result.hasSymbolInfo === 'boolean' && typeof result.resolved === 'boolean' && ((result.symbolInfo === null && result.hasSymbolInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.resolvedDemangledName === null && result.text === '<null>') || (result.hasSymbolInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.symbolInfo.moduleBase === 'string' && typeof result.symbolInfo.name === 'string' && typeof result.symbolInfo.offsetHex === 'string' && result.resolvedName === result.symbolInfo.name && result.resolvedModuleName === result.symbolInfo.moduleName && result.resolvedDemangledName === result.symbolInfo.demangledName && result.text === result.symbolInfo.text)); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbol_info', moduleName: null, symbolName: 'ViewController' }); return result.kind === 'swift.symbol_info' && result.symbolName === 'ViewController' && typeof result.hasSymbolInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.isMember === 'boolean' && typeof result.isAccessor === 'boolean' && typeof result.isAsync === 'boolean' && typeof result.isThrowing === 'boolean' && ((result.symbolInfo === null && result.hasSymbolInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.resolvedDemangledName === null && result.ownerTypeName === null && result.memberName === null && result.memberKind === null && result.signature === null && result.resultTypeName === null && result.text === '<null>') || (result.hasSymbolInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.symbolInfo.moduleBase === 'string' && typeof result.symbolInfo.name === 'string' && typeof result.symbolInfo.offsetHex === 'string' && typeof result.symbolInfo.memberKind === 'string' && typeof result.symbolInfo.isMember === 'boolean' && typeof result.symbolInfo.isAccessor === 'boolean' && typeof result.symbolInfo.isAsync === 'boolean' && typeof result.symbolInfo.isThrowing === 'boolean' && result.resolvedName === result.symbolInfo.name && result.resolvedModuleName === result.symbolInfo.moduleName && result.resolvedDemangledName === result.symbolInfo.demangledName && result.memberKind === result.symbolInfo.memberKind && result.ownerTypeName === result.symbolInfo.ownerTypeName && result.memberName === result.symbolInfo.memberName && result.signature === result.symbolInfo.signature && result.resultTypeName === result.symbolInfo.resultTypeName && result.text === result.symbolInfo.text)); })()")
                     .expect("agent swift symbolInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.methodInfo;
+                            Swift.methodInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: '$s4Demo14ViewControllerC6sharedACyYaKFZ',
+                                    demangledName: 'static Demo.ViewController.shared() async throws -> Demo.ViewController',
+                                    address: 0x180001000n,
+                                    offset: 0x1000n,
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'shared' });
+                                return result.methodInfo !== null
+                                    && result.memberKind === 'method'
+                                    && result.ownerTypeName === 'Demo.ViewController'
+                                    && result.memberName === 'shared'
+                                    && result.signature === 'static Demo.ViewController.shared() async throws -> Demo.ViewController'
+                                    && result.resultTypeName === 'Demo.ViewController'
+                                    && result.isStaticMember === true
+                                    && result.isAsync === true
+                                    && result.isThrowing === true
+                                    && result.throwsKind === 'throws'
+                                    && result.isAccessor === false
+                                    && result.methodInfo.isStaticMember === true
+                                    && result.methodInfo.isAsync === true
+                                    && result.methodInfo.isThrowing === true
+                                    && result.methodInfo.resultTypeName === 'Demo.ViewController';
+                            } finally {
+                                Swift.methodInfo = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift methodInfo semantics"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.vtableInfo;
+                            Swift.vtableInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    typeName: 'Demo.ViewModel',
+                                    memberName: 'title',
+                                    name: '$s4Demo9ViewModelV5titleSSvg',
+                                    demangledName: 'Demo.ViewModel.title.getter : Swift.String',
+                                    sourceKind: 'member',
+                                    address: 0x180002000n,
+                                    offset: 0x2000n,
+                                    isDispatchThunk: false,
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewModel', memberName: 'title' });
+                                return result.vtableInfo !== null
+                                    && result.memberKind === 'getter'
+                                    && result.ownerTypeName === 'Demo.ViewModel'
+                                    && result.signature === 'Demo.ViewModel.title.getter : Swift.String'
+                                    && result.resultTypeName === 'Swift.String'
+                                    && result.isAccessor === true
+                                    && result.isGetter === true
+                                    && result.isSetter === false
+                                    && result.vtableInfo.isAccessor === true
+                                    && result.vtableInfo.isGetter === true
+                                    && result.vtableInfo.resultTypeName === 'Swift.String';
+                            } finally {
+                                Swift.vtableInfo = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift vtableInfo semantics"),
                 "true"
             );
             assert_eq!(
@@ -5674,6 +5754,16 @@ undefined;
                                     typeof result.uniqueSymbolCount !== 'number' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledSymbols !== 'boolean' ||
+                                    typeof result.parsedMemberCount !== 'number' ||
+                                    typeof result.accessorCount !== 'number' ||
+                                    typeof result.asyncCount !== 'number' ||
+                                    typeof result.throwingCount !== 'number' ||
+                                    typeof result.uniqueOwnerTypeCount !== 'number' ||
+                                    typeof result.uniqueMemberKindCount !== 'number' ||
+                                    typeof result.uniqueResultTypeCount !== 'number' ||
+                                    !Array.isArray(result.ownerTypes) ||
+                                    !Array.isArray(result.memberKinds) ||
+                                    !Array.isArray(result.resultTypes) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.symbolNames)) {
                                 return false;
@@ -5695,6 +5785,11 @@ undefined;
                                 typeof symbol.name === 'string' &&
                                 typeof symbol.hasName === 'boolean' &&
                                 typeof symbol.hasDemangledName === 'boolean' &&
+                                typeof symbol.memberKind === 'string' &&
+                                typeof symbol.isMember === 'boolean' &&
+                                typeof symbol.isAccessor === 'boolean' &&
+                                typeof symbol.isAsync === 'boolean' &&
+                                typeof symbol.isThrowing === 'boolean' &&
                                 typeof symbol.offsetHex === 'string' &&
                                 (moduleSummary === null || (
                                     typeof moduleSummary.moduleName === 'string' &&
@@ -5713,6 +5808,68 @@ undefined;
                         })()"
                     )
                     .expect("agent swift symbols result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.symbols;
+                            Swift.symbols = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: '$s4Demo9ViewModelV5titleSSvg',
+                                        demangledName: 'Demo.ViewModel.title.getter : Swift.String',
+                                        address: 0x180002000n,
+                                        offset: 0x2000n,
+                                    },
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: '$s4Demo14ViewControllerCACycfc',
+                                        demangledName: 'Demo.ViewController.init() -> Demo.ViewController',
+                                        address: 0x180003000n,
+                                        offset: 0x3000n,
+                                    },
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: '$s4Demo14ViewControllerC6sharedACyYaKFZ',
+                                        demangledName: 'static Demo.ViewController.shared() async throws -> Demo.ViewController',
+                                        address: 0x180004000n,
+                                        offset: 0x4000n,
+                                    }
+                                ];
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbols', moduleName: null, query: 'Demo' });
+                                return result.count === 3
+                                    && result.parsedMemberCount === 3
+                                    && result.accessorCount === 1
+                                    && result.getterCount === 1
+                                    && result.constructorCount === 1
+                                    && result.asyncCount === 1
+                                    && result.throwingCount === 1
+                                    && result.staticMemberCount === 1
+                                    && result.uniqueOwnerTypeCount === 2
+                                    && result.uniqueMemberKindCount >= 2
+                                    && result.uniqueResultTypeCount >= 2
+                                    && Array.isArray(result.ownerTypes)
+                                    && result.ownerTypes.some((entry) => entry.ownerTypeName === 'Demo.ViewModel' && entry.count === 1)
+                                    && result.ownerTypes.some((entry) => entry.ownerTypeName === 'Demo.ViewController' && entry.count === 2)
+                                    && result.memberKinds.some((entry) => entry.memberKind === 'getter' && entry.count === 1)
+                                    && result.memberKinds.some((entry) => entry.memberKind === 'constructor' && entry.count === 1)
+                                    && result.memberKinds.some((entry) => entry.memberKind === 'method' && entry.count === 1)
+                                    && result.resultTypes.some((entry) => entry.resultTypeName === 'Swift.String' && entry.count === 1)
+                                    && result.resultTypes.some((entry) => entry.resultTypeName === 'Demo.ViewController' && entry.count === 2);
+                            } finally {
+                                Swift.symbols = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift symbols summary"),
                 "true"
             );
             assert_eq!(
