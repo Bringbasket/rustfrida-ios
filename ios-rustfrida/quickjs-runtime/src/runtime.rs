@@ -6544,14 +6544,259 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.metadata' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.metadata.length && typeof result.hasMetadata === 'boolean' && typeof result.uniqueModuleCount === 'number' && typeof result.uniqueTypeCount === 'number' && typeof result.uniqueSourceKindCount === 'number' && typeof result.sourceDemangledCount === 'number' && typeof result.hasSourceDemangledMetadata === 'boolean' && Array.isArray(result.moduleNames) && Array.isArray(result.typeNames) && Array.isArray(result.sourceKinds) && ((result.metadata.length === 0 && result.hasMetadata === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasMetadata === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.firstModuleName === 'string' && typeof result.lastModuleName === 'string' && typeof result.metadata[0].moduleBase === 'string' && typeof result.metadata[0].hasName === 'boolean' && typeof result.metadata[0].hasSourceKind === 'boolean' && typeof result.metadata[0].hasSourceSymbolName === 'boolean' && typeof result.metadata[0].hasSourceDemangledName === 'boolean' && typeof result.metadata[0].sourceSymbolName === 'string' && typeof result.metadata[0].sourceOffsetHex === 'string' && typeof result.metadata[0].sourceKind === 'string' && (result.moduleNames.length === 0 || (typeof result.moduleNames[0].moduleName === 'string' && typeof result.moduleNames[0].count === 'number' && typeof result.moduleNames[0].firstTypeName === 'string' && typeof result.moduleNames[0].lastTypeName === 'string' && typeof result.moduleNames[0].sourceDemangledCount === 'number')) && (result.typeNames.length === 0 || (typeof result.typeNames[0].typeName === 'string' && typeof result.typeNames[0].count === 'number' && typeof result.typeNames[0].firstModuleName === 'string' && typeof result.typeNames[0].lastModuleName === 'string' && typeof result.typeNames[0].hasSourceDemangledName === 'boolean')) && (result.sourceKinds.length === 0 || (typeof result.sourceKinds[0].sourceKind === 'string' && typeof result.sourceKinds[0].count === 'number' && typeof result.sourceKinds[0].firstTypeName === 'string' && typeof result.sourceKinds[0].lastTypeName === 'string')))); })()")
+                    .eval(
+                        r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'ViewController' });
+                            if (result.kind !== 'swift.metadata' || result.query !== 'ViewController' || result.hasQuery !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.metadata.length ||
+                                    typeof result.hasMetadata !== 'boolean' ||
+                                    typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueTypeCount !== 'number' ||
+                                    typeof result.uniqueSourceKindCount !== 'number' ||
+                                    typeof result.sourceDemangledCount !== 'number' ||
+                                    typeof result.hasSourceDemangledMetadata !== 'boolean' ||
+                                    typeof result.uniqueContextModuleCount !== 'number' ||
+                                    typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.moduleNames) ||
+                                    !Array.isArray(result.typeNames) ||
+                                    !Array.isArray(result.contextModules) ||
+                                    !Array.isArray(result.detailKinds) ||
+                                    !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.metadata.length === 0) {
+                                return result.hasMetadata === false &&
+                                    result.firstTypeName === null &&
+                                    result.lastTypeName === null;
+                            }
+                            const entry = result.metadata[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
+                            const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
+                            const contextSummary = result.contextModules.length === 0 ? null : result.contextModules[0];
+                            const detailSummary = result.detailKinds.length === 0 ? null : result.detailKinds[0];
+                            const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
+                            return result.hasMetadata === true &&
+                                typeof result.firstTypeName === 'string' &&
+                                typeof result.lastTypeName === 'string' &&
+                                typeof result.firstModuleName === 'string' &&
+                                typeof result.lastModuleName === 'string' &&
+                                typeof entry.moduleBase === 'string' &&
+                                typeof entry.hasName === 'boolean' &&
+                                typeof entry.hasSourceKind === 'boolean' &&
+                                typeof entry.hasSourceSymbolName === 'boolean' &&
+                                typeof entry.hasSourceDemangledName === 'boolean' &&
+                                typeof entry.hasQualifiedName === 'boolean' &&
+                                typeof entry.hasSignature === 'boolean' &&
+                                typeof entry.hasContextModuleName === 'boolean' &&
+                                typeof entry.hasDetailKind === 'boolean' &&
+                                typeof entry.isMetadata === 'boolean' &&
+                                typeof entry.isMetadataAccessor === 'boolean' &&
+                                typeof entry.isNominalDescriptor === 'boolean' &&
+                                typeof entry.sourceSymbolName === 'string' &&
+                                typeof entry.sourceOffsetHex === 'string' &&
+                                typeof entry.sourceKind === 'string' &&
+                                (entry.qualifiedName === null || typeof entry.qualifiedName === 'string') &&
+                                (entry.signature === null || typeof entry.signature === 'string') &&
+                                (entry.contextModuleName === null || typeof entry.contextModuleName === 'string') &&
+                                (entry.detailKind === null || typeof entry.detailKind === 'string') &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstTypeName === 'string' &&
+                                    typeof moduleSummary.lastTypeName === 'string' &&
+                                    typeof moduleSummary.sourceDemangledCount === 'number'
+                                )) &&
+                                (typeSummary === null || (
+                                    typeof typeSummary.typeName === 'string' &&
+                                    typeof typeSummary.count === 'number' &&
+                                    typeof typeSummary.firstModuleName === 'string' &&
+                                    typeof typeSummary.lastModuleName === 'string' &&
+                                    typeof typeSummary.hasSourceDemangledName === 'boolean'
+                                )) &&
+                                (contextSummary === null || (
+                                    typeof contextSummary.contextModuleName === 'string' &&
+                                    typeof contextSummary.count === 'number' &&
+                                    typeof contextSummary.firstTypeName === 'string' &&
+                                    typeof contextSummary.lastTypeName === 'string'
+                                )) &&
+                                (detailSummary === null || (
+                                    typeof detailSummary.detailKind === 'string' &&
+                                    typeof detailSummary.count === 'number' &&
+                                    typeof detailSummary.firstTypeName === 'string' &&
+                                    typeof detailSummary.lastTypeName === 'string'
+                                )) &&
+                                (sourceSummary === null || (
+                                    typeof sourceSummary.sourceKind === 'string' &&
+                                    typeof sourceSummary.count === 'number' &&
+                                    typeof sourceSummary.firstTypeName === 'string' &&
+                                    typeof sourceSummary.lastTypeName === 'string'
+                                ));
+                        })()"#
+                    )
                     .expect("agent swift metadata result"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' }); return result.kind === 'swift.metadata_info' && result.typeName === 'ViewController' && typeof result.hasMetadataInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasSourceKind === 'boolean' && ((result.metadataInfo === null && result.hasMetadataInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.sourceKind === null && result.text === '<null>') || (result.hasMetadataInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.metadataInfo.moduleBase === 'string' && typeof result.metadataInfo.sourceSymbolName === 'string' && typeof result.metadataInfo.sourceOffsetHex === 'string' && result.hasSourceKind === (result.metadataInfo.hasSourceKind === true) && result.sourceKind === result.metadataInfo.sourceKind && result.text === result.metadataInfo.text)); })()")
+                    .eval(
+                        r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' });
+                            if (result.kind !== 'swift.metadata_info' || result.typeName !== 'ViewController') {
+                                return false;
+                            }
+                            if (typeof result.hasMetadataInfo !== 'boolean' ||
+                                    typeof result.resolved !== 'boolean' ||
+                                    typeof result.hasSourceKind !== 'boolean' ||
+                                    typeof result.hasQualifiedName !== 'boolean' ||
+                                    typeof result.hasSignature !== 'boolean' ||
+                                    typeof result.hasContextModuleName !== 'boolean' ||
+                                    typeof result.hasDetailKind !== 'boolean' ||
+                                    typeof result.isMetadata !== 'boolean' ||
+                                    typeof result.isMetadataAccessor !== 'boolean' ||
+                                    typeof result.isNominalDescriptor !== 'boolean') {
+                                return false;
+                            }
+                            if (result.metadataInfo === null) {
+                                return result.hasMetadataInfo === false &&
+                                    result.resolved === false &&
+                                    result.resolvedName === null &&
+                                    result.resolvedModuleName === null &&
+                                    result.sourceKind === null &&
+                                    result.qualifiedName === null &&
+                                    result.signature === null &&
+                                    result.contextModuleName === null &&
+                                    result.detailKind === null &&
+                                    result.hasQualifiedName === false &&
+                                    result.hasSignature === false &&
+                                    result.hasContextModuleName === false &&
+                                    result.hasDetailKind === false &&
+                                    result.isMetadata === false &&
+                                    result.isMetadataAccessor === false &&
+                                    result.isNominalDescriptor === false &&
+                                    result.text === '<null>';
+                            }
+                            return result.hasMetadataInfo === true &&
+                                result.resolved === true &&
+                                typeof result.resolvedName === 'string' &&
+                                typeof result.resolvedModuleName === 'string' &&
+                                typeof result.metadataInfo.moduleBase === 'string' &&
+                                typeof result.metadataInfo.sourceSymbolName === 'string' &&
+                                typeof result.metadataInfo.sourceOffsetHex === 'string' &&
+                                (result.qualifiedName === null || typeof result.qualifiedName === 'string') &&
+                                (result.signature === null || typeof result.signature === 'string') &&
+                                (result.contextModuleName === null || typeof result.contextModuleName === 'string') &&
+                                (result.detailKind === null || typeof result.detailKind === 'string') &&
+                                result.hasSourceKind === (result.metadataInfo.hasSourceKind === true) &&
+                                result.sourceKind === result.metadataInfo.sourceKind &&
+                                result.qualifiedName === result.metadataInfo.qualifiedName &&
+                                result.signature === result.metadataInfo.signature &&
+                                result.contextModuleName === result.metadataInfo.contextModuleName &&
+                                result.detailKind === result.metadataInfo.detailKind &&
+                                result.hasQualifiedName === (result.metadataInfo.hasQualifiedName === true) &&
+                                result.hasSignature === (result.metadataInfo.hasSignature === true) &&
+                                result.hasContextModuleName === (result.metadataInfo.hasContextModuleName === true) &&
+                                result.hasDetailKind === (result.metadataInfo.hasDetailKind === true) &&
+                                result.isMetadata === (result.metadataInfo.isMetadata === true) &&
+                                result.isMetadataAccessor === (result.metadataInfo.isMetadataAccessor === true) &&
+                                result.isNominalDescriptor === (result.metadataInfo.isNominalDescriptor === true) &&
+                                result.text === result.metadataInfo.text;
+                        })()"#
+                    )
                     .expect("agent swift metadata info result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const originalMetadataInfo = Swift.metadataInfo;
+                            Swift.metadataInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: 'ViewController',
+                                    sourceSymbolName: '$s4Demo14ViewControllerCMf',
+                                    sourceKind: 'metadata',
+                                    sourceAddress: 0x180000900n,
+                                    sourceOffset: 0x900n,
+                                    sourceDemangledName: 'type metadata for Demo.ViewController',
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' });
+                                return result.metadataInfo !== null
+                                    && result.resolvedName === 'ViewController'
+                                    && result.qualifiedName === 'Demo.ViewController'
+                                    && result.signature === 'type metadata for Demo.ViewController'
+                                    && result.contextModuleName === 'Demo'
+                                    && result.detailKind === 'metadata'
+                                    && result.hasQualifiedName === true
+                                    && result.hasSignature === true
+                                    && result.hasContextModuleName === true
+                                    && result.hasDetailKind === true
+                                    && result.isMetadata === true
+                                    && result.isMetadataAccessor === false
+                                    && result.isNominalDescriptor === false
+                                    && result.text.indexOf('{kind=metadata in=Demo}') !== -1
+                                    && result.metadataInfo.qualifiedName === 'Demo.ViewController'
+                                    && result.metadataInfo.contextModuleName === 'Demo';
+                            } finally {
+                                Swift.metadataInfo = originalMetadataInfo;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift metadataInfo semantics"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const originalMetadata = Swift.metadata;
+                            Swift.metadata = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'ViewController',
+                                        sourceSymbolName: '$s4Demo14ViewControllerCMf',
+                                        sourceKind: 'metadata',
+                                        sourceAddress: 0x180001100n,
+                                        sourceOffset: 0x1100n,
+                                        sourceDemangledName: 'type metadata for Demo.ViewController',
+                                    },
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'Renderable',
+                                        sourceSymbolName: '$s4Demo10RenderableMn',
+                                        sourceKind: 'nominal-descriptor',
+                                        sourceAddress: 0x180001200n,
+                                        sourceOffset: 0x1200n,
+                                        sourceDemangledName: 'nominal type descriptor for Demo.Renderable',
+                                    }
+                                ];
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'Demo' });
+                                return result.count === 2
+                                    && result.uniqueContextModuleCount === 1
+                                    && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.contextModules)
+                                    && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2)
+                                    && Array.isArray(result.detailKinds)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'metadata' && entry.count === 1)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'nominal-descriptor' && entry.count === 1)
+                                    && result.metadata.some((entry) => entry.qualifiedName === 'Demo.ViewController' && entry.isMetadata === true)
+                                    && result.metadata.some((entry) => entry.qualifiedName === 'Demo.Renderable' && entry.isNominalDescriptor === true);
+                            } finally {
+                                Swift.metadata = originalMetadata;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift metadata summary"),
                 "true"
             );
             assert_eq!(
@@ -7191,9 +7436,20 @@ undefined;
                                     && metadataInfo.resolvedSourceAddress === null
                                     && metadataInfo.resolvedSourceOffsetHex === null
                                     && metadataInfo.resolvedSourceDemangledName === null
+                                    && metadataInfo.qualifiedName === null
+                                    && metadataInfo.signature === null
+                                    && metadataInfo.contextModuleName === null
+                                    && metadataInfo.detailKind === null
                                     && metadataInfo.hasName === false
                                     && metadataInfo.hasSourceSymbolName === false
-                                    && metadataInfo.hasSourceDemangledName === false)) {
+                                    && metadataInfo.hasSourceDemangledName === false
+                                    && metadataInfo.hasQualifiedName === false
+                                    && metadataInfo.hasSignature === false
+                                    && metadataInfo.hasContextModuleName === false
+                                    && metadataInfo.hasDetailKind === false
+                                    && metadataInfo.isMetadata === false
+                                    && metadataInfo.isMetadataAccessor === false
+                                    && metadataInfo.isNominalDescriptor === false)) {
                                     return false;
                                 }
                             } else if (!(metadataInfo.resolvedModuleBase === metadataInfo.metadataInfo.moduleBase
@@ -7201,9 +7457,20 @@ undefined;
                                 && metadataInfo.resolvedSourceAddress === metadataInfo.metadataInfo.sourceAddress
                                 && metadataInfo.resolvedSourceOffsetHex === metadataInfo.metadataInfo.sourceOffsetHex
                                 && metadataInfo.resolvedSourceDemangledName === metadataInfo.metadataInfo.sourceDemangledName
+                                && metadataInfo.qualifiedName === metadataInfo.metadataInfo.qualifiedName
+                                && metadataInfo.signature === metadataInfo.metadataInfo.signature
+                                && metadataInfo.contextModuleName === metadataInfo.metadataInfo.contextModuleName
+                                && metadataInfo.detailKind === metadataInfo.metadataInfo.detailKind
                                 && metadataInfo.hasName === (metadataInfo.metadataInfo.hasName === true)
                                 && metadataInfo.hasSourceSymbolName === (metadataInfo.metadataInfo.hasSourceSymbolName === true)
-                                && metadataInfo.hasSourceDemangledName === (metadataInfo.metadataInfo.hasSourceDemangledName === true))) {
+                                && metadataInfo.hasSourceDemangledName === (metadataInfo.metadataInfo.hasSourceDemangledName === true)
+                                && metadataInfo.hasQualifiedName === (metadataInfo.metadataInfo.hasQualifiedName === true)
+                                && metadataInfo.hasSignature === (metadataInfo.metadataInfo.hasSignature === true)
+                                && metadataInfo.hasContextModuleName === (metadataInfo.metadataInfo.hasContextModuleName === true)
+                                && metadataInfo.hasDetailKind === (metadataInfo.metadataInfo.hasDetailKind === true)
+                                && metadataInfo.isMetadata === (metadataInfo.metadataInfo.isMetadata === true)
+                                && metadataInfo.isMetadataAccessor === (metadataInfo.metadataInfo.isMetadataAccessor === true)
+                                && metadataInfo.isNominalDescriptor === (metadataInfo.metadataInfo.isNominalDescriptor === true))) {
                                 return false;
                             }
 

@@ -817,6 +817,94 @@ function formatSwiftProtocol(protocolInfo) {
         : base + ' <= ' + protocolInfo.sourceDemangledName;
 }
 
+function parseSwiftMetadataDemangledInfo(demangledName, fallbackName) {
+    const trimmed = trimSwiftDemangledName(demangledName);
+    const parsed = {
+        name: fallbackName === null || fallbackName === undefined ? null : String(fallbackName),
+        qualifiedName: null,
+        hasQualifiedName: false,
+        signature: trimmed,
+        hasSignature: trimmed !== null,
+        contextModuleName: null,
+        hasContextModuleName: false,
+        detailKind: trimmed === null ? null : 'symbol',
+        isMetadata: false,
+        isMetadataAccessor: false,
+        isNominalDescriptor: false,
+    };
+
+    if (trimmed === null) {
+        return parsed;
+    }
+
+    let rest = trimmed;
+    const prefixes = [
+        ['type metadata accessor for ', 'metadata-accessor'],
+        ['type metadata for ', 'metadata'],
+        ['full type metadata for ', 'metadata'],
+        ['nominal type descriptor for ', 'nominal-descriptor'],
+        ['type descriptor for ', 'type-descriptor'],
+    ];
+    for (const [prefix, kind] of prefixes) {
+        if (rest.startsWith(prefix)) {
+            parsed.detailKind = kind;
+            parsed.isMetadata = kind === 'metadata' || kind === 'metadata-accessor';
+            parsed.isMetadataAccessor = kind === 'metadata-accessor';
+            parsed.isNominalDescriptor = kind === 'nominal-descriptor' || kind === 'type-descriptor';
+            rest = rest.slice(prefix.length).trim();
+            break;
+        }
+    }
+
+    if (rest.length !== 0) {
+        parsed.qualifiedName = rest;
+        parsed.hasQualifiedName = true;
+    }
+
+    const fallback = parsed.name === null ? '' : String(parsed.name);
+    if (fallback.length !== 0 && rest.endsWith('.' + fallback) && rest.length > fallback.length + 1) {
+        parsed.contextModuleName = rest.slice(0, rest.length - fallback.length - 1);
+        parsed.hasContextModuleName = parsed.contextModuleName.length !== 0;
+        return parsed;
+    }
+
+    const dotIndex = rest.lastIndexOf('.');
+    if (dotIndex !== -1) {
+        const simpleName = rest.slice(dotIndex + 1).trim();
+        const context = rest.slice(0, dotIndex).trim();
+        if (simpleName.length !== 0) {
+            parsed.name = simpleName;
+        }
+        if (context.length !== 0) {
+            parsed.contextModuleName = context;
+            parsed.hasContextModuleName = true;
+        }
+    } else if ((parsed.name === null || parsed.name.length === 0) && rest.length !== 0) {
+        parsed.name = rest;
+    }
+
+    return parsed;
+}
+
+function formatSwiftMetadataFlags(info) {
+    const flags = [];
+    if (info.detailKind !== null && info.detailKind !== undefined && info.detailKind !== 'symbol') {
+        flags.push('kind=' + info.detailKind);
+    }
+    if (info.hasContextModuleName) {
+        flags.push('in=' + info.contextModuleName);
+    }
+    return flags.length === 0 ? '' : ' {' + flags.join(' ') + '}';
+}
+
+function formatNormalizedSwiftMetadata(typeInfo) {
+    const base = typeInfo.sourceAddress + ' ' + typeInfo.moduleName + '!' + typeInfo.name + ' [' + String(typeInfo.sourceKind || 'symbol') + ']';
+    const demangled = typeInfo.sourceDemangledName === null || typeInfo.sourceDemangledName === undefined
+        ? ''
+        : ' <= ' + typeInfo.sourceDemangledName;
+    return base + demangled + formatSwiftMetadataFlags(typeInfo);
+}
+
 function parseSwiftProtocolDemangledInfo(demangledName, fallbackName) {
     const trimmed = trimSwiftDemangledName(demangledName);
     const parsed = {
@@ -4683,6 +4771,42 @@ function normalizeSwiftType(typeInfo) {
     };
 }
 
+function normalizeSwiftMetadata(typeInfo) {
+    const sourceOffset = typeof typeInfo.sourceOffset === 'bigint' ? typeInfo.sourceOffset : BigInt(typeInfo.sourceOffset || 0);
+    const name = String(typeInfo.name || '');
+    const sourceSymbolName = typeInfo.sourceSymbolName === undefined ? null : String(typeInfo.sourceSymbolName);
+    const sourceKind = typeInfo.sourceKind === undefined ? null : typeInfo.sourceKind;
+    const sourceDemangledName = typeInfo.sourceDemangledName === undefined ? null : typeInfo.sourceDemangledName;
+    const parsed = parseSwiftMetadataDemangledInfo(sourceDemangledName, name);
+    const normalized = {
+        moduleName: String(typeInfo.moduleName || ''),
+        moduleBase: typeInfo.moduleBase ? typeInfo.moduleBase.toString() : null,
+        name: parsed.name === null ? name : parsed.name,
+        hasName: (parsed.name === null ? name : parsed.name).length !== 0,
+        qualifiedName: parsed.qualifiedName,
+        hasQualifiedName: parsed.hasQualifiedName,
+        sourceSymbolName,
+        hasSourceSymbolName: sourceSymbolName !== null && sourceSymbolName.length !== 0,
+        sourceKind,
+        hasSourceKind: sourceKind !== null && String(sourceKind).length !== 0,
+        sourceAddress: typeInfo.sourceAddress.toString(),
+        sourceOffsetHex: '0x' + sourceOffset.toString(16),
+        sourceDemangledName,
+        hasSourceDemangledName: sourceDemangledName !== null && String(sourceDemangledName).length !== 0,
+        signature: parsed.signature,
+        hasSignature: parsed.hasSignature,
+        contextModuleName: parsed.contextModuleName,
+        hasContextModuleName: parsed.hasContextModuleName,
+        detailKind: parsed.detailKind,
+        hasDetailKind: parsed.detailKind !== null && String(parsed.detailKind).length !== 0,
+        isMetadata: parsed.isMetadata,
+        isMetadataAccessor: parsed.isMetadataAccessor,
+        isNominalDescriptor: parsed.isNominalDescriptor,
+    };
+    normalized.text = formatNormalizedSwiftMetadata(normalized);
+    return normalized;
+}
+
 function normalizeSwiftProtocol(protocolInfo) {
     const sourceOffset = typeof protocolInfo.sourceOffset === 'bigint' ? protocolInfo.sourceOffset : BigInt(protocolInfo.sourceOffset || 0);
     const name = String(protocolInfo.name || '');
@@ -8440,10 +8564,12 @@ function handleSpecResult(spec) {
     case 'swift.metadata': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
-        const metadata = Swift.metadata(query, moduleName).map((typeInfo) => normalizeSwiftType(typeInfo));
+        const metadata = Swift.metadata(query, moduleName).map((typeInfo) => normalizeSwiftMetadata(typeInfo));
         const sourceKinds = [];
         const moduleSummaries = [];
         const typeSummaries = [];
+        const contextModules = [];
+        const detailKinds = [];
         const moduleNames = new Set();
         const typeNames = new Set();
         let demangledCount = 0;
@@ -8485,6 +8611,33 @@ function handleSpecResult(spec) {
             if (typeInfo.hasSourceDemangledName) {
                 typeSummary.hasSourceDemangledName = true;
             }
+            if (typeInfo.hasContextModuleName) {
+                let contextSummary = contextModules.find((item) => item.contextModuleName === typeInfo.contextModuleName);
+                if (contextSummary === undefined) {
+                    contextSummary = {
+                        contextModuleName: typeInfo.contextModuleName,
+                        count: 0,
+                        firstTypeName: typeInfo.name,
+                        lastTypeName: typeInfo.name,
+                    };
+                    contextModules.push(contextSummary);
+                }
+                contextSummary.count += 1;
+                contextSummary.lastTypeName = typeInfo.name;
+            }
+            const detailKind = typeInfo.detailKind === null ? '<none>' : String(typeInfo.detailKind);
+            let detailSummary = detailKinds.find((item) => item.detailKind === detailKind);
+            if (detailSummary === undefined) {
+                detailSummary = {
+                    detailKind,
+                    count: 0,
+                    firstTypeName: typeInfo.name,
+                    lastTypeName: typeInfo.name,
+                };
+                detailKinds.push(detailSummary);
+            }
+            detailSummary.count += 1;
+            detailSummary.lastTypeName = typeInfo.name;
             const key = typeInfo.sourceKind === null ? '<none>' : String(typeInfo.sourceKind);
             let summary = sourceKinds.find((item) => item.sourceKind === key);
             if (summary === undefined) {
@@ -8515,8 +8668,12 @@ function handleSpecResult(spec) {
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledMetadata: demangledCount !== 0,
+            uniqueContextModuleCount: contextModules.length,
+            uniqueDetailKindCount: detailKinds.length,
             moduleNames: moduleSummaries,
             typeNames: typeSummaries,
+            contextModules,
+            detailKinds,
             sourceKinds,
             metadata,
             text: metadata.map((typeInfo) => typeInfo.text).join('\n'),
@@ -8526,7 +8683,7 @@ function handleSpecResult(spec) {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const typeName = String(spec.typeName || '');
         const metadataInfo = Swift.metadataInfo(typeName, moduleName);
-        const normalized = metadataInfo === null ? null : normalizeSwiftType(metadataInfo);
+        const normalized = metadataInfo === null ? null : normalizeSwiftMetadata(metadataInfo);
         return {
             kind: 'swift.metadata_info',
             moduleName,
@@ -8541,11 +8698,22 @@ function handleSpecResult(spec) {
             resolvedSourceAddress: normalized === null ? null : normalized.sourceAddress,
             resolvedSourceOffsetHex: normalized === null ? null : normalized.sourceOffsetHex,
             resolvedSourceDemangledName: normalized === null ? null : normalized.sourceDemangledName,
+            qualifiedName: normalized === null ? null : normalized.qualifiedName,
+            signature: normalized === null ? null : normalized.signature,
+            contextModuleName: normalized === null ? null : normalized.contextModuleName,
+            detailKind: normalized === null ? null : normalized.detailKind,
             sourceKind: normalized === null ? null : normalized.sourceKind,
             hasName: normalized !== null && normalized.hasName === true,
             hasSourceKind: normalized !== null && normalized.hasSourceKind === true,
             hasSourceSymbolName: normalized !== null && normalized.hasSourceSymbolName === true,
             hasSourceDemangledName: normalized !== null && normalized.hasSourceDemangledName === true,
+            hasQualifiedName: normalized !== null && normalized.hasQualifiedName === true,
+            hasSignature: normalized !== null && normalized.hasSignature === true,
+            hasContextModuleName: normalized !== null && normalized.hasContextModuleName === true,
+            hasDetailKind: normalized !== null && normalized.hasDetailKind === true,
+            isMetadata: normalized !== null && normalized.isMetadata === true,
+            isMetadataAccessor: normalized !== null && normalized.isMetadataAccessor === true,
+            isNominalDescriptor: normalized !== null && normalized.isNominalDescriptor === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
