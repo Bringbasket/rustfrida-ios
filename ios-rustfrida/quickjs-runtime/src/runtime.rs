@@ -4205,7 +4205,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }); return result.kind === 'native.load_command_info' && result.moduleName === 'libsystem_malloc.dylib' && result.commandOrIndex === 'LC_UUID' && typeof result.hasLoadCommandInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.isReqDyld === 'boolean' && typeof result.hasPayload === 'boolean' && typeof result.hasDetail === 'boolean' && ((result.loadCommandInfo === null && result.hasLoadCommandInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedIndex === null && result.resolvedModuleName === null && result.isReqDyld === false && result.hasPayload === false && result.hasDetail === false && result.text === '<null>') || (typeof result.loadCommandInfo.moduleBase === 'string' && typeof result.loadCommandInfo.name === 'string' && typeof result.loadCommandInfo.cmdHex === 'string' && result.hasLoadCommandInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedIndex === 'number' && typeof result.resolvedModuleName === 'string' && result.resolvedName === result.loadCommandInfo.name && result.resolvedIndex === result.loadCommandInfo.index && result.resolvedModuleName === result.loadCommandInfo.moduleName && result.isReqDyld === (result.loadCommandInfo.isReqDyld === true) && result.hasPayload === (result.loadCommandInfo.hasPayload === true) && result.hasDetail === (result.loadCommandInfo.hasDetail === true) && result.text === result.loadCommandInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }); return result.kind === 'native.load_command_info' && result.moduleName === 'libsystem_malloc.dylib' && result.commandOrIndex === 'LC_UUID' && typeof result.hasLoadCommandInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.isReqDyld === 'boolean' && typeof result.hasPayload === 'boolean' && typeof result.hasDetail === 'boolean' && ((result.loadCommandInfo === null && result.hasLoadCommandInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedIndex === null && result.resolvedModuleName === null && result.name === null && result.index === null && result.moduleBase === null && result.cmdHex === null && result.cmdBaseHex === null && result.offsetHex === null && result.endOffsetHex === null && result.detail === null && result.isReqDyld === false && result.hasPayload === false && result.hasDetail === false && result.text === '<null>') || (typeof result.loadCommandInfo.moduleBase === 'string' && typeof result.loadCommandInfo.name === 'string' && typeof result.loadCommandInfo.cmdHex === 'string' && result.hasLoadCommandInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedIndex === 'number' && typeof result.resolvedModuleName === 'string' && typeof result.name === 'string' && typeof result.index === 'number' && typeof result.moduleBase === 'string' && typeof result.cmdHex === 'string' && typeof result.cmdBaseHex === 'string' && typeof result.offsetHex === 'string' && typeof result.endOffsetHex === 'string' && (result.detail === null || typeof result.detail === 'string') && result.resolvedName === result.loadCommandInfo.name && result.resolvedIndex === result.loadCommandInfo.index && result.resolvedModuleName === result.loadCommandInfo.moduleName && result.name === result.loadCommandInfo.name && result.index === result.loadCommandInfo.index && result.moduleBase === result.loadCommandInfo.moduleBase && result.cmdHex === result.loadCommandInfo.cmdHex && result.cmdBaseHex === result.loadCommandInfo.cmdBaseHex && result.offsetHex === result.loadCommandInfo.offsetHex && result.endOffsetHex === result.loadCommandInfo.endOffsetHex && result.detail === result.loadCommandInfo.detail && result.isReqDyld === (result.loadCommandInfo.isReqDyld === true) && result.hasPayload === (result.loadCommandInfo.hasPayload === true) && result.hasDetail === (result.loadCommandInfo.hasDetail === true) && result.text === result.loadCommandInfo.text)); })()"
                     )
                     .expect("agent native loadCommandInfo result"),
                 "true"
@@ -4950,14 +4950,30 @@ undefined;
                                         && result.resolvedCmdBaseHex === null
                                         && result.resolvedOffsetHex === null
                                         && result.resolvedEndOffsetHex === null
-                                        && result.resolvedDetail === null;
+                                        && result.resolvedDetail === null
+                                        && result.name === null
+                                        && result.index === null
+                                        && result.moduleBase === null
+                                        && result.cmdHex === null
+                                        && result.cmdBaseHex === null
+                                        && result.offsetHex === null
+                                        && result.endOffsetHex === null
+                                        && result.detail === null;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedCmdHex === info.cmdHex
                                     && result.resolvedCmdBaseHex === info.cmdBaseHex
                                     && result.resolvedOffsetHex === info.offsetHex
                                     && result.resolvedEndOffsetHex === info.endOffsetHex
-                                    && result.resolvedDetail === info.detail;
+                                    && result.resolvedDetail === info.detail
+                                    && result.name === info.name
+                                    && result.index === info.index
+                                    && result.moduleBase === info.moduleBase
+                                    && result.cmdHex === info.cmdHex
+                                    && result.cmdBaseHex === info.cmdBaseHex
+                                    && result.offsetHex === info.offsetHex
+                                    && result.endOffsetHex === info.endOffsetHex
+                                    && result.detail === info.detail;
                             }
 
                             return checkImageInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image_info', moduleName: 'libsystem_malloc.dylib' }))
