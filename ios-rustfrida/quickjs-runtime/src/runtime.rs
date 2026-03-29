@@ -4213,7 +4213,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName: main.image.name }); return result.kind === 'native.encryption_info' && typeof result.hasEncryptionInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasEncryptedRange === 'boolean' && ((result.encryptionInfo === null && result.hasEncryptionInfo === false && result.resolved === false && result.resolvedModuleName === null && result.cryptid === null && result.hasEncryptedRange === false && result.text === '<null>') || (typeof result.encryptionInfo.cryptoffHex === 'string' && typeof result.encryptionInfo.cryptid === 'number' && result.hasEncryptionInfo === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.cryptid === 'number' && result.resolvedModuleName === result.encryptionInfo.moduleName && result.cryptid === result.encryptionInfo.cryptid && result.hasEncryptedRange === (result.encryptionInfo.cryptid !== 0) && result.text === result.encryptionInfo.text)); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName: main.image.name }); return result.kind === 'native.encryption_info' && typeof result.hasEncryptionInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasEncryptedRange === 'boolean' && ((result.encryptionInfo === null && result.hasEncryptionInfo === false && result.resolved === false && result.resolvedModuleName === null && result.cryptoffHex === null && result.cryptsizeHex === null && result.cryptid === null && result.hasEncryptedRange === false && result.text === '<null>') || (typeof result.encryptionInfo.cryptoffHex === 'string' && typeof result.encryptionInfo.cryptid === 'number' && result.hasEncryptionInfo === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.cryptoffHex === 'string' && typeof result.cryptsizeHex === 'string' && typeof result.cryptid === 'number' && result.resolvedModuleName === result.encryptionInfo.moduleName && result.cryptoffHex === result.encryptionInfo.cryptoffHex && result.cryptsizeHex === result.encryptionInfo.cryptsizeHex && result.cryptid === result.encryptionInfo.cryptid && result.hasEncryptedRange === (result.encryptionInfo.cryptid !== 0) && result.text === result.encryptionInfo.text)); })()"
                     )
                     .expect("agent native encryption info result"),
                 "true"
@@ -4911,11 +4911,15 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedModuleBase === null
                                         && result.resolvedCryptoffHex === null
-                                        && result.resolvedCryptsizeHex === null;
+                                        && result.resolvedCryptsizeHex === null
+                                        && result.cryptoffHex === null
+                                        && result.cryptsizeHex === null;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedCryptoffHex === info.cryptoffHex
-                                    && result.resolvedCryptsizeHex === info.cryptsizeHex;
+                                    && result.resolvedCryptsizeHex === info.cryptsizeHex
+                                    && result.cryptoffHex === info.cryptoffHex
+                                    && result.cryptsizeHex === info.cryptsizeHex;
                             }
 
                             function checkEntryPoint(result) {

@@ -5684,6 +5684,8 @@ function handleSpecResult(spec) {
             resolvedModuleBase: normalized === null ? null : normalized.moduleBase,
             resolvedCryptoffHex: normalized === null ? null : normalized.cryptoffHex,
             resolvedCryptsizeHex: normalized === null ? null : normalized.cryptsizeHex,
+            cryptoffHex: normalized === null ? null : normalized.cryptoffHex,
+            cryptsizeHex: normalized === null ? null : normalized.cryptsizeHex,
             cryptid: normalized === null ? null : normalized.cryptid,
             hasEncryptedRange: normalized !== null && normalized.cryptid !== 0,
             text: normalized === null ? '<null>' : normalized.text,
