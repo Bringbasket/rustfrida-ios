@@ -3997,7 +3997,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.segment_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT' }); return result.kind === 'native.segment_info' && result.moduleName === 'libsystem_malloc.dylib' && result.segmentName === '__TEXT' && typeof result.hasSegmentInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasVmRange === 'boolean' && typeof result.hasFileData === 'boolean' && typeof result.isEmpty === 'boolean' && typeof result.isReadable === 'boolean' && typeof result.isWritable === 'boolean' && typeof result.isExecutable === 'boolean' && ((result.segmentInfo === null && result.hasSegmentInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.hasVmRange === false && result.hasFileData === false && result.isEmpty === false && result.isReadable === false && result.isWritable === false && result.isExecutable === false && result.text === '<null>') || (typeof result.segmentInfo.moduleBase === 'string' && typeof result.segmentInfo.name === 'string' && typeof result.segmentInfo.vmsizeHex === 'string' && result.hasSegmentInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && result.resolvedName === result.segmentInfo.name && result.resolvedModuleName === result.segmentInfo.moduleName && result.hasVmRange === (result.segmentInfo.hasVmRange === true) && result.hasFileData === (result.segmentInfo.hasFileData === true) && result.isEmpty === (result.segmentInfo.isEmpty === true) && result.isReadable === (result.segmentInfo.isReadable === true) && result.isWritable === (result.segmentInfo.isWritable === true) && result.isExecutable === (result.segmentInfo.isExecutable === true) && result.text === result.segmentInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.segment_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT' }); return result.kind === 'native.segment_info' && result.moduleName === 'libsystem_malloc.dylib' && result.segmentName === '__TEXT' && typeof result.hasSegmentInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasVmRange === 'boolean' && typeof result.hasFileData === 'boolean' && typeof result.isEmpty === 'boolean' && typeof result.isReadable === 'boolean' && typeof result.isWritable === 'boolean' && typeof result.isExecutable === 'boolean' && ((result.segmentInfo === null && result.hasSegmentInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedModuleName === null && result.name === null && result.moduleBase === null && result.vmaddr === null && result.vmEnd === null && result.fileoffHex === null && result.filesizeHex === null && result.initprotFlags === null && result.maxprotFlags === null && result.hasVmRange === false && result.hasFileData === false && result.isEmpty === false && result.isReadable === false && result.isWritable === false && result.isExecutable === false && result.text === '<null>') || (typeof result.segmentInfo.moduleBase === 'string' && typeof result.segmentInfo.name === 'string' && typeof result.segmentInfo.vmsizeHex === 'string' && result.hasSegmentInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.name === 'string' && typeof result.moduleBase === 'string' && typeof result.vmaddr === 'string' && typeof result.vmEnd === 'string' && typeof result.fileoffHex === 'string' && typeof result.filesizeHex === 'string' && typeof result.initprotFlags === 'string' && typeof result.maxprotFlags === 'string' && result.resolvedName === result.segmentInfo.name && result.resolvedModuleName === result.segmentInfo.moduleName && result.name === result.segmentInfo.name && result.moduleBase === result.segmentInfo.moduleBase && result.vmaddr === result.segmentInfo.vmaddr && result.vmEnd === result.segmentInfo.vmEnd && result.fileoffHex === result.segmentInfo.fileoffHex && result.filesizeHex === result.segmentInfo.filesizeHex && result.initprotFlags === result.segmentInfo.initprotFlags && result.maxprotFlags === result.segmentInfo.maxprotFlags && result.hasVmRange === (result.segmentInfo.hasVmRange === true) && result.hasFileData === (result.segmentInfo.hasFileData === true) && result.isEmpty === (result.segmentInfo.isEmpty === true) && result.isReadable === (result.segmentInfo.isReadable === true) && result.isWritable === (result.segmentInfo.isWritable === true) && result.isExecutable === (result.segmentInfo.isExecutable === true) && result.text === result.segmentInfo.text)); })()"
                     )
                     .expect("agent native segmentInfo result"),
                 "true"
@@ -4879,7 +4879,15 @@ undefined;
                                         && result.resolvedFileoffHex === null
                                         && result.resolvedFilesizeHex === null
                                         && result.resolvedInitprotFlags === null
-                                        && result.resolvedMaxprotFlags === null;
+                                        && result.resolvedMaxprotFlags === null
+                                        && result.name === null
+                                        && result.moduleBase === null
+                                        && result.vmaddr === null
+                                        && result.vmEnd === null
+                                        && result.fileoffHex === null
+                                        && result.filesizeHex === null
+                                        && result.initprotFlags === null
+                                        && result.maxprotFlags === null;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedVmaddr === info.vmaddr
@@ -4887,7 +4895,15 @@ undefined;
                                     && result.resolvedFileoffHex === info.fileoffHex
                                     && result.resolvedFilesizeHex === info.filesizeHex
                                     && result.resolvedInitprotFlags === info.initprotFlags
-                                    && result.resolvedMaxprotFlags === info.maxprotFlags;
+                                    && result.resolvedMaxprotFlags === info.maxprotFlags
+                                    && result.name === info.name
+                                    && result.moduleBase === info.moduleBase
+                                    && result.vmaddr === info.vmaddr
+                                    && result.vmEnd === info.vmEnd
+                                    && result.fileoffHex === info.fileoffHex
+                                    && result.filesizeHex === info.filesizeHex
+                                    && result.initprotFlags === info.initprotFlags
+                                    && result.maxprotFlags === info.maxprotFlags;
                             }
 
                             function checkSectionInfo(result) {
