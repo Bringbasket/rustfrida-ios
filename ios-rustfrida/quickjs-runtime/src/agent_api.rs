@@ -857,6 +857,110 @@ function trimSwiftDemangledName(raw) {
     return trimmed.length === 0 ? null : trimmed;
 }
 
+function parseSwiftConformanceDemangledInfo(demangledName, fallbackTypeName, fallbackProtocolName) {
+    const trimmed = trimSwiftDemangledName(demangledName);
+    const parsed = {
+        typeName: fallbackTypeName === null || fallbackTypeName === undefined ? null : String(fallbackTypeName),
+        protocolName: fallbackProtocolName === null || fallbackProtocolName === undefined ? null : String(fallbackProtocolName),
+        signature: trimmed,
+        hasSignature: trimmed !== null,
+        relation: null,
+        contextModuleName: null,
+        hasContextModuleName: false,
+        whereClause: null,
+        hasWhereClause: false,
+        detailKind: trimmed === null ? null : 'symbol',
+        isDescriptor: false,
+        isWitnessTable: false,
+        isWitnessAccessor: false,
+        isWitness: false,
+    };
+
+    if (trimmed === null) {
+        return parsed;
+    }
+
+    let rest = trimmed;
+    const prefixes = [
+        ['protocol conformance descriptor for ', 'descriptor'],
+        ['protocol witness table accessor for ', 'witness-table-accessor'],
+        ['protocol witness table for ', 'witness-table'],
+        ['protocol witness for ', 'witness'],
+    ];
+    for (const [prefix, kind] of prefixes) {
+        if (rest.startsWith(prefix)) {
+            parsed.detailKind = kind;
+            parsed.isDescriptor = kind === 'descriptor';
+            parsed.isWitnessTable = kind === 'witness-table' || kind === 'witness-table-accessor';
+            parsed.isWitnessAccessor = kind === 'witness-table-accessor';
+            parsed.isWitness = kind === 'witness';
+            rest = rest.slice(prefix.length).trim();
+            break;
+        }
+    }
+
+    const inIndex = rest.lastIndexOf(' in ');
+    if (inIndex !== -1) {
+        const contextModuleName = rest.slice(inIndex + 4).trim();
+        if (contextModuleName.length !== 0) {
+            parsed.contextModuleName = contextModuleName;
+            parsed.hasContextModuleName = true;
+        }
+        rest = rest.slice(0, inIndex).trim();
+    }
+
+    const whereIndex = rest.indexOf(' where ');
+    if (whereIndex !== -1) {
+        const whereClause = rest.slice(whereIndex + 7).trim();
+        if (whereClause.length !== 0) {
+            parsed.whereClause = whereClause;
+            parsed.hasWhereClause = true;
+        }
+        rest = rest.slice(0, whereIndex).trim();
+    }
+
+    const pair = rest.split(' : ');
+    if (pair.length >= 2) {
+        parsed.typeName = pair.shift().trim() || parsed.typeName;
+        parsed.protocolName = pair.join(' : ').trim() || parsed.protocolName;
+    }
+
+    if (parsed.typeName !== null && parsed.protocolName !== null) {
+        parsed.relation = parsed.typeName + ' : ' + parsed.protocolName;
+    }
+    return parsed;
+}
+
+function formatSwiftConformanceFlags(info) {
+    const flags = [];
+    if (info.detailKind !== null && info.detailKind !== undefined && info.detailKind !== 'symbol') {
+        flags.push('kind=' + info.detailKind);
+    }
+    if (info.hasContextModuleName) {
+        flags.push('in=' + info.contextModuleName);
+    }
+    if (info.hasWhereClause) {
+        flags.push('where=' + info.whereClause);
+    }
+    return flags.length === 0 ? '' : ' {' + flags.join(' ') + '}';
+}
+
+function formatNormalizedSwiftConformance(conformance) {
+    const base = conformance.sourceAddress + ' ' + conformance.moduleName + '!' + conformance.typeName + ' : ' + conformance.protocolName + ' [' + String(conformance.sourceKind || 'symbol') + ']';
+    const demangled = conformance.sourceDemangledName === null || conformance.sourceDemangledName === undefined
+        ? ''
+        : ' <= ' + conformance.sourceDemangledName;
+    return base + demangled + formatSwiftConformanceFlags(conformance);
+}
+
+function formatNormalizedSwiftWitnessTable(entry) {
+    const base = entry.address + ' ' + entry.moduleName + '!' + entry.typeName + ' : ' + entry.protocolName + ' [' + String(entry.sourceKind || 'protocol-witness-table') + ']';
+    const demangled = entry.demangledName === null || entry.demangledName === undefined
+        ? ''
+        : ' <= ' + entry.demangledName;
+    return base + demangled + formatSwiftConformanceFlags(entry);
+}
+
 function classifySwiftMemberKind(rawKind, memberName) {
     switch (rawKind) {
     case 'getter':
@@ -4535,13 +4639,14 @@ function normalizeSwiftConformance(conformance) {
     const sourceSymbolName = conformance.sourceSymbolName === undefined ? null : String(conformance.sourceSymbolName);
     const sourceKind = conformance.sourceKind === undefined ? null : conformance.sourceKind;
     const sourceDemangledName = conformance.sourceDemangledName === undefined ? null : conformance.sourceDemangledName;
-    return {
+    const parsed = parseSwiftConformanceDemangledInfo(sourceDemangledName, typeName, protocolName);
+    const normalized = {
         moduleName: String(conformance.moduleName || ''),
         moduleBase: conformance.moduleBase ? conformance.moduleBase.toString() : null,
-        typeName,
-        hasTypeName: typeName.length !== 0,
-        protocolName,
-        hasProtocolName: protocolName.length !== 0,
+        typeName: parsed.typeName === null ? typeName : parsed.typeName,
+        hasTypeName: (parsed.typeName === null ? typeName : parsed.typeName).length !== 0,
+        protocolName: parsed.protocolName === null ? protocolName : parsed.protocolName,
+        hasProtocolName: (parsed.protocolName === null ? protocolName : parsed.protocolName).length !== 0,
         sourceSymbolName,
         hasSourceSymbolName: sourceSymbolName !== null && sourceSymbolName.length !== 0,
         sourceKind,
@@ -4550,8 +4655,23 @@ function normalizeSwiftConformance(conformance) {
         sourceOffsetHex: '0x' + sourceOffset.toString(16),
         sourceDemangledName,
         hasSourceDemangledName: sourceDemangledName !== null && String(sourceDemangledName).length !== 0,
-        text: formatSwiftConformance(conformance),
+        signature: parsed.signature,
+        hasSignature: parsed.hasSignature,
+        relation: parsed.relation,
+        hasRelation: parsed.relation !== null,
+        contextModuleName: parsed.contextModuleName,
+        hasContextModuleName: parsed.hasContextModuleName,
+        whereClause: parsed.whereClause,
+        hasWhereClause: parsed.hasWhereClause,
+        detailKind: parsed.detailKind,
+        hasDetailKind: parsed.detailKind !== null && String(parsed.detailKind).length !== 0,
+        isDescriptor: parsed.isDescriptor,
+        isWitnessTable: parsed.isWitnessTable,
+        isWitnessAccessor: parsed.isWitnessAccessor,
+        isWitness: parsed.isWitness,
     };
+    normalized.text = formatNormalizedSwiftConformance(normalized);
+    return normalized;
 }
 
 function normalizeSwiftVtableEntry(entry) {
@@ -4615,14 +4735,17 @@ function normalizeSwiftWitnessTable(entry) {
     const name = String(entry.name || '');
     const demangledName = entry.demangledName === undefined ? null : entry.demangledName;
     const sourceKind = entry.sourceKind === undefined ? null : entry.sourceKind;
-    return {
+    const parsed = parseSwiftConformanceDemangledInfo(demangledName, typeName, protocolName);
+    const normalized = {
         moduleName: String(entry.moduleName || ''),
         moduleBase: entry.moduleBase ? entry.moduleBase.toString() : null,
-        typeName,
-        hasTypeName: typeName.length !== 0,
-        protocolName,
-        hasProtocolName: protocolName.length !== 0,
-        witnessKey: typeName.length === 0 ? protocolName : typeName + ':' + protocolName,
+        typeName: parsed.typeName === null ? typeName : parsed.typeName,
+        hasTypeName: (parsed.typeName === null ? typeName : parsed.typeName).length !== 0,
+        protocolName: parsed.protocolName === null ? protocolName : parsed.protocolName,
+        hasProtocolName: (parsed.protocolName === null ? protocolName : parsed.protocolName).length !== 0,
+        witnessKey: (parsed.typeName === null ? typeName : parsed.typeName).length === 0
+            ? (parsed.protocolName === null ? protocolName : parsed.protocolName)
+            : (parsed.typeName === null ? typeName : parsed.typeName) + ':' + (parsed.protocolName === null ? protocolName : parsed.protocolName),
         name,
         hasName: name.length !== 0,
         demangledName,
@@ -4632,8 +4755,23 @@ function normalizeSwiftWitnessTable(entry) {
         address: entry.address.toString(),
         offsetHex: '0x' + offset.toString(16),
         isAccessor: !!entry.isAccessor,
-        text: formatSwiftWitnessTable(entry),
+        signature: parsed.signature,
+        hasSignature: parsed.hasSignature,
+        relation: parsed.relation,
+        hasRelation: parsed.relation !== null,
+        contextModuleName: parsed.contextModuleName,
+        hasContextModuleName: parsed.hasContextModuleName,
+        whereClause: parsed.whereClause,
+        hasWhereClause: parsed.hasWhereClause,
+        detailKind: parsed.detailKind,
+        hasDetailKind: parsed.detailKind !== null && String(parsed.detailKind).length !== 0,
+        isDescriptor: parsed.isDescriptor,
+        isWitnessTable: parsed.isWitnessTable,
+        isWitnessAccessor: parsed.isWitnessAccessor,
+        isWitness: parsed.isWitness,
     };
+    normalized.text = formatNormalizedSwiftWitnessTable(normalized);
+    return normalized;
 }
 
 function normalizeSwiftTypeLayout(layout) {
@@ -7913,12 +8051,26 @@ function handleSpecResult(spec) {
             resolvedSourceAddress: normalized === null ? null : normalized.sourceAddress,
             resolvedSourceOffsetHex: normalized === null ? null : normalized.sourceOffsetHex,
             resolvedSourceDemangledName: normalized === null ? null : normalized.sourceDemangledName,
+            signature: normalized === null ? null : normalized.signature,
+            relation: normalized === null ? null : normalized.relation,
+            contextModuleName: normalized === null ? null : normalized.contextModuleName,
+            whereClause: normalized === null ? null : normalized.whereClause,
+            detailKind: normalized === null ? null : normalized.detailKind,
             sourceKind: normalized === null ? null : normalized.sourceKind,
             hasTypeName: normalized !== null && normalized.hasTypeName === true,
             hasProtocolName: normalized !== null && normalized.hasProtocolName === true,
             hasSourceKind: normalized !== null && normalized.hasSourceKind === true,
             hasSourceSymbolName: normalized !== null && normalized.hasSourceSymbolName === true,
             hasSourceDemangledName: normalized !== null && normalized.hasSourceDemangledName === true,
+            hasSignature: normalized !== null && normalized.hasSignature === true,
+            hasRelation: normalized !== null && normalized.hasRelation === true,
+            hasContextModuleName: normalized !== null && normalized.hasContextModuleName === true,
+            hasWhereClause: normalized !== null && normalized.hasWhereClause === true,
+            hasDetailKind: normalized !== null && normalized.hasDetailKind === true,
+            isDescriptor: normalized !== null && normalized.isDescriptor === true,
+            isWitnessTable: normalized !== null && normalized.isWitnessTable === true,
+            isWitnessAccessor: normalized !== null && normalized.isWitnessAccessor === true,
+            isWitness: normalized !== null && normalized.isWitness === true,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -8013,14 +8165,20 @@ function handleSpecResult(spec) {
         const protocols = [];
         const typeSummaries = [];
         const moduleSummaries = [];
+        const contextModules = [];
+        const detailKinds = [];
         const moduleNames = new Set();
         const typeNames = new Set();
         let demangledCount = 0;
+        let whereClauseCount = 0;
         for (const conformance of conformances) {
             moduleNames.add(conformance.moduleName);
             typeNames.add(conformance.typeName);
             if (conformance.hasSourceDemangledName) {
                 demangledCount += 1;
+            }
+            if (conformance.hasWhereClause) {
+                whereClauseCount += 1;
             }
             let typeSummary = typeSummaries.find((item) => item.typeName === conformance.typeName);
             if (typeSummary === undefined) {
@@ -8072,6 +8230,41 @@ function handleSpecResult(spec) {
             }
             protocolSummary.count += 1;
             protocolSummary.lastTypeName = conformance.typeName;
+            if (conformance.hasContextModuleName) {
+                let contextSummary = contextModules.find((item) => item.contextModuleName === conformance.contextModuleName);
+                if (contextSummary === undefined) {
+                    contextSummary = {
+                        contextModuleName: conformance.contextModuleName,
+                        count: 0,
+                        firstTypeName: conformance.typeName,
+                        lastTypeName: conformance.typeName,
+                        whereClauseCount: 0,
+                    };
+                    contextModules.push(contextSummary);
+                }
+                contextSummary.count += 1;
+                contextSummary.lastTypeName = conformance.typeName;
+                if (conformance.hasWhereClause) {
+                    contextSummary.whereClauseCount += 1;
+                }
+            }
+            const detailKind = conformance.detailKind === null ? '<none>' : String(conformance.detailKind);
+            let detailSummary = detailKinds.find((item) => item.detailKind === detailKind);
+            if (detailSummary === undefined) {
+                detailSummary = {
+                    detailKind,
+                    count: 0,
+                    firstTypeName: conformance.typeName,
+                    lastTypeName: conformance.typeName,
+                    whereClauseCount: 0,
+                };
+                detailKinds.push(detailSummary);
+            }
+            detailSummary.count += 1;
+            detailSummary.lastTypeName = conformance.typeName;
+            if (conformance.hasWhereClause) {
+                detailSummary.whereClauseCount += 1;
+            }
             const key = conformance.sourceKind === null ? '<none>' : String(conformance.sourceKind);
             let sourceSummary = sourceKinds.find((item) => item.sourceKind === key);
             if (sourceSummary === undefined) {
@@ -8103,9 +8296,15 @@ function handleSpecResult(spec) {
             uniqueSourceKindCount: sourceKinds.length,
             sourceDemangledCount: demangledCount,
             hasSourceDemangledConformances: demangledCount !== 0,
+            whereClauseCount,
+            hasWhereClauses: whereClauseCount !== 0,
+            uniqueContextModuleCount: contextModules.length,
+            uniqueDetailKindCount: detailKinds.length,
             typeNames: typeSummaries,
             moduleNames: moduleSummaries,
             protocols,
+            contextModules,
+            detailKinds,
             sourceKinds,
             conformances,
             text: conformances.map((conformance) => conformance.text).join('\n'),
@@ -8520,12 +8719,15 @@ function handleSpecResult(spec) {
         const typeSummaries = [];
         const witnessKeys = [];
         const moduleSummaries = [];
+        const contextModules = [];
+        const detailKinds = [];
         const moduleNames = new Set();
         const typeNames = new Set();
         const protocolNames = new Set();
         const uniqueWitnessKeys = new Set();
         let accessorCount = 0;
         let demangledCount = 0;
+        let whereClauseCount = 0;
         for (const entry of entries) {
             moduleNames.add(entry.moduleName);
             typeNames.add(entry.typeName);
@@ -8536,6 +8738,9 @@ function handleSpecResult(spec) {
             }
             if (entry.hasDemangledName) {
                 demangledCount += 1;
+            }
+            if (entry.hasWhereClause) {
+                whereClauseCount += 1;
             }
             let typeSummary = typeSummaries.find((item) => item.typeName === entry.typeName);
             if (typeSummary === undefined) {
@@ -8619,6 +8824,49 @@ function handleSpecResult(spec) {
             if (entry.hasDemangledName) {
                 witnessKeySummary.demangledCount += 1;
             }
+            if (entry.hasContextModuleName) {
+                let contextSummary = contextModules.find((item) => item.contextModuleName === entry.contextModuleName);
+                if (contextSummary === undefined) {
+                    contextSummary = {
+                        contextModuleName: entry.contextModuleName,
+                        count: 0,
+                        firstProtocolName: entry.protocolName,
+                        lastProtocolName: entry.protocolName,
+                        accessorCount: 0,
+                        whereClauseCount: 0,
+                    };
+                    contextModules.push(contextSummary);
+                }
+                contextSummary.count += 1;
+                contextSummary.lastProtocolName = entry.protocolName;
+                if (entry.isAccessor) {
+                    contextSummary.accessorCount += 1;
+                }
+                if (entry.hasWhereClause) {
+                    contextSummary.whereClauseCount += 1;
+                }
+            }
+            const detailKind = entry.detailKind === null ? '<none>' : String(entry.detailKind);
+            let detailSummary = detailKinds.find((item) => item.detailKind === detailKind);
+            if (detailSummary === undefined) {
+                detailSummary = {
+                    detailKind,
+                    count: 0,
+                    firstProtocolName: entry.protocolName,
+                    lastProtocolName: entry.protocolName,
+                    accessorCount: 0,
+                    whereClauseCount: 0,
+                };
+                detailKinds.push(detailSummary);
+            }
+            detailSummary.count += 1;
+            detailSummary.lastProtocolName = entry.protocolName;
+            if (entry.isAccessor) {
+                detailSummary.accessorCount += 1;
+            }
+            if (entry.hasWhereClause) {
+                detailSummary.whereClauseCount += 1;
+            }
             const key = entry.sourceKind === null ? '<none>' : String(entry.sourceKind);
             let sourceSummary = sourceKinds.find((item) => item.sourceKind === key);
             if (sourceSummary === undefined) {
@@ -8658,10 +8906,16 @@ function handleSpecResult(spec) {
             hasAccessors: accessorCount !== 0,
             demangledCount,
             hasDemangledEntries: demangledCount !== 0,
+            whereClauseCount,
+            hasWhereClauses: whereClauseCount !== 0,
+            uniqueContextModuleCount: contextModules.length,
+            uniqueDetailKindCount: detailKinds.length,
             typeNames: typeSummaries,
             moduleNames: moduleSummaries,
             protocols,
             witnessKeys,
+            contextModules,
+            detailKinds,
             sourceKinds,
             entries,
             text: entries.map((entry) => entry.text).join('\n'),
@@ -8690,12 +8944,26 @@ function handleSpecResult(spec) {
             resolvedDemangledName: normalized === null ? null : normalized.demangledName,
             resolvedAddress: normalized === null ? null : normalized.address,
             resolvedOffsetHex: normalized === null ? null : normalized.offsetHex,
+            signature: normalized === null ? null : normalized.signature,
+            relation: normalized === null ? null : normalized.relation,
+            contextModuleName: normalized === null ? null : normalized.contextModuleName,
+            whereClause: normalized === null ? null : normalized.whereClause,
+            detailKind: normalized === null ? null : normalized.detailKind,
             sourceKind: normalized === null ? null : normalized.sourceKind,
             hasTypeName: normalized !== null && normalized.hasTypeName === true,
             hasProtocolName: normalized !== null && normalized.hasProtocolName === true,
             hasName: normalized !== null && normalized.hasName === true,
             hasSourceKind: normalized !== null && normalized.hasSourceKind === true,
             hasDemangledName: normalized !== null && normalized.hasDemangledName === true,
+            hasSignature: normalized !== null && normalized.hasSignature === true,
+            hasRelation: normalized !== null && normalized.hasRelation === true,
+            hasContextModuleName: normalized !== null && normalized.hasContextModuleName === true,
+            hasWhereClause: normalized !== null && normalized.hasWhereClause === true,
+            hasDetailKind: normalized !== null && normalized.hasDetailKind === true,
+            isDescriptor: normalized !== null && normalized.isDescriptor === true,
+            isWitnessTable: normalized !== null && normalized.isWitnessTable === true,
+            isWitnessAccessor: normalized !== null && normalized.isWitnessAccessor === true,
+            isWitness: normalized !== null && normalized.isWitness === true,
             isAccessor: normalized !== null && normalized.isAccessor === true,
             text: normalized === null ? '<null>' : normalized.text,
         };

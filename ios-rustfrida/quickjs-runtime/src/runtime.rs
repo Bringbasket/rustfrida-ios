@@ -5637,7 +5637,81 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformance_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }); return result.kind === 'swift.conformance_info' && result.typeName === 'ViewController' && result.protocolName === 'Renderable' && typeof result.hasConformanceInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasSourceKind === 'boolean' && ((result.conformanceInfo === null && result.hasConformanceInfo === false && result.resolved === false && result.resolvedTypeName === null && result.resolvedProtocolName === null && result.resolvedModuleName === null && result.sourceKind === null && result.text === '<null>') || (result.hasConformanceInfo === true && result.resolved === true && typeof result.resolvedTypeName === 'string' && typeof result.resolvedProtocolName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.conformanceInfo.moduleBase === 'string' && typeof result.conformanceInfo.sourceSymbolName === 'string' && typeof result.conformanceInfo.sourceOffsetHex === 'string' && result.hasSourceKind === (result.conformanceInfo.hasSourceKind === true) && result.sourceKind === result.conformanceInfo.sourceKind && result.text === result.conformanceInfo.text)); })()")
+                    .eval(
+                        r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformance_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' });
+                            if (result.kind !== 'swift.conformance_info' || result.typeName !== 'ViewController' || result.protocolName !== 'Renderable') {
+                                return false;
+                            }
+                            if (typeof result.hasConformanceInfo !== 'boolean' ||
+                                    typeof result.resolved !== 'boolean' ||
+                                    typeof result.hasSourceKind !== 'boolean' ||
+                                    typeof result.hasSignature !== 'boolean' ||
+                                    typeof result.hasRelation !== 'boolean' ||
+                                    typeof result.hasContextModuleName !== 'boolean' ||
+                                    typeof result.hasWhereClause !== 'boolean' ||
+                                    typeof result.hasDetailKind !== 'boolean' ||
+                                    typeof result.isDescriptor !== 'boolean' ||
+                                    typeof result.isWitnessTable !== 'boolean' ||
+                                    typeof result.isWitnessAccessor !== 'boolean' ||
+                                    typeof result.isWitness !== 'boolean') {
+                                return false;
+                            }
+                            if (result.conformanceInfo === null) {
+                                return result.hasConformanceInfo === false &&
+                                    result.resolved === false &&
+                                    result.resolvedTypeName === null &&
+                                    result.resolvedProtocolName === null &&
+                                    result.resolvedModuleName === null &&
+                                    result.signature === null &&
+                                    result.relation === null &&
+                                    result.contextModuleName === null &&
+                                    result.whereClause === null &&
+                                    result.detailKind === null &&
+                                    result.sourceKind === null &&
+                                    result.hasSignature === false &&
+                                    result.hasRelation === false &&
+                                    result.hasContextModuleName === false &&
+                                    result.hasWhereClause === false &&
+                                    result.hasDetailKind === false &&
+                                    result.isDescriptor === false &&
+                                    result.isWitnessTable === false &&
+                                    result.isWitnessAccessor === false &&
+                                    result.isWitness === false &&
+                                    result.text === '<null>';
+                            }
+                            return result.hasConformanceInfo === true &&
+                                result.resolved === true &&
+                                typeof result.resolvedTypeName === 'string' &&
+                                typeof result.resolvedProtocolName === 'string' &&
+                                typeof result.resolvedModuleName === 'string' &&
+                                typeof result.conformanceInfo.moduleBase === 'string' &&
+                                typeof result.conformanceInfo.sourceSymbolName === 'string' &&
+                                typeof result.conformanceInfo.sourceOffsetHex === 'string' &&
+                                (result.signature === null || typeof result.signature === 'string') &&
+                                (result.relation === null || typeof result.relation === 'string') &&
+                                (result.contextModuleName === null || typeof result.contextModuleName === 'string') &&
+                                (result.whereClause === null || typeof result.whereClause === 'string') &&
+                                (result.detailKind === null || typeof result.detailKind === 'string') &&
+                                result.hasSourceKind === (result.conformanceInfo.hasSourceKind === true) &&
+                                result.sourceKind === result.conformanceInfo.sourceKind &&
+                                result.signature === result.conformanceInfo.signature &&
+                                result.relation === result.conformanceInfo.relation &&
+                                result.contextModuleName === result.conformanceInfo.contextModuleName &&
+                                result.whereClause === result.conformanceInfo.whereClause &&
+                                result.detailKind === result.conformanceInfo.detailKind &&
+                                result.hasSignature === (result.conformanceInfo.hasSignature === true) &&
+                                result.hasRelation === (result.conformanceInfo.hasRelation === true) &&
+                                result.hasContextModuleName === (result.conformanceInfo.hasContextModuleName === true) &&
+                                result.hasWhereClause === (result.conformanceInfo.hasWhereClause === true) &&
+                                result.hasDetailKind === (result.conformanceInfo.hasDetailKind === true) &&
+                                result.isDescriptor === (result.conformanceInfo.isDescriptor === true) &&
+                                result.isWitnessTable === (result.conformanceInfo.isWitnessTable === true) &&
+                                result.isWitnessAccessor === (result.conformanceInfo.isWitnessAccessor === true) &&
+                                result.isWitness === (result.conformanceInfo.isWitness === true) &&
+                                result.text === result.conformanceInfo.text;
+                        })()"#
+                    )
                     .expect("agent swift conformanceInfo result"),
                 "true"
             );
@@ -5829,6 +5903,107 @@ undefined;
                 runtime
                     .eval(
                         "(function() {
+                            const original = Swift.conformanceInfo;
+                            Swift.conformanceInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    typeName: 'ViewController',
+                                    protocolName: 'Renderable',
+                                    sourceSymbolName: '$s4Demo14ViewControllerCAA10RenderableAAMc',
+                                    sourceKind: 'protocol-conformance-descriptor',
+                                    sourceAddress: 0x180008000n,
+                                    sourceOffset: 0x8000n,
+                                    sourceDemangledName: 'protocol conformance descriptor for Demo.ViewController : Demo.Renderable where Demo.ViewController.Item == Swift.String in Demo',
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformance_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' });
+                                return result.conformanceInfo !== null
+                                    && result.resolvedTypeName === 'Demo.ViewController'
+                                    && result.resolvedProtocolName === 'Demo.Renderable'
+                                    && result.signature === 'protocol conformance descriptor for Demo.ViewController : Demo.Renderable where Demo.ViewController.Item == Swift.String in Demo'
+                                    && result.relation === 'Demo.ViewController : Demo.Renderable'
+                                    && result.contextModuleName === 'Demo'
+                                    && result.whereClause === 'Demo.ViewController.Item == Swift.String'
+                                    && result.detailKind === 'descriptor'
+                                    && result.hasSignature === true
+                                    && result.hasRelation === true
+                                    && result.hasContextModuleName === true
+                                    && result.hasWhereClause === true
+                                    && result.hasDetailKind === true
+                                    && result.isDescriptor === true
+                                    && result.isWitnessTable === false
+                                    && result.isWitnessAccessor === false
+                                    && result.isWitness === false
+                                    && result.text.indexOf('{kind=descriptor in=Demo where=Demo.ViewController.Item == Swift.String}') !== -1
+                                    && result.conformanceInfo.detailKind === 'descriptor'
+                                    && result.conformanceInfo.contextModuleName === 'Demo'
+                                    && result.conformanceInfo.whereClause === 'Demo.ViewController.Item == Swift.String';
+                            } finally {
+                                Swift.conformanceInfo = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift conformanceInfo semantics"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.witnessTableInfo;
+                            Swift.witnessTableInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    typeName: 'ViewController',
+                                    protocolName: 'Renderable',
+                                    name: '$s4Demo14ViewControllerCAA10RenderableAAWP',
+                                    demangledName: 'protocol witness table accessor for Demo.ViewController : Demo.Renderable where Demo.ViewController.Item == Swift.String in Demo',
+                                    sourceKind: 'protocol-witness-table-accessor',
+                                    address: 0x180009000n,
+                                    offset: 0x9000n,
+                                    isAccessor: true,
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' });
+                                return result.witnessTableInfo !== null
+                                    && result.resolvedTypeName === 'Demo.ViewController'
+                                    && result.resolvedProtocolName === 'Demo.Renderable'
+                                    && result.resolvedWitnessKey === 'Demo.ViewController:Demo.Renderable'
+                                    && result.signature === 'protocol witness table accessor for Demo.ViewController : Demo.Renderable where Demo.ViewController.Item == Swift.String in Demo'
+                                    && result.relation === 'Demo.ViewController : Demo.Renderable'
+                                    && result.contextModuleName === 'Demo'
+                                    && result.whereClause === 'Demo.ViewController.Item == Swift.String'
+                                    && result.detailKind === 'witness-table-accessor'
+                                    && result.hasSignature === true
+                                    && result.hasRelation === true
+                                    && result.hasContextModuleName === true
+                                    && result.hasWhereClause === true
+                                    && result.hasDetailKind === true
+                                    && result.isDescriptor === false
+                                    && result.isWitnessTable === true
+                                    && result.isWitnessAccessor === true
+                                    && result.isWitness === false
+                                    && result.isAccessor === true
+                                    && result.text.indexOf('{kind=witness-table-accessor in=Demo where=Demo.ViewController.Item == Swift.String}') !== -1
+                                    && result.witnessTableInfo.detailKind === 'witness-table-accessor'
+                                    && result.witnessTableInfo.contextModuleName === 'Demo'
+                                    && result.witnessTableInfo.whereClause === 'Demo.ViewController.Item == Swift.String';
+                            } finally {
+                                Swift.witnessTableInfo = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift witnessTableInfo semantics"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbols', moduleName: null, query: 'ViewController' });
                             if (result.kind !== 'swift.symbols' || result.query !== 'ViewController' || result.hasQuery !== true) {
                                 return false;
@@ -5966,8 +6141,172 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformances', moduleName: null, query: 'ViewController' }); return result.kind === 'swift.conformances' && result.query === 'ViewController' && result.hasQuery === true && result.count === result.conformances.length && typeof result.hasConformances === 'boolean' && typeof result.uniqueTypeCount === 'number' && typeof result.uniqueProtocolCount === 'number' && typeof result.uniqueModuleCount === 'number' && typeof result.uniqueSourceKindCount === 'number' && typeof result.sourceDemangledCount === 'number' && typeof result.hasSourceDemangledConformances === 'boolean' && Array.isArray(result.typeNames) && Array.isArray(result.moduleNames) && Array.isArray(result.protocols) && Array.isArray(result.sourceKinds) && ((result.conformances.length === 0 && result.hasConformances === false && result.firstTypeName === null && result.lastTypeName === null) || (result.hasConformances === true && typeof result.firstTypeName === 'string' && typeof result.lastTypeName === 'string' && typeof result.firstProtocolName === 'string' && typeof result.lastProtocolName === 'string' && typeof result.conformances[0].moduleBase === 'string' && typeof result.conformances[0].hasTypeName === 'boolean' && typeof result.conformances[0].hasProtocolName === 'boolean' && typeof result.conformances[0].hasSourceKind === 'boolean' && typeof result.conformances[0].hasSourceSymbolName === 'boolean' && typeof result.conformances[0].hasSourceDemangledName === 'boolean' && typeof result.conformances[0].sourceSymbolName === 'string' && typeof result.conformances[0].sourceOffsetHex === 'string' && typeof result.conformances[0].protocolName === 'string' && (result.typeNames.length === 0 || (typeof result.typeNames[0].typeName === 'string' && typeof result.typeNames[0].count === 'number' && typeof result.typeNames[0].firstProtocolName === 'string' && typeof result.typeNames[0].lastProtocolName === 'string' && typeof result.typeNames[0].firstModuleName === 'string' && typeof result.typeNames[0].lastModuleName === 'string' && typeof result.typeNames[0].hasSourceDemangledName === 'boolean')) && (result.moduleNames.length === 0 || (typeof result.moduleNames[0].moduleName === 'string' && typeof result.moduleNames[0].count === 'number' && typeof result.moduleNames[0].firstTypeName === 'string' && typeof result.moduleNames[0].lastTypeName === 'string' && typeof result.moduleNames[0].firstProtocolName === 'string' && typeof result.moduleNames[0].lastProtocolName === 'string' && typeof result.moduleNames[0].sourceDemangledCount === 'number')) && (result.protocols.length === 0 || (typeof result.protocols[0].protocolName === 'string' && typeof result.protocols[0].count === 'number' && typeof result.protocols[0].firstTypeName === 'string' && typeof result.protocols[0].lastTypeName === 'string')) && (result.sourceKinds.length === 0 || (typeof result.sourceKinds[0].sourceKind === 'string' && typeof result.sourceKinds[0].count === 'number' && typeof result.sourceKinds[0].firstTypeName === 'string' && typeof result.sourceKinds[0].lastTypeName === 'string')))); })()")
+                    .eval(
+                        r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformances', moduleName: null, query: 'ViewController' });
+                            if (result.kind !== 'swift.conformances' || result.query !== 'ViewController' || result.hasQuery !== true) {
+                                return false;
+                            }
+                            if (result.count !== result.conformances.length ||
+                                    typeof result.hasConformances !== 'boolean' ||
+                                    typeof result.uniqueTypeCount !== 'number' ||
+                                    typeof result.uniqueProtocolCount !== 'number' ||
+                                    typeof result.uniqueModuleCount !== 'number' ||
+                                    typeof result.uniqueSourceKindCount !== 'number' ||
+                                    typeof result.sourceDemangledCount !== 'number' ||
+                                    typeof result.hasSourceDemangledConformances !== 'boolean' ||
+                                    typeof result.whereClauseCount !== 'number' ||
+                                    typeof result.hasWhereClauses !== 'boolean' ||
+                                    typeof result.uniqueContextModuleCount !== 'number' ||
+                                    typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.typeNames) ||
+                                    !Array.isArray(result.moduleNames) ||
+                                    !Array.isArray(result.protocols) ||
+                                    !Array.isArray(result.contextModules) ||
+                                    !Array.isArray(result.detailKinds) ||
+                                    !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.conformances.length === 0) {
+                                return result.hasConformances === false &&
+                                    result.firstTypeName === null &&
+                                    result.lastTypeName === null;
+                            }
+                            const entry = result.conformances[0];
+                            const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
+                            const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
+                            const protocolSummary = result.protocols.length === 0 ? null : result.protocols[0];
+                            const contextSummary = result.contextModules.length === 0 ? null : result.contextModules[0];
+                            const detailSummary = result.detailKinds.length === 0 ? null : result.detailKinds[0];
+                            const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
+                            return result.hasConformances === true &&
+                                typeof result.firstTypeName === 'string' &&
+                                typeof result.lastTypeName === 'string' &&
+                                typeof result.firstProtocolName === 'string' &&
+                                typeof result.lastProtocolName === 'string' &&
+                                typeof entry.moduleBase === 'string' &&
+                                typeof entry.hasTypeName === 'boolean' &&
+                                typeof entry.hasProtocolName === 'boolean' &&
+                                typeof entry.hasSourceKind === 'boolean' &&
+                                typeof entry.hasSourceSymbolName === 'boolean' &&
+                                typeof entry.hasSourceDemangledName === 'boolean' &&
+                                typeof entry.hasSignature === 'boolean' &&
+                                typeof entry.hasRelation === 'boolean' &&
+                                typeof entry.hasContextModuleName === 'boolean' &&
+                                typeof entry.hasWhereClause === 'boolean' &&
+                                typeof entry.hasDetailKind === 'boolean' &&
+                                typeof entry.isDescriptor === 'boolean' &&
+                                typeof entry.isWitnessTable === 'boolean' &&
+                                typeof entry.isWitnessAccessor === 'boolean' &&
+                                typeof entry.isWitness === 'boolean' &&
+                                typeof entry.sourceSymbolName === 'string' &&
+                                typeof entry.sourceOffsetHex === 'string' &&
+                                typeof entry.protocolName === 'string' &&
+                                (entry.signature === null || typeof entry.signature === 'string') &&
+                                (entry.relation === null || typeof entry.relation === 'string') &&
+                                (entry.contextModuleName === null || typeof entry.contextModuleName === 'string') &&
+                                (entry.whereClause === null || typeof entry.whereClause === 'string') &&
+                                (entry.detailKind === null || typeof entry.detailKind === 'string') &&
+                                (typeSummary === null || (
+                                    typeof typeSummary.typeName === 'string' &&
+                                    typeof typeSummary.count === 'number' &&
+                                    typeof typeSummary.firstProtocolName === 'string' &&
+                                    typeof typeSummary.lastProtocolName === 'string' &&
+                                    typeof typeSummary.firstModuleName === 'string' &&
+                                    typeof typeSummary.lastModuleName === 'string' &&
+                                    typeof typeSummary.hasSourceDemangledName === 'boolean'
+                                )) &&
+                                (moduleSummary === null || (
+                                    typeof moduleSummary.moduleName === 'string' &&
+                                    typeof moduleSummary.count === 'number' &&
+                                    typeof moduleSummary.firstTypeName === 'string' &&
+                                    typeof moduleSummary.lastTypeName === 'string' &&
+                                    typeof moduleSummary.firstProtocolName === 'string' &&
+                                    typeof moduleSummary.lastProtocolName === 'string' &&
+                                    typeof moduleSummary.sourceDemangledCount === 'number'
+                                )) &&
+                                (protocolSummary === null || (
+                                    typeof protocolSummary.protocolName === 'string' &&
+                                    typeof protocolSummary.count === 'number' &&
+                                    typeof protocolSummary.firstTypeName === 'string' &&
+                                    typeof protocolSummary.lastTypeName === 'string'
+                                )) &&
+                                (contextSummary === null || (
+                                    typeof contextSummary.contextModuleName === 'string' &&
+                                    typeof contextSummary.count === 'number' &&
+                                    typeof contextSummary.firstTypeName === 'string' &&
+                                    typeof contextSummary.lastTypeName === 'string' &&
+                                    typeof contextSummary.whereClauseCount === 'number'
+                                )) &&
+                                (detailSummary === null || (
+                                    typeof detailSummary.detailKind === 'string' &&
+                                    typeof detailSummary.count === 'number' &&
+                                    typeof detailSummary.firstTypeName === 'string' &&
+                                    typeof detailSummary.lastTypeName === 'string' &&
+                                    typeof detailSummary.whereClauseCount === 'number'
+                                )) &&
+                                (sourceSummary === null || (
+                                    typeof sourceSummary.sourceKind === 'string' &&
+                                    typeof sourceSummary.count === 'number' &&
+                                    typeof sourceSummary.firstTypeName === 'string' &&
+                                    typeof sourceSummary.lastTypeName === 'string'
+                                ));
+                        })()"#
+                    )
                     .expect("agent swift conformances result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.conformances;
+                            Swift.conformances = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        typeName: 'ViewController',
+                                        protocolName: 'Renderable',
+                                        sourceSymbolName: '$s4Demo14ViewControllerCAA10RenderableAAMc',
+                                        sourceKind: 'protocol-conformance-descriptor',
+                                        sourceAddress: 0x18000a000n,
+                                        sourceOffset: 0xa000n,
+                                        sourceDemangledName: 'protocol conformance descriptor for Demo.ViewController : Demo.Renderable where Demo.ViewController.Item == Swift.String in Demo',
+                                    },
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        typeName: 'ViewController',
+                                        protocolName: 'Renderable',
+                                        sourceSymbolName: '$s4Demo14ViewControllerCAA10RenderableAAWP',
+                                        sourceKind: 'protocol-witness-table',
+                                        sourceAddress: 0x18000b000n,
+                                        sourceOffset: 0xb000n,
+                                        sourceDemangledName: 'protocol witness table for Demo.ViewController : Demo.Renderable in Demo',
+                                    }
+                                ];
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformances', moduleName: null, query: 'ViewController' });
+                                return result.count === 2
+                                    && result.whereClauseCount === 1
+                                    && result.hasWhereClauses === true
+                                    && result.uniqueContextModuleCount === 1
+                                    && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.contextModules)
+                                    && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2 && entry.whereClauseCount === 1)
+                                    && Array.isArray(result.detailKinds)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'descriptor' && entry.count === 1 && entry.whereClauseCount === 1)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'witness-table' && entry.count === 1 && entry.whereClauseCount === 0)
+                                    && result.conformances.some((entry) => entry.isDescriptor === true && entry.contextModuleName === 'Demo' && entry.whereClause === 'Demo.ViewController.Item == Swift.String')
+                                    && result.conformances.some((entry) => entry.isWitnessTable === true && entry.detailKind === 'witness-table' && entry.contextModuleName === 'Demo');
+                            } finally {
+                                Swift.conformances = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift conformances summary"),
                 "true"
             );
             assert_eq!(
@@ -6086,15 +6425,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() {
+                        r#"(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' });
                             if (result.kind !== 'swift.witness_table' || result.query !== 'Renderable' || result.hasQuery !== true) {
                                 return false;
                             }
-                            if (result.count !== result.entries.length || typeof result.hasEntries !== 'boolean') {
-                                return false;
-                            }
-                            if (typeof result.uniqueTypeCount !== 'number' ||
+                            if (result.count !== result.entries.length ||
+                                    typeof result.hasEntries !== 'boolean' ||
+                                    typeof result.uniqueTypeCount !== 'number' ||
                                     typeof result.uniqueProtocolCount !== 'number' ||
                                     typeof result.uniqueWitnessKeyCount !== 'number' ||
                                     typeof result.uniqueModuleCount !== 'number' ||
@@ -6103,10 +6441,16 @@ undefined;
                                     typeof result.hasAccessors !== 'boolean' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledEntries !== 'boolean' ||
+                                    typeof result.whereClauseCount !== 'number' ||
+                                    typeof result.hasWhereClauses !== 'boolean' ||
+                                    typeof result.uniqueContextModuleCount !== 'number' ||
+                                    typeof result.uniqueDetailKindCount !== 'number' ||
                                     !Array.isArray(result.typeNames) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.protocols) ||
                                     !Array.isArray(result.witnessKeys) ||
+                                    !Array.isArray(result.contextModules) ||
+                                    !Array.isArray(result.detailKinds) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
@@ -6122,6 +6466,8 @@ undefined;
                             const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
                             const protocolSummary = result.protocols.length === 0 ? null : result.protocols[0];
                             const witnessKeySummary = result.witnessKeys.length === 0 ? null : result.witnessKeys[0];
+                            const contextSummary = result.contextModules.length === 0 ? null : result.contextModules[0];
+                            const detailSummary = result.detailKinds.length === 0 ? null : result.detailKinds[0];
                             const sourceSummary = result.sourceKinds.length === 0 ? null : result.sourceKinds[0];
                             return result.hasEntries === true &&
                                 typeof result.firstTypeName === 'string' &&
@@ -6139,8 +6485,22 @@ undefined;
                                 typeof entry.hasName === 'boolean' &&
                                 typeof entry.hasDemangledName === 'boolean' &&
                                 typeof entry.hasSourceKind === 'boolean' &&
+                                typeof entry.hasSignature === 'boolean' &&
+                                typeof entry.hasRelation === 'boolean' &&
+                                typeof entry.hasContextModuleName === 'boolean' &&
+                                typeof entry.hasWhereClause === 'boolean' &&
+                                typeof entry.hasDetailKind === 'boolean' &&
+                                typeof entry.isDescriptor === 'boolean' &&
+                                typeof entry.isWitnessTable === 'boolean' &&
+                                typeof entry.isWitnessAccessor === 'boolean' &&
+                                typeof entry.isWitness === 'boolean' &&
                                 typeof entry.offsetHex === 'string' &&
                                 typeof entry.isAccessor === 'boolean' &&
+                                (entry.signature === null || typeof entry.signature === 'string') &&
+                                (entry.relation === null || typeof entry.relation === 'string') &&
+                                (entry.contextModuleName === null || typeof entry.contextModuleName === 'string') &&
+                                (entry.whereClause === null || typeof entry.whereClause === 'string') &&
+                                (entry.detailKind === null || typeof entry.detailKind === 'string') &&
                                 (typeSummary === null || (
                                     typeof typeSummary.typeName === 'string' &&
                                     typeof typeSummary.count === 'number' &&
@@ -6176,6 +6536,22 @@ undefined;
                                     typeof witnessKeySummary.accessorCount === 'number' &&
                                     typeof witnessKeySummary.demangledCount === 'number'
                                 )) &&
+                                (contextSummary === null || (
+                                    typeof contextSummary.contextModuleName === 'string' &&
+                                    typeof contextSummary.count === 'number' &&
+                                    typeof contextSummary.firstProtocolName === 'string' &&
+                                    typeof contextSummary.lastProtocolName === 'string' &&
+                                    typeof contextSummary.accessorCount === 'number' &&
+                                    typeof contextSummary.whereClauseCount === 'number'
+                                )) &&
+                                (detailSummary === null || (
+                                    typeof detailSummary.detailKind === 'string' &&
+                                    typeof detailSummary.count === 'number' &&
+                                    typeof detailSummary.firstProtocolName === 'string' &&
+                                    typeof detailSummary.lastProtocolName === 'string' &&
+                                    typeof detailSummary.accessorCount === 'number' &&
+                                    typeof detailSummary.whereClauseCount === 'number'
+                                )) &&
                                 (sourceSummary === null || (
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
@@ -6184,15 +6560,158 @@ undefined;
                                     typeof sourceSummary.firstProtocolName === 'string' &&
                                     typeof sourceSummary.lastProtocolName === 'string'
                                 ));
-                        })()"
+                        })()"#
                     )
                     .expect("agent swift witness table result"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }); return result.kind === 'swift.witness_table_info' && result.typeName === 'ViewController' && result.protocolName === 'Renderable' && typeof result.hasWitnessTableInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasSourceKind === 'boolean' && typeof result.isAccessor === 'boolean' && ((result.witnessTableInfo === null && result.hasWitnessTableInfo === false && result.resolved === false && result.resolvedTypeName === null && result.resolvedProtocolName === null && result.resolvedModuleName === null && result.resolvedName === null && result.resolvedDemangledName === null && result.sourceKind === null && result.isAccessor === false && result.text === '<null>') || (result.hasWitnessTableInfo === true && result.resolved === true && typeof result.resolvedTypeName === 'string' && typeof result.resolvedProtocolName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.resolvedName === 'string' && typeof result.witnessTableInfo.moduleBase === 'string' && typeof result.witnessTableInfo.protocolName === 'string' && typeof result.witnessTableInfo.offsetHex === 'string' && typeof result.witnessTableInfo.isAccessor === 'boolean' && result.hasSourceKind === (result.witnessTableInfo.hasSourceKind === true) && result.sourceKind === result.witnessTableInfo.sourceKind && result.isAccessor === (result.witnessTableInfo.isAccessor === true) && result.resolvedTypeName === result.witnessTableInfo.typeName && result.resolvedProtocolName === result.witnessTableInfo.protocolName && result.resolvedModuleName === result.witnessTableInfo.moduleName && result.resolvedName === result.witnessTableInfo.name && result.resolvedDemangledName === result.witnessTableInfo.demangledName && result.text === result.witnessTableInfo.text)); })()")
+                    .eval(
+                        r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' });
+                            if (result.kind !== 'swift.witness_table_info' || result.typeName !== 'ViewController' || result.protocolName !== 'Renderable') {
+                                return false;
+                            }
+                            if (typeof result.hasWitnessTableInfo !== 'boolean' ||
+                                    typeof result.resolved !== 'boolean' ||
+                                    typeof result.hasSourceKind !== 'boolean' ||
+                                    typeof result.hasSignature !== 'boolean' ||
+                                    typeof result.hasRelation !== 'boolean' ||
+                                    typeof result.hasContextModuleName !== 'boolean' ||
+                                    typeof result.hasWhereClause !== 'boolean' ||
+                                    typeof result.hasDetailKind !== 'boolean' ||
+                                    typeof result.isDescriptor !== 'boolean' ||
+                                    typeof result.isWitnessTable !== 'boolean' ||
+                                    typeof result.isWitnessAccessor !== 'boolean' ||
+                                    typeof result.isWitness !== 'boolean' ||
+                                    typeof result.isAccessor !== 'boolean') {
+                                return false;
+                            }
+                            if (result.witnessTableInfo === null) {
+                                return result.hasWitnessTableInfo === false &&
+                                    result.resolved === false &&
+                                    result.resolvedTypeName === null &&
+                                    result.resolvedProtocolName === null &&
+                                    result.resolvedModuleName === null &&
+                                    result.resolvedName === null &&
+                                    result.resolvedDemangledName === null &&
+                                    result.signature === null &&
+                                    result.relation === null &&
+                                    result.contextModuleName === null &&
+                                    result.whereClause === null &&
+                                    result.detailKind === null &&
+                                    result.sourceKind === null &&
+                                    result.isAccessor === false &&
+                                    result.hasSignature === false &&
+                                    result.hasRelation === false &&
+                                    result.hasContextModuleName === false &&
+                                    result.hasWhereClause === false &&
+                                    result.hasDetailKind === false &&
+                                    result.isDescriptor === false &&
+                                    result.isWitnessTable === false &&
+                                    result.isWitnessAccessor === false &&
+                                    result.isWitness === false &&
+                                    result.text === '<null>';
+                            }
+                            return result.hasWitnessTableInfo === true &&
+                                result.resolved === true &&
+                                typeof result.resolvedTypeName === 'string' &&
+                                typeof result.resolvedProtocolName === 'string' &&
+                                typeof result.resolvedModuleName === 'string' &&
+                                typeof result.resolvedName === 'string' &&
+                                typeof result.witnessTableInfo.moduleBase === 'string' &&
+                                typeof result.witnessTableInfo.protocolName === 'string' &&
+                                typeof result.witnessTableInfo.offsetHex === 'string' &&
+                                typeof result.witnessTableInfo.isAccessor === 'boolean' &&
+                                (result.signature === null || typeof result.signature === 'string') &&
+                                (result.relation === null || typeof result.relation === 'string') &&
+                                (result.contextModuleName === null || typeof result.contextModuleName === 'string') &&
+                                (result.whereClause === null || typeof result.whereClause === 'string') &&
+                                (result.detailKind === null || typeof result.detailKind === 'string') &&
+                                result.hasSourceKind === (result.witnessTableInfo.hasSourceKind === true) &&
+                                result.sourceKind === result.witnessTableInfo.sourceKind &&
+                                result.isAccessor === (result.witnessTableInfo.isAccessor === true) &&
+                                result.signature === result.witnessTableInfo.signature &&
+                                result.relation === result.witnessTableInfo.relation &&
+                                result.contextModuleName === result.witnessTableInfo.contextModuleName &&
+                                result.whereClause === result.witnessTableInfo.whereClause &&
+                                result.detailKind === result.witnessTableInfo.detailKind &&
+                                result.hasSignature === (result.witnessTableInfo.hasSignature === true) &&
+                                result.hasRelation === (result.witnessTableInfo.hasRelation === true) &&
+                                result.hasContextModuleName === (result.witnessTableInfo.hasContextModuleName === true) &&
+                                result.hasWhereClause === (result.witnessTableInfo.hasWhereClause === true) &&
+                                result.hasDetailKind === (result.witnessTableInfo.hasDetailKind === true) &&
+                                result.isDescriptor === (result.witnessTableInfo.isDescriptor === true) &&
+                                result.isWitnessTable === (result.witnessTableInfo.isWitnessTable === true) &&
+                                result.isWitnessAccessor === (result.witnessTableInfo.isWitnessAccessor === true) &&
+                                result.isWitness === (result.witnessTableInfo.isWitness === true) &&
+                                result.resolvedTypeName === result.witnessTableInfo.typeName &&
+                                result.resolvedProtocolName === result.witnessTableInfo.protocolName &&
+                                result.resolvedModuleName === result.witnessTableInfo.moduleName &&
+                                result.resolvedName === result.witnessTableInfo.name &&
+                                result.resolvedDemangledName === result.witnessTableInfo.demangledName &&
+                                result.text === result.witnessTableInfo.text;
+                        })()"#
+                    )
                     .expect("agent swift witness table info result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Swift.witnessTable;
+                            Swift.witnessTable = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        typeName: 'ViewController',
+                                        protocolName: 'Renderable',
+                                        name: '$s4Demo14ViewControllerCAA10RenderableAAWP',
+                                        demangledName: 'protocol witness table accessor for Demo.ViewController : Demo.Renderable where Demo.ViewController.Item == Swift.String in Demo',
+                                        sourceKind: 'protocol-witness-table-accessor',
+                                        address: 0x18000c000n,
+                                        offset: 0xc000n,
+                                        isAccessor: true,
+                                    },
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        typeName: 'ViewController',
+                                        protocolName: 'Renderable',
+                                        name: '$s4Demo14ViewControllerCAA10RenderableAAWp',
+                                        demangledName: 'protocol witness table for Demo.ViewController : Demo.Renderable in Demo',
+                                        sourceKind: 'protocol-witness-table',
+                                        address: 0x18000d000n,
+                                        offset: 0xd000n,
+                                        isAccessor: false,
+                                    }
+                                ];
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table', moduleName: null, query: 'Renderable' });
+                                return result.count === 2
+                                    && result.accessorCount === 1
+                                    && result.hasAccessors === true
+                                    && result.whereClauseCount === 1
+                                    && result.hasWhereClauses === true
+                                    && result.uniqueContextModuleCount === 1
+                                    && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.contextModules)
+                                    && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2 && entry.accessorCount === 1 && entry.whereClauseCount === 1)
+                                    && Array.isArray(result.detailKinds)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'witness-table-accessor' && entry.count === 1 && entry.accessorCount === 1 && entry.whereClauseCount === 1)
+                                    && result.detailKinds.some((entry) => entry.detailKind === 'witness-table' && entry.count === 1 && entry.accessorCount === 0 && entry.whereClauseCount === 0)
+                                    && result.entries.some((entry) => entry.isWitnessAccessor === true && entry.contextModuleName === 'Demo' && entry.whereClause === 'Demo.ViewController.Item == Swift.String')
+                                    && result.entries.some((entry) => entry.isWitnessTable === true && entry.detailKind === 'witness-table' && entry.contextModuleName === 'Demo');
+                            } finally {
+                                Swift.witnessTable = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift witness table summary"),
                 "true"
             );
             assert_eq!(
@@ -6368,10 +6887,24 @@ undefined;
                                     && conformanceInfo.resolvedSourceAddress === null
                                     && conformanceInfo.resolvedSourceOffsetHex === null
                                     && conformanceInfo.resolvedSourceDemangledName === null
+                                    && conformanceInfo.signature === null
+                                    && conformanceInfo.relation === null
+                                    && conformanceInfo.contextModuleName === null
+                                    && conformanceInfo.whereClause === null
+                                    && conformanceInfo.detailKind === null
                                     && conformanceInfo.hasTypeName === false
                                     && conformanceInfo.hasProtocolName === false
                                     && conformanceInfo.hasSourceSymbolName === false
-                                    && conformanceInfo.hasSourceDemangledName === false)) {
+                                    && conformanceInfo.hasSourceDemangledName === false
+                                    && conformanceInfo.hasSignature === false
+                                    && conformanceInfo.hasRelation === false
+                                    && conformanceInfo.hasContextModuleName === false
+                                    && conformanceInfo.hasWhereClause === false
+                                    && conformanceInfo.hasDetailKind === false
+                                    && conformanceInfo.isDescriptor === false
+                                    && conformanceInfo.isWitnessTable === false
+                                    && conformanceInfo.isWitnessAccessor === false
+                                    && conformanceInfo.isWitness === false)) {
                                     return false;
                                 }
                             } else if (!(conformanceInfo.resolvedModuleBase === conformanceInfo.conformanceInfo.moduleBase
@@ -6379,10 +6912,24 @@ undefined;
                                 && conformanceInfo.resolvedSourceAddress === conformanceInfo.conformanceInfo.sourceAddress
                                 && conformanceInfo.resolvedSourceOffsetHex === conformanceInfo.conformanceInfo.sourceOffsetHex
                                 && conformanceInfo.resolvedSourceDemangledName === conformanceInfo.conformanceInfo.sourceDemangledName
+                                && conformanceInfo.signature === conformanceInfo.conformanceInfo.signature
+                                && conformanceInfo.relation === conformanceInfo.conformanceInfo.relation
+                                && conformanceInfo.contextModuleName === conformanceInfo.conformanceInfo.contextModuleName
+                                && conformanceInfo.whereClause === conformanceInfo.conformanceInfo.whereClause
+                                && conformanceInfo.detailKind === conformanceInfo.conformanceInfo.detailKind
                                 && conformanceInfo.hasTypeName === (conformanceInfo.conformanceInfo.hasTypeName === true)
                                 && conformanceInfo.hasProtocolName === (conformanceInfo.conformanceInfo.hasProtocolName === true)
                                 && conformanceInfo.hasSourceSymbolName === (conformanceInfo.conformanceInfo.hasSourceSymbolName === true)
-                                && conformanceInfo.hasSourceDemangledName === (conformanceInfo.conformanceInfo.hasSourceDemangledName === true))) {
+                                && conformanceInfo.hasSourceDemangledName === (conformanceInfo.conformanceInfo.hasSourceDemangledName === true)
+                                && conformanceInfo.hasSignature === (conformanceInfo.conformanceInfo.hasSignature === true)
+                                && conformanceInfo.hasRelation === (conformanceInfo.conformanceInfo.hasRelation === true)
+                                && conformanceInfo.hasContextModuleName === (conformanceInfo.conformanceInfo.hasContextModuleName === true)
+                                && conformanceInfo.hasWhereClause === (conformanceInfo.conformanceInfo.hasWhereClause === true)
+                                && conformanceInfo.hasDetailKind === (conformanceInfo.conformanceInfo.hasDetailKind === true)
+                                && conformanceInfo.isDescriptor === (conformanceInfo.conformanceInfo.isDescriptor === true)
+                                && conformanceInfo.isWitnessTable === (conformanceInfo.conformanceInfo.isWitnessTable === true)
+                                && conformanceInfo.isWitnessAccessor === (conformanceInfo.conformanceInfo.isWitnessAccessor === true)
+                                && conformanceInfo.isWitness === (conformanceInfo.conformanceInfo.isWitness === true))) {
                                 return false;
                             }
 
@@ -6478,20 +7025,48 @@ undefined;
                                     && witnessInfo.resolvedAddress === null
                                     && witnessInfo.resolvedOffsetHex === null
                                     && witnessInfo.resolvedWitnessKey === null
+                                    && witnessInfo.signature === null
+                                    && witnessInfo.relation === null
+                                    && witnessInfo.contextModuleName === null
+                                    && witnessInfo.whereClause === null
+                                    && witnessInfo.detailKind === null
                                     && witnessInfo.hasTypeName === false
                                     && witnessInfo.hasProtocolName === false
                                     && witnessInfo.hasName === false
-                                    && witnessInfo.hasDemangledName === false)) {
+                                    && witnessInfo.hasDemangledName === false
+                                    && witnessInfo.hasSignature === false
+                                    && witnessInfo.hasRelation === false
+                                    && witnessInfo.hasContextModuleName === false
+                                    && witnessInfo.hasWhereClause === false
+                                    && witnessInfo.hasDetailKind === false
+                                    && witnessInfo.isDescriptor === false
+                                    && witnessInfo.isWitnessTable === false
+                                    && witnessInfo.isWitnessAccessor === false
+                                    && witnessInfo.isWitness === false)) {
                                     return false;
                                 }
                             } else if (!(witnessInfo.resolvedModuleBase === witnessInfo.witnessTableInfo.moduleBase
                                 && witnessInfo.resolvedAddress === witnessInfo.witnessTableInfo.address
                                 && witnessInfo.resolvedOffsetHex === witnessInfo.witnessTableInfo.offsetHex
                                 && witnessInfo.resolvedWitnessKey === witnessInfo.witnessTableInfo.witnessKey
+                                && witnessInfo.signature === witnessInfo.witnessTableInfo.signature
+                                && witnessInfo.relation === witnessInfo.witnessTableInfo.relation
+                                && witnessInfo.contextModuleName === witnessInfo.witnessTableInfo.contextModuleName
+                                && witnessInfo.whereClause === witnessInfo.witnessTableInfo.whereClause
+                                && witnessInfo.detailKind === witnessInfo.witnessTableInfo.detailKind
                                 && witnessInfo.hasTypeName === (witnessInfo.witnessTableInfo.hasTypeName === true)
                                 && witnessInfo.hasProtocolName === (witnessInfo.witnessTableInfo.hasProtocolName === true)
                                 && witnessInfo.hasName === (witnessInfo.witnessTableInfo.hasName === true)
-                                && witnessInfo.hasDemangledName === (witnessInfo.witnessTableInfo.hasDemangledName === true))) {
+                                && witnessInfo.hasDemangledName === (witnessInfo.witnessTableInfo.hasDemangledName === true)
+                                && witnessInfo.hasSignature === (witnessInfo.witnessTableInfo.hasSignature === true)
+                                && witnessInfo.hasRelation === (witnessInfo.witnessTableInfo.hasRelation === true)
+                                && witnessInfo.hasContextModuleName === (witnessInfo.witnessTableInfo.hasContextModuleName === true)
+                                && witnessInfo.hasWhereClause === (witnessInfo.witnessTableInfo.hasWhereClause === true)
+                                && witnessInfo.hasDetailKind === (witnessInfo.witnessTableInfo.hasDetailKind === true)
+                                && witnessInfo.isDescriptor === (witnessInfo.witnessTableInfo.isDescriptor === true)
+                                && witnessInfo.isWitnessTable === (witnessInfo.witnessTableInfo.isWitnessTable === true)
+                                && witnessInfo.isWitnessAccessor === (witnessInfo.witnessTableInfo.isWitnessAccessor === true)
+                                && witnessInfo.isWitness === (witnessInfo.witnessTableInfo.isWitness === true))) {
                                 return false;
                             }
 
