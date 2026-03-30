@@ -4684,6 +4684,153 @@ function normalizeSection(section) {
     };
 }
 
+function classifyLoadCommandFamily(name) {
+    const commandName = String(name || '');
+    if (commandName === 'LC_RPATH') {
+        return 'rpath';
+    }
+    if (commandName === 'LC_UUID') {
+        return 'uuid';
+    }
+    if (commandName === 'LC_MAIN') {
+        return 'entry-point';
+    }
+    if (commandName === 'LC_BUILD_VERSION' || commandName === 'LC_SOURCE_VERSION' || commandName.startsWith('LC_VERSION_MIN_')) {
+        return 'version';
+    }
+    if (commandName === 'LC_DYLD_INFO' || commandName === 'LC_DYLD_INFO_ONLY') {
+        return 'dyld-info';
+    }
+    if (commandName === 'LC_CODE_SIGNATURE'
+            || commandName === 'LC_SEGMENT_SPLIT_INFO'
+            || commandName === 'LC_FUNCTION_STARTS'
+            || commandName === 'LC_DATA_IN_CODE'
+            || commandName === 'LC_DYLIB_CODE_SIGN_DRS'
+            || commandName === 'LC_LINKER_OPTIMIZATION_HINT'
+            || commandName === 'LC_DYLD_EXPORTS_TRIE'
+            || commandName === 'LC_DYLD_CHAINED_FIXUPS') {
+        return 'linkedit-data';
+    }
+    if (commandName.startsWith('LC_ENCRYPTION_INFO')) {
+        return 'encryption';
+    }
+    if (commandName.startsWith('LC_SEGMENT')) {
+        return 'segment';
+    }
+    if (commandName.indexOf('DYLINKER') !== -1) {
+        return 'dylinker';
+    }
+    if (commandName.indexOf('DYLIB') !== -1) {
+        return 'dylib';
+    }
+    return 'other';
+}
+
+function parseLoadCommandDetailMap(detail) {
+    if (detail === null || detail === undefined) {
+        return {};
+    }
+    const map = {};
+    for (const token of String(detail).split(/\s+/).filter(Boolean)) {
+        const equalsIndex = token.indexOf('=');
+        if (equalsIndex <= 0) {
+            continue;
+        }
+        map[token.slice(0, equalsIndex)] = token.slice(equalsIndex + 1);
+    }
+    return map;
+}
+
+function parseLoadCommandDetail(name, detail) {
+    const commandName = String(name || '');
+    const commandFamily = classifyLoadCommandFamily(commandName);
+    const detailMap = parseLoadCommandDetailMap(detail);
+    const path = detailMap.path === undefined
+        ? (detailMap.name === undefined ? null : detailMap.name)
+        : detailMap.path;
+    const pathKind = path === null ? null : classifyLibraryPathKind(path);
+    const tools = detailMap.tools === undefined || detailMap.tools === 'none'
+        ? []
+        : String(detailMap.tools).split(',').filter((item) => item.length !== 0);
+    const dyldRegionSpecs = [
+        ['rebase', detailMap.rebase],
+        ['bind', detailMap.bind],
+        ['weakBind', detailMap.weak],
+        ['lazyBind', detailMap.lazy],
+        ['export', detailMap.export],
+    ];
+    const dyldRegions = [];
+    for (const [regionName, spec] of dyldRegionSpecs) {
+        if (spec === undefined) {
+            continue;
+        }
+        const slashIndex = spec.indexOf('/');
+        const offset = slashIndex === -1 ? spec : spec.slice(0, slashIndex);
+        const size = slashIndex === -1 ? '0x0' : spec.slice(slashIndex + 1);
+        dyldRegions.push(normalizeDyldInfoRegion(regionName, offset, size));
+    }
+    const nonEmptyDyldRegions = dyldRegions.filter((region) => region.hasData);
+    const hasPath = path !== null && path.length !== 0;
+    const hasTimestamp = detailMap.timestamp !== undefined && detailMap.timestamp !== '0';
+    const hasCurrentVersion = detailMap.current !== undefined;
+    const hasCompatibilityVersion = detailMap.compat !== undefined;
+    const hasVersion = detailMap.version !== undefined;
+    const hasSdk = detailMap.sdk !== undefined;
+    const hasMinOs = detailMap.minos !== undefined;
+    const hasUuid = detailMap.uuid !== undefined;
+    const hasDataRange = detailMap.dataoff !== undefined && detailMap.datasize !== undefined;
+    const hasEntryPoint = detailMap.entryoff !== undefined;
+    const hasEncryptedRange = detailMap.cryptoff !== undefined && detailMap.cryptsize !== undefined && detailMap.cryptid !== undefined;
+    return {
+        commandFamily,
+        path,
+        hasPath,
+        pathKind,
+        isTokenPath: hasPath && path.startsWith('@'),
+        usesLoaderPath: hasPath && path.startsWith('@loader_path'),
+        usesExecutablePath: hasPath && path.startsWith('@executable_path'),
+        usesRpathToken: hasPath && path.startsWith('@rpath'),
+        pathDepth: hasPath ? path.split('/').filter(Boolean).length : 0,
+        currentVersion: hasCurrentVersion ? detailMap.current : null,
+        hasCurrentVersion,
+        compatibilityVersion: hasCompatibilityVersion ? detailMap.compat : null,
+        hasCompatibilityVersion,
+        timestamp: hasTimestamp ? Number(detailMap.timestamp) : null,
+        hasTimestamp,
+        versionMismatch: hasCurrentVersion && hasCompatibilityVersion && detailMap.current !== detailMap.compat,
+        version: hasVersion ? detailMap.version : null,
+        hasVersion,
+        sdk: hasSdk ? detailMap.sdk : null,
+        hasSdk,
+        minOs: hasMinOs ? detailMap.minos : null,
+        hasMinOs,
+        platform: detailMap.platform === undefined ? null : detailMap.platform,
+        tools,
+        hasTools: tools.length !== 0,
+        toolCount: tools.length,
+        uniqueToolCount: Array.from(new Set(tools)).length,
+        uuid: hasUuid ? detailMap.uuid : null,
+        hasUuid,
+        uuidLength: hasUuid ? String(detailMap.uuid).length : 0,
+        dataoffHex: detailMap.dataoff === undefined ? null : detailMap.dataoff,
+        datasizeHex: detailMap.datasize === undefined ? null : detailMap.datasize,
+        dataEndHex: hasDataRange ? formatHexAdd(detailMap.dataoff, detailMap.datasize) : null,
+        hasDataRange,
+        entryoffHex: detailMap.entryoff === undefined ? null : detailMap.entryoff,
+        stacksizeHex: detailMap.stacksize === undefined ? null : detailMap.stacksize,
+        hasEntryPoint,
+        cryptoffHex: detailMap.cryptoff === undefined ? null : detailMap.cryptoff,
+        cryptsizeHex: detailMap.cryptsize === undefined ? null : detailMap.cryptsize,
+        cryptid: detailMap.cryptid === undefined ? null : Number(detailMap.cryptid),
+        hasEncryptedRange,
+        dyldRegions,
+        dyldRegionCount: dyldRegions.length,
+        hasDyldRegions: dyldRegions.length !== 0,
+        nonEmptyDyldRegionCount: nonEmptyDyldRegions.length,
+        nonEmptyDyldRegionNames: nonEmptyDyldRegions.map((region) => region.name),
+    };
+}
+
 function normalizeLoadCommand(command) {
     const name = String(command.name || '');
     const detail = command.detail === undefined ? null : command.detail;
@@ -4691,12 +4838,14 @@ function normalizeLoadCommand(command) {
     const cmdsize = Number(command.cmdsize || 0);
     const offset = BigInt(command.offset || 0);
     const isReqDyld = (cmd & 0x80000000n) !== 0n;
+    const parsedDetail = parseLoadCommandDetail(name, detail);
     return {
         moduleName: String(command.moduleName || ''),
         moduleBase: command.moduleBase ? command.moduleBase.toString() : null,
         index: Number(command.index || 0),
         name,
         hasName: name.length !== 0,
+        commandFamily: parsedDetail.commandFamily,
         cmdHex: '0x' + cmd.toString(16),
         cmdBaseHex: '0x' + (cmd & 0x7fffffffn).toString(16),
         isReqDyld,
@@ -4706,6 +4855,51 @@ function normalizeLoadCommand(command) {
         endOffsetHex: '0x' + (offset + BigInt(cmdsize)).toString(16),
         detail,
         hasDetail: detail !== null && String(detail).length !== 0,
+        path: parsedDetail.path,
+        hasPath: parsedDetail.hasPath,
+        pathKind: parsedDetail.pathKind,
+        isTokenPath: parsedDetail.isTokenPath,
+        usesLoaderPath: parsedDetail.usesLoaderPath,
+        usesExecutablePath: parsedDetail.usesExecutablePath,
+        usesRpathToken: parsedDetail.usesRpathToken,
+        pathDepth: parsedDetail.pathDepth,
+        currentVersion: parsedDetail.currentVersion,
+        hasCurrentVersion: parsedDetail.hasCurrentVersion,
+        compatibilityVersion: parsedDetail.compatibilityVersion,
+        hasCompatibilityVersion: parsedDetail.hasCompatibilityVersion,
+        timestamp: parsedDetail.timestamp,
+        hasTimestamp: parsedDetail.hasTimestamp,
+        versionMismatch: parsedDetail.versionMismatch,
+        version: parsedDetail.version,
+        hasVersion: parsedDetail.hasVersion,
+        sdk: parsedDetail.sdk,
+        hasSdk: parsedDetail.hasSdk,
+        minOs: parsedDetail.minOs,
+        hasMinOs: parsedDetail.hasMinOs,
+        platform: parsedDetail.platform,
+        tools: parsedDetail.tools,
+        hasTools: parsedDetail.hasTools,
+        toolCount: parsedDetail.toolCount,
+        uniqueToolCount: parsedDetail.uniqueToolCount,
+        uuid: parsedDetail.uuid,
+        hasUuid: parsedDetail.hasUuid,
+        uuidLength: parsedDetail.uuidLength,
+        dataoffHex: parsedDetail.dataoffHex,
+        datasizeHex: parsedDetail.datasizeHex,
+        dataEndHex: parsedDetail.dataEndHex,
+        hasDataRange: parsedDetail.hasDataRange,
+        entryoffHex: parsedDetail.entryoffHex,
+        stacksizeHex: parsedDetail.stacksizeHex,
+        hasEntryPoint: parsedDetail.hasEntryPoint,
+        cryptoffHex: parsedDetail.cryptoffHex,
+        cryptsizeHex: parsedDetail.cryptsizeHex,
+        cryptid: parsedDetail.cryptid,
+        hasEncryptedRange: parsedDetail.hasEncryptedRange,
+        dyldRegions: parsedDetail.dyldRegions,
+        dyldRegionCount: parsedDetail.dyldRegionCount,
+        hasDyldRegions: parsedDetail.hasDyldRegions,
+        nonEmptyDyldRegionCount: parsedDetail.nonEmptyDyldRegionCount,
+        nonEmptyDyldRegionNames: parsedDetail.nonEmptyDyldRegionNames,
         text: formatLoadCommand(command),
     };
 }
@@ -7897,6 +8091,12 @@ function handleSpecResult(spec) {
         const commands = Native.loadCommands(moduleName).map((command) => normalizeLoadCommand(command));
         const reqDyldCommands = commands.filter((command) => command.isReqDyld);
         const detailedCommands = commands.filter((command) => command.hasDetail);
+        const pathCommands = commands.filter((command) => command.hasPath);
+        const tokenPathCommands = commands.filter((command) => command.isTokenPath);
+        const versionedCommands = commands.filter((command) => command.hasCurrentVersion || command.hasVersion || command.hasMinOs);
+        const timestampedCommands = commands.filter((command) => command.hasTimestamp);
+        const dataRangeCommands = commands.filter((command) => command.hasDataRange);
+        const dyldRegionCommands = commands.filter((command) => command.hasDyldRegions);
         const largestCommand = commands.reduce((largest, command) => {
             if (largest === null || command.cmdsize > largest.cmdsize) {
                 return command;
@@ -7912,6 +8112,7 @@ function handleSpecResult(spec) {
         const totalCommandSize = commands.reduce((sum, command) => sum + BigInt(command.cmdsize || 0), 0n);
         const commandKinds = [];
         const commandNames = [];
+        const commandFamilies = [];
         for (const command of commands) {
             let summary = commandKinds.find((item) => item.name === command.name);
             if (summary === undefined) {
@@ -7955,7 +8156,51 @@ function handleSpecResult(spec) {
             if (command.isReqDyld) {
                 commandNameSummary.reqDyldCount += 1;
             }
+            let familySummary = commandFamilies.find((item) => item.commandFamily === command.commandFamily);
+            if (familySummary === undefined) {
+                familySummary = {
+                    commandFamily: command.commandFamily,
+                    count: 0,
+                    firstCommandName: command.name,
+                    lastCommandName: command.name,
+                    firstIndex: command.index,
+                    lastIndex: command.index,
+                    firstOffsetHex: command.offsetHex,
+                    lastOffsetHex: command.offsetHex,
+                    reqDyldCount: 0,
+                    pathCount: 0,
+                    versionedCount: 0,
+                    dataRangeCount: 0,
+                };
+                commandFamilies.push(familySummary);
+            }
+            familySummary.count += 1;
+            familySummary.lastCommandName = command.name;
+            familySummary.lastIndex = command.index;
+            familySummary.lastOffsetHex = command.offsetHex;
+            if (command.isReqDyld) {
+                familySummary.reqDyldCount += 1;
+            }
+            if (command.hasPath) {
+                familySummary.pathCount += 1;
+            }
+            if (command.hasCurrentVersion || command.hasVersion || command.hasMinOs) {
+                familySummary.versionedCount += 1;
+            }
+            if (command.hasDataRange) {
+                familySummary.dataRangeCount += 1;
+            }
         }
+        const segmentCommandCount = commands.filter((command) => command.commandFamily === 'segment').length;
+        const dylibCommandCount = commands.filter((command) => command.commandFamily === 'dylib').length;
+        const dylinkerCommandCount = commands.filter((command) => command.commandFamily === 'dylinker').length;
+        const rpathCommandCount = commands.filter((command) => command.commandFamily === 'rpath').length;
+        const dyldInfoCommandCount = commands.filter((command) => command.commandFamily === 'dyld-info').length;
+        const versionCommandCount = commands.filter((command) => command.commandFamily === 'version').length;
+        const entryPointCommandCount = commands.filter((command) => command.commandFamily === 'entry-point').length;
+        const encryptionCommandCount = commands.filter((command) => command.commandFamily === 'encryption').length;
+        const uuidCommandCount = commands.filter((command) => command.commandFamily === 'uuid').length;
+        const linkeditDataCommandCount = commands.filter((command) => command.commandFamily === 'linkedit-data').length;
         return {
             kind: 'native.load_commands',
             moduleName,
@@ -7979,8 +8224,32 @@ function handleSpecResult(spec) {
             hasReqDyldCommands: reqDyldCommands.length !== 0,
             detailedCommandCount: detailedCommands.length,
             hasDetailedCommands: detailedCommands.length !== 0,
+            pathCommandCount: pathCommands.length,
+            hasPathCommands: pathCommands.length !== 0,
+            tokenPathCommandCount: tokenPathCommands.length,
+            hasTokenPathCommands: tokenPathCommands.length !== 0,
+            versionedCommandCount: versionedCommands.length,
+            hasVersionedCommands: versionedCommands.length !== 0,
+            timestampedCommandCount: timestampedCommands.length,
+            hasTimestampedCommands: timestampedCommands.length !== 0,
+            dataRangeCommandCount: dataRangeCommands.length,
+            hasDataRangeCommands: dataRangeCommands.length !== 0,
+            dyldRegionCommandCount: dyldRegionCommands.length,
+            hasDyldRegionCommands: dyldRegionCommands.length !== 0,
+            uniqueCommandFamilyCount: commandFamilies.length,
+            segmentCommandCount,
+            dylibCommandCount,
+            dylinkerCommandCount,
+            rpathCommandCount,
+            dyldInfoCommandCount,
+            versionCommandCount,
+            entryPointCommandCount,
+            encryptionCommandCount,
+            uuidCommandCount,
+            linkeditDataCommandCount,
             uniqueCommandNameCount: commandKinds.length,
             hasDuplicateCommandNames: commandKinds.some((item) => item.count > 1),
+            commandFamilies,
             commandNames,
             commandKinds: commandKinds.map((summary) => ({
                 name: summary.name,
@@ -8017,6 +8286,25 @@ function handleSpecResult(spec) {
             resolvedOffsetHex: normalized === null ? null : normalized.offsetHex,
             resolvedEndOffsetHex: normalized === null ? null : normalized.endOffsetHex,
             resolvedDetail: normalized === null ? null : normalized.detail,
+            resolvedCommandFamily: normalized === null ? null : normalized.commandFamily,
+            resolvedPath: normalized === null ? null : normalized.path,
+            resolvedPathKind: normalized === null ? null : normalized.pathKind,
+            resolvedCurrentVersion: normalized === null ? null : normalized.currentVersion,
+            resolvedCompatibilityVersion: normalized === null ? null : normalized.compatibilityVersion,
+            resolvedTimestamp: normalized === null ? null : normalized.timestamp,
+            resolvedVersion: normalized === null ? null : normalized.version,
+            resolvedMinOs: normalized === null ? null : normalized.minOs,
+            resolvedSdk: normalized === null ? null : normalized.sdk,
+            resolvedPlatform: normalized === null ? null : normalized.platform,
+            resolvedUuid: normalized === null ? null : normalized.uuid,
+            resolvedDataoffHex: normalized === null ? null : normalized.dataoffHex,
+            resolvedDatasizeHex: normalized === null ? null : normalized.datasizeHex,
+            resolvedDataEndHex: normalized === null ? null : normalized.dataEndHex,
+            resolvedEntryoffHex: normalized === null ? null : normalized.entryoffHex,
+            resolvedStacksizeHex: normalized === null ? null : normalized.stacksizeHex,
+            resolvedCryptoffHex: normalized === null ? null : normalized.cryptoffHex,
+            resolvedCryptsizeHex: normalized === null ? null : normalized.cryptsizeHex,
+            resolvedCryptid: normalized === null ? null : normalized.cryptid,
             name: normalized === null ? null : normalized.name,
             index: normalized === null ? null : normalized.index,
             moduleBase: normalized === null ? null : normalized.moduleBase,
@@ -8025,9 +8313,54 @@ function handleSpecResult(spec) {
             offsetHex: normalized === null ? null : normalized.offsetHex,
             endOffsetHex: normalized === null ? null : normalized.endOffsetHex,
             detail: normalized === null ? null : normalized.detail,
+            commandFamily: normalized === null ? null : normalized.commandFamily,
+            path: normalized === null ? null : normalized.path,
+            pathKind: normalized === null ? null : normalized.pathKind,
+            currentVersion: normalized === null ? null : normalized.currentVersion,
+            compatibilityVersion: normalized === null ? null : normalized.compatibilityVersion,
+            timestamp: normalized === null ? null : normalized.timestamp,
+            version: normalized === null ? null : normalized.version,
+            minOs: normalized === null ? null : normalized.minOs,
+            sdk: normalized === null ? null : normalized.sdk,
+            platform: normalized === null ? null : normalized.platform,
+            tools: normalized === null ? [] : normalized.tools,
+            uuid: normalized === null ? null : normalized.uuid,
+            dataoffHex: normalized === null ? null : normalized.dataoffHex,
+            datasizeHex: normalized === null ? null : normalized.datasizeHex,
+            dataEndHex: normalized === null ? null : normalized.dataEndHex,
+            entryoffHex: normalized === null ? null : normalized.entryoffHex,
+            stacksizeHex: normalized === null ? null : normalized.stacksizeHex,
+            cryptoffHex: normalized === null ? null : normalized.cryptoffHex,
+            cryptsizeHex: normalized === null ? null : normalized.cryptsizeHex,
+            cryptid: normalized === null ? null : normalized.cryptid,
             isReqDyld: normalized !== null && normalized.isReqDyld === true,
             hasPayload: normalized !== null && normalized.hasPayload === true,
             hasDetail: normalized !== null && normalized.hasDetail === true,
+            hasPath: normalized !== null && normalized.hasPath === true,
+            isTokenPath: normalized !== null && normalized.isTokenPath === true,
+            usesLoaderPath: normalized !== null && normalized.usesLoaderPath === true,
+            usesExecutablePath: normalized !== null && normalized.usesExecutablePath === true,
+            usesRpathToken: normalized !== null && normalized.usesRpathToken === true,
+            hasCurrentVersion: normalized !== null && normalized.hasCurrentVersion === true,
+            hasCompatibilityVersion: normalized !== null && normalized.hasCompatibilityVersion === true,
+            hasTimestamp: normalized !== null && normalized.hasTimestamp === true,
+            versionMismatch: normalized !== null && normalized.versionMismatch === true,
+            hasVersion: normalized !== null && normalized.hasVersion === true,
+            hasMinOs: normalized !== null && normalized.hasMinOs === true,
+            hasSdk: normalized !== null && normalized.hasSdk === true,
+            hasTools: normalized !== null && normalized.hasTools === true,
+            toolCount: normalized === null ? 0 : normalized.toolCount,
+            uniqueToolCount: normalized === null ? 0 : normalized.uniqueToolCount,
+            hasUuid: normalized !== null && normalized.hasUuid === true,
+            uuidLength: normalized === null ? 0 : normalized.uuidLength,
+            hasDataRange: normalized !== null && normalized.hasDataRange === true,
+            hasEntryPoint: normalized !== null && normalized.hasEntryPoint === true,
+            hasEncryptedRange: normalized !== null && normalized.hasEncryptedRange === true,
+            hasDyldRegions: normalized !== null && normalized.hasDyldRegions === true,
+            dyldRegionCount: normalized === null ? 0 : normalized.dyldRegionCount,
+            nonEmptyDyldRegionCount: normalized === null ? 0 : normalized.nonEmptyDyldRegionCount,
+            nonEmptyDyldRegionNames: normalized === null ? [] : normalized.nonEmptyDyldRegionNames,
+            dyldRegions: normalized === null ? [] : normalized.dyldRegions,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }

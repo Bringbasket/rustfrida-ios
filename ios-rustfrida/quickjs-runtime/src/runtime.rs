@@ -4123,76 +4123,140 @@ undefined;
                     .eval(
                         r#"(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: 'libsystem_malloc.dylib' });
-                            if (!(result.kind === 'native.load_commands'
-                                && result.moduleName === 'libsystem_malloc.dylib'
-                                && result.count === result.commands.length
-                                && typeof result.hasCommands === 'boolean'
-                                && (result.firstCommandIndex === null || typeof result.firstCommandIndex === 'number')
-                                && (result.lastCommandIndex === null || typeof result.lastCommandIndex === 'number')
-                                && (result.firstCommandOffsetHex === null || typeof result.firstCommandOffsetHex === 'string')
-                                && (result.lastCommandOffsetHex === null || typeof result.lastCommandOffsetHex === 'string')
-                                && typeof result.totalCommandSizeHex === 'string'
-                                && typeof result.averageCommandSize === 'number'
-                                && (result.largestCommandName === null || typeof result.largestCommandName === 'string')
-                                && (result.largestCommandSize === null || typeof result.largestCommandSize === 'number')
-                                && (result.largestCommandIndex === null || typeof result.largestCommandIndex === 'number')
-                                && (result.smallestCommandName === null || typeof result.smallestCommandName === 'string')
-                                && (result.smallestCommandSize === null || typeof result.smallestCommandSize === 'number')
-                                && (result.smallestCommandIndex === null || typeof result.smallestCommandIndex === 'number')
-                                && typeof result.reqDyldCommandCount === 'number'
-                                && typeof result.hasReqDyldCommands === 'boolean'
-                                && typeof result.detailedCommandCount === 'number'
-                                && typeof result.hasDetailedCommands === 'boolean'
-                                && typeof result.uniqueCommandNameCount === 'number'
-                                && typeof result.hasDuplicateCommandNames === 'boolean'
-                                && Array.isArray(result.commandNames)
-                                && Array.isArray(result.commandKinds))) {
+                            if (result.kind !== 'native.load_commands' || result.moduleName !== 'libsystem_malloc.dylib') {
+                                return false;
+                            }
+                            if (result.count !== result.commands.length || typeof result.hasCommands !== 'boolean') {
+                                return false;
+                            }
+                            if ((result.firstCommandIndex !== null && typeof result.firstCommandIndex !== 'number')
+                                    || (result.lastCommandIndex !== null && typeof result.lastCommandIndex !== 'number')
+                                    || (result.firstCommandOffsetHex !== null && typeof result.firstCommandOffsetHex !== 'string')
+                                    || (result.lastCommandOffsetHex !== null && typeof result.lastCommandOffsetHex !== 'string')) {
+                                return false;
+                            }
+                            if (typeof result.totalCommandSizeHex !== 'string'
+                                    || typeof result.averageCommandSize !== 'number'
+                                    || (result.largestCommandName !== null && typeof result.largestCommandName !== 'string')
+                                    || (result.largestCommandSize !== null && typeof result.largestCommandSize !== 'number')
+                                    || (result.largestCommandIndex !== null && typeof result.largestCommandIndex !== 'number')
+                                    || (result.smallestCommandName !== null && typeof result.smallestCommandName !== 'string')
+                                    || (result.smallestCommandSize !== null && typeof result.smallestCommandSize !== 'number')
+                                    || (result.smallestCommandIndex !== null && typeof result.smallestCommandIndex !== 'number')) {
+                                return false;
+                            }
+                            if (typeof result.reqDyldCommandCount !== 'number'
+                                    || typeof result.hasReqDyldCommands !== 'boolean'
+                                    || typeof result.detailedCommandCount !== 'number'
+                                    || typeof result.hasDetailedCommands !== 'boolean'
+                                    || typeof result.pathCommandCount !== 'number'
+                                    || typeof result.hasPathCommands !== 'boolean'
+                                    || typeof result.tokenPathCommandCount !== 'number'
+                                    || typeof result.hasTokenPathCommands !== 'boolean'
+                                    || typeof result.versionedCommandCount !== 'number'
+                                    || typeof result.hasVersionedCommands !== 'boolean'
+                                    || typeof result.timestampedCommandCount !== 'number'
+                                    || typeof result.hasTimestampedCommands !== 'boolean'
+                                    || typeof result.dataRangeCommandCount !== 'number'
+                                    || typeof result.hasDataRangeCommands !== 'boolean'
+                                    || typeof result.dyldRegionCommandCount !== 'number'
+                                    || typeof result.hasDyldRegionCommands !== 'boolean'
+                                    || typeof result.uniqueCommandFamilyCount !== 'number'
+                                    || typeof result.segmentCommandCount !== 'number'
+                                    || typeof result.dylibCommandCount !== 'number'
+                                    || typeof result.dylinkerCommandCount !== 'number'
+                                    || typeof result.rpathCommandCount !== 'number'
+                                    || typeof result.dyldInfoCommandCount !== 'number'
+                                    || typeof result.versionCommandCount !== 'number'
+                                    || typeof result.entryPointCommandCount !== 'number'
+                                    || typeof result.encryptionCommandCount !== 'number'
+                                    || typeof result.uuidCommandCount !== 'number'
+                                    || typeof result.linkeditDataCommandCount !== 'number'
+                                    || typeof result.uniqueCommandNameCount !== 'number'
+                                    || typeof result.hasDuplicateCommandNames !== 'boolean'
+                                    || !Array.isArray(result.commandFamilies)
+                                    || !Array.isArray(result.commandNames)
+                                    || !Array.isArray(result.commandKinds)) {
                                 return false;
                             }
                             if (result.commands.length === 0) {
                                 return result.hasCommands === false && result.firstCommandName === null && result.lastCommandName === null;
                             }
-                            if (!(result.hasCommands === true
-                                && typeof result.firstCommandName === 'string'
-                                && typeof result.lastCommandName === 'string')) {
+                            if (result.hasCommands !== true
+                                    || typeof result.firstCommandName !== 'string'
+                                    || typeof result.lastCommandName !== 'string') {
                                 return false;
                             }
                             const command = result.commands[0];
-                            if (!(typeof command.name === 'string'
-                                && typeof command.hasName === 'boolean'
-                                && typeof command.cmdHex === 'string'
-                                && typeof command.cmdBaseHex === 'string'
-                                && typeof command.isReqDyld === 'boolean'
-                                && typeof command.cmdsize === 'number'
-                                && typeof command.hasPayload === 'boolean'
-                                && typeof command.offsetHex === 'string'
-                                && typeof command.endOffsetHex === 'string'
-                                && typeof command.hasDetail === 'boolean')) {
+                            if (typeof command.name !== 'string'
+                                    || typeof command.hasName !== 'boolean'
+                                    || typeof command.commandFamily !== 'string'
+                                    || typeof command.cmdHex !== 'string'
+                                    || typeof command.cmdBaseHex !== 'string'
+                                    || typeof command.isReqDyld !== 'boolean'
+                                    || typeof command.cmdsize !== 'number'
+                                    || typeof command.hasPayload !== 'boolean'
+                                    || typeof command.offsetHex !== 'string'
+                                    || typeof command.endOffsetHex !== 'string'
+                                    || typeof command.hasDetail !== 'boolean'
+                                    || typeof command.hasPath !== 'boolean'
+                                    || typeof command.hasCurrentVersion !== 'boolean'
+                                    || typeof command.hasVersion !== 'boolean'
+                                    || typeof command.hasMinOs !== 'boolean'
+                                    || typeof command.hasSdk !== 'boolean'
+                                    || typeof command.hasTools !== 'boolean'
+                                    || typeof command.hasUuid !== 'boolean'
+                                    || typeof command.hasDataRange !== 'boolean'
+                                    || typeof command.hasEntryPoint !== 'boolean'
+                                    || typeof command.hasEncryptedRange !== 'boolean'
+                                    || typeof command.hasDyldRegions !== 'boolean'
+                                    || typeof command.dyldRegionCount !== 'number'
+                                    || typeof command.nonEmptyDyldRegionCount !== 'number'
+                                    || !Array.isArray(command.nonEmptyDyldRegionNames)
+                                    || !Array.isArray(command.dyldRegions)
+                                    || !Array.isArray(command.tools)) {
                                 return false;
+                            }
+                            if (result.commandFamilies.length !== 0) {
+                                const family = result.commandFamilies[0];
+                                if (typeof family.commandFamily !== 'string'
+                                        || typeof family.count !== 'number'
+                                        || typeof family.firstCommandName !== 'string'
+                                        || typeof family.lastCommandName !== 'string'
+                                        || typeof family.firstIndex !== 'number'
+                                        || typeof family.lastIndex !== 'number'
+                                        || typeof family.firstOffsetHex !== 'string'
+                                        || typeof family.lastOffsetHex !== 'string'
+                                        || typeof family.reqDyldCount !== 'number'
+                                        || typeof family.pathCount !== 'number'
+                                        || typeof family.versionedCount !== 'number'
+                                        || typeof family.dataRangeCount !== 'number') {
+                                    return false;
+                                }
                             }
                             if (result.commandKinds.length !== 0) {
                                 const kind = result.commandKinds[0];
-                                if (!(typeof kind.name === 'string'
-                                    && typeof kind.count === 'number'
-                                    && typeof kind.firstIndex === 'number'
-                                    && typeof kind.lastIndex === 'number'
-                                    && typeof kind.firstOffsetHex === 'string'
-                                    && typeof kind.lastOffsetHex === 'string'
-                                    && typeof kind.hasDetail === 'boolean'
-                                    && typeof kind.reqDyldCount === 'number')) {
+                                if (typeof kind.name !== 'string'
+                                        || typeof kind.count !== 'number'
+                                        || typeof kind.firstIndex !== 'number'
+                                        || typeof kind.lastIndex !== 'number'
+                                        || typeof kind.firstOffsetHex !== 'string'
+                                        || typeof kind.lastOffsetHex !== 'string'
+                                        || typeof kind.hasDetail !== 'boolean'
+                                        || typeof kind.reqDyldCount !== 'number') {
                                     return false;
                                 }
                             }
                             if (result.commandNames.length !== 0) {
                                 const commandName = result.commandNames[0];
-                                if (!(typeof commandName.commandName === 'string'
-                                    && typeof commandName.count === 'number'
-                                    && typeof commandName.firstIndex === 'number'
-                                    && typeof commandName.lastIndex === 'number'
-                                    && typeof commandName.firstOffsetHex === 'string'
-                                    && typeof commandName.lastOffsetHex === 'string'
-                                    && typeof commandName.hasDetail === 'boolean'
-                                    && typeof commandName.reqDyldCount === 'number')) {
+                                if (typeof commandName.commandName !== 'string'
+                                        || typeof commandName.count !== 'number'
+                                        || typeof commandName.firstIndex !== 'number'
+                                        || typeof commandName.lastIndex !== 'number'
+                                        || typeof commandName.firstOffsetHex !== 'string'
+                                        || typeof commandName.lastOffsetHex !== 'string'
+                                        || typeof commandName.hasDetail !== 'boolean'
+                                        || typeof commandName.reqDyldCount !== 'number') {
                                     return false;
                                 }
                             }
@@ -4205,9 +4269,86 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }); return result.kind === 'native.load_command_info' && result.moduleName === 'libsystem_malloc.dylib' && result.commandOrIndex === 'LC_UUID' && typeof result.hasLoadCommandInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.isReqDyld === 'boolean' && typeof result.hasPayload === 'boolean' && typeof result.hasDetail === 'boolean' && ((result.loadCommandInfo === null && result.hasLoadCommandInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedIndex === null && result.resolvedModuleName === null && result.name === null && result.index === null && result.moduleBase === null && result.cmdHex === null && result.cmdBaseHex === null && result.offsetHex === null && result.endOffsetHex === null && result.detail === null && result.isReqDyld === false && result.hasPayload === false && result.hasDetail === false && result.text === '<null>') || (typeof result.loadCommandInfo.moduleBase === 'string' && typeof result.loadCommandInfo.name === 'string' && typeof result.loadCommandInfo.cmdHex === 'string' && result.hasLoadCommandInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedIndex === 'number' && typeof result.resolvedModuleName === 'string' && typeof result.name === 'string' && typeof result.index === 'number' && typeof result.moduleBase === 'string' && typeof result.cmdHex === 'string' && typeof result.cmdBaseHex === 'string' && typeof result.offsetHex === 'string' && typeof result.endOffsetHex === 'string' && (result.detail === null || typeof result.detail === 'string') && result.resolvedName === result.loadCommandInfo.name && result.resolvedIndex === result.loadCommandInfo.index && result.resolvedModuleName === result.loadCommandInfo.moduleName && result.name === result.loadCommandInfo.name && result.index === result.loadCommandInfo.index && result.moduleBase === result.loadCommandInfo.moduleBase && result.cmdHex === result.loadCommandInfo.cmdHex && result.cmdBaseHex === result.loadCommandInfo.cmdBaseHex && result.offsetHex === result.loadCommandInfo.offsetHex && result.endOffsetHex === result.loadCommandInfo.endOffsetHex && result.detail === result.loadCommandInfo.detail && result.isReqDyld === (result.loadCommandInfo.isReqDyld === true) && result.hasPayload === (result.loadCommandInfo.hasPayload === true) && result.hasDetail === (result.loadCommandInfo.hasDetail === true) && result.text === result.loadCommandInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }); return result.kind === 'native.load_command_info' && result.moduleName === 'libsystem_malloc.dylib' && result.commandOrIndex === 'LC_UUID' && typeof result.hasLoadCommandInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.isReqDyld === 'boolean' && typeof result.hasPayload === 'boolean' && typeof result.hasDetail === 'boolean' && typeof result.hasPath === 'boolean' && typeof result.hasCurrentVersion === 'boolean' && typeof result.hasCompatibilityVersion === 'boolean' && typeof result.hasTimestamp === 'boolean' && typeof result.versionMismatch === 'boolean' && typeof result.hasVersion === 'boolean' && typeof result.hasMinOs === 'boolean' && typeof result.hasSdk === 'boolean' && typeof result.hasTools === 'boolean' && typeof result.toolCount === 'number' && typeof result.uniqueToolCount === 'number' && typeof result.hasUuid === 'boolean' && typeof result.uuidLength === 'number' && typeof result.hasDataRange === 'boolean' && typeof result.hasEntryPoint === 'boolean' && typeof result.hasEncryptedRange === 'boolean' && typeof result.hasDyldRegions === 'boolean' && typeof result.dyldRegionCount === 'number' && typeof result.nonEmptyDyldRegionCount === 'number' && Array.isArray(result.nonEmptyDyldRegionNames) && Array.isArray(result.dyldRegions) && Array.isArray(result.tools) && ((result.loadCommandInfo === null && result.hasLoadCommandInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedIndex === null && result.resolvedModuleName === null && result.name === null && result.index === null && result.moduleBase === null && result.cmdHex === null && result.cmdBaseHex === null && result.offsetHex === null && result.endOffsetHex === null && result.detail === null && result.commandFamily === null && result.path === null && result.pathKind === null && result.currentVersion === null && result.compatibilityVersion === null && result.timestamp === null && result.version === null && result.minOs === null && result.sdk === null && result.platform === null && result.uuid === null && result.dataoffHex === null && result.datasizeHex === null && result.dataEndHex === null && result.entryoffHex === null && result.stacksizeHex === null && result.cryptoffHex === null && result.cryptsizeHex === null && result.cryptid === null && result.isReqDyld === false && result.hasPayload === false && result.hasDetail === false && result.text === '<null>') || (typeof result.loadCommandInfo.moduleBase === 'string' && typeof result.loadCommandInfo.name === 'string' && typeof result.loadCommandInfo.commandFamily === 'string' && typeof result.loadCommandInfo.cmdHex === 'string' && result.hasLoadCommandInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedIndex === 'number' && typeof result.resolvedModuleName === 'string' && typeof result.name === 'string' && typeof result.index === 'number' && typeof result.moduleBase === 'string' && typeof result.cmdHex === 'string' && typeof result.cmdBaseHex === 'string' && typeof result.offsetHex === 'string' && typeof result.endOffsetHex === 'string' && (result.detail === null || typeof result.detail === 'string') && result.resolvedName === result.loadCommandInfo.name && result.resolvedIndex === result.loadCommandInfo.index && result.resolvedModuleName === result.loadCommandInfo.moduleName && result.name === result.loadCommandInfo.name && result.index === result.loadCommandInfo.index && result.moduleBase === result.loadCommandInfo.moduleBase && result.cmdHex === result.loadCommandInfo.cmdHex && result.cmdBaseHex === result.loadCommandInfo.cmdBaseHex && result.offsetHex === result.loadCommandInfo.offsetHex && result.endOffsetHex === result.loadCommandInfo.endOffsetHex && result.detail === result.loadCommandInfo.detail && result.commandFamily === result.loadCommandInfo.commandFamily && result.path === result.loadCommandInfo.path && result.pathKind === result.loadCommandInfo.pathKind && result.currentVersion === result.loadCommandInfo.currentVersion && result.compatibilityVersion === result.loadCommandInfo.compatibilityVersion && result.timestamp === result.loadCommandInfo.timestamp && result.version === result.loadCommandInfo.version && result.minOs === result.loadCommandInfo.minOs && result.sdk === result.loadCommandInfo.sdk && result.platform === result.loadCommandInfo.platform && result.uuid === result.loadCommandInfo.uuid && result.dataoffHex === result.loadCommandInfo.dataoffHex && result.datasizeHex === result.loadCommandInfo.datasizeHex && result.dataEndHex === result.loadCommandInfo.dataEndHex && result.entryoffHex === result.loadCommandInfo.entryoffHex && result.stacksizeHex === result.loadCommandInfo.stacksizeHex && result.cryptoffHex === result.loadCommandInfo.cryptoffHex && result.cryptsizeHex === result.loadCommandInfo.cryptsizeHex && result.cryptid === result.loadCommandInfo.cryptid && result.isReqDyld === (result.loadCommandInfo.isReqDyld === true) && result.hasPayload === (result.loadCommandInfo.hasPayload === true) && result.hasDetail === (result.loadCommandInfo.hasDetail === true) && result.hasPath === (result.loadCommandInfo.hasPath === true) && result.hasCurrentVersion === (result.loadCommandInfo.hasCurrentVersion === true) && result.hasCompatibilityVersion === (result.loadCommandInfo.hasCompatibilityVersion === true) && result.hasTimestamp === (result.loadCommandInfo.hasTimestamp === true) && result.versionMismatch === (result.loadCommandInfo.versionMismatch === true) && result.hasVersion === (result.loadCommandInfo.hasVersion === true) && result.hasMinOs === (result.loadCommandInfo.hasMinOs === true) && result.hasSdk === (result.loadCommandInfo.hasSdk === true) && result.hasTools === (result.loadCommandInfo.hasTools === true) && result.toolCount === result.loadCommandInfo.toolCount && result.uniqueToolCount === result.loadCommandInfo.uniqueToolCount && JSON.stringify(result.tools) === JSON.stringify(result.loadCommandInfo.tools) && result.hasUuid === (result.loadCommandInfo.hasUuid === true) && result.uuidLength === result.loadCommandInfo.uuidLength && result.hasDataRange === (result.loadCommandInfo.hasDataRange === true) && result.hasEntryPoint === (result.loadCommandInfo.hasEntryPoint === true) && result.hasEncryptedRange === (result.loadCommandInfo.hasEncryptedRange === true) && result.hasDyldRegions === (result.loadCommandInfo.hasDyldRegions === true) && result.dyldRegionCount === result.loadCommandInfo.dyldRegionCount && result.nonEmptyDyldRegionCount === result.loadCommandInfo.nonEmptyDyldRegionCount && JSON.stringify(result.nonEmptyDyldRegionNames) === JSON.stringify(result.loadCommandInfo.nonEmptyDyldRegionNames) && JSON.stringify(result.dyldRegions) === JSON.stringify(result.loadCommandInfo.dyldRegions) && result.text === result.loadCommandInfo.text)); })()"
                     )
                     .expect("agent native loadCommandInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Native.loadCommands;
+                            Native.loadCommands = function() {
+                                return [
+                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 0, name: 'LC_LOAD_DYLIB', cmd: 0xcn, cmdsize: 56, offset: 0x100n, detail: 'name=@rpath/DemoKit.framework/DemoKit current=1.2.3 compat=1.0.0 timestamp=7' },
+                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 1, name: 'LC_RPATH', cmd: 0x1cn, cmdsize: 32, offset: 0x138n, detail: 'path=@loader_path/Frameworks' },
+                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 2, name: 'LC_DYLD_INFO_ONLY', cmd: 0x80000023n, cmdsize: 48, offset: 0x158n, detail: 'rebase=0x1000/0x20 bind=0x1020/0x10 weak=0x1030/0x0 lazy=0x1030/0x8 export=0x1038/0x18' },
+                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 3, name: 'LC_BUILD_VERSION', cmd: 0x33n, cmdsize: 32, offset: 0x188n, detail: 'platform=ios minos=15.0.0 sdk=17.0.0 tools=clang:15.0.0,swift:5.9.0' },
+                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 4, name: 'LC_DYLD_EXPORTS_TRIE', cmd: 0x34n, cmdsize: 16, offset: 0x1a8n, detail: 'dataoff=0x2000 datasize=0x180' },
+                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 5, name: 'LC_UUID', cmd: 0x1bn, cmdsize: 24, offset: 0x1b8n, detail: 'uuid=12345678-1234-1234-1234-1234567890ab' },
+                                ];
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: 'Demo' });
+                                return result.count === 6
+                                    && result.uniqueCommandFamilyCount === 6
+                                    && result.dylibCommandCount === 1
+                                    && result.rpathCommandCount === 1
+                                    && result.dyldInfoCommandCount === 1
+                                    && result.versionCommandCount === 1
+                                    && result.linkeditDataCommandCount === 1
+                                    && result.uuidCommandCount === 1
+                                    && result.pathCommandCount === 2
+                                    && result.tokenPathCommandCount === 2
+                                    && result.versionedCommandCount === 2
+                                    && result.timestampedCommandCount === 1
+                                    && result.dataRangeCommandCount === 1
+                                    && result.dyldRegionCommandCount === 1
+                                    && Array.isArray(result.commandFamilies)
+                                    && result.commandFamilies.some((entry) => entry.commandFamily === 'dylib' && entry.count === 1 && entry.pathCount === 1 && entry.versionedCount === 1)
+                                    && result.commandFamilies.some((entry) => entry.commandFamily === 'dyld-info' && entry.count === 1 && entry.reqDyldCount === 1)
+                                    && result.commands.some((entry) => entry.name === 'LC_LOAD_DYLIB' && entry.pathKind === 'rpath' && entry.hasCurrentVersion === true && entry.timestamp === 7)
+                                    && result.commands.some((entry) => entry.name === 'LC_RPATH' && entry.usesLoaderPath === true)
+                                    && result.commands.some((entry) => entry.name === 'LC_DYLD_INFO_ONLY' && entry.hasDyldRegions === true && entry.dyldRegionCount === 5 && entry.nonEmptyDyldRegionCount === 4)
+                                    && result.commands.some((entry) => entry.name === 'LC_BUILD_VERSION' && entry.platform === 'ios' && entry.minOs === '15.0.0' && entry.sdk === '17.0.0' && entry.toolCount === 2)
+                                    && result.commands.some((entry) => entry.name === 'LC_DYLD_EXPORTS_TRIE' && entry.hasDataRange === true && entry.dataEndHex === '0x2180')
+                                    && result.commands.some((entry) => entry.name === 'LC_UUID' && entry.hasUuid === true && entry.uuidLength === 36);
+                            } finally {
+                                Native.loadCommands = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic native load commands semantics"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return { moduleName: 'Demo', moduleBase: 0x180000000n, index: 2, name: 'LC_DYLD_INFO_ONLY', cmd: 0x80000023n, cmdsize: 48, offset: 0x158n, detail: 'rebase=0x1000/0x20 bind=0x1020/0x10 weak=0x1030/0x0 lazy=0x1030/0x8 export=0x1038/0x18' };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'Demo', commandOrIndex: 'LC_DYLD_INFO_ONLY' });
+                                return result.loadCommandInfo !== null
+                                    && result.commandFamily === 'dyld-info'
+                                    && result.hasDyldRegions === true
+                                    && result.dyldRegionCount === 5
+                                    && result.nonEmptyDyldRegionCount === 4
+                                    && Array.isArray(result.nonEmptyDyldRegionNames)
+                                    && result.nonEmptyDyldRegionNames.join(',') === 'rebase,bind,lazyBind,export'
+                                    && Array.isArray(result.dyldRegions)
+                                    && result.dyldRegions.some((entry) => entry.name === 'export' && entry.endHex === '0x1050' && entry.hasData === true)
+                                    && result.loadCommandInfo.commandFamily === 'dyld-info'
+                                    && result.loadCommandInfo.hasDyldRegions === true;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic native loadCommandInfo semantics"),
                 "true"
             );
             assert_eq!(
@@ -5299,6 +5440,25 @@ undefined;
                                     && result.resolvedOffsetHex === info.offsetHex
                                     && result.resolvedEndOffsetHex === info.endOffsetHex
                                     && result.resolvedDetail === info.detail
+                                    && result.resolvedCommandFamily === info.commandFamily
+                                    && result.resolvedPath === info.path
+                                    && result.resolvedPathKind === info.pathKind
+                                    && result.resolvedCurrentVersion === info.currentVersion
+                                    && result.resolvedCompatibilityVersion === info.compatibilityVersion
+                                    && result.resolvedTimestamp === info.timestamp
+                                    && result.resolvedVersion === info.version
+                                    && result.resolvedMinOs === info.minOs
+                                    && result.resolvedSdk === info.sdk
+                                    && result.resolvedPlatform === info.platform
+                                    && result.resolvedUuid === info.uuid
+                                    && result.resolvedDataoffHex === info.dataoffHex
+                                    && result.resolvedDatasizeHex === info.datasizeHex
+                                    && result.resolvedDataEndHex === info.dataEndHex
+                                    && result.resolvedEntryoffHex === info.entryoffHex
+                                    && result.resolvedStacksizeHex === info.stacksizeHex
+                                    && result.resolvedCryptoffHex === info.cryptoffHex
+                                    && result.resolvedCryptsizeHex === info.cryptsizeHex
+                                    && result.resolvedCryptid === info.cryptid
                                     && result.name === info.name
                                     && result.index === info.index
                                     && result.moduleBase === info.moduleBase
@@ -5306,7 +5466,29 @@ undefined;
                                     && result.cmdBaseHex === info.cmdBaseHex
                                     && result.offsetHex === info.offsetHex
                                     && result.endOffsetHex === info.endOffsetHex
-                                    && result.detail === info.detail;
+                                    && result.detail === info.detail
+                                    && result.commandFamily === info.commandFamily
+                                    && result.path === info.path
+                                    && result.pathKind === info.pathKind
+                                    && result.currentVersion === info.currentVersion
+                                    && result.compatibilityVersion === info.compatibilityVersion
+                                    && result.timestamp === info.timestamp
+                                    && result.version === info.version
+                                    && result.minOs === info.minOs
+                                    && result.sdk === info.sdk
+                                    && result.platform === info.platform
+                                    && JSON.stringify(result.tools) === JSON.stringify(info.tools)
+                                    && result.uuid === info.uuid
+                                    && result.dataoffHex === info.dataoffHex
+                                    && result.datasizeHex === info.datasizeHex
+                                    && result.dataEndHex === info.dataEndHex
+                                    && result.entryoffHex === info.entryoffHex
+                                    && result.stacksizeHex === info.stacksizeHex
+                                    && result.cryptoffHex === info.cryptoffHex
+                                    && result.cryptsizeHex === info.cryptsizeHex
+                                    && result.cryptid === info.cryptid
+                                    && JSON.stringify(result.nonEmptyDyldRegionNames) === JSON.stringify(info.nonEmptyDyldRegionNames)
+                                    && JSON.stringify(result.dyldRegions) === JSON.stringify(info.dyldRegions);
                             }
 
                             return checkImageInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image_info', moduleName: 'libsystem_malloc.dylib' }))
