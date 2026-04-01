@@ -4903,22 +4903,35 @@ undefined;
                                     && starts.dataoffHex === null
                                     && starts.resolvedDatasizeHex === null
                                     && starts.datasizeHex === null
+                                    && starts.resolvedLinkeditBase === null
                                     && starts.linkeditBase === null
                                     && starts.resolvedDataAddress === null
                                     && starts.dataAddress === null
                                     && starts.resolvedDataEnd === null
                                     && starts.dataEnd === null
+                                    && starts.resolvedFirstStartOffsetHex === null
                                     && starts.firstStartOffsetHex === null
+                                    && starts.resolvedFirstStartAddress === null
                                     && starts.firstStartAddress === null
+                                    && starts.resolvedLastStartOffsetHex === null
                                     && starts.lastStartOffsetHex === null
+                                    && starts.resolvedLastStartAddress === null
                                     && starts.lastStartAddress === null
+                                    && starts.resolvedFirstGapHex === null
                                     && starts.firstGapHex === null
+                                    && starts.resolvedLastGapHex === null
                                     && starts.lastGapHex === null
+                                    && starts.resolvedFirstGapFromOffsetHex === null
                                     && starts.firstGapFromOffsetHex === null
+                                    && starts.resolvedFirstGapToOffsetHex === null
                                     && starts.firstGapToOffsetHex === null
+                                    && starts.resolvedLastGapFromOffsetHex === null
                                     && starts.lastGapFromOffsetHex === null
+                                    && starts.resolvedLastGapToOffsetHex === null
                                     && starts.lastGapToOffsetHex === null
+                                    && starts.resolvedTotalSpanHex === null
                                     && starts.totalSpanHex === null
+                                    && starts.resolvedLargestGapHex === null
                                     && starts.largestGapHex === null)) {
                                     return false;
                                 }
@@ -4929,22 +4942,35 @@ undefined;
                                 && starts.dataoffHex === starts.functionStarts.dataoffHex
                                 && starts.resolvedDatasizeHex === starts.functionStarts.datasizeHex
                                 && starts.datasizeHex === starts.functionStarts.datasizeHex
+                                && starts.resolvedLinkeditBase === starts.functionStarts.linkeditBase
                                 && starts.linkeditBase === starts.functionStarts.linkeditBase
                                 && starts.resolvedDataAddress === starts.functionStarts.dataAddress
                                 && starts.dataAddress === starts.functionStarts.dataAddress
                                 && starts.resolvedDataEnd === starts.functionStarts.dataEnd
                                 && starts.dataEnd === starts.functionStarts.dataEnd
+                                && starts.resolvedFirstStartOffsetHex === starts.functionStarts.firstStartOffsetHex
                                 && starts.firstStartOffsetHex === starts.functionStarts.firstStartOffsetHex
+                                && starts.resolvedFirstStartAddress === starts.functionStarts.firstStartAddress
                                 && starts.firstStartAddress === starts.functionStarts.firstStartAddress
+                                && starts.resolvedLastStartOffsetHex === starts.functionStarts.lastStartOffsetHex
                                 && starts.lastStartOffsetHex === starts.functionStarts.lastStartOffsetHex
+                                && starts.resolvedLastStartAddress === starts.functionStarts.lastStartAddress
                                 && starts.lastStartAddress === starts.functionStarts.lastStartAddress
+                                && starts.resolvedFirstGapHex === starts.functionStarts.firstGapHex
                                 && starts.firstGapHex === starts.functionStarts.firstGapHex
+                                && starts.resolvedLastGapHex === starts.functionStarts.lastGapHex
                                 && starts.lastGapHex === starts.functionStarts.lastGapHex
+                                && starts.resolvedFirstGapFromOffsetHex === starts.functionStarts.firstGapFromOffsetHex
                                 && starts.firstGapFromOffsetHex === starts.functionStarts.firstGapFromOffsetHex
+                                && starts.resolvedFirstGapToOffsetHex === starts.functionStarts.firstGapToOffsetHex
                                 && starts.firstGapToOffsetHex === starts.functionStarts.firstGapToOffsetHex
+                                && starts.resolvedLastGapFromOffsetHex === starts.functionStarts.lastGapFromOffsetHex
                                 && starts.lastGapFromOffsetHex === starts.functionStarts.lastGapFromOffsetHex
+                                && starts.resolvedLastGapToOffsetHex === starts.functionStarts.lastGapToOffsetHex
                                 && starts.lastGapToOffsetHex === starts.functionStarts.lastGapToOffsetHex
+                                && starts.resolvedTotalSpanHex === starts.functionStarts.totalSpanHex
                                 && starts.totalSpanHex === starts.functionStarts.totalSpanHex
+                                && starts.resolvedLargestGapHex === starts.functionStarts.largestGapHex
                                 && starts.largestGapHex === starts.functionStarts.largestGapHex)) {
                                 return false;
                             }
