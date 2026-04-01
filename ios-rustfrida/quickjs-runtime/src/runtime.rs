@@ -4699,30 +4699,50 @@ undefined;
                                     && dyld.commandHex === null
                                     && dyld.resolvedCommandName === null
                                     && dyld.commandRequiresDyld === false
+                                    && dyld.resolvedRebaseOffHex === null
                                     && dyld.rebaseOffHex === null
+                                    && dyld.resolvedRebaseSizeHex === null
                                     && dyld.rebaseSizeHex === null
+                                    && dyld.resolvedRebaseEndHex === null
                                     && dyld.rebaseEndHex === null
+                                    && dyld.resolvedBindOffHex === null
                                     && dyld.bindOffHex === null
+                                    && dyld.resolvedBindSizeHex === null
                                     && dyld.bindSizeHex === null
+                                    && dyld.resolvedBindEndHex === null
                                     && dyld.bindEndHex === null
+                                    && dyld.resolvedWeakBindOffHex === null
                                     && dyld.weakBindOffHex === null
+                                    && dyld.resolvedWeakBindSizeHex === null
                                     && dyld.weakBindSizeHex === null
+                                    && dyld.resolvedWeakBindEndHex === null
                                     && dyld.weakBindEndHex === null
+                                    && dyld.resolvedLazyBindOffHex === null
                                     && dyld.lazyBindOffHex === null
+                                    && dyld.resolvedLazyBindSizeHex === null
                                     && dyld.lazyBindSizeHex === null
+                                    && dyld.resolvedLazyBindEndHex === null
                                     && dyld.lazyBindEndHex === null
+                                    && dyld.resolvedExportOffHex === null
                                     && dyld.exportOffHex === null
+                                    && dyld.resolvedExportSizeHex === null
                                     && dyld.exportSizeHex === null
+                                    && dyld.resolvedExportEndHex === null
                                     && dyld.exportEndHex === null
                                     && dyld.nonEmptyRegionCount === 0
                                     && Array.isArray(dyld.nonEmptyRegionNames)
                                     && dyld.nonEmptyRegionNames.length === 0
                                     && Array.isArray(dyld.regions)
                                     && dyld.regions.length === 0
+                                    && dyld.resolvedFirstRegionName === null
                                     && dyld.firstRegionName === null
+                                    && dyld.resolvedLastRegionName === null
                                     && dyld.lastRegionName === null
+                                    && dyld.resolvedLargestRegionName === null
                                     && dyld.largestRegionName === null
+                                    && dyld.resolvedLargestRegionSizeHex === null
                                     && dyld.largestRegionSizeHex === null
+                                    && dyld.resolvedTotalSizeHex === null
                                     && dyld.totalSizeHex === null)) {
                                     return false;
                                 }
@@ -4733,20 +4753,35 @@ undefined;
                                 && dyld.commandHex === dyld.dyldInfo.commandHex
                                 && dyld.resolvedCommandName === dyld.dyldInfo.commandName
                                 && dyld.commandRequiresDyld === (dyld.dyldInfo.commandRequiresDyld === true)
+                                && dyld.resolvedRebaseOffHex === dyld.dyldInfo.rebaseOffHex
                                 && dyld.rebaseOffHex === dyld.dyldInfo.rebaseOffHex
+                                && dyld.resolvedRebaseSizeHex === dyld.dyldInfo.rebaseSizeHex
                                 && dyld.rebaseSizeHex === dyld.dyldInfo.rebaseSizeHex
+                                && dyld.resolvedRebaseEndHex === dyld.dyldInfo.rebaseEndHex
                                 && dyld.rebaseEndHex === dyld.dyldInfo.rebaseEndHex
+                                && dyld.resolvedBindOffHex === dyld.dyldInfo.bindOffHex
                                 && dyld.bindOffHex === dyld.dyldInfo.bindOffHex
+                                && dyld.resolvedBindSizeHex === dyld.dyldInfo.bindSizeHex
                                 && dyld.bindSizeHex === dyld.dyldInfo.bindSizeHex
+                                && dyld.resolvedBindEndHex === dyld.dyldInfo.bindEndHex
                                 && dyld.bindEndHex === dyld.dyldInfo.bindEndHex
+                                && dyld.resolvedWeakBindOffHex === dyld.dyldInfo.weakBindOffHex
                                 && dyld.weakBindOffHex === dyld.dyldInfo.weakBindOffHex
+                                && dyld.resolvedWeakBindSizeHex === dyld.dyldInfo.weakBindSizeHex
                                 && dyld.weakBindSizeHex === dyld.dyldInfo.weakBindSizeHex
+                                && dyld.resolvedWeakBindEndHex === dyld.dyldInfo.weakBindEndHex
                                 && dyld.weakBindEndHex === dyld.dyldInfo.weakBindEndHex
+                                && dyld.resolvedLazyBindOffHex === dyld.dyldInfo.lazyBindOffHex
                                 && dyld.lazyBindOffHex === dyld.dyldInfo.lazyBindOffHex
+                                && dyld.resolvedLazyBindSizeHex === dyld.dyldInfo.lazyBindSizeHex
                                 && dyld.lazyBindSizeHex === dyld.dyldInfo.lazyBindSizeHex
+                                && dyld.resolvedLazyBindEndHex === dyld.dyldInfo.lazyBindEndHex
                                 && dyld.lazyBindEndHex === dyld.dyldInfo.lazyBindEndHex
+                                && dyld.resolvedExportOffHex === dyld.dyldInfo.exportOffHex
                                 && dyld.exportOffHex === dyld.dyldInfo.exportOffHex
+                                && dyld.resolvedExportSizeHex === dyld.dyldInfo.exportSizeHex
                                 && dyld.exportSizeHex === dyld.dyldInfo.exportSizeHex
+                                && dyld.resolvedExportEndHex === dyld.dyldInfo.exportEndHex
                                 && dyld.exportEndHex === dyld.dyldInfo.exportEndHex
                                 && dyld.nonEmptyRegionCount === dyld.dyldInfo.nonEmptyRegionNames.length
                                 && Array.isArray(dyld.nonEmptyRegionNames)
@@ -4755,10 +4790,15 @@ undefined;
                                 && Array.isArray(dyld.regions)
                                 && dyld.regions.length === dyld.dyldInfo.regions.length
                                 && JSON.stringify(dyld.regions) === JSON.stringify(dyld.dyldInfo.regions)
+                                && dyld.resolvedFirstRegionName === dyld.dyldInfo.firstRegionName
                                 && dyld.firstRegionName === dyld.dyldInfo.firstRegionName
+                                && dyld.resolvedLastRegionName === dyld.dyldInfo.lastRegionName
                                 && dyld.lastRegionName === dyld.dyldInfo.lastRegionName
+                                && dyld.resolvedLargestRegionName === dyld.dyldInfo.largestRegionName
                                 && dyld.largestRegionName === dyld.dyldInfo.largestRegionName
+                                && dyld.resolvedLargestRegionSizeHex === dyld.dyldInfo.largestRegionSizeHex
                                 && dyld.largestRegionSizeHex === dyld.dyldInfo.largestRegionSizeHex
+                                && dyld.resolvedTotalSizeHex === dyld.dyldInfo.totalSizeHex
                                 && dyld.totalSizeHex === dyld.dyldInfo.totalSizeHex)) {
                                 return false;
                             }
