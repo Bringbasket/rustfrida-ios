@@ -4810,6 +4810,7 @@ undefined;
                                     && linkedit.moduleBase === null
                                     && linkedit.resolvedVmaddr === null
                                     && linkedit.vmaddr === null
+                                    && linkedit.resolvedVmEnd === null
                                     && linkedit.vmEnd === null
                                     && linkedit.resolvedVmsizeHex === null
                                     && linkedit.vmsizeHex === null
@@ -4817,20 +4818,34 @@ undefined;
                                     && linkedit.fileoffHex === null
                                     && linkedit.resolvedFilesizeHex === null
                                     && linkedit.filesizeHex === null
+                                    && linkedit.resolvedFileEndHex === null
                                     && linkedit.fileEndHex === null
                                     && linkedit.resolvedComputedBase === null
                                     && linkedit.computedBase === null
                                     && linkedit.resolvedComputedEnd === null
                                     && linkedit.computedEnd === null
+                                    && linkedit.resolvedSymoffHex === null
                                     && linkedit.symoffHex === null
+                                    && linkedit.resolvedNsyms === null
                                     && linkedit.nsyms === null
+                                    && linkedit.resolvedSymtabAddress === null
                                     && linkedit.symtabAddress === null
+                                    && linkedit.resolvedStroffHex === null
                                     && linkedit.stroffHex === null
+                                    && linkedit.resolvedStrsizeHex === null
                                     && linkedit.strsizeHex === null
+                                    && linkedit.resolvedStrtabAddress === null
                                     && linkedit.strtabAddress === null
+                                    && linkedit.resolvedIndirectsymoffHex === null
                                     && linkedit.indirectsymoffHex === null
+                                    && linkedit.resolvedNindirectsyms === null
                                     && linkedit.nindirectsyms === null
+                                    && linkedit.resolvedIndirectsymAddress === null
                                     && linkedit.indirectsymAddress === null
+                                    && linkedit.resolvedFirstTableName === null
+                                    && linkedit.firstTableName === null
+                                    && linkedit.resolvedLastTableName === null
+                                    && linkedit.lastTableName === null
                                     && linkedit.totalTableCount === 0)) {
                                     return false;
                                 }
@@ -4839,6 +4854,7 @@ undefined;
                                 && linkedit.moduleBase === linkedit.linkedit.moduleBase
                                 && linkedit.resolvedVmaddr === linkedit.linkedit.vmaddr
                                 && linkedit.vmaddr === linkedit.linkedit.vmaddr
+                                && linkedit.resolvedVmEnd === linkedit.linkedit.vmEnd
                                 && linkedit.vmEnd === linkedit.linkedit.vmEnd
                                 && linkedit.resolvedVmsizeHex === linkedit.linkedit.vmsizeHex
                                 && linkedit.vmsizeHex === linkedit.linkedit.vmsizeHex
@@ -4846,20 +4862,34 @@ undefined;
                                 && linkedit.fileoffHex === linkedit.linkedit.fileoffHex
                                 && linkedit.resolvedFilesizeHex === linkedit.linkedit.filesizeHex
                                 && linkedit.filesizeHex === linkedit.linkedit.filesizeHex
+                                && linkedit.resolvedFileEndHex === linkedit.linkedit.fileEndHex
                                 && linkedit.fileEndHex === linkedit.linkedit.fileEndHex
                                 && linkedit.resolvedComputedBase === linkedit.linkedit.computedBase
                                 && linkedit.computedBase === linkedit.linkedit.computedBase
                                 && linkedit.resolvedComputedEnd === linkedit.linkedit.computedEnd
                                 && linkedit.computedEnd === linkedit.linkedit.computedEnd
+                                && linkedit.resolvedSymoffHex === linkedit.linkedit.symoffHex
                                 && linkedit.symoffHex === linkedit.linkedit.symoffHex
+                                && linkedit.resolvedNsyms === linkedit.linkedit.nsyms
                                 && linkedit.nsyms === linkedit.linkedit.nsyms
+                                && linkedit.resolvedSymtabAddress === linkedit.linkedit.symtabAddress
                                 && linkedit.symtabAddress === linkedit.linkedit.symtabAddress
+                                && linkedit.resolvedStroffHex === linkedit.linkedit.stroffHex
                                 && linkedit.stroffHex === linkedit.linkedit.stroffHex
+                                && linkedit.resolvedStrsizeHex === linkedit.linkedit.strsizeHex
                                 && linkedit.strsizeHex === linkedit.linkedit.strsizeHex
+                                && linkedit.resolvedStrtabAddress === linkedit.linkedit.strtabAddress
                                 && linkedit.strtabAddress === linkedit.linkedit.strtabAddress
+                                && linkedit.resolvedIndirectsymoffHex === linkedit.linkedit.indirectsymoffHex
                                 && linkedit.indirectsymoffHex === linkedit.linkedit.indirectsymoffHex
+                                && linkedit.resolvedNindirectsyms === linkedit.linkedit.nindirectsyms
                                 && linkedit.nindirectsyms === linkedit.linkedit.nindirectsyms
+                                && linkedit.resolvedIndirectsymAddress === linkedit.linkedit.indirectsymAddress
                                 && linkedit.indirectsymAddress === linkedit.linkedit.indirectsymAddress
+                                && linkedit.resolvedFirstTableName === linkedit.linkedit.firstTableName
+                                && linkedit.firstTableName === linkedit.linkedit.firstTableName
+                                && linkedit.resolvedLastTableName === linkedit.linkedit.lastTableName
+                                && linkedit.lastTableName === linkedit.linkedit.lastTableName
                                 && linkedit.totalTableCount === linkedit.linkedit.totalTableCount)) {
                                 return false;
                             }
