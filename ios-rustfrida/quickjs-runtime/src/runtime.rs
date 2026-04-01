@@ -5148,30 +5148,50 @@ undefined;
                                     && exportsTrie.dataoffHex === null
                                     && exportsTrie.resolvedDatasizeHex === null
                                     && exportsTrie.datasizeHex === null
+                                    && exportsTrie.resolvedLinkeditBase === null
                                     && exportsTrie.linkeditBase === null
                                     && exportsTrie.resolvedDataAddress === null
                                     && exportsTrie.dataAddress === null
                                     && exportsTrie.resolvedDataEnd === null
                                     && exportsTrie.dataEnd === null
+                                    && exportsTrie.resolvedFirstExportName === null
                                     && exportsTrie.firstExportName === null
+                                    && exportsTrie.resolvedFirstKind === null
                                     && exportsTrie.firstKind === null
+                                    && exportsTrie.resolvedLastExportName === null
                                     && exportsTrie.lastExportName === null
+                                    && exportsTrie.resolvedLastKind === null
                                     && exportsTrie.lastKind === null
+                                    && exportsTrie.resolvedLongestExportName === null
                                     && exportsTrie.longestExportName === null
+                                    && exportsTrie.resolvedLongestExportNameLength === null
                                     && exportsTrie.longestExportNameLength === null
+                                    && exportsTrie.resolvedAddressSpanHex === null
                                     && exportsTrie.addressSpanHex === null
+                                    && exportsTrie.resolvedOffsetSpanHex === null
                                     && exportsTrie.offsetSpanHex === null
                                     && exportsTrie.hasMultipleKinds === false
+                                    && exportsTrie.resolvedAddressEntryCount === 0
                                     && exportsTrie.addressEntryCount === 0
+                                    && exportsTrie.resolvedLowestAddress === null
                                     && exportsTrie.lowestAddress === null
+                                    && exportsTrie.resolvedHighestAddress === null
                                     && exportsTrie.highestAddress === null
+                                    && exportsTrie.resolvedOffsetEntryCount === 0
                                     && exportsTrie.offsetEntryCount === 0
+                                    && exportsTrie.resolvedLowestOffsetHex === null
                                     && exportsTrie.lowestOffsetHex === null
+                                    && exportsTrie.resolvedHighestOffsetHex === null
                                     && exportsTrie.highestOffsetHex === null
+                                    && exportsTrie.resolvedImportNameCount === 0
                                     && exportsTrie.importNameCount === 0
+                                    && exportsTrie.resolvedResolverCount === 0
                                     && exportsTrie.resolverCount === 0
+                                    && exportsTrie.resolvedReexportCount === 0
                                     && exportsTrie.reexportCount === 0
+                                    && exportsTrie.resolvedStubAndResolverCount === 0
                                     && exportsTrie.stubAndResolverCount === 0
+                                    && exportsTrie.resolvedWeakDefinitionCount === 0
                                     && exportsTrie.weakDefinitionCount === 0)) {
                                     return false;
                                 }
@@ -5182,30 +5202,50 @@ undefined;
                                 && exportsTrie.dataoffHex === exportsTrie.exportsTrie.dataoffHex
                                 && exportsTrie.resolvedDatasizeHex === exportsTrie.exportsTrie.datasizeHex
                                 && exportsTrie.datasizeHex === exportsTrie.exportsTrie.datasizeHex
+                                && exportsTrie.resolvedLinkeditBase === exportsTrie.exportsTrie.linkeditBase
                                 && exportsTrie.linkeditBase === exportsTrie.exportsTrie.linkeditBase
                                 && exportsTrie.resolvedDataAddress === exportsTrie.exportsTrie.dataAddress
                                 && exportsTrie.dataAddress === exportsTrie.exportsTrie.dataAddress
                                 && exportsTrie.resolvedDataEnd === exportsTrie.exportsTrie.dataEnd
                                 && exportsTrie.dataEnd === exportsTrie.exportsTrie.dataEnd
+                                && exportsTrie.resolvedFirstExportName === exportsTrie.exportsTrie.firstExportName
                                 && exportsTrie.firstExportName === exportsTrie.exportsTrie.firstExportName
+                                && exportsTrie.resolvedFirstKind === exportsTrie.exportsTrie.firstKind
                                 && exportsTrie.firstKind === exportsTrie.exportsTrie.firstKind
+                                && exportsTrie.resolvedLastExportName === exportsTrie.exportsTrie.lastExportName
                                 && exportsTrie.lastExportName === exportsTrie.exportsTrie.lastExportName
+                                && exportsTrie.resolvedLastKind === exportsTrie.exportsTrie.lastKind
                                 && exportsTrie.lastKind === exportsTrie.exportsTrie.lastKind
+                                && exportsTrie.resolvedLongestExportName === exportsTrie.exportsTrie.longestExportName
                                 && exportsTrie.longestExportName === exportsTrie.exportsTrie.longestExportName
+                                && exportsTrie.resolvedLongestExportNameLength === exportsTrie.exportsTrie.longestExportNameLength
                                 && exportsTrie.longestExportNameLength === exportsTrie.exportsTrie.longestExportNameLength
+                                && exportsTrie.resolvedAddressSpanHex === exportsTrie.exportsTrie.addressSpanHex
                                 && exportsTrie.addressSpanHex === exportsTrie.exportsTrie.addressSpanHex
+                                && exportsTrie.resolvedOffsetSpanHex === exportsTrie.exportsTrie.offsetSpanHex
                                 && exportsTrie.offsetSpanHex === exportsTrie.exportsTrie.offsetSpanHex
                                 && exportsTrie.hasMultipleKinds === (exportsTrie.exportsTrie.hasMultipleKinds === true)
+                                && exportsTrie.resolvedAddressEntryCount === exportsTrie.exportsTrie.addressEntryCount
                                 && exportsTrie.addressEntryCount === exportsTrie.exportsTrie.addressEntryCount
+                                && exportsTrie.resolvedLowestAddress === exportsTrie.exportsTrie.lowestAddress
                                 && exportsTrie.lowestAddress === exportsTrie.exportsTrie.lowestAddress
+                                && exportsTrie.resolvedHighestAddress === exportsTrie.exportsTrie.highestAddress
                                 && exportsTrie.highestAddress === exportsTrie.exportsTrie.highestAddress
+                                && exportsTrie.resolvedOffsetEntryCount === exportsTrie.exportsTrie.offsetEntryCount
                                 && exportsTrie.offsetEntryCount === exportsTrie.exportsTrie.offsetEntryCount
+                                && exportsTrie.resolvedLowestOffsetHex === exportsTrie.exportsTrie.lowestOffsetHex
                                 && exportsTrie.lowestOffsetHex === exportsTrie.exportsTrie.lowestOffsetHex
+                                && exportsTrie.resolvedHighestOffsetHex === exportsTrie.exportsTrie.highestOffsetHex
                                 && exportsTrie.highestOffsetHex === exportsTrie.exportsTrie.highestOffsetHex
+                                && exportsTrie.resolvedImportNameCount === exportsTrie.exportsTrie.importNameCount
                                 && exportsTrie.importNameCount === exportsTrie.exportsTrie.importNameCount
+                                && exportsTrie.resolvedResolverCount === exportsTrie.exportsTrie.resolverCount
                                 && exportsTrie.resolverCount === exportsTrie.exportsTrie.resolverCount
+                                && exportsTrie.resolvedReexportCount === exportsTrie.exportsTrie.reexportCount
                                 && exportsTrie.reexportCount === exportsTrie.exportsTrie.reexportCount
+                                && exportsTrie.resolvedStubAndResolverCount === exportsTrie.exportsTrie.stubAndResolverCount
                                 && exportsTrie.stubAndResolverCount === exportsTrie.exportsTrie.stubAndResolverCount
+                                && exportsTrie.resolvedWeakDefinitionCount === exportsTrie.exportsTrie.weakDefinitionCount
                                 && exportsTrie.weakDefinitionCount === exportsTrie.exportsTrie.weakDefinitionCount)) {
                                 return false;
                             }
