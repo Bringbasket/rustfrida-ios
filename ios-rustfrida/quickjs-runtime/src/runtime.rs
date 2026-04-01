@@ -5063,21 +5063,33 @@ undefined;
                                     && dataInCode.dataoffHex === null
                                     && dataInCode.resolvedDatasizeHex === null
                                     && dataInCode.datasizeHex === null
+                                    && dataInCode.resolvedLinkeditBase === null
                                     && dataInCode.linkeditBase === null
                                     && dataInCode.resolvedDataAddress === null
                                     && dataInCode.dataAddress === null
                                     && dataInCode.resolvedDataEnd === null
                                     && dataInCode.dataEnd === null
+                                    && dataInCode.resolvedTotalEntryLength === null
                                     && dataInCode.totalEntryLength === null
+                                    && dataInCode.resolvedFirstEntryOffsetHex === null
                                     && dataInCode.firstEntryOffsetHex === null
+                                    && dataInCode.resolvedFirstEntryAddress === null
                                     && dataInCode.firstEntryAddress === null
+                                    && dataInCode.resolvedFirstKindName === null
                                     && dataInCode.firstKindName === null
+                                    && dataInCode.resolvedLastEntryOffsetHex === null
                                     && dataInCode.lastEntryOffsetHex === null
+                                    && dataInCode.resolvedLastEntryAddress === null
                                     && dataInCode.lastEntryAddress === null
+                                    && dataInCode.resolvedLastKindName === null
                                     && dataInCode.lastKindName === null
+                                    && dataInCode.resolvedLargestEntryOffsetHex === null
                                     && dataInCode.largestEntryOffsetHex === null
+                                    && dataInCode.resolvedLargestEntryAddress === null
                                     && dataInCode.largestEntryAddress === null
+                                    && dataInCode.resolvedLargestEntryLength === null
                                     && dataInCode.largestEntryLength === null
+                                    && dataInCode.resolvedTotalSpanHex === null
                                     && dataInCode.totalSpanHex === null
                                     && dataInCode.hasMultipleKinds === false
                                     && dataInCode.dataEntryCount === 0
@@ -5092,21 +5104,33 @@ undefined;
                                 && dataInCode.dataoffHex === dataInCode.dataInCode.dataoffHex
                                 && dataInCode.resolvedDatasizeHex === dataInCode.dataInCode.datasizeHex
                                 && dataInCode.datasizeHex === dataInCode.dataInCode.datasizeHex
+                                && dataInCode.resolvedLinkeditBase === dataInCode.dataInCode.linkeditBase
                                 && dataInCode.linkeditBase === dataInCode.dataInCode.linkeditBase
                                 && dataInCode.resolvedDataAddress === dataInCode.dataInCode.dataAddress
                                 && dataInCode.dataAddress === dataInCode.dataInCode.dataAddress
                                 && dataInCode.resolvedDataEnd === dataInCode.dataInCode.dataEnd
                                 && dataInCode.dataEnd === dataInCode.dataInCode.dataEnd
+                                && dataInCode.resolvedTotalEntryLength === dataInCode.dataInCode.totalEntryLength
                                 && dataInCode.totalEntryLength === dataInCode.dataInCode.totalEntryLength
+                                && dataInCode.resolvedFirstEntryOffsetHex === dataInCode.dataInCode.firstEntryOffsetHex
                                 && dataInCode.firstEntryOffsetHex === dataInCode.dataInCode.firstEntryOffsetHex
+                                && dataInCode.resolvedFirstEntryAddress === dataInCode.dataInCode.firstEntryAddress
                                 && dataInCode.firstEntryAddress === dataInCode.dataInCode.firstEntryAddress
+                                && dataInCode.resolvedFirstKindName === dataInCode.dataInCode.firstKindName
                                 && dataInCode.firstKindName === dataInCode.dataInCode.firstKindName
+                                && dataInCode.resolvedLastEntryOffsetHex === dataInCode.dataInCode.lastEntryOffsetHex
                                 && dataInCode.lastEntryOffsetHex === dataInCode.dataInCode.lastEntryOffsetHex
+                                && dataInCode.resolvedLastEntryAddress === dataInCode.dataInCode.lastEntryAddress
                                 && dataInCode.lastEntryAddress === dataInCode.dataInCode.lastEntryAddress
+                                && dataInCode.resolvedLastKindName === dataInCode.dataInCode.lastKindName
                                 && dataInCode.lastKindName === dataInCode.dataInCode.lastKindName
+                                && dataInCode.resolvedLargestEntryOffsetHex === dataInCode.dataInCode.largestEntryOffsetHex
                                 && dataInCode.largestEntryOffsetHex === dataInCode.dataInCode.largestEntryOffsetHex
+                                && dataInCode.resolvedLargestEntryAddress === dataInCode.dataInCode.largestEntryAddress
                                 && dataInCode.largestEntryAddress === dataInCode.dataInCode.largestEntryAddress
+                                && dataInCode.resolvedLargestEntryLength === dataInCode.dataInCode.largestEntryLength
                                 && dataInCode.largestEntryLength === dataInCode.dataInCode.largestEntryLength
+                                && dataInCode.resolvedTotalSpanHex === dataInCode.dataInCode.totalSpanHex
                                 && dataInCode.totalSpanHex === dataInCode.dataInCode.totalSpanHex
                                 && dataInCode.hasMultipleKinds === (dataInCode.dataInCode.hasMultipleKinds === true)
                                 && dataInCode.dataEntryCount === dataInCode.dataInCode.dataEntryCount
