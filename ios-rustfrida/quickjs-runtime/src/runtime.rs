@@ -5803,12 +5803,32 @@ undefined;
                                     return result.resolvedModuleBase === null
                                         && result.resolvedPlatform === null
                                         && result.resolvedMinOs === null
-                                        && result.resolvedSdk === null;
+                                        && result.resolvedSdk === null
+                                        && result.resolvedHasMinOs === null
+                                        && result.resolvedHasSdk === null
+                                        && result.resolvedMinOsPartCount === 0
+                                        && result.resolvedSdkPartCount === 0
+                                        && result.resolvedHasTools === null
+                                        && result.resolvedFirstTool === null
+                                        && result.resolvedLastTool === null
+                                        && result.resolvedFirstToolVersion === null
+                                        && result.resolvedLastToolVersion === null
+                                        && result.resolvedUniqueToolCount === 0;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedPlatform === info.platform
                                     && result.resolvedMinOs === info.minOs
-                                    && result.resolvedSdk === info.sdk;
+                                    && result.resolvedSdk === info.sdk
+                                    && result.resolvedHasMinOs === info.hasMinOs
+                                    && result.resolvedHasSdk === info.hasSdk
+                                    && result.resolvedMinOsPartCount === info.minOsPartCount
+                                    && result.resolvedSdkPartCount === info.sdkPartCount
+                                    && result.resolvedHasTools === info.hasTools
+                                    && result.resolvedFirstTool === info.firstTool
+                                    && result.resolvedLastTool === info.lastTool
+                                    && result.resolvedFirstToolVersion === info.firstToolVersion
+                                    && result.resolvedLastToolVersion === info.lastToolVersion
+                                    && result.resolvedUniqueToolCount === info.uniqueToolCount;
                             }
 
                             function checkDylinker(result) {
