@@ -4984,11 +4984,16 @@ undefined;
                                     && codeSignature.dataoffHex === null
                                     && codeSignature.resolvedDatasizeHex === null
                                     && codeSignature.datasizeHex === null
+                                    && codeSignature.resolvedLinkeditBase === null
                                     && codeSignature.linkeditBase === null
                                     && codeSignature.resolvedDataAddress === null
                                     && codeSignature.dataAddress === null
                                     && codeSignature.resolvedDataEnd === null
                                     && codeSignature.dataEnd === null
+                                    && codeSignature.resolvedBlobKind === null
+                                    && codeSignature.blobKind === null
+                                    && codeSignature.resolvedMagicCategory === null
+                                    && codeSignature.magicCategory === null
                                     && codeSignature.resolvedMagicHex === null
                                     && codeSignature.magicHex === null
                                     && codeSignature.resolvedMagicName === null
@@ -4997,10 +5002,16 @@ undefined;
                                     && codeSignature.lengthHex === null
                                     && codeSignature.resolvedCount === null
                                     && codeSignature.count === null
+                                    && codeSignature.resolvedKnownMagic === null
                                     && codeSignature.knownMagic === false
+                                    && codeSignature.resolvedHasCount === null
                                     && codeSignature.hasCount === false
+                                    && codeSignature.resolvedHasBlobLength === null
+                                    && codeSignature.resolvedBlobLengthMatchesDataSize === null
                                     && codeSignature.blobLengthMatchesDataSize === null
+                                    && codeSignature.resolvedBlobLengthRelation === null
                                     && codeSignature.blobLengthRelation === null
+                                    && codeSignature.resolvedCountMatchesSuperBlob === null
                                     && codeSignature.countMatchesSuperBlob === false)) {
                                     return false;
                                 }
@@ -5011,11 +5022,16 @@ undefined;
                                 && codeSignature.dataoffHex === codeSignature.codeSignature.dataoffHex
                                 && codeSignature.resolvedDatasizeHex === codeSignature.codeSignature.datasizeHex
                                 && codeSignature.datasizeHex === codeSignature.codeSignature.datasizeHex
+                                && codeSignature.resolvedLinkeditBase === codeSignature.codeSignature.linkeditBase
                                 && codeSignature.linkeditBase === codeSignature.codeSignature.linkeditBase
                                 && codeSignature.resolvedDataAddress === codeSignature.codeSignature.dataAddress
                                 && codeSignature.dataAddress === codeSignature.codeSignature.dataAddress
                                 && codeSignature.resolvedDataEnd === codeSignature.codeSignature.dataEnd
                                 && codeSignature.dataEnd === codeSignature.codeSignature.dataEnd
+                                && codeSignature.resolvedBlobKind === codeSignature.codeSignature.blobKind
+                                && codeSignature.blobKind === codeSignature.codeSignature.blobKind
+                                && codeSignature.resolvedMagicCategory === codeSignature.codeSignature.magicCategory
+                                && codeSignature.magicCategory === codeSignature.codeSignature.magicCategory
                                 && codeSignature.resolvedMagicHex === codeSignature.codeSignature.magicHex
                                 && codeSignature.magicHex === codeSignature.codeSignature.magicHex
                                 && codeSignature.resolvedMagicName === codeSignature.codeSignature.magicName
@@ -5024,10 +5040,16 @@ undefined;
                                 && codeSignature.lengthHex === codeSignature.codeSignature.lengthHex
                                 && codeSignature.resolvedCount === codeSignature.codeSignature.count
                                 && codeSignature.count === codeSignature.codeSignature.count
+                                && codeSignature.resolvedKnownMagic === codeSignature.codeSignature.knownMagic
                                 && codeSignature.knownMagic === (codeSignature.codeSignature.knownMagic === true)
+                                && codeSignature.resolvedHasCount === codeSignature.codeSignature.hasCount
                                 && codeSignature.hasCount === (codeSignature.codeSignature.hasCount === true)
+                                && codeSignature.resolvedHasBlobLength === codeSignature.codeSignature.hasBlobLength
+                                && codeSignature.resolvedBlobLengthMatchesDataSize === codeSignature.codeSignature.blobLengthMatchesDataSize
                                 && codeSignature.blobLengthMatchesDataSize === codeSignature.codeSignature.blobLengthMatchesDataSize
+                                && codeSignature.resolvedBlobLengthRelation === codeSignature.codeSignature.blobLengthRelation
                                 && codeSignature.blobLengthRelation === codeSignature.codeSignature.blobLengthRelation
+                                && codeSignature.resolvedCountMatchesSuperBlob === codeSignature.codeSignature.countMatchesSuperBlob
                                 && codeSignature.countMatchesSuperBlob === (codeSignature.codeSignature.countMatchesSuperBlob === true))) {
                                 return false;
                             }
