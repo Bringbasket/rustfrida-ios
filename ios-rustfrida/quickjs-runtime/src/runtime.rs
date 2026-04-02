@@ -6364,6 +6364,7 @@ undefined;
                                         && result.resolvedLastTool === null
                                         && result.resolvedFirstToolVersion === null
                                         && result.resolvedLastToolVersion === null
+                                        && result.resolvedToolCount === 0
                                         && result.resolvedUniqueToolCount === 0;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
@@ -6379,6 +6380,7 @@ undefined;
                                     && result.resolvedLastTool === info.lastTool
                                     && result.resolvedFirstToolVersion === info.firstToolVersion
                                     && result.resolvedLastToolVersion === info.lastToolVersion
+                                    && result.resolvedToolCount === info.tools.length
                                     && result.resolvedUniqueToolCount === info.uniqueToolCount;
                             }
 

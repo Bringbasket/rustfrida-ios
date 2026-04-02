@@ -7737,6 +7737,7 @@ function handleSpecResult(spec) {
             firstToolVersion: normalized === null ? null : normalized.firstToolVersion,
             resolvedLastToolVersion: normalized === null ? null : normalized.lastToolVersion,
             lastToolVersion: normalized === null ? null : normalized.lastToolVersion,
+            resolvedToolCount: normalized === null ? 0 : normalized.tools.length,
             toolCount: normalized === null ? 0 : normalized.tools.length,
             resolvedUniqueToolCount: normalized === null ? 0 : normalized.uniqueToolCount,
             uniqueToolCount: normalized === null ? 0 : normalized.uniqueToolCount,
