@@ -7112,6 +7112,8 @@ function handleSpecResult(spec) {
             hasTimestampedDependencies: timestampedDependencies.length !== 0,
             versionMismatchCount: versionMismatchDependencies.length,
             hasVersionMismatches: versionMismatchDependencies.length !== 0,
+            pathKindNames: pathKindSummaries.map((item) => item.pathKind),
+            kindNames: kindSummaries.map((item) => item.kind),
             pathKinds: pathKindSummaries,
             kinds: kindSummaries,
             dependencyNames,
