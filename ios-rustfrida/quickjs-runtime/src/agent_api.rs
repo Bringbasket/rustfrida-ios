@@ -2376,6 +2376,11 @@ function normalizeImage(image) {
     };
 }
 
+function resolveModuleImage(moduleName) {
+    const image = Native.imageInfo(moduleName);
+    return image === null ? null : normalizeImage(image);
+}
+
 function classifyLibraryPathKind(path) {
     if (path.length === 0) {
         return 'unknown';
@@ -6902,6 +6907,7 @@ function handleSpecResult(spec) {
     case 'native.dependencies': {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
+        const image = resolveModuleImage(moduleName);
         const dependencies = Native.dependencies(moduleName, query).map((dependency) => normalizeDependency(dependency));
         const weakDependencies = dependencies.filter((dependency) => dependency.isWeakDependency);
         const reexportDependencies = dependencies.filter((dependency) => dependency.isReexportDependency);
@@ -6976,6 +6982,26 @@ function handleSpecResult(spec) {
             kind: 'native.dependencies',
             moduleName,
             query,
+            image,
+            hasImage: image !== null,
+            resolved: image !== null,
+            imageName: image === null ? null : image.name,
+            imagePath: image === null ? null : image.path,
+            resolvedImageName: image === null ? null : image.name,
+            resolvedImagePath: image === null ? null : image.path,
+            directoryPath: image === null ? null : image.directoryPath,
+            resolvedDirectoryPath: image === null ? null : image.directoryPath,
+            pathKind: image === null ? null : image.pathKind,
+            resolvedPathKind: image === null ? null : image.pathKind,
+            resolvedBase: image === null ? null : image.base,
+            slide: image === null ? null : image.slide,
+            resolvedSlide: image === null ? null : image.slide,
+            sizeHex: image === null ? null : image.sizeHex,
+            resolvedSizeHex: image === null ? null : image.sizeHex,
+            hasDirectoryPath: image !== null && image.hasDirectoryPath === true,
+            isSystemPath: image !== null && image.isSystemPath === true,
+            isAppPath: image !== null && image.isAppPath === true,
+            isJailbreakPath: image !== null && image.isJailbreakPath === true,
             hasQuery: query !== null && query.length !== 0,
             count: dependencies.length,
             hasDependencies: dependencies.length !== 0,
@@ -7865,6 +7891,7 @@ function handleSpecResult(spec) {
     case 'native.imports': {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
+        const image = resolveModuleImage(moduleName);
         const imports = Native.imports(moduleName, query).map((imp) => normalizeImport(imp));
         const weakImports = imports.filter((imp) => imp.weakImport);
         const ordinalOnlyImports = imports.filter((imp) => imp.usesOrdinalOnly);
@@ -7993,6 +8020,26 @@ function handleSpecResult(spec) {
             kind: 'native.imports',
             moduleName,
             query,
+            image,
+            hasImage: image !== null,
+            resolved: image !== null,
+            imageName: image === null ? null : image.name,
+            imagePath: image === null ? null : image.path,
+            resolvedImageName: image === null ? null : image.name,
+            resolvedImagePath: image === null ? null : image.path,
+            directoryPath: image === null ? null : image.directoryPath,
+            resolvedDirectoryPath: image === null ? null : image.directoryPath,
+            pathKind: image === null ? null : image.pathKind,
+            resolvedPathKind: image === null ? null : image.pathKind,
+            resolvedBase: image === null ? null : image.base,
+            slide: image === null ? null : image.slide,
+            resolvedSlide: image === null ? null : image.slide,
+            sizeHex: image === null ? null : image.sizeHex,
+            resolvedSizeHex: image === null ? null : image.sizeHex,
+            hasDirectoryPath: image !== null && image.hasDirectoryPath === true,
+            isSystemPath: image !== null && image.isSystemPath === true,
+            isAppPath: image !== null && image.isAppPath === true,
+            isJailbreakPath: image !== null && image.isJailbreakPath === true,
             hasQuery: query !== null && query.length !== 0,
             count: imports.length,
             hasImports: imports.length !== 0,
@@ -8071,6 +8118,7 @@ function handleSpecResult(spec) {
     }
     case 'native.segments': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const segments = Native.segments(moduleName).map((segment) => normalizeSegment(segment));
         const fileBackedSegments = segments.filter((segment) => segment.hasFileData);
         const zeroFillSegments = segments.filter((segment) => segment.isZeroFillLike);
@@ -8150,6 +8198,26 @@ function handleSpecResult(spec) {
         return {
             kind: 'native.segments',
             moduleName,
+            image,
+            hasImage: image !== null,
+            resolved: image !== null,
+            imageName: image === null ? null : image.name,
+            imagePath: image === null ? null : image.path,
+            resolvedImageName: image === null ? null : image.name,
+            resolvedImagePath: image === null ? null : image.path,
+            directoryPath: image === null ? null : image.directoryPath,
+            resolvedDirectoryPath: image === null ? null : image.directoryPath,
+            pathKind: image === null ? null : image.pathKind,
+            resolvedPathKind: image === null ? null : image.pathKind,
+            resolvedBase: image === null ? null : image.base,
+            slide: image === null ? null : image.slide,
+            resolvedSlide: image === null ? null : image.slide,
+            sizeHex: image === null ? null : image.sizeHex,
+            resolvedSizeHex: image === null ? null : image.sizeHex,
+            hasDirectoryPath: image !== null && image.hasDirectoryPath === true,
+            isSystemPath: image !== null && image.isSystemPath === true,
+            isAppPath: image !== null && image.isAppPath === true,
+            isJailbreakPath: image !== null && image.isJailbreakPath === true,
             count: segments.length,
             hasSegments: segments.length !== 0,
             firstSegmentName: segments.length === 0 ? null : segments[0].name,
@@ -8229,6 +8297,7 @@ function handleSpecResult(spec) {
     }
     case 'native.sections': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const sections = Native.sections(moduleName).map((section) => normalizeSection(section));
         const zeroFillSections = sections.filter((section) => section.isZeroFillLike);
         const cstringSections = sections.filter((section) => section.isCStringLike);
@@ -8322,6 +8391,26 @@ function handleSpecResult(spec) {
         return {
             kind: 'native.sections',
             moduleName,
+            image,
+            hasImage: image !== null,
+            resolved: image !== null,
+            imageName: image === null ? null : image.name,
+            imagePath: image === null ? null : image.path,
+            resolvedImageName: image === null ? null : image.name,
+            resolvedImagePath: image === null ? null : image.path,
+            directoryPath: image === null ? null : image.directoryPath,
+            resolvedDirectoryPath: image === null ? null : image.directoryPath,
+            pathKind: image === null ? null : image.pathKind,
+            resolvedPathKind: image === null ? null : image.pathKind,
+            resolvedBase: image === null ? null : image.base,
+            slide: image === null ? null : image.slide,
+            resolvedSlide: image === null ? null : image.slide,
+            sizeHex: image === null ? null : image.sizeHex,
+            resolvedSizeHex: image === null ? null : image.sizeHex,
+            hasDirectoryPath: image !== null && image.hasDirectoryPath === true,
+            isSystemPath: image !== null && image.isSystemPath === true,
+            isAppPath: image !== null && image.isAppPath === true,
+            isJailbreakPath: image !== null && image.isJailbreakPath === true,
             count: sections.length,
             hasSections: sections.length !== 0,
             firstSectionName: sections.length === 0 ? null : sections[0].name,
@@ -8411,6 +8500,7 @@ function handleSpecResult(spec) {
     }
     case 'native.load_commands': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const commands = Native.loadCommands(moduleName).map((command) => normalizeLoadCommand(command));
         const reqDyldCommands = commands.filter((command) => command.isReqDyld);
         const detailedCommands = commands.filter((command) => command.hasDetail);
@@ -8527,6 +8617,26 @@ function handleSpecResult(spec) {
         return {
             kind: 'native.load_commands',
             moduleName,
+            image,
+            hasImage: image !== null,
+            resolved: image !== null,
+            imageName: image === null ? null : image.name,
+            imagePath: image === null ? null : image.path,
+            resolvedImageName: image === null ? null : image.name,
+            resolvedImagePath: image === null ? null : image.path,
+            directoryPath: image === null ? null : image.directoryPath,
+            resolvedDirectoryPath: image === null ? null : image.directoryPath,
+            pathKind: image === null ? null : image.pathKind,
+            resolvedPathKind: image === null ? null : image.pathKind,
+            resolvedBase: image === null ? null : image.base,
+            slide: image === null ? null : image.slide,
+            resolvedSlide: image === null ? null : image.slide,
+            sizeHex: image === null ? null : image.sizeHex,
+            resolvedSizeHex: image === null ? null : image.sizeHex,
+            hasDirectoryPath: image !== null && image.hasDirectoryPath === true,
+            isSystemPath: image !== null && image.isSystemPath === true,
+            isAppPath: image !== null && image.isAppPath === true,
+            isJailbreakPath: image !== null && image.isJailbreakPath === true,
             count: commands.length,
             hasCommands: commands.length !== 0,
             firstCommandName: commands.length === 0 ? null : commands[0].name,

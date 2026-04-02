@@ -4286,7 +4286,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependencies', moduleName: main.image.name, query: null }); if (!(result.kind === 'native.dependencies' && result.hasQuery === false && result.count === result.dependencies.length && typeof result.hasDependencies === 'boolean' && typeof result.uniquePathKindCount === 'number' && typeof result.uniqueKindCount === 'number' && typeof result.uniqueDependencyNameCount === 'number' && typeof result.weakDependencyCount === 'number' && typeof result.reexportDependencyCount === 'number' && typeof result.upwardDependencyCount === 'number' && typeof result.loadDependencyCount === 'number' && typeof result.timestampedDependencyCount === 'number' && typeof result.versionMismatchCount === 'number' && typeof result.hasTimestampedDependencies === 'boolean' && typeof result.hasVersionMismatches === 'boolean' && Array.isArray(result.pathKinds) && Array.isArray(result.kinds) && Array.isArray(result.dependencyNames))) { return false; } if (result.dependencies.length === 0) { return result.hasDependencies === false && result.firstDependencyName === null && result.lastDependencyName === null && result.firstPath === null && result.lastPath === null; } const dependency = result.dependencies[0]; const pathKind = result.pathKinds.length === 0 ? null : result.pathKinds[0]; const kind = result.kinds.length === 0 ? null : result.kinds[0]; const dependencyName = result.dependencyNames.length === 0 ? null : result.dependencyNames[0]; return result.hasDependencies === true && typeof result.firstDependencyName === 'string' && typeof result.lastDependencyName === 'string' && typeof result.firstPath === 'string' && typeof result.lastPath === 'string' && typeof dependency.ordinal === 'number' && typeof dependency.kind === 'string' && typeof dependency.hasPath === 'boolean' && typeof dependency.pathKind === 'string' && typeof dependency.isTokenPath === 'boolean' && typeof dependency.pathDepth === 'number' && typeof dependency.hasName === 'boolean' && typeof dependency.isWeakDependency === 'boolean' && typeof dependency.isReexportDependency === 'boolean' && typeof dependency.isUpwardDependency === 'boolean' && typeof dependency.isLoadDependency === 'boolean' && typeof dependency.versionMismatch === 'boolean' && typeof dependency.hasTimestamp === 'boolean' && (pathKind === null || (typeof pathKind.pathKind === 'string' && typeof pathKind.count === 'number' && typeof pathKind.firstDependencyName === 'string' && typeof pathKind.lastDependencyName === 'string' && typeof pathKind.firstPath === 'string' && typeof pathKind.lastPath === 'string')) && (kind === null || (typeof kind.kind === 'string' && typeof kind.count === 'number' && typeof kind.firstDependencyName === 'string' && typeof kind.lastDependencyName === 'string' && typeof kind.timestampedCount === 'number' && typeof kind.versionMismatchCount === 'number')) && (dependencyName === null || (typeof dependencyName.dependencyName === 'string' && typeof dependencyName.count === 'number' && typeof dependencyName.firstPath === 'string' && typeof dependencyName.lastPath === 'string' && typeof dependencyName.firstKind === 'string' && typeof dependencyName.lastKind === 'string' && typeof dependencyName.timestampedCount === 'number' && typeof dependencyName.versionMismatchCount === 'number')); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependencies', moduleName: main.image.name, query: null }); if (!(result.kind === 'native.dependencies' && result.hasQuery === false && result.count === result.dependencies.length && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasDependencies === 'boolean' && typeof result.uniquePathKindCount === 'number' && typeof result.uniqueKindCount === 'number' && typeof result.uniqueDependencyNameCount === 'number' && typeof result.weakDependencyCount === 'number' && typeof result.reexportDependencyCount === 'number' && typeof result.upwardDependencyCount === 'number' && typeof result.loadDependencyCount === 'number' && typeof result.timestampedDependencyCount === 'number' && typeof result.versionMismatchCount === 'number' && typeof result.hasTimestampedDependencies === 'boolean' && typeof result.hasVersionMismatches === 'boolean' && Array.isArray(result.pathKinds) && Array.isArray(result.kinds) && Array.isArray(result.dependencyNames))) { return false; } if (result.image === null) { if (!(result.hasImage === false && result.resolved === false && result.imageName === null && result.imagePath === null && result.resolvedImageName === null && result.resolvedImagePath === null && result.directoryPath === null && result.resolvedDirectoryPath === null && result.pathKind === null && result.resolvedPathKind === null && result.resolvedBase === null && result.slide === null && result.resolvedSlide === null && result.sizeHex === null && result.resolvedSizeHex === null && result.hasDirectoryPath === false && result.isSystemPath === false && result.isAppPath === false && result.isJailbreakPath === false)) { return false; } } else if (!(result.hasImage === true && result.resolved === true && result.imageName === result.image.name && result.imagePath === result.image.path && result.resolvedImageName === result.image.name && result.resolvedImagePath === result.image.path && result.directoryPath === result.image.directoryPath && result.resolvedDirectoryPath === result.image.directoryPath && result.pathKind === result.image.pathKind && result.resolvedPathKind === result.image.pathKind && result.resolvedBase === result.image.base && result.slide === result.image.slide && result.resolvedSlide === result.image.slide && result.sizeHex === result.image.sizeHex && result.resolvedSizeHex === result.image.sizeHex && result.hasDirectoryPath === (result.image.hasDirectoryPath === true) && result.isSystemPath === (result.image.isSystemPath === true) && result.isAppPath === (result.image.isAppPath === true) && result.isJailbreakPath === (result.image.isJailbreakPath === true))) { return false; } if (result.dependencies.length === 0) { return result.hasDependencies === false && result.firstDependencyName === null && result.lastDependencyName === null && result.firstPath === null && result.lastPath === null; } const dependency = result.dependencies[0]; const pathKind = result.pathKinds.length === 0 ? null : result.pathKinds[0]; const kind = result.kinds.length === 0 ? null : result.kinds[0]; const dependencyName = result.dependencyNames.length === 0 ? null : result.dependencyNames[0]; return result.hasDependencies === true && typeof result.firstDependencyName === 'string' && typeof result.lastDependencyName === 'string' && typeof result.firstPath === 'string' && typeof result.lastPath === 'string' && typeof dependency.ordinal === 'number' && typeof dependency.kind === 'string' && typeof dependency.hasPath === 'boolean' && typeof dependency.pathKind === 'string' && typeof dependency.isTokenPath === 'boolean' && typeof dependency.pathDepth === 'number' && typeof dependency.hasName === 'boolean' && typeof dependency.isWeakDependency === 'boolean' && typeof dependency.isReexportDependency === 'boolean' && typeof dependency.isUpwardDependency === 'boolean' && typeof dependency.isLoadDependency === 'boolean' && typeof dependency.versionMismatch === 'boolean' && typeof dependency.hasTimestamp === 'boolean' && (pathKind === null || (typeof pathKind.pathKind === 'string' && typeof pathKind.count === 'number' && typeof pathKind.firstDependencyName === 'string' && typeof pathKind.lastDependencyName === 'string' && typeof pathKind.firstPath === 'string' && typeof pathKind.lastPath === 'string')) && (kind === null || (typeof kind.kind === 'string' && typeof kind.count === 'number' && typeof kind.firstDependencyName === 'string' && typeof kind.lastDependencyName === 'string' && typeof kind.timestampedCount === 'number' && typeof kind.versionMismatchCount === 'number')) && (dependencyName === null || (typeof dependencyName.dependencyName === 'string' && typeof dependencyName.count === 'number' && typeof dependencyName.firstPath === 'string' && typeof dependencyName.lastPath === 'string' && typeof dependencyName.firstKind === 'string' && typeof dependencyName.lastKind === 'string' && typeof dependencyName.timestampedCount === 'number' && typeof dependencyName.versionMismatchCount === 'number')); })()"
                     )
                     .expect("agent native dependencies result"),
                 "true"
@@ -4307,6 +4307,8 @@ undefined;
                             if (!(result.kind === 'native.segments'
                                 && result.moduleName === 'libsystem_malloc.dylib'
                                 && result.count === result.segments.length
+                                && typeof result.hasImage === 'boolean'
+                                && typeof result.resolved === 'boolean'
                                 && typeof result.hasSegments === 'boolean'
                                 && (result.firstSegmentVmaddr === null || typeof result.firstSegmentVmaddr === 'string')
                                 && (result.lastSegmentVmaddr === null || typeof result.lastSegmentVmaddr === 'string')
@@ -4330,6 +4332,13 @@ undefined;
                                 && Array.isArray(result.segmentNames)
                                 && typeof result.uniqueProtectionCount === 'number'
                                 && Array.isArray(result.protections))) {
+                                return false;
+                            }
+                            if (result.image === null) {
+                                if (!(result.hasImage === false && result.resolved === false && result.imageName === null && result.imagePath === null && result.resolvedImageName === null && result.resolvedImagePath === null && result.directoryPath === null && result.resolvedDirectoryPath === null && result.pathKind === null && result.resolvedPathKind === null && result.resolvedBase === null && result.slide === null && result.resolvedSlide === null && result.sizeHex === null && result.resolvedSizeHex === null && result.hasDirectoryPath === false && result.isSystemPath === false && result.isAppPath === false && result.isJailbreakPath === false)) {
+                                    return false;
+                                }
+                            } else if (!(result.hasImage === true && result.resolved === true && result.imageName === result.image.name && result.imagePath === result.image.path && result.resolvedImageName === result.image.name && result.resolvedImagePath === result.image.path && result.directoryPath === result.image.directoryPath && result.resolvedDirectoryPath === result.image.directoryPath && result.pathKind === result.image.pathKind && result.resolvedPathKind === result.image.pathKind && result.resolvedBase === result.image.base && result.slide === result.image.slide && result.resolvedSlide === result.image.slide && result.sizeHex === result.image.sizeHex && result.resolvedSizeHex === result.image.sizeHex && result.hasDirectoryPath === (result.image.hasDirectoryPath === true) && result.isSystemPath === (result.image.isSystemPath === true) && result.isAppPath === (result.image.isAppPath === true) && result.isJailbreakPath === (result.image.isJailbreakPath === true))) {
                                 return false;
                             }
                             if (result.segments.length === 0) {
@@ -4412,6 +4421,8 @@ undefined;
                             if (!(result.kind === 'native.sections'
                                 && result.moduleName === 'libsystem_malloc.dylib'
                                 && result.count === result.sections.length
+                                && typeof result.hasImage === 'boolean'
+                                && typeof result.resolved === 'boolean'
                                 && typeof result.hasSections === 'boolean'
                                 && (result.firstSectionFullName === null || typeof result.firstSectionFullName === 'string')
                                 && (result.lastSectionFullName === null || typeof result.lastSectionFullName === 'string')
@@ -4433,6 +4444,13 @@ undefined;
                                 && Array.isArray(result.sectionNames)
                                 && Array.isArray(result.segments)
                                 && Array.isArray(result.sectionTypes))) {
+                                return false;
+                            }
+                            if (result.image === null) {
+                                if (!(result.hasImage === false && result.resolved === false && result.imageName === null && result.imagePath === null && result.resolvedImageName === null && result.resolvedImagePath === null && result.directoryPath === null && result.resolvedDirectoryPath === null && result.pathKind === null && result.resolvedPathKind === null && result.resolvedBase === null && result.slide === null && result.resolvedSlide === null && result.sizeHex === null && result.resolvedSizeHex === null && result.hasDirectoryPath === false && result.isSystemPath === false && result.isAppPath === false && result.isJailbreakPath === false)) {
+                                    return false;
+                                }
+                            } else if (!(result.hasImage === true && result.resolved === true && result.imageName === result.image.name && result.imagePath === result.image.path && result.resolvedImageName === result.image.name && result.resolvedImagePath === result.image.path && result.directoryPath === result.image.directoryPath && result.resolvedDirectoryPath === result.image.directoryPath && result.pathKind === result.image.pathKind && result.resolvedPathKind === result.image.pathKind && result.resolvedBase === result.image.base && result.slide === result.image.slide && result.resolvedSlide === result.image.slide && result.sizeHex === result.image.sizeHex && result.resolvedSizeHex === result.image.sizeHex && result.hasDirectoryPath === (result.image.hasDirectoryPath === true) && result.isSystemPath === (result.image.isSystemPath === true) && result.isAppPath === (result.image.isAppPath === true) && result.isJailbreakPath === (result.image.isJailbreakPath === true))) {
                                 return false;
                             }
                             if (result.sections.length === 0) {
@@ -4528,7 +4546,14 @@ undefined;
                             if (result.kind !== 'native.load_commands' || result.moduleName !== 'libsystem_malloc.dylib') {
                                 return false;
                             }
-                            if (result.count !== result.commands.length || typeof result.hasCommands !== 'boolean') {
+                            if (result.count !== result.commands.length || typeof result.hasImage !== 'boolean' || typeof result.resolved !== 'boolean' || typeof result.hasCommands !== 'boolean') {
+                                return false;
+                            }
+                            if (result.image === null) {
+                                if (!(result.hasImage === false && result.resolved === false && result.imageName === null && result.imagePath === null && result.resolvedImageName === null && result.resolvedImagePath === null && result.directoryPath === null && result.resolvedDirectoryPath === null && result.pathKind === null && result.resolvedPathKind === null && result.resolvedBase === null && result.slide === null && result.resolvedSlide === null && result.sizeHex === null && result.resolvedSizeHex === null && result.hasDirectoryPath === false && result.isSystemPath === false && result.isAppPath === false && result.isJailbreakPath === false)) {
+                                    return false;
+                                }
+                            } else if (!(result.hasImage === true && result.resolved === true && result.imageName === result.image.name && result.imagePath === result.image.path && result.resolvedImageName === result.image.name && result.resolvedImagePath === result.image.path && result.directoryPath === result.image.directoryPath && result.resolvedDirectoryPath === result.image.directoryPath && result.pathKind === result.image.pathKind && result.resolvedPathKind === result.image.pathKind && result.resolvedBase === result.image.base && result.slide === result.image.slide && result.resolvedSlide === result.image.slide && result.sizeHex === result.image.sizeHex && result.resolvedSizeHex === result.image.sizeHex && result.hasDirectoryPath === (result.image.hasDirectoryPath === true) && result.isSystemPath === (result.image.isSystemPath === true) && result.isAppPath === (result.image.isAppPath === true) && result.isJailbreakPath === (result.image.isJailbreakPath === true))) {
                                 return false;
                             }
                             if ((result.firstCommandIndex !== null && typeof result.firstCommandIndex !== 'number')
@@ -6389,6 +6414,8 @@ undefined;
                             if (!(result.kind === 'native.imports'
                                 && result.hasQuery === false
                                 && result.count === result.imports.length
+                                && typeof result.hasImage === 'boolean'
+                                && typeof result.resolved === 'boolean'
                                 && typeof result.hasImports === 'boolean'
                                 && (result.firstSource === null || typeof result.firstSource === 'string')
                                 && (result.lastSource === null || typeof result.lastSource === 'string')
@@ -6423,6 +6450,13 @@ undefined;
                                 && Array.isArray(result.sourcePathKinds)
                                 && Array.isArray(result.importNames)
                                 && Array.isArray(result.normalizedNames))) {
+                                return false;
+                            }
+                            if (result.image === null) {
+                                if (!(result.hasImage === false && result.resolved === false && result.imageName === null && result.imagePath === null && result.resolvedImageName === null && result.resolvedImagePath === null && result.directoryPath === null && result.resolvedDirectoryPath === null && result.pathKind === null && result.resolvedPathKind === null && result.resolvedBase === null && result.slide === null && result.resolvedSlide === null && result.sizeHex === null && result.resolvedSizeHex === null && result.hasDirectoryPath === false && result.isSystemPath === false && result.isAppPath === false && result.isJailbreakPath === false)) {
+                                    return false;
+                                }
+                            } else if (!(result.hasImage === true && result.resolved === true && result.imageName === result.image.name && result.imagePath === result.image.path && result.resolvedImageName === result.image.name && result.resolvedImagePath === result.image.path && result.directoryPath === result.image.directoryPath && result.resolvedDirectoryPath === result.image.directoryPath && result.pathKind === result.image.pathKind && result.resolvedPathKind === result.image.pathKind && result.resolvedBase === result.image.base && result.slide === result.image.slide && result.resolvedSlide === result.image.slide && result.sizeHex === result.image.sizeHex && result.resolvedSizeHex === result.image.sizeHex && result.hasDirectoryPath === (result.image.hasDirectoryPath === true) && result.isSystemPath === (result.image.isSystemPath === true) && result.isAppPath === (result.image.isAppPath === true) && result.isJailbreakPath === (result.image.isJailbreakPath === true))) {
                                 return false;
                             }
                             if (result.imports.length === 0) {
@@ -9867,19 +9901,19 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.findLoadCommands ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: base }); return value === result.text && result.count === result.commands.length; })()")
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.findLoadCommands ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: base }); return value === result.text && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && result.count === result.commands.length; })()")
                     .expect("agent native findLoadCommands"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.loadCommands ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: base }); return value === result.text && result.count === result.commands.length; })()")
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.loadCommands ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: base }); return value === result.text && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && result.count === result.commands.length; })()")
                     .expect("agent native loadCommands alias"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.findImports libsystem_malloc.dylib -- malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: 'libsystem_malloc.dylib', query: 'malloc' }); return value === result.text && result.moduleName === 'libsystem_malloc.dylib' && result.query === 'malloc' && result.count === result.imports.length; })()")
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.findImports libsystem_malloc.dylib -- malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: 'libsystem_malloc.dylib', query: 'malloc' }); return value === result.text && result.moduleName === 'libsystem_malloc.dylib' && result.query === 'malloc' && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && result.count === result.imports.length; })()")
                     .expect("agent native findImports"),
                 "true"
             );
@@ -9999,7 +10033,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.imports ' + base); return value === '' || value.indexOf('!') !== -1; })()")
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.imports ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: base, query: null }); return value === result.text && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean'; })()")
                     .expect("agent native imports"),
                 "true"
             );
@@ -10017,7 +10051,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.segments ' + base); return value === '' || value.indexOf('vmaddr=') !== -1; })()")
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.segments ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.segments', moduleName: base }); return value === result.text && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean'; })()")
                     .expect("agent native segments"),
                 "true"
             );
@@ -10029,7 +10063,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.sections ' + base); return value === '' || value.indexOf('addr=') !== -1; })()")
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.sections ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.sections', moduleName: base }); return value === result.text && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean'; })()")
                     .expect("agent native sections"),
                 "true"
             );
@@ -10041,7 +10075,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.loadcmds ' + base); return value === '' || value.indexOf('cmd=0x') !== -1; })()")
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.loadcmds ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: base }); return value === result.text && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean'; })()")
                     .expect("agent native load commands"),
                 "true"
             );
