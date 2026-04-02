@@ -2381,6 +2381,26 @@ function resolveModuleImage(moduleName) {
     return image === null ? null : normalizeImage(image);
 }
 
+function buildModuleImageSummary(image) {
+    return {
+        image,
+        hasImage: image !== null,
+        imageName: image === null ? null : image.name,
+        imagePath: image === null ? null : image.path,
+        resolvedImageName: image === null ? null : image.name,
+        resolvedImagePath: image === null ? null : image.path,
+        resolvedDirectoryPath: image === null ? null : image.directoryPath,
+        resolvedPathKind: image === null ? null : image.pathKind,
+        resolvedBase: image === null ? null : image.base,
+        resolvedSlide: image === null ? null : image.slide,
+        resolvedSizeHex: image === null ? null : image.sizeHex,
+        hasDirectoryPath: image !== null && image.hasDirectoryPath === true,
+        isSystemPath: image !== null && image.isSystemPath === true,
+        isAppPath: image !== null && image.isAppPath === true,
+        isJailbreakPath: image !== null && image.isJailbreakPath === true,
+    };
+}
+
 function classifyLibraryPathKind(path) {
     if (path.length === 0) {
         return 'unknown';
@@ -7112,11 +7132,13 @@ function handleSpecResult(spec) {
     }
     case 'native.encryption_info': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const encryptionInfo = Native.encryptionInfo(moduleName);
         const normalized = encryptionInfo === null ? null : normalizeEncryptionInfo(encryptionInfo);
         return {
             kind: 'native.encryption_info',
             moduleName,
+            ...buildModuleImageSummary(image),
             encryptionInfo: normalized,
             hasEncryptionInfo: normalized !== null,
             resolved: normalized !== null,
@@ -7133,11 +7155,13 @@ function handleSpecResult(spec) {
     }
     case 'native.entry_point': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const entryPoint = Native.entryPoint(moduleName);
         const normalized = entryPoint === null ? null : normalizeEntryPoint(entryPoint);
         return {
             kind: 'native.entry_point',
             moduleName,
+            ...buildModuleImageSummary(image),
             entryPoint: normalized,
             hasEntryPoint: normalized !== null,
             resolved: normalized !== null,
@@ -7150,11 +7174,13 @@ function handleSpecResult(spec) {
     }
     case 'native.dyld_info': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const dyldInfo = Native.dyldInfo(moduleName);
         const normalized = dyldInfo === null ? null : normalizeDyldInfo(dyldInfo);
         return {
             kind: 'native.dyld_info',
             moduleName,
+            ...buildModuleImageSummary(image),
             dyldInfo: normalized,
             hasDyldInfo: normalized !== null,
             resolved: normalized !== null,
@@ -7223,11 +7249,13 @@ function handleSpecResult(spec) {
     }
     case 'native.linkedit': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const linkedit = Native.linkedit(moduleName);
         const normalized = linkedit === null ? null : normalizeLinkedit(linkedit);
         return {
             kind: 'native.linkedit',
             moduleName,
+            ...buildModuleImageSummary(image),
             linkedit: normalized,
             hasLinkedit: normalized !== null,
             resolved: normalized !== null,
@@ -7286,11 +7314,13 @@ function handleSpecResult(spec) {
     }
     case 'native.function_starts': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const functionStarts = Native.functionStarts(moduleName);
         const normalized = functionStarts === null ? null : normalizeFunctionStarts(functionStarts);
         return {
             kind: 'native.function_starts',
             moduleName,
+            ...buildModuleImageSummary(image),
             functionStarts: normalized,
             hasFunctionStarts: normalized !== null,
             resolved: normalized !== null,
@@ -7340,11 +7370,13 @@ function handleSpecResult(spec) {
     }
     case 'native.code_signature': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const codeSignature = Native.codeSignature(moduleName);
         const normalized = codeSignature === null ? null : normalizeCodeSignature(codeSignature);
         return {
             kind: 'native.code_signature',
             moduleName,
+            ...buildModuleImageSummary(image),
             codeSignature: normalized,
             hasCodeSignature: normalized !== null,
             resolved: normalized !== null,
@@ -7397,11 +7429,13 @@ function handleSpecResult(spec) {
     }
     case 'native.data_in_code': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const dataInCode = Native.dataInCode(moduleName);
         const normalized = dataInCode === null ? null : normalizeDataInCode(dataInCode);
         return {
             kind: 'native.data_in_code',
             moduleName,
+            ...buildModuleImageSummary(image),
             dataInCode: normalized,
             hasDataInCode: normalized !== null,
             resolved: normalized !== null,
@@ -7456,11 +7490,13 @@ function handleSpecResult(spec) {
     }
     case 'native.exports_trie': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const exportsTrie = Native.exportsTrie(moduleName);
         const normalized = exportsTrie === null ? null : normalizeExportsTrie(exportsTrie);
         return {
             kind: 'native.exports_trie',
             moduleName,
+            ...buildModuleImageSummary(image),
             exportsTrie: normalized,
             hasExportsTrie: normalized !== null,
             resolved: normalized !== null,
@@ -7532,11 +7568,13 @@ function handleSpecResult(spec) {
     }
     case 'native.chained_fixups': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const chainedFixups = Native.chainedFixups(moduleName);
         const normalized = chainedFixups === null ? null : normalizeChainedFixups(chainedFixups);
         return {
             kind: 'native.chained_fixups',
             moduleName,
+            ...buildModuleImageSummary(image),
             chainedFixups: normalized,
             hasChainedFixups: normalized !== null,
             resolved: normalized !== null,
@@ -7634,11 +7672,13 @@ function handleSpecResult(spec) {
     }
     case 'native.source_version': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const sourceVersion = Native.sourceVersion(moduleName);
         const normalized = sourceVersion === null ? null : normalizeSourceVersion(sourceVersion);
         return {
             kind: 'native.source_version',
             moduleName,
+            ...buildModuleImageSummary(image),
             sourceVersion: normalized,
             hasSourceVersion: normalized !== null,
             resolved: normalized !== null,
@@ -7663,11 +7703,13 @@ function handleSpecResult(spec) {
     }
     case 'native.build_version': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const buildVersion = Native.buildVersion(moduleName);
         const normalized = buildVersion === null ? null : normalizeBuildVersion(buildVersion);
         return {
             kind: 'native.build_version',
             moduleName,
+            ...buildModuleImageSummary(image),
             buildVersion: normalized,
             hasBuildVersion: normalized !== null,
             resolved: normalized !== null,
@@ -7705,11 +7747,13 @@ function handleSpecResult(spec) {
     }
     case 'native.dylinker': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const dylinker = Native.dylinker(moduleName);
         const normalized = dylinker === null ? null : normalizeDylinker(dylinker);
         return {
             kind: 'native.dylinker',
             moduleName,
+            ...buildModuleImageSummary(image),
             dylinker: normalized,
             hasDylinker: normalized !== null,
             resolved: normalized !== null,
@@ -7751,11 +7795,13 @@ function handleSpecResult(spec) {
     }
     case 'native.install_name': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const installName = Native.installName(moduleName);
         const normalized = installName === null ? null : normalizeInstallName(installName);
         return {
             kind: 'native.install_name',
             moduleName,
+            ...buildModuleImageSummary(image),
             installName: normalized,
             hasInstallName: normalized !== null,
             resolved: normalized !== null,
@@ -7796,11 +7842,13 @@ function handleSpecResult(spec) {
     }
     case 'native.uuid': {
         const moduleName = String(spec.moduleName || '');
+        const image = resolveModuleImage(moduleName);
         const imageUuid = Native.uuid(moduleName);
         const normalized = imageUuid === null ? null : normalizeUuid(imageUuid);
         return {
             kind: 'native.uuid',
             moduleName,
+            ...buildModuleImageSummary(image),
             imageUuid: normalized,
             hasUuid: normalized !== null,
             resolved: normalized !== null,

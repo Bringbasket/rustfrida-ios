@@ -5147,6 +5147,39 @@ undefined;
                                 return true;
                             }
                             const moduleName = main.image.name;
+                            function checkImageSummary(result) {
+                                const image = result.image;
+                                if (image === null) {
+                                    return result.hasImage === false
+                                        && result.imageName === null
+                                        && result.imagePath === null
+                                        && result.resolvedImageName === null
+                                        && result.resolvedImagePath === null
+                                        && result.resolvedDirectoryPath === null
+                                        && result.resolvedPathKind === null
+                                        && result.resolvedBase === null
+                                        && result.resolvedSlide === null
+                                        && result.resolvedSizeHex === null
+                                        && result.hasDirectoryPath === false
+                                        && result.isSystemPath === false
+                                        && result.isAppPath === false
+                                        && result.isJailbreakPath === false;
+                                }
+                                return result.hasImage === true
+                                    && result.imageName === image.name
+                                    && result.imagePath === image.path
+                                    && result.resolvedImageName === image.name
+                                    && result.resolvedImagePath === image.path
+                                    && result.resolvedDirectoryPath === image.directoryPath
+                                    && result.resolvedPathKind === image.pathKind
+                                    && result.resolvedBase === image.base
+                                    && result.resolvedSlide === image.slide
+                                    && result.resolvedSizeHex === image.sizeHex
+                                    && result.hasDirectoryPath === (image.hasDirectoryPath === true)
+                                    && result.isSystemPath === (image.isSystemPath === true)
+                                    && result.isAppPath === (image.isAppPath === true)
+                                    && result.isJailbreakPath === (image.isJailbreakPath === true);
+                            }
                             const dyld = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dyld_info', moduleName });
                             if (dyld.dyldInfo === null) {
                                 if (!(dyld.resolvedModuleName === null
@@ -5260,6 +5293,10 @@ undefined;
                                 return false;
                             }
 
+                            if (!checkImageSummary(dyld)) {
+                                return false;
+                            }
+
                             const linkedit = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.linkedit', moduleName });
                             if (linkedit.linkedit === null) {
                                 if (!(linkedit.resolvedModuleName === null
@@ -5351,6 +5388,10 @@ undefined;
                                 return false;
                             }
 
+                            if (!checkImageSummary(linkedit)) {
+                                return false;
+                            }
+
                             const starts = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.function_starts', moduleName });
                             if (starts.functionStarts === null) {
                                 if (!(starts.resolvedModuleName === null
@@ -5432,6 +5473,10 @@ undefined;
                                 return false;
                             }
 
+                            if (!checkImageSummary(starts)) {
+                                return false;
+                            }
+
                             const codeSignature = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.code_signature', moduleName });
                             if (codeSignature.codeSignature === null) {
                                 if (!(codeSignature.resolvedModuleName === null
@@ -5508,6 +5553,10 @@ undefined;
                                 && codeSignature.blobLengthRelation === codeSignature.codeSignature.blobLengthRelation
                                 && codeSignature.resolvedCountMatchesSuperBlob === codeSignature.codeSignature.countMatchesSuperBlob
                                 && codeSignature.countMatchesSuperBlob === (codeSignature.codeSignature.countMatchesSuperBlob === true))) {
+                                return false;
+                            }
+
+                            if (!checkImageSummary(codeSignature)) {
                                 return false;
                             }
 
@@ -5593,6 +5642,10 @@ undefined;
                                 && dataInCode.dataEntryCount === dataInCode.dataInCode.dataEntryCount
                                 && dataInCode.jumpTableEntryCount === dataInCode.dataInCode.jumpTableEntryCount
                                 && dataInCode.unknownEntryCount === dataInCode.dataInCode.unknownEntryCount)) {
+                                return false;
+                            }
+
+                            if (!checkImageSummary(dataInCode)) {
                                 return false;
                             }
 
@@ -5707,7 +5760,14 @@ undefined;
                                 return false;
                             }
 
+                            if (!checkImageSummary(exportsTrie)) {
+                                return false;
+                            }
+
                             const fixups = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.chained_fixups', moduleName });
+                            if (!checkImageSummary(fixups)) {
+                                return false;
+                            }
                             if (fixups.chainedFixups === null) {
                                 return fixups.resolvedModuleName === null
                                     && fixups.resolvedModuleBase === null
@@ -6208,6 +6268,40 @@ undefined;
                             }
                             const moduleName = main.image.name;
 
+                            function checkImageSummary(result) {
+                                const image = result.image;
+                                if (image === null) {
+                                    return result.hasImage === false
+                                        && result.imageName === null
+                                        && result.imagePath === null
+                                        && result.resolvedImageName === null
+                                        && result.resolvedImagePath === null
+                                        && result.resolvedDirectoryPath === null
+                                        && result.resolvedPathKind === null
+                                        && result.resolvedBase === null
+                                        && result.resolvedSlide === null
+                                        && result.resolvedSizeHex === null
+                                        && result.hasDirectoryPath === false
+                                        && result.isSystemPath === false
+                                        && result.isAppPath === false
+                                        && result.isJailbreakPath === false;
+                                }
+                                return result.hasImage === true
+                                    && result.imageName === image.name
+                                    && result.imagePath === image.path
+                                    && result.resolvedImageName === image.name
+                                    && result.resolvedImagePath === image.path
+                                    && result.resolvedDirectoryPath === image.directoryPath
+                                    && result.resolvedPathKind === image.pathKind
+                                    && result.resolvedBase === image.base
+                                    && result.resolvedSlide === image.slide
+                                    && result.resolvedSizeHex === image.sizeHex
+                                    && result.hasDirectoryPath === (image.hasDirectoryPath === true)
+                                    && result.isSystemPath === (image.isSystemPath === true)
+                                    && result.isAppPath === (image.isAppPath === true)
+                                    && result.isJailbreakPath === (image.isJailbreakPath === true);
+                            }
+
                             function checkEncryptionInfo(result) {
                                 const info = result.encryptionInfo;
                                 if (info === null) {
@@ -6372,13 +6466,28 @@ undefined;
                                     && result.resolvedUuidSegmentCount === info.uuidSegmentCount;
                             }
 
-                            return checkEncryptionInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName }))
-                                && checkEntryPoint(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.entry_point', moduleName }))
-                                && checkSourceVersion(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.source_version', moduleName }))
-                                && checkBuildVersion(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.build_version', moduleName }))
-                                && checkDylinker(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dylinker', moduleName }))
-                                && checkInstallName(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.install_name', moduleName }))
-                                && checkUuid(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.uuid', moduleName }));
+                            const encryptionInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName });
+                            const entryPoint = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.entry_point', moduleName });
+                            const sourceVersion = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.source_version', moduleName });
+                            const buildVersion = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.build_version', moduleName });
+                            const dylinker = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dylinker', moduleName });
+                            const installName = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.install_name', moduleName });
+                            const uuid = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.uuid', moduleName });
+
+                            return checkImageSummary(encryptionInfo)
+                                && checkEncryptionInfo(encryptionInfo)
+                                && checkImageSummary(entryPoint)
+                                && checkEntryPoint(entryPoint)
+                                && checkImageSummary(sourceVersion)
+                                && checkSourceVersion(sourceVersion)
+                                && checkImageSummary(buildVersion)
+                                && checkBuildVersion(buildVersion)
+                                && checkImageSummary(dylinker)
+                                && checkDylinker(dylinker)
+                                && checkImageSummary(installName)
+                                && checkInstallName(installName)
+                                && checkImageSummary(uuid)
+                                && checkUuid(uuid);
                         })()"#
                     )
                     .expect("agent native light single result summaries"),
