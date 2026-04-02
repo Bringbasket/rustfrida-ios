@@ -10089,6 +10089,8 @@ undefined;
                                     typeof result.hasSourceDemangledTypes !== 'boolean' ||
                                     typeof result.uniqueContextModuleCount !== 'number' ||
                                     typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.typeNameList) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.typeNames) ||
                                     !Array.isArray(result.contextModuleNameList) ||
@@ -10099,7 +10101,9 @@ undefined;
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
-                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.typeNameList.length !== result.typeNames.length ||
+                                    result.contextModuleNameList.length !== result.contextModules.length ||
                                     result.detailKindList.length !== result.detailKinds.length ||
                                     result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
@@ -10139,6 +10143,7 @@ undefined;
                                 (typeInfo.contextModuleName === null || typeof typeInfo.contextModuleName === 'string') &&
                                 (typeInfo.detailKind === null || typeof typeInfo.detailKind === 'string') &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstTypeName === 'string' &&
@@ -10146,6 +10151,7 @@ undefined;
                                     typeof moduleSummary.sourceDemangledCount === 'number'
                                 )) &&
                                 (typeSummary === null || (
+                                    result.typeNameList[0] === typeSummary.typeName &&
                                     typeof typeSummary.typeName === 'string' &&
                                     typeof typeSummary.count === 'number' &&
                                     typeof typeSummary.firstModuleName === 'string' &&
@@ -10212,6 +10218,13 @@ undefined;
                                 return result.count === 2
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.moduleNameList)
+                                    && result.moduleNameList.length === result.moduleNames.length
+                                    && result.moduleNameList[0] === 'Demo'
+                                    && Array.isArray(result.typeNameList)
+                                    && result.typeNameList.length === result.typeNames.length
+                                    && result.typeNameList.includes('ViewController')
+                                    && result.typeNameList.includes('Helper')
                                     && Array.isArray(result.contextModules)
                                     && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2)
                                     && Array.isArray(result.detailKinds)
@@ -10251,11 +10264,17 @@ undefined;
                                     typeof result.hasSourceDemangledTypes !== 'boolean' ||
                                     typeof result.uniqueContextModuleCount !== 'number' ||
                                     typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.typeNameList) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.typeNames) ||
                                     !Array.isArray(result.contextModules) ||
                                     !Array.isArray(result.detailKinds) ||
                                     !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.typeNameList.length !== result.typeNames.length) {
                                 return false;
                             }
                             if (result.types.length === 0) {
@@ -10287,6 +10306,7 @@ undefined;
                                 typeof typeInfo.isMetadataAccessor === 'boolean' &&
                                 typeof typeInfo.isNominalDescriptor === 'boolean' &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstTypeName === 'string' &&
@@ -10294,6 +10314,7 @@ undefined;
                                     typeof moduleSummary.sourceDemangledCount === 'number'
                                 )) &&
                                 (typeSummary === null || (
+                                    result.typeNameList[0] === typeSummary.typeName &&
                                     typeof typeSummary.typeName === 'string' &&
                                     typeof typeSummary.count === 'number' &&
                                     typeof typeSummary.firstModuleName === 'string' &&
@@ -10357,6 +10378,13 @@ undefined;
                                 return result.count === 2
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 1
+                                    && Array.isArray(result.moduleNameList)
+                                    && result.moduleNameList.length === result.moduleNames.length
+                                    && result.moduleNameList[0] === 'Demo'
+                                    && Array.isArray(result.typeNameList)
+                                    && result.typeNameList.length === result.typeNames.length
+                                    && result.typeNameList.includes('Helper')
+                                    && result.typeNameList.includes('Renderer')
                                     && Array.isArray(result.contextModules)
                                     && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2)
                                     && Array.isArray(result.detailKinds)
@@ -10388,6 +10416,8 @@ undefined;
                                     typeof result.hasSourceDemangledOwners !== 'boolean' ||
                                     typeof result.uniqueContextModuleCount !== 'number' ||
                                     typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.ownerNameList) ||
+                                    !Array.isArray(result.moduleNameList) ||
                                     !Array.isArray(result.ownerNames) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.contextModuleNameList) ||
@@ -10398,7 +10428,9 @@ undefined;
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
-                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                            if (result.ownerNameList.length !== result.ownerNames.length ||
+                                    result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.contextModuleNameList.length !== result.contextModules.length ||
                                     result.detailKindList.length !== result.detailKinds.length ||
                                     result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
@@ -10434,6 +10466,7 @@ undefined;
                                 typeof owner.sourceSymbolName === 'string' &&
                                 typeof owner.sourceOffsetHex === 'string' &&
                                 (ownerSummary === null || (
+                                    result.ownerNameList[0] === ownerSummary.ownerName &&
                                     typeof ownerSummary.ownerName === 'string' &&
                                     typeof ownerSummary.count === 'number' &&
                                     typeof ownerSummary.firstModuleName === 'string' &&
@@ -10441,6 +10474,7 @@ undefined;
                                     typeof ownerSummary.hasSourceDemangledName === 'boolean'
                                 )) &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstOwnerName === 'string' &&
@@ -10507,6 +10541,13 @@ undefined;
                                 return result.count === 2
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.ownerNameList)
+                                    && result.ownerNameList.length === result.ownerNames.length
+                                    && result.ownerNameList.includes('ViewController')
+                                    && result.ownerNameList.includes('Helper')
+                                    && Array.isArray(result.moduleNameList)
+                                    && result.moduleNameList.length === result.moduleNames.length
+                                    && result.moduleNameList[0] === 'Demo'
                                     && Array.isArray(result.contextModuleNameList)
                                     && result.contextModuleNameList.length === result.contextModules.length
                                     && result.contextModuleNameList[0] === 'Demo'
