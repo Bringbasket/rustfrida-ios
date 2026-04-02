@@ -6658,11 +6658,17 @@ undefined;
                                 && typeof result.uniqueSourcePathKindCount === 'number'
                                 && typeof result.uniqueImportNameCount === 'number'
                                 && typeof result.uniqueNormalizedNameCount === 'number'
+                                && Array.isArray(result.sourceKindNames)
+                                && Array.isArray(result.sourcePathKindNames)
                                 && Array.isArray(result.dylibSources)
                                 && Array.isArray(result.sourceKinds)
                                 && Array.isArray(result.sourcePathKinds)
                                 && Array.isArray(result.importNames)
                                 && Array.isArray(result.normalizedNames))) {
+                                return false;
+                            }
+                            if (!(result.sourceKindNames.length === result.sourceKinds.length
+                                && result.sourcePathKindNames.length === result.sourcePathKinds.length)) {
                                 return false;
                             }
                             if (result.image === null) {
@@ -6716,7 +6722,8 @@ undefined;
                             }
                             if (result.sourceKinds.length !== 0) {
                                 const sourceKind = result.sourceKinds[0];
-                                if (!(typeof sourceKind.sourceKind === 'string'
+                                if (!(result.sourceKindNames[0] === sourceKind.sourceKind
+                                    && typeof sourceKind.sourceKind === 'string'
                                     && typeof sourceKind.count === 'number'
                                     && typeof sourceKind.firstImportName === 'string'
                                     && typeof sourceKind.lastImportName === 'string'
@@ -6727,7 +6734,8 @@ undefined;
                             }
                             if (result.sourcePathKinds.length !== 0) {
                                 const pathKind = result.sourcePathKinds[0];
-                                if (!(typeof pathKind.sourcePathKind === 'string'
+                                if (!(result.sourcePathKindNames[0] === pathKind.sourcePathKind
+                                    && typeof pathKind.sourcePathKind === 'string'
                                     && typeof pathKind.count === 'number'
                                     && typeof pathKind.firstImportName === 'string'
                                     && typeof pathKind.lastImportName === 'string'

@@ -8228,6 +8228,8 @@ function handleSpecResult(spec) {
             uniqueSourcePathKindCount: sourcePathKindSummaries.length,
             uniqueImportNameCount: importNames.length,
             uniqueNormalizedNameCount: normalizedNames.length,
+            sourceKindNames: sourceKindSummaries.map((item) => item.sourceKind),
+            sourcePathKindNames: sourcePathKindSummaries.map((item) => item.sourcePathKind),
             dylibSources,
             sourceKinds: sourceKindSummaries,
             sourcePathKinds: sourcePathKindSummaries,
