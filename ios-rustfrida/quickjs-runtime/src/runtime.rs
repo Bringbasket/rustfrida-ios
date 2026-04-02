@@ -2329,7 +2329,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodOwners init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_owners', query: 'init', isClassMethod: false }); return value === result.text && result.query === 'init' && result.isClassMethod === false && result.hasQuery === true && typeof result.resolvedOwnerCount === 'number' && typeof result.unresolvedOwnerCount === 'number' && typeof result.hasResolvedOwners === 'boolean' && result.resolvedOwnerCount + result.unresolvedOwnerCount === result.uniqueOwnerCount; })()"
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodOwners init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_owners', query: 'init', isClassMethod: false }); return value === result.text && result.query === 'init' && result.isClassMethod === false && result.hasQuery === true && Array.isArray(result.ownerNames) && Array.isArray(result.selectorNames) && typeof result.resolvedOwnerCount === 'number' && typeof result.unresolvedOwnerCount === 'number' && typeof result.hasResolvedOwners === 'boolean' && result.resolvedOwnerCount + result.unresolvedOwnerCount === result.uniqueOwnerCount; })()"
                     )
                     .expect("agent objc method owners"),
                 "true"
@@ -4010,6 +4010,8 @@ undefined;
                                     typeof result.totalMethodCount !== 'number' ||
                                     typeof result.totalInstanceSize !== 'number' ||
                                     !Array.isArray(result.imagePaths) ||
+                                    !Array.isArray(result.ownerNames) ||
+                                    !Array.isArray(result.selectorNames) ||
                                     !Array.isArray(result.owners) ||
                                     !Array.isArray(result.selectors)) {
                                 return false;
@@ -4043,23 +4045,29 @@ undefined;
                                 typeof method.selector === 'string' &&
                                 typeof method.returnTypeName === 'string' &&
                                 Array.isArray(method.argumentTypeNames) &&
+                                result.ownerNames.every((entry) => typeof entry === 'string') &&
+                                result.selectorNames.every((entry) => typeof entry === 'string') &&
                                 typeof method.hasExplicitArguments === 'boolean' &&
                                 typeof method.returnsVoid === 'boolean' &&
                                 typeof method.returnsObject === 'boolean' &&
                                 typeof method.returnsBlock === 'boolean' &&
+                                result.ownerNames.length === result.owners.length &&
+                                result.selectorNames.length === result.selectors.length &&
                                 (ownerSummary === null || (
                                     typeof ownerSummary.className === 'string' &&
                                     typeof ownerSummary.count === 'number' &&
                                     typeof ownerSummary.firstSelector === 'string' &&
                                     typeof ownerSummary.lastSelector === 'string' &&
-                                    typeof ownerSummary.keywordSelectorCount === 'number'
+                                    typeof ownerSummary.keywordSelectorCount === 'number' &&
+                                    result.ownerNames.includes(ownerSummary.className)
                                 )) &&
                                 (selectorSummary === null || (
                                     typeof selectorSummary.selector === 'string' &&
                                     typeof selectorSummary.count === 'number' &&
                                     typeof selectorSummary.firstOwner === 'string' &&
                                     typeof selectorSummary.lastOwner === 'string' &&
-                                    typeof selectorSummary.keywordSelector === 'boolean'
+                                    typeof selectorSummary.keywordSelector === 'boolean' &&
+                                    result.selectorNames.includes(selectorSummary.selector)
                                 ));
                         })()"
                     )

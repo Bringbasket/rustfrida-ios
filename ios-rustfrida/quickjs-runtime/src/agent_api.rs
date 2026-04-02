@@ -6565,6 +6565,8 @@ function handleSpecResult(spec) {
             totalMethodCount: summary.totalMethodCount,
             totalInstanceSize: summary.totalInstanceSize,
             imagePaths: summary.imagePaths,
+            ownerNames: ownerClassNames,
+            selectorNames: selectors.map((item) => item.selector),
             owners,
             selectors,
             methods,
