@@ -2891,6 +2891,8 @@ undefined;
                                     typeof result.resolvedProtocolTotalMethodCount !== 'number' ||
                                     typeof result.protocolPropertyCount !== 'number' ||
                                     typeof result.resolvedProtocolPropertyCount !== 'number' ||
+                                    !Array.isArray(result.selectorNames) ||
+                                    !Array.isArray(result.returnTypeNames) ||
                                     !Array.isArray(result.selectors) ||
                                     !Array.isArray(result.returnTypes)) {
                                 return false;
@@ -2934,6 +2936,8 @@ undefined;
                                 typeof method.typeEncoding === 'string' &&
                                 typeof method.returnTypeName === 'string' &&
                                 Array.isArray(method.argumentTypeNames) &&
+                                result.selectorNames.every((entry) => typeof entry === 'string') &&
+                                result.returnTypeNames.every((entry) => typeof entry === 'string') &&
                                 typeof method.methodTypeInfo === 'object' &&
                                 Array.isArray(method.selectorParts) &&
                                 typeof method.selectorPartCount === 'number' &&
@@ -2945,13 +2949,16 @@ undefined;
                                 typeof method.returnsVoid === 'boolean' &&
                                 typeof method.returnsObject === 'boolean' &&
                                 typeof method.returnsBlock === 'boolean' &&
+                                result.selectorNames.length === result.selectors.length &&
+                                result.returnTypeNames.length === result.returnTypes.length &&
                                 (selectorSummary === null || (
                                     typeof selectorSummary.selector === 'string' &&
                                     typeof selectorSummary.count === 'number' &&
                                     typeof selectorSummary.returnTypeName === 'string' &&
                                     typeof selectorSummary.keywordSelector === 'boolean' &&
                                     typeof selectorSummary.isRequired === 'boolean' &&
-                                    typeof selectorSummary.isInstanceMethod === 'boolean'
+                                    typeof selectorSummary.isInstanceMethod === 'boolean' &&
+                                    result.selectorNames.includes(selectorSummary.selector)
                                 )) &&
                                 (returnTypeSummary === null || (
                                     typeof returnTypeSummary.returnTypeName === 'string' &&
@@ -2959,7 +2966,8 @@ undefined;
                                     typeof returnTypeSummary.firstSelector === 'string' &&
                                     typeof returnTypeSummary.lastSelector === 'string' &&
                                     typeof returnTypeSummary.returnsObject === 'boolean' &&
-                                    typeof returnTypeSummary.returnsBlock === 'boolean'
+                                    typeof returnTypeSummary.returnsBlock === 'boolean' &&
+                                    result.returnTypeNames.includes(returnTypeSummary.returnTypeName)
                                 )) &&
                                 result.text === result.methods.map((method) => method.text).join('\\n');
                         })()"
@@ -3899,6 +3907,8 @@ undefined;
                                     typeof result.ownerIvarCount !== 'number' ||
                                     typeof result.ownerTotalPropertyCount !== 'number' ||
                                     typeof result.ownerTotalMethodCount !== 'number' ||
+                                    !Array.isArray(result.selectorNames) ||
+                                    !Array.isArray(result.returnTypeNames) ||
                                     !Array.isArray(result.selectors) ||
                                     !Array.isArray(result.returnTypes)) {
                                 return false;
@@ -3946,6 +3956,8 @@ undefined;
                                 typeof method.typeEncoding === 'string' &&
                                 typeof method.returnTypeName === 'string' &&
                                 Array.isArray(method.argumentTypeNames) &&
+                                result.selectorNames.every((entry) => typeof entry === 'string') &&
+                                result.returnTypeNames.every((entry) => typeof entry === 'string') &&
                                 typeof method.methodTypeInfo === 'object' &&
                                 Array.isArray(method.selectorParts) &&
                                 typeof method.selectorPartCount === 'number' &&
@@ -3955,13 +3967,16 @@ undefined;
                                 typeof method.returnsVoid === 'boolean' &&
                                 typeof method.returnsObject === 'boolean' &&
                                 typeof method.returnsBlock === 'boolean' &&
+                                result.selectorNames.length === result.selectors.length &&
+                                result.returnTypeNames.length === result.returnTypes.length &&
                                 (selectorSummary === null || (
                                     typeof selectorSummary.selector === 'string' &&
                                     typeof selectorSummary.count === 'number' &&
                                     typeof selectorSummary.firstImp === 'string' &&
                                     typeof selectorSummary.lastImp === 'string' &&
                                     typeof selectorSummary.returnTypeName === 'string' &&
-                                    typeof selectorSummary.keywordSelector === 'boolean'
+                                    typeof selectorSummary.keywordSelector === 'boolean' &&
+                                    result.selectorNames.includes(selectorSummary.selector)
                                 )) &&
                                 (returnTypeSummary === null || (
                                     typeof returnTypeSummary.returnTypeName === 'string' &&
@@ -3969,7 +3984,8 @@ undefined;
                                     typeof returnTypeSummary.firstSelector === 'string' &&
                                     typeof returnTypeSummary.lastSelector === 'string' &&
                                     typeof returnTypeSummary.returnsObject === 'boolean' &&
-                                    typeof returnTypeSummary.returnsBlock === 'boolean'
+                                    typeof returnTypeSummary.returnsBlock === 'boolean' &&
+                                    result.returnTypeNames.includes(returnTypeSummary.returnTypeName)
                                 ));
                         })()"
                     )
