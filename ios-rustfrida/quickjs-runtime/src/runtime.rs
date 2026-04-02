@@ -8564,6 +8564,23 @@ undefined;
                 runtime
                     .eval(
                         r#"(function() {
+                            function checkSymbolInfo(result) {
+                                if (result.symbolInfo === null) {
+                                    return result.resolvedOwnerTypeName === null
+                                        && result.resolvedMemberName === null
+                                        && result.resolvedMemberKind === null
+                                        && result.resolvedSignature === null
+                                        && result.resolvedResultTypeName === null
+                                        && result.resolvedThrowsKind === null;
+                                }
+                                return result.resolvedOwnerTypeName === result.symbolInfo.ownerTypeName
+                                    && result.resolvedMemberName === result.symbolInfo.memberName
+                                    && result.resolvedMemberKind === result.symbolInfo.memberKind
+                                    && result.resolvedSignature === result.symbolInfo.signature
+                                    && result.resolvedResultTypeName === result.symbolInfo.resultTypeName
+                                    && result.resolvedThrowsKind === result.symbolInfo.throwsKind;
+                            }
+
                             function checkMethodInfo(result) {
                                 if (result.methodInfo === null) {
                                     return result.resolvedOwnerTypeName === null
@@ -8677,7 +8694,8 @@ undefined;
                                     && result.resolvedDetailKind === result.witnessTableInfo.detailKind;
                             }
 
-                            return checkProtocolInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' }))
+                            return checkSymbolInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbol_info', moduleName: null, symbolName: 'ViewController' }))
+                                && checkProtocolInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' }))
                                 && checkConformanceInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformance_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }))
                                 && checkMetadataInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' }))
                                 && checkTypeInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_info', moduleName: null, typeName: 'ViewController' }))
