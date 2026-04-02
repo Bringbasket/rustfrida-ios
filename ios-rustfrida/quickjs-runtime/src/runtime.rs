@@ -2328,7 +2328,9 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('objc.methodOwners init'); return value === '' || value.indexOf(' init') !== -1; })()")
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodOwners init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_owners', query: 'init', isClassMethod: false }); return value === result.text && result.query === 'init' && result.isClassMethod === false && result.hasQuery === true && typeof result.resolvedOwnerCount === 'number' && typeof result.unresolvedOwnerCount === 'number' && typeof result.hasResolvedOwners === 'boolean' && result.resolvedOwnerCount + result.unresolvedOwnerCount === result.uniqueOwnerCount; })()"
+                    )
                     .expect("agent objc method owners"),
                 "true"
             );
@@ -3966,6 +3968,9 @@ undefined;
                                 return false;
                             }
                             if (typeof result.uniqueOwnerCount !== 'number' ||
+                                    typeof result.resolvedOwnerCount !== 'number' ||
+                                    typeof result.unresolvedOwnerCount !== 'number' ||
+                                    typeof result.hasResolvedOwners !== 'boolean' ||
                                     typeof result.uniqueSelectorCount !== 'number' ||
                                     typeof result.keywordSelectorCount !== 'number' ||
                                     typeof result.unarySelectorCount !== 'number' ||
@@ -3987,6 +3992,12 @@ undefined;
                                     !Array.isArray(result.imagePaths) ||
                                     !Array.isArray(result.owners) ||
                                     !Array.isArray(result.selectors)) {
+                                return false;
+                            }
+                            if (result.resolvedOwnerCount + result.unresolvedOwnerCount !== result.uniqueOwnerCount) {
+                                return false;
+                            }
+                            if (result.hasResolvedOwners !== (result.resolvedOwnerCount !== 0)) {
                                 return false;
                             }
                             if (result.methods.length === 0) {

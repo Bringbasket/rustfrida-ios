@@ -2709,6 +2709,8 @@ function normalizeObjcClassInfo(info) {
 
 function summarizeObjcClassNames(classes) {
     const imagePaths = [];
+    let resolvedClassCount = 0;
+    let unresolvedClassCount = 0;
     let classesWithImagePathCount = 0;
     let rootClassCount = 0;
     let classesWithProtocolsCount = 0;
@@ -2726,8 +2728,10 @@ function summarizeObjcClassNames(classes) {
         const info = ObjC.classInfo(className, false);
         const normalized = info === null ? null : normalizeObjcClassInfo(info);
         if (normalized === null) {
+            unresolvedClassCount += 1;
             continue;
         }
+        resolvedClassCount += 1;
         totalProtocolCount += normalized.protocolCount;
         totalPropertyCount += normalized.totalPropertyCount;
         totalIvarCount += normalized.ivarCount;
@@ -2769,6 +2773,8 @@ function summarizeObjcClassNames(classes) {
         }
     }
     return {
+        resolvedClassCount,
+        unresolvedClassCount,
         firstImagePath,
         lastImagePath,
         uniqueImagePathCount: imagePaths.length,
@@ -6499,12 +6505,15 @@ function handleSpecResult(spec) {
             uniqueSelectorCount: selectors.length,
             keywordSelectorCount,
             unarySelectorCount,
-            explicitArgumentMethodCount,
-            returnsVoidCount,
-            returnsObjectCount,
-            returnsBlockCount,
-            firstImagePath: summary.firstImagePath,
-            lastImagePath: summary.lastImagePath,
+        explicitArgumentMethodCount,
+        returnsVoidCount,
+        returnsObjectCount,
+        returnsBlockCount,
+        resolvedOwnerCount: summary.resolvedClassCount,
+        unresolvedOwnerCount: summary.unresolvedClassCount,
+        hasResolvedOwners: summary.resolvedClassCount !== 0,
+        firstImagePath: summary.firstImagePath,
+        lastImagePath: summary.lastImagePath,
             uniqueImagePathCount: summary.uniqueImagePathCount,
             ownersWithImagePathCount: summary.classesWithImagePathCount,
             classesWithProtocolsCount: summary.classesWithProtocolsCount,
