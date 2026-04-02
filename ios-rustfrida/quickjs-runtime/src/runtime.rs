@@ -7792,9 +7792,17 @@ undefined;
                                     typeof result.uniqueDetailKindCount !== 'number' ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.protocolNames) ||
+                                    !Array.isArray(result.contextModuleNameList) ||
+                                    !Array.isArray(result.detailKindList) ||
+                                    !Array.isArray(result.sourceKindList) ||
                                     !Array.isArray(result.contextModules) ||
                                     !Array.isArray(result.detailKinds) ||
                                     !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                                    result.detailKindList.length !== result.detailKinds.length ||
+                                    result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
                             }
                             if (result.protocols.length === 0) {
@@ -7844,18 +7852,21 @@ undefined;
                                     typeof protocolSummary.hasSourceDemangledName === 'boolean'
                                 )) &&
                                 (contextSummary === null || (
+                                    result.contextModuleNameList[0] === contextSummary.contextModuleName &&
                                     typeof contextSummary.contextModuleName === 'string' &&
                                     typeof contextSummary.count === 'number' &&
                                     typeof contextSummary.firstProtocol === 'string' &&
                                     typeof contextSummary.lastProtocol === 'string'
                                 )) &&
                                 (detailSummary === null || (
+                                    result.detailKindList[0] === detailSummary.detailKind &&
                                     typeof detailSummary.detailKind === 'string' &&
                                     typeof detailSummary.count === 'number' &&
                                     typeof detailSummary.firstProtocol === 'string' &&
                                     typeof detailSummary.lastProtocol === 'string'
                                 )) &&
                                 (sourceSummary === null || (
+                                    result.sourceKindList[0] === sourceSummary.sourceKind &&
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
                                     typeof sourceSummary.firstProtocol === 'string' &&
@@ -7900,6 +7911,15 @@ undefined;
                                 return result.count === 2
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 1
+                                    && Array.isArray(result.contextModuleNameList)
+                                    && result.contextModuleNameList.length === result.contextModules.length
+                                    && result.contextModuleNameList[0] === 'Demo'
+                                    && Array.isArray(result.detailKindList)
+                                    && result.detailKindList.length === result.detailKinds.length
+                                    && result.detailKindList[0] === 'descriptor'
+                                    && Array.isArray(result.sourceKindList)
+                                    && result.sourceKindList.length === result.sourceKinds.length
+                                    && result.sourceKindList[0] === 'protocol-descriptor'
                                     && Array.isArray(result.contextModules)
                                     && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2)
                                     && Array.isArray(result.detailKinds)
@@ -7937,9 +7957,17 @@ undefined;
                                     !Array.isArray(result.typeNames) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.protocols) ||
+                                    !Array.isArray(result.contextModuleNameList) ||
+                                    !Array.isArray(result.detailKindList) ||
+                                    !Array.isArray(result.sourceKindList) ||
                                     !Array.isArray(result.contextModules) ||
                                     !Array.isArray(result.detailKinds) ||
                                     !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                                    result.detailKindList.length !== result.detailKinds.length ||
+                                    result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
                             }
                             if (result.conformances.length === 0) {
@@ -8007,6 +8035,7 @@ undefined;
                                     typeof protocolSummary.lastTypeName === 'string'
                                 )) &&
                                 (contextSummary === null || (
+                                    result.contextModuleNameList[0] === contextSummary.contextModuleName &&
                                     typeof contextSummary.contextModuleName === 'string' &&
                                     typeof contextSummary.count === 'number' &&
                                     typeof contextSummary.firstTypeName === 'string' &&
@@ -8014,6 +8043,7 @@ undefined;
                                     typeof contextSummary.whereClauseCount === 'number'
                                 )) &&
                                 (detailSummary === null || (
+                                    result.detailKindList[0] === detailSummary.detailKind &&
                                     typeof detailSummary.detailKind === 'string' &&
                                     typeof detailSummary.count === 'number' &&
                                     typeof detailSummary.firstTypeName === 'string' &&
@@ -8021,6 +8051,7 @@ undefined;
                                     typeof detailSummary.whereClauseCount === 'number'
                                 )) &&
                                 (sourceSummary === null || (
+                                    result.sourceKindList[0] === sourceSummary.sourceKind &&
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
                                     typeof sourceSummary.firstTypeName === 'string' &&
@@ -8069,6 +8100,17 @@ undefined;
                                     && result.hasWhereClauses === true
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.contextModuleNameList)
+                                    && result.contextModuleNameList.length === result.contextModules.length
+                                    && result.contextModuleNameList[0] === 'Demo'
+                                    && Array.isArray(result.detailKindList)
+                                    && result.detailKindList.length === result.detailKinds.length
+                                    && result.detailKindList.includes('descriptor')
+                                    && result.detailKindList.includes('witness-table')
+                                    && Array.isArray(result.sourceKindList)
+                                    && result.sourceKindList.length === result.sourceKinds.length
+                                    && result.sourceKindList.includes('protocol-conformance-descriptor')
+                                    && result.sourceKindList.includes('protocol-witness-table')
                                     && Array.isArray(result.contextModules)
                                     && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2 && entry.whereClauseCount === 1)
                                     && Array.isArray(result.detailKinds)
@@ -8103,9 +8145,17 @@ undefined;
                                     typeof result.uniqueDetailKindCount !== 'number' ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.typeNames) ||
+                                    !Array.isArray(result.contextModuleNameList) ||
+                                    !Array.isArray(result.detailKindList) ||
+                                    !Array.isArray(result.sourceKindList) ||
                                     !Array.isArray(result.contextModules) ||
                                     !Array.isArray(result.detailKinds) ||
                                     !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                                    result.detailKindList.length !== result.detailKinds.length ||
+                                    result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
                             }
                             if (result.metadata.length === 0) {
@@ -8158,18 +8208,21 @@ undefined;
                                     typeof typeSummary.hasSourceDemangledName === 'boolean'
                                 )) &&
                                 (contextSummary === null || (
+                                    result.contextModuleNameList[0] === contextSummary.contextModuleName &&
                                     typeof contextSummary.contextModuleName === 'string' &&
                                     typeof contextSummary.count === 'number' &&
                                     typeof contextSummary.firstTypeName === 'string' &&
                                     typeof contextSummary.lastTypeName === 'string'
                                 )) &&
                                 (detailSummary === null || (
+                                    result.detailKindList[0] === detailSummary.detailKind &&
                                     typeof detailSummary.detailKind === 'string' &&
                                     typeof detailSummary.count === 'number' &&
                                     typeof detailSummary.firstTypeName === 'string' &&
                                     typeof detailSummary.lastTypeName === 'string'
                                 )) &&
                                 (sourceSummary === null || (
+                                    result.sourceKindList[0] === sourceSummary.sourceKind &&
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
                                     typeof sourceSummary.firstTypeName === 'string' &&
@@ -8326,6 +8379,17 @@ undefined;
                                 return result.count === 2
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.contextModuleNameList)
+                                    && result.contextModuleNameList.length === result.contextModules.length
+                                    && result.contextModuleNameList[0] === 'Demo'
+                                    && Array.isArray(result.detailKindList)
+                                    && result.detailKindList.length === result.detailKinds.length
+                                    && result.detailKindList.includes('metadata')
+                                    && result.detailKindList.includes('nominal-descriptor')
+                                    && Array.isArray(result.sourceKindList)
+                                    && result.sourceKindList.length === result.sourceKinds.length
+                                    && result.sourceKindList.includes('metadata')
+                                    && result.sourceKindList.includes('nominal-descriptor')
                                     && Array.isArray(result.contextModules)
                                     && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2)
                                     && Array.isArray(result.detailKinds)
