@@ -3025,6 +3025,8 @@ undefined;
                                     typeof result.resolvedProtocolTotalMethodCount !== 'number' ||
                                     typeof result.protocolPropertyCount !== 'number' ||
                                     typeof result.resolvedProtocolPropertyCount !== 'number' ||
+                                    !Array.isArray(result.ownershipNames) ||
+                                    !Array.isArray(result.objectClassNames) ||
                                     !Array.isArray(result.ownerships) ||
                                     !Array.isArray(result.objectClasses)) {
                                 return false;
@@ -3065,19 +3067,25 @@ undefined;
                                 typeof result.firstProperty === 'string' &&
                                 typeof result.lastProperty === 'string' &&
                                 result.text === result.properties.map((property) => property.text).join('\\n') &&
+                                result.ownershipNames.every((entry) => typeof entry === 'string') &&
+                                result.objectClassNames.every((entry) => typeof entry === 'string') &&
+                                result.ownershipNames.length === result.ownerships.length &&
+                                result.objectClassNames.length === result.objectClasses.length &&
                                 (result.firstObjectClassName === null || typeof result.firstObjectClassName === 'string') &&
                                 (result.lastObjectClassName === null || typeof result.lastObjectClassName === 'string') &&
                                 (ownershipSummary === null || (
                                     typeof ownershipSummary.ownership === 'string' &&
                                     typeof ownershipSummary.count === 'number' &&
                                     typeof ownershipSummary.firstProperty === 'string' &&
-                                    typeof ownershipSummary.lastProperty === 'string'
+                                    typeof ownershipSummary.lastProperty === 'string' &&
+                                    result.ownershipNames.includes(ownershipSummary.ownership)
                                 )) &&
                                 (objectClassSummary === null || (
                                     typeof objectClassSummary.objectClassName === 'string' &&
                                     typeof objectClassSummary.count === 'number' &&
                                     typeof objectClassSummary.firstProperty === 'string' &&
-                                    typeof objectClassSummary.lastProperty === 'string'
+                                    typeof objectClassSummary.lastProperty === 'string' &&
+                                    result.objectClassNames.includes(objectClassSummary.objectClassName)
                                 )) &&
                                 typeof result.properties[0].typeEncoding === 'string' &&
                                 typeof result.properties[0].typeName === 'string' &&
@@ -3244,6 +3252,8 @@ undefined;
                                     typeof result.ownerIvarCount !== 'number' ||
                                     typeof result.ownerTotalPropertyCount !== 'number' ||
                                     typeof result.ownerTotalMethodCount !== 'number' ||
+                                    !Array.isArray(result.ownershipNames) ||
+                                    !Array.isArray(result.objectClassNames) ||
                                     !Array.isArray(result.ownerships) ||
                                     !Array.isArray(result.objectClasses)) {
                                 return false;
@@ -3288,19 +3298,25 @@ undefined;
                                 typeof result.firstProperty === 'string' &&
                                 typeof result.lastProperty === 'string' &&
                                 result.text === result.properties.map((property) => property.text).join('\\n') &&
+                                result.ownershipNames.every((entry) => typeof entry === 'string') &&
+                                result.objectClassNames.every((entry) => typeof entry === 'string') &&
+                                result.ownershipNames.length === result.ownerships.length &&
+                                result.objectClassNames.length === result.objectClasses.length &&
                                 (result.firstObjectClassName === null || typeof result.firstObjectClassName === 'string') &&
                                 (result.lastObjectClassName === null || typeof result.lastObjectClassName === 'string') &&
                                 (ownershipSummary === null || (
                                     typeof ownershipSummary.ownership === 'string' &&
                                     typeof ownershipSummary.count === 'number' &&
                                     typeof ownershipSummary.firstProperty === 'string' &&
-                                    typeof ownershipSummary.lastProperty === 'string'
+                                    typeof ownershipSummary.lastProperty === 'string' &&
+                                    result.ownershipNames.includes(ownershipSummary.ownership)
                                 )) &&
                                 (objectClassSummary === null || (
                                     typeof objectClassSummary.objectClassName === 'string' &&
                                     typeof objectClassSummary.count === 'number' &&
                                     typeof objectClassSummary.firstProperty === 'string' &&
-                                    typeof objectClassSummary.lastProperty === 'string'
+                                    typeof objectClassSummary.lastProperty === 'string' &&
+                                    result.objectClassNames.includes(objectClassSummary.objectClassName)
                                 )) &&
                                 typeof result.properties[0].typeEncoding === 'string' &&
                                 typeof result.properties[0].typeName === 'string' &&
@@ -3790,6 +3806,8 @@ undefined;
                                     typeof result.resolvedOwnerTotalPropertyCount !== 'number' ||
                                     typeof result.ownerTotalMethodCount !== 'number' ||
                                     typeof result.resolvedOwnerTotalMethodCount !== 'number' ||
+                                    !Array.isArray(result.kindNames) ||
+                                    !Array.isArray(result.objectClassNames) ||
                                     !Array.isArray(result.kinds) ||
                                     !Array.isArray(result.objectClasses)) {
                                 return false;
@@ -3838,19 +3856,25 @@ undefined;
                                 typeof result.minOffsetHex === 'string' &&
                                 typeof result.maxOffsetHex === 'string' &&
                                 result.text === result.ivars.map((ivar) => ivar.text).join('\\n') &&
+                                result.kindNames.every((entry) => typeof entry === 'string') &&
+                                result.objectClassNames.every((entry) => typeof entry === 'string') &&
+                                result.kindNames.length === result.kinds.length &&
+                                result.objectClassNames.length === result.objectClasses.length &&
                                 (result.firstObjectClassName === null || typeof result.firstObjectClassName === 'string') &&
                                 (result.lastObjectClassName === null || typeof result.lastObjectClassName === 'string') &&
                                 (kindSummary === null || (
                                     typeof kindSummary.kind === 'string' &&
                                     typeof kindSummary.count === 'number' &&
                                     typeof kindSummary.firstIvar === 'string' &&
-                                    typeof kindSummary.lastIvar === 'string'
+                                    typeof kindSummary.lastIvar === 'string' &&
+                                    result.kindNames.includes(kindSummary.kind)
                                 )) &&
                                 (objectClassSummary === null || (
                                     typeof objectClassSummary.objectClassName === 'string' &&
                                     typeof objectClassSummary.count === 'number' &&
                                     typeof objectClassSummary.firstIvar === 'string' &&
-                                    typeof objectClassSummary.lastIvar === 'string'
+                                    typeof objectClassSummary.lastIvar === 'string' &&
+                                    result.objectClassNames.includes(objectClassSummary.objectClassName)
                                 )) &&
                                 typeof result.ivars[0].offsetHex === 'string' &&
                                 typeof result.ivars[0].typeName === 'string' &&
