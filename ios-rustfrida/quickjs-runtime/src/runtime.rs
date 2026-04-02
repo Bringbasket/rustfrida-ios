@@ -6365,6 +6365,8 @@ undefined;
                                         && result.resolvedFirstToolVersion === null
                                         && result.resolvedLastToolVersion === null
                                         && result.resolvedToolCount === 0
+                                        && result.resolvedToolNames === null
+                                        && result.resolvedTools === null
                                         && result.resolvedUniqueToolCount === 0;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
@@ -6381,6 +6383,8 @@ undefined;
                                     && result.resolvedFirstToolVersion === info.firstToolVersion
                                     && result.resolvedLastToolVersion === info.lastToolVersion
                                     && result.resolvedToolCount === info.tools.length
+                                    && JSON.stringify(result.resolvedToolNames) === JSON.stringify(info.toolNames)
+                                    && JSON.stringify(result.resolvedTools) === JSON.stringify(info.tools)
                                     && result.resolvedUniqueToolCount === info.uniqueToolCount;
                             }
 
@@ -6815,6 +6819,7 @@ undefined;
                                         && result.resolvedHasSdk === null
                                         && result.resolvedHasTools === null
                                         && result.resolvedToolCount === 0
+                                        && result.resolvedTools === null
                                         && result.resolvedUniqueToolCount === 0
                                         && result.resolvedHasUuid === null
                                         && result.resolvedUuidLength === 0
@@ -6842,6 +6847,7 @@ undefined;
                                     && result.resolvedHasSdk === result.loadCommandInfo.hasSdk
                                     && result.resolvedHasTools === result.loadCommandInfo.hasTools
                                     && result.resolvedToolCount === result.loadCommandInfo.toolCount
+                                    && JSON.stringify(result.resolvedTools) === JSON.stringify(result.loadCommandInfo.tools)
                                     && result.resolvedUniqueToolCount === result.loadCommandInfo.uniqueToolCount
                                     && result.resolvedHasUuid === result.loadCommandInfo.hasUuid
                                     && result.resolvedUuidLength === result.loadCommandInfo.uuidLength

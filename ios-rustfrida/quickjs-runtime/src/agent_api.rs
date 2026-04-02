@@ -7741,7 +7741,9 @@ function handleSpecResult(spec) {
             toolCount: normalized === null ? 0 : normalized.tools.length,
             resolvedUniqueToolCount: normalized === null ? 0 : normalized.uniqueToolCount,
             uniqueToolCount: normalized === null ? 0 : normalized.uniqueToolCount,
+            resolvedToolNames: normalized === null ? null : normalized.toolNames,
             toolNames: normalized === null ? [] : normalized.toolNames,
+            resolvedTools: normalized === null ? null : normalized.tools,
             tools: normalized === null ? [] : normalized.tools,
             text: normalized === null ? '<null>' : normalized.text,
         };
@@ -8930,6 +8932,7 @@ function handleSpecResult(spec) {
             minOs: normalized === null ? null : normalized.minOs,
             sdk: normalized === null ? null : normalized.sdk,
             platform: normalized === null ? null : normalized.platform,
+            resolvedTools: normalized === null ? null : normalized.tools,
             tools: normalized === null ? [] : normalized.tools,
             uuid: normalized === null ? null : normalized.uuid,
             dataoffHex: normalized === null ? null : normalized.dataoffHex,
