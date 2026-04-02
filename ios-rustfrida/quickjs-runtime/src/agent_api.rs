@@ -11040,6 +11040,7 @@ function handleSpecResult(spec) {
             witnessKindCount,
             accessorKindCount,
             vtableKindCount,
+            prefixList: prefixes.map((item) => item.prefix),
             prefixes,
             kinds,
             text: kinds.join('\n'),
