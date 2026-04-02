@@ -8581,6 +8581,68 @@ undefined;
                                     && result.resolvedThrowsKind === result.methodInfo.throwsKind;
                             }
 
+                            function checkProtocolInfo(result) {
+                                if (result.protocolInfo === null) {
+                                    return result.resolvedQualifiedName === null
+                                        && result.resolvedSignature === null
+                                        && result.resolvedContextModuleName === null
+                                        && result.resolvedDetailKind === null
+                                        && result.resolvedSourceKind === null;
+                                }
+                                return result.resolvedQualifiedName === result.protocolInfo.qualifiedName
+                                    && result.resolvedSignature === result.protocolInfo.signature
+                                    && result.resolvedContextModuleName === result.protocolInfo.contextModuleName
+                                    && result.resolvedDetailKind === result.protocolInfo.detailKind
+                                    && result.resolvedSourceKind === result.protocolInfo.sourceKind;
+                            }
+
+                            function checkConformanceInfo(result) {
+                                if (result.conformanceInfo === null) {
+                                    return result.resolvedSignature === null
+                                        && result.resolvedRelation === null
+                                        && result.resolvedContextModuleName === null
+                                        && result.resolvedWhereClause === null
+                                        && result.resolvedDetailKind === null
+                                        && result.resolvedSourceKind === null;
+                                }
+                                return result.resolvedSignature === result.conformanceInfo.signature
+                                    && result.resolvedRelation === result.conformanceInfo.relation
+                                    && result.resolvedContextModuleName === result.conformanceInfo.contextModuleName
+                                    && result.resolvedWhereClause === result.conformanceInfo.whereClause
+                                    && result.resolvedDetailKind === result.conformanceInfo.detailKind
+                                    && result.resolvedSourceKind === result.conformanceInfo.sourceKind;
+                            }
+
+                            function checkMetadataInfo(result) {
+                                if (result.metadataInfo === null) {
+                                    return result.resolvedQualifiedName === null
+                                        && result.resolvedSignature === null
+                                        && result.resolvedContextModuleName === null
+                                        && result.resolvedDetailKind === null
+                                        && result.resolvedSourceKind === null;
+                                }
+                                return result.resolvedQualifiedName === result.metadataInfo.qualifiedName
+                                    && result.resolvedSignature === result.metadataInfo.signature
+                                    && result.resolvedContextModuleName === result.metadataInfo.contextModuleName
+                                    && result.resolvedDetailKind === result.metadataInfo.detailKind
+                                    && result.resolvedSourceKind === result.metadataInfo.sourceKind;
+                            }
+
+                            function checkTypeInfo(result) {
+                                if (result.typeInfo === null) {
+                                    return result.resolvedQualifiedName === null
+                                        && result.resolvedSignature === null
+                                        && result.resolvedContextModuleName === null
+                                        && result.resolvedDetailKind === null
+                                        && result.resolvedSourceKind === null;
+                                }
+                                return result.resolvedQualifiedName === result.typeInfo.qualifiedName
+                                    && result.resolvedSignature === result.typeInfo.signature
+                                    && result.resolvedContextModuleName === result.typeInfo.contextModuleName
+                                    && result.resolvedDetailKind === result.typeInfo.detailKind
+                                    && result.resolvedSourceKind === result.typeInfo.sourceKind;
+                            }
+
                             function checkVtableInfo(result) {
                                 if (result.vtableInfo === null) {
                                     return result.resolvedSourceKind === null
@@ -8615,7 +8677,11 @@ undefined;
                                     && result.resolvedDetailKind === result.witnessTableInfo.detailKind;
                             }
 
-                            return checkMethodInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' }))
+                            return checkProtocolInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' }))
+                                && checkConformanceInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformance_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }))
+                                && checkMetadataInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' }))
+                                && checkTypeInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_info', moduleName: null, typeName: 'ViewController' }))
+                                && checkMethodInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' }))
                                 && checkVtableInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewController', memberName: 'viewDidLoad' }))
                                 && checkWitnessTableInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }));
                         })()"#
