@@ -10589,8 +10589,14 @@ undefined;
                                     typeof result.uniqueMethodCount !== 'number' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledMethods !== 'boolean' ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.methodNameList) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.methodNames)) {
+                                return false;
+                            }
+                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.methodNameList.length !== result.methodNames.length) {
                                 return false;
                             }
                             if (result.methods.length === 0) {
@@ -10612,6 +10618,7 @@ undefined;
                                 typeof method.hasDemangledName === 'boolean' &&
                                 typeof method.offsetHex === 'string' &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstMethodName === 'string' &&
@@ -10619,6 +10626,7 @@ undefined;
                                     typeof moduleSummary.demangledCount === 'number'
                                 )) &&
                                 (methodSummary === null || (
+                                    result.methodNameList[0] === methodSummary.methodName &&
                                     typeof methodSummary.methodName === 'string' &&
                                     typeof methodSummary.count === 'number' &&
                                     typeof methodSummary.firstModuleName === 'string' &&
@@ -10645,8 +10653,14 @@ undefined;
                                     typeof result.uniqueMethodCount !== 'number' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledMethods !== 'boolean' ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.methodNameList) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.methodNames)) {
+                                return false;
+                            }
+                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.methodNameList.length !== result.methodNames.length) {
                                 return false;
                             }
                             if (result.methods.length === 0) {
@@ -10668,6 +10682,7 @@ undefined;
                                 typeof method.hasDemangledName === 'boolean' &&
                                 typeof method.offsetHex === 'string' &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstMethodName === 'string' &&
@@ -10675,6 +10690,7 @@ undefined;
                                     typeof moduleSummary.demangledCount === 'number'
                                 )) &&
                                 (methodSummary === null || (
+                                    result.methodNameList[0] === methodSummary.methodName &&
                                     typeof methodSummary.methodName === 'string' &&
                                     typeof methodSummary.count === 'number' &&
                                     typeof methodSummary.firstModuleName === 'string' &&
