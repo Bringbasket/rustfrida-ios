@@ -5529,6 +5529,7 @@ function handleSpecResult(spec) {
             resolvedClassName: normalizedClassInfo === null ? null : normalizedClassInfo.className,
             resolvedClassPointer: normalizedClassInfo === null ? null : normalizedClassInfo.classPointer,
             resolvedHasImagePath: normalizedClassInfo === null ? null : normalizedClassInfo.hasImagePath,
+            resolvedImagePath: normalizedClassInfo === null ? null : normalizedClassInfo.imagePath,
             hasImagePath: normalizedClassInfo !== null && normalizedClassInfo.hasImagePath === true,
             imagePath: normalizedClassInfo === null ? null : normalizedClassInfo.imagePath,
             resolvedDeclaredProtocolCount: normalizedClassInfo === null ? 0 : normalizedClassInfo.protocolCount,
