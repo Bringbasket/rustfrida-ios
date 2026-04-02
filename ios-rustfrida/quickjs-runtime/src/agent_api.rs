@@ -6747,6 +6747,7 @@ function handleSpecResult(spec) {
     case 'native.symbols': {
         const moduleName = spec.moduleName === null || spec.moduleName === undefined ? null : String(spec.moduleName);
         const query = String(spec.query || '');
+        const image = moduleName === null ? null : resolveModuleImage(moduleName);
         const symbols = Native.symbols(query, moduleName).map((symbol) => normalizeNativeSymbol(symbol));
         const moduleNames = new Set();
         const moduleSummaries = [];
@@ -6782,6 +6783,26 @@ function handleSpecResult(spec) {
             kind: 'native.symbols',
             moduleName,
             query,
+            image,
+            hasModuleFilter: moduleName !== null && moduleName.length !== 0,
+            hasImage: image !== null,
+            imageName: image === null ? null : image.name,
+            imagePath: image === null ? null : image.path,
+            resolvedImageName: image === null ? null : image.name,
+            resolvedImagePath: image === null ? null : image.path,
+            directoryPath: image === null ? null : image.directoryPath,
+            resolvedDirectoryPath: image === null ? null : image.directoryPath,
+            pathKind: image === null ? null : image.pathKind,
+            resolvedPathKind: image === null ? null : image.pathKind,
+            resolvedBase: image === null ? null : image.base,
+            slide: image === null ? null : image.slide,
+            resolvedSlide: image === null ? null : image.slide,
+            sizeHex: image === null ? null : image.sizeHex,
+            resolvedSizeHex: image === null ? null : image.sizeHex,
+            hasDirectoryPath: image !== null && image.hasDirectoryPath === true,
+            isSystemPath: image !== null && image.isSystemPath === true,
+            isAppPath: image !== null && image.isAppPath === true,
+            isJailbreakPath: image !== null && image.isJailbreakPath === true,
             hasQuery: query.length !== 0,
             count: symbols.length,
             hasSymbols: symbols.length !== 0,
@@ -6827,6 +6848,7 @@ function handleSpecResult(spec) {
     case 'native.exports': {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
+        const image = resolveModuleImage(moduleName);
         const symbols = Native.exports(moduleName, query).map((symbol) => normalizeNativeSymbol(symbol));
         const moduleNames = new Set();
         const moduleSummaries = [];
@@ -6862,6 +6884,26 @@ function handleSpecResult(spec) {
             kind: 'native.exports',
             moduleName,
             query,
+            image,
+            hasImage: image !== null,
+            resolved: image !== null,
+            imageName: image === null ? null : image.name,
+            imagePath: image === null ? null : image.path,
+            resolvedImageName: image === null ? null : image.name,
+            resolvedImagePath: image === null ? null : image.path,
+            directoryPath: image === null ? null : image.directoryPath,
+            resolvedDirectoryPath: image === null ? null : image.directoryPath,
+            pathKind: image === null ? null : image.pathKind,
+            resolvedPathKind: image === null ? null : image.pathKind,
+            resolvedBase: image === null ? null : image.base,
+            slide: image === null ? null : image.slide,
+            resolvedSlide: image === null ? null : image.slide,
+            sizeHex: image === null ? null : image.sizeHex,
+            resolvedSizeHex: image === null ? null : image.sizeHex,
+            hasDirectoryPath: image !== null && image.hasDirectoryPath === true,
+            isSystemPath: image !== null && image.isSystemPath === true,
+            isAppPath: image !== null && image.isAppPath === true,
+            isJailbreakPath: image !== null && image.isJailbreakPath === true,
             hasQuery: query !== null && query.length !== 0,
             count: symbols.length,
             hasSymbols: symbols.length !== 0,

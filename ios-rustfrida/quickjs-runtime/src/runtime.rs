@@ -4157,7 +4157,30 @@ undefined;
                             if (result.kind !== 'native.symbols' || result.query !== 'malloc' || result.hasQuery !== true) {
                                 return false;
                             }
-                            if (result.count !== result.symbols.length || typeof result.hasSymbols !== 'boolean') {
+                            if (result.count !== result.symbols.length || typeof result.hasModuleFilter !== 'boolean' || typeof result.hasImage !== 'boolean' || typeof result.hasSymbols !== 'boolean') {
+                                return false;
+                            }
+                            if (!(result.moduleName === null
+                                    && result.hasModuleFilter === false
+                                    && result.image === null
+                                    && result.hasImage === false
+                                    && result.imageName === null
+                                    && result.imagePath === null
+                                    && result.resolvedImageName === null
+                                    && result.resolvedImagePath === null
+                                    && result.directoryPath === null
+                                    && result.resolvedDirectoryPath === null
+                                    && result.pathKind === null
+                                    && result.resolvedPathKind === null
+                                    && result.resolvedBase === null
+                                    && result.slide === null
+                                    && result.resolvedSlide === null
+                                    && result.sizeHex === null
+                                    && result.resolvedSizeHex === null
+                                    && result.hasDirectoryPath === false
+                                    && result.isSystemPath === false
+                                    && result.isAppPath === false
+                                    && result.isJailbreakPath === false)) {
                                 return false;
                             }
                             if (typeof result.uniqueModuleCount !== 'number' ||
@@ -4216,7 +4239,14 @@ undefined;
                             if (result.kind !== 'native.exports' || result.moduleName !== 'libsystem_malloc.dylib' || result.query !== 'malloc' || result.hasQuery !== true) {
                                 return false;
                             }
-                            if (result.count !== result.symbols.length || typeof result.hasSymbols !== 'boolean') {
+                            if (result.count !== result.symbols.length || typeof result.hasImage !== 'boolean' || typeof result.resolved !== 'boolean' || typeof result.hasSymbols !== 'boolean') {
+                                return false;
+                            }
+                            if (result.image === null) {
+                                if (!(result.hasImage === false && result.resolved === false && result.imageName === null && result.imagePath === null && result.resolvedImageName === null && result.resolvedImagePath === null && result.directoryPath === null && result.resolvedDirectoryPath === null && result.pathKind === null && result.resolvedPathKind === null && result.resolvedBase === null && result.slide === null && result.resolvedSlide === null && result.sizeHex === null && result.resolvedSizeHex === null && result.hasDirectoryPath === false && result.isSystemPath === false && result.isAppPath === false && result.isJailbreakPath === false)) {
+                                    return false;
+                                }
+                            } else if (!(result.hasImage === true && result.resolved === true && result.imageName === result.image.name && result.imagePath === result.image.path && result.resolvedImageName === result.image.name && result.resolvedImagePath === result.image.path && result.directoryPath === result.image.directoryPath && result.resolvedDirectoryPath === result.image.directoryPath && result.pathKind === result.image.pathKind && result.resolvedPathKind === result.image.pathKind && result.resolvedBase === result.image.base && result.slide === result.image.slide && result.resolvedSlide === result.image.slide && result.sizeHex === result.image.sizeHex && result.resolvedSizeHex === result.image.sizeHex && result.hasDirectoryPath === (result.image.hasDirectoryPath === true) && result.isSystemPath === (result.image.isSystemPath === true) && result.isAppPath === (result.image.isAppPath === true) && result.isJailbreakPath === (result.image.isJailbreakPath === true))) {
                                 return false;
                             }
                             if (typeof result.uniqueModuleCount !== 'number' ||
@@ -9889,8 +9919,14 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.findSymbols malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbols', moduleName: null, query: 'malloc' }); return value === result.text && result.query === 'malloc' && result.count === result.symbols.length; })()")
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.findSymbols malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbols', moduleName: null, query: 'malloc' }); return value === result.text && result.query === 'malloc' && result.hasModuleFilter === false && result.hasImage === false && result.count === result.symbols.length; })()")
                     .expect("agent native findSymbols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.findSymbols libsystem_malloc.dylib -- malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbols', moduleName: 'libsystem_malloc.dylib', query: 'malloc' }); return value === result.text && result.moduleName === 'libsystem_malloc.dylib' && result.query === 'malloc' && result.hasModuleFilter === true && typeof result.hasImage === 'boolean' && result.count === result.symbols.length; })()")
+                    .expect("agent native findSymbols by module"),
                 "true"
             );
             assert_eq!(
@@ -9919,7 +9955,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.exports libsystem_malloc.dylib -- malloc'); return value === '' || value.indexOf('malloc') !== -1; })()")
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.exports libsystem_malloc.dylib -- malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.exports', moduleName: 'libsystem_malloc.dylib', query: 'malloc' }); return value === result.text && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean'; })()")
                     .expect("agent native exports by query"),
                 "true"
             );
