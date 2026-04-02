@@ -6660,6 +6660,8 @@ undefined;
                                 && typeof result.uniqueNormalizedNameCount === 'number'
                                 && Array.isArray(result.sourceKindNames)
                                 && Array.isArray(result.sourcePathKindNames)
+                                && Array.isArray(result.importNameList)
+                                && Array.isArray(result.normalizedNameList)
                                 && Array.isArray(result.dylibSources)
                                 && Array.isArray(result.sourceKinds)
                                 && Array.isArray(result.sourcePathKinds)
@@ -6668,7 +6670,9 @@ undefined;
                                 return false;
                             }
                             if (!(result.sourceKindNames.length === result.sourceKinds.length
-                                && result.sourcePathKindNames.length === result.sourcePathKinds.length)) {
+                                && result.sourcePathKindNames.length === result.sourcePathKinds.length
+                                && result.importNameList.length === result.importNames.length
+                                && result.normalizedNameList.length === result.normalizedNames.length)) {
                                 return false;
                             }
                             if (result.image === null) {
@@ -6746,7 +6750,8 @@ undefined;
                             }
                             if (result.importNames.length !== 0) {
                                 const importName = result.importNames[0];
-                                if (!(typeof importName.importName === 'string'
+                                if (!(result.importNameList[0] === importName.importName
+                                    && typeof importName.importName === 'string'
                                     && typeof importName.count === 'number'
                                     && typeof importName.firstSource === 'string'
                                     && typeof importName.lastSource === 'string'
@@ -6758,7 +6763,8 @@ undefined;
                             }
                             if (result.normalizedNames.length !== 0) {
                                 const normalized = result.normalizedNames[0];
-                                if (!(typeof normalized.normalizedName === 'string'
+                                if (!(result.normalizedNameList[0] === normalized.normalizedName
+                                    && typeof normalized.normalizedName === 'string'
                                     && typeof normalized.count === 'number'
                                     && typeof normalized.firstSource === 'string'
                                     && typeof normalized.lastSource === 'string'
