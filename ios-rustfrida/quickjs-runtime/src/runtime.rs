@@ -8213,6 +8213,30 @@ undefined;
                                 if (!(symbolInfo.resolvedModuleBase === null
                                     && symbolInfo.resolvedAddress === null
                                     && symbolInfo.resolvedOffsetHex === null
+                                    && symbolInfo.resolvedHasName === null
+                                    && symbolInfo.resolvedHasDemangledName === null
+                                    && symbolInfo.resolvedHasOwnerTypeName === null
+                                    && symbolInfo.resolvedHasMemberName === null
+                                    && symbolInfo.resolvedHasSignature === null
+                                    && symbolInfo.resolvedHasResultTypeName === null
+                                    && symbolInfo.resolvedIsMember === null
+                                    && symbolInfo.resolvedIsAccessor === null
+                                    && symbolInfo.resolvedIsGetter === null
+                                    && symbolInfo.resolvedIsSetter === null
+                                    && symbolInfo.resolvedIsModifyAccessor === null
+                                    && symbolInfo.resolvedIsReadAccessor === null
+                                    && symbolInfo.resolvedIsConstructor === null
+                                    && symbolInfo.resolvedIsDestructor === null
+                                    && symbolInfo.resolvedIsSubscript === null
+                                    && symbolInfo.resolvedIsOperator === null
+                                    && symbolInfo.resolvedIsClosure === null
+                                    && symbolInfo.resolvedIsStaticMember === null
+                                    && symbolInfo.resolvedIsClassMember === null
+                                    && symbolInfo.resolvedIsMutating === null
+                                    && symbolInfo.resolvedIsDispatchThunk === null
+                                    && symbolInfo.resolvedIsAsync === null
+                                    && symbolInfo.resolvedIsThrowing === null
+                                    && symbolInfo.resolvedThrowsKind === null
                                     && symbolInfo.hasName === false
                                     && symbolInfo.hasDemangledName === false)) {
                                     return false;
@@ -8220,6 +8244,30 @@ undefined;
                             } else if (!(symbolInfo.resolvedModuleBase === symbolInfo.symbolInfo.moduleBase
                                 && symbolInfo.resolvedAddress === symbolInfo.symbolInfo.address
                                 && symbolInfo.resolvedOffsetHex === symbolInfo.symbolInfo.offsetHex
+                                && symbolInfo.resolvedHasName === symbolInfo.symbolInfo.hasName
+                                && symbolInfo.resolvedHasDemangledName === symbolInfo.symbolInfo.hasDemangledName
+                                && symbolInfo.resolvedHasOwnerTypeName === symbolInfo.symbolInfo.hasOwnerTypeName
+                                && symbolInfo.resolvedHasMemberName === symbolInfo.symbolInfo.hasMemberName
+                                && symbolInfo.resolvedHasSignature === symbolInfo.symbolInfo.hasSignature
+                                && symbolInfo.resolvedHasResultTypeName === symbolInfo.symbolInfo.hasResultTypeName
+                                && symbolInfo.resolvedIsMember === symbolInfo.symbolInfo.isMember
+                                && symbolInfo.resolvedIsAccessor === symbolInfo.symbolInfo.isAccessor
+                                && symbolInfo.resolvedIsGetter === symbolInfo.symbolInfo.isGetter
+                                && symbolInfo.resolvedIsSetter === symbolInfo.symbolInfo.isSetter
+                                && symbolInfo.resolvedIsModifyAccessor === symbolInfo.symbolInfo.isModifyAccessor
+                                && symbolInfo.resolvedIsReadAccessor === symbolInfo.symbolInfo.isReadAccessor
+                                && symbolInfo.resolvedIsConstructor === symbolInfo.symbolInfo.isConstructor
+                                && symbolInfo.resolvedIsDestructor === symbolInfo.symbolInfo.isDestructor
+                                && symbolInfo.resolvedIsSubscript === symbolInfo.symbolInfo.isSubscript
+                                && symbolInfo.resolvedIsOperator === symbolInfo.symbolInfo.isOperator
+                                && symbolInfo.resolvedIsClosure === symbolInfo.symbolInfo.isClosure
+                                && symbolInfo.resolvedIsStaticMember === symbolInfo.symbolInfo.isStaticMember
+                                && symbolInfo.resolvedIsClassMember === symbolInfo.symbolInfo.isClassMember
+                                && symbolInfo.resolvedIsMutating === symbolInfo.symbolInfo.isMutating
+                                && symbolInfo.resolvedIsDispatchThunk === symbolInfo.symbolInfo.isDispatchThunk
+                                && symbolInfo.resolvedIsAsync === symbolInfo.symbolInfo.isAsync
+                                && symbolInfo.resolvedIsThrowing === symbolInfo.symbolInfo.isThrowing
+                                && symbolInfo.resolvedThrowsKind === symbolInfo.symbolInfo.throwsKind
                                 && symbolInfo.hasName === (symbolInfo.symbolInfo.hasName === true)
                                 && symbolInfo.hasDemangledName === (symbolInfo.symbolInfo.hasDemangledName === true))) {
                                 return false;
@@ -8504,6 +8552,30 @@ undefined;
                                 if (!(methodInfo.resolvedModuleBase === null
                                     && methodInfo.resolvedAddress === null
                                     && methodInfo.resolvedOffsetHex === null
+                                    && methodInfo.resolvedHasName === null
+                                    && methodInfo.resolvedHasDemangledName === null
+                                    && methodInfo.resolvedHasOwnerTypeName === null
+                                    && methodInfo.resolvedHasMemberName === null
+                                    && methodInfo.resolvedHasSignature === null
+                                    && methodInfo.resolvedHasResultTypeName === null
+                                    && methodInfo.resolvedIsMember === null
+                                    && methodInfo.resolvedIsAccessor === null
+                                    && methodInfo.resolvedIsGetter === null
+                                    && methodInfo.resolvedIsSetter === null
+                                    && methodInfo.resolvedIsModifyAccessor === null
+                                    && methodInfo.resolvedIsReadAccessor === null
+                                    && methodInfo.resolvedIsConstructor === null
+                                    && methodInfo.resolvedIsDestructor === null
+                                    && methodInfo.resolvedIsSubscript === null
+                                    && methodInfo.resolvedIsOperator === null
+                                    && methodInfo.resolvedIsClosure === null
+                                    && methodInfo.resolvedIsStaticMember === null
+                                    && methodInfo.resolvedIsClassMember === null
+                                    && methodInfo.resolvedIsMutating === null
+                                    && methodInfo.resolvedIsDispatchThunk === null
+                                    && methodInfo.resolvedIsAsync === null
+                                    && methodInfo.resolvedIsThrowing === null
+                                    && methodInfo.resolvedThrowsKind === null
                                     && methodInfo.hasName === false
                                     && methodInfo.hasDemangledName === false)) {
                                     return false;
@@ -8511,6 +8583,30 @@ undefined;
                             } else if (!(methodInfo.resolvedModuleBase === methodInfo.methodInfo.moduleBase
                                 && methodInfo.resolvedAddress === methodInfo.methodInfo.address
                                 && methodInfo.resolvedOffsetHex === methodInfo.methodInfo.offsetHex
+                                && methodInfo.resolvedHasName === methodInfo.methodInfo.hasName
+                                && methodInfo.resolvedHasDemangledName === methodInfo.methodInfo.hasDemangledName
+                                && methodInfo.resolvedHasOwnerTypeName === methodInfo.methodInfo.hasOwnerTypeName
+                                && methodInfo.resolvedHasMemberName === methodInfo.methodInfo.hasMemberName
+                                && methodInfo.resolvedHasSignature === methodInfo.methodInfo.hasSignature
+                                && methodInfo.resolvedHasResultTypeName === methodInfo.methodInfo.hasResultTypeName
+                                && methodInfo.resolvedIsMember === methodInfo.methodInfo.isMember
+                                && methodInfo.resolvedIsAccessor === methodInfo.methodInfo.isAccessor
+                                && methodInfo.resolvedIsGetter === methodInfo.methodInfo.isGetter
+                                && methodInfo.resolvedIsSetter === methodInfo.methodInfo.isSetter
+                                && methodInfo.resolvedIsModifyAccessor === methodInfo.methodInfo.isModifyAccessor
+                                && methodInfo.resolvedIsReadAccessor === methodInfo.methodInfo.isReadAccessor
+                                && methodInfo.resolvedIsConstructor === methodInfo.methodInfo.isConstructor
+                                && methodInfo.resolvedIsDestructor === methodInfo.methodInfo.isDestructor
+                                && methodInfo.resolvedIsSubscript === methodInfo.methodInfo.isSubscript
+                                && methodInfo.resolvedIsOperator === methodInfo.methodInfo.isOperator
+                                && methodInfo.resolvedIsClosure === methodInfo.methodInfo.isClosure
+                                && methodInfo.resolvedIsStaticMember === methodInfo.methodInfo.isStaticMember
+                                && methodInfo.resolvedIsClassMember === methodInfo.methodInfo.isClassMember
+                                && methodInfo.resolvedIsMutating === methodInfo.methodInfo.isMutating
+                                && methodInfo.resolvedIsDispatchThunk === methodInfo.methodInfo.isDispatchThunk
+                                && methodInfo.resolvedIsAsync === methodInfo.methodInfo.isAsync
+                                && methodInfo.resolvedIsThrowing === methodInfo.methodInfo.isThrowing
+                                && methodInfo.resolvedThrowsKind === methodInfo.methodInfo.throwsKind
                                 && methodInfo.hasName === (methodInfo.methodInfo.hasName === true)
                                 && methodInfo.hasDemangledName === (methodInfo.methodInfo.hasDemangledName === true))) {
                                 return false;
@@ -8522,6 +8618,32 @@ undefined;
                                     && vtableInfo.resolvedAddress === null
                                     && vtableInfo.resolvedOffsetHex === null
                                     && vtableInfo.resolvedMemberKey === null
+                                    && vtableInfo.resolvedHasTypeName === null
+                                    && vtableInfo.resolvedHasMemberName === null
+                                    && vtableInfo.resolvedHasName === null
+                                    && vtableInfo.resolvedHasSourceKind === null
+                                    && vtableInfo.resolvedHasDemangledName === null
+                                    && vtableInfo.resolvedHasOwnerTypeName === null
+                                    && vtableInfo.resolvedHasSignature === null
+                                    && vtableInfo.resolvedHasResultTypeName === null
+                                    && vtableInfo.resolvedIsMember === null
+                                    && vtableInfo.resolvedIsAccessor === null
+                                    && vtableInfo.resolvedIsGetter === null
+                                    && vtableInfo.resolvedIsSetter === null
+                                    && vtableInfo.resolvedIsModifyAccessor === null
+                                    && vtableInfo.resolvedIsReadAccessor === null
+                                    && vtableInfo.resolvedIsConstructor === null
+                                    && vtableInfo.resolvedIsDestructor === null
+                                    && vtableInfo.resolvedIsSubscript === null
+                                    && vtableInfo.resolvedIsOperator === null
+                                    && vtableInfo.resolvedIsClosure === null
+                                    && vtableInfo.resolvedIsStaticMember === null
+                                    && vtableInfo.resolvedIsClassMember === null
+                                    && vtableInfo.resolvedIsMutating === null
+                                    && vtableInfo.resolvedIsDispatchThunk === null
+                                    && vtableInfo.resolvedIsAsync === null
+                                    && vtableInfo.resolvedIsThrowing === null
+                                    && vtableInfo.resolvedThrowsKind === null
                                     && vtableInfo.hasTypeName === false
                                     && vtableInfo.hasMemberName === false
                                     && vtableInfo.hasName === false
@@ -8532,6 +8654,32 @@ undefined;
                                 && vtableInfo.resolvedAddress === vtableInfo.vtableInfo.address
                                 && vtableInfo.resolvedOffsetHex === vtableInfo.vtableInfo.offsetHex
                                 && vtableInfo.resolvedMemberKey === vtableInfo.vtableInfo.memberKey
+                                && vtableInfo.resolvedHasTypeName === vtableInfo.vtableInfo.hasTypeName
+                                && vtableInfo.resolvedHasMemberName === vtableInfo.vtableInfo.hasMemberName
+                                && vtableInfo.resolvedHasName === vtableInfo.vtableInfo.hasName
+                                && vtableInfo.resolvedHasSourceKind === vtableInfo.vtableInfo.hasSourceKind
+                                && vtableInfo.resolvedHasDemangledName === vtableInfo.vtableInfo.hasDemangledName
+                                && vtableInfo.resolvedHasOwnerTypeName === vtableInfo.vtableInfo.hasOwnerTypeName
+                                && vtableInfo.resolvedHasSignature === vtableInfo.vtableInfo.hasSignature
+                                && vtableInfo.resolvedHasResultTypeName === vtableInfo.vtableInfo.hasResultTypeName
+                                && vtableInfo.resolvedIsMember === vtableInfo.vtableInfo.isMember
+                                && vtableInfo.resolvedIsAccessor === vtableInfo.vtableInfo.isAccessor
+                                && vtableInfo.resolvedIsGetter === vtableInfo.vtableInfo.isGetter
+                                && vtableInfo.resolvedIsSetter === vtableInfo.vtableInfo.isSetter
+                                && vtableInfo.resolvedIsModifyAccessor === vtableInfo.vtableInfo.isModifyAccessor
+                                && vtableInfo.resolvedIsReadAccessor === vtableInfo.vtableInfo.isReadAccessor
+                                && vtableInfo.resolvedIsConstructor === vtableInfo.vtableInfo.isConstructor
+                                && vtableInfo.resolvedIsDestructor === vtableInfo.vtableInfo.isDestructor
+                                && vtableInfo.resolvedIsSubscript === vtableInfo.vtableInfo.isSubscript
+                                && vtableInfo.resolvedIsOperator === vtableInfo.vtableInfo.isOperator
+                                && vtableInfo.resolvedIsClosure === vtableInfo.vtableInfo.isClosure
+                                && vtableInfo.resolvedIsStaticMember === vtableInfo.vtableInfo.isStaticMember
+                                && vtableInfo.resolvedIsClassMember === vtableInfo.vtableInfo.isClassMember
+                                && vtableInfo.resolvedIsMutating === vtableInfo.vtableInfo.isMutating
+                                && vtableInfo.resolvedIsDispatchThunk === vtableInfo.vtableInfo.isDispatchThunk
+                                && vtableInfo.resolvedIsAsync === vtableInfo.vtableInfo.isAsync
+                                && vtableInfo.resolvedIsThrowing === vtableInfo.vtableInfo.isThrowing
+                                && vtableInfo.resolvedThrowsKind === vtableInfo.vtableInfo.throwsKind
                                 && vtableInfo.hasTypeName === (vtableInfo.vtableInfo.hasTypeName === true)
                                 && vtableInfo.hasMemberName === (vtableInfo.vtableInfo.hasMemberName === true)
                                 && vtableInfo.hasName === (vtableInfo.vtableInfo.hasName === true)
@@ -8545,6 +8693,21 @@ undefined;
                                     && witnessInfo.resolvedAddress === null
                                     && witnessInfo.resolvedOffsetHex === null
                                     && witnessInfo.resolvedWitnessKey === null
+                                    && witnessInfo.resolvedHasTypeName === null
+                                    && witnessInfo.resolvedHasProtocolName === null
+                                    && witnessInfo.resolvedHasName === null
+                                    && witnessInfo.resolvedHasSourceKind === null
+                                    && witnessInfo.resolvedHasDemangledName === null
+                                    && witnessInfo.resolvedHasSignature === null
+                                    && witnessInfo.resolvedHasRelation === null
+                                    && witnessInfo.resolvedHasContextModuleName === null
+                                    && witnessInfo.resolvedHasWhereClause === null
+                                    && witnessInfo.resolvedHasDetailKind === null
+                                    && witnessInfo.resolvedIsDescriptor === null
+                                    && witnessInfo.resolvedIsWitnessTable === null
+                                    && witnessInfo.resolvedIsWitnessAccessor === null
+                                    && witnessInfo.resolvedIsWitness === null
+                                    && witnessInfo.resolvedIsAccessor === null
                                     && witnessInfo.signature === null
                                     && witnessInfo.relation === null
                                     && witnessInfo.contextModuleName === null
@@ -8569,6 +8732,21 @@ undefined;
                                 && witnessInfo.resolvedAddress === witnessInfo.witnessTableInfo.address
                                 && witnessInfo.resolvedOffsetHex === witnessInfo.witnessTableInfo.offsetHex
                                 && witnessInfo.resolvedWitnessKey === witnessInfo.witnessTableInfo.witnessKey
+                                && witnessInfo.resolvedHasTypeName === witnessInfo.witnessTableInfo.hasTypeName
+                                && witnessInfo.resolvedHasProtocolName === witnessInfo.witnessTableInfo.hasProtocolName
+                                && witnessInfo.resolvedHasName === witnessInfo.witnessTableInfo.hasName
+                                && witnessInfo.resolvedHasSourceKind === witnessInfo.witnessTableInfo.hasSourceKind
+                                && witnessInfo.resolvedHasDemangledName === witnessInfo.witnessTableInfo.hasDemangledName
+                                && witnessInfo.resolvedHasSignature === witnessInfo.witnessTableInfo.hasSignature
+                                && witnessInfo.resolvedHasRelation === witnessInfo.witnessTableInfo.hasRelation
+                                && witnessInfo.resolvedHasContextModuleName === witnessInfo.witnessTableInfo.hasContextModuleName
+                                && witnessInfo.resolvedHasWhereClause === witnessInfo.witnessTableInfo.hasWhereClause
+                                && witnessInfo.resolvedHasDetailKind === witnessInfo.witnessTableInfo.hasDetailKind
+                                && witnessInfo.resolvedIsDescriptor === witnessInfo.witnessTableInfo.isDescriptor
+                                && witnessInfo.resolvedIsWitnessTable === witnessInfo.witnessTableInfo.isWitnessTable
+                                && witnessInfo.resolvedIsWitnessAccessor === witnessInfo.witnessTableInfo.isWitnessAccessor
+                                && witnessInfo.resolvedIsWitness === witnessInfo.witnessTableInfo.isWitness
+                                && witnessInfo.resolvedIsAccessor === witnessInfo.witnessTableInfo.isAccessor
                                 && witnessInfo.signature === witnessInfo.witnessTableInfo.signature
                                 && witnessInfo.relation === witnessInfo.witnessTableInfo.relation
                                 && witnessInfo.contextModuleName === witnessInfo.witnessTableInfo.contextModuleName
