@@ -4699,9 +4699,15 @@ undefined;
                                     || typeof result.linkeditDataCommandCount !== 'number'
                                     || typeof result.uniqueCommandNameCount !== 'number'
                                     || typeof result.hasDuplicateCommandNames !== 'boolean'
+                                    || !Array.isArray(result.commandFamilyNames)
+                                    || !Array.isArray(result.commandKindNames)
                                     || !Array.isArray(result.commandFamilies)
                                     || !Array.isArray(result.commandNames)
                                     || !Array.isArray(result.commandKinds)) {
+                                return false;
+                            }
+                            if (result.commandFamilyNames.length !== result.commandFamilies.length
+                                    || result.commandKindNames.length !== result.commandKinds.length) {
                                 return false;
                             }
                             if (result.commands.length === 0) {
@@ -4744,7 +4750,8 @@ undefined;
                             }
                             if (result.commandFamilies.length !== 0) {
                                 const family = result.commandFamilies[0];
-                                if (typeof family.commandFamily !== 'string'
+                                if (result.commandFamilyNames[0] !== family.commandFamily
+                                        || typeof family.commandFamily !== 'string'
                                         || typeof family.count !== 'number'
                                         || typeof family.firstCommandName !== 'string'
                                         || typeof family.lastCommandName !== 'string'
@@ -4761,7 +4768,8 @@ undefined;
                             }
                             if (result.commandKinds.length !== 0) {
                                 const kind = result.commandKinds[0];
-                                if (typeof kind.name !== 'string'
+                                if (result.commandKindNames[0] !== kind.name
+                                        || typeof kind.name !== 'string'
                                         || typeof kind.count !== 'number'
                                         || typeof kind.firstIndex !== 'number'
                                         || typeof kind.lastIndex !== 'number'
