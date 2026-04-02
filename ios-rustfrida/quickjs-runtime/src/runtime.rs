@@ -4427,9 +4427,15 @@ undefined;
                                 && typeof result.executableSegmentCount === 'number'
                                 && typeof result.hasExecutableSegments === 'boolean'
                                 && typeof result.uniqueSegmentNameCount === 'number'
+                                && Array.isArray(result.segmentNameList)
                                 && Array.isArray(result.segmentNames)
                                 && typeof result.uniqueProtectionCount === 'number'
+                                && Array.isArray(result.protectionFlagList)
                                 && Array.isArray(result.protections))) {
+                                return false;
+                            }
+                            if (result.segmentNameList.length !== result.segmentNames.length
+                                || result.protectionFlagList.length !== result.protections.length) {
                                 return false;
                             }
                             if (result.image === null) {
@@ -4472,7 +4478,8 @@ undefined;
                             }
                             if (result.protections.length !== 0) {
                                 const protection = result.protections[0];
-                                if (!(typeof protection.initprotFlags === 'string'
+                                if (!(result.protectionFlagList[0] === protection.initprotFlags + '/' + protection.maxprotFlags
+                                    && typeof protection.initprotFlags === 'string'
                                     && typeof protection.maxprotFlags === 'string'
                                     && typeof protection.count === 'number'
                                     && typeof protection.firstSegmentName === 'string'
@@ -4485,7 +4492,8 @@ undefined;
                             }
                             if (result.segmentNames.length !== 0) {
                                 const segmentName = result.segmentNames[0];
-                                if (!(typeof segmentName.segmentName === 'string'
+                                if (!(result.segmentNameList[0] === segmentName.segmentName
+                                    && typeof segmentName.segmentName === 'string'
                                     && typeof segmentName.count === 'number'
                                     && typeof segmentName.firstVmaddr === 'string'
                                     && typeof segmentName.lastVmaddr === 'string'

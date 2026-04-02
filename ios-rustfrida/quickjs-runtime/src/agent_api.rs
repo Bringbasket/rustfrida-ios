@@ -8409,6 +8409,8 @@ function handleSpecResult(spec) {
             hasExecutableSegments: executableSegments.length !== 0,
             uniqueSegmentNameCount: segmentNames.length,
             uniqueProtectionCount: protectionSummaries.length,
+            segmentNameList: segmentNames.map((item) => item.segmentName),
+            protectionFlagList: protectionSummaries.map((summary) => summary.initprotFlags + '/' + summary.maxprotFlags),
             segmentNames,
             protections: protectionSummaries.map((summary) => ({
                 initprotFlags: summary.initprotFlags,
