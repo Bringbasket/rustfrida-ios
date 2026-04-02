@@ -8533,9 +8533,17 @@ undefined;
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.protocols) ||
                                     !Array.isArray(result.witnessKeys) ||
+                                    !Array.isArray(result.contextModuleNameList) ||
+                                    !Array.isArray(result.detailKindList) ||
+                                    !Array.isArray(result.sourceKindList) ||
                                     !Array.isArray(result.contextModules) ||
                                     !Array.isArray(result.detailKinds) ||
                                     !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                                    result.detailKindList.length !== result.detailKinds.length ||
+                                    result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
                             }
                             if (result.entries.length === 0) {
@@ -8621,6 +8629,7 @@ undefined;
                                     typeof witnessKeySummary.demangledCount === 'number'
                                 )) &&
                                 (contextSummary === null || (
+                                    result.contextModuleNameList[0] === contextSummary.contextModuleName &&
                                     typeof contextSummary.contextModuleName === 'string' &&
                                     typeof contextSummary.count === 'number' &&
                                     typeof contextSummary.firstProtocolName === 'string' &&
@@ -8629,6 +8638,7 @@ undefined;
                                     typeof contextSummary.whereClauseCount === 'number'
                                 )) &&
                                 (detailSummary === null || (
+                                    result.detailKindList[0] === detailSummary.detailKind &&
                                     typeof detailSummary.detailKind === 'string' &&
                                     typeof detailSummary.count === 'number' &&
                                     typeof detailSummary.firstProtocolName === 'string' &&
@@ -8637,6 +8647,7 @@ undefined;
                                     typeof detailSummary.whereClauseCount === 'number'
                                 )) &&
                                 (sourceSummary === null || (
+                                    result.sourceKindList[0] === sourceSummary.sourceKind &&
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
                                     typeof sourceSummary.firstTypeName === 'string' &&
@@ -8930,6 +8941,17 @@ undefined;
                                     && result.hasWhereClauses === true
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.contextModuleNameList)
+                                    && result.contextModuleNameList.length === result.contextModules.length
+                                    && result.contextModuleNameList[0] === 'Demo'
+                                    && Array.isArray(result.detailKindList)
+                                    && result.detailKindList.length === result.detailKinds.length
+                                    && result.detailKindList.includes('witness-table-accessor')
+                                    && result.detailKindList.includes('witness-table')
+                                    && Array.isArray(result.sourceKindList)
+                                    && result.sourceKindList.length === result.sourceKinds.length
+                                    && result.sourceKindList.includes('protocol-witness-table-accessor')
+                                    && result.sourceKindList.includes('protocol-witness-table')
                                     && Array.isArray(result.contextModules)
                                     && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2 && entry.accessorCount === 1 && entry.whereClauseCount === 1)
                                     && Array.isArray(result.detailKinds)
@@ -9200,6 +9222,17 @@ undefined;
                                     && result.uniqueSourceKindCount === 5
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 4
+                                    && Array.isArray(result.contextModuleNameList)
+                                    && result.contextModuleNameList.length === result.contextModules.length
+                                    && result.contextModuleNameList[0] === 'Demo'
+                                    && Array.isArray(result.detailKindList)
+                                    && result.detailKindList.length === result.detailKinds.length
+                                    && result.detailKindList.includes('metadata')
+                                    && result.detailKindList.includes('<none>')
+                                    && Array.isArray(result.sourceKindList)
+                                    && result.sourceKindList.length === result.sourceKinds.length
+                                    && result.sourceKindList.includes('metadata')
+                                    && result.sourceKindList.includes('associated-type-descriptor')
                                     && Array.isArray(result.sourceKinds)
                                     && result.sourceKinds.some((entry) => entry.sourceKind === 'metadata' && entry.count === 1 && entry.metadataCount === 1)
                                     && result.sourceKinds.some((entry) => entry.sourceKind === 'metadata-accessor' && entry.count === 1 && entry.metadataAccessorCount === 1)
@@ -9240,6 +9273,9 @@ undefined;
                                     typeof result.uniqueSourceKindCount !== 'number' ||
                                     typeof result.uniqueContextModuleCount !== 'number' ||
                                     typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.contextModuleNameList) ||
+                                    !Array.isArray(result.detailKindList) ||
+                                    !Array.isArray(result.sourceKindList) ||
                                     !Array.isArray(result.sourceKinds) ||
                                     !Array.isArray(result.contextModules) ||
                                     !Array.isArray(result.detailKinds)) {
@@ -9252,6 +9288,9 @@ undefined;
                                     result.uniqueSourceKindCount === 0 &&
                                     result.uniqueContextModuleCount === 0 &&
                                     result.uniqueDetailKindCount === 0 &&
+                                    result.contextModuleNameList.length === 0 &&
+                                    result.detailKindList.length === 0 &&
+                                    result.sourceKindList.length === 0 &&
                                     result.sourceKinds.length === 0 &&
                                     result.contextModules.length === 0 &&
                                     result.detailKinds.length === 0;
@@ -9262,6 +9301,9 @@ undefined;
                                 result.uniqueSourceKindCount === result.typeLayout.uniqueSourceKindCount &&
                                 result.uniqueContextModuleCount === result.typeLayout.uniqueContextModuleCount &&
                                 result.uniqueDetailKindCount === result.typeLayout.uniqueDetailKindCount &&
+                                result.contextModuleNameList.length === result.typeLayout.contextModuleNameList.length &&
+                                result.detailKindList.length === result.typeLayout.detailKindList.length &&
+                                result.sourceKindList.length === result.typeLayout.sourceKindList.length &&
                                 result.sourceKinds.length === result.typeLayout.sourceKinds.length &&
                                 result.contextModules.length === result.typeLayout.contextModules.length &&
                                 result.detailKinds.length === result.typeLayout.detailKinds.length;
@@ -9309,6 +9351,9 @@ undefined;
                                     && result.resolvedUniqueSourceKindCount === 0
                                     && result.resolvedUniqueContextModuleCount === 0
                                     && result.resolvedUniqueDetailKindCount === 0
+                                    && result.resolvedContextModuleNameList.length === 0
+                                    && result.resolvedDetailKindList.length === 0
+                                    && result.resolvedSourceKindList.length === 0
                                     && result.resolvedVtableCount === 0
                                     && result.resolvedWitnessTableCount === 0
                                     && result.resolvedParsedVtableMemberCount === 0
@@ -9351,6 +9396,9 @@ undefined;
                                 && result.resolvedUniqueSourceKindCount === layout.uniqueSourceKindCount
                                 && result.resolvedUniqueContextModuleCount === layout.uniqueContextModuleCount
                                 && result.resolvedUniqueDetailKindCount === layout.uniqueDetailKindCount
+                                && result.resolvedContextModuleNameList.length === layout.contextModuleNameList.length
+                                && result.resolvedDetailKindList.length === layout.detailKindList.length
+                                && result.resolvedSourceKindList.length === layout.sourceKindList.length
                                 && result.resolvedVtableCount === layout.vtableCount
                                 && result.resolvedWitnessTableCount === layout.witnessTableCount
                                 && result.resolvedParsedVtableMemberCount === layout.parsedVtableMemberCount
