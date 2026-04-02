@@ -5901,10 +5901,18 @@ undefined;
                                 const info = result.imageUuid;
                                 if (info === null) {
                                     return result.resolvedModuleBase === null
-                                        && result.resolvedUuid === null;
+                                        && result.resolvedUuid === null
+                                        && result.resolvedNormalizedUuid === null
+                                        && result.resolvedHasUuid === null
+                                        && result.resolvedUuidLength === 0
+                                        && result.resolvedUuidSegmentCount === 0;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
-                                    && result.resolvedUuid === info.uuid;
+                                    && result.resolvedUuid === info.uuid
+                                    && result.resolvedNormalizedUuid === info.normalizedUuid
+                                    && result.resolvedHasUuid === info.hasUuid
+                                    && result.resolvedUuidLength === info.uuidLength
+                                    && result.resolvedUuidSegmentCount === info.uuidSegmentCount;
                             }
 
                             return checkEncryptionInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName }))
@@ -5946,7 +5954,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.uuid', moduleName: main.image.name }); return result.kind === 'native.uuid' && typeof result.hasUuid === 'boolean' && typeof result.resolved === 'boolean' && typeof result.uuidLength === 'number' && typeof result.uuidSegmentCount === 'number' && ((result.imageUuid === null && result.hasUuid === false && result.resolved === false && result.resolvedModuleName === null && result.uuid === null && result.normalizedUuid === null && result.uuidLength === 0 && result.uuidSegmentCount === 0 && result.text === '<null>') || (typeof result.imageUuid.uuid === 'string' && typeof result.imageUuid.normalizedUuid === 'string' && typeof result.imageUuid.hasUuid === 'boolean' && typeof result.imageUuid.uuidLength === 'number' && typeof result.imageUuid.uuidSegmentCount === 'number' && result.hasUuid === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.uuid === 'string' && typeof result.normalizedUuid === 'string' && result.resolvedModuleName === result.imageUuid.moduleName && result.uuid === result.imageUuid.uuid && result.normalizedUuid === result.imageUuid.normalizedUuid && result.uuidLength === result.imageUuid.uuidLength && result.uuidSegmentCount === result.imageUuid.uuidSegmentCount && result.text === result.imageUuid.text)); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.uuid', moduleName: main.image.name }); return result.kind === 'native.uuid' && typeof result.hasUuid === 'boolean' && typeof result.resolved === 'boolean' && typeof result.resolvedUuidLength === 'number' && typeof result.resolvedUuidSegmentCount === 'number' && typeof result.uuidLength === 'number' && typeof result.uuidSegmentCount === 'number' && ((result.imageUuid === null && result.hasUuid === false && result.resolved === false && result.resolvedModuleName === null && result.resolvedModuleBase === null && result.resolvedUuid === null && result.resolvedNormalizedUuid === null && result.resolvedHasUuid === null && result.resolvedUuidLength === 0 && result.resolvedUuidSegmentCount === 0 && result.uuid === null && result.normalizedUuid === null && result.uuidLength === 0 && result.uuidSegmentCount === 0 && result.text === '<null>') || (typeof result.imageUuid.uuid === 'string' && typeof result.imageUuid.normalizedUuid === 'string' && typeof result.imageUuid.hasUuid === 'boolean' && typeof result.imageUuid.uuidLength === 'number' && typeof result.imageUuid.uuidSegmentCount === 'number' && result.hasUuid === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.resolvedModuleBase === 'string' && typeof result.resolvedUuid === 'string' && typeof result.resolvedNormalizedUuid === 'string' && typeof result.resolvedHasUuid === 'boolean' && typeof result.uuid === 'string' && typeof result.normalizedUuid === 'string' && result.resolvedModuleName === result.imageUuid.moduleName && result.resolvedModuleBase === result.imageUuid.moduleBase && result.resolvedUuid === result.imageUuid.uuid && result.resolvedNormalizedUuid === result.imageUuid.normalizedUuid && result.resolvedHasUuid === (result.imageUuid.hasUuid === true) && result.resolvedUuidLength === result.imageUuid.uuidLength && result.resolvedUuidSegmentCount === result.imageUuid.uuidSegmentCount && result.uuid === result.imageUuid.uuid && result.normalizedUuid === result.imageUuid.normalizedUuid && result.uuidLength === result.imageUuid.uuidLength && result.uuidSegmentCount === result.imageUuid.uuidSegmentCount && result.text === result.imageUuid.text)); })()"
                     )
                     .expect("agent native uuid result"),
                 "true"
