@@ -3161,6 +3161,21 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedClassPointer === null &&
                                         result.resolvedSuperclassPointer === null &&
+                                        result.resolvedHasSuperclass === null &&
+                                        result.resolvedIsRootClass === null &&
+                                        result.resolvedHasProtocols === null &&
+                                        result.resolvedHasProperties === null &&
+                                        result.resolvedHasIvars === null &&
+                                        result.resolvedHasMethods === null &&
+                                        result.resolvedHasImagePath === null &&
+                                        result.resolvedProtocolCount === 0 &&
+                                        result.resolvedInstancePropertyCount === 0 &&
+                                        result.resolvedClassPropertyCount === 0 &&
+                                        result.resolvedTotalPropertyCount === 0 &&
+                                        result.resolvedIvarCount === 0 &&
+                                        result.resolvedInstanceMethodCount === 0 &&
+                                        result.resolvedClassMethodCount === 0 &&
+                                        result.resolvedTotalMethodCount === 0 &&
                                         result.instanceSize === 0 &&
                                         result.instancePropertyCount === 0 &&
                                         result.classPropertyCount === 0 &&
@@ -3170,6 +3185,21 @@ undefined;
                                 }
                                 return result.resolvedClassPointer === info.classPointer &&
                                     result.resolvedSuperclassPointer === info.superclassPointer &&
+                                    result.resolvedHasSuperclass === info.hasSuperclass &&
+                                    result.resolvedIsRootClass === info.isRootClass &&
+                                    result.resolvedHasProtocols === info.hasProtocols &&
+                                    result.resolvedHasProperties === info.hasProperties &&
+                                    result.resolvedHasIvars === info.hasIvars &&
+                                    result.resolvedHasMethods === info.hasMethods &&
+                                    result.resolvedHasImagePath === info.hasImagePath &&
+                                    result.resolvedProtocolCount === info.protocolCount &&
+                                    result.resolvedInstancePropertyCount === info.instancePropertyCount &&
+                                    result.resolvedClassPropertyCount === info.classPropertyCount &&
+                                    result.resolvedTotalPropertyCount === info.totalPropertyCount &&
+                                    result.resolvedIvarCount === info.ivarCount &&
+                                    result.resolvedInstanceMethodCount === info.instanceMethodCount &&
+                                    result.resolvedClassMethodCount === info.classMethodCount &&
+                                    result.resolvedTotalMethodCount === info.totalMethodCount &&
                                     result.instanceSize === info.instanceSize &&
                                     result.instancePropertyCount === info.instancePropertyCount &&
                                     result.classPropertyCount === info.classPropertyCount &&
@@ -3182,12 +3212,40 @@ undefined;
                                 const info = result.protocolInfo;
                                 if (info === null) {
                                     return result.resolvedProtocolPointer === null &&
+                                        result.resolvedHasAdoptedProtocols === null &&
+                                        result.resolvedHasRequiredMethods === null &&
+                                        result.resolvedHasOptionalMethods === null &&
+                                        result.resolvedHasInstanceMethods === null &&
+                                        result.resolvedHasClassMethods === null &&
+                                        result.resolvedHasProperties === null &&
+                                        result.resolvedHasImagePath === null &&
+                                        result.resolvedAdoptedProtocolCount === 0 &&
+                                        result.resolvedRequiredInstanceMethodCount === 0 &&
+                                        result.resolvedRequiredClassMethodCount === 0 &&
+                                        result.resolvedOptionalInstanceMethodCount === 0 &&
+                                        result.resolvedOptionalClassMethodCount === 0 &&
+                                        result.resolvedTotalMethodCount === 0 &&
+                                        result.resolvedPropertyCount === 0 &&
                                         result.requiredInstanceMethodCount === 0 &&
                                         result.requiredClassMethodCount === 0 &&
                                         result.optionalInstanceMethodCount === 0 &&
                                         result.optionalClassMethodCount === 0;
                                 }
                                 return result.resolvedProtocolPointer === info.protocolPointer &&
+                                    result.resolvedHasAdoptedProtocols === info.hasAdoptedProtocols &&
+                                    result.resolvedHasRequiredMethods === info.hasRequiredMethods &&
+                                    result.resolvedHasOptionalMethods === info.hasOptionalMethods &&
+                                    result.resolvedHasInstanceMethods === info.hasInstanceMethods &&
+                                    result.resolvedHasClassMethods === info.hasClassMethods &&
+                                    result.resolvedHasProperties === info.hasProperties &&
+                                    result.resolvedHasImagePath === info.hasImagePath &&
+                                    result.resolvedAdoptedProtocolCount === info.adoptedProtocolCount &&
+                                    result.resolvedRequiredInstanceMethodCount === info.requiredInstanceMethodCount &&
+                                    result.resolvedRequiredClassMethodCount === info.requiredClassMethodCount &&
+                                    result.resolvedOptionalInstanceMethodCount === info.optionalInstanceMethodCount &&
+                                    result.resolvedOptionalClassMethodCount === info.optionalClassMethodCount &&
+                                    result.resolvedTotalMethodCount === info.totalMethodCount &&
+                                    result.resolvedPropertyCount === info.propertyCount &&
                                     result.requiredInstanceMethodCount === info.requiredInstanceMethodCount &&
                                     result.requiredClassMethodCount === info.requiredClassMethodCount &&
                                     result.optionalInstanceMethodCount === info.optionalInstanceMethodCount &&
@@ -3204,6 +3262,19 @@ undefined;
                                         result.resolvedReturnTypeName === null &&
                                         result.resolvedSignature === null &&
                                         result.resolvedImagePath === null &&
+                                        result.resolvedArgumentCount === 0 &&
+                                        result.resolvedExplicitArgumentCount === 0 &&
+                                        result.resolvedHiddenArgumentCount === 0 &&
+                                        result.resolvedSelectorPartCount === 0 &&
+                                        result.resolvedHasImagePath === null &&
+                                        result.resolvedHasSelectorArguments === null &&
+                                        result.resolvedIsUnarySelector === null &&
+                                        result.resolvedIsKeywordSelector === null &&
+                                        result.resolvedHasExplicitArguments === null &&
+                                        result.resolvedHasHiddenArguments === null &&
+                                        result.resolvedReturnsVoid === null &&
+                                        result.resolvedReturnsObject === null &&
+                                        result.resolvedReturnsBlock === null &&
                                         result.argumentCount === 0 &&
                                         result.explicitArgumentCount === 0 &&
                                         result.hiddenArgumentCount === 0 &&
@@ -3218,6 +3289,19 @@ undefined;
                                     result.resolvedReturnTypeName === info.returnTypeName &&
                                     result.resolvedSignature === info.signature &&
                                     result.resolvedImagePath === info.imagePath &&
+                                    result.resolvedArgumentCount === info.argumentCount &&
+                                    result.resolvedExplicitArgumentCount === info.explicitArgumentCount &&
+                                    result.resolvedHiddenArgumentCount === info.hiddenArgumentCount &&
+                                    result.resolvedSelectorPartCount === info.selectorPartCount &&
+                                    result.resolvedHasImagePath === (info.imagePath !== null) &&
+                                    result.resolvedHasSelectorArguments === info.hasSelectorArguments &&
+                                    result.resolvedIsUnarySelector === info.isUnarySelector &&
+                                    result.resolvedIsKeywordSelector === info.isKeywordSelector &&
+                                    result.resolvedHasExplicitArguments === info.hasExplicitArguments &&
+                                    result.resolvedHasHiddenArguments === info.hasHiddenArguments &&
+                                    result.resolvedReturnsVoid === info.returnsVoid &&
+                                    result.resolvedReturnsObject === info.returnsObject &&
+                                    result.resolvedReturnsBlock === info.returnsBlock &&
                                     result.argumentCount === info.argumentCount &&
                                     result.explicitArgumentCount === info.explicitArgumentCount &&
                                     result.hiddenArgumentCount === info.hiddenArgumentCount &&
@@ -3234,6 +3318,19 @@ undefined;
                                         result.resolvedReturnTypeName === null &&
                                         result.resolvedSignature === null &&
                                         result.resolvedImagePath === null &&
+                                        result.resolvedArgumentCount === 0 &&
+                                        result.resolvedExplicitArgumentCount === 0 &&
+                                        result.resolvedHiddenArgumentCount === 0 &&
+                                        result.resolvedSelectorPartCount === 0 &&
+                                        result.resolvedHasImagePath === null &&
+                                        result.resolvedHasSelectorArguments === null &&
+                                        result.resolvedIsUnarySelector === null &&
+                                        result.resolvedIsKeywordSelector === null &&
+                                        result.resolvedHasExplicitArguments === null &&
+                                        result.resolvedHasHiddenArguments === null &&
+                                        result.resolvedReturnsVoid === null &&
+                                        result.resolvedReturnsObject === null &&
+                                        result.resolvedReturnsBlock === null &&
                                         result.argumentCount === 0 &&
                                         result.explicitArgumentCount === 0 &&
                                         result.hiddenArgumentCount === 0 &&
@@ -3246,6 +3343,19 @@ undefined;
                                     result.resolvedReturnTypeName === info.returnTypeName &&
                                     result.resolvedSignature === info.signature &&
                                     result.resolvedImagePath === info.imagePath &&
+                                    result.resolvedArgumentCount === info.argumentCount &&
+                                    result.resolvedExplicitArgumentCount === info.explicitArgumentCount &&
+                                    result.resolvedHiddenArgumentCount === info.hiddenArgumentCount &&
+                                    result.resolvedSelectorPartCount === info.selectorPartCount &&
+                                    result.resolvedHasImagePath === (info.imagePath !== null) &&
+                                    result.resolvedHasSelectorArguments === info.hasSelectorArguments &&
+                                    result.resolvedIsUnarySelector === info.isUnarySelector &&
+                                    result.resolvedIsKeywordSelector === info.isKeywordSelector &&
+                                    result.resolvedHasExplicitArguments === info.hasExplicitArguments &&
+                                    result.resolvedHasHiddenArguments === info.hasHiddenArguments &&
+                                    result.resolvedReturnsVoid === info.returnsVoid &&
+                                    result.resolvedReturnsObject === info.returnsObject &&
+                                    result.resolvedReturnsBlock === info.returnsBlock &&
                                     result.argumentCount === info.argumentCount &&
                                     result.explicitArgumentCount === info.explicitArgumentCount &&
                                     result.hiddenArgumentCount === info.hiddenArgumentCount &&
@@ -3265,6 +3375,17 @@ undefined;
                                         result.resolvedGetterName === null &&
                                         result.resolvedSetterName === null &&
                                         result.resolvedIvarName === null &&
+                                        result.resolvedObjectProtocolCount === 0 &&
+                                        result.resolvedParsedTokenCount === 0 &&
+                                        result.resolvedHasAccessorCustomization === null &&
+                                        result.resolvedHasGetterName === null &&
+                                        result.resolvedHasSetterName === null &&
+                                        result.resolvedHasBackingIvar === null &&
+                                        result.resolvedHasObjectClassName === null &&
+                                        result.resolvedHasObjectProtocols === null &&
+                                        result.resolvedHasTypeInfo === null &&
+                                        result.resolvedIsObject === null &&
+                                        result.resolvedIsBlock === null &&
                                         result.getterName === null &&
                                         result.setterName === null &&
                                         result.ivarName === null &&
@@ -3284,6 +3405,17 @@ undefined;
                                     result.resolvedGetterName === info.getterName &&
                                     result.resolvedSetterName === info.setterName &&
                                     result.resolvedIvarName === info.ivarName &&
+                                    result.resolvedObjectProtocolCount === info.objectProtocolCount &&
+                                    result.resolvedParsedTokenCount === info.parsedTokenCount &&
+                                    result.resolvedHasAccessorCustomization === info.hasAccessorCustomization &&
+                                    result.resolvedHasGetterName === info.hasGetterName &&
+                                    result.resolvedHasSetterName === info.hasSetterName &&
+                                    result.resolvedHasBackingIvar === info.hasBackingIvar &&
+                                    result.resolvedHasObjectClassName === info.hasObjectClassName &&
+                                    result.resolvedHasObjectProtocols === info.hasObjectProtocols &&
+                                    result.resolvedHasTypeInfo === info.hasTypeInfo &&
+                                    result.resolvedIsObject === info.isObject &&
+                                    result.resolvedIsBlock === info.isBlock &&
                                     result.getterName === info.getterName &&
                                     result.setterName === info.setterName &&
                                     result.ivarName === info.ivarName &&
@@ -3307,6 +3439,17 @@ undefined;
                                         result.resolvedGetterName === null &&
                                         result.resolvedSetterName === null &&
                                         result.resolvedIvarName === null &&
+                                        result.resolvedObjectProtocolCount === 0 &&
+                                        result.resolvedParsedTokenCount === 0 &&
+                                        result.resolvedHasAccessorCustomization === null &&
+                                        result.resolvedHasGetterName === null &&
+                                        result.resolvedHasSetterName === null &&
+                                        result.resolvedHasBackingIvar === null &&
+                                        result.resolvedHasObjectClassName === null &&
+                                        result.resolvedHasObjectProtocols === null &&
+                                        result.resolvedHasTypeInfo === null &&
+                                        result.resolvedIsObject === null &&
+                                        result.resolvedIsBlock === null &&
                                         result.getterName === null &&
                                         result.setterName === null &&
                                         result.ivarName === null &&
@@ -3326,6 +3469,17 @@ undefined;
                                     result.resolvedGetterName === info.getterName &&
                                     result.resolvedSetterName === info.setterName &&
                                     result.resolvedIvarName === info.ivarName &&
+                                    result.resolvedObjectProtocolCount === info.objectProtocolCount &&
+                                    result.resolvedParsedTokenCount === info.parsedTokenCount &&
+                                    result.resolvedHasAccessorCustomization === info.hasAccessorCustomization &&
+                                    result.resolvedHasGetterName === info.hasGetterName &&
+                                    result.resolvedHasSetterName === info.hasSetterName &&
+                                    result.resolvedHasBackingIvar === info.hasBackingIvar &&
+                                    result.resolvedHasObjectClassName === info.hasObjectClassName &&
+                                    result.resolvedHasObjectProtocols === info.hasObjectProtocols &&
+                                    result.resolvedHasTypeInfo === info.hasTypeInfo &&
+                                    result.resolvedIsObject === info.isObject &&
+                                    result.resolvedIsBlock === info.isBlock &&
                                     result.getterName === info.getterName &&
                                     result.setterName === info.setterName &&
                                     result.ivarName === info.ivarName &&
@@ -3349,6 +3503,15 @@ undefined;
                                         result.resolvedKindName === null &&
                                         result.resolvedObjectClassName === null &&
                                         result.resolvedMemberName === null &&
+                                        result.resolvedObjectProtocolCount === 0 &&
+                                        result.resolvedArrayCount === null &&
+                                        result.resolvedQualifierCount === 0 &&
+                                        result.resolvedHasQualifiers === null &&
+                                        result.resolvedHasObjectClassName === null &&
+                                        result.resolvedHasPointeeType === null &&
+                                        result.resolvedIsPointer === null &&
+                                        result.resolvedIsArray === null &&
+                                        result.resolvedHasMemberName === null &&
                                         result.objectProtocolCount === 0 &&
                                         result.arrayCount === null &&
                                         result.qualifierCount === 0 &&
@@ -3364,6 +3527,15 @@ undefined;
                                     result.resolvedKindName === info.kind &&
                                     result.resolvedObjectClassName === info.objectClassName &&
                                     result.resolvedMemberName === info.memberName &&
+                                    result.resolvedObjectProtocolCount === info.objectProtocolCount &&
+                                    result.resolvedArrayCount === info.arrayCount &&
+                                    result.resolvedQualifierCount === info.qualifierCount &&
+                                    result.resolvedHasQualifiers === info.hasQualifiers &&
+                                    result.resolvedHasObjectClassName === info.hasObjectClassName &&
+                                    result.resolvedHasPointeeType === info.hasPointeeType &&
+                                    result.resolvedIsPointer === info.isPointer &&
+                                    result.resolvedIsArray === info.isArray &&
+                                    result.resolvedHasMemberName === info.hasMemberName &&
                                     result.objectProtocolCount === info.objectProtocolCount &&
                                     result.arrayCount === info.arrayCount &&
                                     result.qualifierCount === info.qualifierCount &&
