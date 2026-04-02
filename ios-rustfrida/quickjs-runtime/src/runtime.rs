@@ -4253,8 +4253,14 @@ undefined;
                             }
                             if (typeof result.uniqueModuleCount !== 'number' ||
                                     typeof result.uniqueSymbolCount !== 'number' ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.symbolNameList) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.symbolNames)) {
+                                return false;
+                            }
+                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.symbolNameList.length !== result.symbolNames.length) {
                                 return false;
                             }
                             if (result.symbols.length === 0) {
@@ -4275,12 +4281,14 @@ undefined;
                                 typeof symbol.hasModuleName === 'boolean' &&
                                 typeof symbol.hasName === 'boolean' &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstSymbolName === 'string' &&
                                     typeof moduleSummary.lastSymbolName === 'string'
                                 )) &&
                                 (symbolSummary === null || (
+                                    result.symbolNameList[0] === symbolSummary.symbolName &&
                                     typeof symbolSummary.symbolName === 'string' &&
                                     typeof symbolSummary.count === 'number' &&
                                     typeof symbolSummary.firstModuleName === 'string' &&
@@ -4319,8 +4327,14 @@ undefined;
                             }
                             if (typeof result.uniqueModuleCount !== 'number' ||
                                     typeof result.uniqueSymbolCount !== 'number' ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.symbolNameList) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.symbolNames)) {
+                                return false;
+                            }
+                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.symbolNameList.length !== result.symbolNames.length) {
                                 return false;
                             }
                             if (result.symbols.length === 0) {
@@ -4341,12 +4355,14 @@ undefined;
                                 typeof symbol.hasModuleName === 'boolean' &&
                                 typeof symbol.hasName === 'boolean' &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstSymbolName === 'string' &&
                                     typeof moduleSummary.lastSymbolName === 'string'
                                 )) &&
                                 (symbolSummary === null || (
+                                    result.symbolNameList[0] === symbolSummary.symbolName &&
                                     typeof symbolSummary.symbolName === 'string' &&
                                     typeof symbolSummary.count === 'number' &&
                                     typeof symbolSummary.firstModuleName === 'string' &&
