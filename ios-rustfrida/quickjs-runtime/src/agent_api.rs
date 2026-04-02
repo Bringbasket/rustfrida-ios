@@ -7779,6 +7779,7 @@ function handleSpecResult(spec) {
     case 'native.rpaths': {
         const moduleName = String(spec.moduleName || '');
         const query = spec.query === null || spec.query === undefined ? null : String(spec.query);
+        const image = resolveModuleImage(moduleName);
         const rpaths = Native.rpaths(moduleName, query).map((rpath) => normalizeRpath(rpath));
         const tokenRpaths = rpaths.filter((rpath) => rpath.isTokenPath);
         const loaderPathRpaths = rpaths.filter((rpath) => rpath.usesLoaderPath);
@@ -7842,6 +7843,26 @@ function handleSpecResult(spec) {
             kind: 'native.rpaths',
             moduleName,
             query,
+            image,
+            hasImage: image !== null,
+            resolved: image !== null,
+            imageName: image === null ? null : image.name,
+            imagePath: image === null ? null : image.path,
+            resolvedImageName: image === null ? null : image.name,
+            resolvedImagePath: image === null ? null : image.path,
+            directoryPath: image === null ? null : image.directoryPath,
+            resolvedDirectoryPath: image === null ? null : image.directoryPath,
+            pathKind: image === null ? null : image.pathKind,
+            resolvedPathKind: image === null ? null : image.pathKind,
+            resolvedBase: image === null ? null : image.base,
+            slide: image === null ? null : image.slide,
+            resolvedSlide: image === null ? null : image.slide,
+            sizeHex: image === null ? null : image.sizeHex,
+            resolvedSizeHex: image === null ? null : image.sizeHex,
+            hasDirectoryPath: image !== null && image.hasDirectoryPath === true,
+            isSystemPath: image !== null && image.isSystemPath === true,
+            isAppPath: image !== null && image.isAppPath === true,
+            isJailbreakPath: image !== null && image.isJailbreakPath === true,
             hasQuery: query !== null && query.length !== 0,
             count: rpaths.length,
             hasRpaths: rpaths.length !== 0,
