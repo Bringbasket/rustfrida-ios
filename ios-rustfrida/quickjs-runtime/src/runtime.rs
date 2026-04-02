@@ -8400,6 +8400,69 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            function checkMethodInfo(result) {
+                                if (result.methodInfo === null) {
+                                    return result.resolvedOwnerTypeName === null
+                                        && result.resolvedMemberName === null
+                                        && result.resolvedMemberKind === null
+                                        && result.resolvedSignature === null
+                                        && result.resolvedResultTypeName === null
+                                        && result.resolvedThrowsKind === null;
+                                }
+                                return result.resolvedOwnerTypeName === result.methodInfo.ownerTypeName
+                                    && result.resolvedMemberName === result.methodInfo.memberName
+                                    && result.resolvedMemberKind === result.methodInfo.memberKind
+                                    && result.resolvedSignature === result.methodInfo.signature
+                                    && result.resolvedResultTypeName === result.methodInfo.resultTypeName
+                                    && result.resolvedThrowsKind === result.methodInfo.throwsKind;
+                            }
+
+                            function checkVtableInfo(result) {
+                                if (result.vtableInfo === null) {
+                                    return result.resolvedSourceKind === null
+                                        && result.resolvedOwnerTypeName === null
+                                        && result.resolvedMemberKind === null
+                                        && result.resolvedSignature === null
+                                        && result.resolvedResultTypeName === null
+                                        && result.resolvedThrowsKind === null;
+                                }
+                                return result.resolvedSourceKind === result.vtableInfo.sourceKind
+                                    && result.resolvedOwnerTypeName === result.vtableInfo.ownerTypeName
+                                    && result.resolvedMemberKind === result.vtableInfo.memberKind
+                                    && result.resolvedSignature === result.vtableInfo.signature
+                                    && result.resolvedResultTypeName === result.vtableInfo.resultTypeName
+                                    && result.resolvedThrowsKind === result.vtableInfo.throwsKind;
+                            }
+
+                            function checkWitnessTableInfo(result) {
+                                if (result.witnessTableInfo === null) {
+                                    return result.resolvedSourceKind === null
+                                        && result.resolvedSignature === null
+                                        && result.resolvedRelation === null
+                                        && result.resolvedContextModuleName === null
+                                        && result.resolvedWhereClause === null
+                                        && result.resolvedDetailKind === null;
+                                }
+                                return result.resolvedSourceKind === result.witnessTableInfo.sourceKind
+                                    && result.resolvedSignature === result.witnessTableInfo.signature
+                                    && result.resolvedRelation === result.witnessTableInfo.relation
+                                    && result.resolvedContextModuleName === result.witnessTableInfo.contextModuleName
+                                    && result.resolvedWhereClause === result.witnessTableInfo.whereClause
+                                    && result.resolvedDetailKind === result.witnessTableInfo.detailKind;
+                            }
+
+                            return checkMethodInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'viewDidLoad' }))
+                                && checkVtableInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewController', memberName: 'viewDidLoad' }))
+                                && checkWitnessTableInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.witness_table_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' }));
+                        })()"#
+                    )
+                    .expect("agent swift info resolved summaries"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() {
                             const original = Swift.witnessTable;
                             Swift.witnessTable = function() {
