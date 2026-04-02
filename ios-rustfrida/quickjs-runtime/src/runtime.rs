@@ -6700,6 +6700,169 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            function checkRpathInfo(result) {
+                                if (result.rpathInfo === null) {
+                                    return result.resolvedPathKind === null
+                                        && result.resolvedHasPath === null
+                                        && result.resolvedIsTokenPath === null
+                                        && result.resolvedUsesLoaderPath === null
+                                        && result.resolvedUsesExecutablePath === null
+                                        && result.resolvedUsesRpathToken === null
+                                        && result.resolvedPathDepth === 0
+                                        && result.isTokenPath === false
+                                        && result.usesLoaderPath === false
+                                        && result.usesExecutablePath === false
+                                        && result.usesRpathToken === false
+                                        && result.pathDepth === 0;
+                                }
+                                return result.resolvedPathKind === result.rpathInfo.pathKind
+                                    && result.resolvedHasPath === result.rpathInfo.hasPath
+                                    && result.resolvedIsTokenPath === result.rpathInfo.isTokenPath
+                                    && result.resolvedUsesLoaderPath === result.rpathInfo.usesLoaderPath
+                                    && result.resolvedUsesExecutablePath === result.rpathInfo.usesExecutablePath
+                                    && result.resolvedUsesRpathToken === result.rpathInfo.usesRpathToken
+                                    && result.resolvedPathDepth === result.rpathInfo.pathDepth
+                                    && result.isTokenPath === (result.rpathInfo.isTokenPath === true)
+                                    && result.usesLoaderPath === (result.rpathInfo.usesLoaderPath === true)
+                                    && result.usesExecutablePath === (result.rpathInfo.usesExecutablePath === true)
+                                    && result.usesRpathToken === (result.rpathInfo.usesRpathToken === true)
+                                    && result.pathDepth === result.rpathInfo.pathDepth;
+                            }
+
+                            function checkImportInfo(result) {
+                                if (result.importInfo === null) {
+                                    return result.resolvedSource === null
+                                        && result.resolvedSourceKind === null
+                                        && result.resolvedHasDylibName === null
+                                        && result.resolvedUsesOrdinalOnly === null
+                                        && result.resolvedIsMainExecutableImport === null
+                                        && result.resolvedIsFlatLookupImport === null
+                                        && result.resolvedIsSelfImport === null
+                                        && result.resolvedWeakImport === null;
+                                }
+                                return result.resolvedSource === result.importInfo.source
+                                    && result.resolvedSourceKind === result.importInfo.sourceKind
+                                    && result.resolvedHasDylibName === result.importInfo.hasDylibName
+                                    && result.resolvedUsesOrdinalOnly === result.importInfo.usesOrdinalOnly
+                                    && result.resolvedIsMainExecutableImport === result.importInfo.isMainExecutableImport
+                                    && result.resolvedIsFlatLookupImport === result.importInfo.isFlatLookupImport
+                                    && result.resolvedIsSelfImport === result.importInfo.isSelfImport
+                                    && result.resolvedWeakImport === result.importInfo.weakImport;
+                            }
+
+                            function checkSegmentInfo(result) {
+                                if (result.segmentInfo === null) {
+                                    return result.resolvedVmsizeHex === null
+                                        && result.resolvedFileEndHex === null
+                                        && result.resolvedHasVmRange === null
+                                        && result.resolvedHasFileData === null
+                                        && result.resolvedIsEmpty === null
+                                        && result.resolvedIsZeroFillLike === null
+                                        && result.resolvedIsReadable === null
+                                        && result.resolvedIsWritable === null
+                                        && result.resolvedIsExecutable === null
+                                        && result.vmsizeHex === null
+                                        && result.fileEndHex === null
+                                        && result.isZeroFillLike === false;
+                                }
+                                return result.resolvedVmsizeHex === result.segmentInfo.vmsizeHex
+                                    && result.resolvedFileEndHex === result.segmentInfo.fileEndHex
+                                    && result.resolvedHasVmRange === result.segmentInfo.hasVmRange
+                                    && result.resolvedHasFileData === result.segmentInfo.hasFileData
+                                    && result.resolvedIsEmpty === result.segmentInfo.isEmpty
+                                    && result.resolvedIsZeroFillLike === result.segmentInfo.isZeroFillLike
+                                    && result.resolvedIsReadable === result.segmentInfo.isReadable
+                                    && result.resolvedIsWritable === result.segmentInfo.isWritable
+                                    && result.resolvedIsExecutable === result.segmentInfo.isExecutable
+                                    && result.vmsizeHex === result.segmentInfo.vmsizeHex
+                                    && result.fileEndHex === result.segmentInfo.fileEndHex
+                                    && result.isZeroFillLike === (result.segmentInfo.isZeroFillLike === true);
+                            }
+
+                            function checkSectionInfo(result) {
+                                if (result.sectionInfo === null) {
+                                    return result.resolvedHasData === null
+                                        && result.resolvedIsZeroFillLike === null
+                                        && result.resolvedIsCStringLike === null
+                                        && result.resolvedIsSymbolPointers === null;
+                                }
+                                return result.resolvedHasData === result.sectionInfo.hasData
+                                    && result.resolvedIsZeroFillLike === result.sectionInfo.isZeroFillLike
+                                    && result.resolvedIsCStringLike === result.sectionInfo.isCStringLike
+                                    && result.resolvedIsSymbolPointers === result.sectionInfo.isSymbolPointers;
+                            }
+
+                            function checkLoadCommandInfo(result) {
+                                if (result.loadCommandInfo === null) {
+                                    return result.resolvedIsReqDyld === null
+                                        && result.resolvedHasPayload === null
+                                        && result.resolvedHasDetail === null
+                                        && result.resolvedHasPath === null
+                                        && result.resolvedIsTokenPath === null
+                                        && result.resolvedUsesLoaderPath === null
+                                        && result.resolvedUsesExecutablePath === null
+                                        && result.resolvedUsesRpathToken === null
+                                        && result.resolvedHasCurrentVersion === null
+                                        && result.resolvedHasCompatibilityVersion === null
+                                        && result.resolvedHasTimestamp === null
+                                        && result.resolvedVersionMismatch === null
+                                        && result.resolvedHasVersion === null
+                                        && result.resolvedHasMinOs === null
+                                        && result.resolvedHasSdk === null
+                                        && result.resolvedHasTools === null
+                                        && result.resolvedToolCount === 0
+                                        && result.resolvedUniqueToolCount === 0
+                                        && result.resolvedHasUuid === null
+                                        && result.resolvedUuidLength === 0
+                                        && result.resolvedHasDataRange === null
+                                        && result.resolvedHasEntryPoint === null
+                                        && result.resolvedHasEncryptedRange === null
+                                        && result.resolvedHasDyldRegions === null
+                                        && result.resolvedDyldRegionCount === 0
+                                        && result.resolvedNonEmptyDyldRegionCount === 0;
+                                }
+                                return result.resolvedIsReqDyld === result.loadCommandInfo.isReqDyld
+                                    && result.resolvedHasPayload === result.loadCommandInfo.hasPayload
+                                    && result.resolvedHasDetail === result.loadCommandInfo.hasDetail
+                                    && result.resolvedHasPath === result.loadCommandInfo.hasPath
+                                    && result.resolvedIsTokenPath === result.loadCommandInfo.isTokenPath
+                                    && result.resolvedUsesLoaderPath === result.loadCommandInfo.usesLoaderPath
+                                    && result.resolvedUsesExecutablePath === result.loadCommandInfo.usesExecutablePath
+                                    && result.resolvedUsesRpathToken === result.loadCommandInfo.usesRpathToken
+                                    && result.resolvedHasCurrentVersion === result.loadCommandInfo.hasCurrentVersion
+                                    && result.resolvedHasCompatibilityVersion === result.loadCommandInfo.hasCompatibilityVersion
+                                    && result.resolvedHasTimestamp === result.loadCommandInfo.hasTimestamp
+                                    && result.resolvedVersionMismatch === result.loadCommandInfo.versionMismatch
+                                    && result.resolvedHasVersion === result.loadCommandInfo.hasVersion
+                                    && result.resolvedHasMinOs === result.loadCommandInfo.hasMinOs
+                                    && result.resolvedHasSdk === result.loadCommandInfo.hasSdk
+                                    && result.resolvedHasTools === result.loadCommandInfo.hasTools
+                                    && result.resolvedToolCount === result.loadCommandInfo.toolCount
+                                    && result.resolvedUniqueToolCount === result.loadCommandInfo.uniqueToolCount
+                                    && result.resolvedHasUuid === result.loadCommandInfo.hasUuid
+                                    && result.resolvedUuidLength === result.loadCommandInfo.uuidLength
+                                    && result.resolvedHasDataRange === result.loadCommandInfo.hasDataRange
+                                    && result.resolvedHasEntryPoint === result.loadCommandInfo.hasEntryPoint
+                                    && result.resolvedHasEncryptedRange === result.loadCommandInfo.hasEncryptedRange
+                                    && result.resolvedHasDyldRegions === result.loadCommandInfo.hasDyldRegions
+                                    && result.resolvedDyldRegionCount === result.loadCommandInfo.dyldRegionCount
+                                    && result.resolvedNonEmptyDyldRegionCount === result.loadCommandInfo.nonEmptyDyldRegionCount;
+                            }
+
+                            return checkRpathInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.rpath_info', moduleName: 'libsystem_malloc.dylib', path: '/usr/lib/libSystem.B.dylib' }))
+                                && checkImportInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.import_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }))
+                                && checkSegmentInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.segment_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT' }))
+                                && checkSectionInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }))
+                                && checkLoadCommandInfo(__iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }));
+                        })()"#
+                    )
+                    .expect("agent native info resolved summaries"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.methodOwners viewDidLoad'); return value === '' || value.indexOf('[member]') !== -1; })()")
                     .expect("agent swift method owners"),
                 "true"
