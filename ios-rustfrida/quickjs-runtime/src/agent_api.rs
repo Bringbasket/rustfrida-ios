@@ -8003,6 +8003,7 @@ function handleSpecResult(spec) {
             hasRpathTokens: rpathTokenRpaths.length !== 0,
             longestRpath: longestRpath === null ? null : longestRpath.path,
             longestRpathLength: longestRpath === null ? null : longestRpath.path.length,
+            pathKindNames: pathKindSummaries.map((item) => item.pathKind),
             rpathPaths,
             pathKinds: pathKindSummaries,
             rpaths,
