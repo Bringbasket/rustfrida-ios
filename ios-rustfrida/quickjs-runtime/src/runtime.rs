@@ -8424,10 +8424,20 @@ undefined;
                                     typeof result.hasDispatchThunks !== 'boolean' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledEntries !== 'boolean' ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.memberNameList) ||
+                                    !Array.isArray(result.typeNameList) ||
+                                    !Array.isArray(result.sourceKindList) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.memberNames) ||
                                     !Array.isArray(result.types) ||
                                     !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.memberNameList.length !== result.memberNames.length ||
+                                    result.typeNameList.length !== result.types.length ||
+                                    result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
                             }
                             if (result.entries.length === 0) {
@@ -8461,6 +8471,7 @@ undefined;
                                 typeof entry.offsetHex === 'string' &&
                                 typeof entry.isDispatchThunk === 'boolean' &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstTypeName === 'string' &&
@@ -8471,6 +8482,7 @@ undefined;
                                     typeof moduleSummary.demangledCount === 'number'
                                 )) &&
                                 (memberSummary === null || (
+                                    result.memberNameList[0] === memberSummary.memberName &&
                                     typeof memberSummary.memberName === 'string' &&
                                     typeof memberSummary.count === 'number' &&
                                     typeof memberSummary.firstTypeName === 'string' &&
@@ -8481,6 +8493,7 @@ undefined;
                                     typeof memberSummary.demangledCount === 'number'
                                 )) &&
                                 (typeSummary === null || (
+                                    result.typeNameList[0] === typeSummary.typeName &&
                                     typeof typeSummary.typeName === 'string' &&
                                     typeof typeSummary.count === 'number' &&
                                     typeof typeSummary.firstMemberName === 'string' &&
@@ -8488,6 +8501,7 @@ undefined;
                                     typeof typeSummary.dispatchThunkCount === 'number'
                                 )) &&
                                 (sourceSummary === null || (
+                                    result.sourceKindList[0] === sourceSummary.sourceKind &&
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
                                     typeof sourceSummary.firstTypeName === 'string' &&
@@ -8529,6 +8543,10 @@ undefined;
                                     typeof result.hasWhereClauses !== 'boolean' ||
                                     typeof result.uniqueContextModuleCount !== 'number' ||
                                     typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.typeNameList) ||
+                                    !Array.isArray(result.protocolNameList) ||
+                                    !Array.isArray(result.witnessKeyList) ||
                                     !Array.isArray(result.typeNames) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.protocols) ||
@@ -8541,7 +8559,11 @@ undefined;
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
-                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.typeNameList.length !== result.typeNames.length ||
+                                    result.protocolNameList.length !== result.protocols.length ||
+                                    result.witnessKeyList.length !== result.witnessKeys.length ||
+                                    result.contextModuleNameList.length !== result.contextModules.length ||
                                     result.detailKindList.length !== result.detailKinds.length ||
                                     result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
@@ -8594,6 +8616,7 @@ undefined;
                                 (entry.whereClause === null || typeof entry.whereClause === 'string') &&
                                 (entry.detailKind === null || typeof entry.detailKind === 'string') &&
                                 (typeSummary === null || (
+                                    result.typeNameList[0] === typeSummary.typeName &&
                                     typeof typeSummary.typeName === 'string' &&
                                     typeof typeSummary.count === 'number' &&
                                     typeof typeSummary.firstProtocolName === 'string' &&
@@ -8604,6 +8627,7 @@ undefined;
                                     typeof typeSummary.demangledCount === 'number'
                                 )) &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstTypeName === 'string' &&
@@ -8614,6 +8638,7 @@ undefined;
                                     typeof moduleSummary.demangledCount === 'number'
                                 )) &&
                                 (protocolSummary === null || (
+                                    result.protocolNameList[0] === protocolSummary.protocolName &&
                                     typeof protocolSummary.protocolName === 'string' &&
                                     typeof protocolSummary.count === 'number' &&
                                     typeof protocolSummary.firstTypeName === 'string' &&
@@ -8621,6 +8646,7 @@ undefined;
                                     typeof protocolSummary.accessorCount === 'number'
                                 )) &&
                                 (witnessKeySummary === null || (
+                                    result.witnessKeyList[0] === witnessKeySummary.witnessKey &&
                                     typeof witnessKeySummary.witnessKey === 'string' &&
                                     typeof witnessKeySummary.count === 'number' &&
                                     typeof witnessKeySummary.firstModuleName === 'string' &&
@@ -8941,6 +8967,18 @@ undefined;
                                     && result.hasWhereClauses === true
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.moduleNameList)
+                                    && result.moduleNameList.length === result.moduleNames.length
+                                    && result.moduleNameList[0] === 'Demo'
+                                    && Array.isArray(result.typeNameList)
+                                    && result.typeNameList.length === result.typeNames.length
+                                    && result.typeNameList[0] === result.typeNames[0].typeName
+                                    && Array.isArray(result.protocolNameList)
+                                    && result.protocolNameList.length === result.protocols.length
+                                    && result.protocolNameList[0] === result.protocols[0].protocolName
+                                    && Array.isArray(result.witnessKeyList)
+                                    && result.witnessKeyList.length === result.witnessKeys.length
+                                    && result.witnessKeyList[0] === result.witnessKeys[0].witnessKey
                                     && Array.isArray(result.contextModuleNameList)
                                     && result.contextModuleNameList.length === result.contextModules.length
                                     && result.contextModuleNameList[0] === 'Demo'
