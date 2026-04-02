@@ -8846,6 +8846,99 @@ undefined;
                 runtime
                     .eval(
                         r#"(function() {
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout_info', moduleName: null, typeName: 'ViewController' });
+                            if (result.typeLayout === null) {
+                                return result.resolvedHasName === null
+                                    && result.resolvedFirstMetadataName === null
+                                    && result.resolvedLastMetadataName === null
+                                    && result.resolvedFirstMetadataAccessorName === null
+                                    && result.resolvedLastMetadataAccessorName === null
+                                    && result.resolvedFirstNominalDescriptorName === null
+                                    && result.resolvedLastNominalDescriptorName === null
+                                    && result.resolvedFirstMetadataCacheName === null
+                                    && result.resolvedLastMetadataCacheName === null
+                                    && result.resolvedFirstAssociatedTypeDescriptorName === null
+                                    && result.resolvedLastAssociatedTypeDescriptorName === null
+                                    && result.resolvedFirstVtableMemberName === null
+                                    && result.resolvedLastVtableMemberName === null
+                                    && result.resolvedFirstWitnessProtocolName === null
+                                    && result.resolvedLastWitnessProtocolName === null
+                                    && result.resolvedHasMetadata === null
+                                    && result.resolvedHasMetadataAccessors === null
+                                    && result.resolvedHasNominalDescriptors === null
+                                    && result.resolvedHasMetadataCaches === null
+                                    && result.resolvedHasAssociatedTypeDescriptors === null
+                                    && result.resolvedHasVtableEntries === null
+                                    && result.resolvedHasWitnessTables === null
+                                    && result.resolvedMetadataCount === 0
+                                    && result.resolvedMetadataAccessorCount === 0
+                                    && result.resolvedNominalDescriptorCount === 0
+                                    && result.resolvedMetadataCacheCount === 0
+                                    && result.resolvedAssociatedTypeDescriptorCount === 0
+                                    && result.resolvedTypeSourceEntryCount === 0
+                                    && result.resolvedSourceDemangledCount === 0
+                                    && result.resolvedHasSourceDemangledTypes === null
+                                    && result.resolvedUniqueSourceKindCount === 0
+                                    && result.resolvedUniqueContextModuleCount === 0
+                                    && result.resolvedUniqueDetailKindCount === 0
+                                    && result.resolvedVtableCount === 0
+                                    && result.resolvedWitnessTableCount === 0
+                                    && result.resolvedParsedVtableMemberCount === 0
+                                    && result.resolvedVtableAccessorCount === 0
+                                    && result.resolvedWitnessAccessorCount === 0
+                                    && result.resolvedUniqueVtableMemberKindCount === 0
+                                    && result.resolvedUniqueWitnessProtocolCount === 0;
+                            }
+                            const layout = result.typeLayout;
+                            return result.resolvedHasName === layout.hasName
+                                && result.resolvedFirstMetadataName === layout.firstMetadataName
+                                && result.resolvedLastMetadataName === layout.lastMetadataName
+                                && result.resolvedFirstMetadataAccessorName === layout.firstMetadataAccessorName
+                                && result.resolvedLastMetadataAccessorName === layout.lastMetadataAccessorName
+                                && result.resolvedFirstNominalDescriptorName === layout.firstNominalDescriptorName
+                                && result.resolvedLastNominalDescriptorName === layout.lastNominalDescriptorName
+                                && result.resolvedFirstMetadataCacheName === layout.firstMetadataCacheName
+                                && result.resolvedLastMetadataCacheName === layout.lastMetadataCacheName
+                                && result.resolvedFirstAssociatedTypeDescriptorName === layout.firstAssociatedTypeDescriptorName
+                                && result.resolvedLastAssociatedTypeDescriptorName === layout.lastAssociatedTypeDescriptorName
+                                && result.resolvedFirstVtableMemberName === layout.firstVtableMemberName
+                                && result.resolvedLastVtableMemberName === layout.lastVtableMemberName
+                                && result.resolvedFirstWitnessProtocolName === layout.firstWitnessProtocolName
+                                && result.resolvedLastWitnessProtocolName === layout.lastWitnessProtocolName
+                                && result.resolvedHasMetadata === layout.hasMetadata
+                                && result.resolvedHasMetadataAccessors === layout.hasMetadataAccessors
+                                && result.resolvedHasNominalDescriptors === layout.hasNominalDescriptors
+                                && result.resolvedHasMetadataCaches === layout.hasMetadataCaches
+                                && result.resolvedHasAssociatedTypeDescriptors === layout.hasAssociatedTypeDescriptors
+                                && result.resolvedHasVtableEntries === layout.hasVtableEntries
+                                && result.resolvedHasWitnessTables === layout.hasWitnessTables
+                                && result.resolvedMetadataCount === layout.metadataCount
+                                && result.resolvedMetadataAccessorCount === layout.metadataAccessorCount
+                                && result.resolvedNominalDescriptorCount === layout.nominalDescriptorCount
+                                && result.resolvedMetadataCacheCount === layout.metadataCacheCount
+                                && result.resolvedAssociatedTypeDescriptorCount === layout.associatedTypeDescriptorCount
+                                && result.resolvedTypeSourceEntryCount === layout.typeSourceEntryCount
+                                && result.resolvedSourceDemangledCount === layout.sourceDemangledCount
+                                && result.resolvedHasSourceDemangledTypes === layout.hasSourceDemangledTypes
+                                && result.resolvedUniqueSourceKindCount === layout.uniqueSourceKindCount
+                                && result.resolvedUniqueContextModuleCount === layout.uniqueContextModuleCount
+                                && result.resolvedUniqueDetailKindCount === layout.uniqueDetailKindCount
+                                && result.resolvedVtableCount === layout.vtableCount
+                                && result.resolvedWitnessTableCount === layout.witnessTableCount
+                                && result.resolvedParsedVtableMemberCount === layout.parsedVtableMemberCount
+                                && result.resolvedVtableAccessorCount === layout.vtableAccessorCount
+                                && result.resolvedWitnessAccessorCount === layout.witnessAccessorCount
+                                && result.resolvedUniqueVtableMemberKindCount === layout.uniqueVtableMemberKindCount
+                                && result.resolvedUniqueWitnessProtocolCount === layout.uniqueWitnessProtocolCount;
+                        })()"#
+                    )
+                    .expect("agent swift type layout info resolved summaries"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
                             const symbolInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbol_info', moduleName: null, symbolName: 'ViewController' });
                             if (symbolInfo.symbolInfo === null) {
                                 if (!(symbolInfo.resolvedModuleBase === null
