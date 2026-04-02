@@ -9941,9 +9941,17 @@ undefined;
                                     typeof result.uniqueDetailKindCount !== 'number' ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.typeNames) ||
+                                    !Array.isArray(result.contextModuleNameList) ||
+                                    !Array.isArray(result.detailKindList) ||
+                                    !Array.isArray(result.sourceKindList) ||
                                     !Array.isArray(result.contextModules) ||
                                     !Array.isArray(result.detailKinds) ||
                                     !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                                    result.detailKindList.length !== result.detailKinds.length ||
+                                    result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
                             }
                             if (result.types.length === 0) {
@@ -9995,18 +10003,21 @@ undefined;
                                     typeof typeSummary.hasSourceDemangledName === 'boolean'
                                 )) &&
                                 (contextSummary === null || (
+                                    result.contextModuleNameList[0] === contextSummary.contextModuleName &&
                                     typeof contextSummary.contextModuleName === 'string' &&
                                     typeof contextSummary.count === 'number' &&
                                     typeof contextSummary.firstTypeName === 'string' &&
                                     typeof contextSummary.lastTypeName === 'string'
                                 )) &&
                                 (detailSummary === null || (
+                                    result.detailKindList[0] === detailSummary.detailKind &&
                                     typeof detailSummary.detailKind === 'string' &&
                                     typeof detailSummary.count === 'number' &&
                                     typeof detailSummary.firstTypeName === 'string' &&
                                     typeof detailSummary.lastTypeName === 'string'
                                 )) &&
                                 (sourceSummary === null || (
+                                    result.sourceKindList[0] === sourceSummary.sourceKind &&
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
                                     typeof sourceSummary.firstTypeName === 'string' &&
