@@ -4547,9 +4547,17 @@ undefined;
                                 && (result.largestSectionName === null || typeof result.largestSectionName === 'string')
                                 && (result.largestSectionFullName === null || typeof result.largestSectionFullName === 'string')
                                 && (result.largestSectionSizeHex === null || typeof result.largestSectionSizeHex === 'string')
+                                && Array.isArray(result.sectionNameList)
+                                && Array.isArray(result.segmentNameList)
+                                && Array.isArray(result.sectionTypeNameList)
                                 && Array.isArray(result.sectionNames)
                                 && Array.isArray(result.segments)
                                 && Array.isArray(result.sectionTypes))) {
+                                return false;
+                            }
+                            if (result.sectionNameList.length !== result.sectionNames.length
+                                || result.segmentNameList.length !== result.segments.length
+                                || result.sectionTypeNameList.length !== result.sectionTypes.length) {
                                 return false;
                             }
                             if (result.image === null) {
@@ -4592,7 +4600,8 @@ undefined;
                             }
                             if (result.segments.length !== 0) {
                                 const segment = result.segments[0];
-                                if (!(typeof segment.segmentName === 'string'
+                                if (!(result.segmentNameList[0] === segment.segmentName
+                                    && typeof segment.segmentName === 'string'
                                     && typeof segment.count === 'number'
                                     && typeof segment.totalSizeHex === 'string'
                                     && typeof segment.firstSectionName === 'string'
@@ -4605,7 +4614,8 @@ undefined;
                             }
                             if (result.sectionTypes.length !== 0) {
                                 const type = result.sectionTypes[0];
-                                if (!(typeof type.sectionType === 'number'
+                                if (!(result.sectionTypeNameList[0] === type.sectionTypeName
+                                    && typeof type.sectionType === 'number'
                                     && typeof type.sectionTypeName === 'string'
                                     && typeof type.count === 'number'
                                     && typeof type.totalSizeHex === 'string'
@@ -4618,7 +4628,8 @@ undefined;
                             }
                             if (result.sectionNames.length !== 0) {
                                 const sectionName = result.sectionNames[0];
-                                if (!(typeof sectionName.sectionName === 'string'
+                                if (!(result.sectionNameList[0] === sectionName.sectionName
+                                    && typeof sectionName.sectionName === 'string'
                                     && typeof sectionName.count === 'number'
                                     && typeof sectionName.firstSegmentName === 'string'
                                     && typeof sectionName.lastSegmentName === 'string'

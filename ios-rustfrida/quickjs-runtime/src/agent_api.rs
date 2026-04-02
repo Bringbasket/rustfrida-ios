@@ -8613,6 +8613,9 @@ function handleSpecResult(spec) {
             largestSectionName: largestSection === null ? null : largestSection.name,
             largestSectionFullName: largestSection === null ? null : largestSection.fullName,
             largestSectionSizeHex: largestSection === null ? null : largestSection.sizeHex,
+            sectionNameList: sectionNames.map((item) => item.sectionName),
+            segmentNameList: segmentSummaries.map((item) => item.segmentName),
+            sectionTypeNameList: sectionTypeSummaries.map((item) => item.sectionTypeName),
             sectionNames,
             segments: segmentSummaries.map((summary) => ({
                 segmentName: summary.segmentName,
