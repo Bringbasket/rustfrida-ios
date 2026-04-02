@@ -10240,9 +10240,17 @@ undefined;
                                     typeof result.uniqueDetailKindCount !== 'number' ||
                                     !Array.isArray(result.ownerNames) ||
                                     !Array.isArray(result.moduleNames) ||
+                                    !Array.isArray(result.contextModuleNameList) ||
+                                    !Array.isArray(result.detailKindList) ||
+                                    !Array.isArray(result.sourceKindList) ||
                                     !Array.isArray(result.contextModules) ||
                                     !Array.isArray(result.detailKinds) ||
                                     !Array.isArray(result.sourceKinds)) {
+                                return false;
+                            }
+                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                                    result.detailKindList.length !== result.detailKinds.length ||
+                                    result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
                             }
                             if (result.owners.length === 0) {
@@ -10290,18 +10298,21 @@ undefined;
                                     typeof moduleSummary.sourceDemangledCount === 'number'
                                 )) &&
                                 (contextSummary === null || (
+                                    result.contextModuleNameList[0] === contextSummary.contextModuleName &&
                                     typeof contextSummary.contextModuleName === 'string' &&
                                     typeof contextSummary.count === 'number' &&
                                     typeof contextSummary.firstOwnerName === 'string' &&
                                     typeof contextSummary.lastOwnerName === 'string'
                                 )) &&
                                 (detailSummary === null || (
+                                    result.detailKindList[0] === detailSummary.detailKind &&
                                     typeof detailSummary.detailKind === 'string' &&
                                     typeof detailSummary.count === 'number' &&
                                     typeof detailSummary.firstOwnerName === 'string' &&
                                     typeof detailSummary.lastOwnerName === 'string'
                                 )) &&
                                 (sourceSummary === null || (
+                                    result.sourceKindList[0] === sourceSummary.sourceKind &&
                                     typeof sourceSummary.sourceKind === 'string' &&
                                     typeof sourceSummary.count === 'number' &&
                                     typeof sourceSummary.firstOwnerName === 'string' &&
@@ -10346,6 +10357,17 @@ undefined;
                                 return result.count === 2
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 2
+                                    && Array.isArray(result.contextModuleNameList)
+                                    && result.contextModuleNameList.length === result.contextModules.length
+                                    && result.contextModuleNameList[0] === 'Demo'
+                                    && Array.isArray(result.detailKindList)
+                                    && result.detailKindList.length === result.detailKinds.length
+                                    && result.detailKindList.includes('symbol')
+                                    && result.detailKindList.includes('metadata-accessor')
+                                    && Array.isArray(result.sourceKindList)
+                                    && result.sourceKindList.length === result.sourceKinds.length
+                                    && result.sourceKindList.includes('nominal-type')
+                                    && result.sourceKindList.includes('metadata-accessor')
                                     && Array.isArray(result.contextModules)
                                     && result.contextModules.some((entry) => entry.contextModuleName === 'Demo' && entry.count === 2)
                                     && Array.isArray(result.detailKinds)
