@@ -912,6 +912,54 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let next_action_ready_to_run = selected_action
         .map(|item| item.allowed && next_action_blocked_prerequisites.is_empty())
         .unwrap_or(false);
+    let fallback_action_key = if next_action_ready_to_run {
+        None
+    } else {
+        next_ready_action_key.clone()
+    };
+    let fallback_reason = if next_action_ready_to_run {
+        None
+    } else if selected_action.is_none() {
+        Some("no candidate action was selected; use fallback guidance to recover".to_string())
+    } else if selected_action.is_some_and(|item| !item.allowed) {
+        Some("selected next action is blocked by hook policy; use fallback guidance to recover".to_string())
+    } else if !next_action_blocked_prerequisites.is_empty() {
+        Some("selected next action has blocked prerequisites; use fallback guidance to recover".to_string())
+    } else {
+        Some("selected next action is not ready; use fallback guidance to recover".to_string())
+    };
+    let fallback_templates = if next_action_ready_to_run {
+        Vec::new()
+    } else if let Some(action_key) = fallback_action_key.as_deref() {
+        hook_action_command_templates(action_key, preferred_path)
+    } else {
+        suggested_sequence
+            .iter()
+            .filter(|command| !command.starts_with("check "))
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+    let fallback_command_json_templates = fallback_templates
+        .iter()
+        .map(|template| command_json_template_entry(template))
+        .collect::<Vec<_>>();
+    let fallback_eligible_command_json_template_count = command_json_eligible_count(&fallback_command_json_templates);
+    let fallback_plan = if next_action_ready_to_run {
+        Value::Null
+    } else {
+        json!({
+            "trigger": "next-action-not-ready",
+            "reason": fallback_reason,
+            "fromActionKey": next_action_key,
+            "toActionKey": fallback_action_key,
+            "usesSuggestedSequence": fallback_action_key.is_none(),
+            "templateCount": fallback_templates.len(),
+            "templates": fallback_templates,
+            "commandJsonTemplateCount": fallback_command_json_templates.len(),
+            "commandJsonTemplates": fallback_command_json_templates,
+            "commandJsonEligibleTemplateCount": fallback_eligible_command_json_template_count,
+        })
+    };
     let next_action_plan = selected_action
         .map(|item| {
             json!({
@@ -1011,6 +1059,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextActionBlockedBy": selected_action.map(|item| item.blocked_by),
         "nextActionBranch": selected_action.map(hook_automation_branch),
         "nextActionReadyToRun": next_action_ready_to_run,
+        "hasFallbackPlan": !next_action_ready_to_run,
+        "fallbackPlan": fallback_plan,
         "nextActionPlan": next_action_plan,
         "hasSuggestedSequence": !suggested_sequence.is_empty(),
         "suggestedSequence": suggested_sequence,
@@ -5014,8 +5064,8 @@ mod tests {
         render_command_error_json, render_command_error_json_with_context, render_command_outcome_json,
         render_image_list_json, render_injection_environment, render_injection_result_json, render_loader_symbol,
         render_preflight_json, CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand,
-        NativeHookTarget, NativeLogArgument, NativeLogReturn, NativeLogTemplate, NativeValueFormat,
-        ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
+        HookEffectiveAction, NativeHookTarget, NativeLogArgument, NativeLogReturn, NativeLogTemplate,
+        NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
     };
     use common::{
         AgentCommand, ControllerConfig, Error, Hello, InjectionMode, DEFAULT_AGENT_PATH, DEFAULT_AGENT_PATH_ROOTFUL,
@@ -6598,6 +6648,8 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
+        assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
+        assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert!(rendered["hook"]["automation"]["commandTemplates"].is_array());
@@ -6877,6 +6929,8 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
+        assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
+        assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert!(rendered["hook"]["automation"]["commandTemplates"].is_array());
@@ -7028,6 +7082,8 @@ mod tests {
         assert_eq!(automation["nextActionBlockedBy"], "none");
         assert_eq!(automation["nextActionBranch"], "run");
         assert_eq!(automation["nextActionReadyToRun"], true);
+        assert_eq!(automation["hasFallbackPlan"], false);
+        assert!(automation["fallbackPlan"].is_null());
         assert_eq!(automation["hasSuggestedSequence"], true);
         assert_eq!(automation["suggestedSequence"][0], "trace status");
         assert_eq!(automation["nextActionPlan"]["actionKey"], "hook.status");
@@ -7062,6 +7118,116 @@ mod tests {
         assert_eq!(status_branch["templateCount"], 5);
         assert_eq!(status_branch["commandJsonTemplateCount"], 5);
         assert_eq!(status_branch["commandJsonEligibleTemplateCount"], 5);
+    }
+
+    #[test]
+    fn hook_automation_emits_fallback_plan_when_next_action_not_ready() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let backend_matrix = hook_backend_matrix_to_json(&report, &report);
+        let actions = vec![
+            HookEffectiveAction {
+                action_key: "hook.query",
+                command_group: "query",
+                allowed: false,
+                blocked_by: "both",
+                priority: 1,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 1,
+                target_priority: 1,
+                recommendation: "query blocked".into(),
+                controller_reason: Some("controller blocked query".into()),
+                target_reason: Some("target blocked query".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.bootstrap",
+                command_group: "bootstrap",
+                allowed: false,
+                blocked_by: "both",
+                priority: 2,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 2,
+                target_priority: 2,
+                recommendation: "bootstrap blocked".into(),
+                controller_reason: Some("controller blocked bootstrap".into()),
+                target_reason: Some("target blocked bootstrap".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.install",
+                command_group: "hook-install",
+                allowed: false,
+                blocked_by: "both",
+                priority: 3,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 3,
+                target_priority: 3,
+                recommendation: "install blocked".into(),
+                controller_reason: Some("controller blocked install".into()),
+                target_reason: Some("target blocked install".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.status",
+                command_group: "hook-status",
+                allowed: false,
+                blocked_by: "both",
+                priority: 4,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 4,
+                target_priority: 4,
+                recommendation: "status blocked".into(),
+                controller_reason: Some("controller blocked status".into()),
+                target_reason: Some("target blocked status".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.stop",
+                command_group: "hook-stop",
+                allowed: false,
+                blocked_by: "both",
+                priority: 5,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 5,
+                target_priority: 5,
+                recommendation: "stop blocked".into(),
+                controller_reason: Some("controller blocked stop".into()),
+                target_reason: Some("target blocked stop".into()),
+            },
+        ];
+
+        let automation = hook_automation_to_json(&actions, &backend_matrix);
+        assert_eq!(automation["nextActionKey"], "hook.query");
+        assert!(automation["nextReadyActionKey"].is_null());
+        assert_eq!(automation["nextActionReadyToRun"], false);
+        assert_eq!(automation["hasFallbackPlan"], true);
+        assert_eq!(automation["fallbackPlan"]["trigger"], "next-action-not-ready");
+        assert_eq!(automation["fallbackPlan"]["fromActionKey"], "hook.query");
+        assert!(automation["fallbackPlan"]["toActionKey"].is_null());
+        assert_eq!(automation["fallbackPlan"]["usesSuggestedSequence"], true);
+        assert_eq!(automation["fallbackPlan"]["templateCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["templates"][0], "native.hookenv");
+        assert_eq!(
+            automation["fallbackPlan"]["templates"][1],
+            "controller --preflight-only --preflight-json"
+        );
+        assert_eq!(automation["fallbackPlan"]["commandJsonTemplateCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["commandJsonEligibleTemplateCount"], 1);
+        assert_eq!(
+            automation["fallbackPlan"]["commandJsonTemplates"][0]["kind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["commandJsonTemplates"][1]["kind"],
+            "controller-cli"
+        );
+        assert_eq!(automation["readyBranchCount"], 0);
+        assert_eq!(automation["blockedBranchCount"], 5);
     }
 
     #[test]
@@ -7150,6 +7316,8 @@ mod tests {
         assert_eq!(automation["nextActionBlockedBy"], "none");
         assert_eq!(automation["nextActionBranch"], "run");
         assert_eq!(automation["nextActionReadyToRun"], true);
+        assert_eq!(automation["hasFallbackPlan"], false);
+        assert!(automation["fallbackPlan"].is_null());
         assert_eq!(automation["suggestedSequence"][0], "native.hookenv");
         assert!(automation["commandTemplates"].is_array());
         assert_eq!(automation["nextActionPlan"]["actionKey"], "hook.query");
