@@ -2033,6 +2033,22 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("effectivePhase")
             .cloned()
             .unwrap_or(Value::Null),
+        "defaultRecommendedTemplateCount": routing_decision_default
+            .get("recommendedTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultRecommendedTemplates": routing_decision_default
+            .get("recommendedTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "defaultRecommendedCommandJsonTemplateCount": routing_decision_default
+            .get("recommendedCommandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultRecommendedCommandJsonTemplates": routing_decision_default
+            .get("recommendedCommandJsonTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
         "default": routing_decision_default,
         "ready": {
             "lookupRule": "index[errorCode] || default",
@@ -8643,6 +8659,22 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["defaultEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultRecommendedTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultRecommendedTemplates"][0],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultRecommendedCommandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultRecommendedCommandJsonTemplates"][0]["phase"],
             "preflight"
         );
         assert_eq!(
