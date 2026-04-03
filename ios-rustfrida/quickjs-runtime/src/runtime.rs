@@ -7841,6 +7841,8 @@ undefined;
                                     typeof result.hasSourceDemangledProtocols !== 'boolean' ||
                                     typeof result.uniqueContextModuleCount !== 'number' ||
                                     typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.protocolNameList) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.protocolNames) ||
                                     !Array.isArray(result.contextModuleNameList) ||
@@ -7851,7 +7853,9 @@ undefined;
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
-                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.protocolNameList.length !== result.protocolNames.length ||
+                                    result.contextModuleNameList.length !== result.contextModules.length ||
                                     result.detailKindList.length !== result.detailKinds.length ||
                                     result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
@@ -7889,6 +7893,7 @@ undefined;
                                 (entry.contextModuleName === null || typeof entry.contextModuleName === 'string') &&
                                 (entry.detailKind === null || typeof entry.detailKind === 'string') &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstProtocol === 'string' &&
@@ -7896,6 +7901,7 @@ undefined;
                                     typeof moduleSummary.sourceDemangledCount === 'number'
                                 )) &&
                                 (protocolSummary === null || (
+                                    result.protocolNameList[0] === protocolSummary.protocolName &&
                                     typeof protocolSummary.protocolName === 'string' &&
                                     typeof protocolSummary.count === 'number' &&
                                     typeof protocolSummary.firstModuleName === 'string' &&
@@ -7960,6 +7966,12 @@ undefined;
                             try {
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocols', moduleName: null, query: 'Demo' });
                                 return result.count === 2
+                                    && Array.isArray(result.moduleNameList)
+                                    && result.moduleNameList.length === result.moduleNames.length
+                                    && result.moduleNameList[0] === 'Demo'
+                                    && Array.isArray(result.protocolNameList)
+                                    && result.protocolNameList.length === result.protocolNames.length
+                                    && result.protocolNameList[0] === 'Renderable'
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 1
                                     && Array.isArray(result.contextModuleNameList)
@@ -8005,6 +8017,9 @@ undefined;
                                     typeof result.hasWhereClauses !== 'boolean' ||
                                     typeof result.uniqueContextModuleCount !== 'number' ||
                                     typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.typeNameList) ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.protocolNameList) ||
                                     !Array.isArray(result.typeNames) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.protocols) ||
@@ -8016,7 +8031,10 @@ undefined;
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
-                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                            if (result.typeNameList.length !== result.typeNames.length ||
+                                    result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.protocolNameList.length !== result.protocols.length ||
+                                    result.contextModuleNameList.length !== result.contextModules.length ||
                                     result.detailKindList.length !== result.detailKinds.length ||
                                     result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
@@ -8062,6 +8080,7 @@ undefined;
                                 (entry.whereClause === null || typeof entry.whereClause === 'string') &&
                                 (entry.detailKind === null || typeof entry.detailKind === 'string') &&
                                 (typeSummary === null || (
+                                    result.typeNameList[0] === typeSummary.typeName &&
                                     typeof typeSummary.typeName === 'string' &&
                                     typeof typeSummary.count === 'number' &&
                                     typeof typeSummary.firstProtocolName === 'string' &&
@@ -8071,6 +8090,7 @@ undefined;
                                     typeof typeSummary.hasSourceDemangledName === 'boolean'
                                 )) &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstTypeName === 'string' &&
@@ -8080,6 +8100,7 @@ undefined;
                                     typeof moduleSummary.sourceDemangledCount === 'number'
                                 )) &&
                                 (protocolSummary === null || (
+                                    result.protocolNameList[0] === protocolSummary.protocolName &&
                                     typeof protocolSummary.protocolName === 'string' &&
                                     typeof protocolSummary.count === 'number' &&
                                     typeof protocolSummary.firstTypeName === 'string' &&
@@ -8146,14 +8167,27 @@ undefined;
                             };
                             try {
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformances', moduleName: null, query: 'ViewController' });
+                                const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
+                                const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
+                                const protocolSummary = result.protocols.length === 0 ? null : result.protocols[0];
+                                const contextSummary = result.contextModules.length === 0 ? null : result.contextModules[0];
                                 return result.count === 2
+                                    && Array.isArray(result.typeNameList)
+                                    && result.typeNameList.length === result.typeNames.length
+                                    && (typeSummary === null || result.typeNameList[0] === typeSummary.typeName)
+                                    && Array.isArray(result.moduleNameList)
+                                    && result.moduleNameList.length === result.moduleNames.length
+                                    && (moduleSummary === null || result.moduleNameList[0] === moduleSummary.moduleName)
+                                    && Array.isArray(result.protocolNameList)
+                                    && result.protocolNameList.length === result.protocols.length
+                                    && (protocolSummary === null || result.protocolNameList[0] === protocolSummary.protocolName)
                                     && result.whereClauseCount === 1
                                     && result.hasWhereClauses === true
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 2
                                     && Array.isArray(result.contextModuleNameList)
                                     && result.contextModuleNameList.length === result.contextModules.length
-                                    && result.contextModuleNameList[0] === 'Demo'
+                                    && (contextSummary === null || result.contextModuleNameList[0] === contextSummary.contextModuleName)
                                     && Array.isArray(result.detailKindList)
                                     && result.detailKindList.length === result.detailKinds.length
                                     && result.detailKindList.includes('descriptor')
@@ -8194,6 +8228,8 @@ undefined;
                                     typeof result.hasSourceDemangledMetadata !== 'boolean' ||
                                     typeof result.uniqueContextModuleCount !== 'number' ||
                                     typeof result.uniqueDetailKindCount !== 'number' ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.typeNameList) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.typeNames) ||
                                     !Array.isArray(result.contextModuleNameList) ||
@@ -8204,7 +8240,9 @@ undefined;
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
-                            if (result.contextModuleNameList.length !== result.contextModules.length ||
+                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.typeNameList.length !== result.typeNames.length ||
+                                    result.contextModuleNameList.length !== result.contextModules.length ||
                                     result.detailKindList.length !== result.detailKinds.length ||
                                     result.sourceKindList.length !== result.sourceKinds.length) {
                                 return false;
@@ -8245,6 +8283,7 @@ undefined;
                                 (entry.contextModuleName === null || typeof entry.contextModuleName === 'string') &&
                                 (entry.detailKind === null || typeof entry.detailKind === 'string') &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstTypeName === 'string' &&
@@ -8252,6 +8291,7 @@ undefined;
                                     typeof moduleSummary.sourceDemangledCount === 'number'
                                 )) &&
                                 (typeSummary === null || (
+                                    result.typeNameList[0] === typeSummary.typeName &&
                                     typeof typeSummary.typeName === 'string' &&
                                     typeof typeSummary.count === 'number' &&
                                     typeof typeSummary.firstModuleName === 'string' &&
@@ -8427,12 +8467,21 @@ undefined;
                             };
                             try {
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata', moduleName: null, query: 'Demo' });
+                                const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
+                                const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
+                                const contextSummary = result.contextModules.length === 0 ? null : result.contextModules[0];
                                 return result.count === 2
+                                    && Array.isArray(result.moduleNameList)
+                                    && result.moduleNameList.length === result.moduleNames.length
+                                    && (moduleSummary === null || result.moduleNameList[0] === moduleSummary.moduleName)
+                                    && Array.isArray(result.typeNameList)
+                                    && result.typeNameList.length === result.typeNames.length
+                                    && (typeSummary === null || result.typeNameList[0] === typeSummary.typeName)
                                     && result.uniqueContextModuleCount === 1
                                     && result.uniqueDetailKindCount === 2
                                     && Array.isArray(result.contextModuleNameList)
                                     && result.contextModuleNameList.length === result.contextModules.length
-                                    && result.contextModuleNameList[0] === 'Demo'
+                                    && (contextSummary === null || result.contextModuleNameList[0] === contextSummary.contextModuleName)
                                     && Array.isArray(result.detailKindList)
                                     && result.detailKindList.length === result.detailKinds.length
                                     && result.detailKindList.includes('metadata')
