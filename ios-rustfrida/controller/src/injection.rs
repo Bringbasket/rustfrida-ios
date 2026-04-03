@@ -1384,6 +1384,82 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             })
         })
         .unwrap_or(Value::Null);
+    let routing_decision_ready_index = routing_decision_index
+        .iter()
+        .fold(Map::<String, Value>::new(), |mut map, (error_code, decision)| {
+            map.insert(
+                error_code.clone(),
+                json!({
+                    "escalationKey": decision
+                        .get("recommendedEscalationKey")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    "phase": decision
+                        .get("recommendedPhase")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    "templateCount": decision
+                        .get("recommendedTemplateCount")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    "templates": decision
+                        .get("recommendedTemplates")
+                        .cloned()
+                        .unwrap_or(json!([])),
+                    "commandJsonTemplateCount": decision
+                        .get("recommendedCommandJsonTemplateCount")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    "commandJsonTemplates": decision
+                        .get("recommendedCommandJsonTemplates")
+                        .cloned()
+                        .unwrap_or(json!([])),
+                    "matchConfidence": decision
+                        .get("matchConfidence")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    "resolvedFrom": decision
+                        .get("resolvedFrom")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                }),
+            );
+            map
+        });
+    let routing_decision_ready_default = json!({
+        "escalationKey": routing_decision_default
+            .get("recommendedEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phase": routing_decision_default
+            .get("recommendedPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "templateCount": routing_decision_default
+            .get("recommendedTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "templates": routing_decision_default
+            .get("recommendedTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "commandJsonTemplateCount": routing_decision_default
+            .get("recommendedCommandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "commandJsonTemplates": routing_decision_default
+            .get("recommendedCommandJsonTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "matchConfidence": routing_decision_default
+            .get("matchConfidence")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolvedFrom": routing_decision_default
+            .get("resolvedFrom")
+            .cloned()
+            .unwrap_or(Value::Null),
+    });
     let routing_decision = json!({
         "lookupKey": "errorCode",
         "policy": "first-candidate-by-escalation-order",
@@ -1392,6 +1468,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "index": routing_decision_index,
         "defaultRecommendedEscalationKey": default_recommended_escalation_key,
         "default": routing_decision_default,
+        "ready": {
+            "lookupRule": "index[errorCode] || default",
+            "entryCount": error_code_routing_entries.len(),
+            "index": routing_decision_ready_index,
+            "default": routing_decision_ready_default,
+        },
     });
     let fallback_plan = if next_action_ready_to_run {
         Value::Null
@@ -7954,6 +8036,66 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["default"]["recommendedCommandJsonTemplates"][0]["phase"],
             "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["lookupRule"],
+            "index[errorCode] || default"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["entryCount"],
+            6
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["escalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["templateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["templates"][0],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["commandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["matchConfidence"],
+            "default"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["resolvedFrom"],
+            "defaultRecommendedEscalationKey"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["escalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["templateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["commandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["matchConfidence"],
+            "exact"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["resolvedFrom"],
+            "errorCodeRouting"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedEscalationKey"],
