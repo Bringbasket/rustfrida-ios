@@ -55,9 +55,11 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.methodOwners(query[, isClassMethod])`
 - `ObjC.findClasses(query)`
 - `ObjC.classes([query])`
+- `ObjC.findProtocols([query])`
 - `ObjC.protocols([query])`
 - `ObjC.classProtocols(className[, query])`
 - `ObjC.findClassProtocols(className, query)`
+- `ObjC.classExists(className)`
 - `ObjC.classInfo(className[, isMetaClass])`
 - `ObjC.findClassInfo(className[, isMetaClass])`
 - `ObjC.protocolInfo(protocolName)`
@@ -86,12 +88,17 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.findIvars(className, query)`
 - `ObjC.classImage(className)`
 - `ObjC.findClassImage(className)`
+- `ObjC.methodImp(className, selectorName[, isClassMethod])`
 - `ObjC.methodInfo(className, selectorName[, isClassMethod])`
 - `ObjC.findMethodInfo(className, selectorName[, isClassMethod])`
 - `ObjC.methodImage(className, selectorName[, isClassMethod])`
 - `ObjC.findMethodImage(className, selectorName[, isClassMethod])`
+- `ObjC.selector(selectorName)`
+- `ObjC.selectorName(selector)`
+- `ObjC.objectClassName(object)`
 - `ObjC.findSelectorName(selector)`
 - `ObjC.findObjectClassName(object)`
+- `Swift.demangle(symbolName)`
 - `Swift.findProtocols([query[, moduleName]])`
 - `Swift.protocols([query[, moduleName]])`
 - `Swift.protocolInfo(protocolName[, moduleName])`
@@ -154,6 +161,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Native.findDependencies(moduleName[, query])`
 - `Native.dependencies(moduleName[, query])`
 - `Native.findDependencyInfo(moduleName, pathOrName)`
+- `Native.dependencyInfo(moduleName, pathOrName)`
 - `Native.findEncryptionInfo(moduleName)`
 - `Native.encryptionInfo(moduleName)`
 - `Native.findEntryPoint(moduleName)`
