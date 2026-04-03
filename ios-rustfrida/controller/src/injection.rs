@@ -1478,6 +1478,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "usedDefault": true,
         "effective": routing_decision_ready_default,
     });
+    let routing_decision_ready_known_error_codes = routing_decision_ready_index
+        .keys()
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
     let routing_decision_ready_phase_groups = routing_decision_ready_index
         .iter()
         .fold(BTreeMap::<String, Vec<String>>::new(), |mut groups, (error_code, decision)| {
@@ -1583,6 +1587,9 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 "lookupKey": "errorCode",
                 "policy": "index-then-default",
                 "outputShape": "{ matched, usedDefault, effective }",
+                "errorCodeCount": routing_decision_ready_known_error_codes.len(),
+                "knownErrorCodes": routing_decision_ready_known_error_codes,
+                "missingErrorCodeHint": "if errorCode is not in knownErrorCodes, use resolve.default",
                 "index": routing_decision_ready_resolve_index,
                 "default": routing_decision_ready_resolve_default,
             },
@@ -8209,6 +8216,22 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["outputShape"],
             "{ matched, usedDefault, effective }"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["errorCodeCount"],
+            6
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][0],
+            "hook-fallback-diagnose-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][5],
+            "hook-fallback-preflight-timeout"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["missingErrorCodeHint"],
+            "if errorCode is not in knownErrorCodes, use resolve.default"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["matched"],
