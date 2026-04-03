@@ -721,10 +721,49 @@ fn command_template_risk(template: &str) -> &'static str {
 }
 
 #[cfg(unix)]
+fn command_template_phase(command: &str) -> &'static str {
+    if command.starts_with("controller --preflight-only") {
+        "preflight"
+    } else if command.starts_with("controller --inject-json") {
+        "inject"
+    } else if command == "native.hookenv" {
+        "diagnose"
+    } else if command.starts_with("trace status")
+        || command.starts_with("stalker status")
+        || command.starts_with("jhook status")
+        || command.starts_with("shook status")
+        || command.starts_with("hfl status")
+        || command.starts_with("trace stop")
+        || command.starts_with("stalker stop")
+        || command.starts_with("jhook stop")
+        || command.starts_with("shook stop")
+        || command.starts_with("hfl stop")
+    {
+        "cleanup"
+    } else if command.starts_with("objc.")
+        || command.starts_with("native.images")
+        || command.starts_with("swift.")
+        || command.starts_with("pac.")
+    {
+        "query"
+    } else if command.starts_with("trace ")
+        || command.starts_with("stalker ")
+        || command.starts_with("jhook ")
+        || command.starts_with("shook ")
+        || command.starts_with("hfl ")
+    {
+        "hook-install"
+    } else {
+        "general"
+    }
+}
+
+#[cfg(unix)]
 fn command_json_template_entry(template: &str) -> Value {
     let command = normalize_command_template_for_cli(template);
     let placeholders = command_template_placeholders(&command);
     let risk = command_template_risk(template);
+    let phase = command_template_phase(&command);
 
     if let Some(controller_args) = command.strip_prefix("controller ") {
         let cli_args = controller_args
@@ -737,6 +776,7 @@ fn command_json_template_entry(template: &str) -> Value {
             "kind": "controller-cli",
             "commandJsonEligible": false,
             "risk": risk,
+            "phase": phase,
             "placeholderCount": placeholders.len(),
             "placeholders": placeholders,
             "cliArgs": cli_args,
@@ -748,6 +788,7 @@ fn command_json_template_entry(template: &str) -> Value {
             "kind": "runtime-command",
             "commandJsonEligible": true,
             "risk": risk,
+            "phase": phase,
             "placeholderCount": placeholders.len(),
             "placeholders": placeholders,
             "cliArgs": ["--pid", "<pid>", "--command", command_for_cli, "--command-json"],
@@ -766,6 +807,20 @@ fn command_json_eligible_count(command_json_templates: &[Value]) -> usize {
                 .unwrap_or(false)
         })
         .count()
+}
+
+#[cfg(unix)]
+fn command_phase_order(command_json_templates: &[Value]) -> Vec<String> {
+    let mut phases = Vec::<String>::new();
+    for entry in command_json_templates {
+        let Some(phase) = entry.get("phase").and_then(Value::as_str) else {
+            continue;
+        };
+        if !phases.iter().any(|existing| existing == phase) {
+            phases.push(phase.to_string());
+        }
+    }
+    phases
 }
 
 #[cfg(unix)]
@@ -944,6 +999,24 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
     let fallback_eligible_command_json_template_count = command_json_eligible_count(&fallback_command_json_templates);
+    let fallback_phase_order = command_phase_order(&fallback_command_json_templates);
+    let fallback_steps = fallback_command_json_templates
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| {
+            json!({
+                "index": index,
+                "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
+                "command": entry.get("command").cloned().unwrap_or(Value::Null),
+                "kind": entry.get("kind").cloned().unwrap_or(Value::Null),
+                "commandJsonEligible": entry.get("commandJsonEligible").cloned().unwrap_or(Value::Null),
+                "risk": entry.get("risk").cloned().unwrap_or(Value::Null),
+                "placeholderCount": entry.get("placeholderCount").cloned().unwrap_or(Value::Null),
+                "placeholders": entry.get("placeholders").cloned().unwrap_or(Value::Null),
+                "cliArgs": entry.get("cliArgs").cloned().unwrap_or(Value::Null),
+            })
+        })
+        .collect::<Vec<_>>();
     let fallback_plan = if next_action_ready_to_run {
         Value::Null
     } else {
@@ -955,6 +1028,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "usesSuggestedSequence": fallback_action_key.is_none(),
             "templateCount": fallback_templates.len(),
             "templates": fallback_templates,
+            "phaseCount": fallback_phase_order.len(),
+            "phaseOrder": fallback_phase_order,
+            "stepCount": fallback_steps.len(),
+            "steps": fallback_steps,
             "commandJsonTemplateCount": fallback_command_json_templates.len(),
             "commandJsonTemplates": fallback_command_json_templates,
             "commandJsonEligibleTemplateCount": fallback_eligible_command_json_template_count,
@@ -6680,6 +6757,10 @@ mod tests {
             "runtime-command"
         );
         assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["phase"],
+            "query"
+        );
+        assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["commandJsonEligible"],
             true
         );
@@ -6961,6 +7042,10 @@ mod tests {
             "runtime-command"
         );
         assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["phase"],
+            "query"
+        );
+        assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["commandJsonEligible"],
             true
         );
@@ -7216,6 +7301,16 @@ mod tests {
             automation["fallbackPlan"]["templates"][1],
             "controller --preflight-only --preflight-json"
         );
+        assert_eq!(automation["fallbackPlan"]["phaseCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["phaseOrder"], json!(["diagnose", "preflight"]));
+        assert_eq!(automation["fallbackPlan"]["stepCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["steps"][0]["phase"], "diagnose");
+        assert_eq!(automation["fallbackPlan"]["steps"][0]["command"], "native.hookenv");
+        assert_eq!(automation["fallbackPlan"]["steps"][1]["phase"], "preflight");
+        assert_eq!(
+            automation["fallbackPlan"]["steps"][1]["command"],
+            "controller --preflight-only --preflight-json"
+        );
         assert_eq!(automation["fallbackPlan"]["commandJsonTemplateCount"], 2);
         assert_eq!(automation["fallbackPlan"]["commandJsonEligibleTemplateCount"], 1);
         assert_eq!(
@@ -7223,8 +7318,16 @@ mod tests {
             "runtime-command"
         );
         assert_eq!(
+            automation["fallbackPlan"]["commandJsonTemplates"][0]["phase"],
+            "diagnose"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["commandJsonTemplates"][1]["kind"],
             "controller-cli"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["commandJsonTemplates"][1]["phase"],
+            "preflight"
         );
         assert_eq!(automation["readyBranchCount"], 0);
         assert_eq!(automation["blockedBranchCount"], 5);
@@ -7386,6 +7489,7 @@ mod tests {
         assert_eq!(entries[0]["commandJsonEligible"], true);
         assert_eq!(entries[0]["placeholderCount"], 0);
         assert_eq!(entries[0]["risk"], "normal");
+        assert_eq!(entries[0]["phase"], "diagnose");
         assert_eq!(entries[0]["cliArgs"][4], "--command-json");
 
         assert_eq!(
@@ -7396,6 +7500,7 @@ mod tests {
         assert_eq!(entries[1]["commandJsonEligible"], false);
         assert_eq!(entries[1]["placeholderCount"], 1);
         assert_eq!(entries[1]["placeholders"][0], "<pid>");
+        assert_eq!(entries[1]["phase"], "preflight");
         assert_eq!(entries[1]["cliArgs"][0], "--preflight-only");
         assert_eq!(entries[1]["cliArgs"][1], "--preflight-json");
         assert_eq!(entries[1]["cliArgs"][2], "--pid");
@@ -7406,6 +7511,7 @@ mod tests {
         assert_eq!(entries[2]["commandJsonEligible"], false);
         assert_eq!(entries[2]["placeholderCount"], 1);
         assert_eq!(entries[2]["placeholders"][0], "<pid>");
+        assert_eq!(entries[2]["phase"], "inject");
         assert_eq!(entries[2]["cliArgs"][0], "--inject-json");
         assert_eq!(entries[2]["cliArgs"][1], "--pid");
         assert_eq!(entries[2]["cliArgs"][2], "<pid>");
