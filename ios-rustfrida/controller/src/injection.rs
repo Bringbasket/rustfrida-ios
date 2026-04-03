@@ -1463,12 +1463,30 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let routing_decision_ready_resolve_index = routing_decision_ready_index
         .iter()
         .fold(Map::<String, Value>::new(), |mut map, (error_code, decision)| {
+            let effective_phase = decision
+                .get("phase")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned);
+            let effective_escalation_key = decision
+                .get("escalationKey")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+                .or_else(|| {
+                    decision
+                        .get("escalationKeys")
+                        .and_then(Value::as_array)
+                        .and_then(|keys| keys.first())
+                        .and_then(Value::as_str)
+                        .map(ToOwned::to_owned)
+                });
             map.insert(
                 error_code.clone(),
                 json!({
                     "matched": true,
                     "usedDefault": false,
                     "reason": "matched-error-code",
+                    "effectivePhase": effective_phase,
+                    "effectiveEscalationKey": effective_escalation_key,
                     "effective": decision,
                 }),
             );
@@ -1722,12 +1740,30 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let routing_decision_ready_phase_resolve_index = routing_decision_ready_phase_index
         .iter()
         .fold(Map::<String, Value>::new(), |mut map, (phase, entry)| {
+            let effective_phase = entry
+                .get("phase")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned);
+            let effective_escalation_key = entry
+                .get("escalationKey")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+                .or_else(|| {
+                    entry
+                        .get("escalationKeys")
+                        .and_then(Value::as_array)
+                        .and_then(|keys| keys.first())
+                        .and_then(Value::as_str)
+                        .map(ToOwned::to_owned)
+                });
             map.insert(
                 phase.clone(),
                 json!({
                     "matched": true,
                     "usedDefault": false,
                     "reason": "matched-phase",
+                    "effectivePhase": effective_phase,
+                    "effectiveEscalationKey": effective_escalation_key,
                     "effective": entry,
                 }),
             );
@@ -8780,6 +8816,14 @@ mod tests {
             "matched-phase"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["effectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["effectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["effective"]["errorCodeCount"],
             4
         );
@@ -8818,6 +8862,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["reason"],
             "matched-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["effectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["effectiveEscalationKey"],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["effective"]["escalationKey"],
