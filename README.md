@@ -121,13 +121,17 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Native.symbol(address)`
 - `Native.findSymbols(query[, moduleName])`
 - `Native.symbols(query[, moduleName])`
+- `Native.findSymbolInfo(symbolName[, moduleName])`
 - `Native.symbolInfo(symbolName[, moduleName])`
+- `Native.findImageInfo(moduleName)`
 - `Native.imageInfo(moduleName)`
 - `Native.findExports(moduleName[, query])`
 - `Native.exports(moduleName[, query])`
+- `Native.findExportInfo(moduleName, symbolName)`
 - `Native.exportInfo(moduleName, symbolName)`
 - `Native.findDependencies(moduleName[, query])`
 - `Native.dependencies(moduleName[, query])`
+- `Native.findDependencyInfo(moduleName, pathOrName)`
 - `Native.findEncryptionInfo(moduleName)`
 - `Native.encryptionInfo(moduleName)`
 - `Native.findEntryPoint(moduleName)`
@@ -158,18 +162,23 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Native.uuid(moduleName)`
 - `Native.findRpaths(moduleName[, query])`
 - `Native.rpaths(moduleName[, query])`
+- `Native.findRpathInfo(moduleName, path)`
 - `Native.rpathInfo(moduleName, path)`
 - `Native.findImports(moduleName[, query])`
 - `Native.imports(moduleName[, query])`
+- `Native.findImportInfo(moduleName, symbolName)`
 - `Native.importInfo(moduleName, symbolName)`
 - `Native.findSegments(moduleName)`
 - `Native.segments(moduleName)`
+- `Native.findSegmentInfo(moduleName, segmentName)`
 - `Native.segmentInfo(moduleName, segmentName)`
 - `Native.findSections(moduleName)`
 - `Native.sections(moduleName)`
+- `Native.findSectionInfo(moduleName, segmentName, sectionName)`
 - `Native.sectionInfo(moduleName, segmentName, sectionName)`
 - `Native.findLoadCommands(moduleName)`
 - `Native.loadCommands(moduleName)`
+- `Native.findLoadCommandInfo(moduleName, commandOrIndex)`
 - `Native.loadCommandInfo(moduleName, commandOrIndex)`
 - agent / controller CLI:
   - `hfl <module> <offset>`
@@ -493,6 +502,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.installName <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `installName / path / name / currentVersion / compatibilityVersion / timestamp`，并补 `name / path / pathKind / currentVersion / compatibilityVersion / timestamp / hasName / hasPath / isTokenPath / usesLoaderPath / usesExecutablePath / usesRpathToken / pathDepth / hasTimestamp / versionMismatch` 这些顶层直达字段，适合快速确认某个 dylib 自身声明的 install name、路径类别和版本信息。
 - `native.uuid <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `imageUuid / uuid`，并补 `normalizedUuid / uuidLength / uuidSegmentCount`，同时也会平铺 `resolvedNormalizedUuid / resolvedHasUuid / resolvedUuidLength / resolvedUuidSegmentCount`，适合把运行中镜像和 dSYM / 本地 Mach-O 做快速 UUID 对齐。
 - `native.imageInfo <module>` / `Native.imageInfo(moduleName)` 现在可以直接按模块名返回单条 image 记录的 `name / path / directoryPath / pathKind / base / slide / size / sizeHex`，不必再先 `native.images` 再手动筛一条，也比只看 `native.base` 更适合脚本直接拿模块上下文。
+- `Native.findImageInfo / findSymbolInfo / findExportInfo / findDependencyInfo / findRpathInfo / findImportInfo / findSegmentInfo / findSectionInfo / findLoadCommandInfo` 这组 JS alias 现在也和 CLI 上的 `native.find*Info` 对齐了；脚本如果统一偏好 `find*` 命名，不必在 `Native.*` 和 controller/REPL 两套入口之间切换心智模型。
 - `native.base <module>` / `Native.base(moduleName)` 现在统一走同一套 image lookup 语义；`native.mainImage` / `Native.mainImage()`、`native.image <address>` / `Native.image(address)` 也都有了同层级直连 API，后续脚本不必在 `Native` 和 `Module` 两套入口之间来回切。
 - `native.images [filter]` / `Native.images([filter])`、`native.symbol <address>` / `Native.symbol(address)` 现在也都有了同层级直连 API；脚本如果只想走 `Native.*` 命名空间，已经不用再回退到 `Module.enumerateModules()` 或 `DebugSymbol.fromAddress()`。
 - `native.export <symbol>` / `native.export <module> -- <symbol>` 现在也可以统一走 `Native.export(moduleNameOrNull, symbolName)`；这样 `Native.*` 基础查询层已经把 images / export / base / symbol 这一组常用入口都收进来了。

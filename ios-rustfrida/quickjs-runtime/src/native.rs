@@ -2611,10 +2611,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSymbols", js_native_find_symbols, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbols", js_native_find_symbols, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbolInfo", js_native_symbol_info, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSymbolInfo", js_native_symbol_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "imageInfo", js_native_image_info, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findImageInfo", js_native_image_info, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findExports", js_native_find_exports, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "exports", js_native_find_exports, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "exportInfo", js_native_export_info, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findExportInfo", js_native_export_info, 2);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2624,6 +2627,7 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
         );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dependencies", js_native_find_dependencies, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dependencyInfo", js_native_dependency_info, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findDependencyInfo", js_native_dependency_info, 2);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2721,19 +2725,30 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findRpaths", js_native_find_rpaths, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "rpaths", js_native_find_rpaths, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "rpathInfo", js_native_rpath_info, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findRpathInfo", js_native_rpath_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findImports", js_native_find_imports, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "imports", js_native_find_imports, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "importInfo", js_native_import_info, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findImportInfo", js_native_import_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSegments", js_native_find_segments, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "segments", js_native_find_segments, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "segmentInfo", js_native_segment_info, 2);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSegmentInfo", js_native_segment_info, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSections", js_native_find_sections, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "sections", js_native_find_sections, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "sectionInfo", js_native_section_info, 3);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSectionInfo", js_native_section_info, 3);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
             "loadCommandInfo",
+            js_native_load_command_info,
+            2,
+        );
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "findLoadCommandInfo",
             js_native_load_command_info,
             2,
         );

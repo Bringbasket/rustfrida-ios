@@ -1320,6 +1320,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Native.findSymbolInfo")
+                    .expect("native find symbol info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Native.findExports")
                     .expect("native find exports type"),
                 "function"
@@ -1332,8 +1338,20 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Native.findExportInfo")
+                    .expect("native find export info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Native.imageInfo")
                     .expect("native image info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findImageInfo")
+                    .expect("native find image info type"),
                 "function"
             );
             assert_eq!(
@@ -1361,13 +1379,31 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof Native.findImportInfo")
+                    .expect("native find import info type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof Native.rpathInfo").expect("native rpath info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findRpathInfo")
+                    .expect("native find rpath info type"),
                 "function"
             );
             assert_eq!(
                 runtime
                     .eval("typeof Native.dependencyInfo")
                     .expect("native dependency info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findDependencyInfo")
+                    .expect("native find dependency info type"),
                 "function"
             );
             assert_eq!(
@@ -1510,8 +1546,20 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Native.findSectionInfo")
+                    .expect("native find section info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Native.segmentInfo")
                     .expect("native segment info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findSegmentInfo")
+                    .expect("native find segment info type"),
                 "function"
             );
             assert_eq!(
@@ -1546,8 +1594,32 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Native.findLoadCommandInfo")
+                    .expect("native find load command info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const commands = Native.findLoadCommands('libsystem_malloc.dylib'); return commands.length === 0 || ('detail' in commands[0]); })()")
                     .expect("native load command detail property"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            return Native.findImageInfo('libsystem_malloc.dylib') === Native.imageInfo('libsystem_malloc.dylib') &&
+                                Native.findSymbolInfo('malloc') === Native.symbolInfo('malloc') &&
+                                Native.findExportInfo('libsystem_malloc.dylib', 'malloc') === Native.exportInfo('libsystem_malloc.dylib', 'malloc') &&
+                                Native.findDependencyInfo('libsystem_malloc.dylib', 'libSystem.B.dylib') === Native.dependencyInfo('libsystem_malloc.dylib', 'libSystem.B.dylib') &&
+                                Native.findRpathInfo('libsystem_malloc.dylib', '@loader_path') === Native.rpathInfo('libsystem_malloc.dylib', '@loader_path') &&
+                                Native.findImportInfo('libsystem_malloc.dylib', 'malloc') === Native.importInfo('libsystem_malloc.dylib', 'malloc') &&
+                                Native.findSegmentInfo('libsystem_malloc.dylib', '__TEXT') === Native.segmentInfo('libsystem_malloc.dylib', '__TEXT') &&
+                                Native.findSectionInfo('libsystem_malloc.dylib', '__TEXT', '__text') === Native.sectionInfo('libsystem_malloc.dylib', '__TEXT', '__text') &&
+                                Native.findLoadCommandInfo('libsystem_malloc.dylib', 'LC_UUID') === Native.loadCommandInfo('libsystem_malloc.dylib', 'LC_UUID');
+                        })()"
+                    )
+                    .expect("native info aliases"),
                 "true"
             );
             assert_eq!(
