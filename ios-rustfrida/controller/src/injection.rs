@@ -1460,17 +1460,21 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let routing_decision_ready_index = routing_decision_index
         .iter()
         .fold(Map::<String, Value>::new(), |mut map, (error_code, decision)| {
+            let escalation_key = decision
+                .get("recommendedEscalationKey")
+                .cloned()
+                .unwrap_or(Value::Null);
+            let phase = decision
+                .get("recommendedPhase")
+                .cloned()
+                .unwrap_or(Value::Null);
             map.insert(
                 error_code.clone(),
                 json!({
-                    "escalationKey": decision
-                        .get("recommendedEscalationKey")
-                        .cloned()
-                        .unwrap_or(Value::Null),
-                    "phase": decision
-                        .get("recommendedPhase")
-                        .cloned()
-                        .unwrap_or(Value::Null),
+                    "escalationKey": escalation_key.clone(),
+                    "phase": phase.clone(),
+                    "effectiveEscalationKey": escalation_key,
+                    "effectivePhase": phase,
                     "templateCount": decision
                         .get("recommendedTemplateCount")
                         .cloned()
@@ -1504,10 +1508,28 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("recommendedEscalationKey")
             .cloned()
             .unwrap_or(Value::Null),
+        "effectiveEscalationKey": routing_decision_default
+            .get("effectiveEscalationKey")
+            .cloned()
+            .unwrap_or_else(|| {
+                routing_decision_default
+                    .get("recommendedEscalationKey")
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }),
         "phase": routing_decision_default
             .get("recommendedPhase")
             .cloned()
             .unwrap_or(Value::Null),
+        "effectivePhase": routing_decision_default
+            .get("effectivePhase")
+            .cloned()
+            .unwrap_or_else(|| {
+                routing_decision_default
+                    .get("recommendedPhase")
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }),
         "templateCount": routing_decision_default
             .get("recommendedTemplateCount")
             .cloned()
@@ -8660,7 +8682,15 @@ mod tests {
             "preflight-refresh"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["effectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["effectivePhase"],
             "preflight"
         );
         assert_eq!(
@@ -9020,7 +9050,15 @@ mod tests {
             "preflight-refresh"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["effectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["effectivePhase"],
             "preflight"
         );
         assert_eq!(
