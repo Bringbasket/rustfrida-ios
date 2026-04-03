@@ -1044,6 +1044,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .iter()
         .filter(|step| step.get("retryable").and_then(Value::as_bool).unwrap_or(false))
         .count();
+    let fallback_total_retry_budget = fallback_steps
+        .iter()
+        .map(|step| step.get("maxSuggestedRetries").and_then(Value::as_u64).unwrap_or(0))
+        .sum::<u64>();
     let fallback_phase_retry_policies = fallback_phase_order
         .iter()
         .map(|phase| {
@@ -1056,6 +1060,80 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             })
         })
         .collect::<Vec<_>>();
+    let fallback_retryable_phase_count = fallback_phase_retry_policies
+        .iter()
+        .filter(|policy| policy.get("retryable").and_then(Value::as_bool).unwrap_or(false))
+        .count();
+    let fallback_non_retryable_phase_count =
+        fallback_phase_retry_policies.len().saturating_sub(fallback_retryable_phase_count);
+    let fallback_termination_policy = json!({
+        "mode": "phase-retry-budget",
+        "terminateWhen": "all-retryable-steps-exhausted",
+        "escalateWhen": "non-retryable-step-failed-or-retry-budget-exhausted",
+        "retryablePhaseCount": fallback_retryable_phase_count,
+        "nonRetryablePhaseCount": fallback_non_retryable_phase_count,
+        "retryableStepCount": fallback_retryable_step_count,
+        "totalRetryBudget": fallback_total_retry_budget,
+    });
+    let mut escalation_recommendations = Vec::<Value>::new();
+    let escalation_preflight_templates = vec!["controller --preflight-only --preflight-json --pid <pid>".to_string()];
+    let escalation_preflight_command_json_templates = escalation_preflight_templates
+        .iter()
+        .map(|template| command_json_template_entry(template))
+        .collect::<Vec<_>>();
+    escalation_recommendations.push(json!({
+        "key": "preflight-refresh",
+        "condition": "always",
+        "phase": "preflight",
+        "reason": "refresh target context and diagnostics before changing hook policy or retrying injection",
+        "templateCount": escalation_preflight_templates.len(),
+        "templates": escalation_preflight_templates,
+        "commandJsonTemplateCount": escalation_preflight_command_json_templates.len(),
+        "commandJsonTemplates": escalation_preflight_command_json_templates.clone(),
+        "commandJsonEligibleTemplateCount": command_json_eligible_count(&escalation_preflight_command_json_templates),
+    }));
+    if hook_effective_allowed_for(actions, "hook.query") {
+        let escalation_query_templates = vec![
+            "native.hookenv".to_string(),
+            "objc.classes <filter>".to_string(),
+            "native.images <filter>".to_string(),
+            "swift.types <filter>".to_string(),
+        ];
+        let escalation_query_command_json_templates = escalation_query_templates
+            .iter()
+            .map(|template| command_json_template_entry(template))
+            .collect::<Vec<_>>();
+        escalation_recommendations.push(json!({
+            "key": "query-only-path",
+            "condition": "query-commands-allowed",
+            "phase": "query",
+            "reason": "switch to query-only diagnostics path when inline hook actions are blocked",
+            "templateCount": escalation_query_templates.len(),
+            "templates": escalation_query_templates,
+            "commandJsonTemplateCount": escalation_query_command_json_templates.len(),
+            "commandJsonTemplates": escalation_query_command_json_templates.clone(),
+            "commandJsonEligibleTemplateCount": command_json_eligible_count(&escalation_query_command_json_templates),
+        }));
+    }
+    if selected_action.is_some_and(|item| !item.allowed) {
+        let escalation_policy_templates = vec!["native.hookenv".to_string()];
+        let escalation_policy_command_json_templates = escalation_policy_templates
+            .iter()
+            .map(|template| command_json_template_entry(template))
+            .collect::<Vec<_>>();
+        escalation_recommendations.push(json!({
+            "key": "policy-review",
+            "condition": "selected-next-action-blocked",
+            "phase": "diagnose",
+            "reason": "hook policy blocked the selected next action; inspect environment summary and adjust policy before retrying",
+            "note": "review IOS_RUSTFRIDA_HOOK_POLICY / target hook backend and retry with preflight-only first",
+            "templateCount": escalation_policy_templates.len(),
+            "templates": escalation_policy_templates,
+            "commandJsonTemplateCount": escalation_policy_command_json_templates.len(),
+            "commandJsonTemplates": escalation_policy_command_json_templates.clone(),
+            "commandJsonEligibleTemplateCount": command_json_eligible_count(&escalation_policy_command_json_templates),
+        }));
+    }
     let fallback_plan = if next_action_ready_to_run {
         Value::Null
     } else {
@@ -1071,9 +1149,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "phaseOrder": fallback_phase_order,
             "phaseRetryPolicyCount": fallback_phase_retry_policies.len(),
             "phaseRetryPolicies": fallback_phase_retry_policies,
+            "terminationPolicy": fallback_termination_policy,
             "stepCount": fallback_steps.len(),
             "retryableStepCount": fallback_retryable_step_count,
+            "totalRetryBudget": fallback_total_retry_budget,
             "steps": fallback_steps,
+            "escalationRecommendationCount": escalation_recommendations.len(),
+            "escalationRecommendations": escalation_recommendations.clone(),
+            "suggestedEscalationKey": escalation_recommendations
+                .first()
+                .and_then(|item| item.get("key"))
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned),
             "commandJsonTemplateCount": fallback_command_json_templates.len(),
             "commandJsonTemplates": fallback_command_json_templates,
             "commandJsonEligibleTemplateCount": fallback_eligible_command_json_template_count,
@@ -7378,8 +7465,22 @@ mod tests {
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["retryable"], true);
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["maxSuggestedRetries"], 2);
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["retryDelayHintMs"], 500);
+        assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["mode"], "phase-retry-budget");
+        assert_eq!(
+            automation["fallbackPlan"]["terminationPolicy"]["terminateWhen"],
+            "all-retryable-steps-exhausted"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["terminationPolicy"]["escalateWhen"],
+            "non-retryable-step-failed-or-retry-budget-exhausted"
+        );
+        assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["retryablePhaseCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["nonRetryablePhaseCount"], 0);
+        assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["retryableStepCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["totalRetryBudget"], 3);
         assert_eq!(automation["fallbackPlan"]["stepCount"], 2);
         assert_eq!(automation["fallbackPlan"]["retryableStepCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["totalRetryBudget"], 3);
         assert_eq!(automation["fallbackPlan"]["steps"][0]["phase"], "diagnose");
         assert_eq!(automation["fallbackPlan"]["steps"][0]["command"], "native.hookenv");
         assert_eq!(automation["fallbackPlan"]["steps"][0]["retryable"], true);
@@ -7393,6 +7494,49 @@ mod tests {
         assert_eq!(automation["fallbackPlan"]["steps"][1]["retryable"], true);
         assert_eq!(automation["fallbackPlan"]["steps"][1]["maxSuggestedRetries"], 2);
         assert_eq!(automation["fallbackPlan"]["steps"][1]["retryDelayHintMs"], 500);
+        assert_eq!(automation["fallbackPlan"]["escalationRecommendationCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["suggestedEscalationKey"], "preflight-refresh");
+        assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][0]["key"], "preflight-refresh");
+        assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][0]["phase"], "preflight");
+        assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][0]["condition"], "always");
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["templates"][0],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonTemplates"][0]["kind"],
+            "controller-cli"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonTemplates"][0]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonTemplates"][0]["retryable"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonTemplates"][0]["maxSuggestedRetries"],
+            2
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonTemplates"][0]["retryDelayHintMs"],
+            500
+        );
+        assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][1]["key"], "policy-review");
+        assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][1]["phase"], "diagnose");
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][1]["condition"],
+            "selected-next-action-blocked"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][1]["commandJsonTemplates"][0]["phase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][1]["commandJsonTemplates"][0]["retryable"],
+            true
+        );
         assert_eq!(automation["fallbackPlan"]["commandJsonTemplateCount"], 2);
         assert_eq!(automation["fallbackPlan"]["commandJsonEligibleTemplateCount"], 1);
         assert_eq!(
