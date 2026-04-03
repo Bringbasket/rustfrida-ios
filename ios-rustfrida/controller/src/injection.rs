@@ -1358,17 +1358,40 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             map.insert(error_code, value);
             map
         });
+    let default_recommendation = escalation_recommendations.first().cloned();
+    let default_recommended_escalation_key = default_recommendation
+        .as_ref()
+        .and_then(|item| item.get("key"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned);
+    let routing_decision_default = default_recommendation
+        .map(|item| {
+            json!({
+                "recommendedEscalationKey": default_recommended_escalation_key.clone(),
+                "matchConfidence": "default",
+                "resolvedFrom": "defaultRecommendedEscalationKey",
+                "recommendedPhase": item.get("phase").cloned().unwrap_or(Value::Null),
+                "recommendedTemplateCount": item.get("templateCount").cloned().unwrap_or(Value::Null),
+                "recommendedTemplates": item.get("templates").cloned().unwrap_or(json!([])),
+                "recommendedCommandJsonTemplateCount": item
+                    .get("commandJsonTemplateCount")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "recommendedCommandJsonTemplates": item
+                    .get("commandJsonTemplates")
+                    .cloned()
+                    .unwrap_or(json!([])),
+            })
+        })
+        .unwrap_or(Value::Null);
     let routing_decision = json!({
         "lookupKey": "errorCode",
         "policy": "first-candidate-by-escalation-order",
         "entryCount": error_code_routing_entries.len(),
         "entries": error_code_routing_entries.clone(),
         "index": routing_decision_index,
-        "defaultRecommendedEscalationKey": escalation_recommendations
-            .first()
-            .and_then(|item| item.get("key"))
-            .and_then(Value::as_str)
-            .map(ToOwned::to_owned),
+        "defaultRecommendedEscalationKey": default_recommended_escalation_key,
+        "default": routing_decision_default,
     });
     let fallback_plan = if next_action_ready_to_run {
         Value::Null
@@ -7899,6 +7922,38 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["defaultRecommendedEscalationKey"],
             "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]["recommendedEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]["matchConfidence"],
+            "default"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]["resolvedFrom"],
+            "defaultRecommendedEscalationKey"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]["recommendedPhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]["recommendedTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]["recommendedTemplates"][0],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]["recommendedCommandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]["recommendedCommandJsonTemplates"][0]["phase"],
+            "preflight"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedEscalationKey"],
