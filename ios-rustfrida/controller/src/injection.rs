@@ -577,6 +577,10 @@ fn hook_shortcuts_to_json(
         ),
         "effectiveActions": hook_effective_actions_to_json(&effective_actions),
         "effective": hook_effective_to_json(&effective_actions),
+        "backendMatrix": hook_backend_matrix_to_json(
+            &injection_environment.hook_environment,
+            &preflight.target_hook_environment,
+        ),
     })
 }
 
@@ -590,6 +594,136 @@ fn hook_recommended_action_to_json(action: &native_api::HookRecommendedAction) -
         "status": action.status,
         "recommendation": action.recommendation,
         "reason": action.reason,
+    })
+}
+
+#[cfg(unix)]
+fn hook_backend_matrix_entry_to_json(
+    id: &str,
+    display_name: &str,
+    controller_backend: Option<&native_api::HookBackendInfo>,
+    target_backend: Option<&native_api::HookBackendInfo>,
+) -> Value {
+    let controller_loaded = controller_backend.is_some_and(|backend| !backend.loaded_images.is_empty());
+    let target_loaded = target_backend.is_some_and(|backend| !backend.loaded_images.is_empty());
+    let controller_present_on_filesystem =
+        controller_backend.is_some_and(|backend| !backend.filesystem_paths.is_empty());
+    let target_present_on_filesystem = target_backend.is_some_and(|backend| !backend.filesystem_paths.is_empty());
+    let visible_in_controller = controller_loaded || controller_present_on_filesystem;
+    let visible_in_target = target_loaded || target_present_on_filesystem;
+    let visibility = match (visible_in_controller, visible_in_target) {
+        (true, true) => "both",
+        (true, false) => "controller",
+        (false, true) => "target",
+        (false, false) => "none",
+    };
+    let loaded_by = match (controller_loaded, target_loaded) {
+        (true, true) => "both",
+        (true, false) => "controller",
+        (false, true) => "target",
+        (false, false) => "none",
+    };
+
+    json!({
+        "id": id,
+        "displayName": display_name,
+        "visibility": visibility,
+        "loadedBy": loaded_by,
+        "visibleInController": visible_in_controller,
+        "visibleInTarget": visible_in_target,
+        "controllerLoaded": controller_loaded,
+        "targetLoaded": target_loaded,
+        "controllerPresentOnFilesystem": controller_present_on_filesystem,
+        "targetPresentOnFilesystem": target_present_on_filesystem,
+        "controllerLoadedImageCount": controller_backend.map_or(0, |backend| backend.loaded_images.len()),
+        "targetLoadedImageCount": target_backend.map_or(0, |backend| backend.loaded_images.len()),
+        "controllerFilesystemPathCount": controller_backend.map_or(0, |backend| backend.filesystem_paths.len()),
+        "targetFilesystemPathCount": target_backend.map_or(0, |backend| backend.filesystem_paths.len()),
+        "filesystemOnlyInEither": !controller_loaded
+            && !target_loaded
+            && (controller_present_on_filesystem || target_present_on_filesystem),
+    })
+}
+
+#[cfg(unix)]
+fn hook_backend_matrix_to_json(
+    controller_report: &native_api::HookEnvironmentReport,
+    target_report: &native_api::HookEnvironmentReport,
+) -> Value {
+    use std::collections::BTreeMap;
+
+    let mut index = BTreeMap::new();
+    for backend in &controller_report.backends {
+        index
+            .entry(backend.id.clone())
+            .or_insert_with(|| backend.display_name.clone());
+    }
+    for backend in &target_report.backends {
+        index
+            .entry(backend.id.clone())
+            .or_insert_with(|| backend.display_name.clone());
+    }
+
+    let mut entries = Vec::new();
+    let mut shared_backend_ids = Vec::new();
+    let mut controller_only_backend_ids = Vec::new();
+    let mut target_only_backend_ids = Vec::new();
+    let mut loaded_in_both_backend_ids = Vec::new();
+    let mut filesystem_only_backend_ids = Vec::new();
+
+    let mut loaded_in_controller_count = 0usize;
+    let mut loaded_in_target_count = 0usize;
+    let mut loaded_in_both_count = 0usize;
+    let mut filesystem_only_in_either_count = 0usize;
+
+    for (id, display_name) in index {
+        let controller_backend = controller_report.backends.iter().find(|backend| backend.id == id);
+        let target_backend = target_report.backends.iter().find(|backend| backend.id == id);
+        let entry = hook_backend_matrix_entry_to_json(&id, &display_name, controller_backend, target_backend);
+
+        let controller_loaded = entry["controllerLoaded"].as_bool().unwrap_or(false);
+        let target_loaded = entry["targetLoaded"].as_bool().unwrap_or(false);
+        let visible_in_controller = entry["visibleInController"].as_bool().unwrap_or(false);
+        let visible_in_target = entry["visibleInTarget"].as_bool().unwrap_or(false);
+        let filesystem_only = entry["filesystemOnlyInEither"].as_bool().unwrap_or(false);
+
+        if controller_loaded {
+            loaded_in_controller_count += 1;
+        }
+        if target_loaded {
+            loaded_in_target_count += 1;
+        }
+        if controller_loaded && target_loaded {
+            loaded_in_both_count += 1;
+            loaded_in_both_backend_ids.push(id.clone());
+        }
+        if filesystem_only {
+            filesystem_only_in_either_count += 1;
+            filesystem_only_backend_ids.push(id.clone());
+        }
+        if visible_in_controller && visible_in_target {
+            shared_backend_ids.push(id.clone());
+        } else if visible_in_controller {
+            controller_only_backend_ids.push(id.clone());
+        } else if visible_in_target {
+            target_only_backend_ids.push(id.clone());
+        }
+
+        entries.push(entry);
+    }
+
+    json!({
+        "entryCount": entries.len(),
+        "entries": entries,
+        "loadedInControllerCount": loaded_in_controller_count,
+        "loadedInTargetCount": loaded_in_target_count,
+        "loadedInBothCount": loaded_in_both_count,
+        "filesystemOnlyInEitherCount": filesystem_only_in_either_count,
+        "sharedBackendIds": shared_backend_ids,
+        "controllerOnlyBackendIds": controller_only_backend_ids,
+        "targetOnlyBackendIds": target_only_backend_ids,
+        "loadedInBothBackendIds": loaded_in_both_backend_ids,
+        "filesystemOnlyBackendIds": filesystem_only_backend_ids,
     })
 }
 
@@ -4402,14 +4536,15 @@ mod tests {
     use super::{
         analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
         build_trace_spec, command_requests_inline_hook_install, command_requires_inline_hooks,
-        ensure_inline_hooks_allowed_for_command, hook_effective_actions, hook_effective_actions_to_json,
-        hook_effective_to_json, hook_environment_requires_notice, parse_hfl_command, parse_jhook_command,
-        parse_shook_command, parse_stalker_command, parse_trace_command, print_injection_preflight, quote_js_string,
-        render_bootstrap_summary, render_command_error_json, render_command_error_json_with_context,
-        render_command_outcome_json, render_image_list_json, render_injection_environment,
-        render_injection_result_json, render_loader_symbol, render_preflight_json, CommandJsonContext,
-        CommandOutcome, CommandOutcomeKind, HflCommand, NativeHookTarget, NativeLogArgument, NativeLogReturn,
-        NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
+        ensure_inline_hooks_allowed_for_command, hook_backend_matrix_to_json, hook_effective_actions,
+        hook_effective_actions_to_json, hook_effective_to_json, hook_environment_requires_notice,
+        parse_hfl_command, parse_jhook_command, parse_shook_command, parse_stalker_command, parse_trace_command,
+        print_injection_preflight, quote_js_string, render_bootstrap_summary, render_command_error_json,
+        render_command_error_json_with_context, render_command_outcome_json, render_image_list_json,
+        render_injection_environment, render_injection_result_json, render_loader_symbol, render_preflight_json,
+        CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, NativeHookTarget, NativeLogArgument,
+        NativeLogReturn, NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand,
+        TraceCommand,
     };
     use common::{
         AgentCommand, ControllerConfig, Error, Hello, InjectionMode, DEFAULT_AGENT_PATH, DEFAULT_AGENT_PATH_ROOTFUL,
@@ -5977,6 +6112,8 @@ mod tests {
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["controller"], 0);
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["target"], 0);
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["both"], 0);
+        assert!(rendered["hook"]["backendMatrix"]["entries"].is_array());
+        assert_eq!(rendered["hook"]["backendMatrix"]["entryCount"], 0);
         assert_eq!(
             rendered["hook"]["controller"]["capabilities"]["hookInstallCommandsAllowed"],
             true
@@ -6158,6 +6295,8 @@ mod tests {
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["controller"], 0);
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["target"], 0);
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["both"], 0);
+        assert!(rendered["hook"]["backendMatrix"]["entries"].is_array());
+        assert_eq!(rendered["hook"]["backendMatrix"]["entryCount"], 0);
         assert_eq!(rendered["trace"]["payloadAddressHex"], json!("0x5000"));
         assert_eq!(rendered["handshake"]["hello"]["arch"], "aarch64");
         assert_eq!(rendered["handshake"]["stage"], "completed");
@@ -6225,6 +6364,65 @@ mod tests {
         assert_eq!(effective["blockedBySummary"]["controller"], 1);
         assert_eq!(effective["blockedBySummary"]["target"], 2);
         assert_eq!(effective["blockedBySummary"]["both"], 1);
+    }
+
+    #[test]
+    fn hook_backend_matrix_reports_shared_and_side_specific_backends() {
+        let controller_report = HookEnvironmentReport {
+            active_backend: Some("ellekit".into()),
+            backends: vec![
+                HookBackendInfo {
+                    id: "ellekit".into(),
+                    display_name: "ElleKit".into(),
+                    loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                    filesystem_paths: vec![],
+                },
+                HookBackendInfo {
+                    id: "substitute".into(),
+                    display_name: "Substitute".into(),
+                    loaded_images: vec![],
+                    filesystem_paths: vec!["/var/jb/usr/lib/libsubstitute.dylib".into()],
+                },
+            ],
+            warnings: vec![],
+        };
+        let target_report = HookEnvironmentReport {
+            active_backend: Some("substrate".into()),
+            backends: vec![
+                HookBackendInfo {
+                    id: "ellekit".into(),
+                    display_name: "ElleKit".into(),
+                    loaded_images: vec![],
+                    filesystem_paths: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                },
+                HookBackendInfo {
+                    id: "substrate".into(),
+                    display_name: "Cydia Substrate".into(),
+                    loaded_images: vec!["/Library/MobileSubstrate/MobileSubstrate.dylib".into()],
+                    filesystem_paths: vec![],
+                },
+            ],
+            warnings: vec![],
+        };
+
+        let rendered = hook_backend_matrix_to_json(&controller_report, &target_report);
+        assert_eq!(rendered["entryCount"], 3);
+        assert_eq!(rendered["loadedInControllerCount"], 1);
+        assert_eq!(rendered["loadedInTargetCount"], 1);
+        assert_eq!(rendered["loadedInBothCount"], 0);
+        assert_eq!(rendered["filesystemOnlyInEitherCount"], 1);
+        assert_eq!(rendered["sharedBackendIds"], json!(["ellekit"]));
+        assert_eq!(rendered["controllerOnlyBackendIds"], json!(["substitute"]));
+        assert_eq!(rendered["targetOnlyBackendIds"], json!(["substrate"]));
+        assert_eq!(rendered["filesystemOnlyBackendIds"], json!(["substitute"]));
+
+        let entries = rendered["entries"].as_array().expect("matrix entries");
+        let shared = entries
+            .iter()
+            .find(|entry| entry["id"] == "ellekit")
+            .expect("ellekit entry");
+        assert_eq!(shared["visibility"], "both");
+        assert_eq!(shared["loadedBy"], "controller");
     }
 
     #[test]
