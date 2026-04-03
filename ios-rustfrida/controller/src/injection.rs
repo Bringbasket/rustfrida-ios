@@ -1611,6 +1611,28 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "effectiveEscalationKey": routing_decision_ready_resolve_default_effective_escalation_key,
         "effective": routing_decision_ready_default,
     });
+    let routing_decision_ready_resolve_default_matched = routing_decision_ready_resolve_default
+        .get("matched")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_resolve_default_used_default = routing_decision_ready_resolve_default
+        .get("usedDefault")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_resolve_default_reason = routing_decision_ready_resolve_default
+        .get("reason")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_resolve_default_effective_phase_alias =
+        routing_decision_ready_resolve_default
+            .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null);
+    let routing_decision_ready_resolve_default_effective_escalation_key_alias =
+        routing_decision_ready_resolve_default
+            .get("effectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null);
     let routing_decision_ready_known_error_codes = routing_decision_ready_index
         .keys()
         .map(ToOwned::to_owned)
@@ -1895,6 +1917,28 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             }),
         "effective": routing_decision_ready_phase_resolve_default_effective,
     });
+    let routing_decision_ready_phase_resolve_default_matched = routing_decision_ready_phase_resolve_default
+        .get("matched")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_resolve_default_used_default = routing_decision_ready_phase_resolve_default
+        .get("usedDefault")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_resolve_default_reason = routing_decision_ready_phase_resolve_default
+        .get("reason")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_resolve_default_effective_phase_alias =
+        routing_decision_ready_phase_resolve_default
+            .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_resolve_default_effective_escalation_key_alias =
+        routing_decision_ready_phase_resolve_default
+            .get("effectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null);
     let routing_decision_ready_example_query_only_phase_result = routing_decision_ready_example_query_only_phase
         .as_ref()
         .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
@@ -2014,6 +2058,83 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "wouldUseQueryPhase": routing_decision_ready_example_query_only_would_use_query_phase,
         },
     });
+    let routing_decision_ready_resolve = json!({
+        "lookupKey": "errorCode",
+        "policy": "index-then-default",
+        "outputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
+        "errorCodeCount": routing_decision_ready_known_error_codes.len(),
+        "knownErrorCodes": routing_decision_ready_known_error_codes,
+        "missingErrorCodeHint": "if errorCode is not in knownErrorCodes, use resolve.default",
+        "defaultMatched": routing_decision_ready_resolve_default_matched,
+        "defaultUsedDefault": routing_decision_ready_resolve_default_used_default,
+        "defaultReason": routing_decision_ready_resolve_default_reason,
+        "defaultEffectivePhase": routing_decision_ready_resolve_default_effective_phase_alias,
+        "defaultEffectiveEscalationKey": routing_decision_ready_resolve_default_effective_escalation_key_alias,
+        "index": routing_decision_ready_resolve_index,
+        "default": routing_decision_ready_resolve_default,
+        "examples": routing_decision_ready_resolve_examples,
+    });
+    let routing_decision_ready_phase_resolve = json!({
+        "lookupKey": "phase",
+        "policy": "index-then-defaultPhase",
+        "outputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
+        "phaseCount": routing_decision_ready_known_phases.len(),
+        "knownPhases": routing_decision_ready_known_phases,
+        "defaultPhase": routing_decision_ready_default_phase.clone(),
+        "missingPhaseHint": "if phase is not in knownPhases, use phaseResolve.default",
+        "defaultMatched": routing_decision_ready_phase_resolve_default_matched,
+        "defaultUsedDefault": routing_decision_ready_phase_resolve_default_used_default,
+        "defaultReason": routing_decision_ready_phase_resolve_default_reason,
+        "defaultEffectivePhase": routing_decision_ready_phase_resolve_default_effective_phase_alias,
+        "defaultEffectiveEscalationKey": routing_decision_ready_phase_resolve_default_effective_escalation_key_alias,
+        "index": routing_decision_ready_phase_resolve_index,
+        "default": routing_decision_ready_phase_resolve_default,
+        "examples": routing_decision_ready_phase_resolve_examples,
+    });
+    let routing_decision_ready = json!({
+        "lookupRule": "index[errorCode] || default",
+        "entryCount": error_code_routing_entries.len(),
+        "index": routing_decision_ready_index,
+        "defaultEscalationKey": routing_decision_ready_default
+            .get("escalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveEscalationKey": routing_decision_ready_default
+            .get("effectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultPhase": routing_decision_ready_default
+            .get("phase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectivePhase": routing_decision_ready_default
+            .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultTemplateCount": routing_decision_ready_default
+            .get("templateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultTemplates": routing_decision_ready_default
+            .get("templates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "defaultCommandJsonTemplateCount": routing_decision_ready_default
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplates": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "default": routing_decision_ready_default,
+        "resolve": routing_decision_ready_resolve,
+        "phaseResolve": routing_decision_ready_phase_resolve,
+        "phaseCount": routing_decision_ready_phase_entries.len(),
+        "phases": routing_decision_ready_phase_entries,
+        "phaseIndex": routing_decision_ready_phase_index,
+        "defaultPhase": routing_decision_ready_default_phase,
+    });
     let routing_decision = json!({
         "lookupKey": "errorCode",
         "policy": "first-candidate-by-escalation-order",
@@ -2050,71 +2171,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .cloned()
             .unwrap_or(json!([])),
         "default": routing_decision_default,
-        "ready": {
-            "lookupRule": "index[errorCode] || default",
-            "entryCount": error_code_routing_entries.len(),
-            "index": routing_decision_ready_index,
-            "defaultEscalationKey": routing_decision_ready_default
-                .get("escalationKey")
-                .cloned()
-                .unwrap_or(Value::Null),
-            "defaultEffectiveEscalationKey": routing_decision_ready_default
-                .get("effectiveEscalationKey")
-                .cloned()
-                .unwrap_or(Value::Null),
-            "defaultPhase": routing_decision_ready_default
-                .get("phase")
-                .cloned()
-                .unwrap_or(Value::Null),
-            "defaultEffectivePhase": routing_decision_ready_default
-                .get("effectivePhase")
-                .cloned()
-                .unwrap_or(Value::Null),
-            "defaultTemplateCount": routing_decision_ready_default
-                .get("templateCount")
-                .cloned()
-                .unwrap_or(Value::Null),
-            "defaultTemplates": routing_decision_ready_default
-                .get("templates")
-                .cloned()
-                .unwrap_or(json!([])),
-            "defaultCommandJsonTemplateCount": routing_decision_ready_default
-                .get("commandJsonTemplateCount")
-                .cloned()
-                .unwrap_or(Value::Null),
-            "defaultCommandJsonTemplates": routing_decision_ready_default
-                .get("commandJsonTemplates")
-                .cloned()
-                .unwrap_or(json!([])),
-            "default": routing_decision_ready_default,
-            "resolve": {
-                "lookupKey": "errorCode",
-                "policy": "index-then-default",
-                "outputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
-                "errorCodeCount": routing_decision_ready_known_error_codes.len(),
-                "knownErrorCodes": routing_decision_ready_known_error_codes,
-                "missingErrorCodeHint": "if errorCode is not in knownErrorCodes, use resolve.default",
-                "index": routing_decision_ready_resolve_index,
-                "default": routing_decision_ready_resolve_default,
-                "examples": routing_decision_ready_resolve_examples,
-            },
-            "phaseResolve": {
-                "lookupKey": "phase",
-                "policy": "index-then-defaultPhase",
-                "outputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
-                "phaseCount": routing_decision_ready_known_phases.len(),
-                "knownPhases": routing_decision_ready_known_phases,
-                "defaultPhase": routing_decision_ready_default_phase,
-                "missingPhaseHint": "if phase is not in knownPhases, use phaseResolve.default",
-                "index": routing_decision_ready_phase_resolve_index,
-                "default": routing_decision_ready_phase_resolve_default,
-                "examples": routing_decision_ready_phase_resolve_examples,
-            },
-            "phaseCount": routing_decision_ready_phase_entries.len(),
-            "phases": routing_decision_ready_phase_entries,
-            "phaseIndex": routing_decision_ready_phase_index,
-            "defaultPhase": routing_decision_ready_default_phase,
-        },
+        "ready": routing_decision_ready,
     });
     let fallback_plan = if next_action_ready_to_run {
         Value::Null
@@ -8858,6 +8915,26 @@ mod tests {
             "if errorCode is not in knownErrorCodes, use resolve.default"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["defaultMatched"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["defaultUsedDefault"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["defaultReason"],
+            "missing-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["defaultEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["defaultEffectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownErrorCode"],
             "hook-fallback-diagnose-failed"
         );
@@ -8974,6 +9051,26 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["missingPhaseHint"],
             "if phase is not in knownPhases, use phaseResolve.default"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["defaultMatched"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["defaultUsedDefault"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["defaultReason"],
+            "missing-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["defaultEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["defaultEffectiveEscalationKey"],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownPhase"],
