@@ -1277,18 +1277,22 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             let recommended = candidates
                 .first()
                 .and_then(|key| escalation_recommendation_by_key.get(key));
+            let recommended_escalation_key = candidates.first().cloned();
+            let recommended_phase = recommended
+                .and_then(|item| item.get("phase"))
+                .cloned()
+                .unwrap_or(Value::Null);
 
             json!({
                 "errorCode": error_code,
                 "candidateCount": candidates.len(),
                 "candidateEscalationKeys": candidates,
-                "recommendedEscalationKey": candidates.first().cloned(),
+                "recommendedEscalationKey": recommended_escalation_key.clone(),
+                "effectiveEscalationKey": recommended_escalation_key,
                 "matchConfidence": "exact",
                 "resolvedFrom": "errorCodeRouting",
-                "recommendedPhase": recommended
-                    .and_then(|item| item.get("phase"))
-                    .cloned()
-                    .unwrap_or(Value::Null),
+                "recommendedPhase": recommended_phase.clone(),
+                "effectivePhase": recommended_phase,
                 "recommendedTemplateCount": recommended
                     .and_then(|item| item.get("templateCount"))
                     .cloned()
@@ -1322,6 +1326,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                                 .get("recommendedEscalationKey")
                                 .cloned()
                                 .unwrap_or(Value::Null),
+                            "effectiveEscalationKey": entry
+                                .get("effectiveEscalationKey")
+                                .cloned()
+                                .unwrap_or(Value::Null),
                             "matchConfidence": entry
                                 .get("matchConfidence")
                                 .cloned()
@@ -1332,6 +1340,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                                 .unwrap_or(Value::Null),
                             "recommendedPhase": entry
                                 .get("recommendedPhase")
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                            "effectivePhase": entry
+                                .get("effectivePhase")
                                 .cloned()
                                 .unwrap_or(Value::Null),
                             "recommendedTemplateCount": entry
@@ -8987,7 +8999,15 @@ mod tests {
             "preflight-refresh"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["effectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedPhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["effectivePhase"],
             "preflight"
         );
         assert_eq!(
@@ -9021,6 +9041,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["entries"][0]["recommendedPhase"],
             "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["entries"][0]["effectivePhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["entries"][0]["effectiveEscalationKey"],
+            "policy-review"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["entries"][0]["matchConfidence"],
