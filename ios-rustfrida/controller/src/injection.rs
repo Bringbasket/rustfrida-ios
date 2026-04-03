@@ -1474,10 +1474,28 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             );
             map
         });
+    let routing_decision_ready_resolve_default_effective_phase = routing_decision_ready_default
+        .get("phase")
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned);
+    let routing_decision_ready_resolve_default_effective_escalation_key = routing_decision_ready_default
+        .get("escalationKey")
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            routing_decision_ready_default
+                .get("escalationKeys")
+                .and_then(Value::as_array)
+                .and_then(|keys| keys.first())
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+        });
     let routing_decision_ready_resolve_default = json!({
         "matched": false,
         "usedDefault": true,
         "reason": "missing-error-code",
+        "effectivePhase": routing_decision_ready_resolve_default_effective_phase,
+        "effectiveEscalationKey": routing_decision_ready_resolve_default_effective_escalation_key,
         "effective": routing_decision_ready_default,
     });
     let routing_decision_ready_known_error_codes = routing_decision_ready_index
@@ -1728,6 +1746,22 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "matched": false,
         "usedDefault": true,
         "reason": "missing-phase",
+        "effectivePhase": routing_decision_ready_phase_resolve_default_effective
+            .get("phase")
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned),
+        "effectiveEscalationKey": routing_decision_ready_phase_resolve_default_effective
+            .get("escalationKey")
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+            .or_else(|| {
+                routing_decision_ready_phase_resolve_default_effective
+                    .get("escalationKeys")
+                    .and_then(Value::as_array)
+                    .and_then(|keys| keys.first())
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned)
+            }),
         "effective": routing_decision_ready_phase_resolve_default_effective,
     });
     let routing_decision_ready_example_query_only_phase_result = routing_decision_ready_example_query_only_phase
@@ -8762,6 +8796,14 @@ mod tests {
             "missing-phase"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["default"]["effectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["default"]["effectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["default"]["effective"]["phase"],
             "preflight"
         );
@@ -8792,6 +8834,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["reason"],
             "missing-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["effectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["effectiveEscalationKey"],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["effective"]["escalationKey"],
