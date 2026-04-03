@@ -2891,6 +2891,8 @@ undefined;
                                     typeof result.resolvedProtocolTotalMethodCount !== 'number' ||
                                     typeof result.protocolPropertyCount !== 'number' ||
                                     typeof result.resolvedProtocolPropertyCount !== 'number' ||
+                                    !Array.isArray(result.selectorNameList) ||
+                                    !Array.isArray(result.returnTypeNameList) ||
                                     !Array.isArray(result.selectorNames) ||
                                     !Array.isArray(result.returnTypeNames) ||
                                     !Array.isArray(result.selectors) ||
@@ -2938,6 +2940,8 @@ undefined;
                                 Array.isArray(method.argumentTypeNames) &&
                                 result.selectorNames.every((entry) => typeof entry === 'string') &&
                                 result.returnTypeNames.every((entry) => typeof entry === 'string') &&
+                                result.selectorNameList.every((entry) => typeof entry === 'string') &&
+                                result.returnTypeNameList.every((entry) => typeof entry === 'string') &&
                                 typeof method.methodTypeInfo === 'object' &&
                                 Array.isArray(method.selectorParts) &&
                                 typeof method.selectorPartCount === 'number' &&
@@ -2949,8 +2953,12 @@ undefined;
                                 typeof method.returnsVoid === 'boolean' &&
                                 typeof method.returnsObject === 'boolean' &&
                                 typeof method.returnsBlock === 'boolean' &&
+                                result.selectorNameList.length === result.selectorNames.length &&
+                                result.returnTypeNameList.length === result.returnTypeNames.length &&
                                 result.selectorNames.length === result.selectors.length &&
                                 result.returnTypeNames.length === result.returnTypes.length &&
+                                (result.selectorNameList.length === 0 || result.selectorNameList[0] === result.selectorNames[0]) &&
+                                (result.returnTypeNameList.length === 0 || result.returnTypeNameList[0] === result.returnTypeNames[0]) &&
                                 (selectorSummary === null || (
                                     typeof selectorSummary.selector === 'string' &&
                                     typeof selectorSummary.count === 'number' &&
@@ -3025,6 +3033,8 @@ undefined;
                                     typeof result.resolvedProtocolTotalMethodCount !== 'number' ||
                                     typeof result.protocolPropertyCount !== 'number' ||
                                     typeof result.resolvedProtocolPropertyCount !== 'number' ||
+                                    !Array.isArray(result.ownershipNameList) ||
+                                    !Array.isArray(result.objectClassNameList) ||
                                     !Array.isArray(result.ownershipNames) ||
                                     !Array.isArray(result.objectClassNames) ||
                                     !Array.isArray(result.ownerships) ||
@@ -3067,10 +3077,16 @@ undefined;
                                 typeof result.firstProperty === 'string' &&
                                 typeof result.lastProperty === 'string' &&
                                 result.text === result.properties.map((property) => property.text).join('\\n') &&
+                                result.ownershipNameList.every((entry) => typeof entry === 'string') &&
+                                result.objectClassNameList.every((entry) => typeof entry === 'string') &&
                                 result.ownershipNames.every((entry) => typeof entry === 'string') &&
                                 result.objectClassNames.every((entry) => typeof entry === 'string') &&
+                                result.ownershipNameList.length === result.ownershipNames.length &&
+                                result.objectClassNameList.length === result.objectClassNames.length &&
                                 result.ownershipNames.length === result.ownerships.length &&
                                 result.objectClassNames.length === result.objectClasses.length &&
+                                (result.ownershipNameList.length === 0 || result.ownershipNameList[0] === result.ownershipNames[0]) &&
+                                (result.objectClassNameList.length === 0 || result.objectClassNameList[0] === result.objectClassNames[0]) &&
                                 (result.firstObjectClassName === null || typeof result.firstObjectClassName === 'string') &&
                                 (result.lastObjectClassName === null || typeof result.lastObjectClassName === 'string') &&
                                 (ownershipSummary === null || (
@@ -3252,6 +3268,8 @@ undefined;
                                     typeof result.ownerIvarCount !== 'number' ||
                                     typeof result.ownerTotalPropertyCount !== 'number' ||
                                     typeof result.ownerTotalMethodCount !== 'number' ||
+                                    !Array.isArray(result.ownershipNameList) ||
+                                    !Array.isArray(result.objectClassNameList) ||
                                     !Array.isArray(result.ownershipNames) ||
                                     !Array.isArray(result.objectClassNames) ||
                                     !Array.isArray(result.ownerships) ||
@@ -3298,10 +3316,16 @@ undefined;
                                 typeof result.firstProperty === 'string' &&
                                 typeof result.lastProperty === 'string' &&
                                 result.text === result.properties.map((property) => property.text).join('\\n') &&
+                                result.ownershipNameList.every((entry) => typeof entry === 'string') &&
+                                result.objectClassNameList.every((entry) => typeof entry === 'string') &&
                                 result.ownershipNames.every((entry) => typeof entry === 'string') &&
                                 result.objectClassNames.every((entry) => typeof entry === 'string') &&
+                                result.ownershipNameList.length === result.ownershipNames.length &&
+                                result.objectClassNameList.length === result.objectClassNames.length &&
                                 result.ownershipNames.length === result.ownerships.length &&
                                 result.objectClassNames.length === result.objectClasses.length &&
+                                (result.ownershipNameList.length === 0 || result.ownershipNameList[0] === result.ownershipNames[0]) &&
+                                (result.objectClassNameList.length === 0 || result.objectClassNameList[0] === result.objectClassNames[0]) &&
                                 (result.firstObjectClassName === null || typeof result.firstObjectClassName === 'string') &&
                                 (result.lastObjectClassName === null || typeof result.lastObjectClassName === 'string') &&
                                 (ownershipSummary === null || (
@@ -3806,6 +3830,8 @@ undefined;
                                     typeof result.resolvedOwnerTotalPropertyCount !== 'number' ||
                                     typeof result.ownerTotalMethodCount !== 'number' ||
                                     typeof result.resolvedOwnerTotalMethodCount !== 'number' ||
+                                    !Array.isArray(result.kindNameList) ||
+                                    !Array.isArray(result.objectClassNameList) ||
                                     !Array.isArray(result.kindNames) ||
                                     !Array.isArray(result.objectClassNames) ||
                                     !Array.isArray(result.kinds) ||
@@ -3856,10 +3882,16 @@ undefined;
                                 typeof result.minOffsetHex === 'string' &&
                                 typeof result.maxOffsetHex === 'string' &&
                                 result.text === result.ivars.map((ivar) => ivar.text).join('\\n') &&
+                                result.kindNameList.every((entry) => typeof entry === 'string') &&
+                                result.objectClassNameList.every((entry) => typeof entry === 'string') &&
                                 result.kindNames.every((entry) => typeof entry === 'string') &&
                                 result.objectClassNames.every((entry) => typeof entry === 'string') &&
+                                result.kindNameList.length === result.kindNames.length &&
+                                result.objectClassNameList.length === result.objectClassNames.length &&
                                 result.kindNames.length === result.kinds.length &&
                                 result.objectClassNames.length === result.objectClasses.length &&
+                                (result.kindNameList.length === 0 || result.kindNameList[0] === result.kindNames[0]) &&
+                                (result.objectClassNameList.length === 0 || result.objectClassNameList[0] === result.objectClassNames[0]) &&
                                 (result.firstObjectClassName === null || typeof result.firstObjectClassName === 'string') &&
                                 (result.lastObjectClassName === null || typeof result.lastObjectClassName === 'string') &&
                                 (kindSummary === null || (
@@ -3931,6 +3963,8 @@ undefined;
                                     typeof result.ownerIvarCount !== 'number' ||
                                     typeof result.ownerTotalPropertyCount !== 'number' ||
                                     typeof result.ownerTotalMethodCount !== 'number' ||
+                                    !Array.isArray(result.selectorNameList) ||
+                                    !Array.isArray(result.returnTypeNameList) ||
                                     !Array.isArray(result.selectorNames) ||
                                     !Array.isArray(result.returnTypeNames) ||
                                     !Array.isArray(result.selectors) ||
@@ -3980,6 +4014,8 @@ undefined;
                                 typeof method.typeEncoding === 'string' &&
                                 typeof method.returnTypeName === 'string' &&
                                 Array.isArray(method.argumentTypeNames) &&
+                                result.selectorNameList.every((entry) => typeof entry === 'string') &&
+                                result.returnTypeNameList.every((entry) => typeof entry === 'string') &&
                                 result.selectorNames.every((entry) => typeof entry === 'string') &&
                                 result.returnTypeNames.every((entry) => typeof entry === 'string') &&
                                 typeof method.methodTypeInfo === 'object' &&
@@ -3991,8 +4027,12 @@ undefined;
                                 typeof method.returnsVoid === 'boolean' &&
                                 typeof method.returnsObject === 'boolean' &&
                                 typeof method.returnsBlock === 'boolean' &&
+                                result.selectorNameList.length === result.selectorNames.length &&
+                                result.returnTypeNameList.length === result.returnTypeNames.length &&
                                 result.selectorNames.length === result.selectors.length &&
                                 result.returnTypeNames.length === result.returnTypes.length &&
+                                (result.selectorNameList.length === 0 || result.selectorNameList[0] === result.selectorNames[0]) &&
+                                (result.returnTypeNameList.length === 0 || result.returnTypeNameList[0] === result.returnTypeNames[0]) &&
                                 (selectorSummary === null || (
                                     typeof selectorSummary.selector === 'string' &&
                                     typeof selectorSummary.count === 'number' &&
@@ -4049,6 +4089,9 @@ undefined;
                                     typeof result.totalIvarCount !== 'number' ||
                                     typeof result.totalMethodCount !== 'number' ||
                                     typeof result.totalInstanceSize !== 'number' ||
+                                    !Array.isArray(result.imagePathList) ||
+                                    !Array.isArray(result.ownerNameList) ||
+                                    !Array.isArray(result.selectorNameList) ||
                                     !Array.isArray(result.imagePaths) ||
                                     !Array.isArray(result.ownerNames) ||
                                     !Array.isArray(result.selectorNames) ||
@@ -4085,14 +4128,23 @@ undefined;
                                 typeof method.selector === 'string' &&
                                 typeof method.returnTypeName === 'string' &&
                                 Array.isArray(method.argumentTypeNames) &&
+                                result.imagePathList.every((entry) => typeof entry === 'string') &&
+                                result.ownerNameList.every((entry) => typeof entry === 'string') &&
+                                result.selectorNameList.every((entry) => typeof entry === 'string') &&
                                 result.ownerNames.every((entry) => typeof entry === 'string') &&
                                 result.selectorNames.every((entry) => typeof entry === 'string') &&
                                 typeof method.hasExplicitArguments === 'boolean' &&
                                 typeof method.returnsVoid === 'boolean' &&
                                 typeof method.returnsObject === 'boolean' &&
                                 typeof method.returnsBlock === 'boolean' &&
+                                result.imagePathList.length === result.imagePaths.length &&
+                                result.ownerNameList.length === result.ownerNames.length &&
+                                result.selectorNameList.length === result.selectorNames.length &&
                                 result.ownerNames.length === result.owners.length &&
                                 result.selectorNames.length === result.selectors.length &&
+                                (result.imagePathList.length === 0 || result.imagePathList[0] === result.imagePaths[0]) &&
+                                (result.ownerNameList.length === 0 || result.ownerNameList[0] === result.ownerNames[0]) &&
+                                (result.selectorNameList.length === 0 || result.selectorNameList[0] === result.selectorNames[0]) &&
                                 (ownerSummary === null || (
                                     typeof ownerSummary.className === 'string' &&
                                     typeof ownerSummary.count === 'number' &&
