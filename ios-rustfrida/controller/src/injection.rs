@@ -331,6 +331,52 @@ fn hook_strategy_to_json(strategy: &native_api::HookStrategyDecision) -> Value {
 }
 
 #[cfg(unix)]
+fn hook_strategy_capabilities_to_json(strategy: &native_api::HookStrategyDecision) -> Value {
+    json!({
+        "bootstrapInjectionAllowed": strategy.bootstrap_injection_allowed(),
+        "queryCommandsAllowed": strategy.query_commands_allowed(),
+        "hookInstallCommandsAllowed": strategy.hook_install_commands_allowed(),
+        "hookStatusCommandsAllowed": strategy.hook_status_commands_allowed(),
+        "hookStopCommandsAllowed": strategy.hook_stop_commands_allowed(),
+    })
+}
+
+#[cfg(unix)]
+fn hook_shortcut_entry_to_json(
+    strategy: &native_api::HookStrategyDecision,
+    environment: &native_api::HookEnvironmentReport,
+) -> Value {
+    json!({
+        "policy": strategy.policy.as_str(),
+        "strategy": strategy.strategy,
+        "commandMode": strategy.command_mode(),
+        "reason": strategy.reason,
+        "capabilities": hook_strategy_capabilities_to_json(strategy),
+        "recommendedActions": hook_environment_recommended_actions(environment, Some(strategy))
+            .iter()
+            .map(hook_recommended_action_to_json)
+            .collect::<Vec<_>>(),
+    })
+}
+
+#[cfg(unix)]
+fn hook_shortcuts_to_json(
+    injection_environment: &InjectionEnvironmentReport,
+    preflight: &InjectionTargetPreflightReport,
+) -> Value {
+    json!({
+        "controller": hook_shortcut_entry_to_json(
+            &injection_environment.hook_strategy,
+            &injection_environment.hook_environment,
+        ),
+        "target": hook_shortcut_entry_to_json(
+            &preflight.target_hook_strategy,
+            &preflight.target_hook_environment,
+        ),
+    })
+}
+
+#[cfg(unix)]
 fn hook_recommended_action_to_json(action: &native_api::HookRecommendedAction) -> Value {
     json!({
         "commandGroup": action.command_group,
@@ -875,6 +921,7 @@ fn render_preflight_json(
         "agentPath": config.agent_path,
         "entrySymbol": config.entry_symbol,
         "scriptPath": config.script_path,
+        "hook": hook_shortcuts_to_json(injection_environment, preflight),
         "environment": injection_environment_to_json(injection_environment),
         "doctor": doctor_report_to_json(doctor),
         "plan": injection_plan_to_json(plan),
@@ -1361,6 +1408,7 @@ fn render_injection_result_json(
         "agentPath": config.agent_path,
         "entrySymbol": config.entry_symbol,
         "scriptPath": config.script_path,
+        "hook": hook_shortcuts_to_json(injection_environment, preflight),
         "environment": injection_environment_to_json(injection_environment),
         "doctor": doctor_report_to_json(doctor),
         "plan": injection_plan_to_json(plan),
@@ -5620,6 +5668,14 @@ mod tests {
         assert_eq!(rendered["command"], "objc.classes UIView");
         assert_eq!(rendered["doctor"]["failureCount"], 1);
         assert!(rendered["preflight"].is_object());
+        assert_eq!(rendered["hook"]["controller"]["commandMode"], "allowed");
+        assert_eq!(rendered["hook"]["target"]["commandMode"], "allowed");
+        assert!(rendered["hook"]["controller"]["recommendedActions"].is_array());
+        assert!(rendered["hook"]["target"]["recommendedActions"].is_array());
+        assert_eq!(
+            rendered["hook"]["controller"]["capabilities"]["hookInstallCommandsAllowed"],
+            true
+        );
         assert_eq!(rendered["environment"]["hookStrategy"]["commandMode"], "allowed");
         assert!(rendered["environment"]["hookEnvironment"]["recommendedActions"].is_array());
         assert_eq!(rendered["environment"]["hookStrategy"]["bootstrapInjectionAllowed"], true);
@@ -5783,6 +5839,10 @@ mod tests {
         );
 
         assert_eq!(rendered["ok"], true);
+        assert_eq!(rendered["hook"]["controller"]["commandMode"], "allowed");
+        assert_eq!(rendered["hook"]["target"]["commandMode"], "allowed");
+        assert!(rendered["hook"]["controller"]["recommendedActions"].is_array());
+        assert!(rendered["hook"]["target"]["recommendedActions"].is_array());
         assert_eq!(rendered["trace"]["payloadAddressHex"], json!("0x5000"));
         assert_eq!(rendered["handshake"]["hello"]["arch"], "aarch64");
         assert_eq!(rendered["handshake"]["stage"], "completed");
