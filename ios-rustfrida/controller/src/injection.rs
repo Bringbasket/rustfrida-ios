@@ -1312,6 +1312,64 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             })
         })
         .collect::<Vec<_>>();
+    let error_code_routing_resolved = error_code_routing_entries
+        .iter()
+        .filter_map(|entry| {
+            entry
+                .get("errorCode")
+                .and_then(Value::as_str)
+                .map(|error_code| {
+                    (
+                        error_code.to_string(),
+                        json!({
+                            "escalationKey": entry
+                                .get("recommendedEscalationKey")
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                            "phase": entry
+                                .get("recommendedPhase")
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                            "effectiveEscalationKey": entry
+                                .get("effectiveEscalationKey")
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                            "effectivePhase": entry
+                                .get("effectivePhase")
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                            "matchConfidence": entry
+                                .get("matchConfidence")
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                            "resolvedFrom": entry
+                                .get("resolvedFrom")
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                            "templateCount": entry
+                                .get("recommendedTemplateCount")
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                            "templates": entry
+                                .get("recommendedTemplates")
+                                .cloned()
+                                .unwrap_or(json!([])),
+                            "commandJsonTemplateCount": entry
+                                .get("recommendedCommandJsonTemplateCount")
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                            "commandJsonTemplates": entry
+                                .get("recommendedCommandJsonTemplates")
+                                .cloned()
+                                .unwrap_or(json!([])),
+                        }),
+                    )
+                })
+        })
+        .fold(Map::<String, Value>::new(), |mut map, (error_code, value)| {
+            map.insert(error_code, value);
+            map
+        });
     let routing_decision_index = error_code_routing_entries
         .iter()
         .filter_map(|entry| {
@@ -2020,6 +2078,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 .map(ToOwned::to_owned),
             "errorCodeRoutingCount": error_code_routing_entries.len(),
             "errorCodeRouting": error_code_routing,
+            "errorCodeRoutingResolvedCount": error_code_routing_resolved.len(),
+            "errorCodeRoutingResolved": error_code_routing_resolved,
             "errorCodeRoutingEntries": error_code_routing_entries,
             "routingDecision": routing_decision,
             "commandJsonTemplateCount": fallback_command_json_templates.len(),
@@ -8484,6 +8544,31 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["errorCodeRouting"]["hook-fallback-diagnose-timeout"],
             "policy-review"
+        );
+        assert_eq!(automation["fallbackPlan"]["errorCodeRoutingResolvedCount"], 6);
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["escalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["effectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["effectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["templateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["commandJsonTemplateCount"],
+            1
         );
         assert_eq!(
             automation["fallbackPlan"]["errorCodeRoutingEntries"][0]["candidateCount"],
