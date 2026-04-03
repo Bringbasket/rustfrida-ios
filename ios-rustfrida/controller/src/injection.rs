@@ -1283,6 +1283,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 "candidateCount": candidates.len(),
                 "candidateEscalationKeys": candidates,
                 "recommendedEscalationKey": candidates.first().cloned(),
+                "matchConfidence": "exact",
+                "resolvedFrom": "errorCodeRouting",
                 "recommendedPhase": recommended
                     .and_then(|item| item.get("phase"))
                     .cloned()
@@ -1318,6 +1320,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                         json!({
                             "recommendedEscalationKey": entry
                                 .get("recommendedEscalationKey")
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                            "matchConfidence": entry
+                                .get("matchConfidence")
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                            "resolvedFrom": entry
+                                .get("resolvedFrom")
                                 .cloned()
                                 .unwrap_or(Value::Null),
                             "recommendedPhase": entry
@@ -7899,6 +7909,14 @@ mod tests {
             "preflight"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["matchConfidence"],
+            "exact"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["resolvedFrom"],
+            "errorCodeRouting"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedTemplateCount"],
             1
         );
@@ -7921,6 +7939,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["entries"][0]["recommendedPhase"],
             "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["entries"][0]["matchConfidence"],
+            "exact"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["entries"][0]["resolvedFrom"],
+            "errorCodeRouting"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["entries"][0]["recommendedTemplates"][0],
