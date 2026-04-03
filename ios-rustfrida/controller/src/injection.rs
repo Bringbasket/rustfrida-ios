@@ -678,6 +678,15 @@ fn hook_action_command_templates(action_key: &str, preferred_path: &str) -> Vec<
 }
 
 #[cfg(unix)]
+fn hook_action_prerequisites(action_key: &str) -> &'static [&'static str] {
+    match action_key {
+        "hook.install" => &["hook.bootstrap"],
+        "hook.stop" => &["hook.status"],
+        _ => &[],
+    }
+}
+
+#[cfg(unix)]
 fn normalize_command_template_for_cli(template: &str) -> String {
     template
         .split(" #")
@@ -831,10 +840,35 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .min_by_key(|item| (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key)));
 
     let selected_action = next_action.or(blocked_action);
+    let is_action_allowed = |action_key: &str| -> bool {
+        actions
+            .iter()
+            .find(|item| item.action_key == action_key)
+            .map(|item| item.allowed)
+            .unwrap_or(true)
+    };
+    let mut ordered_actions = actions.iter().collect::<Vec<_>>();
+    ordered_actions.sort_by_key(|item| (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key)));
+
     let next_action_key = selected_action.map(|item| item.action_key).map(ToOwned::to_owned);
     let next_runnable_action_key = next_action.map(|item| item.action_key).map(ToOwned::to_owned);
     let next_blocked_action_key = blocked_action.map(|item| item.action_key).map(ToOwned::to_owned);
     let next_action_reason = selected_action.map(|item| item.recommendation.clone());
+    let branch_execution_order = ordered_actions
+        .iter()
+        .map(|item| item.action_key.to_string())
+        .collect::<Vec<_>>();
+    let next_ready_action_key = ordered_actions
+        .iter()
+        .find(|item| {
+            let blocked_prerequisite_count = hook_action_prerequisites(item.action_key)
+                .iter()
+                .filter(|action_key| !is_action_allowed(action_key))
+                .count();
+            item.allowed && blocked_prerequisite_count == 0
+        })
+        .map(|item| item.action_key)
+        .map(ToOwned::to_owned);
     let suggested_sequence = hook_automation_suggested_sequence(preferred_path);
     let command_templates = HOOK_EFFECTIVE_ACTIONS
         .iter()
@@ -862,6 +896,22 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .iter()
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
+    let next_action_prerequisites = selected_action
+        .map(|item| {
+            hook_action_prerequisites(item.action_key)
+                .iter()
+                .map(|action_key| (*action_key).to_string())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let next_action_blocked_prerequisites = next_action_prerequisites
+        .iter()
+        .filter(|action_key| !is_action_allowed(action_key))
+        .cloned()
+        .collect::<Vec<_>>();
+    let next_action_ready_to_run = selected_action
+        .map(|item| item.allowed && next_action_blocked_prerequisites.is_empty())
+        .unwrap_or(false);
     let next_action_plan = selected_action
         .map(|item| {
             json!({
@@ -872,6 +922,11 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 "branch": hook_automation_branch(item),
                 "priority": item.priority,
                 "recommendation": item.recommendation,
+                "prerequisiteCount": next_action_prerequisites.len(),
+                "prerequisiteActionKeys": next_action_prerequisites.clone(),
+                "blockedPrerequisiteCount": next_action_blocked_prerequisites.len(),
+                "blockedPrerequisiteActionKeys": next_action_blocked_prerequisites.clone(),
+                "readyToRun": next_action_ready_to_run,
                 "templateCount": next_action_templates.len(),
                 "templates": next_action_templates.clone(),
                 "commandJsonTemplateCount": next_action_command_json_templates.len(),
@@ -893,6 +948,21 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 .as_ref()
                 .map(|action_key| action_key == item.action_key)
                 .unwrap_or(false);
+            let prerequisites = hook_action_prerequisites(item.action_key)
+                .iter()
+                .map(|action_key| (*action_key).to_string())
+                .collect::<Vec<_>>();
+            let blocked_prerequisites = prerequisites
+                .iter()
+                .filter(|action_key| !is_action_allowed(action_key))
+                .cloned()
+                .collect::<Vec<_>>();
+            let ready_to_run = item.allowed && blocked_prerequisites.is_empty();
+            let execution_rank = mode_rank(item.action_key);
+            let execution_index = ordered_actions
+                .iter()
+                .position(|candidate| candidate.action_key == item.action_key)
+                .unwrap_or(usize::MAX);
 
             json!({
                 "actionKey": item.action_key,
@@ -900,9 +970,16 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 "allowed": item.allowed,
                 "branch": hook_automation_branch(item),
                 "blockedBy": item.blocked_by,
+                "executionRank": execution_rank,
+                "executionIndex": execution_index,
                 "priority": item.priority,
                 "recommendation": item.recommendation,
                 "selectedAsNext": selected_as_next,
+                "prerequisiteCount": prerequisites.len(),
+                "prerequisiteActionKeys": prerequisites,
+                "blockedPrerequisiteCount": blocked_prerequisites.len(),
+                "blockedPrerequisiteActionKeys": blocked_prerequisites,
+                "readyToRun": ready_to_run,
                 "templateCount": templates.len(),
                 "templates": templates,
                 "commandJsonTemplateCount": command_json_templates.len(),
@@ -911,19 +988,29 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             })
         })
         .collect::<Vec<_>>();
+    let ready_branch_count = action_branches
+        .iter()
+        .filter(|entry| entry.get("readyToRun").and_then(Value::as_bool).unwrap_or(false))
+        .count();
+    let blocked_branch_count = action_branches.len().saturating_sub(ready_branch_count);
 
     json!({
         "commandMode": command_mode,
         "preferredPath": preferred_path,
         "backendPressure": backend_pressure,
         "sharedBackendCount": shared_backend_count,
+        "branchExecutionOrder": branch_execution_order,
+        "readyBranchCount": ready_branch_count,
+        "blockedBranchCount": blocked_branch_count,
         "nextActionKey": next_action_key,
+        "nextReadyActionKey": next_ready_action_key,
         "nextRunnableActionKey": next_runnable_action_key,
         "nextBlockedActionKey": next_blocked_action_key,
         "nextActionReason": next_action_reason,
         "nextActionAllowed": selected_action.map(|item| item.allowed),
         "nextActionBlockedBy": selected_action.map(|item| item.blocked_by),
         "nextActionBranch": selected_action.map(hook_automation_branch),
+        "nextActionReadyToRun": next_action_ready_to_run,
         "nextActionPlan": next_action_plan,
         "hasSuggestedSequence": !suggested_sequence.is_empty(),
         "suggestedSequence": suggested_sequence,
@@ -6500,12 +6587,17 @@ mod tests {
         assert_eq!(rendered["hook"]["backendMatrix"]["entryCount"], 0);
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
+        assert_eq!(rendered["hook"]["automation"]["branchExecutionOrder"][0], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["readyBranchCount"], 5);
+        assert_eq!(rendered["hook"]["automation"]["blockedBranchCount"], 0);
         assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["nextReadyActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["nextRunnableActionKey"], "hook.query");
         assert!(rendered["hook"]["automation"]["nextBlockedActionKey"].is_null());
         assert_eq!(rendered["hook"]["automation"]["nextActionAllowed"], true);
         assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
+        assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert!(rendered["hook"]["automation"]["commandTemplates"].is_array());
@@ -6516,6 +6608,11 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["branch"], "run");
+        assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["readyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionPlan"]["prerequisiteCount"],
+            0
+        );
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplates"][0], "objc.classes <filter>");
         assert_eq!(
@@ -6568,6 +6665,22 @@ mod tests {
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonEligibleTemplateCount"],
             3
         );
+        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionRank"], 0);
+        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionIndex"], 0);
+        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["readyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][2]["actionKey"],
+            "hook.install"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][2]["prerequisiteActionKeys"][0],
+            "hook.bootstrap"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][2]["blockedPrerequisiteCount"],
+            0
+        );
+        assert_eq!(rendered["hook"]["automation"]["actionBranches"][2]["readyToRun"], true);
         assert_eq!(
             rendered["hook"]["controller"]["capabilities"]["hookInstallCommandsAllowed"],
             true
@@ -6753,12 +6866,17 @@ mod tests {
         assert_eq!(rendered["hook"]["backendMatrix"]["entryCount"], 0);
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
+        assert_eq!(rendered["hook"]["automation"]["branchExecutionOrder"][0], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["readyBranchCount"], 5);
+        assert_eq!(rendered["hook"]["automation"]["blockedBranchCount"], 0);
         assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["nextReadyActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["nextRunnableActionKey"], "hook.query");
         assert!(rendered["hook"]["automation"]["nextBlockedActionKey"].is_null());
         assert_eq!(rendered["hook"]["automation"]["nextActionAllowed"], true);
         assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
+        assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert!(rendered["hook"]["automation"]["commandTemplates"].is_array());
@@ -6769,6 +6887,11 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["branch"], "run");
+        assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["readyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionPlan"]["prerequisiteCount"],
+            0
+        );
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplates"][0], "objc.classes <filter>");
         assert_eq!(
@@ -6821,6 +6944,9 @@ mod tests {
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonEligibleTemplateCount"],
             3
         );
+        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionRank"], 0);
+        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionIndex"], 0);
+        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["readyToRun"], true);
         assert_eq!(rendered["trace"]["payloadAddressHex"], json!("0x5000"));
         assert_eq!(rendered["handshake"]["hello"]["arch"], "aarch64");
         assert_eq!(rendered["handshake"]["stage"], "completed");
@@ -6893,17 +7019,21 @@ mod tests {
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
         assert_eq!(automation["preferredPath"], "cleanup-only");
         assert_eq!(automation["backendPressure"], "none");
+        assert_eq!(automation["branchExecutionOrder"][0], "hook.status");
         assert_eq!(automation["nextActionKey"], "hook.status");
+        assert_eq!(automation["nextReadyActionKey"], "hook.status");
         assert_eq!(automation["nextRunnableActionKey"], "hook.status");
         assert_eq!(automation["nextBlockedActionKey"], "hook.query");
         assert_eq!(automation["nextActionAllowed"], true);
         assert_eq!(automation["nextActionBlockedBy"], "none");
         assert_eq!(automation["nextActionBranch"], "run");
+        assert_eq!(automation["nextActionReadyToRun"], true);
         assert_eq!(automation["hasSuggestedSequence"], true);
         assert_eq!(automation["suggestedSequence"][0], "trace status");
         assert_eq!(automation["nextActionPlan"]["actionKey"], "hook.status");
         assert_eq!(automation["nextActionPlan"]["allowed"], true);
         assert_eq!(automation["nextActionPlan"]["branch"], "run");
+        assert_eq!(automation["nextActionPlan"]["readyToRun"], true);
         assert_eq!(automation["nextActionTemplateCount"], 5);
         assert_eq!(automation["nextActionTemplates"][0], "trace status");
         assert_eq!(automation["nextActionCommandJsonTemplateCount"], 5);
@@ -6918,6 +7048,7 @@ mod tests {
             .expect("query branch");
         assert_eq!(query_branch["branch"], "skip-target-policy");
         assert_eq!(query_branch["selectedAsNext"], false);
+        assert_eq!(query_branch["readyToRun"], false);
         assert_eq!(query_branch["templateCount"], 3);
         assert_eq!(query_branch["commandJsonTemplateCount"], 3);
         assert_eq!(query_branch["commandJsonEligibleTemplateCount"], 3);
@@ -6927,6 +7058,7 @@ mod tests {
             .expect("status branch");
         assert_eq!(status_branch["branch"], "run");
         assert_eq!(status_branch["selectedAsNext"], true);
+        assert_eq!(status_branch["readyToRun"], true);
         assert_eq!(status_branch["templateCount"], 5);
         assert_eq!(status_branch["commandJsonTemplateCount"], 5);
         assert_eq!(status_branch["commandJsonEligibleTemplateCount"], 5);
@@ -7010,16 +7142,20 @@ mod tests {
         let automation = hook_automation_to_json(&effective_actions, &rendered);
         assert_eq!(automation["backendPressure"], "both");
         assert_eq!(automation["preferredPath"], "inline-risky");
+        assert_eq!(automation["branchExecutionOrder"][0], "hook.query");
         assert_eq!(automation["nextActionKey"], "hook.query");
+        assert_eq!(automation["nextReadyActionKey"], "hook.query");
         assert_eq!(automation["nextRunnableActionKey"], "hook.query");
         assert_eq!(automation["nextActionAllowed"], true);
         assert_eq!(automation["nextActionBlockedBy"], "none");
         assert_eq!(automation["nextActionBranch"], "run");
+        assert_eq!(automation["nextActionReadyToRun"], true);
         assert_eq!(automation["suggestedSequence"][0], "native.hookenv");
         assert!(automation["commandTemplates"].is_array());
         assert_eq!(automation["nextActionPlan"]["actionKey"], "hook.query");
         assert_eq!(automation["nextActionPlan"]["allowed"], true);
         assert_eq!(automation["nextActionPlan"]["branch"], "run");
+        assert_eq!(automation["nextActionPlan"]["readyToRun"], true);
         assert_eq!(automation["nextActionTemplateCount"], 3);
         assert_eq!(automation["nextActionTemplates"][0], "objc.classes <filter>");
         assert_eq!(automation["nextActionCommandJsonTemplateCount"], 3);
