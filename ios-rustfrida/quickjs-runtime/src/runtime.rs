@@ -10652,13 +10652,22 @@ undefined;
                                     typeof result.uniqueMethodCount !== 'number' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledMethods !== 'boolean' ||
+                                    !Array.isArray(result.ownerTypeList) ||
+                                    !Array.isArray(result.memberKindList) ||
+                                    !Array.isArray(result.resultTypeList) ||
                                     !Array.isArray(result.moduleNameList) ||
                                     !Array.isArray(result.methodNameList) ||
+                                    !Array.isArray(result.ownerTypes) ||
+                                    !Array.isArray(result.memberKinds) ||
+                                    !Array.isArray(result.resultTypes) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.methodNames)) {
                                 return false;
                             }
-                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                            if (result.ownerTypeList.length !== result.ownerTypes.length ||
+                                    result.memberKindList.length !== result.memberKinds.length ||
+                                    result.resultTypeList.length !== result.resultTypes.length ||
+                                    result.moduleNameList.length !== result.moduleNames.length ||
                                     result.methodNameList.length !== result.methodNames.length) {
                                 return false;
                             }
@@ -10695,7 +10704,10 @@ undefined;
                                     typeof methodSummary.firstModuleName === 'string' &&
                                     typeof methodSummary.lastModuleName === 'string' &&
                                     typeof methodSummary.hasDemangledName === 'boolean'
-                                ));
+                                )) &&
+                                (result.ownerTypes.length === 0 || result.ownerTypeList[0] === result.ownerTypes[0].ownerTypeName) &&
+                                (result.memberKinds.length === 0 || result.memberKindList[0] === result.memberKinds[0].memberKind) &&
+                                (result.resultTypes.length === 0 || result.resultTypeList[0] === result.resultTypes[0].resultTypeName);
                         })()"
                     )
                     .expect("agent swift type methods result"),
@@ -10716,13 +10728,22 @@ undefined;
                                     typeof result.uniqueMethodCount !== 'number' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledMethods !== 'boolean' ||
+                                    !Array.isArray(result.ownerTypeList) ||
+                                    !Array.isArray(result.memberKindList) ||
+                                    !Array.isArray(result.resultTypeList) ||
                                     !Array.isArray(result.moduleNameList) ||
                                     !Array.isArray(result.methodNameList) ||
+                                    !Array.isArray(result.ownerTypes) ||
+                                    !Array.isArray(result.memberKinds) ||
+                                    !Array.isArray(result.resultTypes) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.methodNames)) {
                                 return false;
                             }
-                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                            if (result.ownerTypeList.length !== result.ownerTypes.length ||
+                                    result.memberKindList.length !== result.memberKinds.length ||
+                                    result.resultTypeList.length !== result.resultTypes.length ||
+                                    result.moduleNameList.length !== result.moduleNames.length ||
                                     result.methodNameList.length !== result.methodNames.length) {
                                 return false;
                             }
@@ -10759,7 +10780,10 @@ undefined;
                                     typeof methodSummary.firstModuleName === 'string' &&
                                     typeof methodSummary.lastModuleName === 'string' &&
                                     typeof methodSummary.hasDemangledName === 'boolean'
-                                ));
+                                )) &&
+                                (result.ownerTypes.length === 0 || result.ownerTypeList[0] === result.ownerTypes[0].ownerTypeName) &&
+                                (result.memberKinds.length === 0 || result.memberKindList[0] === result.memberKinds[0].memberKind) &&
+                                (result.resultTypes.length === 0 || result.resultTypeList[0] === result.resultTypes[0].resultTypeName);
                         })()"
                     )
                     .expect("agent swift methods result"),
