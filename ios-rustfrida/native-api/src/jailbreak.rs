@@ -109,6 +109,7 @@ impl HookStrategyDecision {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HookRecommendedAction {
     pub command_group: String,
+    pub action_key: String,
     pub priority: u8,
     pub allowed: bool,
     pub status: String,
@@ -237,6 +238,7 @@ pub fn hook_environment_recommended_actions(
     .into_iter()
     .map(|(command_group, allowed)| HookRecommendedAction {
         command_group: command_group.into(),
+        action_key: action_key_for_command_group(command_group).into(),
         priority: action_priority(mode, command_group, allowed),
         allowed,
         status: if allowed { "allowed".into() } else { "blocked".into() },
@@ -549,6 +551,17 @@ fn action_priority(mode: &str, command_group: &str, allowed: bool) -> u8 {
     }
 }
 
+fn action_key_for_command_group(command_group: &str) -> &'static str {
+    match command_group {
+        "bootstrap" => "hook.bootstrap",
+        "query" => "hook.query",
+        "hook-install" => "hook.install",
+        "hook-status" => "hook.status",
+        "hook-stop" => "hook.stop",
+        _ => "hook.unknown",
+    }
+}
+
 fn command_group_sort_order(command_group: &str) -> u8 {
     match command_group {
         "bootstrap" => 0,
@@ -797,6 +810,7 @@ mod tests {
             .expect("query action");
         assert!(query.allowed);
         assert_eq!(query.status, "allowed");
+        assert_eq!(query.action_key, "hook.query");
         assert_eq!(query.priority, 1);
 
         let install = actions
@@ -805,6 +819,7 @@ mod tests {
             .expect("hook-install action");
         assert!(!install.allowed);
         assert_eq!(install.status, "blocked");
+        assert_eq!(install.action_key, "hook.install");
         assert_eq!(install.priority, 4);
         assert!(install.recommendation.contains("query-only mode"));
         assert_eq!(actions[0].command_group, "query");
@@ -831,6 +846,7 @@ mod tests {
             .expect("query action");
         assert!(!query.allowed);
         assert_eq!(query.status, "blocked");
+        assert_eq!(query.action_key, "hook.query");
         assert_eq!(query.priority, 4);
         assert!(query.recommendation.contains("cleanup-only mode"));
 
@@ -840,6 +856,7 @@ mod tests {
             .expect("hook-stop action");
         assert!(stop.allowed);
         assert_eq!(stop.status, "allowed");
+        assert_eq!(stop.action_key, "hook.stop");
         assert_eq!(stop.priority, 1);
         assert!(stop.recommendation.contains("cleanup-only mode"));
         assert_eq!(actions[0].command_group, "hook-status");
