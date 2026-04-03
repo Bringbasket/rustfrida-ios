@@ -2054,6 +2054,38 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "lookupRule": "index[errorCode] || default",
             "entryCount": error_code_routing_entries.len(),
             "index": routing_decision_ready_index,
+            "defaultEscalationKey": routing_decision_ready_default
+                .get("escalationKey")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "defaultEffectiveEscalationKey": routing_decision_ready_default
+                .get("effectiveEscalationKey")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "defaultPhase": routing_decision_ready_default
+                .get("phase")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "defaultEffectivePhase": routing_decision_ready_default
+                .get("effectivePhase")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "defaultTemplateCount": routing_decision_ready_default
+                .get("templateCount")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "defaultTemplates": routing_decision_ready_default
+                .get("templates")
+                .cloned()
+                .unwrap_or(json!([])),
+            "defaultCommandJsonTemplateCount": routing_decision_ready_default
+                .get("commandJsonTemplateCount")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "defaultCommandJsonTemplates": routing_decision_ready_default
+                .get("commandJsonTemplates")
+                .cloned()
+                .unwrap_or(json!([])),
             "default": routing_decision_ready_default,
             "resolve": {
                 "lookupKey": "errorCode",
@@ -8731,6 +8763,34 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["defaultPhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultEffectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultTemplates"][0],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplates"][0]["phase"],
             "preflight"
         );
         assert_eq!(
