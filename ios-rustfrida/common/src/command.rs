@@ -92,30 +92,43 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.classProtocols ")
         || command.starts_with("objc.findClassProtocols ")
         || command.starts_with("objc.classInfo ")
+        || command.starts_with("objc.findClassInfo ")
         || command.starts_with("objc.protocolInfo ")
+        || command.starts_with("objc.findProtocolInfo ")
         || command.starts_with("objc.protocolProtocols ")
         || command.starts_with("objc.findProtocolProtocols ")
         || command.starts_with("objc.protocolMethods ")
         || command.starts_with("objc.findProtocolMethods ")
         || command.starts_with("objc.protocolMethodInfo ")
+        || command.starts_with("objc.findProtocolMethodInfo ")
         || command.starts_with("objc.protocolProperties ")
         || command.starts_with("objc.findProtocolProperties ")
         || command.starts_with("objc.protocolPropertyInfo ")
+        || command.starts_with("objc.findProtocolPropertyInfo ")
         || command.starts_with("objc.superclass ")
+        || command.starts_with("objc.findSuperclass ")
         || command.starts_with("objc.classChain ")
+        || command.starts_with("objc.findClassChain ")
         || command.starts_with("objc.selector ")
         || command.starts_with("objc.classImage ")
+        || command.starts_with("objc.findClassImage ")
         || command.starts_with("objc.methodImage ")
+        || command.starts_with("objc.findMethodImage ")
         || command.starts_with("objc.methodInfo ")
+        || command.starts_with("objc.findMethodInfo ")
         || command.starts_with("objc.propertyInfo ")
+        || command.starts_with("objc.findPropertyInfo ")
         || command.starts_with("objc.selectorName ")
+        || command.starts_with("objc.findSelectorName ")
         || command.starts_with("objc.objectClassName ")
+        || command.starts_with("objc.findObjectClassName ")
         || command.starts_with("objc.methodImp ")
         || command.starts_with("objc.methods ")
         || command.starts_with("objc.findMethods ")
         || command.starts_with("objc.properties ")
         || command.starts_with("objc.findProperties ")
         || command.starts_with("objc.ivarInfo ")
+        || command.starts_with("objc.findIvarInfo ")
         || command.starts_with("objc.ivars ")
         || command.starts_with("objc.findIvars ")
         || command.starts_with("objc.methodOwners ")
@@ -324,7 +337,24 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("objc.findClassInfo ") {
+        let (class_name, is_meta_class) = parse_objc_class_info(raw)?;
+        return Some(json!({
+            "kind": "objc.class_info",
+            "className": class_name,
+            "isMetaClass": is_meta_class,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("objc.protocolInfo ") {
+        let protocol_name = parse_objc_protocol_info(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_info",
+            "protocolName": protocol_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.findProtocolInfo ") {
         let protocol_name = parse_objc_protocol_info(raw)?;
         return Some(json!({
             "kind": "objc.protocol_info",
@@ -383,6 +413,17 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("objc.findProtocolMethodInfo ") {
+        let (protocol_name, selector_name, is_required, is_instance_method) = parse_objc_protocol_method_info(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_method_info",
+            "protocolName": protocol_name,
+            "selectorName": selector_name,
+            "isRequired": is_required,
+            "isInstanceMethod": is_instance_method,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("objc.protocolProperties ") {
         let (protocol_name, filter) = parse_objc_protocol_properties(raw)?;
         return Some(json!({
@@ -410,6 +451,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("objc.findProtocolPropertyInfo ") {
+        let (protocol_name, property_name) = parse_objc_member_info(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_property_info",
+            "protocolName": protocol_name,
+            "propertyName": property_name,
+        }));
+    }
+
     if let Some(class_name) = command.strip_prefix("objc.superclass ") {
         return Some(json!({
             "kind": "objc.superclass",
@@ -417,7 +467,21 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(class_name) = command.strip_prefix("objc.findSuperclass ") {
+        return Some(json!({
+            "kind": "objc.superclass",
+            "className": class_name.trim(),
+        }));
+    }
+
     if let Some(class_name) = command.strip_prefix("objc.classChain ") {
+        return Some(json!({
+            "kind": "objc.class_chain",
+            "className": class_name.trim(),
+        }));
+    }
+
+    if let Some(class_name) = command.strip_prefix("objc.findClassChain ") {
         return Some(json!({
             "kind": "objc.class_chain",
             "className": class_name.trim(),
@@ -451,6 +515,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("objc.findMethodInfo ") {
+        let (class_name, selector_name, is_class_method) = parse_objc_method_target(raw)?;
+        return Some(json!({
+            "kind": "objc.method_info",
+            "className": class_name,
+            "selectorName": selector_name,
+            "isClassMethod": is_class_method,
+        }));
+    }
+
     if let Some(class_name) = command.strip_prefix("objc.classImage ") {
         return Some(json!({
             "kind": "objc.class_image",
@@ -458,7 +532,24 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(class_name) = command.strip_prefix("objc.findClassImage ") {
+        return Some(json!({
+            "kind": "objc.class_image",
+            "className": class_name.trim(),
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("objc.methodImage ") {
+        let (class_name, selector_name, is_class_method) = parse_objc_method_target(raw)?;
+        return Some(json!({
+            "kind": "objc.method_image",
+            "className": class_name,
+            "selectorName": selector_name,
+            "isClassMethod": is_class_method,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.findMethodImage ") {
         let (class_name, selector_name, is_class_method) = parse_objc_method_target(raw)?;
         return Some(json!({
             "kind": "objc.method_image",
@@ -478,6 +569,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("objc.findPropertyInfo ") {
+        let (class_name, property_name, is_class_property) = parse_objc_method_target(raw)?;
+        return Some(json!({
+            "kind": "objc.property_info",
+            "className": class_name,
+            "propertyName": property_name,
+            "isClassProperty": is_class_property,
+        }));
+    }
+
     if let Some(selector) = command.strip_prefix("objc.selectorName ") {
         return Some(json!({
             "kind": "objc.selector_name",
@@ -485,7 +586,21 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(selector) = command.strip_prefix("objc.findSelectorName ") {
+        return Some(json!({
+            "kind": "objc.selector_name",
+            "selector": selector.trim(),
+        }));
+    }
+
     if let Some(object) = command.strip_prefix("objc.objectClassName ") {
+        return Some(json!({
+            "kind": "objc.object_class_name",
+            "object": object.trim(),
+        }));
+    }
+
+    if let Some(object) = command.strip_prefix("objc.findObjectClassName ") {
         return Some(json!({
             "kind": "objc.object_class_name",
             "object": object.trim(),
@@ -533,6 +648,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(raw) = command.strip_prefix("objc.ivarInfo ") {
+        let (class_name, ivar_name) = parse_objc_member_info(raw)?;
+        return Some(json!({
+            "kind": "objc.ivar_info",
+            "className": class_name,
+            "ivarName": ivar_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.findIvarInfo ") {
         let (class_name, ivar_name) = parse_objc_member_info(raw)?;
         return Some(json!({
             "kind": "objc.ivar_info",

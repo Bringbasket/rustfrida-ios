@@ -11661,8 +11661,18 @@ function legacyToSpec(command) {
         return { kind: 'objc.class_info', className: parsed.className, isMetaClass: parsed.isMetaClass };
     }
 
+    if (trimmed.startsWith('objc.findClassInfo ')) {
+        const parsed = parseObjcClassInfo(trimmed.slice('objc.findClassInfo '.length));
+        return { kind: 'objc.class_info', className: parsed.className, isMetaClass: parsed.isMetaClass };
+    }
+
     if (trimmed.startsWith('objc.protocolInfo ')) {
         const parsed = parseObjcProtocolInfo(trimmed.slice('objc.protocolInfo '.length));
+        return { kind: 'objc.protocol_info', protocolName: parsed.protocolName };
+    }
+
+    if (trimmed.startsWith('objc.findProtocolInfo ')) {
+        const parsed = parseObjcProtocolInfo(trimmed.slice('objc.findProtocolInfo '.length));
         return { kind: 'objc.protocol_info', protocolName: parsed.protocolName };
     }
 
@@ -11709,6 +11719,17 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('objc.findProtocolMethodInfo ')) {
+        const parsed = parseObjcProtocolMethodInfo(trimmed.slice('objc.findProtocolMethodInfo '.length));
+        return {
+            kind: 'objc.protocol_method_info',
+            protocolName: parsed.protocolName,
+            selectorName: parsed.selectorName,
+            isRequired: parsed.isRequired,
+            isInstanceMethod: parsed.isInstanceMethod,
+        };
+    }
+
     if (trimmed.startsWith('objc.protocolProperties ')) {
         const parsed = parseObjcProtocolProperties(trimmed.slice('objc.protocolProperties '.length));
         return {
@@ -11736,12 +11757,29 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('objc.findProtocolPropertyInfo ')) {
+        const parsed = parseObjcProtocolPropertyInfo(trimmed.slice('objc.findProtocolPropertyInfo '.length));
+        return {
+            kind: 'objc.protocol_property_info',
+            protocolName: parsed.protocolName,
+            propertyName: parsed.propertyName,
+        };
+    }
+
     if (trimmed.startsWith('objc.superclass ')) {
         return { kind: 'objc.superclass', className: trimmed.slice('objc.superclass '.length) };
     }
 
+    if (trimmed.startsWith('objc.findSuperclass ')) {
+        return { kind: 'objc.superclass', className: trimmed.slice('objc.findSuperclass '.length) };
+    }
+
     if (trimmed.startsWith('objc.classChain ')) {
         return { kind: 'objc.class_chain', className: trimmed.slice('objc.classChain '.length) };
+    }
+
+    if (trimmed.startsWith('objc.findClassChain ')) {
+        return { kind: 'objc.class_chain', className: trimmed.slice('objc.findClassChain '.length) };
     }
 
     if (trimmed.startsWith('objc.classExists ')) {
@@ -11772,12 +11810,36 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('objc.findMethodInfo ')) {
+        const parsed = parseObjcMethodImp(trimmed.slice('objc.findMethodInfo '.length));
+        return {
+            kind: 'objc.method_info',
+            className: parsed.className,
+            selectorName: parsed.selectorName,
+            isClassMethod: parsed.isClassMethod,
+        };
+    }
+
     if (trimmed.startsWith('objc.classImage ')) {
         return { kind: 'objc.class_image', className: trimmed.slice('objc.classImage '.length) };
     }
 
+    if (trimmed.startsWith('objc.findClassImage ')) {
+        return { kind: 'objc.class_image', className: trimmed.slice('objc.findClassImage '.length) };
+    }
+
     if (trimmed.startsWith('objc.methodImage ')) {
         const parsed = parseObjcMethodImp(trimmed.slice('objc.methodImage '.length));
+        return {
+            kind: 'objc.method_image',
+            className: parsed.className,
+            selectorName: parsed.selectorName,
+            isClassMethod: parsed.isClassMethod,
+        };
+    }
+
+    if (trimmed.startsWith('objc.findMethodImage ')) {
+        const parsed = parseObjcMethodImp(trimmed.slice('objc.findMethodImage '.length));
         return {
             kind: 'objc.method_image',
             className: parsed.className,
@@ -11793,10 +11855,24 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('objc.findSelectorName ')) {
+        return {
+            kind: 'objc.selector_name',
+            selector: trimmed.slice('objc.findSelectorName '.length),
+        };
+    }
+
     if (trimmed.startsWith('objc.objectClassName ')) {
         return {
             kind: 'objc.object_class_name',
             object: trimmed.slice('objc.objectClassName '.length),
+        };
+    }
+
+    if (trimmed.startsWith('objc.findObjectClassName ')) {
+        return {
+            kind: 'objc.object_class_name',
+            object: trimmed.slice('objc.findObjectClassName '.length),
         };
     }
 
@@ -11850,6 +11926,16 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('objc.findPropertyInfo ')) {
+        const parsed = parseObjcPropertyInfo(trimmed.slice('objc.findPropertyInfo '.length));
+        return {
+            kind: 'objc.property_info',
+            className: parsed.className,
+            propertyName: parsed.propertyName,
+            isClassProperty: parsed.isClassProperty,
+        };
+    }
+
     if (trimmed.startsWith('objc.ivars ')) {
         const parsed = parseObjcIvars(trimmed.slice('objc.ivars '.length));
         return {
@@ -11870,6 +11956,15 @@ function legacyToSpec(command) {
 
     if (trimmed.startsWith('objc.ivarInfo ')) {
         const parsed = parseObjcIvarInfo(trimmed.slice('objc.ivarInfo '.length));
+        return {
+            kind: 'objc.ivar_info',
+            className: parsed.className,
+            ivarName: parsed.ivarName,
+        };
+    }
+
+    if (trimmed.startsWith('objc.findIvarInfo ')) {
+        const parsed = parseObjcIvarInfo(trimmed.slice('objc.findIvarInfo '.length));
         return {
             kind: 'objc.ivar_info',
             className: parsed.className,

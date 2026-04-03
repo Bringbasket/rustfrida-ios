@@ -2078,6 +2078,28 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() {
+                            return __iosRustFridaAgentApi.handle('objc.findClassInfo NSObject meta') === __iosRustFridaAgentApi.handle('objc.classInfo NSObject meta') &&
+                                __iosRustFridaAgentApi.handle('objc.findProtocolInfo NSObject') === __iosRustFridaAgentApi.handle('objc.protocolInfo NSObject') &&
+                                __iosRustFridaAgentApi.handle('objc.findProtocolMethodInfo NSObject description optional class') === __iosRustFridaAgentApi.handle('objc.protocolMethodInfo NSObject description optional class') &&
+                                __iosRustFridaAgentApi.handle('objc.findProtocolPropertyInfo NSObject description') === __iosRustFridaAgentApi.handle('objc.protocolPropertyInfo NSObject description') &&
+                                __iosRustFridaAgentApi.handle('objc.findSuperclass NSObject') === __iosRustFridaAgentApi.handle('objc.superclass NSObject') &&
+                                __iosRustFridaAgentApi.handle('objc.findClassChain NSObject') === __iosRustFridaAgentApi.handle('objc.classChain NSObject') &&
+                                __iosRustFridaAgentApi.handle('objc.findClassImage NSObject') === __iosRustFridaAgentApi.handle('objc.classImage NSObject') &&
+                                __iosRustFridaAgentApi.handle('objc.findMethodInfo NSObject init') === __iosRustFridaAgentApi.handle('objc.methodInfo NSObject init') &&
+                                __iosRustFridaAgentApi.handle('objc.findMethodImage NSObject init') === __iosRustFridaAgentApi.handle('objc.methodImage NSObject init') &&
+                                __iosRustFridaAgentApi.handle('objc.findPropertyInfo NSObject description') === __iosRustFridaAgentApi.handle('objc.propertyInfo NSObject description') &&
+                                __iosRustFridaAgentApi.handle('objc.findIvarInfo NSObject _isa') === __iosRustFridaAgentApi.handle('objc.ivarInfo NSObject _isa') &&
+                                __iosRustFridaAgentApi.handle('objc.findSelectorName 0x1234') === __iosRustFridaAgentApi.handle('objc.selectorName 0x1234') &&
+                                __iosRustFridaAgentApi.handle('objc.findObjectClassName 0x1234') === __iosRustFridaAgentApi.handle('objc.objectClassName 0x1234');
+                        })()"
+                    )
+                    .expect("agent objc info aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("__iosRustFridaAgentApi.handle('pac.strip 0x1234')")
                     .expect("agent pac strip"),
                 "0x1234"

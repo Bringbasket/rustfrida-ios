@@ -3723,6 +3723,7 @@ fn print_controller_help() {
     println!("  objc.methods <class> [meta] [filter]");
     println!("  objc.properties <class> [meta] [filter]");
     println!("  objc.ivars <class> [filter]");
+    println!("  objc.findClassInfo/findProtocolInfo/findProtocolMethodInfo/findProtocolPropertyInfo/findSuperclass/findClassChain/findClassImage/findMethodInfo/findMethodImage/findPropertyInfo/findIvarInfo/findSelectorName/findObjectClassName ... (info aliases)");
     println!("  objc.findMethods/findProperties/findIvars/findMethodOwners/findProtocols ... (query aliases)");
     println!("  native.base <module>");
     println!("  native.imageInfo <module>");
@@ -4212,6 +4213,10 @@ mod tests {
                 })
             })
         );
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findClassInfo UIViewController meta"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
         assert_eq!(
             AgentCommand::from_legacy("objc.protocolInfo NSObject"),
             Some(AgentCommand::RuntimeDispatch {
@@ -4221,6 +4226,10 @@ mod tests {
                 })
             })
         );
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findProtocolInfo NSObject"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
         assert_eq!(
             AgentCommand::from_legacy("objc.protocolProtocols NSObject"),
             Some(AgentCommand::RuntimeDispatch {
@@ -4299,6 +4308,10 @@ mod tests {
                 })
             })
         );
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findProtocolMethodInfo NSObject description optional class"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
         assert_eq!(
             AgentCommand::from_legacy("objc.protocolProperties NSObject"),
             Some(AgentCommand::RuntimeDispatch {
@@ -4339,6 +4352,10 @@ mod tests {
                 })
             })
         );
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findProtocolPropertyInfo NSObject description"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
         assert_eq!(
             AgentCommand::from_legacy("objc.superclass UIViewController"),
             Some(AgentCommand::RuntimeDispatch {
@@ -4348,6 +4365,10 @@ mod tests {
                 })
             })
         );
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findSuperclass UIViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
         assert_eq!(
             AgentCommand::from_legacy("objc.classChain UIViewController"),
             Some(AgentCommand::RuntimeDispatch {
@@ -4357,6 +4378,10 @@ mod tests {
                 })
             })
         );
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findClassChain UIViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
         assert_eq!(
             AgentCommand::from_legacy("objc.properties UIViewController meta delegate"),
             Some(AgentCommand::RuntimeDispatch {
@@ -4386,6 +4411,10 @@ mod tests {
             AgentCommand::from_legacy("objc.classImage UIViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findClassImage UIViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
         assert_eq!(
             AgentCommand::from_legacy("objc.methodInfo UIViewController viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch {
@@ -4397,6 +4426,10 @@ mod tests {
                 })
             })
         );
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findMethodInfo UIViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
         assert_eq!(
             AgentCommand::from_legacy("objc.propertyInfo UIViewController view"),
             Some(AgentCommand::RuntimeDispatch {
@@ -4408,6 +4441,10 @@ mod tests {
                 })
             })
         );
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findPropertyInfo UIViewController view"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
         assert_eq!(
             AgentCommand::from_legacy("objc.ivarInfo UIViewController _viewControllerFlags"),
             Some(AgentCommand::RuntimeDispatch {
@@ -4419,7 +4456,23 @@ mod tests {
             })
         );
         assert!(matches!(
+            AgentCommand::from_legacy("objc.findIvarInfo UIViewController _viewControllerFlags"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("objc.methodImage UIViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findMethodImage UIViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findSelectorName 0x1234"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findObjectClassName 0x1234"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -4695,7 +4748,9 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.classProtocols UIView UI"));
         assert!(!command_requires_inline_hooks("objc.findClassProtocols UIView UI"));
         assert!(!command_requires_inline_hooks("objc.classInfo UIView meta"));
+        assert!(!command_requires_inline_hooks("objc.findClassInfo UIView meta"));
         assert!(!command_requires_inline_hooks("objc.protocolInfo NSObject"));
+        assert!(!command_requires_inline_hooks("objc.findProtocolInfo NSObject"));
         assert!(!command_requires_inline_hooks("objc.protocolProtocols NSObject"));
         assert!(!command_requires_inline_hooks("objc.protocolProtocols NSObject NS"));
         assert!(!command_requires_inline_hooks("objc.findProtocolProtocols NSObject NS"));
@@ -4711,6 +4766,9 @@ mod tests {
         assert!(!command_requires_inline_hooks(
             "objc.protocolMethodInfo NSObject description optional class"
         ));
+        assert!(!command_requires_inline_hooks(
+            "objc.findProtocolMethodInfo NSObject description optional class"
+        ));
         assert!(!command_requires_inline_hooks("objc.protocolProperties NSObject"));
         assert!(!command_requires_inline_hooks("objc.protocolProperties NSObject description"));
         assert!(!command_requires_inline_hooks(
@@ -4719,14 +4777,26 @@ mod tests {
         assert!(!command_requires_inline_hooks(
             "objc.protocolPropertyInfo NSObject description"
         ));
+        assert!(!command_requires_inline_hooks(
+            "objc.findProtocolPropertyInfo NSObject description"
+        ));
         assert!(!command_requires_inline_hooks("objc.superclass UIView"));
+        assert!(!command_requires_inline_hooks("objc.findSuperclass UIView"));
         assert!(!command_requires_inline_hooks("objc.classChain UIView"));
+        assert!(!command_requires_inline_hooks("objc.findClassChain UIView"));
         assert!(!command_requires_inline_hooks("objc.properties UIView meta delegate"));
         assert!(!command_requires_inline_hooks("objc.propertyInfo UIView view"));
+        assert!(!command_requires_inline_hooks("objc.findPropertyInfo UIView view"));
         assert!(!command_requires_inline_hooks("objc.ivarInfo UIView _viewFlags"));
+        assert!(!command_requires_inline_hooks("objc.findIvarInfo UIView _viewFlags"));
         assert!(!command_requires_inline_hooks("objc.ivars UIView delegate"));
         assert!(!command_requires_inline_hooks("objc.findMethods UIView init"));
         assert!(!command_requires_inline_hooks("objc.methodInfo UIView viewDidLoad"));
+        assert!(!command_requires_inline_hooks("objc.findMethodInfo UIView viewDidLoad"));
+        assert!(!command_requires_inline_hooks("objc.findClassImage UIView"));
+        assert!(!command_requires_inline_hooks("objc.findMethodImage UIView viewDidLoad"));
+        assert!(!command_requires_inline_hooks("objc.findSelectorName 0x1234"));
+        assert!(!command_requires_inline_hooks("objc.findObjectClassName 0x1234"));
         assert!(!command_requires_inline_hooks("native.imageInfo UIKit"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));

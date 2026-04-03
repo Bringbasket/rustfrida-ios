@@ -329,7 +329,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
   - `swift.typeMethods <module> -- <type>`
   - `swift.methods <type> <method>`
   - `swift.methods <module> -- <type> <method>`
-- `objc.find*` / `native.find*` / `swift.find*` 这批只读查询/信息别名现在也可直接走 controller CLI / REPL / `--command-json`，会映射到对应的 `objc.*` / `native.*` / `swift.*` 命令；其中 `swift.findSymbolInfo / swift.findProtocolInfo / swift.findConformanceInfo / swift.findTypeInfo / swift.findMethodInfo / swift.findMetadataInfo / swift.findVtableInfo / swift.findWitnessTableInfo / swift.findTypeLayoutInfo` 这组单项 alias 现在也一并接好了。
+- `objc.find*` / `native.find*` / `swift.find*` 这批只读查询/信息别名现在也可直接走 controller CLI / REPL / `--command-json`，会映射到对应的 `objc.*` / `native.*` / `swift.*` 命令；其中 `objc.findClassInfo / objc.findProtocolInfo / objc.findProtocolMethodInfo / objc.findProtocolPropertyInfo / objc.findSuperclass / objc.findClassChain / objc.findClassImage / objc.findMethodInfo / objc.findMethodImage / objc.findPropertyInfo / objc.findIvarInfo / objc.findSelectorName / objc.findObjectClassName` 和 `swift.findSymbolInfo / swift.findProtocolInfo / swift.findConformanceInfo / swift.findTypeInfo / swift.findMethodInfo / swift.findMetadataInfo / swift.findVtableInfo / swift.findWitnessTableInfo / swift.findTypeLayoutInfo` 这两组单项 alias 现在也一并接好了。
 
 说明：
 
