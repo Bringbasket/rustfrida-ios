@@ -9972,13 +9972,40 @@ undefined;
                                     && result.resolvedContextModuleNameList.length === 0
                                     && result.resolvedDetailKindList.length === 0
                                     && result.resolvedSourceKindList.length === 0
+                                    && result.resolvedSourceKinds.length === 0
+                                    && result.resolvedContextModules.length === 0
+                                    && result.resolvedDetailKinds.length === 0
                                     && result.resolvedVtableCount === 0
                                     && result.resolvedWitnessTableCount === 0
                                     && result.resolvedParsedVtableMemberCount === 0
                                     && result.resolvedVtableAccessorCount === 0
+                                    && result.resolvedVtableGetterCount === 0
+                                    && result.resolvedVtableSetterCount === 0
+                                    && result.resolvedVtableModifyAccessorCount === 0
+                                    && result.resolvedVtableReadAccessorCount === 0
+                                    && result.resolvedVtableConstructorCount === 0
+                                    && result.resolvedVtableDestructorCount === 0
+                                    && result.resolvedVtableSubscriptCount === 0
+                                    && result.resolvedVtableOperatorCount === 0
+                                    && result.resolvedVtableClosureCount === 0
+                                    && result.resolvedVtableStaticMemberCount === 0
+                                    && result.resolvedVtableClassMemberCount === 0
+                                    && result.resolvedVtableMutatingMemberCount === 0
+                                    && result.resolvedVtableAsyncCount === 0
+                                    && result.resolvedVtableThrowingCount === 0
+                                    && result.resolvedVtableDispatchThunkCount === 0
                                     && result.resolvedWitnessAccessorCount === 0
+                                    && result.resolvedWitnessDemangledCount === 0
+                                    && result.resolvedUniqueVtableOwnerTypeCount === 0
                                     && result.resolvedUniqueVtableMemberKindCount === 0
-                                    && result.resolvedUniqueWitnessProtocolCount === 0;
+                                    && result.resolvedUniqueVtableResultTypeCount === 0
+                                    && result.resolvedUniqueWitnessProtocolCount === 0
+                                    && result.resolvedUniqueWitnessSourceKindCount === 0
+                                    && result.resolvedVtableOwnerTypes.length === 0
+                                    && result.resolvedVtableMemberKinds.length === 0
+                                    && result.resolvedVtableResultTypes.length === 0
+                                    && result.resolvedWitnessProtocols.length === 0
+                                    && result.resolvedWitnessSourceKinds.length === 0;
                             }
                             const layout = result.typeLayout;
                             return result.resolvedHasName === layout.hasName
@@ -10017,13 +10044,40 @@ undefined;
                                 && result.resolvedContextModuleNameList.length === layout.contextModuleNameList.length
                                 && result.resolvedDetailKindList.length === layout.detailKindList.length
                                 && result.resolvedSourceKindList.length === layout.sourceKindList.length
+                                && result.resolvedSourceKinds.length === layout.sourceKinds.length
+                                && result.resolvedContextModules.length === layout.contextModules.length
+                                && result.resolvedDetailKinds.length === layout.detailKinds.length
                                 && result.resolvedVtableCount === layout.vtableCount
                                 && result.resolvedWitnessTableCount === layout.witnessTableCount
                                 && result.resolvedParsedVtableMemberCount === layout.parsedVtableMemberCount
                                 && result.resolvedVtableAccessorCount === layout.vtableAccessorCount
+                                && result.resolvedVtableGetterCount === layout.vtableGetterCount
+                                && result.resolvedVtableSetterCount === layout.vtableSetterCount
+                                && result.resolvedVtableModifyAccessorCount === layout.vtableModifyAccessorCount
+                                && result.resolvedVtableReadAccessorCount === layout.vtableReadAccessorCount
+                                && result.resolvedVtableConstructorCount === layout.vtableConstructorCount
+                                && result.resolvedVtableDestructorCount === layout.vtableDestructorCount
+                                && result.resolvedVtableSubscriptCount === layout.vtableSubscriptCount
+                                && result.resolvedVtableOperatorCount === layout.vtableOperatorCount
+                                && result.resolvedVtableClosureCount === layout.vtableClosureCount
+                                && result.resolvedVtableStaticMemberCount === layout.vtableStaticMemberCount
+                                && result.resolvedVtableClassMemberCount === layout.vtableClassMemberCount
+                                && result.resolvedVtableMutatingMemberCount === layout.vtableMutatingMemberCount
+                                && result.resolvedVtableAsyncCount === layout.vtableAsyncCount
+                                && result.resolvedVtableThrowingCount === layout.vtableThrowingCount
+                                && result.resolvedVtableDispatchThunkCount === layout.vtableDispatchThunkCount
                                 && result.resolvedWitnessAccessorCount === layout.witnessAccessorCount
+                                && result.resolvedWitnessDemangledCount === layout.witnessDemangledCount
+                                && result.resolvedUniqueVtableOwnerTypeCount === layout.uniqueVtableOwnerTypeCount
                                 && result.resolvedUniqueVtableMemberKindCount === layout.uniqueVtableMemberKindCount
-                                && result.resolvedUniqueWitnessProtocolCount === layout.uniqueWitnessProtocolCount;
+                                && result.resolvedUniqueVtableResultTypeCount === layout.uniqueVtableResultTypeCount
+                                && result.resolvedUniqueWitnessProtocolCount === layout.uniqueWitnessProtocolCount
+                                && result.resolvedUniqueWitnessSourceKindCount === layout.uniqueWitnessSourceKindCount
+                                && result.resolvedVtableOwnerTypes.length === layout.vtableOwnerTypes.length
+                                && result.resolvedVtableMemberKinds.length === layout.vtableMemberKinds.length
+                                && result.resolvedVtableResultTypes.length === layout.vtableResultTypes.length
+                                && result.resolvedWitnessProtocols.length === layout.witnessProtocols.length
+                                && result.resolvedWitnessSourceKinds.length === layout.witnessSourceKinds.length;
                         })()"#
                     )
                     .expect("agent swift type layout info resolved summaries"),
