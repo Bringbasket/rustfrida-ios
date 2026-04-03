@@ -629,6 +629,55 @@ fn hook_automation_suggested_sequence(preferred_path: &str) -> Vec<String> {
 }
 
 #[cfg(unix)]
+fn hook_action_command_templates(action_key: &str, preferred_path: &str) -> Vec<String> {
+    let templates: &[&str] = match action_key {
+        "hook.bootstrap" => &[
+            "native.hookenv",
+            "controller --preflight-only --preflight-json --pid <pid>",
+            "controller --inject-json --pid <pid>",
+        ],
+        "hook.query" => &[
+            "objc.classes <filter>",
+            "native.images <filter>",
+            "swift.types <filter>",
+        ],
+        "hook.install" => match preferred_path {
+            "inline-risky" => &[
+                "trace <objc-filter|native-target> # risky-with-external-backend",
+                "stalker <objc-filter|native-target> # risky-with-external-backend",
+                "jhook <class> <selector> [meta] # risky-with-external-backend",
+                "shook <type> <method> # risky-with-external-backend",
+                "hfl <module> <offset> # risky-with-external-backend",
+            ],
+            _ => &[
+                "trace <objc-filter|native-target>",
+                "stalker <objc-filter|native-target>",
+                "jhook <class> <selector> [meta]",
+                "shook <type> <method>",
+                "hfl <module> <offset>",
+            ],
+        },
+        "hook.status" => &[
+            "trace status",
+            "stalker status",
+            "jhook status",
+            "shook status",
+            "hfl status",
+        ],
+        "hook.stop" => &[
+            "trace stop",
+            "stalker stop",
+            "jhook stop",
+            "shook stop",
+            "hfl stop",
+        ],
+        _ => &[],
+    };
+
+    templates.iter().map(|item| (*item).to_string()).collect::<Vec<_>>()
+}
+
+#[cfg(unix)]
 fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
     let command_mode = hook_effective_command_mode(actions);
     let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
@@ -707,6 +756,22 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .map(|item| item.recommendation.clone())
         .or_else(|| blocked_action.map(|item| item.recommendation.clone()));
     let suggested_sequence = hook_automation_suggested_sequence(preferred_path);
+    let command_templates = HOOK_EFFECTIVE_ACTIONS
+        .iter()
+        .map(|(action_key, command_group)| {
+            let templates = hook_action_command_templates(action_key, preferred_path);
+            json!({
+                "actionKey": action_key,
+                "commandGroup": command_group,
+                "templateCount": templates.len(),
+                "templates": templates,
+            })
+        })
+        .collect::<Vec<_>>();
+    let next_action_templates = next_action_key
+        .as_deref()
+        .map(|action_key| hook_action_command_templates(action_key, preferred_path))
+        .unwrap_or_default();
 
     let action_branches = actions
         .iter()
@@ -732,6 +797,9 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextActionReason": next_action_reason,
         "hasSuggestedSequence": !suggested_sequence.is_empty(),
         "suggestedSequence": suggested_sequence,
+        "commandTemplates": command_templates,
+        "nextActionTemplateCount": next_action_templates.len(),
+        "nextActionTemplates": next_action_templates,
         "actionBranches": action_branches,
     })
 }
@@ -6302,6 +6370,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
+        assert!(rendered["hook"]["automation"]["commandTemplates"].is_array());
+        assert_eq!(rendered["hook"]["automation"]["commandTemplates"][0]["actionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 3);
+        assert_eq!(rendered["hook"]["automation"]["nextActionTemplates"][0], "objc.classes <filter>");
         assert!(rendered["hook"]["automation"]["actionBranches"].is_array());
         assert_eq!(
             rendered["hook"]["controller"]["capabilities"]["hookInstallCommandsAllowed"],
@@ -6491,6 +6563,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
+        assert!(rendered["hook"]["automation"]["commandTemplates"].is_array());
+        assert_eq!(rendered["hook"]["automation"]["commandTemplates"][0]["actionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 3);
+        assert_eq!(rendered["hook"]["automation"]["nextActionTemplates"][0], "objc.classes <filter>");
         assert!(rendered["hook"]["automation"]["actionBranches"].is_array());
         assert_eq!(rendered["trace"]["payloadAddressHex"], json!("0x5000"));
         assert_eq!(rendered["handshake"]["hello"]["arch"], "aarch64");
@@ -6567,6 +6643,8 @@ mod tests {
         assert_eq!(automation["nextActionKey"], "hook.status");
         assert_eq!(automation["hasSuggestedSequence"], true);
         assert_eq!(automation["suggestedSequence"][0], "trace status");
+        assert_eq!(automation["nextActionTemplateCount"], 5);
+        assert_eq!(automation["nextActionTemplates"][0], "trace status");
         let branches = automation["actionBranches"].as_array().expect("automation action branches");
         let query_branch = branches
             .iter()
@@ -6660,7 +6738,19 @@ mod tests {
         assert_eq!(automation["preferredPath"], "inline-risky");
         assert_eq!(automation["nextActionKey"], "hook.query");
         assert_eq!(automation["suggestedSequence"][0], "native.hookenv");
+        assert!(automation["commandTemplates"].is_array());
+        assert_eq!(automation["nextActionTemplateCount"], 3);
+        assert_eq!(automation["nextActionTemplates"][0], "objc.classes <filter>");
         assert!(automation["suggestedSequence"][2]
+            .as_str()
+            .unwrap_or_default()
+            .contains("risky-with-external-backend"));
+        let templates = automation["commandTemplates"].as_array().expect("command templates");
+        let install_templates = templates
+            .iter()
+            .find(|item| item["actionKey"] == "hook.install")
+            .expect("hook.install templates");
+        assert!(install_templates["templates"][0]
             .as_str()
             .unwrap_or_default()
             .contains("risky-with-external-backend"));
