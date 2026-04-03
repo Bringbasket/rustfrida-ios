@@ -1514,12 +1514,15 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .as_ref()
         .and_then(|entry| entry.get("usedDefault"))
         .and_then(Value::as_bool)
-        .unwrap_or(false);
+        .unwrap_or(!routing_decision_ready_example_query_only_available);
     let routing_decision_ready_example_query_only_reason = routing_decision_ready_example_query_only_result
         .as_ref()
         .and_then(|entry| entry.get("reason"))
         .and_then(Value::as_str)
-        .map(ToOwned::to_owned);
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            (!routing_decision_ready_example_query_only_available).then(|| "missing-error-code".to_string())
+        });
     let routing_decision_ready_example_query_only_phase = routing_decision_ready_example_query_only_result
         .as_ref()
         .and_then(|entry| entry.get("effective"))
@@ -1682,12 +1685,15 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .as_ref()
         .and_then(|entry| entry.get("usedDefault"))
         .and_then(Value::as_bool)
-        .unwrap_or(false);
+        .unwrap_or(!routing_decision_ready_example_query_only_phase_available);
     let routing_decision_ready_example_query_only_phase_reason = routing_decision_ready_example_query_only_phase_result
         .as_ref()
         .and_then(|entry| entry.get("reason"))
         .and_then(Value::as_str)
-        .map(ToOwned::to_owned);
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            (!routing_decision_ready_example_query_only_phase_available).then(|| "missing-phase".to_string())
+        });
     let routing_decision_ready_example_query_only_would_use_query_phase = routing_decision_ready_example_query_only_phase_result
         .as_ref()
         .and_then(|entry| entry.get("effective"))
@@ -8449,11 +8455,11 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["usedDefault"],
-            false
+            true
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["reason"],
-            json!(null)
+            "missing-error-code"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["result"],
@@ -8553,11 +8559,11 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["usedDefault"],
-            false
+            true
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["reason"],
-            json!(null)
+            "missing-phase"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["result"],
