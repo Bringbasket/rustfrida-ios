@@ -8475,17 +8475,26 @@ undefined;
                                     typeof result.hasDispatchThunks !== 'boolean' ||
                                     typeof result.demangledCount !== 'number' ||
                                     typeof result.hasDemangledEntries !== 'boolean' ||
+                                    !Array.isArray(result.ownerTypeList) ||
+                                    !Array.isArray(result.memberKindList) ||
+                                    !Array.isArray(result.resultTypeList) ||
                                     !Array.isArray(result.moduleNameList) ||
                                     !Array.isArray(result.memberNameList) ||
                                     !Array.isArray(result.typeNameList) ||
                                     !Array.isArray(result.sourceKindList) ||
+                                    !Array.isArray(result.ownerTypes) ||
+                                    !Array.isArray(result.memberKinds) ||
+                                    !Array.isArray(result.resultTypes) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.memberNames) ||
                                     !Array.isArray(result.types) ||
                                     !Array.isArray(result.sourceKinds)) {
                                 return false;
                             }
-                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                            if (result.ownerTypeList.length !== result.ownerTypes.length ||
+                                    result.memberKindList.length !== result.memberKinds.length ||
+                                    result.resultTypeList.length !== result.resultTypes.length ||
+                                    result.moduleNameList.length !== result.moduleNames.length ||
                                     result.memberNameList.length !== result.memberNames.length ||
                                     result.typeNameList.length !== result.types.length ||
                                     result.sourceKindList.length !== result.sourceKinds.length) {
@@ -8559,7 +8568,10 @@ undefined;
                                     typeof sourceSummary.lastTypeName === 'string' &&
                                     typeof sourceSummary.firstMemberName === 'string' &&
                                     typeof sourceSummary.lastMemberName === 'string'
-                                ));
+                                )) &&
+                                (result.ownerTypes.length === 0 || result.ownerTypeList[0] === result.ownerTypes[0].ownerTypeName) &&
+                                (result.memberKinds.length === 0 || result.memberKindList[0] === result.memberKinds[0].memberKind) &&
+                                (result.resultTypes.length === 0 || result.resultTypeList[0] === result.resultTypes[0].resultTypeName);
                         })()"
                     )
                     .expect("agent swift vtable result"),
