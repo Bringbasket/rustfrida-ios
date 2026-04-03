@@ -3793,6 +3793,7 @@ fn print_controller_help() {
     println!("  swift.typesOfKind <kind> <query>|swift.typesOfKind <module> -- <kind> <query>");
     println!("  swift.typeMethods <type>|swift.typeMethods <module> -- <type>");
     println!("  swift.methods <type> <method>|swift.methods <module> -- <type> <method>");
+    println!("  swift.findSymbolInfo/findProtocolInfo/findConformanceInfo/findTypeInfo/findMethodInfo/findMetadataInfo/findVtableInfo/findWitnessTableInfo/findTypeLayoutInfo ... (info aliases)");
     println!("  swift.findSymbols/findProtocols/findConformances/findMetadata/findVtable/findWitnessTable/findTypeLayout/findTypes/findTypesOfKind/findMethodOwners/findTypeMethods/findMethods ... (query aliases)");
     println!("  exit");
 }
@@ -4129,6 +4130,37 @@ mod tests {
                     "kind": "swift.protocols",
                     "moduleName": null,
                     "query": "Renderable",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.findTypeInfo ViewController"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "swift.type_info",
+                    "moduleName": null,
+                    "typeName": "ViewController",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.findMethodInfo ViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "swift.method_info",
+                    "moduleName": null,
+                    "typeName": "ViewController",
+                    "methodName": "viewDidLoad",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.findSymbolInfo ViewController"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "swift.symbol_info",
+                    "moduleName": null,
+                    "symbolName": "ViewController",
                 })
             })
         );
@@ -4535,7 +4567,15 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findProtocolInfo Demo -- Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.conformanceInfo Demo -- ViewController Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findConformanceInfo Demo -- ViewController Renderable"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -4543,11 +4583,23 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findTypeInfo Demo -- ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.methodInfo Demo -- ViewController viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findMethodInfo Demo -- ViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.symbolInfo Demo -- ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findSymbolInfo Demo -- ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -4567,11 +4619,19 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findMetadataInfo Demo -- ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.vtable ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
             AgentCommand::from_legacy("swift.vtableInfo Demo -- ViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findVtableInfo Demo -- ViewController viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -4583,11 +4643,19 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findWitnessTableInfo Demo -- ViewController Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.typeLayout ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
             AgentCommand::from_legacy("swift.typeLayoutInfo Demo -- ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findTypeLayoutInfo Demo -- ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -4703,28 +4771,45 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.segmentInfo UIKit -- __TEXT"));
         assert!(!command_requires_inline_hooks("native.symbolInfo malloc"));
         assert!(!command_requires_inline_hooks("swift.protocolInfo Renderable"));
+        assert!(!command_requires_inline_hooks("swift.findProtocolInfo Renderable"));
         assert!(!command_requires_inline_hooks(
             "swift.conformanceInfo ViewController Renderable"
         ));
+        assert!(!command_requires_inline_hooks(
+            "swift.findConformanceInfo ViewController Renderable"
+        ));
         assert!(!command_requires_inline_hooks("swift.typeInfo ViewController"));
+        assert!(!command_requires_inline_hooks("swift.findTypeInfo ViewController"));
         assert!(!command_requires_inline_hooks(
             "swift.methodInfo ViewController viewDidLoad"
         ));
+        assert!(!command_requires_inline_hooks(
+            "swift.findMethodInfo ViewController viewDidLoad"
+        ));
         assert!(!command_requires_inline_hooks("swift.symbolInfo ViewController"));
+        assert!(!command_requires_inline_hooks("swift.findSymbolInfo ViewController"));
         assert!(!command_requires_inline_hooks("swift.protocols"));
         assert!(!command_requires_inline_hooks("swift.conformances ViewController"));
         assert!(!command_requires_inline_hooks("swift.metadata ViewController"));
         assert!(!command_requires_inline_hooks("swift.metadataInfo ViewController"));
+        assert!(!command_requires_inline_hooks("swift.findMetadataInfo ViewController"));
         assert!(!command_requires_inline_hooks("swift.vtable ViewController"));
         assert!(!command_requires_inline_hooks(
             "swift.vtableInfo ViewController viewDidLoad"
+        ));
+        assert!(!command_requires_inline_hooks(
+            "swift.findVtableInfo ViewController viewDidLoad"
         ));
         assert!(!command_requires_inline_hooks("swift.witnessTable Renderable"));
         assert!(!command_requires_inline_hooks(
             "swift.witnessTableInfo ViewController Renderable"
         ));
+        assert!(!command_requires_inline_hooks(
+            "swift.findWitnessTableInfo ViewController Renderable"
+        ));
         assert!(!command_requires_inline_hooks("swift.typeLayout ViewController"));
         assert!(!command_requires_inline_hooks("swift.typeLayoutInfo ViewController"));
+        assert!(!command_requires_inline_hooks("swift.findTypeLayoutInfo ViewController"));
         assert!(!command_requires_inline_hooks("swift.types ViewController"));
         assert!(!command_requires_inline_hooks("swift.findTypes ViewController"));
         assert!(!command_requires_inline_hooks(

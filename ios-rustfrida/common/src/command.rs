@@ -191,20 +191,29 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("pac.stripdata ")
         || command.starts_with("swift.demangle ")
         || command.starts_with("swift.symbolInfo ")
+        || command.starts_with("swift.findSymbolInfo ")
         || command.starts_with("swift.protocolInfo ")
+        || command.starts_with("swift.findProtocolInfo ")
         || command.starts_with("swift.conformanceInfo ")
+        || command.starts_with("swift.findConformanceInfo ")
         || command.starts_with("swift.protocols ")
         || command.starts_with("swift.conformances ")
         || command.starts_with("swift.metadata ")
         || command.starts_with("swift.metadataInfo ")
+        || command.starts_with("swift.findMetadataInfo ")
         || command.starts_with("swift.typeInfo ")
+        || command.starts_with("swift.findTypeInfo ")
         || command.starts_with("swift.methodInfo ")
+        || command.starts_with("swift.findMethodInfo ")
         || command.starts_with("swift.vtable ")
         || command.starts_with("swift.vtableInfo ")
+        || command.starts_with("swift.findVtableInfo ")
         || command.starts_with("swift.witnessTable ")
         || command.starts_with("swift.witnessTableInfo ")
+        || command.starts_with("swift.findWitnessTableInfo ")
         || command.starts_with("swift.typeLayout ")
         || command.starts_with("swift.typeLayoutInfo ")
+        || command.starts_with("swift.findTypeLayoutInfo ")
         || command.starts_with("swift.symbols ")
         || command.starts_with("swift.methodOwners ")
         || command.starts_with("swift.typesOfKind ")
@@ -1214,7 +1223,30 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("swift.findProtocolInfo ") {
+        let (module_name, protocol_name) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.protocol_info",
+            "moduleName": module_name,
+            "protocolName": protocol_name,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("swift.conformanceInfo ") {
+        let (module_name, query) = parse_module_query(raw)?;
+        let parts = query.split_whitespace().collect::<Vec<_>>();
+        if parts.len() < 2 {
+            return None;
+        }
+        return Some(json!({
+            "kind": "swift.conformance_info",
+            "moduleName": module_name,
+            "typeName": parts[0],
+            "protocolName": parts[1..].join(" "),
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findConformanceInfo ") {
         let (module_name, query) = parse_module_query(raw)?;
         let parts = query.split_whitespace().collect::<Vec<_>>();
         if parts.len() < 2 {
@@ -1255,7 +1287,26 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("swift.findTypeInfo ") {
+        let (module_name, type_name) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.type_info",
+            "moduleName": module_name,
+            "typeName": type_name,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("swift.methodInfo ") {
+        let (module_name, type_name, method_name) = parse_swift_methods(raw)?;
+        return Some(json!({
+            "kind": "swift.method_info",
+            "moduleName": module_name,
+            "typeName": type_name,
+            "methodName": method_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findMethodInfo ") {
         let (module_name, type_name, method_name) = parse_swift_methods(raw)?;
         return Some(json!({
             "kind": "swift.method_info",
@@ -1283,6 +1334,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("swift.findMetadataInfo ") {
+        let (module_name, type_name) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.metadata_info",
+            "moduleName": module_name,
+            "typeName": type_name,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("swift.vtable ") {
         let (module_name, query) = parse_module_query(raw)?;
         return Some(json!({
@@ -1293,6 +1353,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(raw) = command.strip_prefix("swift.vtableInfo ") {
+        let (module_name, type_name, member_name) = parse_swift_methods(raw)?;
+        return Some(json!({
+            "kind": "swift.vtable_info",
+            "moduleName": module_name,
+            "typeName": type_name,
+            "memberName": member_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findVtableInfo ") {
         let (module_name, type_name, member_name) = parse_swift_methods(raw)?;
         return Some(json!({
             "kind": "swift.vtable_info",
@@ -1321,6 +1391,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("swift.findWitnessTableInfo ") {
+        let (module_name, type_name, protocol_name) = parse_swift_methods(raw)?;
+        return Some(json!({
+            "kind": "swift.witness_table_info",
+            "moduleName": module_name,
+            "typeName": type_name,
+            "protocolName": protocol_name,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("swift.typeLayout ") {
         let (module_name, query) = parse_module_query(raw)?;
         return Some(json!({
@@ -1339,12 +1419,30 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("swift.findTypeLayoutInfo ") {
+        let (module_name, type_name) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.type_layout_info",
+            "moduleName": module_name,
+            "typeName": type_name,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("swift.symbols ") {
         let (module_name, query) = parse_module_query(raw)?;
         return Some(json!({
             "kind": "swift.symbols",
             "moduleName": module_name,
             "query": query,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("swift.findSymbolInfo ") {
+        let (module_name, symbol_name) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "swift.symbol_info",
+            "moduleName": module_name,
+            "symbolName": symbol_name,
         }));
     }
 
@@ -2399,7 +2497,15 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findProtocolInfo Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.conformanceInfo ViewController Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findConformanceInfo ViewController Renderable"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -2439,11 +2545,23 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findTypeInfo ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.methodInfo ViewController viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findMethodInfo ViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.symbolInfo ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findSymbolInfo ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -2467,11 +2585,19 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findMetadataInfo ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.vtable ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
             AgentCommand::from_legacy("swift.vtableInfo ViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findVtableInfo ViewController viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -2483,11 +2609,19 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("swift.findWitnessTableInfo ViewController Renderable"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("swift.typeLayout ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
             AgentCommand::from_legacy("swift.typeLayoutInfo ViewController"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("swift.findTypeLayoutInfo ViewController"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(

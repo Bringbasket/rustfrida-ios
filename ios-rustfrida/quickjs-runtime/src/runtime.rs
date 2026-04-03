@@ -2402,6 +2402,24 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() {
+                            return __iosRustFridaAgentApi.handle('swift.findSymbolInfo ViewController') === __iosRustFridaAgentApi.handle('swift.symbolInfo ViewController') &&
+                                __iosRustFridaAgentApi.handle('swift.findProtocolInfo Renderable') === __iosRustFridaAgentApi.handle('swift.protocolInfo Renderable') &&
+                                __iosRustFridaAgentApi.handle('swift.findConformanceInfo ViewController Renderable') === __iosRustFridaAgentApi.handle('swift.conformanceInfo ViewController Renderable') &&
+                                __iosRustFridaAgentApi.handle('swift.findMetadataInfo ViewController') === __iosRustFridaAgentApi.handle('swift.metadataInfo ViewController') &&
+                                __iosRustFridaAgentApi.handle('swift.findTypeInfo ViewController') === __iosRustFridaAgentApi.handle('swift.typeInfo ViewController') &&
+                                __iosRustFridaAgentApi.handle('swift.findMethodInfo ViewController viewDidLoad') === __iosRustFridaAgentApi.handle('swift.methodInfo ViewController viewDidLoad') &&
+                                __iosRustFridaAgentApi.handle('swift.findVtableInfo ViewController viewDidLoad') === __iosRustFridaAgentApi.handle('swift.vtableInfo ViewController viewDidLoad') &&
+                                __iosRustFridaAgentApi.handle('swift.findWitnessTableInfo ViewController Renderable') === __iosRustFridaAgentApi.handle('swift.witnessTableInfo ViewController Renderable') &&
+                                __iosRustFridaAgentApi.handle('swift.findTypeLayoutInfo ViewController') === __iosRustFridaAgentApi.handle('swift.typeLayoutInfo ViewController');
+                        })()"
+                    )
+                    .expect("agent swift info aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.conformances ViewController'); return value === '' || value.indexOf(' : ') !== -1; })()")
                     .expect("agent swift conformances"),
                 "true"
