@@ -509,7 +509,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - 现在也可以在一次性注入后直接跑单条命令：`--command "<cmd>"`。适合自动化里做单发查询或 hook 控制，不必先进 REPL。
 - 如果要给脚本消费结果，可以在 `--command` 基础上加 `--command-json`；输出单个 JSON，包含 `ok / command / kind / payload / payloadJson / items / error / logs`。
 - `--command-json` 会静默完成握手和可选 bootstrap script，不再把 plan / trace / hello/ping 文本混到命令结果前面；如果命令前阶段失败，也会返回结构化错误 JSON。
-- `--command-json` 在命令真正执行前就失败时，现在也会附带 `hook / environment / doctor / plan / preflight / trace / diagnostics / handshake` 上下文，方便脚本直接区分是注入前配置问题、hook policy 模式问题、bootstrap 问题，还是命令本身失败；其中新增的顶层 `hook.controller/target` 会把 `commandMode / capabilities / recommendedActions`（含 `actionKey + priority`）平铺出来，脚本不必再深入 `environment/preflight` 才能拿到策略分支依据。
+- `--command-json` 在命令真正执行前就失败时，现在也会附带 `hook / environment / doctor / plan / preflight / trace / diagnostics / handshake` 上下文，方便脚本直接区分是注入前配置问题、hook policy 模式问题、bootstrap 问题，还是命令本身失败；其中顶层 `hook` 现在会同时给出 `hook.controller / hook.target / hook.effectiveActions`：前两者平铺 `commandMode / capabilities / recommendedActions`（含 `actionKey + priority`），后者会按同一 `actionKey` 汇总双端最终可执行性，并补 `blockedBy(none/controller/target/both)` 便于脚本直接判断阻断来源。
 - 对 `objc.* / native.* / pac.* / swift.*` 这类 runtime 查询命令，`--command-json` 现在也会尽量回传稳定的 `payloadJson` 字段，里面直接带 `count / classes / methods / images / symbols / types / report / text` 等结构化内容，不再只能从换行文本里二次解析。
 - 这批 `payloadJson` 里的列表和嵌套集合现在也基本统一补了 `has* / first* / last*` 摘要字段；脚本如果只是想判断“有没有结果”“第一条/最后一条是谁”，通常不必再手动扫整个数组。
 - 对单值查询结果，这批 `payloadJson` 现在也继续统一补齐 `resolved* / has*` 顶层别名；像 `swift.available / swift.demangle / native.base / native.images / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName` 这类结果，脚本侧不必再回到嵌套对象里取同一份规范化字段。
