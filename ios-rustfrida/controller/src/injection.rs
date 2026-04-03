@@ -554,6 +554,143 @@ fn hook_effective_to_json(actions: &[HookEffectiveAction]) -> Value {
 }
 
 #[cfg(unix)]
+fn hook_effective_action_order(action_key: &str) -> usize {
+    HOOK_EFFECTIVE_ACTIONS
+        .iter()
+        .position(|(key, _)| *key == action_key)
+        .unwrap_or(usize::MAX)
+}
+
+#[cfg(unix)]
+fn hook_automation_branch(action: &HookEffectiveAction) -> &'static str {
+    if action.allowed {
+        "run"
+    } else {
+        match action.blocked_by {
+            "controller" => "skip-controller-policy",
+            "target" => "skip-target-policy",
+            "both" => "skip-both-policies",
+            _ => "skip-policy",
+        }
+    }
+}
+
+#[cfg(unix)]
+fn json_u64_field(value: &Value, key: &str) -> u64 {
+    value.get(key).and_then(Value::as_u64).unwrap_or(0)
+}
+
+#[cfg(unix)]
+fn json_array_len(value: &Value, key: &str) -> usize {
+    value.get(key).and_then(Value::as_array).map_or(0, Vec::len)
+}
+
+#[cfg(unix)]
+fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
+    let command_mode = hook_effective_command_mode(actions);
+    let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
+    let loaded_in_target_count = json_u64_field(backend_matrix, "loadedInTargetCount");
+    let filesystem_only_in_either_count = json_u64_field(backend_matrix, "filesystemOnlyInEitherCount");
+    let shared_backend_count = json_array_len(backend_matrix, "sharedBackendIds");
+
+    let backend_pressure = if loaded_in_controller_count > 0 && loaded_in_target_count > 0 {
+        "both"
+    } else if loaded_in_controller_count > 0 {
+        "controller"
+    } else if loaded_in_target_count > 0 {
+        "target"
+    } else if filesystem_only_in_either_count > 0 {
+        "filesystem-only"
+    } else {
+        "none"
+    };
+
+    let preferred_path = match command_mode {
+        "allowed" => {
+            if backend_pressure == "none" {
+                "inline-safe"
+            } else {
+                "inline-risky"
+            }
+        }
+        "query-only" => "query-only",
+        "cleanup-only" => "cleanup-only",
+        _ => "blocked",
+    };
+
+    let mode_rank = |action_key: &str| -> u8 {
+        match command_mode {
+            "cleanup-only" => match action_key {
+                "hook.status" => 0,
+                "hook.stop" => 1,
+                "hook.bootstrap" => 2,
+                "hook.query" => 3,
+                "hook.install" => 4,
+                _ => 5,
+            },
+            "query-only" => match action_key {
+                "hook.query" => 0,
+                "hook.status" => 1,
+                "hook.stop" => 2,
+                "hook.bootstrap" => 3,
+                "hook.install" => 4,
+                _ => 5,
+            },
+            _ => match action_key {
+                "hook.query" => 0,
+                "hook.bootstrap" => 1,
+                "hook.install" => 2,
+                "hook.status" => 3,
+                "hook.stop" => 4,
+                _ => 5,
+            },
+        }
+    };
+
+    let next_action = actions
+        .iter()
+        .filter(|item| item.allowed)
+        .min_by_key(|item| (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key)));
+    let blocked_action = actions
+        .iter()
+        .filter(|item| !item.allowed)
+        .min_by_key(|item| (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key)));
+
+    let next_action_key = next_action
+        .or(blocked_action)
+        .map(|item| item.action_key)
+        .map(ToOwned::to_owned);
+    let next_action_reason = next_action
+        .map(|item| item.recommendation.clone())
+        .or_else(|| blocked_action.map(|item| item.recommendation.clone()));
+
+    let action_branches = actions
+        .iter()
+        .map(|item| {
+            json!({
+                "actionKey": item.action_key,
+                "commandGroup": item.command_group,
+                "allowed": item.allowed,
+                "branch": hook_automation_branch(item),
+                "blockedBy": item.blocked_by,
+                "priority": item.priority,
+                "recommendation": item.recommendation,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    json!({
+        "commandMode": command_mode,
+        "preferredPath": preferred_path,
+        "backendPressure": backend_pressure,
+        "sharedBackendCount": shared_backend_count,
+        "nextActionKey": next_action_key,
+        "nextActionReason": next_action_reason,
+        "actionBranches": action_branches,
+    })
+}
+
+#[cfg(unix)]
 fn hook_shortcuts_to_json(
     injection_environment: &InjectionEnvironmentReport,
     preflight: &InjectionTargetPreflightReport,
@@ -565,6 +702,8 @@ fn hook_shortcuts_to_json(
     let target_actions =
         hook_environment_recommended_actions(&preflight.target_hook_environment, Some(&preflight.target_hook_strategy));
     let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
+    let backend_matrix =
+        hook_backend_matrix_to_json(&injection_environment.hook_environment, &preflight.target_hook_environment);
 
     json!({
         "controller": hook_shortcut_entry_to_json(
@@ -577,10 +716,8 @@ fn hook_shortcuts_to_json(
         ),
         "effectiveActions": hook_effective_actions_to_json(&effective_actions),
         "effective": hook_effective_to_json(&effective_actions),
-        "backendMatrix": hook_backend_matrix_to_json(
-            &injection_environment.hook_environment,
-            &preflight.target_hook_environment,
-        ),
+        "backendMatrix": backend_matrix.clone(),
+        "automation": hook_automation_to_json(&effective_actions, &backend_matrix),
     })
 }
 
@@ -4536,15 +4673,15 @@ mod tests {
     use super::{
         analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
         build_trace_spec, command_requests_inline_hook_install, command_requires_inline_hooks,
-        ensure_inline_hooks_allowed_for_command, hook_backend_matrix_to_json, hook_effective_actions,
-        hook_effective_actions_to_json, hook_effective_to_json, hook_environment_requires_notice,
-        parse_hfl_command, parse_jhook_command, parse_shook_command, parse_stalker_command, parse_trace_command,
-        print_injection_preflight, quote_js_string, render_bootstrap_summary, render_command_error_json,
-        render_command_error_json_with_context, render_command_outcome_json, render_image_list_json,
-        render_injection_environment, render_injection_result_json, render_loader_symbol, render_preflight_json,
-        CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, NativeHookTarget, NativeLogArgument,
-        NativeLogReturn, NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand,
-        TraceCommand,
+        ensure_inline_hooks_allowed_for_command, hook_automation_to_json, hook_backend_matrix_to_json,
+        hook_effective_actions, hook_effective_actions_to_json, hook_effective_to_json,
+        hook_environment_requires_notice, parse_hfl_command, parse_jhook_command, parse_shook_command,
+        parse_stalker_command, parse_trace_command, print_injection_preflight, quote_js_string,
+        render_bootstrap_summary, render_command_error_json, render_command_error_json_with_context,
+        render_command_outcome_json, render_image_list_json, render_injection_environment,
+        render_injection_result_json, render_loader_symbol, render_preflight_json, CommandJsonContext,
+        CommandOutcome, CommandOutcomeKind, HflCommand, NativeHookTarget, NativeLogArgument, NativeLogReturn,
+        NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
     };
     use common::{
         AgentCommand, ControllerConfig, Error, Hello, InjectionMode, DEFAULT_AGENT_PATH, DEFAULT_AGENT_PATH_ROOTFUL,
@@ -6114,6 +6251,10 @@ mod tests {
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["both"], 0);
         assert!(rendered["hook"]["backendMatrix"]["entries"].is_array());
         assert_eq!(rendered["hook"]["backendMatrix"]["entryCount"], 0);
+        assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
+        assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
+        assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
+        assert!(rendered["hook"]["automation"]["actionBranches"].is_array());
         assert_eq!(
             rendered["hook"]["controller"]["capabilities"]["hookInstallCommandsAllowed"],
             true
@@ -6297,6 +6438,10 @@ mod tests {
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["both"], 0);
         assert!(rendered["hook"]["backendMatrix"]["entries"].is_array());
         assert_eq!(rendered["hook"]["backendMatrix"]["entryCount"], 0);
+        assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
+        assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
+        assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
+        assert!(rendered["hook"]["automation"]["actionBranches"].is_array());
         assert_eq!(rendered["trace"]["payloadAddressHex"], json!("0x5000"));
         assert_eq!(rendered["handshake"]["hello"]["arch"], "aarch64");
         assert_eq!(rendered["handshake"]["stage"], "completed");
@@ -6364,6 +6509,23 @@ mod tests {
         assert_eq!(effective["blockedBySummary"]["controller"], 1);
         assert_eq!(effective["blockedBySummary"]["target"], 2);
         assert_eq!(effective["blockedBySummary"]["both"], 1);
+
+        let backend_matrix = hook_backend_matrix_to_json(&report, &report);
+        let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+        assert_eq!(automation["preferredPath"], "cleanup-only");
+        assert_eq!(automation["backendPressure"], "none");
+        assert_eq!(automation["nextActionKey"], "hook.status");
+        let branches = automation["actionBranches"].as_array().expect("automation action branches");
+        let query_branch = branches
+            .iter()
+            .find(|item| item["actionKey"] == "hook.query")
+            .expect("query branch");
+        assert_eq!(query_branch["branch"], "skip-target-policy");
+        let status_branch = branches
+            .iter()
+            .find(|item| item["actionKey"] == "hook.status")
+            .expect("status branch");
+        assert_eq!(status_branch["branch"], "run");
     }
 
     #[test]
@@ -6423,6 +6585,28 @@ mod tests {
             .expect("ellekit entry");
         assert_eq!(shared["visibility"], "both");
         assert_eq!(shared["loadedBy"], "controller");
+
+        let controller_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-risky".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let target_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-risky".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let controller_actions = hook_environment_recommended_actions(&controller_report, Some(&controller_strategy));
+        let target_actions = hook_environment_recommended_actions(&target_report, Some(&target_strategy));
+        let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
+        let automation = hook_automation_to_json(&effective_actions, &rendered);
+        assert_eq!(automation["backendPressure"], "both");
+        assert_eq!(automation["preferredPath"], "inline-risky");
+        assert_eq!(automation["nextActionKey"], "hook.query");
     }
 
     #[test]
