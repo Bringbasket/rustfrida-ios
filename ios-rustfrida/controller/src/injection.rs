@@ -8494,6 +8494,14 @@ mod tests {
             "policy-review"
         );
         assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingEntries"][0]["effectiveEscalationKey"],
+            "policy-review"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingEntries"][0]["effectivePhase"],
+            "diagnose"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["lookupKey"],
             "errorCode"
         );
