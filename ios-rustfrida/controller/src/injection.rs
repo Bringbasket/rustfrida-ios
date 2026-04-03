@@ -317,6 +317,7 @@ fn hook_strategy_to_json(strategy: &native_api::HookStrategyDecision) -> Value {
     json!({
         "policy": strategy.policy.as_str(),
         "strategy": strategy.strategy,
+        "commandMode": strategy.command_mode(),
         "allowed": strategy.allowed,
         "inlineHooksAllowed": strategy.inline_hooks_allowed,
         "bootstrapInjectionAllowed": strategy.bootstrap_injection_allowed(),
@@ -329,38 +330,18 @@ fn hook_strategy_to_json(strategy: &native_api::HookStrategyDecision) -> Value {
 }
 
 #[cfg(unix)]
-fn hook_strategy_mode_label(strategy: &native_api::HookStrategyDecision) -> &'static str {
-    if strategy.hook_install_commands_allowed() {
-        "allowed"
-    } else if strategy.query_commands_allowed() {
-        "query-only"
-    } else if strategy.hook_status_commands_allowed() || strategy.hook_stop_commands_allowed() {
-        "cleanup-only"
-    } else {
-        "blocked"
-    }
-}
-
-#[cfg(unix)]
 fn hook_environment_to_json(
     report: &native_api::HookEnvironmentReport,
     strategy: Option<&native_api::HookStrategyDecision>,
 ) -> Value {
     let risk_level = if let Some(strategy) = strategy {
-        if !strategy.bootstrap_injection_allowed() {
-            "blocked"
-        } else if !strategy.query_commands_allowed()
-            && (strategy.hook_status_commands_allowed() || strategy.hook_stop_commands_allowed())
-        {
-            "cleanup-only"
-        } else if !strategy.hook_install_commands_allowed() {
-            "query-only"
-        } else if report.loaded_backend_count() > 0 {
-            "risky"
-        } else if report.filesystem_only_backend_count() > 0 {
-            "cautious"
-        } else {
-            "normal"
+        match strategy.command_mode() {
+            "blocked" => "blocked",
+            "cleanup-only" => "cleanup-only",
+            "query-only" => "query-only",
+            _ if report.loaded_backend_count() > 0 => "risky",
+            _ if report.filesystem_only_backend_count() > 0 => "cautious",
+            _ => "normal",
         }
     } else if report.loaded_backend_count() > 0 {
         "risky"
@@ -374,6 +355,7 @@ fn hook_environment_to_json(
         "activeBackend": report.active_backend,
         "conflictState": report.conflict_state(),
         "riskLevel": risk_level,
+        "commandMode": strategy.map(|item| item.command_mode()),
         "coexistenceLayerAvailable": false,
         "loadedBackendCount": report.loaded_backend_count(),
         "filesystemOnlyBackendCount": report.filesystem_only_backend_count(),
@@ -709,7 +691,7 @@ fn analyze_doctor_report(
             status,
             format!(
                 "controller hook strategy is {} ({}) query={} install={} status={} stop={}",
-                hook_strategy_mode_label(&injection_environment.hook_strategy),
+                injection_environment.hook_strategy.command_mode(),
                 injection_environment.hook_strategy.strategy,
                 injection_environment.hook_strategy.query_commands_allowed(),
                 injection_environment.hook_strategy.hook_install_commands_allowed(),
@@ -749,7 +731,7 @@ fn analyze_doctor_report(
             format!(
                 "target hook strategy for pid {} is {} ({}) query={} install={} status={} stop={}",
                 pid,
-                hook_strategy_mode_label(&preflight.target_hook_strategy),
+                preflight.target_hook_strategy.command_mode(),
                 preflight.target_hook_strategy.strategy,
                 preflight.target_hook_strategy.query_commands_allowed(),
                 preflight.target_hook_strategy.hook_install_commands_allowed(),
@@ -2039,9 +2021,10 @@ fn print_injection_preflight(report: &InjectionTargetPreflightReport) {
         report.thread_bootstrap_canonicalized
     );
     println!(
-        "target hook strategy: policy={} strategy={} allowed={} inline_hooks_allowed={} query_commands_allowed={} hook_install_commands_allowed={} hook_status_commands_allowed={} hook_stop_commands_allowed={}",
+        "target hook strategy: policy={} strategy={} command_mode={} allowed={} inline_hooks_allowed={} query_commands_allowed={} hook_install_commands_allowed={} hook_status_commands_allowed={} hook_stop_commands_allowed={}",
         report.target_hook_strategy.policy.as_str(),
         report.target_hook_strategy.strategy,
+        report.target_hook_strategy.command_mode(),
         report.target_hook_strategy.allowed,
         report.target_hook_strategy.inline_hooks_allowed,
         report.target_hook_strategy.query_commands_allowed(),
@@ -2092,11 +2075,12 @@ fn render_injection_environment(report: &InjectionEnvironmentReport) -> Vec<Stri
         .map(|value| format!("{value}ms"))
         .unwrap_or_else(|| "disabled".into());
     let mut lines = vec![format!(
-        "injection environment: dry_run={} bootstrap_wait={} hook_policy={} strategy={} allowed={} inline_hooks_allowed={} query_commands_allowed={} hook_install_commands_allowed={} hook_status_commands_allowed={} hook_stop_commands_allowed={}",
+        "injection environment: dry_run={} bootstrap_wait={} hook_policy={} strategy={} command_mode={} allowed={} inline_hooks_allowed={} query_commands_allowed={} hook_install_commands_allowed={} hook_status_commands_allowed={} hook_stop_commands_allowed={}",
         report.dry_run,
         bootstrap_wait,
         report.hook_policy.as_str(),
         report.hook_strategy.strategy,
+        report.hook_strategy.command_mode(),
         report.hook_strategy.allowed,
         report.hook_strategy.inline_hooks_allowed,
         report.hook_strategy.query_commands_allowed(),
@@ -5445,6 +5429,7 @@ mod tests {
         assert_eq!(rendered["mode"], "attach");
         assert_eq!(rendered["preflightOnly"], true);
         assert_eq!(rendered["environment"]["hookPolicy"], "warn");
+        assert_eq!(rendered["environment"]["hookStrategy"]["commandMode"], "allowed");
         assert_eq!(rendered["doctor"]["ready"], false);
         assert_eq!(rendered["plan"]["target"]["pid"], 42);
         assert_eq!(rendered["plan"]["bootstrap"]["stackSizeHex"], json!("0x4000"));
@@ -5618,6 +5603,7 @@ mod tests {
         assert_eq!(rendered["command"], "objc.classes UIView");
         assert_eq!(rendered["doctor"]["failureCount"], 1);
         assert!(rendered["preflight"].is_object());
+        assert_eq!(rendered["environment"]["hookStrategy"]["commandMode"], "allowed");
         assert_eq!(rendered["environment"]["hookStrategy"]["bootstrapInjectionAllowed"], true);
         assert_eq!(rendered["environment"]["hookStrategy"]["queryCommandsAllowed"], true);
         assert_eq!(rendered["environment"]["hookStrategy"]["hookInstallCommandsAllowed"], true);
@@ -7165,7 +7151,7 @@ mod tests {
         assert!(!hook_environment_requires_notice("active=<none>"));
         assert!(!hook_environment_requires_notice(""));
         assert!(!hook_environment_requires_notice(
-            "active=<none>\nconflict_state=none\nrisk_level=normal\npolicy=warn\nstrategy=internal-inline\nallowed=true\ninline_hooks_allowed=true\nbootstrap_injection_allowed=true\nquery_commands_allowed=true\nhook_install_commands_allowed=true\nhook_status_commands_allowed=true\nhook_stop_commands_allowed=true\ncoexistence_layer_available=false\nloaded_backend_count=0\nfilesystem_only_backend_count=0\nloaded_image_count=0\nfilesystem_path_count=0"
+            "active=<none>\nconflict_state=none\nrisk_level=normal\npolicy=warn\nstrategy=internal-inline\ncommand_mode=allowed\nallowed=true\ninline_hooks_allowed=true\nbootstrap_injection_allowed=true\nquery_commands_allowed=true\nhook_install_commands_allowed=true\nhook_status_commands_allowed=true\nhook_stop_commands_allowed=true\ncoexistence_layer_available=false\nloaded_backend_count=0\nfilesystem_only_backend_count=0\nloaded_image_count=0\nfilesystem_path_count=0"
         ));
     }
 
@@ -7210,6 +7196,7 @@ mod tests {
         assert!(lines[0].contains("dry_run=true"));
         assert!(lines[0].contains("bootstrap_wait=1500ms"));
         assert!(lines[0].contains("strategy=internal-inline-risky"));
+        assert!(lines[0].contains("command_mode=allowed"));
         assert!(lines[0].contains("inline_hooks_allowed=true"));
         assert!(lines[0].contains("query_commands_allowed=true"));
         assert!(lines[0].contains("hook_install_commands_allowed=true"));

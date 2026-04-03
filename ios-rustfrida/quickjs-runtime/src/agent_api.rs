@@ -2299,6 +2299,7 @@ function formatHookEnvironmentReport(report) {
     lines.push('risk_level=' + String(report.riskLevel));
     lines.push('policy=' + String(report.policy));
     lines.push('strategy=' + String(report.strategy));
+    lines.push('command_mode=' + String(report.commandMode));
     lines.push('allowed=' + String(!!report.allowed));
     lines.push('inline_hooks_allowed=' + String(!!report.inlineHooksAllowed));
     lines.push('bootstrap_injection_allowed=' + String(!!report.bootstrapInjectionAllowed));

@@ -92,6 +92,18 @@ impl HookStrategyDecision {
     pub fn hook_stop_commands_allowed(&self) -> bool {
         self.allowed || self.cleanup_commands_only_mode()
     }
+
+    pub fn command_mode(&self) -> &'static str {
+        if self.hook_install_commands_allowed() {
+            "allowed"
+        } else if self.query_commands_allowed() {
+            "query-only"
+        } else if self.hook_status_commands_allowed() || self.hook_stop_commands_allowed() {
+            "cleanup-only"
+        } else {
+            "blocked"
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -516,6 +528,7 @@ mod tests {
         assert!(decision.hook_install_commands_allowed());
         assert!(decision.hook_status_commands_allowed());
         assert!(decision.hook_stop_commands_allowed());
+        assert_eq!(decision.command_mode(), "allowed");
         assert_eq!(decision.strategy, "internal-inline-risky");
         assert_eq!(decision.policy, HookPolicy::Warn);
     }
@@ -541,6 +554,7 @@ mod tests {
         assert!(!decision.hook_install_commands_allowed());
         assert!(decision.hook_status_commands_allowed());
         assert!(decision.hook_stop_commands_allowed());
+        assert_eq!(decision.command_mode(), "query-only");
         assert_eq!(decision.strategy, "query-only-external-loaded");
         assert_eq!(decision.policy, HookPolicy::QueryOnlyExternalLoaded);
     }
@@ -566,6 +580,7 @@ mod tests {
         assert!(!decision.hook_install_commands_allowed());
         assert!(decision.hook_status_commands_allowed());
         assert!(decision.hook_stop_commands_allowed());
+        assert_eq!(decision.command_mode(), "cleanup-only");
         assert_eq!(decision.strategy, "cleanup-only-external-loaded");
         assert_eq!(decision.policy, HookPolicy::DenyExternalLoaded);
     }

@@ -43,20 +43,13 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     let filesystem_path_count = report.filesystem_path_count();
     let conflict_state = report.conflict_state();
     let risk_level = if let Some(decision) = &decision {
-        if !decision.bootstrap_injection_allowed() {
-            "blocked"
-        } else if !decision.query_commands_allowed()
-            && (decision.hook_status_commands_allowed() || decision.hook_stop_commands_allowed())
-        {
-            "cleanup-only"
-        } else if !decision.hook_install_commands_allowed() {
-            "query-only"
-        } else if loaded_backend_count > 0 {
-            "risky"
-        } else if filesystem_only_backend_count > 0 {
-            "cautious"
-        } else {
-            "normal"
+        match decision.command_mode() {
+            "blocked" => "blocked",
+            "cleanup-only" => "cleanup-only",
+            "query-only" => "query-only",
+            _ if loaded_backend_count > 0 => "risky",
+            _ if filesystem_only_backend_count > 0 => "cautious",
+            _ => "normal",
         }
     } else if loaded_backend_count > 0 {
         "risky"
@@ -85,6 +78,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     if let Some(decision) = &decision {
         result.set_property(ctx, "policy", JSValue::string(ctx, decision.policy.as_str()));
         result.set_property(ctx, "strategy", JSValue::string(ctx, &decision.strategy));
+        result.set_property(ctx, "commandMode", JSValue::string(ctx, decision.command_mode()));
         result.set_property(ctx, "allowed", JSValue::bool(decision.allowed));
         result.set_property(ctx, "inlineHooksAllowed", JSValue::bool(decision.inline_hooks_allowed));
         result.set_property(
@@ -119,6 +113,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     } else {
         result.set_property(ctx, "policy", JSValue::string(ctx, "warn"));
         result.set_property(ctx, "strategy", JSValue::null());
+        result.set_property(ctx, "commandMode", JSValue::string(ctx, "allowed"));
         result.set_property(ctx, "allowed", JSValue::bool(true));
         result.set_property(ctx, "inlineHooksAllowed", JSValue::bool(true));
         result.set_property(ctx, "bootstrapInjectionAllowed", JSValue::bool(true));
