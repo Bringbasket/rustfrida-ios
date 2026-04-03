@@ -1491,11 +1491,28 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .cloned()
         .unwrap_or(Value::Null);
     let routing_decision_ready_example_missing_error_code = "hook-fallback-unknown";
+    let routing_decision_ready_example_query_only_error_code = "hook-fallback-hook-install-failed";
+    let routing_decision_ready_example_query_only_result = routing_decision_ready_resolve_index
+        .get(routing_decision_ready_example_query_only_error_code)
+        .cloned();
+    let routing_decision_ready_example_query_only_available = routing_decision_ready_example_query_only_result.is_some();
+    let routing_decision_ready_example_query_only_would_use_query_path = routing_decision_ready_example_query_only_result
+        .as_ref()
+        .and_then(|entry| entry.get("effective"))
+        .and_then(|entry| entry.get("escalationKey"))
+        .and_then(Value::as_str)
+        .is_some_and(|key| key == "query-only-path");
     let routing_decision_ready_resolve_examples = json!({
         "knownErrorCode": routing_decision_ready_example_known_error_code,
         "knownResult": routing_decision_ready_example_known_error_result,
         "missingErrorCode": routing_decision_ready_example_missing_error_code,
         "missingResult": routing_decision_ready_resolve_default.clone(),
+        "queryOnlyInstallFailure": {
+            "errorCode": routing_decision_ready_example_query_only_error_code,
+            "available": routing_decision_ready_example_query_only_available,
+            "result": routing_decision_ready_example_query_only_result.unwrap_or(Value::Null),
+            "wouldUseQueryOnlyPath": routing_decision_ready_example_query_only_would_use_query_path,
+        },
     });
     let routing_decision_ready_phase_groups = routing_decision_ready_index
         .iter()
@@ -8331,6 +8348,22 @@ mod tests {
             "missing-error-code"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["errorCode"],
+            "hook-fallback-hook-install-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["result"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryOnlyPath"],
+            false
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["lookupKey"],
             "phase"
         );
@@ -8727,6 +8760,93 @@ mod tests {
         );
         assert_eq!(automation["readyBranchCount"], 0);
         assert_eq!(automation["blockedBranchCount"], 5);
+    }
+
+    #[test]
+    fn hook_automation_query_only_example_resolves_install_failure() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let backend_matrix = hook_backend_matrix_to_json(&report, &report);
+        let actions = vec![
+            HookEffectiveAction {
+                action_key: "hook.bootstrap",
+                command_group: "bootstrap",
+                allowed: false,
+                blocked_by: "both",
+                priority: 2,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 2,
+                target_priority: 2,
+                recommendation: "bootstrap blocked".into(),
+                controller_reason: Some("controller blocked bootstrap".into()),
+                target_reason: Some("target blocked bootstrap".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.install",
+                command_group: "hook-install",
+                allowed: false,
+                blocked_by: "both",
+                priority: 3,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 3,
+                target_priority: 3,
+                recommendation: "install blocked".into(),
+                controller_reason: Some("controller blocked install".into()),
+                target_reason: Some("target blocked install".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.status",
+                command_group: "hook-status",
+                allowed: false,
+                blocked_by: "both",
+                priority: 4,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 4,
+                target_priority: 4,
+                recommendation: "status blocked".into(),
+                controller_reason: Some("controller blocked status".into()),
+                target_reason: Some("target blocked status".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.stop",
+                command_group: "hook-stop",
+                allowed: false,
+                blocked_by: "both",
+                priority: 5,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 5,
+                target_priority: 5,
+                recommendation: "stop blocked".into(),
+                controller_reason: Some("controller blocked stop".into()),
+                target_reason: Some("target blocked stop".into()),
+            },
+        ];
+
+        let automation = hook_automation_to_json(&actions, &backend_matrix);
+        assert_eq!(automation["hasFallbackPlan"], true);
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRouting"]["hook-fallback-hook-install-failed"],
+            "query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryOnlyPath"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["result"]["effective"]["escalationKey"],
+            "query-only-path"
+        );
     }
 
     #[test]
