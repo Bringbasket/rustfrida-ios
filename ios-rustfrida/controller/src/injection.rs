@@ -772,12 +772,26 @@ fn phase_retry_policy(phase: &str) -> (bool, u32, u64) {
 }
 
 #[cfg(unix)]
+fn phase_timeout_policy(phase: &str) -> (u64, &'static str) {
+    match phase {
+        "diagnose" => (4000, "refresh-hook-environment-and-retry"),
+        "preflight" => (8000, "re-run-preflight-or-switch-to-query-only"),
+        "query" => (5000, "narrow-query-filter-and-retry"),
+        "cleanup" => (6000, "retry-cleanup-or-escalate-to-preflight"),
+        "inject" => (12000, "abort-injection-and-run-preflight"),
+        "hook-install" => (12000, "stop-hook-install-and-switch-to-query-only"),
+        _ => (5000, "abort-and-escalate"),
+    }
+}
+
+#[cfg(unix)]
 fn command_json_template_entry(template: &str) -> Value {
     let command = normalize_command_template_for_cli(template);
     let placeholders = command_template_placeholders(&command);
     let risk = command_template_risk(template);
     let phase = command_template_phase(&command);
     let (retryable, max_suggested_retries, retry_delay_hint_ms) = phase_retry_policy(phase);
+    let (timeout_hint_ms, timeout_action) = phase_timeout_policy(phase);
 
     if let Some(controller_args) = command.strip_prefix("controller ") {
         let cli_args = controller_args
@@ -794,6 +808,8 @@ fn command_json_template_entry(template: &str) -> Value {
             "retryable": retryable,
             "maxSuggestedRetries": max_suggested_retries,
             "retryDelayHintMs": retry_delay_hint_ms,
+            "timeoutHintMs": timeout_hint_ms,
+            "timeoutAction": timeout_action,
             "placeholderCount": placeholders.len(),
             "placeholders": placeholders,
             "cliArgs": cli_args,
@@ -809,6 +825,8 @@ fn command_json_template_entry(template: &str) -> Value {
             "retryable": retryable,
             "maxSuggestedRetries": max_suggested_retries,
             "retryDelayHintMs": retry_delay_hint_ms,
+            "timeoutHintMs": timeout_hint_ms,
+            "timeoutAction": timeout_action,
             "placeholderCount": placeholders.len(),
             "placeholders": placeholders,
             "cliArgs": ["--pid", "<pid>", "--command", command_for_cli, "--command-json"],
@@ -1034,6 +1052,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 "retryable": entry.get("retryable").cloned().unwrap_or(Value::Null),
                 "maxSuggestedRetries": entry.get("maxSuggestedRetries").cloned().unwrap_or(Value::Null),
                 "retryDelayHintMs": entry.get("retryDelayHintMs").cloned().unwrap_or(Value::Null),
+                "timeoutHintMs": entry.get("timeoutHintMs").cloned().unwrap_or(Value::Null),
+                "timeoutAction": entry.get("timeoutAction").cloned().unwrap_or(Value::Null),
                 "placeholderCount": entry.get("placeholderCount").cloned().unwrap_or(Value::Null),
                 "placeholders": entry.get("placeholders").cloned().unwrap_or(Value::Null),
                 "cliArgs": entry.get("cliArgs").cloned().unwrap_or(Value::Null),
@@ -1052,11 +1072,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .iter()
         .map(|phase| {
             let (retryable, max_suggested_retries, retry_delay_hint_ms) = phase_retry_policy(phase);
+            let (timeout_hint_ms, timeout_action) = phase_timeout_policy(phase);
             json!({
                 "phase": phase,
                 "retryable": retryable,
                 "maxSuggestedRetries": max_suggested_retries,
                 "retryDelayHintMs": retry_delay_hint_ms,
+                "timeoutHintMs": timeout_hint_ms,
+                "timeoutAction": timeout_action,
             })
         })
         .collect::<Vec<_>>();
@@ -1070,6 +1093,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "mode": "phase-retry-budget",
         "terminateWhen": "all-retryable-steps-exhausted",
         "escalateWhen": "non-retryable-step-failed-or-retry-budget-exhausted",
+        "timeoutEscalateWhen": "phase-timeout-exceeded",
         "retryablePhaseCount": fallback_retryable_phase_count,
         "nonRetryablePhaseCount": fallback_non_retryable_phase_count,
         "retryableStepCount": fallback_retryable_step_count,
@@ -1149,6 +1173,17 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "phaseOrder": fallback_phase_order,
             "phaseRetryPolicyCount": fallback_phase_retry_policies.len(),
             "phaseRetryPolicies": fallback_phase_retry_policies,
+            "phaseTimeoutPolicyCount": fallback_phase_retry_policies.len(),
+            "phaseTimeoutPolicies": fallback_phase_retry_policies
+                .iter()
+                .map(|policy| {
+                    json!({
+                        "phase": policy.get("phase").cloned().unwrap_or(Value::Null),
+                        "timeoutHintMs": policy.get("timeoutHintMs").cloned().unwrap_or(Value::Null),
+                        "timeoutAction": policy.get("timeoutAction").cloned().unwrap_or(Value::Null),
+                    })
+                })
+                .collect::<Vec<_>>(),
             "terminationPolicy": fallback_termination_policy,
             "stepCount": fallback_steps.len(),
             "retryableStepCount": fallback_retryable_step_count,
@@ -6902,6 +6937,14 @@ mod tests {
             250
         );
         assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["timeoutHintMs"],
+            5000
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["timeoutAction"],
+            "narrow-query-filter-and-retry"
+        );
+        assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["commandJsonEligible"],
             true
         );
@@ -7199,6 +7242,14 @@ mod tests {
             250
         );
         assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["timeoutHintMs"],
+            5000
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["timeoutAction"],
+            "narrow-query-filter-and-retry"
+        );
+        assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["commandJsonEligible"],
             true
         );
@@ -7465,6 +7516,29 @@ mod tests {
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["retryable"], true);
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["maxSuggestedRetries"], 2);
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["retryDelayHintMs"], 500);
+        assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["timeoutHintMs"], 4000);
+        assert_eq!(
+            automation["fallbackPlan"]["phaseRetryPolicies"][0]["timeoutAction"],
+            "refresh-hook-environment-and-retry"
+        );
+        assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["timeoutHintMs"], 8000);
+        assert_eq!(
+            automation["fallbackPlan"]["phaseRetryPolicies"][1]["timeoutAction"],
+            "re-run-preflight-or-switch-to-query-only"
+        );
+        assert_eq!(automation["fallbackPlan"]["phaseTimeoutPolicyCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["phaseTimeoutPolicies"][0]["phase"], "diagnose");
+        assert_eq!(automation["fallbackPlan"]["phaseTimeoutPolicies"][0]["timeoutHintMs"], 4000);
+        assert_eq!(
+            automation["fallbackPlan"]["phaseTimeoutPolicies"][0]["timeoutAction"],
+            "refresh-hook-environment-and-retry"
+        );
+        assert_eq!(automation["fallbackPlan"]["phaseTimeoutPolicies"][1]["phase"], "preflight");
+        assert_eq!(automation["fallbackPlan"]["phaseTimeoutPolicies"][1]["timeoutHintMs"], 8000);
+        assert_eq!(
+            automation["fallbackPlan"]["phaseTimeoutPolicies"][1]["timeoutAction"],
+            "re-run-preflight-or-switch-to-query-only"
+        );
         assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["mode"], "phase-retry-budget");
         assert_eq!(
             automation["fallbackPlan"]["terminationPolicy"]["terminateWhen"],
@@ -7473,6 +7547,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["terminationPolicy"]["escalateWhen"],
             "non-retryable-step-failed-or-retry-budget-exhausted"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["terminationPolicy"]["timeoutEscalateWhen"],
+            "phase-timeout-exceeded"
         );
         assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["retryablePhaseCount"], 2);
         assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["nonRetryablePhaseCount"], 0);
@@ -7486,6 +7564,11 @@ mod tests {
         assert_eq!(automation["fallbackPlan"]["steps"][0]["retryable"], true);
         assert_eq!(automation["fallbackPlan"]["steps"][0]["maxSuggestedRetries"], 1);
         assert_eq!(automation["fallbackPlan"]["steps"][0]["retryDelayHintMs"], 250);
+        assert_eq!(automation["fallbackPlan"]["steps"][0]["timeoutHintMs"], 4000);
+        assert_eq!(
+            automation["fallbackPlan"]["steps"][0]["timeoutAction"],
+            "refresh-hook-environment-and-retry"
+        );
         assert_eq!(automation["fallbackPlan"]["steps"][1]["phase"], "preflight");
         assert_eq!(
             automation["fallbackPlan"]["steps"][1]["command"],
@@ -7494,6 +7577,11 @@ mod tests {
         assert_eq!(automation["fallbackPlan"]["steps"][1]["retryable"], true);
         assert_eq!(automation["fallbackPlan"]["steps"][1]["maxSuggestedRetries"], 2);
         assert_eq!(automation["fallbackPlan"]["steps"][1]["retryDelayHintMs"], 500);
+        assert_eq!(automation["fallbackPlan"]["steps"][1]["timeoutHintMs"], 8000);
+        assert_eq!(
+            automation["fallbackPlan"]["steps"][1]["timeoutAction"],
+            "re-run-preflight-or-switch-to-query-only"
+        );
         assert_eq!(automation["fallbackPlan"]["escalationRecommendationCount"], 2);
         assert_eq!(automation["fallbackPlan"]["suggestedEscalationKey"], "preflight-refresh");
         assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][0]["key"], "preflight-refresh");
@@ -7522,6 +7610,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonTemplates"][0]["retryDelayHintMs"],
             500
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonTemplates"][0]["timeoutHintMs"],
+            8000
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonTemplates"][0]["timeoutAction"],
+            "re-run-preflight-or-switch-to-query-only"
         );
         assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][1]["key"], "policy-review");
         assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][1]["phase"], "diagnose");
@@ -7560,6 +7656,14 @@ mod tests {
             250
         );
         assert_eq!(
+            automation["fallbackPlan"]["commandJsonTemplates"][0]["timeoutHintMs"],
+            4000
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["commandJsonTemplates"][0]["timeoutAction"],
+            "refresh-hook-environment-and-retry"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["commandJsonTemplates"][1]["kind"],
             "controller-cli"
         );
@@ -7578,6 +7682,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["commandJsonTemplates"][1]["retryDelayHintMs"],
             500
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["commandJsonTemplates"][1]["timeoutHintMs"],
+            8000
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["commandJsonTemplates"][1]["timeoutAction"],
+            "re-run-preflight-or-switch-to-query-only"
         );
         assert_eq!(automation["readyBranchCount"], 0);
         assert_eq!(automation["blockedBranchCount"], 5);
@@ -7743,6 +7855,8 @@ mod tests {
         assert_eq!(entries[0]["retryable"], true);
         assert_eq!(entries[0]["maxSuggestedRetries"], 1);
         assert_eq!(entries[0]["retryDelayHintMs"], 250);
+        assert_eq!(entries[0]["timeoutHintMs"], 4000);
+        assert_eq!(entries[0]["timeoutAction"], "refresh-hook-environment-and-retry");
         assert_eq!(entries[0]["cliArgs"][4], "--command-json");
 
         assert_eq!(
@@ -7757,6 +7871,8 @@ mod tests {
         assert_eq!(entries[1]["retryable"], true);
         assert_eq!(entries[1]["maxSuggestedRetries"], 2);
         assert_eq!(entries[1]["retryDelayHintMs"], 500);
+        assert_eq!(entries[1]["timeoutHintMs"], 8000);
+        assert_eq!(entries[1]["timeoutAction"], "re-run-preflight-or-switch-to-query-only");
         assert_eq!(entries[1]["cliArgs"][0], "--preflight-only");
         assert_eq!(entries[1]["cliArgs"][1], "--preflight-json");
         assert_eq!(entries[1]["cliArgs"][2], "--pid");
@@ -7771,6 +7887,8 @@ mod tests {
         assert_eq!(entries[2]["retryable"], false);
         assert_eq!(entries[2]["maxSuggestedRetries"], 0);
         assert_eq!(entries[2]["retryDelayHintMs"], 0);
+        assert_eq!(entries[2]["timeoutHintMs"], 12000);
+        assert_eq!(entries[2]["timeoutAction"], "abort-injection-and-run-preflight");
         assert_eq!(entries[2]["cliArgs"][0], "--inject-json");
         assert_eq!(entries[2]["cliArgs"][1], "--pid");
         assert_eq!(entries[2]["cliArgs"][2], "<pid>");
