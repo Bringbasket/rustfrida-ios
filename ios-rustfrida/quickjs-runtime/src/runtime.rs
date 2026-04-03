@@ -7681,11 +7681,23 @@ undefined;
                                     typeof result.uniqueOwnerTypeCount !== 'number' ||
                                     typeof result.uniqueMemberKindCount !== 'number' ||
                                     typeof result.uniqueResultTypeCount !== 'number' ||
+                                    !Array.isArray(result.ownerTypeList) ||
+                                    !Array.isArray(result.memberKindList) ||
+                                    !Array.isArray(result.resultTypeList) ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.symbolNameList) ||
                                     !Array.isArray(result.ownerTypes) ||
                                     !Array.isArray(result.memberKinds) ||
                                     !Array.isArray(result.resultTypes) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.symbolNames)) {
+                                return false;
+                            }
+                            if (result.ownerTypeList.length !== result.ownerTypes.length ||
+                                    result.memberKindList.length !== result.memberKinds.length ||
+                                    result.resultTypeList.length !== result.resultTypes.length ||
+                                    result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.symbolNameList.length !== result.symbolNames.length) {
                                 return false;
                             }
                             if (result.symbols.length === 0) {
@@ -7712,6 +7724,7 @@ undefined;
                                 typeof symbol.isThrowing === 'boolean' &&
                                 typeof symbol.offsetHex === 'string' &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstSymbolName === 'string' &&
@@ -7719,12 +7732,16 @@ undefined;
                                     typeof moduleSummary.demangledCount === 'number'
                                 )) &&
                                 (symbolSummary === null || (
+                                    result.symbolNameList[0] === symbolSummary.symbolName &&
                                     typeof symbolSummary.symbolName === 'string' &&
                                     typeof symbolSummary.count === 'number' &&
                                     typeof symbolSummary.firstModuleName === 'string' &&
                                     typeof symbolSummary.lastModuleName === 'string' &&
                                     typeof symbolSummary.hasDemangledName === 'boolean'
-                                ));
+                                )) &&
+                                (result.ownerTypes.length === 0 || result.ownerTypeList[0] === result.ownerTypes[0].ownerTypeName) &&
+                                (result.memberKinds.length === 0 || result.memberKindList[0] === result.memberKinds[0].memberKind) &&
+                                (result.resultTypes.length === 0 || result.resultTypeList[0] === result.resultTypes[0].resultTypeName);
                         })()"
                     )
                     .expect("agent swift symbols result"),
@@ -7776,6 +7793,21 @@ undefined;
                                     && result.uniqueOwnerTypeCount === 2
                                     && result.uniqueMemberKindCount >= 2
                                     && result.uniqueResultTypeCount >= 2
+                                    && Array.isArray(result.ownerTypeList)
+                                    && Array.isArray(result.memberKindList)
+                                    && Array.isArray(result.resultTypeList)
+                                    && Array.isArray(result.moduleNameList)
+                                    && Array.isArray(result.symbolNameList)
+                                    && result.ownerTypeList.length === result.ownerTypes.length
+                                    && result.memberKindList.length === result.memberKinds.length
+                                    && result.resultTypeList.length === result.resultTypes.length
+                                    && result.moduleNameList.length === result.moduleNames.length
+                                    && result.symbolNameList.length === result.symbolNames.length
+                                    && result.ownerTypeList[0] === 'Demo.ViewModel'
+                                    && result.memberKindList[0] === 'getter'
+                                    && result.resultTypeList[0] === 'Swift.String'
+                                    && result.moduleNameList[0] === 'Demo'
+                                    && result.symbolNameList[0] === '$s4Demo9ViewModelV5titleSSvg'
                                     && Array.isArray(result.ownerTypes)
                                     && result.ownerTypes.some((entry) => entry.ownerTypeName === 'Demo.ViewModel' && entry.count === 1)
                                     && result.ownerTypes.some((entry) => entry.ownerTypeName === 'Demo.ViewController' && entry.count === 2)
