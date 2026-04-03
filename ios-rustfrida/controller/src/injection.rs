@@ -678,6 +678,25 @@ fn hook_action_command_templates(action_key: &str, preferred_path: &str) -> Vec<
 }
 
 #[cfg(unix)]
+fn normalize_command_template_for_cli(template: &str) -> String {
+    template
+        .split(" #")
+        .next()
+        .map(str::trim)
+        .unwrap_or_default()
+        .to_string()
+}
+
+#[cfg(unix)]
+fn command_json_template_entry(template: &str) -> Value {
+    let command = normalize_command_template_for_cli(template);
+    json!({
+        "command": command,
+        "cliArgs": ["--pid", "<pid>", "--command", command, "--command-json"],
+    })
+}
+
+#[cfg(unix)]
 fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
     let command_mode = hook_effective_command_mode(actions);
     let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
@@ -760,11 +779,17 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .iter()
         .map(|(action_key, command_group)| {
             let templates = hook_action_command_templates(action_key, preferred_path);
+            let command_json_templates = templates
+                .iter()
+                .map(|template| command_json_template_entry(template))
+                .collect::<Vec<_>>();
             json!({
                 "actionKey": action_key,
                 "commandGroup": command_group,
                 "templateCount": templates.len(),
                 "templates": templates,
+                "commandJsonTemplateCount": command_json_templates.len(),
+                "commandJsonTemplates": command_json_templates,
             })
         })
         .collect::<Vec<_>>();
@@ -772,6 +797,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .as_deref()
         .map(|action_key| hook_action_command_templates(action_key, preferred_path))
         .unwrap_or_default();
+    let next_action_command_json_templates = next_action_templates
+        .iter()
+        .map(|template| command_json_template_entry(template))
+        .collect::<Vec<_>>();
 
     let action_branches = actions
         .iter()
@@ -800,6 +829,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "commandTemplates": command_templates,
         "nextActionTemplateCount": next_action_templates.len(),
         "nextActionTemplates": next_action_templates,
+        "nextActionCommandJsonTemplateCount": next_action_command_json_templates.len(),
+        "nextActionCommandJsonTemplates": next_action_command_json_templates,
         "actionBranches": action_branches,
     })
 }
@@ -6374,6 +6405,19 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["commandTemplates"][0]["actionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplates"][0], "objc.classes <filter>");
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplateCount"],
+            3
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["cliArgs"][4],
+            "--command-json"
+        );
+        assert_eq!(rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"], 3);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionCommandJsonTemplates"][0]["cliArgs"][2],
+            "--command"
+        );
         assert!(rendered["hook"]["automation"]["actionBranches"].is_array());
         assert_eq!(
             rendered["hook"]["controller"]["capabilities"]["hookInstallCommandsAllowed"],
@@ -6567,6 +6611,19 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["commandTemplates"][0]["actionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplates"][0], "objc.classes <filter>");
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplateCount"],
+            3
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["cliArgs"][4],
+            "--command-json"
+        );
+        assert_eq!(rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"], 3);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionCommandJsonTemplates"][0]["cliArgs"][2],
+            "--command"
+        );
         assert!(rendered["hook"]["automation"]["actionBranches"].is_array());
         assert_eq!(rendered["trace"]["payloadAddressHex"], json!("0x5000"));
         assert_eq!(rendered["handshake"]["hello"]["arch"], "aarch64");
@@ -6645,6 +6702,11 @@ mod tests {
         assert_eq!(automation["suggestedSequence"][0], "trace status");
         assert_eq!(automation["nextActionTemplateCount"], 5);
         assert_eq!(automation["nextActionTemplates"][0], "trace status");
+        assert_eq!(automation["nextActionCommandJsonTemplateCount"], 5);
+        assert_eq!(
+            automation["nextActionCommandJsonTemplates"][0]["command"],
+            "trace status"
+        );
         let branches = automation["actionBranches"].as_array().expect("automation action branches");
         let query_branch = branches
             .iter()
@@ -6741,6 +6803,11 @@ mod tests {
         assert!(automation["commandTemplates"].is_array());
         assert_eq!(automation["nextActionTemplateCount"], 3);
         assert_eq!(automation["nextActionTemplates"][0], "objc.classes <filter>");
+        assert_eq!(automation["nextActionCommandJsonTemplateCount"], 3);
+        assert_eq!(
+            automation["nextActionCommandJsonTemplates"][0]["command"],
+            "objc.classes <filter>"
+        );
         assert!(automation["suggestedSequence"][2]
             .as_str()
             .unwrap_or_default()
@@ -6754,6 +6821,10 @@ mod tests {
             .as_str()
             .unwrap_or_default()
             .contains("risky-with-external-backend"));
+        assert_eq!(
+            install_templates["commandJsonTemplates"][0]["command"],
+            "trace <objc-filter|native-target>"
+        );
     }
 
     #[test]
