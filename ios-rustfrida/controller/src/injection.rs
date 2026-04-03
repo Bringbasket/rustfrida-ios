@@ -360,6 +360,7 @@ fn hook_shortcut_entry_to_json(
 }
 
 #[cfg(unix)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct HookEffectiveAction {
     action_key: &'static str,
     command_group: &'static str,
@@ -482,20 +483,21 @@ fn hook_effective_actions_to_json(actions: &[HookEffectiveAction]) -> Value {
 }
 
 #[cfg(unix)]
-fn hook_effective_to_json(actions: &[HookEffectiveAction]) -> Value {
-    let allowed_for = |action_key: &str| {
-        actions
-            .iter()
-            .find(|item| item.action_key == action_key)
-            .map(|item| item.allowed)
-            .unwrap_or(true)
-    };
-    let bootstrap_injection_allowed = allowed_for("hook.bootstrap");
-    let query_commands_allowed = allowed_for("hook.query");
-    let hook_install_commands_allowed = allowed_for("hook.install");
-    let hook_status_commands_allowed = allowed_for("hook.status");
-    let hook_stop_commands_allowed = allowed_for("hook.stop");
-    let command_mode = if hook_install_commands_allowed {
+fn hook_effective_allowed_for(actions: &[HookEffectiveAction], action_key: &str) -> bool {
+    actions
+        .iter()
+        .find(|item| item.action_key == action_key)
+        .map(|item| item.allowed)
+        .unwrap_or(true)
+}
+
+#[cfg(unix)]
+fn hook_effective_command_mode(actions: &[HookEffectiveAction]) -> &'static str {
+    let query_commands_allowed = hook_effective_allowed_for(actions, "hook.query");
+    let hook_install_commands_allowed = hook_effective_allowed_for(actions, "hook.install");
+    let hook_status_commands_allowed = hook_effective_allowed_for(actions, "hook.status");
+    let hook_stop_commands_allowed = hook_effective_allowed_for(actions, "hook.stop");
+    if hook_install_commands_allowed {
         "allowed"
     } else if query_commands_allowed {
         "query-only"
@@ -503,7 +505,20 @@ fn hook_effective_to_json(actions: &[HookEffectiveAction]) -> Value {
         "cleanup-only"
     } else {
         "blocked"
+    }
+}
+
+#[cfg(unix)]
+fn hook_effective_to_json(actions: &[HookEffectiveAction]) -> Value {
+    let allowed_for = |action_key: &str| {
+        hook_effective_allowed_for(actions, action_key)
     };
+    let bootstrap_injection_allowed = allowed_for("hook.bootstrap");
+    let query_commands_allowed = allowed_for("hook.query");
+    let hook_install_commands_allowed = allowed_for("hook.install");
+    let hook_status_commands_allowed = allowed_for("hook.status");
+    let hook_stop_commands_allowed = allowed_for("hook.stop");
+    let command_mode = hook_effective_command_mode(actions);
 
     let allowed_action_count = actions.iter().filter(|item| item.allowed).count();
     let blocked_action_count = actions.len().saturating_sub(allowed_action_count);
@@ -1256,13 +1271,23 @@ fn render_handshake_steps_json(
 }
 
 #[cfg(unix)]
-fn parse_error_status_field(message: &str) -> Option<String> {
+fn parse_error_field(message: &str, key: &str) -> Option<String> {
+    let marker = format!("{key}=");
     message
-        .split("status=")
+        .split(&marker)
         .nth(1)
-        .and_then(|tail| tail.split_whitespace().next())
-        .map(|value| value.trim_end_matches(',').to_string())
+        .and_then(|tail| {
+            tail.split(|ch: char| ch.is_whitespace() || ch == ';' || ch == ',')
+                .next()
+        })
+        .map(str::trim)
+        .map(ToOwned::to_owned)
         .filter(|value| !value.is_empty())
+}
+
+#[cfg(unix)]
+fn parse_error_status_field(message: &str) -> Option<String> {
+    parse_error_field(message, "status")
 }
 
 #[cfg(unix)]
@@ -1425,6 +1450,20 @@ fn failure_diagnostics_to_json(
         } else if message.contains("hook strategy blocked injection") {
             phase = "hook-policy".into();
             code = "controller-hook-policy-blocked".into();
+        } else if message.contains("hook-effective-blocked") {
+            phase = "hook-policy".into();
+            code = match parse_error_field(&message, "blockedBy").as_deref() {
+                Some("controller") => "controller-hook-policy-blocked".into(),
+                Some("target") => "target-hook-policy-blocked".into(),
+                Some("both") => "both-hook-policies-blocked".into(),
+                _ => "hook-effective-blocked".into(),
+            };
+            if let Some(mode) = parse_error_field(&message, "commandMode") {
+                push_unique_hint(
+                    &mut hints,
+                    format!("effective hook command mode during failure: {mode}"),
+                );
+            }
         } else if message.contains("timed out waiting") {
             phase = "controller-socket".into();
             code = "agent-connect-timeout".into();
@@ -2998,6 +3037,15 @@ impl HookCommandCapability {
             HookCommandCapability::HookStop => "hook-stop",
         }
     }
+
+    fn action_key(self) -> &'static str {
+        match self {
+            HookCommandCapability::Query => "hook.query",
+            HookCommandCapability::HookInstall => "hook.install",
+            HookCommandCapability::HookStatus => "hook.status",
+            HookCommandCapability::HookStop => "hook.stop",
+        }
+    }
 }
 
 #[cfg(unix)]
@@ -3074,35 +3122,43 @@ fn ensure_inline_hooks_allowed_for_command(
         return Ok(());
     };
 
-    let mut blocked_by = Vec::new();
-    if !hook_strategy_allows_capability(&injection_environment.hook_strategy, capability) {
-        let reason = injection_environment
-            .hook_strategy
-            .reason
-            .clone()
-            .unwrap_or_else(|| format!("controller hook strategy disables `{}` commands", capability.display_name()));
-        blocked_by.push(format!(
-            "controller policy={} strategy={}: {}",
-            injection_environment.hook_strategy.policy.as_str(),
-            injection_environment.hook_strategy.strategy,
-            reason
-        ));
-    }
-    if !hook_strategy_allows_capability(&preflight.target_hook_strategy, capability) {
-        let reason = preflight
-            .target_hook_strategy
-            .reason
-            .clone()
-            .unwrap_or_else(|| format!("target hook strategy disables `{}` commands", capability.display_name()));
-        blocked_by.push(format!(
-            "target policy={} strategy={}: {}",
-            preflight.target_hook_strategy.policy.as_str(),
-            preflight.target_hook_strategy.strategy,
-            reason
-        ));
-    }
-
-    if blocked_by.is_empty() {
+    let controller_actions = hook_environment_recommended_actions(
+        &injection_environment.hook_environment,
+        Some(&injection_environment.hook_strategy),
+    );
+    let target_actions =
+        hook_environment_recommended_actions(&preflight.target_hook_environment, Some(&preflight.target_hook_strategy));
+    let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
+    let action_key = capability.action_key();
+    let effective_action = effective_actions
+        .iter()
+        .find(|item| item.action_key == action_key)
+        .cloned()
+        .unwrap_or_else(|| {
+            let controller_allowed = hook_strategy_allows_capability(&injection_environment.hook_strategy, capability);
+            let target_allowed = hook_strategy_allows_capability(&preflight.target_hook_strategy, capability);
+            let blocked_by = match (controller_allowed, target_allowed) {
+                (true, true) => "none",
+                (false, true) => "controller",
+                (true, false) => "target",
+                (false, false) => "both",
+            };
+            HookEffectiveAction {
+                action_key,
+                command_group: capability.display_name(),
+                allowed: controller_allowed && target_allowed,
+                blocked_by,
+                priority: 0,
+                controller_allowed,
+                target_allowed,
+                controller_priority: 0,
+                target_priority: 0,
+                recommendation: "allowed under current hook policies".into(),
+                controller_reason: injection_environment.hook_strategy.reason.clone(),
+                target_reason: preflight.target_hook_strategy.reason.clone(),
+            }
+        });
+    if effective_action.allowed {
         return Ok(());
     }
 
@@ -3121,7 +3177,46 @@ fn ensure_inline_hooks_allowed_for_command(
         }
     };
 
-    Err(Error::State(format!("{reason}: {}", blocked_by.join("; "))))
+    let mut blocked_details = Vec::new();
+    if !effective_action.controller_allowed {
+        let controller_reason = effective_action.controller_reason.clone().unwrap_or_else(|| {
+            format!("controller hook strategy disables `{}` commands", capability.display_name())
+        });
+        blocked_details.push(format!(
+            "controller policy={} strategy={}: {}",
+            injection_environment.hook_strategy.policy.as_str(),
+            injection_environment.hook_strategy.strategy,
+            controller_reason
+        ));
+    }
+    if !effective_action.target_allowed {
+        let target_reason = effective_action
+            .target_reason
+            .clone()
+            .unwrap_or_else(|| format!("target hook strategy disables `{}` commands", capability.display_name()));
+        blocked_details.push(format!(
+            "target policy={} strategy={}: {}",
+            preflight.target_hook_strategy.policy.as_str(),
+            preflight.target_hook_strategy.strategy,
+            target_reason
+        ));
+    }
+
+    let command_mode = hook_effective_command_mode(&effective_actions);
+    let detail_text = if blocked_details.is_empty() {
+        effective_action.recommendation.clone()
+    } else {
+        blocked_details.join("; ")
+    };
+    Err(Error::State(format!(
+        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={}; recommendation={}; {}",
+        effective_action.action_key,
+        effective_action.command_group,
+        effective_action.blocked_by,
+        command_mode,
+        effective_action.recommendation,
+        detail_text
+    )))
 }
 
 #[cfg(unix)]
@@ -5427,10 +5522,15 @@ mod tests {
         let query_err = ensure_inline_hooks_allowed_for_command("objc.classes UIView", &environment, &preflight)
             .expect_err("runtime query should be blocked in cleanup-only mode");
         assert!(query_err.to_string().contains("runtime query command"));
+        assert!(query_err.to_string().contains("hook-effective-blocked"));
+        assert!(query_err.to_string().contains("blockedBy=both"));
+        assert!(query_err.to_string().contains("commandMode=cleanup-only"));
 
         let install_err = ensure_inline_hooks_allowed_for_command("trace UIViewController", &environment, &preflight)
             .expect_err("hook install should be blocked in cleanup-only mode");
         assert!(install_err.to_string().contains("forbids hook-install commands"));
+        assert!(install_err.to_string().contains("blockedBy=both"));
+        assert!(install_err.to_string().contains("commandMode=cleanup-only"));
     }
 
     #[test]
@@ -5492,6 +5592,9 @@ mod tests {
         let rendered = err.to_string();
         assert!(rendered.contains("requires inline hooks"));
         assert!(rendered.contains("query-only"));
+        assert!(rendered.contains("hook-effective-blocked"));
+        assert!(rendered.contains("blockedBy=both"));
+        assert!(rendered.contains("commandMode=query-only"));
         assert!(rendered.contains("controller policy=query-only-external-loaded"));
         assert!(rendered.contains("target policy=query-only-external-loaded"));
     }
@@ -6519,6 +6622,110 @@ mod tests {
 
         assert_eq!(rendered["diagnostics"]["phase"], "controller-socket");
         assert_eq!(rendered["diagnostics"]["code"], "bind-socket");
+    }
+
+    #[test]
+    fn render_injection_result_json_classifies_hook_effective_blocked_failure() {
+        let config = ControllerConfig {
+            mode: InjectionMode::Attach,
+            pid: Some(42),
+            bundle_id: None,
+            spawn_command: None,
+            command: None,
+            command_json: false,
+            list_images_json: false,
+            preflight_only: false,
+            preflight_json: false,
+            inject_json: true,
+            agent_path: DEFAULT_AGENT_PATH.into(),
+            entry_symbol: "ios_agent_entry".into(),
+            script_path: None,
+            socket_path: None,
+            connect_timeout_secs: 15,
+        };
+
+        let environment = InjectionEnvironmentReport {
+            dry_run: false,
+            bootstrap_wait_ms: Some(1000),
+            hook_policy: HookPolicy::Warn,
+            hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: None,
+            },
+            hook_environment: HookEnvironmentReport {
+                active_backend: None,
+                backends: vec![],
+                warnings: vec![],
+            },
+        };
+        let plan = MachInjector
+            .plan(&InjectionTarget {
+                pid: 42,
+                dylib_path: DEFAULT_AGENT_PATH.into(),
+                entry_symbol: "ios_agent_entry".into(),
+                socket_path: "/tmp/iosrf.sock".into(),
+            })
+            .expect("plan");
+        let preflight = InjectionTargetPreflightReport {
+            main_image: None,
+            target_images: vec![],
+            target_image_count: 0,
+            target_uses_arm64e: Some(false),
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFromMachThread,
+            thread_bootstrap_label: "pthread_create_from_mach_thread".into(),
+            thread_bootstrap_address: 0,
+            thread_bootstrap_raw_address: 0,
+            thread_bootstrap_canonicalized: false,
+            target_hook_environment: HookEnvironmentReport {
+                active_backend: None,
+                backends: vec![],
+                warnings: vec![],
+            },
+            target_hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: None,
+            },
+            resolved_loader_symbols: vec![],
+        };
+
+        let doctor = analyze_doctor_report(&config, 42, Path::new("/tmp/iosrf.sock"), &environment, &preflight);
+        let rendered = render_injection_result_json(
+            &config,
+            42,
+            "/tmp/iosrf.sock",
+            &plan,
+            &environment,
+            &doctor,
+            &preflight,
+            None,
+            None,
+            None,
+            None,
+            false,
+            None,
+            None,
+            &[],
+            Some(&Error::State(
+                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only; recommendation=blocked by target hook policy".into(),
+            )),
+        );
+
+        assert_eq!(rendered["diagnostics"]["phase"], "hook-policy");
+        assert_eq!(rendered["diagnostics"]["code"], "target-hook-policy-blocked");
+        assert!(rendered["diagnostics"]["hints"]
+            .as_array()
+            .expect("hints array")
+            .iter()
+            .any(|item| item
+                .as_str()
+                .unwrap_or_default()
+                .contains("effective hook command mode during failure: query-only")));
     }
 
     #[test]
