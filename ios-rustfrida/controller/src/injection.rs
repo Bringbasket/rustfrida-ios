@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     fs,
     io::{self, ErrorKind, IsTerminal, Write},
     path::{Path, PathBuf},
@@ -17,7 +18,7 @@ use native_api::{
     InjectionEnvironmentReport, InjectionPlan, InjectionTarget, InjectionTargetPreflightReport, InjectionTrace,
     LoaderSymbolRole, MachInjector, ResolvedLoaderSymbol,
 };
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 
 use crate::launch::spawn_target;
 
@@ -1228,6 +1229,49 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "commandJsonEligibleTemplateCount": command_json_eligible_count(&escalation_policy_command_json_templates),
         }));
     }
+    let mut error_code_routing_candidates = BTreeMap::<String, Vec<String>>::new();
+    for recommendation in &escalation_recommendations {
+        let Some(key) = recommendation.get("key").and_then(Value::as_str) else {
+            continue;
+        };
+        if key.is_empty() {
+            continue;
+        }
+        let Some(error_codes) = recommendation.get("onErrorCodes").and_then(Value::as_array) else {
+            continue;
+        };
+        for error_code in error_codes {
+            let Some(error_code) = error_code.as_str() else {
+                continue;
+            };
+            if error_code.is_empty() {
+                continue;
+            }
+            let candidates = error_code_routing_candidates.entry(error_code.to_string()).or_default();
+            if !candidates.iter().any(|candidate| candidate == key) {
+                candidates.push(key.to_string());
+            }
+        }
+    }
+    let error_code_routing = error_code_routing_candidates
+        .iter()
+        .fold(Map::<String, Value>::new(), |mut map, (error_code, candidates)| {
+            if let Some(first) = candidates.first() {
+                map.insert(error_code.clone(), Value::String(first.clone()));
+            }
+            map
+        });
+    let error_code_routing_entries = error_code_routing_candidates
+        .iter()
+        .map(|(error_code, candidates)| {
+            json!({
+                "errorCode": error_code,
+                "candidateCount": candidates.len(),
+                "candidateEscalationKeys": candidates,
+                "recommendedEscalationKey": candidates.first().cloned(),
+            })
+        })
+        .collect::<Vec<_>>();
     let fallback_plan = if next_action_ready_to_run {
         Value::Null
     } else {
@@ -1270,6 +1314,9 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 .and_then(|item| item.get("key"))
                 .and_then(Value::as_str)
                 .map(ToOwned::to_owned),
+            "errorCodeRoutingCount": error_code_routing_entries.len(),
+            "errorCodeRouting": error_code_routing,
+            "errorCodeRoutingEntries": error_code_routing_entries,
             "commandJsonTemplateCount": fallback_command_json_templates.len(),
             "commandJsonTemplates": fallback_command_json_templates,
             "commandJsonEligibleTemplateCount": fallback_eligible_command_json_template_count,
@@ -7720,6 +7767,27 @@ mod tests {
         );
         assert_eq!(automation["fallbackPlan"]["escalationRecommendationCount"], 2);
         assert_eq!(automation["fallbackPlan"]["suggestedEscalationKey"], "preflight-refresh");
+        assert_eq!(automation["fallbackPlan"]["errorCodeRoutingCount"], 6);
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRouting"]["hook-fallback-preflight-failed"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRouting"]["hook-fallback-inject-timeout"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRouting"]["hook-fallback-diagnose-timeout"],
+            "policy-review"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingEntries"][0]["candidateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingEntries"][0]["recommendedEscalationKey"],
+            "policy-review"
+        );
         assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][0]["key"], "preflight-refresh");
         assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][0]["phase"], "preflight");
         assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][0]["condition"], "always");
