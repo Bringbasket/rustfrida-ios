@@ -1366,11 +1366,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .map(ToOwned::to_owned);
     let routing_decision_default = default_recommendation
         .map(|item| {
+            let recommended_phase = item.get("phase").cloned().unwrap_or(Value::Null);
             json!({
                 "recommendedEscalationKey": default_recommended_escalation_key.clone(),
                 "matchConfidence": "default",
                 "resolvedFrom": "defaultRecommendedEscalationKey",
-                "recommendedPhase": item.get("phase").cloned().unwrap_or(Value::Null),
+                "recommendedPhase": recommended_phase.clone(),
+                "effectivePhase": recommended_phase,
+                "effectiveEscalationKey": default_recommended_escalation_key.clone(),
                 "recommendedTemplateCount": item.get("templateCount").cloned().unwrap_or(Value::Null),
                 "recommendedTemplates": item.get("templates").cloned().unwrap_or(json!([])),
                 "recommendedCommandJsonTemplateCount": item
@@ -8506,6 +8509,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["default"]["recommendedPhase"],
             "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]["effectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]["effectiveEscalationKey"],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["default"]["recommendedTemplateCount"],
