@@ -1476,6 +1476,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let routing_decision_ready_resolve_default = json!({
         "matched": false,
         "usedDefault": true,
+        "reason": "missing-error-code",
         "effective": routing_decision_ready_default,
     });
     let routing_decision_ready_known_error_codes = routing_decision_ready_index
@@ -1594,6 +1595,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let routing_decision_ready_phase_resolve_default = json!({
         "matched": false,
         "usedDefault": true,
+        "reason": "missing-phase",
         "effective": routing_decision_ready_phase_resolve_default_effective,
     });
     let routing_decision = json!({
@@ -8323,6 +8325,10 @@ mod tests {
             true
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["default"]["reason"],
+            "missing-phase"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["default"]["effective"]["phase"],
             "preflight"
         );
@@ -8345,6 +8351,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["usedDefault"],
             true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["reason"],
+            "missing-error-code"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["effective"]["escalationKey"],
