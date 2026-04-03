@@ -1460,6 +1460,24 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .cloned()
             .unwrap_or(Value::Null),
     });
+    let routing_decision_ready_resolve_index = routing_decision_ready_index
+        .iter()
+        .fold(Map::<String, Value>::new(), |mut map, (error_code, decision)| {
+            map.insert(
+                error_code.clone(),
+                json!({
+                    "matched": true,
+                    "usedDefault": false,
+                    "effective": decision,
+                }),
+            );
+            map
+        });
+    let routing_decision_ready_resolve_default = json!({
+        "matched": false,
+        "usedDefault": true,
+        "effective": routing_decision_ready_default,
+    });
     let routing_decision_ready_phase_groups = routing_decision_ready_index
         .iter()
         .fold(BTreeMap::<String, Vec<String>>::new(), |mut groups, (error_code, decision)| {
@@ -1561,6 +1579,13 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "entryCount": error_code_routing_entries.len(),
             "index": routing_decision_ready_index,
             "default": routing_decision_ready_default,
+            "resolve": {
+                "lookupKey": "errorCode",
+                "policy": "index-then-default",
+                "outputShape": "{ matched, usedDefault, effective }",
+                "index": routing_decision_ready_resolve_index,
+                "default": routing_decision_ready_resolve_default,
+            },
             "phaseCount": routing_decision_ready_phase_entries.len(),
             "phases": routing_decision_ready_phase_entries,
             "phaseIndex": routing_decision_ready_phase_index,
@@ -8172,6 +8197,42 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["resolvedFrom"],
             "defaultRecommendedEscalationKey"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["lookupKey"],
+            "errorCode"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["policy"],
+            "index-then-default"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["outputShape"],
+            "{ matched, usedDefault, effective }"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["matched"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["usedDefault"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["effective"]["escalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["matched"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["usedDefault"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["effective"]["escalationKey"],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["escalationKey"],
