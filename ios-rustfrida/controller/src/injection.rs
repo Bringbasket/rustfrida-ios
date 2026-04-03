@@ -1484,6 +1484,19 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .keys()
         .map(ToOwned::to_owned)
         .collect::<Vec<_>>();
+    let routing_decision_ready_example_known_error_code = routing_decision_ready_known_error_codes.first().cloned();
+    let routing_decision_ready_example_known_error_result = routing_decision_ready_example_known_error_code
+        .as_ref()
+        .and_then(|error_code| routing_decision_ready_resolve_index.get(error_code))
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_example_missing_error_code = "hook-fallback-unknown";
+    let routing_decision_ready_resolve_examples = json!({
+        "knownErrorCode": routing_decision_ready_example_known_error_code,
+        "knownResult": routing_decision_ready_example_known_error_result,
+        "missingErrorCode": routing_decision_ready_example_missing_error_code,
+        "missingResult": routing_decision_ready_resolve_default.clone(),
+    });
     let routing_decision_ready_phase_groups = routing_decision_ready_index
         .iter()
         .fold(BTreeMap::<String, Vec<String>>::new(), |mut groups, (error_code, decision)| {
@@ -1590,6 +1603,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .keys()
         .map(ToOwned::to_owned)
         .collect::<Vec<_>>();
+    let routing_decision_ready_example_known_phase = routing_decision_ready_known_phases.first().cloned();
     let routing_decision_ready_phase_resolve_default_effective = routing_decision_ready_default_phase
         .as_str()
         .and_then(|phase| routing_decision_ready_phase_index.get(phase).cloned())
@@ -1599,6 +1613,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "usedDefault": true,
         "reason": "missing-phase",
         "effective": routing_decision_ready_phase_resolve_default_effective,
+    });
+    let routing_decision_ready_example_known_phase_result = routing_decision_ready_example_known_phase
+        .as_ref()
+        .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_example_missing_phase = "unknown";
+    let routing_decision_ready_phase_resolve_examples = json!({
+        "knownPhase": routing_decision_ready_example_known_phase,
+        "knownResult": routing_decision_ready_example_known_phase_result,
+        "missingPhase": routing_decision_ready_example_missing_phase,
+        "missingResult": routing_decision_ready_phase_resolve_default.clone(),
     });
     let routing_decision = json!({
         "lookupKey": "errorCode",
@@ -1622,6 +1648,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 "missingErrorCodeHint": "if errorCode is not in knownErrorCodes, use resolve.default",
                 "index": routing_decision_ready_resolve_index,
                 "default": routing_decision_ready_resolve_default,
+                "examples": routing_decision_ready_resolve_examples,
             },
             "phaseResolve": {
                 "lookupKey": "phase",
@@ -1633,6 +1660,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 "missingPhaseHint": "if phase is not in knownPhases, use phaseResolve.default",
                 "index": routing_decision_ready_phase_resolve_index,
                 "default": routing_decision_ready_phase_resolve_default,
+                "examples": routing_decision_ready_phase_resolve_examples,
             },
             "phaseCount": routing_decision_ready_phase_entries.len(),
             "phases": routing_decision_ready_phase_entries,
@@ -8275,6 +8303,34 @@ mod tests {
             "if errorCode is not in knownErrorCodes, use resolve.default"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownErrorCode"],
+            "hook-fallback-diagnose-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownResult"]["matched"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownResult"]["usedDefault"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownResult"]["reason"],
+            "matched-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownResult"]["effective"]["escalationKey"],
+            "policy-review"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["missingErrorCode"],
+            "hook-fallback-unknown"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["missingResult"]["reason"],
+            "missing-error-code"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["lookupKey"],
             "phase"
         );
@@ -8305,6 +8361,34 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["missingPhaseHint"],
             "if phase is not in knownPhases, use phaseResolve.default"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownPhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownResult"]["matched"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownResult"]["usedDefault"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownResult"]["reason"],
+            "matched-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownResult"]["effective"]["phase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["missingPhase"],
+            "unknown"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["missingResult"]["reason"],
+            "missing-phase"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["matched"],
