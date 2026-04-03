@@ -2275,6 +2275,38 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("missingErrorCodeHint")
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveKnownErrorCode": routing_decision_ready_resolve
+            .get("knownErrorCode")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveKnownResult": routing_decision_ready_resolve
+            .get("knownResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveKnownEffectivePhase": routing_decision_ready_resolve
+            .get("knownEffectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveKnownEffectiveEscalationKey": routing_decision_ready_resolve
+            .get("knownEffectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveMissingErrorCode": routing_decision_ready_resolve
+            .get("missingErrorCode")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveMissingResult": routing_decision_ready_resolve
+            .get("missingResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveMissingEffectivePhase": routing_decision_ready_resolve
+            .get("missingEffectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveMissingEffectiveEscalationKey": routing_decision_ready_resolve
+            .get("missingEffectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseResolveLookupKey": routing_decision_ready_phase_resolve
             .get("lookupKey")
             .cloned()
@@ -2297,6 +2329,38 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .unwrap_or(json!([])),
         "phaseResolveMissingPhaseHint": routing_decision_ready_phase_resolve
             .get("missingPhaseHint")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveKnownPhase": routing_decision_ready_phase_resolve
+            .get("knownPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveKnownResult": routing_decision_ready_phase_resolve
+            .get("knownResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveKnownEffectivePhase": routing_decision_ready_phase_resolve
+            .get("knownEffectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveKnownEffectiveEscalationKey": routing_decision_ready_phase_resolve
+            .get("knownEffectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveMissingPhase": routing_decision_ready_phase_resolve
+            .get("missingPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveMissingResult": routing_decision_ready_phase_resolve
+            .get("missingResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveMissingEffectivePhase": routing_decision_ready_phase_resolve
+            .get("missingEffectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveMissingEffectiveEscalationKey": routing_decision_ready_phase_resolve
+            .get("missingEffectiveEscalationKey")
             .cloned()
             .unwrap_or(Value::Null),
         "queryOnlyErrorCode": routing_decision_ready_resolve
@@ -9071,6 +9135,38 @@ mod tests {
             "if errorCode is not in knownErrorCodes, use resolve.default"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCode"],
+            "hook-fallback-diagnose-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownResult"]["reason"],
+            "matched-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownEffectivePhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownEffectiveEscalationKey"],
+            "policy-review"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingErrorCode"],
+            "hook-fallback-unknown"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingResult"]["reason"],
+            "missing-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingEffectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveLookupKey"],
             "phase"
         );
@@ -9097,6 +9193,38 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingPhaseHint"],
             "if phase is not in knownPhases, use phaseResolve.default"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownResult"]["reason"],
+            "matched-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownEffectivePhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownEffectiveEscalationKey"],
+            "policy-review"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingPhase"],
+            "unknown"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingResult"]["reason"],
+            "missing-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingEffectiveEscalationKey"],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyErrorCode"],
