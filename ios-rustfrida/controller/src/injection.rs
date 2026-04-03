@@ -360,12 +360,37 @@ fn hook_shortcut_entry_to_json(
 }
 
 #[cfg(unix)]
-fn hook_effective_action_to_json(
-    action_key: &str,
-    command_group: &str,
+struct HookEffectiveAction {
+    action_key: &'static str,
+    command_group: &'static str,
+    allowed: bool,
+    blocked_by: &'static str,
+    priority: u8,
+    controller_allowed: bool,
+    target_allowed: bool,
+    controller_priority: u8,
+    target_priority: u8,
+    recommendation: String,
+    controller_reason: Option<String>,
+    target_reason: Option<String>,
+}
+
+#[cfg(unix)]
+const HOOK_EFFECTIVE_ACTIONS: &[(&str, &str)] = &[
+    ("hook.query", "query"),
+    ("hook.bootstrap", "bootstrap"),
+    ("hook.install", "hook-install"),
+    ("hook.status", "hook-status"),
+    ("hook.stop", "hook-stop"),
+];
+
+#[cfg(unix)]
+fn hook_effective_action(
+    action_key: &'static str,
+    command_group: &'static str,
     controller_action: Option<&native_api::HookRecommendedAction>,
     target_action: Option<&native_api::HookRecommendedAction>,
-) -> Value {
+) -> HookEffectiveAction {
     let controller_allowed = controller_action.map(|item| item.allowed).unwrap_or(true);
     let target_allowed = target_action.map(|item| item.allowed).unwrap_or(true);
     let allowed = controller_allowed && target_allowed;
@@ -399,46 +424,118 @@ fn hook_effective_action_to_json(
             .unwrap_or_else(|| "allowed under current hook policies".into()),
     };
 
-    json!({
-        "actionKey": action_key,
-        "commandGroup": command_group,
-        "allowed": allowed,
-        "status": if allowed { "allowed" } else { "blocked" },
-        "blockedBy": blocked_by,
-        "priority": priority,
-        "controllerAllowed": controller_allowed,
-        "targetAllowed": target_allowed,
-        "controllerPriority": controller_priority,
-        "targetPriority": target_priority,
-        "recommendation": recommendation,
-        "controllerReason": controller_action.and_then(|item| item.reason.clone()),
-        "targetReason": target_action.and_then(|item| item.reason.clone()),
-    })
+    HookEffectiveAction {
+        action_key,
+        command_group,
+        allowed,
+        blocked_by,
+        priority,
+        controller_allowed,
+        target_allowed,
+        controller_priority,
+        target_priority,
+        recommendation,
+        controller_reason: controller_action.and_then(|item| item.reason.clone()),
+        target_reason: target_action.and_then(|item| item.reason.clone()),
+    }
 }
 
 #[cfg(unix)]
-fn hook_effective_actions_to_json(
+fn hook_effective_actions(
     controller_actions: &[native_api::HookRecommendedAction],
     target_actions: &[native_api::HookRecommendedAction],
-) -> Value {
-    const ACTIONS: &[(&str, &str)] = &[
-        ("hook.query", "query"),
-        ("hook.bootstrap", "bootstrap"),
-        ("hook.install", "hook-install"),
-        ("hook.status", "hook-status"),
-        ("hook.stop", "hook-stop"),
-    ];
+) -> Vec<HookEffectiveAction> {
+    HOOK_EFFECTIVE_ACTIONS
+        .iter()
+        .map(|(action_key, command_group)| {
+            let controller_action = controller_actions.iter().find(|item| item.action_key == *action_key);
+            let target_action = target_actions.iter().find(|item| item.action_key == *action_key);
+            hook_effective_action(action_key, command_group, controller_action, target_action)
+        })
+        .collect::<Vec<_>>()
+}
 
+#[cfg(unix)]
+fn hook_effective_actions_to_json(actions: &[HookEffectiveAction]) -> Value {
     Value::Array(
-        ACTIONS
+        actions
             .iter()
-            .map(|(action_key, command_group)| {
-                let controller_action = controller_actions.iter().find(|item| item.action_key == *action_key);
-                let target_action = target_actions.iter().find(|item| item.action_key == *action_key);
-                hook_effective_action_to_json(action_key, command_group, controller_action, target_action)
+            .map(|item| {
+                json!({
+                    "actionKey": item.action_key,
+                    "commandGroup": item.command_group,
+                    "allowed": item.allowed,
+                    "status": if item.allowed { "allowed" } else { "blocked" },
+                    "blockedBy": item.blocked_by,
+                    "priority": item.priority,
+                    "controllerAllowed": item.controller_allowed,
+                    "targetAllowed": item.target_allowed,
+                    "controllerPriority": item.controller_priority,
+                    "targetPriority": item.target_priority,
+                    "recommendation": item.recommendation,
+                    "controllerReason": item.controller_reason,
+                    "targetReason": item.target_reason,
+                })
             })
-            .collect(),
+            .collect::<Vec<_>>(),
     )
+}
+
+#[cfg(unix)]
+fn hook_effective_to_json(actions: &[HookEffectiveAction]) -> Value {
+    let allowed_for = |action_key: &str| {
+        actions
+            .iter()
+            .find(|item| item.action_key == action_key)
+            .map(|item| item.allowed)
+            .unwrap_or(true)
+    };
+    let bootstrap_injection_allowed = allowed_for("hook.bootstrap");
+    let query_commands_allowed = allowed_for("hook.query");
+    let hook_install_commands_allowed = allowed_for("hook.install");
+    let hook_status_commands_allowed = allowed_for("hook.status");
+    let hook_stop_commands_allowed = allowed_for("hook.stop");
+    let command_mode = if hook_install_commands_allowed {
+        "allowed"
+    } else if query_commands_allowed {
+        "query-only"
+    } else if hook_status_commands_allowed || hook_stop_commands_allowed {
+        "cleanup-only"
+    } else {
+        "blocked"
+    };
+
+    let allowed_action_count = actions.iter().filter(|item| item.allowed).count();
+    let blocked_action_count = actions.len().saturating_sub(allowed_action_count);
+    let blocked_by_controller_count = actions
+        .iter()
+        .filter(|item| matches!(item.blocked_by, "controller" | "both"))
+        .count();
+    let blocked_by_target_count = actions
+        .iter()
+        .filter(|item| matches!(item.blocked_by, "target" | "both"))
+        .count();
+    let blocked_by_both_count = actions.iter().filter(|item| item.blocked_by == "both").count();
+    let highest_priority = actions.iter().map(|item| item.priority).max().unwrap_or(0);
+
+    json!({
+        "commandMode": command_mode,
+        "capabilities": {
+            "bootstrapInjectionAllowed": bootstrap_injection_allowed,
+            "queryCommandsAllowed": query_commands_allowed,
+            "hookInstallCommandsAllowed": hook_install_commands_allowed,
+            "hookStatusCommandsAllowed": hook_status_commands_allowed,
+            "hookStopCommandsAllowed": hook_stop_commands_allowed,
+        },
+        "allowedActionCount": allowed_action_count,
+        "blockedActionCount": blocked_action_count,
+        "highestPriority": highest_priority,
+        "blockedBySummary": {
+            "controller": blocked_by_controller_count,
+            "target": blocked_by_target_count,
+            "both": blocked_by_both_count,
+        },
+    })
 }
 
 #[cfg(unix)]
@@ -452,6 +549,7 @@ fn hook_shortcuts_to_json(
     );
     let target_actions =
         hook_environment_recommended_actions(&preflight.target_hook_environment, Some(&preflight.target_hook_strategy));
+    let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
 
     json!({
         "controller": hook_shortcut_entry_to_json(
@@ -462,7 +560,8 @@ fn hook_shortcuts_to_json(
             &preflight.target_hook_strategy,
             &target_actions,
         ),
-        "effectiveActions": hook_effective_actions_to_json(&controller_actions, &target_actions),
+        "effectiveActions": hook_effective_actions_to_json(&effective_actions),
+        "effective": hook_effective_to_json(&effective_actions),
     })
 }
 
@@ -4208,14 +4307,14 @@ mod tests {
     use super::{
         analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
         build_trace_spec, command_requests_inline_hook_install, command_requires_inline_hooks,
-        ensure_inline_hooks_allowed_for_command, hook_effective_actions_to_json, hook_environment_requires_notice,
-        parse_hfl_command, parse_jhook_command, parse_shook_command, parse_stalker_command, parse_trace_command,
-        print_injection_preflight, quote_js_string, render_bootstrap_summary, render_command_error_json,
-        render_command_error_json_with_context, render_command_outcome_json, render_image_list_json,
-        render_injection_environment, render_injection_result_json, render_loader_symbol, render_preflight_json,
-        CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, NativeHookTarget, NativeLogArgument,
-        NativeLogReturn, NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand,
-        TraceCommand,
+        ensure_inline_hooks_allowed_for_command, hook_effective_actions, hook_effective_actions_to_json,
+        hook_effective_to_json, hook_environment_requires_notice, parse_hfl_command, parse_jhook_command,
+        parse_shook_command, parse_stalker_command, parse_trace_command, print_injection_preflight, quote_js_string,
+        render_bootstrap_summary, render_command_error_json, render_command_error_json_with_context,
+        render_command_outcome_json, render_image_list_json, render_injection_environment,
+        render_injection_result_json, render_loader_symbol, render_preflight_json, CommandJsonContext,
+        CommandOutcome, CommandOutcomeKind, HflCommand, NativeHookTarget, NativeLogArgument, NativeLogReturn,
+        NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
     };
     use common::{
         AgentCommand, ControllerConfig, Error, Hello, InjectionMode, DEFAULT_AGENT_PATH, DEFAULT_AGENT_PATH_ROOTFUL,
@@ -5771,6 +5870,10 @@ mod tests {
         assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["priority"], 1);
         assert_eq!(rendered["hook"]["effectiveActions"][0]["actionKey"], "hook.query");
         assert_eq!(rendered["hook"]["effectiveActions"][0]["blockedBy"], "none");
+        assert_eq!(rendered["hook"]["effective"]["commandMode"], "allowed");
+        assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["controller"], 0);
+        assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["target"], 0);
+        assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["both"], 0);
         assert_eq!(
             rendered["hook"]["controller"]["capabilities"]["hookInstallCommandsAllowed"],
             true
@@ -5948,6 +6051,10 @@ mod tests {
         assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["priority"], 1);
         assert_eq!(rendered["hook"]["effectiveActions"][0]["actionKey"], "hook.query");
         assert_eq!(rendered["hook"]["effectiveActions"][0]["blockedBy"], "none");
+        assert_eq!(rendered["hook"]["effective"]["commandMode"], "allowed");
+        assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["controller"], 0);
+        assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["target"], 0);
+        assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["both"], 0);
         assert_eq!(rendered["trace"]["payloadAddressHex"], json!("0x5000"));
         assert_eq!(rendered["handshake"]["hello"]["arch"], "aarch64");
         assert_eq!(rendered["handshake"]["stage"], "completed");
@@ -5987,8 +6094,9 @@ mod tests {
         };
         let controller_actions = hook_environment_recommended_actions(&report, Some(&controller_strategy));
         let target_actions = hook_environment_recommended_actions(&report, Some(&target_strategy));
+        let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
 
-        let rendered = hook_effective_actions_to_json(&controller_actions, &target_actions);
+        let rendered = hook_effective_actions_to_json(&effective_actions);
         let actions = rendered.as_array().expect("effective action array");
         let find = |key: &str| {
             actions
@@ -6008,6 +6116,12 @@ mod tests {
         let status = find("hook.status");
         assert_eq!(status["allowed"], true);
         assert_eq!(status["blockedBy"], "none");
+
+        let effective = hook_effective_to_json(&effective_actions);
+        assert_eq!(effective["commandMode"], "cleanup-only");
+        assert_eq!(effective["blockedBySummary"]["controller"], 1);
+        assert_eq!(effective["blockedBySummary"]["target"], 2);
+        assert_eq!(effective["blockedBySummary"]["both"], 1);
     }
 
     #[test]
