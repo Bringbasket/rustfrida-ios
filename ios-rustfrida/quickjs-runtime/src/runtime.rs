@@ -2574,6 +2574,7 @@ undefined;
                                     typeof result.classesWithPropertiesCount !== 'number' ||
                                     typeof result.classesWithIvarsCount !== 'number' ||
                                     typeof result.classesWithMethodsCount !== 'number' ||
+                                    !Array.isArray(result.imagePathList) ||
                                     !Array.isArray(result.imagePaths)) {
                                 return false;
                             }
@@ -2587,6 +2588,9 @@ undefined;
                                 typeof result.firstClass === 'string' &&
                                 typeof result.lastClass === 'string' &&
                                 result.text === result.classes.join('\\n') &&
+                                result.imagePathList.every((entry) => typeof entry === 'string') &&
+                                result.imagePathList.length === result.imagePaths.length &&
+                                (result.imagePathList.length === 0 || result.imagePathList[0] === result.imagePaths[0].imagePath) &&
                                 (result.firstImagePath === null || typeof result.firstImagePath === 'string') &&
                                 (result.lastImagePath === null || typeof result.lastImagePath === 'string') &&
                                 (imageSummary === null || (
@@ -2623,6 +2627,7 @@ undefined;
                                     typeof result.totalRequiredMethodCount !== 'number' ||
                                     typeof result.totalOptionalMethodCount !== 'number' ||
                                     typeof result.totalPropertyCount !== 'number' ||
+                                    !Array.isArray(result.imagePathList) ||
                                     !Array.isArray(result.imagePaths)) {
                                 return false;
                             }
@@ -2636,6 +2641,9 @@ undefined;
                                 typeof result.firstProtocol === 'string' &&
                                 typeof result.lastProtocol === 'string' &&
                                 result.text === result.protocols.join('\\n') &&
+                                result.imagePathList.every((entry) => typeof entry === 'string') &&
+                                result.imagePathList.length === result.imagePaths.length &&
+                                (result.imagePathList.length === 0 || result.imagePathList[0] === result.imagePaths[0].imagePath) &&
                                 (result.firstImagePath === null || typeof result.firstImagePath === 'string') &&
                                 (result.lastImagePath === null || typeof result.lastImagePath === 'string') &&
                                 (imageSummary === null || (
@@ -2744,7 +2752,10 @@ undefined;
                                 typeof result.totalRequiredMethodCount === 'number' &&
                                 typeof result.totalOptionalMethodCount === 'number' &&
                                 typeof result.totalPropertyCount === 'number' &&
+                                Array.isArray(result.imagePathList) &&
                                 Array.isArray(result.imagePaths) &&
+                                result.imagePathList.length === result.imagePaths.length &&
+                                (result.imagePathList.length === 0 || result.imagePathList[0] === result.imagePaths[0].imagePath) &&
                                 result.text === result.protocols.join('\\n') &&
                                 (result.firstProtocol === null || typeof result.firstProtocol === 'string') &&
                                 (result.lastProtocol === null || typeof result.lastProtocol === 'string') &&
@@ -2844,7 +2855,10 @@ undefined;
                                 typeof result.totalRequiredMethodCount === 'number' &&
                                 typeof result.totalOptionalMethodCount === 'number' &&
                                 typeof result.totalPropertyCount === 'number' &&
+                                Array.isArray(result.imagePathList) &&
                                 Array.isArray(result.imagePaths) &&
+                                result.imagePathList.length === result.imagePaths.length &&
+                                (result.imagePathList.length === 0 || result.imagePathList[0] === result.imagePaths[0].imagePath) &&
                                 result.text === result.protocols.join('\\n') &&
                                 (result.firstProtocol === null || typeof result.firstProtocol === 'string') &&
                                 (result.lastProtocol === null || typeof result.lastProtocol === 'string') &&
@@ -3206,6 +3220,7 @@ undefined;
                                     typeof result.totalIvarCount !== 'number' ||
                                     typeof result.totalMethodCount !== 'number' ||
                                     typeof result.totalInstanceSize !== 'number' ||
+                                    !Array.isArray(result.imagePathList) ||
                                     !Array.isArray(result.imagePaths)) {
                                 return false;
                             }
@@ -3216,6 +3231,9 @@ undefined;
                             return result.hasChain === true &&
                                 typeof result.rootClass === 'string' &&
                                 result.text === result.chain.join('\\n') &&
+                                result.imagePathList.every((entry) => typeof entry === 'string') &&
+                                result.imagePathList.length === result.imagePaths.length &&
+                                (result.imagePathList.length === 0 || result.imagePathList[0] === result.imagePaths[0].imagePath) &&
                                 (result.firstImagePath === null || typeof result.firstImagePath === 'string') &&
                                 (result.lastImagePath === null || typeof result.lastImagePath === 'string') &&
                                 (imageSummary === null || (
