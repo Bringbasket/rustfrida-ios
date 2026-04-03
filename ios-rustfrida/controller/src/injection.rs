@@ -1496,6 +1496,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .get(routing_decision_ready_example_query_only_error_code)
         .cloned();
     let routing_decision_ready_example_query_only_available = routing_decision_ready_example_query_only_result.is_some();
+    let routing_decision_ready_example_query_only_phase = routing_decision_ready_example_query_only_result
+        .as_ref()
+        .and_then(|entry| entry.get("effective"))
+        .and_then(|entry| entry.get("phase"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned);
     let routing_decision_ready_example_query_only_would_use_query_path = routing_decision_ready_example_query_only_result
         .as_ref()
         .and_then(|entry| entry.get("effective"))
@@ -1631,6 +1637,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "reason": "missing-phase",
         "effective": routing_decision_ready_phase_resolve_default_effective,
     });
+    let routing_decision_ready_example_query_only_phase_result = routing_decision_ready_example_query_only_phase
+        .as_ref()
+        .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
+        .cloned();
+    let routing_decision_ready_example_query_only_phase_available =
+        routing_decision_ready_example_query_only_phase_result.is_some();
+    let routing_decision_ready_example_query_only_would_use_query_phase = routing_decision_ready_example_query_only_phase_result
+        .as_ref()
+        .and_then(|entry| entry.get("effective"))
+        .and_then(|entry| entry.get("phase"))
+        .and_then(Value::as_str)
+        .is_some_and(|phase| phase == "query");
     let routing_decision_ready_example_known_phase_result = routing_decision_ready_example_known_phase
         .as_ref()
         .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
@@ -1642,6 +1660,13 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "knownResult": routing_decision_ready_example_known_phase_result,
         "missingPhase": routing_decision_ready_example_missing_phase,
         "missingResult": routing_decision_ready_phase_resolve_default.clone(),
+        "queryOnlyInstallFailure": {
+            "sourceErrorCode": routing_decision_ready_example_query_only_error_code,
+            "phase": routing_decision_ready_example_query_only_phase,
+            "available": routing_decision_ready_example_query_only_phase_available,
+            "result": routing_decision_ready_example_query_only_phase_result.unwrap_or(Value::Null),
+            "wouldUseQueryPhase": routing_decision_ready_example_query_only_would_use_query_phase,
+        },
     });
     let routing_decision = json!({
         "lookupKey": "errorCode",
@@ -8424,6 +8449,26 @@ mod tests {
             "missing-phase"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["sourceErrorCode"],
+            "hook-fallback-hook-install-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["phase"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["result"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
+            false
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["matched"],
             true
         );
@@ -8846,6 +8891,26 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["result"]["effective"]["escalationKey"],
             "query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["sourceErrorCode"],
+            "hook-fallback-hook-install-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["phase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["result"]["effective"]["phase"],
+            "query"
         );
     }
 
