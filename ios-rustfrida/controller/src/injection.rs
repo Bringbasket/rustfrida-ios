@@ -688,12 +688,62 @@ fn normalize_command_template_for_cli(template: &str) -> String {
 }
 
 #[cfg(unix)]
+fn command_template_placeholders(command: &str) -> Vec<String> {
+    command
+        .split_whitespace()
+        .filter_map(|token| {
+            let trimmed = token.trim_matches(|ch: char| ch == ',' || ch == ';');
+            if trimmed.starts_with('<') && trimmed.ends_with('>') && trimmed.len() > 2 {
+                Some(trimmed.to_string())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>()
+}
+
+#[cfg(unix)]
+fn command_template_risk(template: &str) -> &'static str {
+    if template.contains("# risky-with-external-backend") {
+        "risky-with-external-backend"
+    } else {
+        "normal"
+    }
+}
+
+#[cfg(unix)]
 fn command_json_template_entry(template: &str) -> Value {
     let command = normalize_command_template_for_cli(template);
-    json!({
-        "command": command,
-        "cliArgs": ["--pid", "<pid>", "--command", command, "--command-json"],
-    })
+    let placeholders = command_template_placeholders(&command);
+    let risk = command_template_risk(template);
+
+    if let Some(controller_args) = command.strip_prefix("controller ") {
+        let cli_args = controller_args
+            .split_whitespace()
+            .map(|token| token.to_string())
+            .collect::<Vec<_>>();
+
+        json!({
+            "command": command,
+            "kind": "controller-cli",
+            "commandJsonEligible": false,
+            "risk": risk,
+            "placeholderCount": placeholders.len(),
+            "placeholders": placeholders,
+            "cliArgs": cli_args,
+        })
+    } else {
+        let command_for_cli = command.clone();
+        json!({
+            "command": command,
+            "kind": "runtime-command",
+            "commandJsonEligible": true,
+            "risk": risk,
+            "placeholderCount": placeholders.len(),
+            "placeholders": placeholders,
+            "cliArgs": ["--pid", "<pid>", "--command", command_for_cli, "--command-json"],
+        })
+    }
 }
 
 #[cfg(unix)]
@@ -4817,16 +4867,17 @@ fn event_name(event: &AgentEvent) -> &'static str {
 mod tests {
     use super::{
         analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
-        build_trace_spec, command_requests_inline_hook_install, command_requires_inline_hooks,
-        ensure_inline_hooks_allowed_for_command, hook_automation_to_json, hook_backend_matrix_to_json,
-        hook_effective_actions, hook_effective_actions_to_json, hook_effective_to_json,
-        hook_environment_requires_notice, parse_hfl_command, parse_jhook_command, parse_shook_command,
-        parse_stalker_command, parse_trace_command, print_injection_preflight, quote_js_string,
-        render_bootstrap_summary, render_command_error_json, render_command_error_json_with_context,
-        render_command_outcome_json, render_image_list_json, render_injection_environment,
-        render_injection_result_json, render_loader_symbol, render_preflight_json, CommandJsonContext,
-        CommandOutcome, CommandOutcomeKind, HflCommand, NativeHookTarget, NativeLogArgument, NativeLogReturn,
-        NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
+        build_trace_spec, command_json_template_entry, command_requests_inline_hook_install,
+        command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_automation_to_json,
+        hook_action_command_templates, hook_backend_matrix_to_json, hook_effective_actions,
+        hook_effective_actions_to_json, hook_effective_to_json, hook_environment_requires_notice,
+        parse_hfl_command, parse_jhook_command, parse_shook_command, parse_stalker_command,
+        parse_trace_command, print_injection_preflight, quote_js_string, render_bootstrap_summary,
+        render_command_error_json, render_command_error_json_with_context, render_command_outcome_json,
+        render_image_list_json, render_injection_environment, render_injection_result_json, render_loader_symbol,
+        render_preflight_json, CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand,
+        NativeHookTarget, NativeLogArgument, NativeLogReturn, NativeLogTemplate, NativeValueFormat,
+        ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
     };
     use common::{
         AgentCommand, ControllerConfig, Error, Hello, InjectionMode, DEFAULT_AGENT_PATH, DEFAULT_AGENT_PATH_ROOTFUL,
@@ -6413,6 +6464,22 @@ mod tests {
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["cliArgs"][4],
             "--command-json"
         );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["kind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["commandJsonEligible"],
+            true
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["placeholderCount"],
+            1
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["placeholders"][0],
+            "<filter>"
+        );
         assert_eq!(rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"], 3);
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonTemplates"][0]["cliArgs"][2],
@@ -6618,6 +6685,22 @@ mod tests {
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["cliArgs"][4],
             "--command-json"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["kind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["commandJsonEligible"],
+            true
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["placeholderCount"],
+            1
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["placeholders"][0],
+            "<filter>"
         );
         assert_eq!(rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"], 3);
         assert_eq!(
@@ -6825,6 +6908,54 @@ mod tests {
             install_templates["commandJsonTemplates"][0]["command"],
             "trace <objc-filter|native-target>"
         );
+        assert_eq!(
+            install_templates["commandJsonTemplates"][0]["kind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            install_templates["commandJsonTemplates"][0]["risk"],
+            "risky-with-external-backend"
+        );
+    }
+
+    #[test]
+    fn hook_bootstrap_templates_render_controller_cli_command_entries() {
+        let templates = hook_action_command_templates("hook.bootstrap", "inline-safe");
+        assert_eq!(templates.len(), 3);
+
+        let entries = templates
+            .iter()
+            .map(|template| command_json_template_entry(template))
+            .collect::<Vec<_>>();
+
+        assert_eq!(entries[0]["command"], "native.hookenv");
+        assert_eq!(entries[0]["kind"], "runtime-command");
+        assert_eq!(entries[0]["commandJsonEligible"], true);
+        assert_eq!(entries[0]["placeholderCount"], 0);
+        assert_eq!(entries[0]["risk"], "normal");
+        assert_eq!(entries[0]["cliArgs"][4], "--command-json");
+
+        assert_eq!(
+            entries[1]["command"],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert_eq!(entries[1]["kind"], "controller-cli");
+        assert_eq!(entries[1]["commandJsonEligible"], false);
+        assert_eq!(entries[1]["placeholderCount"], 1);
+        assert_eq!(entries[1]["placeholders"][0], "<pid>");
+        assert_eq!(entries[1]["cliArgs"][0], "--preflight-only");
+        assert_eq!(entries[1]["cliArgs"][1], "--preflight-json");
+        assert_eq!(entries[1]["cliArgs"][2], "--pid");
+        assert_eq!(entries[1]["cliArgs"][3], "<pid>");
+
+        assert_eq!(entries[2]["command"], "controller --inject-json --pid <pid>");
+        assert_eq!(entries[2]["kind"], "controller-cli");
+        assert_eq!(entries[2]["commandJsonEligible"], false);
+        assert_eq!(entries[2]["placeholderCount"], 1);
+        assert_eq!(entries[2]["placeholders"][0], "<pid>");
+        assert_eq!(entries[2]["cliArgs"][0], "--inject-json");
+        assert_eq!(entries[2]["cliArgs"][1], "--pid");
+        assert_eq!(entries[2]["cliArgs"][2], "<pid>");
     }
 
     #[test]
