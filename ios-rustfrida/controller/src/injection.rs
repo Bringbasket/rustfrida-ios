@@ -2078,6 +2078,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "defaultReason": routing_decision_ready_resolve_default_reason,
         "defaultEffectivePhase": routing_decision_ready_resolve_default_effective_phase_alias,
         "defaultEffectiveEscalationKey": routing_decision_ready_resolve_default_effective_escalation_key_alias,
+        "knownErrorCode": routing_decision_ready_example_known_error_code,
+        "knownResult": routing_decision_ready_example_known_error_result,
+        "knownEffectivePhase": routing_decision_ready_example_known_effective_phase,
+        "knownEffectiveEscalationKey": routing_decision_ready_example_known_effective_escalation_key,
+        "missingErrorCode": routing_decision_ready_example_missing_error_code,
+        "missingResult": routing_decision_ready_resolve_default.clone(),
+        "missingEffectivePhase": routing_decision_ready_example_missing_effective_phase,
+        "missingEffectiveEscalationKey": routing_decision_ready_example_missing_effective_escalation_key,
         "queryOnlyErrorCode": routing_decision_ready_resolve_query_only_example
             .get("errorCode")
             .cloned()
@@ -2143,6 +2151,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "defaultReason": routing_decision_ready_phase_resolve_default_reason,
         "defaultEffectivePhase": routing_decision_ready_phase_resolve_default_effective_phase_alias,
         "defaultEffectiveEscalationKey": routing_decision_ready_phase_resolve_default_effective_escalation_key_alias,
+        "knownPhase": routing_decision_ready_example_known_phase,
+        "knownResult": routing_decision_ready_example_known_phase_result,
+        "knownEffectivePhase": routing_decision_ready_example_known_phase_effective_phase,
+        "knownEffectiveEscalationKey": routing_decision_ready_example_known_phase_effective_escalation_key,
+        "missingPhase": routing_decision_ready_example_missing_phase,
+        "missingResult": routing_decision_ready_phase_resolve_default.clone(),
+        "missingEffectivePhase": routing_decision_ready_example_missing_phase_effective_phase,
+        "missingEffectiveEscalationKey": routing_decision_ready_example_missing_phase_effective_escalation_key,
         "queryOnlySourceErrorCode": routing_decision_ready_phase_resolve_query_only_example
             .get("sourceErrorCode")
             .cloned()
@@ -9043,6 +9059,38 @@ mod tests {
             "preflight-refresh"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCode"],
+            "hook-fallback-diagnose-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownResult"]["reason"],
+            "matched-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownEffectivePhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownEffectiveEscalationKey"],
+            "policy-review"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["missingErrorCode"],
+            "hook-fallback-unknown"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["missingResult"]["reason"],
+            "missing-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["missingEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["missingEffectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyErrorCode"],
             "hook-fallback-hook-install-failed"
         );
@@ -9220,6 +9268,38 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["defaultEffectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownResult"]["reason"],
+            "matched-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownEffectivePhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownEffectiveEscalationKey"],
+            "policy-review"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["missingPhase"],
+            "unknown"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["missingResult"]["reason"],
+            "missing-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["missingEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["missingEffectiveEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
