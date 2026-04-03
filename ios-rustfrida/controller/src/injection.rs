@@ -747,6 +747,19 @@ fn command_json_template_entry(template: &str) -> Value {
 }
 
 #[cfg(unix)]
+fn command_json_eligible_count(command_json_templates: &[Value]) -> usize {
+    command_json_templates
+        .iter()
+        .filter(|entry| {
+            entry
+                .get("commandJsonEligible")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+        })
+        .count()
+}
+
+#[cfg(unix)]
 fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
     let command_mode = hook_effective_command_mode(actions);
     let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
@@ -870,6 +883,17 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let action_branches = actions
         .iter()
         .map(|item| {
+            let templates = hook_action_command_templates(item.action_key, preferred_path);
+            let command_json_templates = templates
+                .iter()
+                .map(|template| command_json_template_entry(template))
+                .collect::<Vec<_>>();
+            let command_json_eligible_template_count = command_json_eligible_count(&command_json_templates);
+            let selected_as_next = next_action_key
+                .as_ref()
+                .map(|action_key| action_key == item.action_key)
+                .unwrap_or(false);
+
             json!({
                 "actionKey": item.action_key,
                 "commandGroup": item.command_group,
@@ -878,6 +902,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 "blockedBy": item.blocked_by,
                 "priority": item.priority,
                 "recommendation": item.recommendation,
+                "selectedAsNext": selected_as_next,
+                "templateCount": templates.len(),
+                "templates": templates,
+                "commandJsonTemplateCount": command_json_templates.len(),
+                "commandJsonTemplates": command_json_templates,
+                "commandJsonEligibleTemplateCount": command_json_eligible_template_count,
             })
         })
         .collect::<Vec<_>>();
@@ -6519,6 +6549,26 @@ mod tests {
         );
         assert!(rendered["hook"]["automation"]["actionBranches"].is_array());
         assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["actionKey"],
+            "hook.query"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["selectedAsNext"],
+            true
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["templateCount"],
+            3
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
+            3
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["commandJsonEligibleTemplateCount"],
+            3
+        );
+        assert_eq!(
             rendered["hook"]["controller"]["capabilities"]["hookInstallCommandsAllowed"],
             true
         );
@@ -6751,6 +6801,26 @@ mod tests {
             "--command"
         );
         assert!(rendered["hook"]["automation"]["actionBranches"].is_array());
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["actionKey"],
+            "hook.query"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["selectedAsNext"],
+            true
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["templateCount"],
+            3
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
+            3
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["commandJsonEligibleTemplateCount"],
+            3
+        );
         assert_eq!(rendered["trace"]["payloadAddressHex"], json!("0x5000"));
         assert_eq!(rendered["handshake"]["hello"]["arch"], "aarch64");
         assert_eq!(rendered["handshake"]["stage"], "completed");
@@ -6847,11 +6917,19 @@ mod tests {
             .find(|item| item["actionKey"] == "hook.query")
             .expect("query branch");
         assert_eq!(query_branch["branch"], "skip-target-policy");
+        assert_eq!(query_branch["selectedAsNext"], false);
+        assert_eq!(query_branch["templateCount"], 3);
+        assert_eq!(query_branch["commandJsonTemplateCount"], 3);
+        assert_eq!(query_branch["commandJsonEligibleTemplateCount"], 3);
         let status_branch = branches
             .iter()
             .find(|item| item["actionKey"] == "hook.status")
             .expect("status branch");
         assert_eq!(status_branch["branch"], "run");
+        assert_eq!(status_branch["selectedAsNext"], true);
+        assert_eq!(status_branch["templateCount"], 5);
+        assert_eq!(status_branch["commandJsonTemplateCount"], 5);
+        assert_eq!(status_branch["commandJsonEligibleTemplateCount"], 5);
     }
 
     #[test]
@@ -6974,6 +7052,19 @@ mod tests {
             install_templates["commandJsonTemplates"][0]["risk"],
             "risky-with-external-backend"
         );
+        let branches = automation["actionBranches"].as_array().expect("automation branches");
+        let install_branch = branches
+            .iter()
+            .find(|item| item["actionKey"] == "hook.install")
+            .expect("hook.install branch");
+        assert_eq!(install_branch["selectedAsNext"], false);
+        assert_eq!(install_branch["templateCount"], 5);
+        assert_eq!(install_branch["commandJsonTemplateCount"], 5);
+        assert_eq!(install_branch["commandJsonEligibleTemplateCount"], 5);
+        assert!(install_branch["templates"][0]
+            .as_str()
+            .unwrap_or_default()
+            .contains("risky-with-external-backend"));
     }
 
     #[test]
