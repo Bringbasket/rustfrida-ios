@@ -817,13 +817,11 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .filter(|item| !item.allowed)
         .min_by_key(|item| (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key)));
 
-    let next_action_key = next_action
-        .or(blocked_action)
-        .map(|item| item.action_key)
-        .map(ToOwned::to_owned);
-    let next_action_reason = next_action
-        .map(|item| item.recommendation.clone())
-        .or_else(|| blocked_action.map(|item| item.recommendation.clone()));
+    let selected_action = next_action.or(blocked_action);
+    let next_action_key = selected_action.map(|item| item.action_key).map(ToOwned::to_owned);
+    let next_runnable_action_key = next_action.map(|item| item.action_key).map(ToOwned::to_owned);
+    let next_blocked_action_key = blocked_action.map(|item| item.action_key).map(ToOwned::to_owned);
+    let next_action_reason = selected_action.map(|item| item.recommendation.clone());
     let suggested_sequence = hook_automation_suggested_sequence(preferred_path);
     let command_templates = HOOK_EFFECTIVE_ACTIONS
         .iter()
@@ -851,6 +849,23 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .iter()
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
+    let next_action_plan = selected_action
+        .map(|item| {
+            json!({
+                "actionKey": item.action_key,
+                "commandGroup": item.command_group,
+                "allowed": item.allowed,
+                "blockedBy": item.blocked_by,
+                "branch": hook_automation_branch(item),
+                "priority": item.priority,
+                "recommendation": item.recommendation,
+                "templateCount": next_action_templates.len(),
+                "templates": next_action_templates.clone(),
+                "commandJsonTemplateCount": next_action_command_json_templates.len(),
+                "commandJsonTemplates": next_action_command_json_templates.clone(),
+            })
+        })
+        .unwrap_or(Value::Null);
 
     let action_branches = actions
         .iter()
@@ -873,7 +888,13 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "backendPressure": backend_pressure,
         "sharedBackendCount": shared_backend_count,
         "nextActionKey": next_action_key,
+        "nextRunnableActionKey": next_runnable_action_key,
+        "nextBlockedActionKey": next_blocked_action_key,
         "nextActionReason": next_action_reason,
+        "nextActionAllowed": selected_action.map(|item| item.allowed),
+        "nextActionBlockedBy": selected_action.map(|item| item.blocked_by),
+        "nextActionBranch": selected_action.map(hook_automation_branch),
+        "nextActionPlan": next_action_plan,
         "hasSuggestedSequence": !suggested_sequence.is_empty(),
         "suggestedSequence": suggested_sequence,
         "commandTemplates": command_templates,
@@ -6450,10 +6471,21 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["nextRunnableActionKey"], "hook.query");
+        assert!(rendered["hook"]["automation"]["nextBlockedActionKey"].is_null());
+        assert_eq!(rendered["hook"]["automation"]["nextActionAllowed"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
+        assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert!(rendered["hook"]["automation"]["commandTemplates"].is_array());
         assert_eq!(rendered["hook"]["automation"]["commandTemplates"][0]["actionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionPlan"]["actionKey"],
+            "hook.query"
+        );
+        assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["allowed"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplates"][0], "objc.classes <filter>");
         assert_eq!(
@@ -6672,10 +6704,21 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["nextRunnableActionKey"], "hook.query");
+        assert!(rendered["hook"]["automation"]["nextBlockedActionKey"].is_null());
+        assert_eq!(rendered["hook"]["automation"]["nextActionAllowed"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
+        assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert!(rendered["hook"]["automation"]["commandTemplates"].is_array());
         assert_eq!(rendered["hook"]["automation"]["commandTemplates"][0]["actionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionPlan"]["actionKey"],
+            "hook.query"
+        );
+        assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["allowed"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplates"][0], "objc.classes <filter>");
         assert_eq!(
@@ -6781,8 +6824,16 @@ mod tests {
         assert_eq!(automation["preferredPath"], "cleanup-only");
         assert_eq!(automation["backendPressure"], "none");
         assert_eq!(automation["nextActionKey"], "hook.status");
+        assert_eq!(automation["nextRunnableActionKey"], "hook.status");
+        assert_eq!(automation["nextBlockedActionKey"], "hook.query");
+        assert_eq!(automation["nextActionAllowed"], true);
+        assert_eq!(automation["nextActionBlockedBy"], "none");
+        assert_eq!(automation["nextActionBranch"], "run");
         assert_eq!(automation["hasSuggestedSequence"], true);
         assert_eq!(automation["suggestedSequence"][0], "trace status");
+        assert_eq!(automation["nextActionPlan"]["actionKey"], "hook.status");
+        assert_eq!(automation["nextActionPlan"]["allowed"], true);
+        assert_eq!(automation["nextActionPlan"]["branch"], "run");
         assert_eq!(automation["nextActionTemplateCount"], 5);
         assert_eq!(automation["nextActionTemplates"][0], "trace status");
         assert_eq!(automation["nextActionCommandJsonTemplateCount"], 5);
@@ -6882,8 +6933,15 @@ mod tests {
         assert_eq!(automation["backendPressure"], "both");
         assert_eq!(automation["preferredPath"], "inline-risky");
         assert_eq!(automation["nextActionKey"], "hook.query");
+        assert_eq!(automation["nextRunnableActionKey"], "hook.query");
+        assert_eq!(automation["nextActionAllowed"], true);
+        assert_eq!(automation["nextActionBlockedBy"], "none");
+        assert_eq!(automation["nextActionBranch"], "run");
         assert_eq!(automation["suggestedSequence"][0], "native.hookenv");
         assert!(automation["commandTemplates"].is_array());
+        assert_eq!(automation["nextActionPlan"]["actionKey"], "hook.query");
+        assert_eq!(automation["nextActionPlan"]["allowed"], true);
+        assert_eq!(automation["nextActionPlan"]["branch"], "run");
         assert_eq!(automation["nextActionTemplateCount"], 3);
         assert_eq!(automation["nextActionTemplates"][0], "objc.classes <filter>");
         assert_eq!(automation["nextActionCommandJsonTemplateCount"], 3);
