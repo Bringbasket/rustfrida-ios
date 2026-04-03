@@ -1499,6 +1499,11 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .iter()
         .find(|item| item.action_key == "hook.install")
         .map(|item| item.blocked_by.to_string());
+    let routing_decision_ready_example_query_only_blocked_by_source = routing_decision_ready_example_query_only_blocked_by
+        .clone()
+        .unwrap_or_else(|| "none".to_string());
+    let routing_decision_ready_example_query_only_is_blocked =
+        routing_decision_ready_example_query_only_blocked_by_source != "none";
     let routing_decision_ready_example_query_only_available = routing_decision_ready_example_query_only_result.is_some();
     let routing_decision_ready_example_query_only_phase = routing_decision_ready_example_query_only_result
         .as_ref()
@@ -1520,6 +1525,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "queryOnlyInstallFailure": {
             "errorCode": routing_decision_ready_example_query_only_error_code,
             "blockedBy": routing_decision_ready_example_query_only_blocked_by,
+            "blockedBySource": routing_decision_ready_example_query_only_blocked_by_source,
+            "isBlocked": routing_decision_ready_example_query_only_is_blocked,
             "available": routing_decision_ready_example_query_only_available,
             "result": routing_decision_ready_example_query_only_result.unwrap_or(Value::Null),
             "wouldUseQueryOnlyPath": routing_decision_ready_example_query_only_would_use_query_path,
@@ -1668,6 +1675,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "queryOnlyInstallFailure": {
             "sourceErrorCode": routing_decision_ready_example_query_only_error_code,
             "blockedBy": routing_decision_ready_example_query_only_blocked_by,
+            "blockedBySource": routing_decision_ready_example_query_only_blocked_by_source,
+            "isBlocked": routing_decision_ready_example_query_only_is_blocked,
             "phase": routing_decision_ready_example_query_only_phase,
             "available": routing_decision_ready_example_query_only_phase_available,
             "result": routing_decision_ready_example_query_only_phase_result.unwrap_or(Value::Null),
@@ -8387,6 +8396,14 @@ mod tests {
             "both"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            true
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["available"],
             false
         );
@@ -8465,6 +8482,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
             "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            true
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["phase"],
@@ -8903,6 +8928,14 @@ mod tests {
             "both"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            true
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryOnlyPath"],
             true
         );
@@ -8923,6 +8956,14 @@ mod tests {
             "both"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            true
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["available"],
             true
         );
@@ -8933,6 +8974,60 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["result"]["effective"]["phase"],
             "query"
+        );
+    }
+
+    #[test]
+    fn hook_automation_query_only_example_defaults_to_none_when_install_action_missing() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let backend_matrix = hook_backend_matrix_to_json(&report, &report);
+        let actions: Vec<HookEffectiveAction> = Vec::new();
+
+        let automation = hook_automation_to_json(&actions, &backend_matrix);
+        assert_eq!(automation["hasFallbackPlan"], true);
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            "none"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryOnlyPath"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["phase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            "none"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
+            true
         );
     }
 
