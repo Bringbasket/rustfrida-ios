@@ -2122,6 +2122,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("wouldUseQueryOnlyPath")
             .cloned()
             .unwrap_or(Value::Null),
+        "queryOnlyResult": routing_decision_ready_resolve_query_only_example
+            .get("result")
+            .cloned()
+            .unwrap_or(Value::Null),
         "index": routing_decision_ready_resolve_index,
         "default": routing_decision_ready_resolve_default,
         "examples": routing_decision_ready_resolve_examples,
@@ -2185,6 +2189,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .unwrap_or(Value::Null),
         "queryOnlyWouldUsePhase": routing_decision_ready_phase_resolve_query_only_example
             .get("wouldUseQueryPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResult": routing_decision_ready_phase_resolve_query_only_example
+            .get("result")
             .cloned()
             .unwrap_or(Value::Null),
         "index": routing_decision_ready_phase_resolve_index,
@@ -9073,6 +9081,10 @@ mod tests {
             false
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyResult"],
+            json!(null)
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownErrorCode"],
             "hook-fallback-diagnose-failed"
         );
@@ -9251,6 +9263,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyWouldUsePhase"],
             false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyResult"],
+            json!(null)
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownPhase"],
@@ -9851,6 +9867,14 @@ mod tests {
             true
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyWouldUsePath"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyResult"]["effective"]["escalationKey"],
+            "query-only-path"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["result"]["effective"]["escalationKey"],
             "query-only-path"
         );
@@ -9903,6 +9927,14 @@ mod tests {
             true
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyWouldUsePhase"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyResult"]["effective"]["phase"],
+            "query"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["result"]["effective"]["phase"],
             "query"
         );
@@ -9922,6 +9954,10 @@ mod tests {
         assert_eq!(automation["hasFallbackPlan"], true);
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyBlockedBy"],
             json!(null)
         );
         assert_eq!(
@@ -9962,6 +9998,10 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["phase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyResult"]["effective"]["phase"],
             "query"
         );
         assert_eq!(
