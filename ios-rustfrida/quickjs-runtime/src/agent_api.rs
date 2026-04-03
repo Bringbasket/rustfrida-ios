@@ -2345,6 +2345,7 @@ function formatHookEnvironmentReport(report) {
         lines.push(
             'recommended_action ' +
                 String(action.commandGroup || '<unknown>') +
+                ' priority=' + String(Number(action.priority || 0)) +
                 ' allowed=' + String(!!action.allowed) +
                 ' status=' + String(action.status || (action.allowed ? 'allowed' : 'blocked')) +
                 ' recommendation=' + String(action.recommendation || '')

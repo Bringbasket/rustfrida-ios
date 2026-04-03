@@ -152,6 +152,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     {
         let item = JSValue(ffi::JS_NewObject(ctx));
         item.set_property(ctx, "commandGroup", JSValue::string(ctx, &action.command_group));
+        item.set_property(ctx, "priority", JSValue::int(action.priority as i32));
         item.set_property(ctx, "allowed", JSValue::bool(action.allowed));
         item.set_property(ctx, "status", JSValue::string(ctx, &action.status));
         item.set_property(ctx, "recommendation", JSValue::string(ctx, &action.recommendation));

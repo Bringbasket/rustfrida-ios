@@ -380,6 +380,7 @@ fn hook_shortcuts_to_json(
 fn hook_recommended_action_to_json(action: &native_api::HookRecommendedAction) -> Value {
     json!({
         "commandGroup": action.command_group,
+        "priority": action.priority,
         "allowed": action.allowed,
         "status": action.status,
         "recommendation": action.recommendation,
@@ -5672,6 +5673,8 @@ mod tests {
         assert_eq!(rendered["hook"]["target"]["commandMode"], "allowed");
         assert!(rendered["hook"]["controller"]["recommendedActions"].is_array());
         assert!(rendered["hook"]["target"]["recommendedActions"].is_array());
+        assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["commandGroup"], "query");
+        assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["priority"], 1);
         assert_eq!(
             rendered["hook"]["controller"]["capabilities"]["hookInstallCommandsAllowed"],
             true
@@ -5843,6 +5846,8 @@ mod tests {
         assert_eq!(rendered["hook"]["target"]["commandMode"], "allowed");
         assert!(rendered["hook"]["controller"]["recommendedActions"].is_array());
         assert!(rendered["hook"]["target"]["recommendedActions"].is_array());
+        assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["commandGroup"], "query");
+        assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["priority"], 1);
         assert_eq!(rendered["trace"]["payloadAddressHex"], json!("0x5000"));
         assert_eq!(rendered["handshake"]["hello"]["arch"], "aarch64");
         assert_eq!(rendered["handshake"]["stage"], "completed");

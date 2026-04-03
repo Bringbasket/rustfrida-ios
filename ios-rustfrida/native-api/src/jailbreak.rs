@@ -109,6 +109,7 @@ impl HookStrategyDecision {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HookRecommendedAction {
     pub command_group: String,
+    pub priority: u8,
     pub allowed: bool,
     pub status: String,
     pub recommendation: String,
@@ -216,7 +217,7 @@ pub fn hook_environment_recommended_actions(
         .unwrap_or("allowed");
     let reason = decision.and_then(|item| item.reason.clone());
 
-    [
+    let mut actions = [
         ("bootstrap", decision.map(|item| item.bootstrap_injection_allowed()).unwrap_or(true)),
         ("query", decision.map(|item| item.query_commands_allowed()).unwrap_or(true)),
         (
@@ -236,6 +237,7 @@ pub fn hook_environment_recommended_actions(
     .into_iter()
     .map(|(command_group, allowed)| HookRecommendedAction {
         command_group: command_group.into(),
+        priority: action_priority(mode, command_group, allowed),
         allowed,
         status: if allowed { "allowed".into() } else { "blocked".into() },
         recommendation: recommendation_for_action(
@@ -247,7 +249,10 @@ pub fn hook_environment_recommended_actions(
         ),
         reason: reason.clone(),
     })
-    .collect()
+    .collect::<Vec<_>>();
+
+    actions.sort_by_key(|action| (action.priority, command_group_sort_order(&action.command_group)));
+    actions
 }
 
 #[allow(dead_code)]
@@ -513,6 +518,48 @@ fn recommendation_for_action(
     }
 }
 
+fn action_priority(mode: &str, command_group: &str, allowed: bool) -> u8 {
+    if !allowed {
+        return match (mode, command_group) {
+            ("cleanup-only", "query" | "hook-install") => 4,
+            ("query-only", "hook-install") => 4,
+            ("blocked", _) => 5,
+            _ => 4,
+        };
+    }
+
+    match mode {
+        "cleanup-only" => match command_group {
+            "hook-status" | "hook-stop" => 1,
+            "bootstrap" => 2,
+            _ => 3,
+        },
+        "query-only" => match command_group {
+            "query" => 1,
+            "bootstrap" | "hook-status" | "hook-stop" => 2,
+            "hook-install" => 4,
+            _ => 3,
+        },
+        _ => match command_group {
+            "query" => 1,
+            "bootstrap" => 2,
+            "hook-install" | "hook-status" | "hook-stop" => 3,
+            _ => 3,
+        },
+    }
+}
+
+fn command_group_sort_order(command_group: &str) -> u8 {
+    match command_group {
+        "bootstrap" => 0,
+        "query" => 1,
+        "hook-install" => 2,
+        "hook-status" => 3,
+        "hook-stop" => 4,
+        _ => u8::MAX,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -750,6 +797,7 @@ mod tests {
             .expect("query action");
         assert!(query.allowed);
         assert_eq!(query.status, "allowed");
+        assert_eq!(query.priority, 1);
 
         let install = actions
             .iter()
@@ -757,7 +805,9 @@ mod tests {
             .expect("hook-install action");
         assert!(!install.allowed);
         assert_eq!(install.status, "blocked");
+        assert_eq!(install.priority, 4);
         assert!(install.recommendation.contains("query-only mode"));
+        assert_eq!(actions[0].command_group, "query");
     }
 
     #[test]
@@ -781,6 +831,7 @@ mod tests {
             .expect("query action");
         assert!(!query.allowed);
         assert_eq!(query.status, "blocked");
+        assert_eq!(query.priority, 4);
         assert!(query.recommendation.contains("cleanup-only mode"));
 
         let stop = actions
@@ -789,6 +840,9 @@ mod tests {
             .expect("hook-stop action");
         assert!(stop.allowed);
         assert_eq!(stop.status, "allowed");
+        assert_eq!(stop.priority, 1);
         assert!(stop.recommendation.contains("cleanup-only mode"));
+        assert_eq!(actions[0].command_group, "hook-status");
+        assert_eq!(actions[1].command_group, "hook-stop");
     }
 }
