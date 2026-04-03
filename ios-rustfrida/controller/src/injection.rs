@@ -586,6 +586,49 @@ fn json_array_len(value: &Value, key: &str) -> usize {
 }
 
 #[cfg(unix)]
+fn hook_automation_suggested_sequence(preferred_path: &str) -> Vec<String> {
+    let commands: &[&str] = match preferred_path {
+        "inline-safe" => &[
+            "native.hookenv",
+            "trace status",
+            "trace <objc-filter|native-target>",
+            "stalker <objc-filter|native-target>",
+        ],
+        "inline-risky" => &[
+            "native.hookenv",
+            "trace status",
+            "trace <objc-filter|native-target> # risky-with-external-backend",
+            "stalker <objc-filter|native-target> # risky-with-external-backend",
+        ],
+        "query-only" => &[
+            "native.hookenv",
+            "objc.classes <filter>",
+            "native.images <filter>",
+            "swift.types <filter>",
+        ],
+        "cleanup-only" => &[
+            "trace status",
+            "stalker status",
+            "jhook status",
+            "shook status",
+            "hfl status",
+            "trace stop",
+            "stalker stop",
+            "jhook stop",
+            "shook stop",
+            "hfl stop",
+        ],
+        _ => &[
+            "native.hookenv",
+            "controller --preflight-only --preflight-json",
+            "check IOS_RUSTFRIDA_HOOK_POLICY and retry",
+        ],
+    };
+
+    commands.iter().map(|item| (*item).to_string()).collect::<Vec<_>>()
+}
+
+#[cfg(unix)]
 fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
     let command_mode = hook_effective_command_mode(actions);
     let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
@@ -663,6 +706,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let next_action_reason = next_action
         .map(|item| item.recommendation.clone())
         .or_else(|| blocked_action.map(|item| item.recommendation.clone()));
+    let suggested_sequence = hook_automation_suggested_sequence(preferred_path);
 
     let action_branches = actions
         .iter()
@@ -686,6 +730,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "sharedBackendCount": shared_backend_count,
         "nextActionKey": next_action_key,
         "nextActionReason": next_action_reason,
+        "hasSuggestedSequence": !suggested_sequence.is_empty(),
+        "suggestedSequence": suggested_sequence,
         "actionBranches": action_branches,
     })
 }
@@ -6254,6 +6300,8 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
+        assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert!(rendered["hook"]["automation"]["actionBranches"].is_array());
         assert_eq!(
             rendered["hook"]["controller"]["capabilities"]["hookInstallCommandsAllowed"],
@@ -6441,6 +6489,8 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
+        assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert!(rendered["hook"]["automation"]["actionBranches"].is_array());
         assert_eq!(rendered["trace"]["payloadAddressHex"], json!("0x5000"));
         assert_eq!(rendered["handshake"]["hello"]["arch"], "aarch64");
@@ -6515,6 +6565,8 @@ mod tests {
         assert_eq!(automation["preferredPath"], "cleanup-only");
         assert_eq!(automation["backendPressure"], "none");
         assert_eq!(automation["nextActionKey"], "hook.status");
+        assert_eq!(automation["hasSuggestedSequence"], true);
+        assert_eq!(automation["suggestedSequence"][0], "trace status");
         let branches = automation["actionBranches"].as_array().expect("automation action branches");
         let query_branch = branches
             .iter()
@@ -6607,6 +6659,11 @@ mod tests {
         assert_eq!(automation["backendPressure"], "both");
         assert_eq!(automation["preferredPath"], "inline-risky");
         assert_eq!(automation["nextActionKey"], "hook.query");
+        assert_eq!(automation["suggestedSequence"][0], "native.hookenv");
+        assert!(automation["suggestedSequence"][2]
+            .as_str()
+            .unwrap_or_default()
+            .contains("risky-with-external-backend"));
     }
 
     #[test]
