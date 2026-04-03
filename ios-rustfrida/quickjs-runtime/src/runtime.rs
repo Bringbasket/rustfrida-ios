@@ -9156,8 +9156,14 @@ undefined;
                                     typeof result.layoutsWithAsyncVtableEntriesCount !== 'number' ||
                                     typeof result.layoutsWithThrowingVtableEntriesCount !== 'number' ||
                                     typeof result.layoutsWithWitnessAccessorsCount !== 'number' ||
+                                    !Array.isArray(result.moduleNameList) ||
+                                    !Array.isArray(result.typeNameList) ||
                                     !Array.isArray(result.moduleNames) ||
                                     !Array.isArray(result.typeNames)) {
+                                return false;
+                            }
+                            if (result.moduleNameList.length !== result.moduleNames.length ||
+                                    result.typeNameList.length !== result.typeNames.length) {
                                 return false;
                             }
                             if (result.layouts.length === 0) {
@@ -9204,6 +9210,7 @@ undefined;
                                 Array.isArray(layout.vtableMemberKinds) &&
                                 Array.isArray(layout.witnessProtocols) &&
                                 (moduleSummary === null || (
+                                    result.moduleNameList[0] === moduleSummary.moduleName &&
                                     typeof moduleSummary.moduleName === 'string' &&
                                     typeof moduleSummary.count === 'number' &&
                                     typeof moduleSummary.firstTypeName === 'string' &&
@@ -9216,6 +9223,7 @@ undefined;
                                     typeof moduleSummary.witnessTableEntryCount === 'number'
                                 )) &&
                                 (typeSummary === null || (
+                                    result.typeNameList[0] === typeSummary.typeName &&
                                     typeof typeSummary.typeName === 'string' &&
                                     typeof typeSummary.count === 'number' &&
                                     typeof typeSummary.firstModuleName === 'string' &&
@@ -9365,7 +9373,15 @@ undefined;
                             };
                             try {
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_layout', moduleName: null, query: 'Demo' });
+                                const moduleSummary = result.moduleNames.length === 0 ? null : result.moduleNames[0];
+                                const typeSummary = result.typeNames.length === 0 ? null : result.typeNames[0];
                                 return result.count === 2
+                                    && Array.isArray(result.moduleNameList)
+                                    && result.moduleNameList.length === result.moduleNames.length
+                                    && (moduleSummary === null || result.moduleNameList[0] === moduleSummary.moduleName)
+                                    && Array.isArray(result.typeNameList)
+                                    && result.typeNameList.length === result.typeNames.length
+                                    && (typeSummary === null || result.typeNameList[0] === typeSummary.typeName)
                                     && result.typeSourceEntryCount === 5
                                     && result.sourceDemangledCount === 4
                                     && result.layoutsWithSourceDemangledTypesCount === 2

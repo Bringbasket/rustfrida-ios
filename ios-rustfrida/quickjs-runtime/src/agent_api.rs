@@ -10786,6 +10786,8 @@ function handleSpecResult(spec) {
             sourceKinds: typeSourceSummary.sourceKinds,
             contextModules: typeSourceSummary.contextModules,
             detailKinds: typeSourceSummary.detailKinds,
+            moduleNameList: moduleSummaries.map((item) => item.moduleName),
+            typeNameList: typeSummaries.map((item) => item.typeName),
             moduleNames: moduleSummaries,
             typeNames: typeSummaries,
             layouts,
