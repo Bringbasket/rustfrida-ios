@@ -1490,7 +1490,45 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .and_then(|error_code| routing_decision_ready_resolve_index.get(error_code))
         .cloned()
         .unwrap_or(Value::Null);
+    let routing_decision_ready_example_known_effective_phase = routing_decision_ready_example_known_error_result
+        .get("effective")
+        .and_then(|entry| entry.get("phase"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned);
+    let routing_decision_ready_example_known_effective_escalation_key = routing_decision_ready_example_known_error_result
+        .get("effective")
+        .and_then(|entry| entry.get("escalationKey"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            routing_decision_ready_example_known_error_result
+                .get("effective")
+                .and_then(|entry| entry.get("escalationKeys"))
+                .and_then(Value::as_array)
+                .and_then(|keys| keys.first())
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+        });
     let routing_decision_ready_example_missing_error_code = "hook-fallback-unknown";
+    let routing_decision_ready_example_missing_effective_phase = routing_decision_ready_resolve_default
+        .get("effective")
+        .and_then(|entry| entry.get("phase"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned);
+    let routing_decision_ready_example_missing_effective_escalation_key = routing_decision_ready_resolve_default
+        .get("effective")
+        .and_then(|entry| entry.get("escalationKey"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            routing_decision_ready_resolve_default
+                .get("effective")
+                .and_then(|entry| entry.get("escalationKeys"))
+                .and_then(Value::as_array)
+                .and_then(|keys| keys.first())
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+        });
     let routing_decision_ready_example_query_only_error_code = "hook-fallback-hook-install-failed";
     let routing_decision_ready_example_query_only_result = routing_decision_ready_resolve_index
         .get(routing_decision_ready_example_query_only_error_code)
@@ -1529,6 +1567,22 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .and_then(|entry| entry.get("phase"))
         .and_then(Value::as_str)
         .map(ToOwned::to_owned);
+    let routing_decision_ready_example_query_only_effective_escalation_key = routing_decision_ready_example_query_only_result
+        .as_ref()
+        .and_then(|entry| entry.get("effective"))
+        .and_then(|entry| entry.get("escalationKey"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            routing_decision_ready_example_query_only_result
+                .as_ref()
+                .and_then(|entry| entry.get("effective"))
+                .and_then(|entry| entry.get("escalationKeys"))
+                .and_then(Value::as_array)
+                .and_then(|keys| keys.first())
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+        });
     let routing_decision_ready_example_query_only_would_use_query_path = routing_decision_ready_example_query_only_result
         .as_ref()
         .and_then(|entry| entry.get("effective"))
@@ -1538,8 +1592,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let routing_decision_ready_resolve_examples = json!({
         "knownErrorCode": routing_decision_ready_example_known_error_code,
         "knownResult": routing_decision_ready_example_known_error_result,
+        "knownEffectivePhase": routing_decision_ready_example_known_effective_phase,
+        "knownEffectiveEscalationKey": routing_decision_ready_example_known_effective_escalation_key,
         "missingErrorCode": routing_decision_ready_example_missing_error_code,
         "missingResult": routing_decision_ready_resolve_default.clone(),
+        "missingEffectivePhase": routing_decision_ready_example_missing_effective_phase,
+        "missingEffectiveEscalationKey": routing_decision_ready_example_missing_effective_escalation_key,
         "queryOnlyInstallFailure": {
             "errorCode": routing_decision_ready_example_query_only_error_code,
             "blockedBy": routing_decision_ready_example_query_only_blocked_by,
@@ -1549,6 +1607,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "matched": routing_decision_ready_example_query_only_matched,
             "usedDefault": routing_decision_ready_example_query_only_used_default,
             "reason": routing_decision_ready_example_query_only_reason,
+            "effectivePhase": routing_decision_ready_example_query_only_phase,
+            "effectiveEscalationKey": routing_decision_ready_example_query_only_effective_escalation_key,
             "result": routing_decision_ready_example_query_only_result.unwrap_or(Value::Null),
             "wouldUseQueryOnlyPath": routing_decision_ready_example_query_only_would_use_query_path,
         },
@@ -1705,12 +1765,54 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
         .cloned()
         .unwrap_or(Value::Null);
+    let routing_decision_ready_example_known_phase_effective_phase = routing_decision_ready_example_known_phase_result
+        .get("effective")
+        .and_then(|entry| entry.get("phase"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned);
+    let routing_decision_ready_example_known_phase_effective_escalation_key = routing_decision_ready_example_known_phase_result
+        .get("effective")
+        .and_then(|entry| entry.get("escalationKey"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            routing_decision_ready_example_known_phase_result
+                .get("effective")
+                .and_then(|entry| entry.get("escalationKeys"))
+                .and_then(Value::as_array)
+                .and_then(|keys| keys.first())
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+        });
     let routing_decision_ready_example_missing_phase = "unknown";
+    let routing_decision_ready_example_missing_phase_effective_phase = routing_decision_ready_phase_resolve_default
+        .get("effective")
+        .and_then(|entry| entry.get("phase"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned);
+    let routing_decision_ready_example_missing_phase_effective_escalation_key = routing_decision_ready_phase_resolve_default
+        .get("effective")
+        .and_then(|entry| entry.get("escalationKey"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            routing_decision_ready_phase_resolve_default
+                .get("effective")
+                .and_then(|entry| entry.get("escalationKeys"))
+                .and_then(Value::as_array)
+                .and_then(|keys| keys.first())
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+        });
     let routing_decision_ready_phase_resolve_examples = json!({
         "knownPhase": routing_decision_ready_example_known_phase,
         "knownResult": routing_decision_ready_example_known_phase_result,
+        "knownEffectivePhase": routing_decision_ready_example_known_phase_effective_phase,
+        "knownEffectiveEscalationKey": routing_decision_ready_example_known_phase_effective_escalation_key,
         "missingPhase": routing_decision_ready_example_missing_phase,
         "missingResult": routing_decision_ready_phase_resolve_default.clone(),
+        "missingEffectivePhase": routing_decision_ready_example_missing_phase_effective_phase,
+        "missingEffectiveEscalationKey": routing_decision_ready_example_missing_phase_effective_escalation_key,
         "queryOnlyInstallFailure": {
             "sourceErrorCode": routing_decision_ready_example_query_only_error_code,
             "blockedBy": routing_decision_ready_example_query_only_blocked_by,
@@ -1721,6 +1823,28 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "matched": routing_decision_ready_example_query_only_phase_matched,
             "usedDefault": routing_decision_ready_example_query_only_phase_used_default,
             "reason": routing_decision_ready_example_query_only_phase_reason,
+            "effectivePhase": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|entry| entry.get("effective"))
+                .and_then(|entry| entry.get("phase"))
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned),
+            "effectiveEscalationKey": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|entry| entry.get("effective"))
+                .and_then(|entry| entry.get("escalationKey"))
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+                .or_else(|| {
+                    routing_decision_ready_example_query_only_phase_result
+                        .as_ref()
+                        .and_then(|entry| entry.get("effective"))
+                        .and_then(|entry| entry.get("escalationKeys"))
+                        .and_then(Value::as_array)
+                        .and_then(|keys| keys.first())
+                        .and_then(Value::as_str)
+                        .map(ToOwned::to_owned)
+                }),
             "result": routing_decision_ready_example_query_only_phase_result.unwrap_or(Value::Null),
             "wouldUseQueryPhase": routing_decision_ready_example_query_only_would_use_query_phase,
         },
@@ -8422,12 +8546,28 @@ mod tests {
             "policy-review"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownEffectivePhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownEffectiveEscalationKey"],
+            "policy-review"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["missingErrorCode"],
             "hook-fallback-unknown"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["missingResult"]["reason"],
             "missing-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["missingEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["missingEffectiveEscalationKey"],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["errorCode"],
@@ -8461,6 +8601,8 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["reason"],
             "missing-error-code"
         );
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"].is_null());
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"].is_null());
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["result"],
             json!(null)
@@ -8522,12 +8664,28 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownEffectivePhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownEffectiveEscalationKey"],
+            "policy-review"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["missingPhase"],
             "unknown"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["missingResult"]["reason"],
             "missing-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["missingEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["missingEffectiveEscalationKey"],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["sourceErrorCode"],
@@ -8565,6 +8723,8 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["reason"],
             "missing-phase"
         );
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"].is_null());
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"].is_null());
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["result"],
             json!(null)
@@ -9002,6 +9162,14 @@ mod tests {
             "matched-error-code"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"],
+            "query-only-path"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
             "both"
         );
@@ -9058,6 +9226,14 @@ mod tests {
             "matched-phase"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"],
+            "query-only-path"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
             true
         );
@@ -9108,6 +9284,14 @@ mod tests {
             "matched-error-code"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"],
+            "query-only-path"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryOnlyPath"],
             true
         );
@@ -9138,6 +9322,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["reason"],
             "matched-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"],
+            "query-only-path"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
