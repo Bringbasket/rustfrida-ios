@@ -43,9 +43,13 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     let filesystem_path_count = report.filesystem_path_count();
     let conflict_state = report.conflict_state();
     let risk_level = if let Some(decision) = &decision {
-        if !decision.allowed {
+        if !decision.bootstrap_injection_allowed() {
             "blocked"
-        } else if !decision.inline_hooks_allowed {
+        } else if !decision.query_commands_allowed()
+            && (decision.hook_status_commands_allowed() || decision.hook_stop_commands_allowed())
+        {
+            "cleanup-only"
+        } else if !decision.hook_install_commands_allowed() {
             "query-only"
         } else if loaded_backend_count > 0 {
             "risky"

@@ -329,6 +329,19 @@ fn hook_strategy_to_json(strategy: &native_api::HookStrategyDecision) -> Value {
 }
 
 #[cfg(unix)]
+fn hook_strategy_mode_label(strategy: &native_api::HookStrategyDecision) -> &'static str {
+    if strategy.hook_install_commands_allowed() {
+        "allowed"
+    } else if strategy.query_commands_allowed() {
+        "query-only"
+    } else if strategy.hook_status_commands_allowed() || strategy.hook_stop_commands_allowed() {
+        "cleanup-only"
+    } else {
+        "blocked"
+    }
+}
+
+#[cfg(unix)]
 fn hook_environment_to_json(
     report: &native_api::HookEnvironmentReport,
     strategy: Option<&native_api::HookStrategyDecision>,
@@ -336,6 +349,10 @@ fn hook_environment_to_json(
     let risk_level = if let Some(strategy) = strategy {
         if !strategy.bootstrap_injection_allowed() {
             "blocked"
+        } else if !strategy.query_commands_allowed()
+            && (strategy.hook_status_commands_allowed() || strategy.hook_stop_commands_allowed())
+        {
+            "cleanup-only"
         } else if !strategy.hook_install_commands_allowed() {
             "query-only"
         } else if report.loaded_backend_count() > 0 {
@@ -692,11 +709,7 @@ fn analyze_doctor_report(
             status,
             format!(
                 "controller hook strategy is {} ({}) query={} install={} status={} stop={}",
-                if injection_environment.hook_strategy.hook_install_commands_allowed() {
-                    "allowed"
-                } else {
-                    "query-only"
-                },
+                hook_strategy_mode_label(&injection_environment.hook_strategy),
                 injection_environment.hook_strategy.strategy,
                 injection_environment.hook_strategy.query_commands_allowed(),
                 injection_environment.hook_strategy.hook_install_commands_allowed(),
@@ -736,11 +749,7 @@ fn analyze_doctor_report(
             format!(
                 "target hook strategy for pid {} is {} ({}) query={} install={} status={} stop={}",
                 pid,
-                if preflight.target_hook_strategy.hook_install_commands_allowed() {
-                    "allowed"
-                } else {
-                    "query-only"
-                },
+                hook_strategy_mode_label(&preflight.target_hook_strategy),
                 preflight.target_hook_strategy.strategy,
                 preflight.target_hook_strategy.query_commands_allowed(),
                 preflight.target_hook_strategy.hook_install_commands_allowed(),
@@ -2732,25 +2741,107 @@ fn command_requests_inline_hook_install(command: &str) -> Result<bool> {
 }
 
 #[cfg(unix)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HookCommandCapability {
+    Query,
+    HookInstall,
+    HookStatus,
+    HookStop,
+}
+
+#[cfg(unix)]
+impl HookCommandCapability {
+    fn display_name(self) -> &'static str {
+        match self {
+            HookCommandCapability::Query => "query",
+            HookCommandCapability::HookInstall => "hook-install",
+            HookCommandCapability::HookStatus => "hook-status",
+            HookCommandCapability::HookStop => "hook-stop",
+        }
+    }
+}
+
+#[cfg(unix)]
+fn command_required_capability(command: &str) -> Result<Option<HookCommandCapability>> {
+    if is_log_command(command) || is_complete_command(command) {
+        return Ok(None);
+    }
+
+    if is_stalker_command(command) {
+        return Ok(Some(match parse_stalker_command(command)? {
+            StalkerCommand::InstallObjc { .. } | StalkerCommand::InstallNative { .. } => {
+                HookCommandCapability::HookInstall
+            }
+            StalkerCommand::Status => HookCommandCapability::HookStatus,
+            StalkerCommand::StopAll | StalkerCommand::StopObjc { .. } | StalkerCommand::StopNative { .. } => {
+                HookCommandCapability::HookStop
+            }
+        }));
+    }
+    if is_trace_command(command) {
+        return Ok(Some(match parse_trace_command(command)? {
+            TraceCommand::InstallObjc { .. } | TraceCommand::InstallNative { .. } => HookCommandCapability::HookInstall,
+            TraceCommand::Status => HookCommandCapability::HookStatus,
+            TraceCommand::StopAll | TraceCommand::StopObjc { .. } | TraceCommand::StopNative { .. } => {
+                HookCommandCapability::HookStop
+            }
+        }));
+    }
+    if is_jhook_command(command) {
+        return Ok(Some(match parse_jhook_command(command)? {
+            ObjcHookCommand::Install(_) => HookCommandCapability::HookInstall,
+            ObjcHookCommand::Status => HookCommandCapability::HookStatus,
+            ObjcHookCommand::StopAll | ObjcHookCommand::Stop(_) => HookCommandCapability::HookStop,
+        }));
+    }
+    if is_shook_command(command) {
+        return Ok(Some(match parse_shook_command(command)? {
+            SwiftHookCommand::Install { .. } => HookCommandCapability::HookInstall,
+            SwiftHookCommand::Status => HookCommandCapability::HookStatus,
+            SwiftHookCommand::StopAll | SwiftHookCommand::Stop { .. } => HookCommandCapability::HookStop,
+        }));
+    }
+    if is_hfl_command(command) {
+        return Ok(Some(match parse_hfl_command(command)? {
+            HflCommand::Install { .. } => HookCommandCapability::HookInstall,
+            HflCommand::Status => HookCommandCapability::HookStatus,
+            HflCommand::StopAll | HflCommand::Stop { .. } => HookCommandCapability::HookStop,
+        }));
+    }
+
+    Ok(Some(HookCommandCapability::Query))
+}
+
+#[cfg(unix)]
+fn hook_strategy_allows_capability(
+    strategy: &native_api::HookStrategyDecision,
+    capability: HookCommandCapability,
+) -> bool {
+    match capability {
+        HookCommandCapability::Query => strategy.query_commands_allowed(),
+        HookCommandCapability::HookInstall => strategy.hook_install_commands_allowed(),
+        HookCommandCapability::HookStatus => strategy.hook_status_commands_allowed(),
+        HookCommandCapability::HookStop => strategy.hook_stop_commands_allowed(),
+    }
+}
+
+#[cfg(unix)]
 fn ensure_inline_hooks_allowed_for_command(
     command: &str,
     injection_environment: &InjectionEnvironmentReport,
     preflight: &InjectionTargetPreflightReport,
 ) -> Result<()> {
-    if !command_requires_inline_hooks(command) {
+    let Some(capability) = command_required_capability(command)? else {
         return Ok(());
-    }
-    if !command_requests_inline_hook_install(command)? {
-        return Ok(());
-    }
+    };
 
     let mut blocked_by = Vec::new();
-    if !injection_environment.hook_strategy.hook_install_commands_allowed() {
+    if !hook_strategy_allows_capability(&injection_environment.hook_strategy, capability) {
         let reason = injection_environment
             .hook_strategy
             .reason
             .clone()
-            .unwrap_or_else(|| "controller hook strategy disables ios-rustfrida inline hooks".into());
+            .unwrap_or_else(|| format!("controller hook strategy disables `{}` commands", capability.display_name()));
         blocked_by.push(format!(
             "controller policy={} strategy={}: {}",
             injection_environment.hook_strategy.policy.as_str(),
@@ -2758,12 +2849,12 @@ fn ensure_inline_hooks_allowed_for_command(
             reason
         ));
     }
-    if !preflight.target_hook_strategy.hook_install_commands_allowed() {
+    if !hook_strategy_allows_capability(&preflight.target_hook_strategy, capability) {
         let reason = preflight
             .target_hook_strategy
             .reason
             .clone()
-            .unwrap_or_else(|| "target hook strategy disables ios-rustfrida inline hooks".into());
+            .unwrap_or_else(|| format!("target hook strategy disables `{}` commands", capability.display_name()));
         blocked_by.push(format!(
             "target policy={} strategy={}: {}",
             preflight.target_hook_strategy.policy.as_str(),
@@ -2776,10 +2867,22 @@ fn ensure_inline_hooks_allowed_for_command(
         return Ok(());
     }
 
-    Err(Error::State(format!(
-        "`{command}` requires inline hooks, but the current hook policy is query-only: {}",
-        blocked_by.join("; ")
-    )))
+    let reason = match capability {
+        HookCommandCapability::HookInstall => {
+            format!("`{command}` requires inline hooks, but the current hook policy forbids hook-install commands")
+        }
+        HookCommandCapability::HookStatus => {
+            format!("`{command}` is a hook status command, but the current hook policy forbids hook-status commands")
+        }
+        HookCommandCapability::HookStop => {
+            format!("`{command}` is a hook stop command, but the current hook policy forbids hook-stop commands")
+        }
+        HookCommandCapability::Query => {
+            format!("`{command}` is a runtime query command, but the current hook policy forbids query commands")
+        }
+    };
+
+    Err(Error::State(format!("{reason}: {}", blocked_by.join("; "))))
 }
 
 #[cfg(unix)]
@@ -5020,6 +5123,74 @@ mod tests {
             .expect("status command should stay allowed");
         ensure_inline_hooks_allowed_for_command("trace stop", &environment, &preflight)
             .expect("stop command should stay allowed");
+    }
+
+    #[test]
+    fn deny_hook_policy_allows_cleanup_commands_but_blocks_query_and_install() {
+        let environment = InjectionEnvironmentReport {
+            dry_run: false,
+            bootstrap_wait_ms: Some(3000),
+            hook_policy: HookPolicy::DenyExternalLoaded,
+            hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::DenyExternalLoaded,
+                strategy: "cleanup-only-external-loaded".into(),
+                allowed: false,
+                inline_hooks_allowed: false,
+                reason: Some("controller cleanup-only".into()),
+            },
+            hook_environment: HookEnvironmentReport {
+                active_backend: Some("ellekit".into()),
+                backends: vec![HookBackendInfo {
+                    id: "ellekit".into(),
+                    display_name: "ElleKit".into(),
+                    loaded_images: vec!["/usr/lib/libellekit.dylib".into()],
+                    filesystem_paths: vec![],
+                }],
+                warnings: vec!["external hook ecosystem detected".into()],
+            },
+        };
+        let preflight = InjectionTargetPreflightReport {
+            main_image: None,
+            target_images: vec![],
+            target_image_count: 0,
+            target_uses_arm64e: Some(false),
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFromMachThread,
+            thread_bootstrap_label: "pthread_create_from_mach_thread".into(),
+            thread_bootstrap_address: 0,
+            thread_bootstrap_raw_address: 0,
+            thread_bootstrap_canonicalized: false,
+            target_hook_environment: HookEnvironmentReport {
+                active_backend: Some("substrate".into()),
+                backends: vec![HookBackendInfo {
+                    id: "substrate".into(),
+                    display_name: "Cydia Substrate".into(),
+                    loaded_images: vec!["/Library/MobileSubstrate/MobileSubstrate.dylib".into()],
+                    filesystem_paths: vec![],
+                }],
+                warnings: vec!["external hook ecosystem detected".into()],
+            },
+            target_hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::DenyExternalLoaded,
+                strategy: "cleanup-only-external-loaded".into(),
+                allowed: false,
+                inline_hooks_allowed: false,
+                reason: Some("target cleanup-only".into()),
+            },
+            resolved_loader_symbols: vec![],
+        };
+
+        ensure_inline_hooks_allowed_for_command("trace status", &environment, &preflight)
+            .expect("status command should stay allowed in cleanup-only mode");
+        ensure_inline_hooks_allowed_for_command("trace stop", &environment, &preflight)
+            .expect("stop command should stay allowed in cleanup-only mode");
+
+        let query_err = ensure_inline_hooks_allowed_for_command("objc.classes UIView", &environment, &preflight)
+            .expect_err("runtime query should be blocked in cleanup-only mode");
+        assert!(query_err.to_string().contains("runtime query command"));
+
+        let install_err = ensure_inline_hooks_allowed_for_command("trace UIViewController", &environment, &preflight)
+            .expect_err("hook install should be blocked in cleanup-only mode");
+        assert!(install_err.to_string().contains("forbids hook-install commands"));
     }
 
     #[test]

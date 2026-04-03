@@ -69,8 +69,12 @@ pub struct HookStrategyDecision {
 }
 
 impl HookStrategyDecision {
+    fn cleanup_commands_only_mode(&self) -> bool {
+        matches!(self.policy, HookPolicy::DenyExternalLoaded) && !self.allowed && !self.inline_hooks_allowed
+    }
+
     pub fn bootstrap_injection_allowed(&self) -> bool {
-        self.allowed
+        self.allowed || self.cleanup_commands_only_mode()
     }
 
     pub fn query_commands_allowed(&self) -> bool {
@@ -82,11 +86,11 @@ impl HookStrategyDecision {
     }
 
     pub fn hook_status_commands_allowed(&self) -> bool {
-        self.allowed
+        self.allowed || self.cleanup_commands_only_mode()
     }
 
     pub fn hook_stop_commands_allowed(&self) -> bool {
-        self.allowed
+        self.allowed || self.cleanup_commands_only_mode()
     }
 }
 
@@ -314,11 +318,11 @@ fn resolve_hook_strategy_with_report(report: &HookEnvironmentReport, policy: Hoo
             },
             HookPolicy::DenyExternalLoaded => HookStrategyDecision {
                 policy,
-                strategy: "blocked-external-loaded".into(),
+                strategy: "cleanup-only-external-loaded".into(),
                 allowed: false,
                 inline_hooks_allowed: false,
                 reason: Some(
-                    "external hook backend is already loaded and current policy denies installing ios-rustfrida inline hooks in this state".into(),
+                    "external hook backend is already loaded; current policy blocks query/install commands but still allows status/stop cleanup commands".into(),
                 ),
             },
         };
@@ -371,9 +375,15 @@ fn recommendations_for_report(report: &HookEnvironmentReport, decision: Option<&
     }
 
     if let Some(decision) = decision {
-        if !decision.allowed {
+        if !decision.bootstrap_injection_allowed() {
             recommendations.push(
                 "current hook policy blocks inline hooks in this process; use query-only commands or explicitly relax IOS_RUSTFRIDA_HOOK_POLICY if you accept coexistence risk".into(),
+            );
+        } else if !decision.query_commands_allowed()
+            && (decision.hook_status_commands_allowed() || decision.hook_stop_commands_allowed())
+        {
+            recommendations.push(
+                "current hook policy allows cleanup-only mode; use trace/stalker/jhook/shook/hfl status/stop to recover state, but avoid query/install commands unless you relax IOS_RUSTFRIDA_HOOK_POLICY".into(),
             );
         } else if !decision.inline_hooks_allowed {
             recommendations.push(
@@ -536,7 +546,7 @@ mod tests {
     }
 
     #[test]
-    fn strategy_blocks_when_external_backend_is_loaded_under_deny_policy() {
+    fn strategy_allows_cleanup_only_when_external_backend_is_loaded_under_deny_policy() {
         let report = HookEnvironmentReport {
             active_backend: Some("substrate".into()),
             backends: vec![super::HookBackendInfo {
@@ -551,12 +561,12 @@ mod tests {
         let decision = resolve_hook_strategy_with_report(&report, HookPolicy::DenyExternalLoaded);
         assert!(!decision.allowed);
         assert!(!decision.inline_hooks_allowed);
-        assert!(!decision.bootstrap_injection_allowed());
+        assert!(decision.bootstrap_injection_allowed());
         assert!(!decision.query_commands_allowed());
         assert!(!decision.hook_install_commands_allowed());
-        assert!(!decision.hook_status_commands_allowed());
-        assert!(!decision.hook_stop_commands_allowed());
-        assert_eq!(decision.strategy, "blocked-external-loaded");
+        assert!(decision.hook_status_commands_allowed());
+        assert!(decision.hook_stop_commands_allowed());
+        assert_eq!(decision.strategy, "cleanup-only-external-loaded");
         assert_eq!(decision.policy, HookPolicy::DenyExternalLoaded);
     }
 
@@ -574,7 +584,7 @@ mod tests {
         };
         let decision = resolve_hook_strategy_with_report(&report, HookPolicy::DenyExternalLoaded);
         let recommendations = hook_environment_recommendations(&report, Some(&decision));
-        assert!(recommendations.iter().any(|line| line.contains("query-only commands")));
+        assert!(recommendations.iter().any(|line| line.contains("cleanup-only mode")));
     }
 
     #[test]

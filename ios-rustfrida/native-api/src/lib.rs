@@ -599,7 +599,7 @@ mod platform {
         preflight: Option<&crate::InjectionTargetPreflightReport>,
     ) -> Result<InjectionTrace> {
         let injection_environment = crate::probe_injection_environment()?;
-        if !injection_environment.hook_strategy.allowed {
+        if !injection_environment.hook_strategy.bootstrap_injection_allowed() {
             let reason = injection_environment
                 .hook_strategy
                 .reason
@@ -626,7 +626,7 @@ mod platform {
                 (target_hook_environment, target_hook_strategy)
             }
         };
-        if !target_hook_strategy.allowed {
+        if !target_hook_strategy.bootstrap_injection_allowed() {
             let reason = target_hook_strategy.reason.as_deref().unwrap_or("no reason provided");
             return Err(common::Error::State(format!(
                 "target hook strategy blocked injection for pid {}: policy={} strategy={} reason={} hook_env={}",
