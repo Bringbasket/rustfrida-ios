@@ -1495,6 +1495,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let routing_decision_ready_example_query_only_result = routing_decision_ready_resolve_index
         .get(routing_decision_ready_example_query_only_error_code)
         .cloned();
+    let routing_decision_ready_example_query_only_blocked_by = actions
+        .iter()
+        .find(|item| item.action_key == "hook.install")
+        .map(|item| item.blocked_by.to_string());
     let routing_decision_ready_example_query_only_available = routing_decision_ready_example_query_only_result.is_some();
     let routing_decision_ready_example_query_only_phase = routing_decision_ready_example_query_only_result
         .as_ref()
@@ -1515,6 +1519,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "missingResult": routing_decision_ready_resolve_default.clone(),
         "queryOnlyInstallFailure": {
             "errorCode": routing_decision_ready_example_query_only_error_code,
+            "blockedBy": routing_decision_ready_example_query_only_blocked_by,
             "available": routing_decision_ready_example_query_only_available,
             "result": routing_decision_ready_example_query_only_result.unwrap_or(Value::Null),
             "wouldUseQueryOnlyPath": routing_decision_ready_example_query_only_would_use_query_path,
@@ -1662,6 +1667,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "missingResult": routing_decision_ready_phase_resolve_default.clone(),
         "queryOnlyInstallFailure": {
             "sourceErrorCode": routing_decision_ready_example_query_only_error_code,
+            "blockedBy": routing_decision_ready_example_query_only_blocked_by,
             "phase": routing_decision_ready_example_query_only_phase,
             "available": routing_decision_ready_example_query_only_phase_available,
             "result": routing_decision_ready_example_query_only_phase_result.unwrap_or(Value::Null),
@@ -8377,6 +8383,10 @@ mod tests {
             "hook-fallback-hook-install-failed"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
+            "both"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["available"],
             false
         );
@@ -8451,6 +8461,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["sourceErrorCode"],
             "hook-fallback-hook-install-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
+            "both"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["phase"],
@@ -8885,6 +8899,10 @@ mod tests {
             true
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
+            "both"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryOnlyPath"],
             true
         );
@@ -8899,6 +8917,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["phase"],
             "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
+            "both"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["available"],
