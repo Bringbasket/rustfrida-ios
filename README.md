@@ -403,7 +403,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `native.symbols` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / moduleNameList / symbolNameList / moduleNames / symbolNames` 这类摘要，适合脚本先看本地符号名在不同镜像里的分布，而不必自己扫完整数组。
 - `native.exports` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / moduleNameList / symbolNameList / moduleNames / symbolNames` 这类摘要，适合脚本先看某个镜像导出符号名的分布，而不必自己扫完整数组。
 - 在这之上，`native.exports` 现在也补了统一的模块镜像摘要字段，例如 `image / hasImage / resolved / resolvedImageName / resolvedImagePath / resolvedDirectoryPath / resolvedPathKind / resolvedBase / resolvedSlide / resolvedSizeHex`；`native.symbols` 在传了 `moduleName` 过滤时也会带同一套镜像摘要，并补 `hasModuleFilter`，脚本侧可以区分“全局符号查询”和“按某个模块过滤但模块没解析到”。
-- `native.images` 列表结果现在也会额外补 `uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNames / pathKinds` 这类摘要，适合脚本先看镜像整体分布，再决定要不要展开完整列表。
+- `native.images` 列表结果现在也会额外补 `uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNameList / pathKindList / imageNames / pathKinds` 这类摘要，适合脚本先看镜像整体分布，再决定要不要展开完整列表。
 - `native.base / native.imageInfo / native.mainImage / native.image / native.export` 这组单项查询现在也补了更统一的状态字段，例如 `hasBase / hasImage / imageName / imagePath / hasAddress / hasSymbol / resolved`，脚本侧判空时不必再分别盯着 `null` 和文本 `<null>` 两套信号。
 - `native.imageInfo / native.mainImage / native.image / native.symbol / native.export` 这组基础单项查询现在也进一步补了统一顶层摘要字段，例如 `resolvedImageName / resolvedImagePath / resolvedDirectoryPath / resolvedPathKind / resolvedBase / resolvedSlide / resolvedSizeHex / resolvedName / resolvedModuleName / resolvedAddress / hasName / hasModuleName`；其中 image 这组还会把 `directoryPath / pathKind / slide / sizeHex / hasDirectoryPath / isSystemPath / isAppPath / isJailbreakPath` 直接抬到顶层，脚本侧取镜像和符号摘要时不必每次先钻进内层对象。
 - `native.base` 现在也补了 `resolvedBase` 顶层字段，脚本侧拿模块基址时不必同时分支处理 `base` 和“是否命中”的语义。
@@ -440,7 +440,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `pac.isProcessArm64e` / `pac.isImageArm64e <module>` / `pac.arm64eImages [filter]` / `pac.stripData <address>` 现在也都已接到 controller CLI / REPL / `--command-json`，分别作为 `pac.arm64e` / `pac.image` / `pac.images` / `pac.stripdata` 的别名，方便直接按 JS API 里的 `PAC.*` 名字调用。
 - `pac.available / pac.arm64e / pac.image / pac.strip / pac.stripdata` 这组 PAC 单项查询现在也补了统一顶层状态字段，例如 `resolved / hasImage / resolvedModuleName / strippedAddress / changed`，脚本侧判定模块是否命中、以及 strip 前后地址是否变化时不必只看文本。
 - 在这之上，`pac.available / pac.arm64e / pac.image` 现在也继续补了 `resolvedAvailable / resolvedArm64e` 这类直接值字段，脚本侧做 capability / arm64e 判定时不必再在主字段和 resolved 语义之间自己对齐。
-- `pac.images` 结果现在也会额外补 `firstImagePath / lastImagePath / uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNames / pathKinds` 这类摘要，适合脚本先看当前 `arm64e` 风险面主要集中在哪类镜像路径，而不必自己再对 PAC 镜像列表做一轮聚合。
+- `pac.images` 结果现在也会额外补 `firstImagePath / lastImagePath / uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNameList / pathKindList / imageNames / pathKinds` 这类摘要，适合脚本先看当前 `arm64e` 风险面主要集中在哪类镜像路径，而不必自己再对 PAC 镜像列表做一轮聚合。
 - `quickjs-runtime` 里的 `callNative()` 现在明确沿用 canonical code pointer 路径，避免 PAC 场景下把已规范化的入口又当成 raw 指针处理。
 - Mach 注入链路现在会回读远程 bootstrap 状态；可用 `IOS_RUSTFRIDA_BOOTSTRAP_WAIT_MS` 控制轮询等待时长，设为 `0` 表示关闭等待。
 - Mach bootstrap 远程内存现已拆成代码段和参数/状态段，分别走 `RX` / `RW` 权限，不再依赖单块 `RWX` payload。
