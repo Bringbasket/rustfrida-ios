@@ -8015,6 +8015,7 @@ function handleSpecResult(spec) {
             longestRpath: longestRpath === null ? null : longestRpath.path,
             longestRpathLength: longestRpath === null ? null : longestRpath.path.length,
             pathKindNames: pathKindSummaries.map((item) => item.pathKind),
+            rpathPathList: rpathPaths.map((item) => item.path),
             rpathPaths,
             pathKinds: pathKindSummaries,
             rpaths,
