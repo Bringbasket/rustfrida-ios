@@ -8906,8 +8906,10 @@ function handleSpecResult(spec) {
             uniqueCommandNameCount: commandKinds.length,
             hasDuplicateCommandNames: commandKinds.some((item) => item.count > 1),
             commandFamilyNames: commandFamilies.map((item) => item.commandFamily),
+            commandFamilyList: commandFamilies.map((item) => item.commandFamily),
             commandNameList: commandNames.map((item) => item.commandName),
             commandKindNames: commandKinds.map((item) => item.name),
+            commandKindList: commandKinds.map((item) => item.name),
             commandFamilies,
             commandNames,
             commandKinds: commandKinds.map((summary) => ({

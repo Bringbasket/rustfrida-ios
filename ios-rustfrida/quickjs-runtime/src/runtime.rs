@@ -4805,16 +4805,20 @@ undefined;
                                     || typeof result.uniqueCommandNameCount !== 'number'
                                     || typeof result.hasDuplicateCommandNames !== 'boolean'
                                     || !Array.isArray(result.commandFamilyNames)
+                                    || !Array.isArray(result.commandFamilyList)
                                     || !Array.isArray(result.commandNameList)
                                     || !Array.isArray(result.commandKindNames)
+                                    || !Array.isArray(result.commandKindList)
                                     || !Array.isArray(result.commandFamilies)
                                     || !Array.isArray(result.commandNames)
                                     || !Array.isArray(result.commandKinds)) {
                                 return false;
                             }
-                            if (result.commandFamilyNames.length !== result.commandFamilies.length
+                            if (result.commandFamilyNames.length !== result.commandFamilyList.length
+                                    || result.commandFamilyList.length !== result.commandFamilies.length
                                     || result.commandNameList.length !== result.commandNames.length
-                                    || result.commandKindNames.length !== result.commandKinds.length) {
+                                    || result.commandKindNames.length !== result.commandKindList.length
+                                    || result.commandKindList.length !== result.commandKinds.length) {
                                 return false;
                             }
                             if (result.commands.length === 0) {
@@ -4858,6 +4862,7 @@ undefined;
                             if (result.commandFamilies.length !== 0) {
                                 const family = result.commandFamilies[0];
                                 if (result.commandFamilyNames[0] !== family.commandFamily
+                                        || result.commandFamilyList[0] !== family.commandFamily
                                         || typeof family.commandFamily !== 'string'
                                         || typeof family.count !== 'number'
                                         || typeof family.firstCommandName !== 'string'
@@ -4876,6 +4881,7 @@ undefined;
                             if (result.commandKinds.length !== 0) {
                                 const kind = result.commandKinds[0];
                                 if (result.commandKindNames[0] !== kind.name
+                                        || result.commandKindList[0] !== kind.name
                                         || typeof kind.name !== 'string'
                                         || typeof kind.count !== 'number'
                                         || typeof kind.firstIndex !== 'number'
