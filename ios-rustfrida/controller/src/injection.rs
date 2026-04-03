@@ -2008,7 +2008,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "resolve": {
                 "lookupKey": "errorCode",
                 "policy": "index-then-default",
-                "outputShape": "{ matched, usedDefault, reason, effective }",
+                "outputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
                 "errorCodeCount": routing_decision_ready_known_error_codes.len(),
                 "knownErrorCodes": routing_decision_ready_known_error_codes,
                 "missingErrorCodeHint": "if errorCode is not in knownErrorCodes, use resolve.default",
@@ -2019,7 +2019,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "phaseResolve": {
                 "lookupKey": "phase",
                 "policy": "index-then-defaultPhase",
-                "outputShape": "{ matched, usedDefault, reason, effective }",
+                "outputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
                 "phaseCount": routing_decision_ready_known_phases.len(),
                 "knownPhases": routing_decision_ready_known_phases,
                 "defaultPhase": routing_decision_ready_default_phase,
@@ -8693,7 +8693,7 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["outputShape"],
-            "{ matched, usedDefault, reason, effective }"
+            "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["errorCodeCount"],
@@ -8807,7 +8807,7 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["outputShape"],
-            "{ matched, usedDefault, reason, effective }"
+            "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["phaseCount"],
