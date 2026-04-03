@@ -2021,6 +2021,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "entries": error_code_routing_entries.clone(),
         "index": routing_decision_index,
         "defaultRecommendedEscalationKey": default_recommended_escalation_key,
+        "defaultRecommendedPhase": routing_decision_default
+            .get("recommendedPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveEscalationKey": routing_decision_default
+            .get("effectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectivePhase": routing_decision_default
+            .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
         "default": routing_decision_default,
         "ready": {
             "lookupRule": "index[errorCode] || default",
@@ -8620,6 +8632,18 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["defaultRecommendedEscalationKey"],
             "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultRecommendedPhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultEffectiveEscalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultEffectivePhase"],
+            "preflight"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["default"]["recommendedEscalationKey"],
