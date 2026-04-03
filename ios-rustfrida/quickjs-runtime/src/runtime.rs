@@ -432,8 +432,20 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof ObjC.findClassInfo")
+                    .expect("objc findClassInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof ObjC.protocolInfo")
                     .expect("objc protocolInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findProtocolInfo")
+                    .expect("objc findProtocolInfo type"),
                 "function"
             );
             assert_eq!(
@@ -488,6 +500,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof ObjC.findProtocolMethodInfo")
+                    .expect("objc findProtocolMethodInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof ObjC.protocolProperties")
                     .expect("objc protocolProperties type"),
                 "function"
@@ -505,11 +523,29 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findProtocolPropertyInfo")
+                    .expect("objc findProtocolPropertyInfo type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof ObjC.superclass").expect("objc superclass type"),
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findSuperclass")
+                    .expect("objc findSuperclass type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof ObjC.classChain").expect("objc classChain type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findClassChain")
+                    .expect("objc findClassChain type"),
                 "function"
             );
             assert_eq!(
@@ -518,6 +554,12 @@ undefined;
             );
             assert_eq!(
                 runtime.eval("typeof ObjC.methodInfo").expect("objc methodInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findMethodInfo")
+                    .expect("objc findMethodInfo type"),
                 "function"
             );
             assert_eq!(
@@ -531,7 +573,19 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findPropertyInfo")
+                    .expect("objc findPropertyInfo type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof ObjC.ivarInfo").expect("objc ivarInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findIvarInfo")
+                    .expect("objc findIvarInfo type"),
                 "function"
             );
             assert_eq!(
@@ -550,7 +604,19 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findClassImage")
+                    .expect("objc findClassImage type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof ObjC.methodImage").expect("objc methodImage type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findMethodImage")
+                    .expect("objc findMethodImage type"),
                 "function"
             );
             assert_eq!(
@@ -575,8 +641,20 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof ObjC.findSelectorName")
+                    .expect("objc findSelectorName type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof ObjC.objectClassName")
                     .expect("objc objectClassName type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findObjectClassName")
+                    .expect("objc findObjectClassName type"),
                 "function"
             );
             assert_eq!(
@@ -609,6 +687,42 @@ undefined;
                         "(function() { const value = ObjC.methodInfo('NSObject', 'init'); return value === null || (typeof value.selector === 'string' && Array.isArray(value.selectorParts) && typeof value.selectorPartCount === 'number' && typeof value.hasSelectorArguments === 'boolean' && typeof value.isUnarySelector === 'boolean' && typeof value.isKeywordSelector === 'boolean' && typeof value.typeEncoding === 'string' && typeof value.isClassMethod === 'boolean'); })()"
                     )
                     .expect("objc methodInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const classInfo = ObjC.classInfo('NSObject', true);
+                            const findClassInfo = ObjC.findClassInfo('NSObject', true);
+                            const protocolInfo = ObjC.protocolInfo('NSObject');
+                            const findProtocolInfo = ObjC.findProtocolInfo('NSObject');
+                            const protocolMethodInfo = ObjC.protocolMethodInfo('NSObject', 'description', false, false);
+                            const findProtocolMethodInfo = ObjC.findProtocolMethodInfo('NSObject', 'description', false, false);
+                            const protocolPropertyInfo = ObjC.protocolPropertyInfo('NSObject', 'description');
+                            const findProtocolPropertyInfo = ObjC.findProtocolPropertyInfo('NSObject', 'description');
+                            const methodInfo = ObjC.methodInfo('NSObject', 'init');
+                            const findMethodInfo = ObjC.findMethodInfo('NSObject', 'init');
+                            const propertyInfo = ObjC.propertyInfo('NSObject', 'description');
+                            const findPropertyInfo = ObjC.findPropertyInfo('NSObject', 'description');
+                            const ivarInfo = ObjC.ivarInfo('NSObject', '_isa');
+                            const findIvarInfo = ObjC.findIvarInfo('NSObject', '_isa');
+                            return ((classInfo === null && findClassInfo === null) || (classInfo !== null && findClassInfo !== null && classInfo.className === findClassInfo.className && classInfo.classPointer.toString() === findClassInfo.classPointer.toString())) &&
+                                ((protocolInfo === null && findProtocolInfo === null) || (protocolInfo !== null && findProtocolInfo !== null && protocolInfo.protocolName === findProtocolInfo.protocolName && protocolInfo.protocolPointer.toString() === findProtocolInfo.protocolPointer.toString())) &&
+                                ((protocolMethodInfo === null && findProtocolMethodInfo === null) || (protocolMethodInfo !== null && findProtocolMethodInfo !== null && protocolMethodInfo.selector === findProtocolMethodInfo.selector && protocolMethodInfo.typeEncoding === findProtocolMethodInfo.typeEncoding)) &&
+                                ((protocolPropertyInfo === null && findProtocolPropertyInfo === null) || (protocolPropertyInfo !== null && findProtocolPropertyInfo !== null && protocolPropertyInfo.name === findProtocolPropertyInfo.name && protocolPropertyInfo.attributes === findProtocolPropertyInfo.attributes)) &&
+                                ObjC.findSuperclass('NSObject') === ObjC.superclass('NSObject') &&
+                                ObjC.findClassChain('NSObject').join('\\n') === ObjC.classChain('NSObject').join('\\n') &&
+                                ObjC.findClassImage('NSObject') === ObjC.classImage('NSObject') &&
+                                ((methodInfo === null && findMethodInfo === null) || (methodInfo !== null && findMethodInfo !== null && methodInfo.selector === findMethodInfo.selector && methodInfo.typeEncoding === findMethodInfo.typeEncoding)) &&
+                                ObjC.findMethodImage('NSObject', 'init') === ObjC.methodImage('NSObject', 'init') &&
+                                ((propertyInfo === null && findPropertyInfo === null) || (propertyInfo !== null && findPropertyInfo !== null && propertyInfo.name === findPropertyInfo.name && propertyInfo.attributes === findPropertyInfo.attributes)) &&
+                                ((ivarInfo === null && findIvarInfo === null) || (ivarInfo !== null && findIvarInfo !== null && ivarInfo.name === findIvarInfo.name && ivarInfo.typeEncoding === findIvarInfo.typeEncoding && ivarInfo.offset === findIvarInfo.offset)) &&
+                                ObjC.findSelectorName(ptr('0')) === ObjC.selectorName(ptr('0')) &&
+                                ObjC.findObjectClassName(ptr('0')) === ObjC.objectClassName(ptr('0'));
+                        })()"
+                    )
+                    .expect("objc info aliases"),
                 "true"
             );
             assert_eq!(
@@ -939,14 +1053,32 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Swift.findProtocolInfo")
+                    .expect("swift findProtocolInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Swift.findConformances")
                     .expect("swift findConformances type"),
                 "function"
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Swift.findConformanceInfo")
+                    .expect("swift findConformanceInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Swift.findMetadata")
                     .expect("swift findMetadata type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Swift.findMetadataInfo")
+                    .expect("swift findMetadataInfo type"),
                 "function"
             );
             assert_eq!(
@@ -960,6 +1092,12 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof Swift.findVtableInfo")
+                    .expect("swift findVtableInfo type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof Swift.vtableInfo").expect("swift vtableInfo type"),
                 "function"
             );
@@ -967,6 +1105,12 @@ undefined;
                 runtime
                     .eval("typeof Swift.findWitnessTable")
                     .expect("swift findWitnessTable type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Swift.findWitnessTableInfo")
+                    .expect("swift findWitnessTableInfo type"),
                 "function"
             );
             assert_eq!(
@@ -983,6 +1127,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("typeof Swift.findTypeLayoutInfo")
+                    .expect("swift findTypeLayoutInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
                     .eval("typeof Swift.typeLayoutInfo")
                     .expect("swift typeLayoutInfo type"),
                 "function"
@@ -994,11 +1144,23 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof Swift.findSymbolInfo")
+                    .expect("swift findSymbolInfo type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof Swift.symbolInfo").expect("swift symbolInfo type"),
                 "function"
             );
             assert_eq!(
                 runtime.eval("typeof Swift.findTypes").expect("swift findTypes type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Swift.findTypeInfo")
+                    .expect("swift findTypeInfo type"),
                 "function"
             );
             assert_eq!(
@@ -1030,6 +1192,48 @@ undefined;
                     .eval("typeof Swift.findMethods")
                     .expect("swift findMethods type"),
                 "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Swift.findMethodInfo")
+                    .expect("swift findMethodInfo type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const symbolInfo = Swift.symbolInfo('ViewController');
+                            const findSymbolInfo = Swift.findSymbolInfo('ViewController');
+                            const protocolInfo = Swift.protocolInfo('Renderable');
+                            const findProtocolInfo = Swift.findProtocolInfo('Renderable');
+                            const conformanceInfo = Swift.conformanceInfo('ViewController', 'Renderable');
+                            const findConformanceInfo = Swift.findConformanceInfo('ViewController', 'Renderable');
+                            const metadataInfo = Swift.metadataInfo('ViewController');
+                            const findMetadataInfo = Swift.findMetadataInfo('ViewController');
+                            const typeInfo = Swift.typeInfo('ViewController');
+                            const findTypeInfo = Swift.findTypeInfo('ViewController');
+                            const methodInfo = Swift.methodInfo('ViewController', 'viewDidLoad');
+                            const findMethodInfo = Swift.findMethodInfo('ViewController', 'viewDidLoad');
+                            const vtableInfo = Swift.vtableInfo('ViewController', 'viewDidLoad');
+                            const findVtableInfo = Swift.findVtableInfo('ViewController', 'viewDidLoad');
+                            const witnessTableInfo = Swift.witnessTableInfo('ViewController', 'Renderable');
+                            const findWitnessTableInfo = Swift.findWitnessTableInfo('ViewController', 'Renderable');
+                            const typeLayoutInfo = Swift.typeLayoutInfo('ViewController');
+                            const findTypeLayoutInfo = Swift.findTypeLayoutInfo('ViewController');
+                            return ((symbolInfo === null && findSymbolInfo === null) || (symbolInfo !== null && findSymbolInfo !== null && symbolInfo.name === findSymbolInfo.name && symbolInfo.address.toString() === findSymbolInfo.address.toString())) &&
+                                ((protocolInfo === null && findProtocolInfo === null) || (protocolInfo !== null && findProtocolInfo !== null && protocolInfo.name === findProtocolInfo.name && protocolInfo.sourceAddress.toString() === findProtocolInfo.sourceAddress.toString())) &&
+                                ((conformanceInfo === null && findConformanceInfo === null) || (conformanceInfo !== null && findConformanceInfo !== null && conformanceInfo.typeName === findConformanceInfo.typeName && conformanceInfo.protocolName === findConformanceInfo.protocolName)) &&
+                                ((metadataInfo === null && findMetadataInfo === null) || (metadataInfo !== null && findMetadataInfo !== null && metadataInfo.name === findMetadataInfo.name && metadataInfo.sourceSymbolName === findMetadataInfo.sourceSymbolName)) &&
+                                ((typeInfo === null && findTypeInfo === null) || (typeInfo !== null && findTypeInfo !== null && typeInfo.name === findTypeInfo.name && typeInfo.sourceSymbolName === findTypeInfo.sourceSymbolName)) &&
+                                ((methodInfo === null && findMethodInfo === null) || (methodInfo !== null && findMethodInfo !== null && methodInfo.typeName === findMethodInfo.typeName && methodInfo.name === findMethodInfo.name)) &&
+                                ((vtableInfo === null && findVtableInfo === null) || (vtableInfo !== null && findVtableInfo !== null && vtableInfo.typeName === findVtableInfo.typeName && vtableInfo.memberName === findVtableInfo.memberName)) &&
+                                ((witnessTableInfo === null && findWitnessTableInfo === null) || (witnessTableInfo !== null && findWitnessTableInfo !== null && witnessTableInfo.typeName === findWitnessTableInfo.typeName && witnessTableInfo.protocolName === findWitnessTableInfo.protocolName)) &&
+                                ((typeLayoutInfo === null && findTypeLayoutInfo === null) || (typeLayoutInfo !== null && findTypeLayoutInfo !== null && typeLayoutInfo.name === findTypeLayoutInfo.name && typeLayoutInfo.moduleName === findTypeLayoutInfo.moduleName));
+                        })()"
+                    )
+                    .expect("swift info aliases"),
+                "true"
             );
             assert_eq!(
                 runtime

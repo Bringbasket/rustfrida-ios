@@ -59,46 +59,67 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `ObjC.classProtocols(className[, query])`
 - `ObjC.findClassProtocols(className, query)`
 - `ObjC.classInfo(className[, isMetaClass])`
+- `ObjC.findClassInfo(className[, isMetaClass])`
 - `ObjC.protocolInfo(protocolName)`
+- `ObjC.findProtocolInfo(protocolName)`
 - `ObjC.protocolProtocols(protocolName[, query])`
 - `ObjC.findProtocolProtocols(protocolName, query)`
 - `ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]][, query])`
 - `ObjC.findProtocolMethods(protocolName[, isRequired[, isInstanceMethod]], query)`
 - `ObjC.protocolMethodInfo(protocolName, selectorName[, isRequired[, isInstanceMethod]])`
+- `ObjC.findProtocolMethodInfo(protocolName, selectorName[, isRequired[, isInstanceMethod]])`
 - `ObjC.protocolProperties(protocolName[, query])`
 - `ObjC.findProtocolProperties(protocolName, query)`
 - `ObjC.protocolPropertyInfo(protocolName, propertyName)`
+- `ObjC.findProtocolPropertyInfo(protocolName, propertyName)`
 - `ObjC.superclass(className)`
+- `ObjC.findSuperclass(className)`
 - `ObjC.classChain(className)`
+- `ObjC.findClassChain(className)`
 - `ObjC.properties(className[, isClassProperty][, query])`
 - `ObjC.propertyInfo(className, propertyName[, isClassProperty])`
+- `ObjC.findPropertyInfo(className, propertyName[, isClassProperty])`
 - `ObjC.findProperties(className, query[, isClassProperty])`
 - `ObjC.ivars(className[, query])`
 - `ObjC.ivarInfo(className, ivarName)`
+- `ObjC.findIvarInfo(className, ivarName)`
 - `ObjC.findIvars(className, query)`
 - `ObjC.classImage(className)`
+- `ObjC.findClassImage(className)`
 - `ObjC.methodInfo(className, selectorName[, isClassMethod])`
+- `ObjC.findMethodInfo(className, selectorName[, isClassMethod])`
 - `ObjC.methodImage(className, selectorName[, isClassMethod])`
+- `ObjC.findMethodImage(className, selectorName[, isClassMethod])`
+- `ObjC.findSelectorName(selector)`
+- `ObjC.findObjectClassName(object)`
 - `Swift.findProtocols([query[, moduleName]])`
 - `Swift.protocols([query[, moduleName]])`
 - `Swift.protocolInfo(protocolName[, moduleName])`
+- `Swift.findProtocolInfo(protocolName[, moduleName])`
 - `Swift.conformanceInfo(typeName, protocolName[, moduleName])`
+- `Swift.findConformanceInfo(typeName, protocolName[, moduleName])`
 - `Swift.typeInfo(typeName[, moduleName])`
+- `Swift.findTypeInfo(typeName[, moduleName])`
 - `Swift.methodInfo(typeName, methodName[, moduleName])`
+- `Swift.findMethodInfo(typeName, methodName[, moduleName])`
 - `Swift.findConformances(typeName[, moduleName])`
 - `Swift.conformances(typeName[, moduleName])`
 - `Swift.findMetadata(typeName[, moduleName])`
 - `Swift.metadata(typeName[, moduleName])`
 - `Swift.metadataInfo(typeName[, moduleName])`
+- `Swift.findMetadataInfo(typeName[, moduleName])`
 - `Swift.findVtable(typeName[, moduleName])`
 - `Swift.vtable(typeName[, moduleName])`
 - `Swift.vtableInfo(typeName, memberName[, moduleName])`
+- `Swift.findVtableInfo(typeName, memberName[, moduleName])`
 - `Swift.findWitnessTable(query[, moduleName])`
 - `Swift.witnessTable(query[, moduleName])`
 - `Swift.witnessTableInfo(typeName, protocolName[, moduleName])`
+- `Swift.findWitnessTableInfo(typeName, protocolName[, moduleName])`
 - `Swift.findTypeLayout(typeName[, moduleName])`
 - `Swift.typeLayout(typeName[, moduleName])`
 - `Swift.typeLayoutInfo(typeName[, moduleName])`
+- `Swift.findTypeLayoutInfo(typeName[, moduleName])`
 - `Swift.findTypes(query[, moduleName])`
 - `Swift.types(query[, moduleName])`
 - `Swift.typeKinds()`
@@ -112,6 +133,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Swift.methods(typeName, methodQuery[, moduleName])`
 - `Swift.findSymbols(query[, moduleName])`
 - `Swift.symbols(query[, moduleName])`
+- `Swift.findSymbolInfo(symbolName[, moduleName])`
 - `Swift.symbolInfo(symbolName[, moduleName])`
 - `Native.base(moduleName)`
 - `Native.images([filter])`

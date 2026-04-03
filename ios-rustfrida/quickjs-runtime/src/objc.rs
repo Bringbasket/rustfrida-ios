@@ -1550,6 +1550,7 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classProtocols", js_objc_class_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findClassProtocols", js_objc_class_protocols, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolInfo", js_objc_protocol_info, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocolInfo", js_objc_protocol_info, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolProtocols", js_objc_protocol_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocolProtocols", js_objc_protocol_protocols, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocolMethods", js_objc_protocol_methods, 3);
@@ -1561,6 +1562,7 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
             js_objc_protocol_method_info,
             4,
         );
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocolMethodInfo", js_objc_protocol_method_info, 4);
         add_cfunction_to_object(
             ctx_ptr,
             objc.raw(),
@@ -1576,17 +1578,26 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
             js_objc_protocol_property_info,
             2,
         );
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocolPropertyInfo", js_objc_protocol_property_info, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "superclass", js_objc_superclass, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findSuperclass", js_objc_superclass, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classChain", js_objc_class_chain, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findClassChain", js_objc_class_chain, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classInfo", js_objc_class_info, 2);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findClassInfo", js_objc_class_info, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classExists", js_objc_class_exists, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "selector", js_objc_selector, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methodImp", js_objc_method_imp, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methodInfo", js_objc_method_info, 3);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findMethodInfo", js_objc_method_info, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classImage", js_objc_class_image, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findClassImage", js_objc_class_image, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "propertyInfo", js_objc_property_info, 3);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findPropertyInfo", js_objc_property_info, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "ivarInfo", js_objc_ivar_info, 2);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findIvarInfo", js_objc_ivar_info, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methodImage", js_objc_method_image, 3);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findMethodImage", js_objc_method_image, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methods", js_objc_methods, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findMethods", js_objc_find_methods, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "properties", js_objc_properties, 2);
@@ -1596,7 +1607,9 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findMethodOwners", js_objc_find_method_owners, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "methodOwners", js_objc_find_method_owners, 2);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "selectorName", js_objc_selector_name, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findSelectorName", js_objc_selector_name, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "objectClassName", js_objc_object_class_name, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "findObjectClassName", js_objc_object_class_name, 1);
     }
 
     global.set_property(ctx.as_ptr(), "ObjC", objc);
