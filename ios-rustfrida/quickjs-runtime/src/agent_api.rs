@@ -1854,6 +1854,7 @@ function consumeObjcTypeEncoding(raw, start) {
             raw: raw.slice(start, index),
             qualifiers,
             qualifierNames,
+            qualifierNameList: qualifierNames,
             kind,
             displayName: qualifierPrefix + displayName,
             isObject,
@@ -1875,6 +1876,7 @@ function parseObjcTypeEncodingInfo(typeEncoding) {
             raw,
             qualifiers: [],
             qualifierNames: [],
+            qualifierNameList: [],
             kind: 'unknown',
             displayName: raw.length === 0 ? '' : raw,
             isObject: false,
@@ -1926,8 +1928,10 @@ function parseObjcMethodTypeEncoding(typeEncoding) {
         explicitArgumentCount: 0,
         argumentTypeEncodings: [],
         argumentTypeNames: [],
+        argumentTypeNameList: [],
         argumentTypeInfos: [],
         hiddenArgumentTypeNames: [],
+        hiddenArgumentTypeNameList: [],
         signature: '',
     };
 
@@ -1963,6 +1967,8 @@ function parseObjcMethodTypeEncoding(typeEncoding) {
     result.argumentCount = result.argumentTypeNames.length;
     result.explicitArgumentCount = Math.max(result.argumentCount - 2, 0);
     result.hiddenArgumentTypeNames = result.argumentTypeNames.slice(0, 2);
+    result.argumentTypeNameList = result.argumentTypeNames;
+    result.hiddenArgumentTypeNameList = result.hiddenArgumentTypeNames;
     const explicitArguments = result.argumentTypeNames.slice(2);
     result.signature = result.returnTypeName.length === 0
         ? ''
@@ -2460,8 +2466,10 @@ function normalizeObjcMethod(method) {
         explicitArgumentCount: methodTypeInfo.explicitArgumentCount,
         argumentTypeEncodings: methodTypeInfo.argumentTypeEncodings,
         argumentTypeNames: methodTypeInfo.argumentTypeNames,
+        argumentTypeNameList: methodTypeInfo.argumentTypeNameList,
         argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
         hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        hiddenArgumentTypeNameList: methodTypeInfo.hiddenArgumentTypeNameList,
         hiddenArgumentCount,
         signature: methodTypeInfo.signature,
         methodTypeInfo,
@@ -2682,8 +2690,10 @@ function normalizeObjcMethodInfo(method) {
         explicitArgumentCount: methodTypeInfo.explicitArgumentCount,
         argumentTypeEncodings: methodTypeInfo.argumentTypeEncodings,
         argumentTypeNames: methodTypeInfo.argumentTypeNames,
+        argumentTypeNameList: methodTypeInfo.argumentTypeNameList,
         argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
         hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        hiddenArgumentTypeNameList: methodTypeInfo.hiddenArgumentTypeNameList,
         hiddenArgumentCount,
         signature: methodTypeInfo.signature,
         methodTypeInfo,
@@ -2952,8 +2962,10 @@ function normalizeObjcProtocolMethod(method) {
         explicitArgumentCount: methodTypeInfo.explicitArgumentCount,
         argumentTypeEncodings: methodTypeInfo.argumentTypeEncodings,
         argumentTypeNames: methodTypeInfo.argumentTypeNames,
+        argumentTypeNameList: methodTypeInfo.argumentTypeNameList,
         argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
         hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        hiddenArgumentTypeNameList: methodTypeInfo.hiddenArgumentTypeNameList,
         hiddenArgumentCount,
         signature: methodTypeInfo.signature,
         methodTypeInfo,
@@ -2990,8 +3002,10 @@ function normalizeObjcProtocolMethodInfo(method) {
         explicitArgumentCount: methodTypeInfo.explicitArgumentCount,
         argumentTypeEncodings: methodTypeInfo.argumentTypeEncodings,
         argumentTypeNames: methodTypeInfo.argumentTypeNames,
+        argumentTypeNameList: methodTypeInfo.argumentTypeNameList,
         argumentTypeInfos: methodTypeInfo.argumentTypeInfos,
         hiddenArgumentTypeNames: methodTypeInfo.hiddenArgumentTypeNames,
+        hiddenArgumentTypeNameList: methodTypeInfo.hiddenArgumentTypeNameList,
         hiddenArgumentCount,
         signature: methodTypeInfo.signature,
         methodTypeInfo,
@@ -3369,6 +3383,7 @@ function normalizeObjcIvar(ivar) {
         kind: String(typeInfo.kind || 'unknown'),
         qualifiers: Array.isArray(typeInfo.qualifiers) ? typeInfo.qualifiers : [],
         qualifierNames: Array.isArray(typeInfo.qualifierNames) ? typeInfo.qualifierNames : [],
+        qualifierNameList: Array.isArray(typeInfo.qualifierNameList) ? typeInfo.qualifierNameList : [],
         qualifierCount,
         hasQualifiers: qualifierCount !== 0,
         isObject: typeInfo.isObject,
@@ -3515,6 +3530,7 @@ function normalizeObjcIvarInfo(ivar) {
         kind: String(typeInfo.kind || 'unknown'),
         qualifiers: Array.isArray(typeInfo.qualifiers) ? typeInfo.qualifiers : [],
         qualifierNames: Array.isArray(typeInfo.qualifierNames) ? typeInfo.qualifierNames : [],
+        qualifierNameList: Array.isArray(typeInfo.qualifierNameList) ? typeInfo.qualifierNameList : [],
         qualifierCount,
         hasQualifiers: qualifierCount !== 0,
         isObject: typeInfo.isObject,

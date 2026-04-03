@@ -625,7 +625,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const methods = ObjC.methods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && typeof methods[0].methodTypeInfo === 'object' && Array.isArray(methods[0].selectorParts) && typeof methods[0].selectorPartCount === 'number' && typeof methods[0].hasSelectorArguments === 'boolean' && typeof methods[0].isUnarySelector === 'boolean' && typeof methods[0].isKeywordSelector === 'boolean'); })()")
+                    .eval("(function() { const methods = ObjC.methods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && Array.isArray(methods[0].argumentTypeNameList) && Array.isArray(methods[0].hiddenArgumentTypeNameList) && methods[0].argumentTypeNameList.length === methods[0].argumentTypeNames.length && typeof methods[0].methodTypeInfo === 'object' && Array.isArray(methods[0].methodTypeInfo.argumentTypeNameList) && Array.isArray(methods[0].methodTypeInfo.hiddenArgumentTypeNameList) && methods[0].methodTypeInfo.argumentTypeNameList.length === methods[0].methodTypeInfo.argumentTypeNames.length && Array.isArray(methods[0].selectorParts) && typeof methods[0].selectorPartCount === 'number' && typeof methods[0].hasSelectorArguments === 'boolean' && typeof methods[0].isUnarySelector === 'boolean' && typeof methods[0].isKeywordSelector === 'boolean'); })()")
                     .expect("objc methods decoded type info"),
                 "true"
             );
@@ -719,7 +719,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const methods = ObjC.protocolMethods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && typeof methods[0].methodTypeInfo === 'object' && Array.isArray(methods[0].selectorParts) && typeof methods[0].selectorPartCount === 'number' && typeof methods[0].hasSelectorArguments === 'boolean' && typeof methods[0].isUnarySelector === 'boolean' && typeof methods[0].isKeywordSelector === 'boolean'); })()")
+                    .eval("(function() { const methods = ObjC.protocolMethods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && Array.isArray(methods[0].argumentTypeNameList) && Array.isArray(methods[0].hiddenArgumentTypeNameList) && methods[0].argumentTypeNameList.length === methods[0].argumentTypeNames.length && typeof methods[0].methodTypeInfo === 'object' && Array.isArray(methods[0].methodTypeInfo.argumentTypeNameList) && Array.isArray(methods[0].methodTypeInfo.hiddenArgumentTypeNameList) && methods[0].methodTypeInfo.argumentTypeNameList.length === methods[0].methodTypeInfo.argumentTypeNames.length && Array.isArray(methods[0].selectorParts) && typeof methods[0].selectorPartCount === 'number' && typeof methods[0].hasSelectorArguments === 'boolean' && typeof methods[0].isUnarySelector === 'boolean' && typeof methods[0].isKeywordSelector === 'boolean'); })()")
                     .expect("objc protocolMethods decoded type info"),
                 "true"
             );
@@ -731,7 +731,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.protocolMethodInfo('NSObject', 'description', false, false); return value === null || (typeof value.selector === 'string' && Array.isArray(value.selectorParts) && typeof value.selectorPartCount === 'number' && typeof value.hasSelectorArguments === 'boolean' && typeof value.isUnarySelector === 'boolean' && typeof value.isKeywordSelector === 'boolean' && typeof value.typeEncoding === 'string' && typeof value.isRequired === 'boolean' && typeof value.isInstanceMethod === 'boolean'); })()")
+                    .eval("(function() { const value = ObjC.protocolMethodInfo('NSObject', 'description', false, false); return value === null || (typeof value.selector === 'string' && Array.isArray(value.selectorParts) && typeof value.selectorPartCount === 'number' && typeof value.hasSelectorArguments === 'boolean' && typeof value.isUnarySelector === 'boolean' && typeof value.isKeywordSelector === 'boolean' && typeof value.typeEncoding === 'string' && Array.isArray(value.argumentTypeNames) && Array.isArray(value.argumentTypeNameList) && Array.isArray(value.hiddenArgumentTypeNameList) && value.argumentTypeNameList.length === value.argumentTypeNames.length && typeof value.isRequired === 'boolean' && typeof value.isInstanceMethod === 'boolean'); })()")
                     .expect("objc protocolMethodInfo"),
                 "true"
             );
@@ -791,7 +791,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.ivarInfo('NSObject', '_isa'); return value === null || (typeof value.name === 'string' && typeof value.typeEncoding === 'string' && typeof value.offset === 'number' && typeof value.kind === 'string' && Array.isArray(value.qualifiers) && Array.isArray(value.qualifierNames) && typeof value.qualifierCount === 'number' && typeof value.hasQualifiers === 'boolean' && typeof value.objectProtocolCount === 'number' && typeof value.hasObjectClassName === 'boolean' && (value.pointeeTypeName === null || typeof value.pointeeTypeName === 'string') && typeof value.hasPointeeType === 'boolean' && typeof value.isPointer === 'boolean' && typeof value.isArray === 'boolean' && (value.arrayCount === null || typeof value.arrayCount === 'number') && (value.memberName === null || typeof value.memberName === 'string') && typeof value.hasMemberName === 'boolean'); })()")
+                    .eval("(function() { const value = ObjC.ivarInfo('NSObject', '_isa'); return value === null || (typeof value.name === 'string' && typeof value.typeEncoding === 'string' && typeof value.offset === 'number' && typeof value.kind === 'string' && Array.isArray(value.qualifiers) && Array.isArray(value.qualifierNames) && Array.isArray(value.qualifierNameList) && value.qualifierNameList.length === value.qualifierNames.length && typeof value.qualifierCount === 'number' && typeof value.hasQualifiers === 'boolean' && typeof value.objectProtocolCount === 'number' && typeof value.hasObjectClassName === 'boolean' && (value.pointeeTypeName === null || typeof value.pointeeTypeName === 'string') && typeof value.hasPointeeType === 'boolean' && typeof value.isPointer === 'boolean' && typeof value.isArray === 'boolean' && (value.arrayCount === null || typeof value.arrayCount === 'number') && (value.memberName === null || typeof value.memberName === 'string') && typeof value.hasMemberName === 'boolean'); })()")
                     .expect("objc ivarInfo"),
                 "true"
             );
@@ -803,7 +803,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const ivars = ObjC.ivars('NSObject'); return ivars.length === 0 || (typeof ivars[0].typeName === 'string' && typeof ivars[0].typeInfo === 'object' && typeof ivars[0].kind === 'string' && typeof ivars[0].qualifierCount === 'number' && typeof ivars[0].hasQualifiers === 'boolean' && typeof ivars[0].objectProtocolCount === 'number' && typeof ivars[0].hasObjectClassName === 'boolean' && (ivars[0].pointeeTypeName === null || typeof ivars[0].pointeeTypeName === 'string') && typeof ivars[0].hasPointeeType === 'boolean' && typeof ivars[0].isPointer === 'boolean' && typeof ivars[0].isArray === 'boolean' && (ivars[0].arrayCount === null || typeof ivars[0].arrayCount === 'number') && (ivars[0].memberName === null || typeof ivars[0].memberName === 'string') && typeof ivars[0].hasMemberName === 'boolean'); })()")
+                    .eval("(function() { const ivars = ObjC.ivars('NSObject'); return ivars.length === 0 || (typeof ivars[0].typeName === 'string' && typeof ivars[0].typeInfo === 'object' && typeof ivars[0].kind === 'string' && Array.isArray(ivars[0].qualifierNameList) && ivars[0].qualifierNameList.length === ivars[0].qualifierNames.length && Array.isArray(ivars[0].typeInfo.qualifierNameList) && ivars[0].typeInfo.qualifierNameList.length === ivars[0].typeInfo.qualifierNames.length && typeof ivars[0].qualifierCount === 'number' && typeof ivars[0].hasQualifiers === 'boolean' && typeof ivars[0].objectProtocolCount === 'number' && typeof ivars[0].hasObjectClassName === 'boolean' && (ivars[0].pointeeTypeName === null || typeof ivars[0].pointeeTypeName === 'string') && typeof ivars[0].hasPointeeType === 'boolean' && typeof ivars[0].isPointer === 'boolean' && typeof ivars[0].isArray === 'boolean' && (ivars[0].arrayCount === null || typeof ivars[0].arrayCount === 'number') && (ivars[0].memberName === null || typeof ivars[0].memberName === 'string') && typeof ivars[0].hasMemberName === 'boolean'); })()")
                     .expect("objc ivars decoded type info"),
                 "true"
             );
@@ -2952,11 +2952,15 @@ undefined;
                                 typeof method.typeEncoding === 'string' &&
                                 typeof method.returnTypeName === 'string' &&
                                 Array.isArray(method.argumentTypeNames) &&
+                                Array.isArray(method.argumentTypeNameList) &&
+                                Array.isArray(method.hiddenArgumentTypeNameList) &&
                                 result.selectorNames.every((entry) => typeof entry === 'string') &&
                                 result.returnTypeNames.every((entry) => typeof entry === 'string') &&
                                 result.selectorNameList.every((entry) => typeof entry === 'string') &&
                                 result.returnTypeNameList.every((entry) => typeof entry === 'string') &&
                                 typeof method.methodTypeInfo === 'object' &&
+                                Array.isArray(method.methodTypeInfo.argumentTypeNameList) &&
+                                Array.isArray(method.methodTypeInfo.hiddenArgumentTypeNameList) &&
                                 Array.isArray(method.selectorParts) &&
                                 typeof method.selectorPartCount === 'number' &&
                                 typeof method.hasSelectorArguments === 'boolean' &&
@@ -2967,6 +2971,10 @@ undefined;
                                 typeof method.returnsVoid === 'boolean' &&
                                 typeof method.returnsObject === 'boolean' &&
                                 typeof method.returnsBlock === 'boolean' &&
+                                method.argumentTypeNameList.length === method.argumentTypeNames.length &&
+                                method.hiddenArgumentTypeNameList.length === method.hiddenArgumentTypeNames.length &&
+                                method.methodTypeInfo.argumentTypeNameList.length === method.methodTypeInfo.argumentTypeNames.length &&
+                                method.methodTypeInfo.hiddenArgumentTypeNameList.length === method.methodTypeInfo.hiddenArgumentTypeNames.length &&
                                 result.selectorNameList.length === result.selectorNames.length &&
                                 result.returnTypeNameList.length === result.returnTypeNames.length &&
                                 result.selectorNames.length === result.selectors.length &&
@@ -3000,7 +3008,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_method_info', protocolName: 'NSObject', selectorName: 'description', isRequired: false, isInstanceMethod: false }); return result.kind === 'objc.protocol_method_info' && result.protocolName === 'NSObject' && result.selectorName === 'description' && result.isRequired === false && result.isInstanceMethod === false && typeof result.hasMethodInfo === 'boolean' && typeof result.resolved === 'boolean' && ((result.methodInfo === null && result.hasMethodInfo === false && result.resolved === false && result.resolvedSelector === null && result.imagePath === null && result.hasSelectorArguments === false && result.isUnarySelector === false && result.isKeywordSelector === false && result.hasExplicitArguments === false && result.returnsVoid === false && result.returnsObject === false && result.returnsBlock === false && result.text === '<null>') || (typeof result.methodInfo.typeEncoding === 'string' && typeof result.methodInfo.returnTypeName === 'string' && Array.isArray(result.methodInfo.argumentTypeNames) && typeof result.methodInfo.methodTypeInfo === 'object' && Array.isArray(result.methodInfo.selectorParts) && typeof result.methodInfo.selectorPartCount === 'number' && typeof result.methodInfo.hasSelectorArguments === 'boolean' && typeof result.methodInfo.isUnarySelector === 'boolean' && typeof result.methodInfo.isKeywordSelector === 'boolean' && typeof result.methodInfo.hasExplicitArguments === 'boolean' && typeof result.methodInfo.hiddenArgumentCount === 'number' && typeof result.methodInfo.returnsVoid === 'boolean' && typeof result.methodInfo.returnsObject === 'boolean' && typeof result.methodInfo.returnsBlock === 'boolean' && result.hasMethodInfo === true && result.resolved === true && result.resolvedSelector === result.methodInfo.selector && result.imagePath === result.methodInfo.imagePath && result.hasSelectorArguments === (result.methodInfo.hasSelectorArguments === true) && result.isUnarySelector === (result.methodInfo.isUnarySelector === true) && result.isKeywordSelector === (result.methodInfo.isKeywordSelector === true) && result.hasExplicitArguments === (result.methodInfo.hasExplicitArguments === true) && result.returnsVoid === (result.methodInfo.returnsVoid === true) && result.returnsObject === (result.methodInfo.returnsObject === true) && result.returnsBlock === (result.methodInfo.returnsBlock === true) && result.text === result.methodInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_method_info', protocolName: 'NSObject', selectorName: 'description', isRequired: false, isInstanceMethod: false }); return result.kind === 'objc.protocol_method_info' && result.protocolName === 'NSObject' && result.selectorName === 'description' && result.isRequired === false && result.isInstanceMethod === false && typeof result.hasMethodInfo === 'boolean' && typeof result.resolved === 'boolean' && ((result.methodInfo === null && result.hasMethodInfo === false && result.resolved === false && result.resolvedSelector === null && result.imagePath === null && result.hasSelectorArguments === false && result.isUnarySelector === false && result.isKeywordSelector === false && result.hasExplicitArguments === false && result.returnsVoid === false && result.returnsObject === false && result.returnsBlock === false && result.text === '<null>') || (typeof result.methodInfo.typeEncoding === 'string' && typeof result.methodInfo.returnTypeName === 'string' && Array.isArray(result.methodInfo.argumentTypeNames) && Array.isArray(result.methodInfo.argumentTypeNameList) && Array.isArray(result.methodInfo.hiddenArgumentTypeNameList) && result.methodInfo.argumentTypeNameList.length === result.methodInfo.argumentTypeNames.length && result.methodInfo.hiddenArgumentTypeNameList.length === result.methodInfo.hiddenArgumentTypeNames.length && typeof result.methodInfo.methodTypeInfo === 'object' && Array.isArray(result.methodInfo.methodTypeInfo.argumentTypeNameList) && Array.isArray(result.methodInfo.methodTypeInfo.hiddenArgumentTypeNameList) && result.methodInfo.methodTypeInfo.argumentTypeNameList.length === result.methodInfo.methodTypeInfo.argumentTypeNames.length && result.methodInfo.methodTypeInfo.hiddenArgumentTypeNameList.length === result.methodInfo.methodTypeInfo.hiddenArgumentTypeNames.length && Array.isArray(result.methodInfo.selectorParts) && typeof result.methodInfo.selectorPartCount === 'number' && typeof result.methodInfo.hasSelectorArguments === 'boolean' && typeof result.methodInfo.isUnarySelector === 'boolean' && typeof result.methodInfo.isKeywordSelector === 'boolean' && typeof result.methodInfo.hasExplicitArguments === 'boolean' && typeof result.methodInfo.hiddenArgumentCount === 'number' && typeof result.methodInfo.returnsVoid === 'boolean' && typeof result.methodInfo.returnsObject === 'boolean' && typeof result.methodInfo.returnsBlock === 'boolean' && result.hasMethodInfo === true && result.resolved === true && result.resolvedSelector === result.methodInfo.selector && result.imagePath === result.methodInfo.imagePath && result.hasSelectorArguments === (result.methodInfo.hasSelectorArguments === true) && result.isUnarySelector === (result.methodInfo.isUnarySelector === true) && result.isKeywordSelector === (result.methodInfo.isKeywordSelector === true) && result.hasExplicitArguments === (result.methodInfo.hasExplicitArguments === true) && result.returnsVoid === (result.methodInfo.returnsVoid === true) && result.returnsObject === (result.methodInfo.returnsObject === true) && result.returnsBlock === (result.methodInfo.returnsBlock === true) && result.text === result.methodInfo.text)); })()"
                     )
                     .expect("agent objc protocolMethodInfo result"),
                 "true"
@@ -3393,7 +3401,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); return result.kind === 'objc.ivar_info' && result.className === 'NSObject' && result.ivarName === '_isa' && typeof result.hasIvarInfo === 'boolean' && typeof result.resolved === 'boolean' && ((result.ivarInfo === null && result.hasIvarInfo === false && result.resolved === false && result.resolvedName === null && result.typeName === null && result.kindName === null && result.objectClassName === null && result.hasQualifiers === false && result.hasPointeeType === false && result.isPointer === false && result.isArray === false && result.memberName === null && result.imagePath === null && result.text === '<null>') || (typeof result.ivarInfo.ivarPointer === 'string' && typeof result.ivarInfo.offsetHex === 'string' && typeof result.ivarInfo.typeName === 'string' && typeof result.ivarInfo.typeInfo === 'object' && typeof result.ivarInfo.kind === 'string' && Array.isArray(result.ivarInfo.qualifiers) && Array.isArray(result.ivarInfo.qualifierNames) && typeof result.ivarInfo.qualifierCount === 'number' && typeof result.ivarInfo.hasQualifiers === 'boolean' && typeof result.ivarInfo.objectProtocolCount === 'number' && typeof result.ivarInfo.hasObjectClassName === 'boolean' && (result.ivarInfo.pointeeTypeName === null || typeof result.ivarInfo.pointeeTypeName === 'string') && typeof result.ivarInfo.hasPointeeType === 'boolean' && typeof result.ivarInfo.isPointer === 'boolean' && typeof result.ivarInfo.isArray === 'boolean' && (result.ivarInfo.arrayCount === null || typeof result.ivarInfo.arrayCount === 'number') && (result.ivarInfo.memberName === null || typeof result.ivarInfo.memberName === 'string') && typeof result.ivarInfo.hasMemberName === 'boolean' && result.hasIvarInfo === true && result.resolved === true && result.resolvedName === result.ivarInfo.name && result.typeName === result.ivarInfo.typeName && result.kindName === result.ivarInfo.kind && result.objectClassName === result.ivarInfo.objectClassName && result.hasQualifiers === (result.ivarInfo.hasQualifiers === true) && result.hasPointeeType === (result.ivarInfo.hasPointeeType === true) && result.isPointer === (result.ivarInfo.isPointer === true) && result.isArray === (result.ivarInfo.isArray === true) && result.memberName === result.ivarInfo.memberName && result.imagePath === result.ivarInfo.imagePath && result.text === result.ivarInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); return result.kind === 'objc.ivar_info' && result.className === 'NSObject' && result.ivarName === '_isa' && typeof result.hasIvarInfo === 'boolean' && typeof result.resolved === 'boolean' && ((result.ivarInfo === null && result.hasIvarInfo === false && result.resolved === false && result.resolvedName === null && result.typeName === null && result.kindName === null && result.objectClassName === null && result.hasQualifiers === false && result.hasPointeeType === false && result.isPointer === false && result.isArray === false && result.memberName === null && result.imagePath === null && result.text === '<null>') || (typeof result.ivarInfo.ivarPointer === 'string' && typeof result.ivarInfo.offsetHex === 'string' && typeof result.ivarInfo.typeName === 'string' && typeof result.ivarInfo.typeInfo === 'object' && typeof result.ivarInfo.kind === 'string' && Array.isArray(result.ivarInfo.qualifiers) && Array.isArray(result.ivarInfo.qualifierNames) && Array.isArray(result.ivarInfo.qualifierNameList) && result.ivarInfo.qualifierNameList.length === result.ivarInfo.qualifierNames.length && Array.isArray(result.ivarInfo.typeInfo.qualifierNameList) && result.ivarInfo.typeInfo.qualifierNameList.length === result.ivarInfo.typeInfo.qualifierNames.length && typeof result.ivarInfo.qualifierCount === 'number' && typeof result.ivarInfo.hasQualifiers === 'boolean' && typeof result.ivarInfo.objectProtocolCount === 'number' && typeof result.ivarInfo.hasObjectClassName === 'boolean' && (result.ivarInfo.pointeeTypeName === null || typeof result.ivarInfo.pointeeTypeName === 'string') && typeof result.ivarInfo.hasPointeeType === 'boolean' && typeof result.ivarInfo.isPointer === 'boolean' && typeof result.ivarInfo.isArray === 'boolean' && (result.ivarInfo.arrayCount === null || typeof result.ivarInfo.arrayCount === 'number') && (result.ivarInfo.memberName === null || typeof result.ivarInfo.memberName === 'string') && typeof result.ivarInfo.hasMemberName === 'boolean' && result.hasIvarInfo === true && result.resolved === true && result.resolvedName === result.ivarInfo.name && result.typeName === result.ivarInfo.typeName && result.kindName === result.ivarInfo.kind && result.objectClassName === result.ivarInfo.objectClassName && result.hasQualifiers === (result.ivarInfo.hasQualifiers === true) && result.hasPointeeType === (result.ivarInfo.hasPointeeType === true) && result.isPointer === (result.ivarInfo.isPointer === true) && result.isArray === (result.ivarInfo.isArray === true) && result.memberName === result.ivarInfo.memberName && result.imagePath === result.ivarInfo.imagePath && result.text === result.ivarInfo.text)); })()"
                     )
                     .expect("agent objc ivarInfo result"),
                 "true"
@@ -3932,10 +3940,14 @@ undefined;
                                 typeof result.ivars[0].kind === 'string' &&
                                 Array.isArray(result.ivars[0].qualifiers) &&
                                 Array.isArray(result.ivars[0].qualifierNames) &&
+                                Array.isArray(result.ivars[0].qualifierNameList) &&
+                                Array.isArray(result.ivars[0].typeInfo.qualifierNameList) &&
                                 typeof result.ivars[0].qualifierCount === 'number' &&
                                 typeof result.ivars[0].hasQualifiers === 'boolean' &&
                                 typeof result.ivars[0].objectProtocolCount === 'number' &&
                                 typeof result.ivars[0].hasObjectClassName === 'boolean' &&
+                                result.ivars[0].qualifierNameList.length === result.ivars[0].qualifierNames.length &&
+                                result.ivars[0].typeInfo.qualifierNameList.length === result.ivars[0].typeInfo.qualifierNames.length &&
                                 (result.ivars[0].pointeeTypeName === null || typeof result.ivars[0].pointeeTypeName === 'string') &&
                                 typeof result.ivars[0].hasPointeeType === 'boolean' &&
                                 typeof result.ivars[0].isPointer === 'boolean' &&
@@ -4032,11 +4044,15 @@ undefined;
                                 typeof method.typeEncoding === 'string' &&
                                 typeof method.returnTypeName === 'string' &&
                                 Array.isArray(method.argumentTypeNames) &&
+                                Array.isArray(method.argumentTypeNameList) &&
+                                Array.isArray(method.hiddenArgumentTypeNameList) &&
                                 result.selectorNameList.every((entry) => typeof entry === 'string') &&
                                 result.returnTypeNameList.every((entry) => typeof entry === 'string') &&
                                 result.selectorNames.every((entry) => typeof entry === 'string') &&
                                 result.returnTypeNames.every((entry) => typeof entry === 'string') &&
                                 typeof method.methodTypeInfo === 'object' &&
+                                Array.isArray(method.methodTypeInfo.argumentTypeNameList) &&
+                                Array.isArray(method.methodTypeInfo.hiddenArgumentTypeNameList) &&
                                 Array.isArray(method.selectorParts) &&
                                 typeof method.selectorPartCount === 'number' &&
                                 typeof method.hasSelectorArguments === 'boolean' &&
@@ -4045,6 +4061,10 @@ undefined;
                                 typeof method.returnsVoid === 'boolean' &&
                                 typeof method.returnsObject === 'boolean' &&
                                 typeof method.returnsBlock === 'boolean' &&
+                                method.argumentTypeNameList.length === method.argumentTypeNames.length &&
+                                method.hiddenArgumentTypeNameList.length === method.hiddenArgumentTypeNames.length &&
+                                method.methodTypeInfo.argumentTypeNameList.length === method.methodTypeInfo.argumentTypeNames.length &&
+                                method.methodTypeInfo.hiddenArgumentTypeNameList.length === method.methodTypeInfo.hiddenArgumentTypeNames.length &&
                                 result.selectorNameList.length === result.selectorNames.length &&
                                 result.returnTypeNameList.length === result.returnTypeNames.length &&
                                 result.selectorNames.length === result.selectors.length &&
@@ -4146,6 +4166,8 @@ undefined;
                                 typeof method.selector === 'string' &&
                                 typeof method.returnTypeName === 'string' &&
                                 Array.isArray(method.argumentTypeNames) &&
+                                Array.isArray(method.argumentTypeNameList) &&
+                                Array.isArray(method.hiddenArgumentTypeNameList) &&
                                 result.imagePathList.every((entry) => typeof entry === 'string') &&
                                 result.ownerNameList.every((entry) => typeof entry === 'string') &&
                                 result.selectorNameList.every((entry) => typeof entry === 'string') &&
@@ -4155,6 +4177,8 @@ undefined;
                                 typeof method.returnsVoid === 'boolean' &&
                                 typeof method.returnsObject === 'boolean' &&
                                 typeof method.returnsBlock === 'boolean' &&
+                                method.argumentTypeNameList.length === method.argumentTypeNames.length &&
+                                method.hiddenArgumentTypeNameList.length === method.hiddenArgumentTypeNames.length &&
                                 result.imagePathList.length === result.imagePaths.length &&
                                 result.ownerNameList.length === result.ownerNames.length &&
                                 result.selectorNameList.length === result.selectorNames.length &&
