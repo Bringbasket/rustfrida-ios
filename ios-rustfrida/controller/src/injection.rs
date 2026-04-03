@@ -1468,6 +1468,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 json!({
                     "matched": true,
                     "usedDefault": false,
+                    "reason": "matched-error-code",
                     "effective": decision,
                 }),
             );
@@ -1579,6 +1580,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 json!({
                     "matched": true,
                     "usedDefault": false,
+                    "reason": "matched-phase",
                     "effective": entry,
                 }),
             );
@@ -8313,6 +8315,10 @@ mod tests {
             false
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["reason"],
+            "matched-phase"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["effective"]["errorCodeCount"],
             4
         );
@@ -8339,6 +8345,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["usedDefault"],
             false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["reason"],
+            "matched-error-code"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["effective"]["escalationKey"],
