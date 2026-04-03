@@ -12010,6 +12010,14 @@ function legacyToSpec(command) {
         return { kind: 'native.image_info', moduleName };
     }
 
+    if (trimmed.startsWith('native.findImageInfo ')) {
+        const moduleName = trimmed.slice('native.findImageInfo '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findImageInfo usage: native.findImageInfo <module>');
+        }
+        return { kind: 'native.image_info', moduleName };
+    }
+
     if (trimmed.startsWith('native.images ')) {
         const filter = trimmed.slice('native.images '.length).trim().toLowerCase();
         if (filter.length === 0) {
@@ -12081,6 +12089,18 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findSymbolInfo ')) {
+        const parsed = splitModuleQuery(
+            trimmed.slice('native.findSymbolInfo '.length),
+            'native.findSymbolInfo usage: native.findSymbolInfo <symbol> | native.findSymbolInfo <module> -- <symbol>'
+        );
+        return {
+            kind: 'native.symbol_info',
+            moduleName: parsed.moduleName,
+            symbolName: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('native.exports ')) {
         const parsed = parseNativeExports(trimmed.slice('native.exports '.length));
         return {
@@ -12111,6 +12131,18 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findExportInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.findExportInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.findExportInfo usage: native.findExportInfo <module> -- <symbol>');
+        }
+        return {
+            kind: 'native.export_info',
+            moduleName: parsed.moduleName,
+            symbolName: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('native.dependencies ')) {
         const parsed = parseNativeExports(trimmed.slice('native.dependencies '.length));
         return {
@@ -12133,6 +12165,18 @@ function legacyToSpec(command) {
         const parsed = parseNativeExports(trimmed.slice('native.dependencyInfo '.length));
         if (parsed.query === null) {
             throw new Error('native.dependencyInfo usage: native.dependencyInfo <module> -- <path-or-name>');
+        }
+        return {
+            kind: 'native.dependency_info',
+            moduleName: parsed.moduleName,
+            pathOrName: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.findDependencyInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.findDependencyInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.findDependencyInfo usage: native.findDependencyInfo <module> -- <path-or-name>');
         }
         return {
             kind: 'native.dependency_info',
@@ -12479,6 +12523,18 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findRpathInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.findRpathInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.findRpathInfo usage: native.findRpathInfo <module> -- <path>');
+        }
+        return {
+            kind: 'native.rpath_info',
+            moduleName: parsed.moduleName,
+            path: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('native.imports ')) {
         const parsed = parseNativeExports(trimmed.slice('native.imports '.length));
         return {
@@ -12501,6 +12557,18 @@ function legacyToSpec(command) {
         const parsed = parseNativeExports(trimmed.slice('native.importInfo '.length));
         if (parsed.query === null) {
             throw new Error('native.importInfo usage: native.importInfo <module> -- <symbol>');
+        }
+        return {
+            kind: 'native.import_info',
+            moduleName: parsed.moduleName,
+            symbolName: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.findImportInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.findImportInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.findImportInfo usage: native.findImportInfo <module> -- <symbol>');
         }
         return {
             kind: 'native.import_info',
@@ -12545,6 +12613,18 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findSegmentInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.findSegmentInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.findSegmentInfo usage: native.findSegmentInfo <module> -- <segment>');
+        }
+        return {
+            kind: 'native.segment_info',
+            moduleName: parsed.moduleName,
+            segmentName: parsed.query,
+        };
+    }
+
     if (trimmed.startsWith('native.sections ')) {
         const moduleName = trimmed.slice('native.sections '.length).trim();
         if (moduleName.length === 0) {
@@ -12563,6 +12643,16 @@ function legacyToSpec(command) {
 
     if (trimmed.startsWith('native.sectionInfo ')) {
         const parsed = parseNativeSectionInfo(trimmed.slice('native.sectionInfo '.length));
+        return {
+            kind: 'native.section_info',
+            moduleName: parsed.moduleName,
+            segmentName: parsed.segmentName,
+            sectionName: parsed.sectionName,
+        };
+    }
+
+    if (trimmed.startsWith('native.findSectionInfo ')) {
+        const parsed = parseNativeSectionInfo(trimmed.slice('native.findSectionInfo '.length));
         return {
             kind: 'native.section_info',
             moduleName: parsed.moduleName,
@@ -12599,6 +12689,18 @@ function legacyToSpec(command) {
         const parsed = parseNativeExports(trimmed.slice('native.loadCommandInfo '.length));
         if (parsed.query === null) {
             throw new Error('native.loadCommandInfo usage: native.loadCommandInfo <module> -- <name|cmd|index>');
+        }
+        return {
+            kind: 'native.load_command_info',
+            moduleName: parsed.moduleName,
+            commandOrIndex: parsed.query,
+        };
+    }
+
+    if (trimmed.startsWith('native.findLoadCommandInfo ')) {
+        const parsed = parseNativeExports(trimmed.slice('native.findLoadCommandInfo '.length));
+        if (parsed.query === null) {
+            throw new Error('native.findLoadCommandInfo usage: native.findLoadCommandInfo <module> -- <name|cmd|index>');
         }
         return {
             kind: 'native.load_command_info',

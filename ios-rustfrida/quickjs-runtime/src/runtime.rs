@@ -11152,6 +11152,24 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() {
+                            return __iosRustFridaAgentApi.handle('native.findImageInfo libsystem_malloc.dylib') === __iosRustFridaAgentApi.handle('native.imageInfo libsystem_malloc.dylib') &&
+                                __iosRustFridaAgentApi.handle('native.findSymbolInfo malloc') === __iosRustFridaAgentApi.handle('native.symbolInfo malloc') &&
+                                __iosRustFridaAgentApi.handle('native.findExportInfo libsystem_malloc.dylib -- malloc') === __iosRustFridaAgentApi.handle('native.exportInfo libsystem_malloc.dylib -- malloc') &&
+                                __iosRustFridaAgentApi.handle('native.findDependencyInfo libsystem_malloc.dylib -- libSystem.B.dylib') === __iosRustFridaAgentApi.handle('native.dependencyInfo libsystem_malloc.dylib -- libSystem.B.dylib') &&
+                                __iosRustFridaAgentApi.handle('native.findRpathInfo libsystem_malloc.dylib -- @loader_path') === __iosRustFridaAgentApi.handle('native.rpathInfo libsystem_malloc.dylib -- @loader_path') &&
+                                __iosRustFridaAgentApi.handle('native.findImportInfo libsystem_malloc.dylib -- malloc') === __iosRustFridaAgentApi.handle('native.importInfo libsystem_malloc.dylib -- malloc') &&
+                                __iosRustFridaAgentApi.handle('native.findSegmentInfo libsystem_malloc.dylib -- __TEXT') === __iosRustFridaAgentApi.handle('native.segmentInfo libsystem_malloc.dylib -- __TEXT') &&
+                                __iosRustFridaAgentApi.handle('native.findSectionInfo libsystem_malloc.dylib -- __TEXT __text') === __iosRustFridaAgentApi.handle('native.sectionInfo libsystem_malloc.dylib -- __TEXT __text') &&
+                                __iosRustFridaAgentApi.handle('native.findLoadCommandInfo libsystem_malloc.dylib -- LC_UUID') === __iosRustFridaAgentApi.handle('native.loadCommandInfo libsystem_malloc.dylib -- LC_UUID');
+                        })()"
+                    )
+                    .expect("agent native info aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.exports libsystem_malloc.dylib -- malloc'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.exports', moduleName: 'libsystem_malloc.dylib', query: 'malloc' }); return value === result.text && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean'; })()")
                     .expect("agent native exports by query"),
                 "true"

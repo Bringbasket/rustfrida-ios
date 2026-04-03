@@ -3758,6 +3758,7 @@ fn print_controller_help() {
     println!("  native.segmentInfo <module> -- <segment>");
     println!("  native.symbolInfo <symbol>|native.symbolInfo <module> -- <symbol>");
     println!("  native.symbols <query>|native.symbols <module> -- <query>");
+    println!("  native.findImageInfo/findSymbolInfo/findExportInfo/findDependencyInfo/findRpathInfo/findImportInfo/findSegmentInfo/findSectionInfo/findLoadCommandInfo ... (info aliases)");
     println!("  native.findSymbols/findExports/findDependencies/findEncryptionInfo/findEntryPoint/findDyldInfo/findLinkedit/findFunctionStarts/findCodeSignature/findDataInCode/findExportsTrie/findChainedFixups/findSourceVersion/findBuildVersion/findDylinker/findInstallName/findUuid/findRpaths/findImports/findSegments/findSections/findLoadCommands ... (aliases)");
     println!("  native.images [filter]");
     println!("  native.mainImage");
@@ -4484,7 +4485,15 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.findImageInfo DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.exportInfo DemoBinary -- malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.findExportInfo DemoBinary -- malloc"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -4493,6 +4502,10 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("native.dependencyInfo DemoBinary -- libSystem.B.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.findDependencyInfo DemoBinary -- libSystem.B.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -4560,6 +4573,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.findRpathInfo DemoBinary -- @loader_path"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.imports DemoBinary"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -4568,7 +4585,15 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.findImportInfo DemoBinary -- malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.symbolInfo DemoBinary -- malloc"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.findSymbolInfo DemoBinary -- malloc"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -4576,11 +4601,23 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.findLoadCommandInfo DemoBinary -- LC_UUID"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.sectionInfo DemoBinary -- __TEXT __text"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.findSectionInfo DemoBinary -- __TEXT __text"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.segmentInfo DemoBinary -- __TEXT"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("native.findSegmentInfo DemoBinary -- __TEXT"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -4798,6 +4835,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.findSelectorName 0x1234"));
         assert!(!command_requires_inline_hooks("objc.findObjectClassName 0x1234"));
         assert!(!command_requires_inline_hooks("native.imageInfo UIKit"));
+        assert!(!command_requires_inline_hooks("native.findImageInfo UIKit"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
         assert!(!command_requires_inline_hooks("native.findSymbols malloc"));
@@ -4811,8 +4849,12 @@ mod tests {
         assert!(!command_requires_inline_hooks("pac.stripData 0x1234"));
         assert!(!command_requires_inline_hooks("native.findImports UIKit -- malloc"));
         assert!(!command_requires_inline_hooks("native.exportInfo UIKit -- malloc"));
+        assert!(!command_requires_inline_hooks("native.findExportInfo UIKit -- malloc"));
         assert!(!command_requires_inline_hooks(
             "native.dependencyInfo UIKit -- libSystem.B.dylib"
+        ));
+        assert!(!command_requires_inline_hooks(
+            "native.findDependencyInfo UIKit -- libSystem.B.dylib"
         ));
         assert!(!command_requires_inline_hooks("native.encryptionInfo UIKit"));
         assert!(!command_requires_inline_hooks("native.entryPoint UIKit"));
@@ -4830,16 +4872,26 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.uuid UIKit"));
         assert!(!command_requires_inline_hooks("native.rpaths UIKit"));
         assert!(!command_requires_inline_hooks("native.rpathInfo UIKit -- @loader_path"));
+        assert!(!command_requires_inline_hooks("native.findRpathInfo UIKit -- @loader_path"));
         assert!(!command_requires_inline_hooks("native.imports UIKit"));
         assert!(!command_requires_inline_hooks("native.importInfo UIKit -- malloc"));
+        assert!(!command_requires_inline_hooks("native.findImportInfo UIKit -- malloc"));
         assert!(!command_requires_inline_hooks(
             "native.loadCommandInfo UIKit -- LC_UUID"
         ));
         assert!(!command_requires_inline_hooks(
+            "native.findLoadCommandInfo UIKit -- LC_UUID"
+        ));
+        assert!(!command_requires_inline_hooks(
             "native.sectionInfo UIKit -- __TEXT __text"
         ));
+        assert!(!command_requires_inline_hooks(
+            "native.findSectionInfo UIKit -- __TEXT __text"
+        ));
         assert!(!command_requires_inline_hooks("native.segmentInfo UIKit -- __TEXT"));
+        assert!(!command_requires_inline_hooks("native.findSegmentInfo UIKit -- __TEXT"));
         assert!(!command_requires_inline_hooks("native.symbolInfo malloc"));
+        assert!(!command_requires_inline_hooks("native.findSymbolInfo malloc"));
         assert!(!command_requires_inline_hooks("swift.protocolInfo Renderable"));
         assert!(!command_requires_inline_hooks("swift.findProtocolInfo Renderable"));
         assert!(!command_requires_inline_hooks(

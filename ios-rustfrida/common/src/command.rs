@@ -138,12 +138,16 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.findProtocols ")
         || command.starts_with("native.base ")
         || command.starts_with("native.imageInfo ")
+        || command.starts_with("native.findImageInfo ")
         || command.starts_with("native.export ")
         || command.starts_with("native.exportInfo ")
+        || command.starts_with("native.findExportInfo ")
         || command.starts_with("native.symbolInfo ")
+        || command.starts_with("native.findSymbolInfo ")
         || command.starts_with("native.exports ")
         || command.starts_with("native.dependencies ")
         || command.starts_with("native.dependencyInfo ")
+        || command.starts_with("native.findDependencyInfo ")
         || command.starts_with("native.encryptionInfo ")
         || command.starts_with("native.findEncryptionInfo ")
         || command.starts_with("native.entryPoint ")
@@ -175,21 +179,26 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.rpaths ")
         || command.starts_with("native.findRpaths ")
         || command.starts_with("native.rpathInfo ")
+        || command.starts_with("native.findRpathInfo ")
         || command.starts_with("native.imports ")
         || command.starts_with("native.findImports ")
         || command.starts_with("native.importInfo ")
+        || command.starts_with("native.findImportInfo ")
         || command.starts_with("native.images ")
         || command.starts_with("native.image ")
         || command.starts_with("native.loadcmds ")
         || command.starts_with("native.loadCommands ")
         || command.starts_with("native.findLoadCommands ")
         || command.starts_with("native.loadCommandInfo ")
+        || command.starts_with("native.findLoadCommandInfo ")
         || command.starts_with("native.sections ")
         || command.starts_with("native.findSections ")
         || command.starts_with("native.sectionInfo ")
+        || command.starts_with("native.findSectionInfo ")
         || command.starts_with("native.segments ")
         || command.starts_with("native.findSegments ")
         || command.starts_with("native.segmentInfo ")
+        || command.starts_with("native.findSegmentInfo ")
         || command.starts_with("native.symbol ")
         || command.starts_with("native.symbols ")
         || command.starts_with("native.findSymbols ")
@@ -719,6 +728,17 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("native.findImageInfo ") {
+        let module_name = module_name.trim();
+        if module_name.is_empty() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.image_info",
+            "moduleName": module_name,
+        }));
+    }
+
     if let Some(filter) = command.strip_prefix("native.images ") {
         return Some(json!({
             "kind": "native.images",
@@ -776,6 +796,15 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("native.findSymbolInfo ") {
+        let (module_name, symbol_name) = parse_module_query(raw)?;
+        return Some(json!({
+            "kind": "native.symbol_info",
+            "moduleName": module_name,
+            "symbolName": symbol_name,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("native.exports ") {
         let (module_name, query) = parse_native_exports(raw)?;
         return Some(json!({
@@ -804,6 +833,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("native.findExportInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let symbol_name = query?;
+        return Some(json!({
+            "kind": "native.export_info",
+            "moduleName": module_name,
+            "symbolName": symbol_name,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("native.dependencies ") {
         let (module_name, query) = parse_native_exports(raw)?;
         return Some(json!({
@@ -823,6 +862,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(raw) = command.strip_prefix("native.dependencyInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let path_or_name = query?;
+        return Some(json!({
+            "kind": "native.dependency_info",
+            "moduleName": module_name,
+            "pathOrName": path_or_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.findDependencyInfo ") {
         let (module_name, query) = parse_native_exports(raw)?;
         let path_or_name = query?;
         return Some(json!({
@@ -1168,6 +1217,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("native.findRpathInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let path = query?;
+        return Some(json!({
+            "kind": "native.rpath_info",
+            "moduleName": module_name,
+            "path": path,
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("native.imports ") {
         let (module_name, query) = parse_native_exports(raw)?;
         return Some(json!({
@@ -1196,6 +1255,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("native.findImportInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let symbol_name = query?;
+        return Some(json!({
+            "kind": "native.import_info",
+            "moduleName": module_name,
+            "symbolName": symbol_name,
+        }));
+    }
+
     if let Some(module_name) = command.strip_prefix("native.segments ") {
         return Some(json!({
             "kind": "native.segments",
@@ -1211,6 +1280,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(raw) = command.strip_prefix("native.segmentInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let segment_name = query?;
+        return Some(json!({
+            "kind": "native.segment_info",
+            "moduleName": module_name,
+            "segmentName": segment_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.findSegmentInfo ") {
         let (module_name, query) = parse_native_exports(raw)?;
         let segment_name = query?;
         return Some(json!({
@@ -1251,6 +1330,23 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(raw) = command.strip_prefix("native.findSectionInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let query = query?;
+        let mut parts = query.split_whitespace();
+        let segment_name = parts.next()?;
+        let section_name = parts.next()?;
+        if parts.next().is_some() {
+            return None;
+        }
+        return Some(json!({
+            "kind": "native.section_info",
+            "moduleName": module_name,
+            "segmentName": segment_name,
+            "sectionName": section_name,
+        }));
+    }
+
     if let Some(module_name) = command.strip_prefix("native.loadcmds ") {
         return Some(json!({
             "kind": "native.load_commands",
@@ -1273,6 +1369,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
     }
 
     if let Some(raw) = command.strip_prefix("native.loadCommandInfo ") {
+        let (module_name, query) = parse_native_exports(raw)?;
+        let command_or_index = query?;
+        return Some(json!({
+            "kind": "native.load_command_info",
+            "moduleName": module_name,
+            "commandOrIndex": command_or_index,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("native.findLoadCommandInfo ") {
         let (module_name, query) = parse_native_exports(raw)?;
         let command_or_index = query?;
         return Some(json!({
