@@ -2340,6 +2340,17 @@ function formatHookEnvironmentReport(report) {
         lines.push('advice ' + recommendation);
     }
 
+    const recommendedActions = Array.isArray(report.recommendedActions) ? report.recommendedActions : [];
+    for (const action of recommendedActions) {
+        lines.push(
+            'recommended_action ' +
+                String(action.commandGroup || '<unknown>') +
+                ' allowed=' + String(!!action.allowed) +
+                ' status=' + String(action.status || (action.allowed ? 'allowed' : 'blocked')) +
+                ' recommendation=' + String(action.recommendation || '')
+        );
+    }
+
     return lines.join('\n');
 }
 

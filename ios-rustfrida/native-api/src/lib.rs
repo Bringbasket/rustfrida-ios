@@ -62,8 +62,9 @@ pub use injection::{
 };
 pub use install_name::{find_image_install_name, image_install_name_support_available, ImageInstallName};
 pub use jailbreak::{
-    current_hook_policy, detect_hook_environment, hook_environment_recommendations, resolve_hook_strategy,
-    HookBackendInfo, HookEnvironmentReport, HookPolicy, HookStrategyDecision,
+    current_hook_policy, detect_hook_environment, hook_environment_recommendations,
+    hook_environment_recommended_actions, resolve_hook_strategy, HookBackendInfo, HookEnvironmentReport, HookPolicy,
+    HookRecommendedAction, HookStrategyDecision,
 };
 pub use linkedit::{find_image_linkedit_info, image_linkedit_info_support_available, ImageLinkeditInfo};
 pub use loadcmds::{find_image_load_commands, image_load_command_support_available, ImageLoadCommand};

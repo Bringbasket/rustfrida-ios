@@ -12,7 +12,8 @@ use common::{
     LEGACY_AGENT_PATH_ROOTFUL,
 };
 use native_api::{
-    enumerate_images, hook_environment_recommendations, probe_injection_environment, BootstrapStatus,
+    enumerate_images, hook_environment_recommendations, hook_environment_recommended_actions,
+    probe_injection_environment, BootstrapStatus,
     InjectionEnvironmentReport, InjectionPlan, InjectionTarget, InjectionTargetPreflightReport, InjectionTrace,
     LoaderSymbolRole, MachInjector, ResolvedLoaderSymbol,
 };
@@ -330,6 +331,17 @@ fn hook_strategy_to_json(strategy: &native_api::HookStrategyDecision) -> Value {
 }
 
 #[cfg(unix)]
+fn hook_recommended_action_to_json(action: &native_api::HookRecommendedAction) -> Value {
+    json!({
+        "commandGroup": action.command_group,
+        "allowed": action.allowed,
+        "status": action.status,
+        "recommendation": action.recommendation,
+        "reason": action.reason,
+    })
+}
+
+#[cfg(unix)]
 fn hook_environment_to_json(
     report: &native_api::HookEnvironmentReport,
     strategy: Option<&native_api::HookStrategyDecision>,
@@ -361,6 +373,10 @@ fn hook_environment_to_json(
         "filesystemOnlyBackendCount": report.filesystem_only_backend_count(),
         "loadedImageCount": report.loaded_image_count(),
         "filesystemPathCount": report.filesystem_path_count(),
+        "recommendedActions": hook_environment_recommended_actions(report, strategy)
+            .iter()
+            .map(hook_recommended_action_to_json)
+            .collect::<Vec<_>>(),
         "backends": report.backends.iter().map(hook_backend_to_json).collect::<Vec<_>>(),
         "warnings": report.warnings,
     })
@@ -5430,6 +5446,7 @@ mod tests {
         assert_eq!(rendered["preflightOnly"], true);
         assert_eq!(rendered["environment"]["hookPolicy"], "warn");
         assert_eq!(rendered["environment"]["hookStrategy"]["commandMode"], "allowed");
+        assert!(rendered["environment"]["hookEnvironment"]["recommendedActions"].is_array());
         assert_eq!(rendered["doctor"]["ready"], false);
         assert_eq!(rendered["plan"]["target"]["pid"], 42);
         assert_eq!(rendered["plan"]["bootstrap"]["stackSizeHex"], json!("0x4000"));
@@ -5604,6 +5621,7 @@ mod tests {
         assert_eq!(rendered["doctor"]["failureCount"], 1);
         assert!(rendered["preflight"].is_object());
         assert_eq!(rendered["environment"]["hookStrategy"]["commandMode"], "allowed");
+        assert!(rendered["environment"]["hookEnvironment"]["recommendedActions"].is_array());
         assert_eq!(rendered["environment"]["hookStrategy"]["bootstrapInjectionAllowed"], true);
         assert_eq!(rendered["environment"]["hookStrategy"]["queryCommandsAllowed"], true);
         assert_eq!(rendered["environment"]["hookStrategy"]["hookInstallCommandsAllowed"], true);

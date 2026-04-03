@@ -106,6 +106,15 @@ impl HookStrategyDecision {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HookRecommendedAction {
+    pub command_group: String,
+    pub allowed: bool,
+    pub status: String,
+    pub recommendation: String,
+    pub reason: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy)]
 struct KnownHookBackend {
     id: &'static str,
@@ -194,6 +203,51 @@ pub fn hook_environment_recommendations(
     decision: Option<&HookStrategyDecision>,
 ) -> Vec<String> {
     recommendations_for_report(report, decision)
+}
+
+pub fn hook_environment_recommended_actions(
+    report: &HookEnvironmentReport,
+    decision: Option<&HookStrategyDecision>,
+) -> Vec<HookRecommendedAction> {
+    let loaded_backend_detected = report.loaded_backend_count() > 0;
+    let filesystem_candidates_detected = report.filesystem_only_backend_count() > 0;
+    let mode = decision
+        .map(HookStrategyDecision::command_mode)
+        .unwrap_or("allowed");
+    let reason = decision.and_then(|item| item.reason.clone());
+
+    [
+        ("bootstrap", decision.map(|item| item.bootstrap_injection_allowed()).unwrap_or(true)),
+        ("query", decision.map(|item| item.query_commands_allowed()).unwrap_or(true)),
+        (
+            "hook-install",
+            decision
+                .map(|item| item.hook_install_commands_allowed())
+                .unwrap_or(true),
+        ),
+        (
+            "hook-status",
+            decision
+                .map(|item| item.hook_status_commands_allowed())
+                .unwrap_or(true),
+        ),
+        ("hook-stop", decision.map(|item| item.hook_stop_commands_allowed()).unwrap_or(true)),
+    ]
+    .into_iter()
+    .map(|(command_group, allowed)| HookRecommendedAction {
+        command_group: command_group.into(),
+        allowed,
+        status: if allowed { "allowed".into() } else { "blocked".into() },
+        recommendation: recommendation_for_action(
+            command_group,
+            allowed,
+            mode,
+            loaded_backend_detected,
+            filesystem_candidates_detected,
+        ),
+        reason: reason.clone(),
+    })
+    .collect()
 }
 
 #[allow(dead_code)]
@@ -422,10 +476,48 @@ fn recommendations_for_report(report: &HookEnvironmentReport, decision: Option<&
     recommendations
 }
 
+fn recommendation_for_action(
+    command_group: &str,
+    allowed: bool,
+    mode: &str,
+    loaded_backend_detected: bool,
+    filesystem_candidates_detected: bool,
+) -> String {
+    if !allowed {
+        return match (mode, command_group) {
+            ("query-only", "hook-install") => {
+                "blocked by query-only mode; install commands are disabled while an external backend is loaded".into()
+            }
+            ("cleanup-only", "query") | ("cleanup-only", "hook-install") => {
+                "blocked by cleanup-only mode; use status/stop for cleanup or relax IOS_RUSTFRIDA_HOOK_POLICY".into()
+            }
+            ("blocked", _) => {
+                "blocked by current hook policy; relax IOS_RUSTFRIDA_HOOK_POLICY only if coexistence risk is acceptable".into()
+            }
+            _ => "blocked by current hook strategy".into(),
+        };
+    }
+
+    match (mode, command_group) {
+        ("cleanup-only", "hook-status") | ("cleanup-only", "hook-stop") => {
+            "allowed in cleanup-only mode; use these commands to inspect and recover hook state".into()
+        }
+        (_, "hook-install") if loaded_backend_detected => {
+            "allowed but risky with external backend loaded; validate on a sacrificial target before production apps".into()
+        }
+        (_, "hook-install") if filesystem_candidates_detected => {
+            "allowed; backend files exist on disk but no known backend image is loaded in this process".into()
+        }
+        (_, "query") => "allowed; prefer query commands first when diagnosing hook conflicts".into(),
+        _ => "allowed under current hook policy".into(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        detect_hook_environment_with, hook_environment_recommendations, resolve_hook_strategy_with_report,
+        detect_hook_environment_with, hook_environment_recommendations, hook_environment_recommended_actions,
+        resolve_hook_strategy_with_report,
         HookEnvironmentReport, HookPolicy,
     };
 
@@ -635,5 +727,68 @@ mod tests {
         assert!(recommendations
             .iter()
             .any(|line| line.contains("exist on disk but are not loaded")));
+    }
+
+    #[test]
+    fn recommended_actions_cover_query_only_policy() {
+        let report = HookEnvironmentReport {
+            active_backend: Some("ellekit".into()),
+            backends: vec![super::HookBackendInfo {
+                id: "ellekit".into(),
+                display_name: "ElleKit".into(),
+                loaded_images: vec!["/usr/lib/libellekit.dylib".into()],
+                filesystem_paths: Vec::new(),
+            }],
+            warnings: Vec::new(),
+        };
+        let decision = resolve_hook_strategy_with_report(&report, HookPolicy::QueryOnlyExternalLoaded);
+        let actions = hook_environment_recommended_actions(&report, Some(&decision));
+
+        let query = actions
+            .iter()
+            .find(|item| item.command_group == "query")
+            .expect("query action");
+        assert!(query.allowed);
+        assert_eq!(query.status, "allowed");
+
+        let install = actions
+            .iter()
+            .find(|item| item.command_group == "hook-install")
+            .expect("hook-install action");
+        assert!(!install.allowed);
+        assert_eq!(install.status, "blocked");
+        assert!(install.recommendation.contains("query-only mode"));
+    }
+
+    #[test]
+    fn recommended_actions_cover_cleanup_only_policy() {
+        let report = HookEnvironmentReport {
+            active_backend: Some("substrate".into()),
+            backends: vec![super::HookBackendInfo {
+                id: "substrate".into(),
+                display_name: "Cydia Substrate".into(),
+                loaded_images: vec!["/usr/lib/libsubstrate.dylib".into()],
+                filesystem_paths: Vec::new(),
+            }],
+            warnings: Vec::new(),
+        };
+        let decision = resolve_hook_strategy_with_report(&report, HookPolicy::DenyExternalLoaded);
+        let actions = hook_environment_recommended_actions(&report, Some(&decision));
+
+        let query = actions
+            .iter()
+            .find(|item| item.command_group == "query")
+            .expect("query action");
+        assert!(!query.allowed);
+        assert_eq!(query.status, "blocked");
+        assert!(query.recommendation.contains("cleanup-only mode"));
+
+        let stop = actions
+            .iter()
+            .find(|item| item.command_group == "hook-stop")
+            .expect("hook-stop action");
+        assert!(stop.allowed);
+        assert_eq!(stop.status, "allowed");
+        assert!(stop.recommendation.contains("cleanup-only mode"));
     }
 }

@@ -13,6 +13,7 @@ use native_api::{
     find_image_install_name, find_image_linkedit_info, find_image_load_commands, find_image_rpaths,
     find_image_sections, find_image_segments, find_image_source_version, find_image_uuid, find_native_symbols, find_symbol_by_address,
     hook_environment_recommendations, image_build_version_support_available, image_chained_fixups_support_available,
+    hook_environment_recommended_actions,
     image_code_signature_support_available, image_dependency_support_available, image_data_in_code_support_available,
     image_exports_trie_support_available,
     image_dyld_info_support_available, image_dylinker_support_available,
@@ -143,6 +144,24 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         );
     }
     result.set_property(ctx, "recommendations", JSValue(recommendations));
+
+    let recommended_actions = ffi::JS_NewArray(ctx);
+    for (index, action) in hook_environment_recommended_actions(report, decision.as_ref())
+        .iter()
+        .enumerate()
+    {
+        let item = JSValue(ffi::JS_NewObject(ctx));
+        item.set_property(ctx, "commandGroup", JSValue::string(ctx, &action.command_group));
+        item.set_property(ctx, "allowed", JSValue::bool(action.allowed));
+        item.set_property(ctx, "status", JSValue::string(ctx, &action.status));
+        item.set_property(ctx, "recommendation", JSValue::string(ctx, &action.recommendation));
+        match &action.reason {
+            Some(reason) => item.set_property(ctx, "reason", JSValue::string(ctx, reason)),
+            None => item.set_property(ctx, "reason", JSValue::null()),
+        };
+        ffi::JS_SetPropertyUint32(ctx, recommended_actions, index as u32, item.raw());
+    }
+    result.set_property(ctx, "recommendedActions", JSValue(recommended_actions));
 
     let backends = ffi::JS_NewArray(ctx);
     for (index, backend) in report.backends.iter().enumerate() {
