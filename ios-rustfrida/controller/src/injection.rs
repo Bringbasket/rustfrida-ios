@@ -2331,6 +2331,21 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("knownResult")
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveKnownMatched": routing_decision_ready_resolve
+            .get("knownResult")
+            .and_then(|result| result.get("matched"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveKnownUsedDefault": routing_decision_ready_resolve
+            .get("knownResult")
+            .and_then(|result| result.get("usedDefault"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveKnownReason": routing_decision_ready_resolve
+            .get("knownResult")
+            .and_then(|result| result.get("reason"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveKnownEffectivePhase": routing_decision_ready_resolve
             .get("knownEffectivePhase")
             .cloned()
@@ -2345,6 +2360,21 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .unwrap_or(Value::Null),
         "resolveMissingResult": routing_decision_ready_resolve
             .get("missingResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveMissingMatched": routing_decision_ready_resolve
+            .get("missingResult")
+            .and_then(|result| result.get("matched"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveMissingUsedDefault": routing_decision_ready_resolve
+            .get("missingResult")
+            .and_then(|result| result.get("usedDefault"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveMissingReason": routing_decision_ready_resolve
+            .get("missingResult")
+            .and_then(|result| result.get("reason"))
             .cloned()
             .unwrap_or(Value::Null),
         "resolveMissingEffectivePhase": routing_decision_ready_resolve
@@ -2423,6 +2453,21 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("knownResult")
             .cloned()
             .unwrap_or(Value::Null),
+        "phaseResolveKnownMatched": routing_decision_ready_phase_resolve
+            .get("knownResult")
+            .and_then(|result| result.get("matched"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveKnownUsedDefault": routing_decision_ready_phase_resolve
+            .get("knownResult")
+            .and_then(|result| result.get("usedDefault"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveKnownReason": routing_decision_ready_phase_resolve
+            .get("knownResult")
+            .and_then(|result| result.get("reason"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseResolveKnownEffectivePhase": routing_decision_ready_phase_resolve
             .get("knownEffectivePhase")
             .cloned()
@@ -2437,6 +2482,21 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .unwrap_or(Value::Null),
         "phaseResolveMissingResult": routing_decision_ready_phase_resolve
             .get("missingResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveMissingMatched": routing_decision_ready_phase_resolve
+            .get("missingResult")
+            .and_then(|result| result.get("matched"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveMissingUsedDefault": routing_decision_ready_phase_resolve
+            .get("missingResult")
+            .and_then(|result| result.get("usedDefault"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveMissingReason": routing_decision_ready_phase_resolve
+            .get("missingResult")
+            .and_then(|result| result.get("reason"))
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolveMissingEffectivePhase": routing_decision_ready_phase_resolve
@@ -9421,6 +9481,18 @@ mod tests {
             "matched-error-code"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownMatched"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownUsedDefault"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownReason"],
+            "matched-error-code"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownEffectivePhase"],
             "diagnose"
         );
@@ -9434,6 +9506,18 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingResult"]["reason"],
+            "missing-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingMatched"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingUsedDefault"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingReason"],
             "missing-error-code"
         );
         assert_eq!(
@@ -9517,6 +9601,18 @@ mod tests {
             "matched-phase"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownMatched"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownUsedDefault"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownReason"],
+            "matched-phase"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownEffectivePhase"],
             "diagnose"
         );
@@ -9530,6 +9626,18 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingResult"]["reason"],
+            "missing-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingMatched"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingUsedDefault"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingReason"],
             "missing-phase"
         );
         assert_eq!(
