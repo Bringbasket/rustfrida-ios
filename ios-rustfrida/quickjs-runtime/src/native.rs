@@ -38,26 +38,46 @@ unsafe fn set_string_array_property(ctx: *mut ffi::JSContext, obj: ffi::JSValue,
 unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnvironmentReport) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
     let decision = resolve_hook_strategy().ok();
+    let command_mode = decision
+        .as_ref()
+        .map(|item| item.command_mode())
+        .unwrap_or("allowed");
     let loaded_backend_count = report.loaded_backend_count();
     let filesystem_only_backend_count = report.filesystem_only_backend_count();
     let loaded_image_count = report.loaded_image_count();
     let filesystem_path_count = report.filesystem_path_count();
     let conflict_state = report.conflict_state();
-    let risk_level = if let Some(decision) = &decision {
-        match decision.command_mode() {
-            "blocked" => "blocked",
-            "cleanup-only" => "cleanup-only",
-            "query-only" => "query-only",
-            _ if loaded_backend_count > 0 => "risky",
-            _ if filesystem_only_backend_count > 0 => "cautious",
-            _ => "normal",
+    let risk_level = match command_mode {
+        "blocked" => "blocked",
+        "cleanup-only" => "cleanup-only",
+        "query-only" => "query-only",
+        _ if loaded_backend_count > 0 => "risky",
+        _ if filesystem_only_backend_count > 0 => "cautious",
+        _ => "normal",
+    };
+    let coexistence_mode = match command_mode {
+        "allowed" => {
+            if loaded_backend_count > 0 {
+                "inline-risky"
+            } else if filesystem_only_backend_count > 0 {
+                "inline-cautious"
+            } else {
+                "inline-safe"
+            }
         }
-    } else if loaded_backend_count > 0 {
-        "risky"
-    } else if filesystem_only_backend_count > 0 {
-        "cautious"
-    } else {
-        "normal"
+        "query-only" => "query-only",
+        "cleanup-only" => "cleanup-only",
+        "blocked" => "blocked",
+        _ => "unknown",
+    };
+    let coexistence_recommendation = match coexistence_mode {
+        "inline-safe" => "inline hooks are allowed and no external backend is loaded",
+        "inline-cautious" => "filesystem-only backend artifacts were detected; preflight before hook-install",
+        "inline-risky" => "external backend already loaded; prefer query/status first, then inline install only if necessary",
+        "query-only" => "current policy blocks hook-install; stay on query commands",
+        "cleanup-only" => "only status/stop commands are allowed under current policy",
+        "blocked" => "no hook command group is currently allowed",
+        _ => "hook strategy is unavailable; run native.hookenv and preflight for guidance",
     };
 
     match &report.active_backend {
@@ -66,7 +86,21 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     };
     result.set_property(ctx, "conflictState", JSValue::string(ctx, conflict_state));
     result.set_property(ctx, "riskLevel", JSValue::string(ctx, risk_level));
+    result.set_property(ctx, "commandMode", JSValue::string(ctx, command_mode));
+    result.set_property(ctx, "coexistenceMode", JSValue::string(ctx, coexistence_mode));
+    result.set_property(
+        ctx,
+        "coexistenceRecommendation",
+        JSValue::string(ctx, coexistence_recommendation),
+    );
     result.set_property(ctx, "coexistenceLayerAvailable", JSValue::bool(false));
+    result.set_property(ctx, "coexistenceLayerStatus", JSValue::string(ctx, "not-implemented"));
+    result.set_property(ctx, "externalBackendLoaded", JSValue::bool(loaded_backend_count > 0));
+    result.set_property(
+        ctx,
+        "filesystemOnlyBackendDetected",
+        JSValue::bool(filesystem_only_backend_count > 0),
+    );
     result.set_property(ctx, "loadedBackendCount", JSValue::int(loaded_backend_count as i32));
     result.set_property(
         ctx,
@@ -79,7 +113,6 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     if let Some(decision) = &decision {
         result.set_property(ctx, "policy", JSValue::string(ctx, decision.policy.as_str()));
         result.set_property(ctx, "strategy", JSValue::string(ctx, &decision.strategy));
-        result.set_property(ctx, "commandMode", JSValue::string(ctx, decision.command_mode()));
         result.set_property(ctx, "allowed", JSValue::bool(decision.allowed));
         result.set_property(ctx, "inlineHooksAllowed", JSValue::bool(decision.inline_hooks_allowed));
         result.set_property(
@@ -114,7 +147,6 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     } else {
         result.set_property(ctx, "policy", JSValue::string(ctx, "warn"));
         result.set_property(ctx, "strategy", JSValue::null());
-        result.set_property(ctx, "commandMode", JSValue::string(ctx, "allowed"));
         result.set_property(ctx, "allowed", JSValue::bool(true));
         result.set_property(ctx, "inlineHooksAllowed", JSValue::bool(true));
         result.set_property(ctx, "bootstrapInjectionAllowed", JSValue::bool(true));

@@ -2307,7 +2307,12 @@ function formatHookEnvironmentReport(report) {
     lines.push('hook_install_commands_allowed=' + String(!!report.hookInstallCommandsAllowed));
     lines.push('hook_status_commands_allowed=' + String(!!report.hookStatusCommandsAllowed));
     lines.push('hook_stop_commands_allowed=' + String(!!report.hookStopCommandsAllowed));
+    lines.push('coexistence_mode=' + String(report.coexistenceMode));
+    lines.push('coexistence_recommendation=' + String(report.coexistenceRecommendation));
     lines.push('coexistence_layer_available=' + String(!!report.coexistenceLayerAvailable));
+    lines.push('coexistence_layer_status=' + String(report.coexistenceLayerStatus));
+    lines.push('external_backend_loaded=' + String(!!report.externalBackendLoaded));
+    lines.push('filesystem_only_backend_detected=' + String(!!report.filesystemOnlyBackendDetected));
     lines.push('loaded_backend_count=' + String(Number(report.loadedBackendCount || 0)));
     lines.push('filesystem_only_backend_count=' + String(Number(report.filesystemOnlyBackendCount || 0)));
     lines.push('loaded_image_count=' + String(Number(report.loadedImageCount || 0)));
