@@ -511,6 +511,32 @@ fn hook_effective_command_mode(actions: &[HookEffectiveAction]) -> &'static str 
 }
 
 #[cfg(unix)]
+const HOOK_MODE_AUTO_DOWNGRADE_REASON_SPLIT_BACKEND_LOADED: &str =
+    "split-loaded-external-backends-without-shared-runtime";
+
+#[cfg(unix)]
+fn hook_command_mode_with_backend_pressure(
+    base_command_mode: &'static str,
+    loaded_in_controller_count: u64,
+    loaded_in_target_count: u64,
+    loaded_in_both_count: u64,
+) -> (&'static str, bool, Option<&'static str>) {
+    if base_command_mode == "allowed"
+        && loaded_in_controller_count > 0
+        && loaded_in_target_count > 0
+        && loaded_in_both_count == 0
+    {
+        (
+            "query-only",
+            true,
+            Some(HOOK_MODE_AUTO_DOWNGRADE_REASON_SPLIT_BACKEND_LOADED),
+        )
+    } else {
+        (base_command_mode, false, None)
+    }
+}
+
+#[cfg(unix)]
 fn hook_effective_to_json(actions: &[HookEffectiveAction]) -> Value {
     let allowed_for = |action_key: &str| {
         hook_effective_allowed_for(actions, action_key)
@@ -557,7 +583,7 @@ fn hook_effective_to_json(actions: &[HookEffectiveAction]) -> Value {
 
 #[cfg(unix)]
 fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
-    let command_mode = hook_effective_command_mode(actions);
+    let base_command_mode = hook_effective_command_mode(actions);
     let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
     let loaded_in_target_count = json_u64_field(backend_matrix, "loadedInTargetCount");
     let loaded_in_both_count = json_u64_field(backend_matrix, "loadedInBothCount");
@@ -565,6 +591,13 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
     let shared_backend_count = json_array_len(backend_matrix, "sharedBackendIds");
     let total_loaded_backend_count =
         loaded_in_controller_count + loaded_in_target_count - loaded_in_both_count;
+    let (command_mode, auto_downgraded_to_query_only, auto_downgrade_reason) =
+        hook_command_mode_with_backend_pressure(
+            base_command_mode,
+            loaded_in_controller_count,
+            loaded_in_target_count,
+            loaded_in_both_count,
+        );
 
     let backend_pressure = if loaded_in_controller_count > 0 && loaded_in_target_count > 0 {
         "both"
@@ -686,7 +719,11 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "riskLevel": risk_level,
         "coexistenceLayerAvailable": coexistence_layer.available,
         "coexistenceLayerStatus": coexistence_layer.status,
+        "baseCommandMode": base_command_mode,
+        "effectiveCommandMode": command_mode,
         "commandMode": command_mode,
+        "autoDowngradedToQueryOnly": auto_downgraded_to_query_only,
+        "autoDowngradeReason": auto_downgrade_reason,
         "backendPressure": backend_pressure,
         "externalBackendLoaded": external_backend_loaded,
         "singleExternalBackendLoaded": single_external_backend_loaded,
@@ -1076,7 +1113,7 @@ fn command_phase_order(command_json_templates: &[Value]) -> Vec<String> {
 
 #[cfg(unix)]
 fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
-    let command_mode = hook_effective_command_mode(actions);
+    let base_command_mode = hook_effective_command_mode(actions);
     let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
     let loaded_in_target_count = json_u64_field(backend_matrix, "loadedInTargetCount");
     let loaded_in_both_count = json_u64_field(backend_matrix, "loadedInBothCount");
@@ -1086,6 +1123,13 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         loaded_in_controller_count + loaded_in_target_count - loaded_in_both_count;
     let single_external_backend_loaded = total_loaded_backend_count == 1;
     let multiple_external_backends_loaded = total_loaded_backend_count > 1;
+    let (command_mode, auto_downgraded_to_query_only, auto_downgrade_reason) =
+        hook_command_mode_with_backend_pressure(
+            base_command_mode,
+            loaded_in_controller_count,
+            loaded_in_target_count,
+            loaded_in_both_count,
+        );
 
     let backend_pressure = if loaded_in_controller_count > 0 && loaded_in_target_count > 0 {
         "both"
@@ -4342,7 +4386,11 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let blocked_branch_count = action_branches.len().saturating_sub(ready_branch_count);
 
     json!({
+        "baseCommandMode": base_command_mode,
+        "effectiveCommandMode": command_mode,
         "commandMode": command_mode,
+        "autoDowngradedToQueryOnly": auto_downgraded_to_query_only,
+        "autoDowngradeReason": auto_downgrade_reason,
         "preferredPath": preferred_path,
         "backendPressure": backend_pressure,
         "loadedExternalBackendCount": total_loaded_backend_count,
@@ -14468,10 +14516,17 @@ mod tests {
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &rendered);
         let automation = hook_automation_to_json(&effective_actions, &rendered);
-        assert_eq!(coexistence["mode"], "inline-risky");
-        assert_eq!(coexistence["strategy"], "external-backend-coexist-risky");
+        assert_eq!(coexistence["mode"], "query-only");
+        assert_eq!(coexistence["strategy"], "query-only-fallback");
         assert_eq!(coexistence["riskLevel"], "elevated");
-        assert_eq!(coexistence["commandMode"], "allowed");
+        assert_eq!(coexistence["baseCommandMode"], "allowed");
+        assert_eq!(coexistence["effectiveCommandMode"], "query-only");
+        assert_eq!(coexistence["commandMode"], "query-only");
+        assert_eq!(coexistence["autoDowngradedToQueryOnly"], true);
+        assert_eq!(
+            coexistence["autoDowngradeReason"],
+            "split-loaded-external-backends-without-shared-runtime"
+        );
         assert_eq!(coexistence["backendPressure"], "both");
         assert_eq!(coexistence["externalBackendLoaded"], true);
         assert_eq!(coexistence["singleExternalBackendLoaded"], false);
@@ -14484,8 +14539,16 @@ mod tests {
         assert_eq!(coexistence["nextActionKey"], "hook.query");
         assert_eq!(coexistence["nextActionTemplateCount"], 3);
         assert_eq!(coexistence["nextActionTemplates"][0], "objc.classes <filter>");
+        assert_eq!(automation["baseCommandMode"], "allowed");
+        assert_eq!(automation["effectiveCommandMode"], "query-only");
+        assert_eq!(automation["commandMode"], "query-only");
+        assert_eq!(automation["autoDowngradedToQueryOnly"], true);
+        assert_eq!(
+            automation["autoDowngradeReason"],
+            "split-loaded-external-backends-without-shared-runtime"
+        );
         assert_eq!(automation["backendPressure"], "both");
-        assert_eq!(automation["preferredPath"], "inline-risky");
+        assert_eq!(automation["preferredPath"], "query-only");
         assert_eq!(automation["loadedExternalBackendCount"], 2);
         assert_eq!(automation["singleExternalBackendLoaded"], false);
         assert_eq!(automation["multipleExternalBackendsLoaded"], true);
@@ -14512,44 +14575,26 @@ mod tests {
             automation["nextActionCommandJsonTemplates"][0]["command"],
             "objc.classes <filter>"
         );
-        assert!(automation["suggestedSequence"][2]
-            .as_str()
-            .unwrap_or_default()
-            .contains("risky-with-external-backend"));
+        assert_eq!(automation["suggestedSequence"][2], "native.images <filter>");
         let templates = automation["commandTemplates"].as_array().expect("command templates");
         let install_templates = templates
             .iter()
             .find(|item| item["actionKey"] == "hook.install")
             .expect("hook.install templates");
-        assert!(install_templates["templates"][0]
-            .as_str()
-            .unwrap_or_default()
-            .contains("risky-with-external-backend"));
-        assert_eq!(
-            install_templates["commandJsonTemplates"][0]["command"],
-            "trace <objc-filter|native-target>"
-        );
-        assert_eq!(
-            install_templates["commandJsonTemplates"][0]["kind"],
-            "runtime-command"
-        );
-        assert_eq!(
-            install_templates["commandJsonTemplates"][0]["risk"],
-            "risky-with-external-backend"
-        );
+        assert_eq!(install_templates["templateCount"], 0);
+        assert_eq!(install_templates["commandJsonTemplateCount"], 0);
+        assert_eq!(install_templates["templates"], json!([]));
+        assert_eq!(install_templates["commandJsonTemplates"], json!([]));
         let branches = automation["actionBranches"].as_array().expect("automation branches");
         let install_branch = branches
             .iter()
             .find(|item| item["actionKey"] == "hook.install")
             .expect("hook.install branch");
         assert_eq!(install_branch["selectedAsNext"], false);
-        assert_eq!(install_branch["templateCount"], 5);
-        assert_eq!(install_branch["commandJsonTemplateCount"], 5);
-        assert_eq!(install_branch["commandJsonEligibleTemplateCount"], 5);
-        assert!(install_branch["templates"][0]
-            .as_str()
-            .unwrap_or_default()
-            .contains("risky-with-external-backend"));
+        assert_eq!(install_branch["templateCount"], 0);
+        assert_eq!(install_branch["commandJsonTemplateCount"], 0);
+        assert_eq!(install_branch["commandJsonEligibleTemplateCount"], 0);
+        assert_eq!(install_branch["templates"], json!([]));
     }
 
     #[test]
