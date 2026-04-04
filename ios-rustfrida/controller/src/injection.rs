@@ -2655,8 +2655,58 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("queryOnlyResult")
             .cloned()
             .unwrap_or(Value::Null),
+        "queryOnlyResolveResultMatched": routing_decision_ready_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("matched"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResolveResultUsedDefault": routing_decision_ready_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("usedDefault"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResolveResultReason": routing_decision_ready_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("reason"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResolveResultEffectivePhase": routing_decision_ready_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("effectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResolveResultEffectiveEscalationKey": routing_decision_ready_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("effectiveEscalationKey"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "queryOnlyPhaseResolveResult": routing_decision_ready_phase_resolve
             .get("queryOnlyResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyPhaseResolveResultMatched": routing_decision_ready_phase_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("matched"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyPhaseResolveResultUsedDefault": routing_decision_ready_phase_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("usedDefault"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyPhaseResolveResultReason": routing_decision_ready_phase_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("reason"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyPhaseResolveResultEffectivePhase": routing_decision_ready_phase_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("effectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyPhaseResolveResultEffectiveEscalationKey": routing_decision_ready_phase_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("effectiveEscalationKey"))
             .cloned()
             .unwrap_or(Value::Null),
         "default": routing_decision_ready_default,
@@ -9792,7 +9842,49 @@ mod tests {
             json!(null)
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultMatched"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultUsedDefault"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultReason"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffectivePhase"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["queryOnlyResolveResultEffectiveEscalationKey"],
+            json!(null)
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResult"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultMatched"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultUsedDefault"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultReason"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffectivePhase"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["queryOnlyPhaseResolveResultEffectiveEscalationKey"],
             json!(null)
         );
         assert_eq!(
@@ -10944,8 +11036,50 @@ mod tests {
             "query-only-path"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultMatched"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultUsedDefault"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultReason"],
+            "matched-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffectivePhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["queryOnlyResolveResultEffectiveEscalationKey"],
+            "query-only-path"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResult"]["effective"]["phase"],
             "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultMatched"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultUsedDefault"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultReason"],
+            "matched-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffectivePhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["queryOnlyPhaseResolveResultEffectiveEscalationKey"],
+            "query-only-path"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyWouldUsePath"],
