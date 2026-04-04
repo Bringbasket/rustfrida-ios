@@ -414,19 +414,35 @@ impl HookPolicy {
 }
 
 fn resolve_hook_strategy_with_report(report: &HookEnvironmentReport, policy: HookPolicy) -> HookStrategyDecision {
-    let has_loaded_external_backend = report.backends.iter().any(|backend| !backend.loaded_images.is_empty());
+    let loaded_backend_count = report.loaded_backend_count();
+    let has_loaded_external_backend = loaded_backend_count > 0;
+    let multiple_loaded_external_backends = loaded_backend_count > 1;
 
     if has_loaded_external_backend {
         return match policy {
-            HookPolicy::Warn => HookStrategyDecision {
-                policy,
-                strategy: "internal-inline-risky".into(),
-                allowed: true,
-                inline_hooks_allowed: true,
-                reason: Some(
-                    "external hook backend is already loaded; ios-rustfrida will still use its internal inline hook engine, but coexistence is not implemented".into(),
-                ),
-            },
+            HookPolicy::Warn => {
+                if multiple_loaded_external_backends {
+                    HookStrategyDecision {
+                        policy,
+                        strategy: "query-only-multiple-external-loaded".into(),
+                        allowed: true,
+                        inline_hooks_allowed: false,
+                        reason: Some(
+                            "multiple external hook backends are already loaded; ios-rustfrida forces query-only mode because coexistence is not implemented for multi-backend targets".into(),
+                        ),
+                    }
+                } else {
+                    HookStrategyDecision {
+                        policy,
+                        strategy: "internal-inline-risky".into(),
+                        allowed: true,
+                        inline_hooks_allowed: true,
+                        reason: Some(
+                            "external hook backend is already loaded; ios-rustfrida will still use its internal inline hook engine, but coexistence is not implemented".into(),
+                        ),
+                    }
+                }
+            }
             HookPolicy::QueryOnlyExternalLoaded => HookStrategyDecision {
                 policy,
                 strategy: "query-only-external-loaded".into(),
@@ -756,6 +772,40 @@ mod tests {
         assert_eq!(decision.command_mode(), "query-only");
         assert_eq!(decision.strategy, "query-only-external-loaded");
         assert_eq!(decision.policy, HookPolicy::QueryOnlyExternalLoaded);
+    }
+
+    #[test]
+    fn strategy_forces_query_only_under_warn_policy_when_multiple_external_backends_are_loaded() {
+        let report = HookEnvironmentReport {
+            active_backend: Some("ellekit".into()),
+            backends: vec![
+                super::HookBackendInfo {
+                    id: "ellekit".into(),
+                    display_name: "ElleKit".into(),
+                    loaded_images: vec!["/usr/lib/libellekit.dylib".into()],
+                    filesystem_paths: Vec::new(),
+                },
+                super::HookBackendInfo {
+                    id: "substitute".into(),
+                    display_name: "Substitute".into(),
+                    loaded_images: vec!["/usr/lib/libsubstitute.dylib".into()],
+                    filesystem_paths: Vec::new(),
+                },
+            ],
+            warnings: Vec::new(),
+        };
+
+        let decision = resolve_hook_strategy_with_report(&report, HookPolicy::Warn);
+        assert!(decision.allowed);
+        assert!(!decision.inline_hooks_allowed);
+        assert!(decision.bootstrap_injection_allowed());
+        assert!(decision.query_commands_allowed());
+        assert!(!decision.hook_install_commands_allowed());
+        assert!(decision.hook_status_commands_allowed());
+        assert!(decision.hook_stop_commands_allowed());
+        assert_eq!(decision.command_mode(), "query-only");
+        assert_eq!(decision.strategy, "query-only-multiple-external-loaded");
+        assert_eq!(decision.policy, HookPolicy::Warn);
     }
 
     #[test]
