@@ -2653,7 +2653,19 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|codes| codes.first())
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveIndexFirst": routing_decision_ready_resolve
+            .get("knownErrorCodes")
+            .and_then(Value::as_array)
+            .and_then(|codes| codes.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveKnownErrorCodeLast": routing_decision_ready_resolve
+            .get("knownErrorCodes")
+            .and_then(Value::as_array)
+            .and_then(|codes| codes.last())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveIndexLast": routing_decision_ready_resolve
             .get("knownErrorCodes")
             .and_then(Value::as_array)
             .and_then(|codes| codes.last())
@@ -3046,7 +3058,19 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|phases| phases.first())
             .cloned()
             .unwrap_or(Value::Null),
+        "phaseResolveIndexFirst": routing_decision_ready_phase_resolve
+            .get("knownPhases")
+            .and_then(Value::as_array)
+            .and_then(|phases| phases.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseResolveKnownPhaseLast": routing_decision_ready_phase_resolve
+            .get("knownPhases")
+            .and_then(Value::as_array)
+            .and_then(|phases| phases.last())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveIndexLast": routing_decision_ready_phase_resolve
             .get("knownPhases")
             .and_then(Value::as_array)
             .and_then(|phases| phases.last())
@@ -10567,8 +10591,16 @@ mod tests {
             "hook-fallback-diagnose-failed"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveIndexFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodeFirst"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodeLast"],
             "hook-fallback-preflight-timeout"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveIndexLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodeLast"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingErrorCodeHint"],
@@ -10845,8 +10877,16 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveIndexFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhaseFirst"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhaseLast"],
             "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveIndexLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhaseLast"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingPhaseHint"],
