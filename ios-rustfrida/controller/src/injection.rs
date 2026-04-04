@@ -5334,6 +5334,15 @@ fn parse_hook_effective_blocked_details(message: &str) -> ParsedHookEffectiveBlo
 }
 
 #[cfg(unix)]
+fn normalize_hook_blocked_by(value: Option<String>) -> Option<String> {
+    match value.as_deref() {
+        Some("none" | "controller" | "target" | "both" | "unknown") => value,
+        Some(_) => Some("unknown".into()),
+        None => None,
+    }
+}
+
+#[cfg(unix)]
 fn push_unique_hint(hints: &mut Vec<String>, hint: impl Into<String>) {
     let hint = hint.into();
     if !hint.is_empty() && !hints.iter().any(|existing| existing == &hint) {
@@ -5517,7 +5526,7 @@ fn failure_diagnostics_to_json(
             let parsed = parse_hook_effective_blocked_details(&message);
             hook_action_key = parsed.action_key;
             hook_command_group = parsed.command_group;
-            hook_blocked_by = parsed.blocked_by.or_else(|| Some("unknown".into()));
+            hook_blocked_by = normalize_hook_blocked_by(parsed.blocked_by).or_else(|| Some("unknown".into()));
             code = match hook_blocked_by.as_deref() {
                 Some("controller") => "controller-hook-policy-blocked".into(),
                 Some("target") => "target-hook-policy-blocked".into(),
@@ -15006,6 +15015,30 @@ mod tests {
         assert_eq!(missing_blocked_by_rendered["diagnostics"]["code"], "hook-effective-blocked");
         assert_eq!(missing_blocked_by_rendered["diagnostics"]["hookBlockedBy"], "unknown");
         assert_eq!(missing_blocked_by_rendered["diagnostics"]["hook"]["blockedBy"], "unknown");
+
+        let invalid_blocked_by_rendered = render_injection_result_json(
+            &config,
+            42,
+            "/tmp/iosrf.sock",
+            &plan,
+            &environment,
+            &doctor,
+            &preflight,
+            None,
+            None,
+            None,
+            None,
+            false,
+            None,
+            None,
+            &[],
+            Some(&Error::State(
+                "hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=garbage commandMode=query-only; recommendation=invalid blockedBy".into(),
+            )),
+        );
+        assert_eq!(invalid_blocked_by_rendered["diagnostics"]["code"], "hook-effective-blocked");
+        assert_eq!(invalid_blocked_by_rendered["diagnostics"]["hookBlockedBy"], "unknown");
+        assert_eq!(invalid_blocked_by_rendered["diagnostics"]["hook"]["blockedBy"], "unknown");
     }
 
     #[test]
