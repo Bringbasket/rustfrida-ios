@@ -3148,6 +3148,22 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("errorCodeCount")
             .cloned()
             .unwrap_or(Value::Null),
+        "phasePreflightErrorCodes": routing_decision_ready_phase_preflight
+            .get("errorCodes")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phasePreflightErrorCodeFirst": routing_decision_ready_phase_preflight
+            .get("errorCodes")
+            .and_then(Value::as_array)
+            .and_then(|codes| codes.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightErrorCodeLast": routing_decision_ready_phase_preflight
+            .get("errorCodes")
+            .and_then(Value::as_array)
+            .and_then(|codes| codes.last())
+            .cloned()
+            .unwrap_or(Value::Null),
         "phasePreflightEscalationKeyCount": routing_decision_ready_phase_preflight
             .get("escalationKeyCount")
             .cloned()
@@ -3193,6 +3209,22 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "phaseDiagnose": routing_decision_ready_phase_diagnose.clone(),
         "phaseDiagnoseErrorCodeCount": routing_decision_ready_phase_diagnose
             .get("errorCodeCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseErrorCodes": routing_decision_ready_phase_diagnose
+            .get("errorCodes")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseDiagnoseErrorCodeFirst": routing_decision_ready_phase_diagnose
+            .get("errorCodes")
+            .and_then(Value::as_array)
+            .and_then(|codes| codes.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseErrorCodeLast": routing_decision_ready_phase_diagnose
+            .get("errorCodes")
+            .and_then(Value::as_array)
+            .and_then(|codes| codes.last())
             .cloned()
             .unwrap_or(Value::Null),
         "phaseDiagnoseEscalationKeyCount": routing_decision_ready_phase_diagnose
@@ -11335,6 +11367,18 @@ mod tests {
             4
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightErrorCodes"][0],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightErrorCodeFirst"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightErrorCodeFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightErrorCodes"][0]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightErrorCodeLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightErrorCodes"][3]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightEscalationKeyCount"],
             1
         );
@@ -11377,6 +11421,18 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseErrorCodeCount"],
             2
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseErrorCodes"][0],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseErrorCodeFirst"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseErrorCodeFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseErrorCodes"][0]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseErrorCodeLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseErrorCodes"][1]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseEscalationKeyCount"],
