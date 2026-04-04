@@ -752,6 +752,8 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
                         "commandGroup": item.command_group,
                         "command": entry.get("command").cloned().unwrap_or(Value::Null),
                         "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
+                        "readyToRun": item.allowed,
+                        "requiresFallback": !item.allowed,
                         "kind": entry.get("kind").cloned().unwrap_or(Value::Null),
                         "commandJsonEligible": entry
                             .get("commandJsonEligible")
@@ -799,6 +801,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
     } else {
         "none"
     };
+    let active_step = next_step_chain.first();
     let next_step_chain_truncated = next_action_command_json_templates.len() > next_step_chain_limit;
 
     let install_action = actions.iter().find(|item| item.action_key == "hook.install");
@@ -906,6 +909,79 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextStepChainCount": next_step_chain.len(),
         "nextStepChain": next_step_chain,
         "nextStepChainTruncated": next_step_chain_truncated,
+        "activeStepSource": next_step_chain_source,
+        "activeStepId": active_step
+            .and_then(|entry| entry.get("id"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepCommand": active_step
+            .and_then(|entry| entry.get("command"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepPhase": active_step
+            .and_then(|entry| entry.get("phase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepReadyToRun": active_step
+            .and_then(|entry| entry.get("readyToRun"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepRequiresFallback": active_step
+            .and_then(|entry| entry.get("requiresFallback"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepKind": active_step
+            .and_then(|entry| entry.get("kind"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepCommandJsonEligible": active_step
+            .and_then(|entry| entry.get("commandJsonEligible"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepRetryable": active_step
+            .and_then(|entry| entry.get("retryable"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepMaxSuggestedRetries": active_step
+            .and_then(|entry| entry.get("maxSuggestedRetries"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepRetryDelayHintMs": active_step
+            .and_then(|entry| entry.get("retryDelayHintMs"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepTimeoutHintMs": active_step
+            .and_then(|entry| entry.get("timeoutHintMs"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepTimeoutAction": active_step
+            .and_then(|entry| entry.get("timeoutAction"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepErrorCode": active_step
+            .and_then(|entry| entry.get("errorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepTimeoutErrorCode": active_step
+            .and_then(|entry| entry.get("timeoutErrorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepRisk": active_step
+            .and_then(|entry| entry.get("risk"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepPlaceholderCount": active_step
+            .and_then(|entry| entry.get("placeholderCount"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepPlaceholders": active_step
+            .and_then(|entry| entry.get("placeholders"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepCliArgs": active_step
+            .and_then(|entry| entry.get("cliArgs"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "nextActionTemplateCount": next_action_templates.len(),
         "nextActionTemplates": next_action_templates,
         "nextActionCommandJsonTemplateCount": next_action_command_json_templates.len(),
@@ -11155,6 +11231,73 @@ mod tests {
             rendered["hook"]["coexistence"]["nextStepCliArgs"],
             rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["cliArgs"]
         );
+        assert_eq!(rendered["hook"]["coexistence"]["activeStepSource"], "next-action");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepId"],
+            "next-action:hook.query:0"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["activeStepPhase"], "query");
+        assert_eq!(rendered["hook"]["coexistence"]["activeStepReadyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepRequiresFallback"],
+            false
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepKind"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["kind"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepCommandJsonEligible"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["commandJsonEligible"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepRetryable"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["retryable"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepMaxSuggestedRetries"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["maxSuggestedRetries"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepRetryDelayHintMs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["retryDelayHintMs"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepTimeoutHintMs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutHintMs"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepTimeoutAction"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutAction"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepErrorCode"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["errorCode"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepTimeoutErrorCode"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutErrorCode"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepRisk"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["risk"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepPlaceholderCount"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholderCount"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepPlaceholders"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholders"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepCliArgs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["cliArgs"]
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainCount"], 3);
@@ -11840,6 +11983,73 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStepCliArgs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["cliArgs"]
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["activeStepSource"], "next-action");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepId"],
+            "next-action:hook.query:0"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["activeStepPhase"], "query");
+        assert_eq!(rendered["hook"]["coexistence"]["activeStepReadyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepRequiresFallback"],
+            false
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepKind"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["kind"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepCommandJsonEligible"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["commandJsonEligible"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepRetryable"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["retryable"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepMaxSuggestedRetries"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["maxSuggestedRetries"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepRetryDelayHintMs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["retryDelayHintMs"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepTimeoutHintMs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutHintMs"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepTimeoutAction"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutAction"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepErrorCode"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["errorCode"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepTimeoutErrorCode"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutErrorCode"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepRisk"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["risk"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepPlaceholderCount"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholderCount"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepPlaceholders"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholders"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepCliArgs"],
             rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["cliArgs"]
         );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
