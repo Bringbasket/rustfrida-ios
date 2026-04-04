@@ -5836,6 +5836,54 @@ fn failure_diagnostics_to_json(
         fallback_action_key.get_or_insert_with(|| "unknown".into());
         fallback_phase.get_or_insert_with(|| "unknown".into());
         hook_fallback_available.get_or_insert(false);
+
+        if let (Some(base_mode), Some(effective_mode)) = (
+            hook_base_command_mode.as_deref(),
+            hook_effective_command_mode.as_deref(),
+        ) {
+            if base_mode != "unknown" && effective_mode != "unknown" && base_mode != effective_mode {
+                push_unique_hint(
+                    &mut hints,
+                    format!(
+                        "hook command mode adjusted under backend pressure: base={base_mode}, effective={effective_mode}"
+                    ),
+                );
+            }
+        }
+
+        if hook_auto_downgraded_to_query_only == Some(true) {
+            let reason = hook_auto_downgrade_reason
+                .as_deref()
+                .filter(|value| !value.is_empty() && *value != "unknown" && *value != "<none>")
+                .unwrap_or("unknown");
+            push_unique_hint(
+                &mut hints,
+                format!("inline hook install path auto-downgraded to query-only: {reason}"),
+            );
+        }
+
+        if hook_fallback_available == Some(true) {
+            if let (Some(action_key), Some(command), Some(phase_label)) = (
+                fallback_action_key.as_deref(),
+                fallback_command.as_deref(),
+                fallback_phase.as_deref(),
+            ) {
+                if action_key != "unknown"
+                    && action_key != "<none>"
+                    && phase_label != "unknown"
+                    && phase_label != "<none>"
+                    && !command.is_empty()
+                    && command != "<none>"
+                {
+                    push_unique_hint(
+                        &mut hints,
+                        format!(
+                            "fallback command available: action={action_key}, phase={phase_label}, command={command}"
+                        ),
+                    );
+                }
+            }
+        }
     }
 
     push_agent_path_hints(config, &mut hints);
@@ -15401,6 +15449,14 @@ mod tests {
                 .as_str()
                 .unwrap_or_default()
                 .contains("effective hook command mode during failure: query-only")));
+        assert!(rendered["diagnostics"]["hints"]
+            .as_array()
+            .expect("hints array")
+            .iter()
+            .any(|item| item
+                .as_str()
+                .unwrap_or_default()
+                .contains("fallback command available: action=hook.status, phase=cleanup, command=trace status")));
 
         let auto_downgraded_rendered = render_injection_result_json(
             &config,
@@ -15454,6 +15510,22 @@ mod tests {
             auto_downgraded_rendered["diagnostics"]["hook"]["autoDowngradeReason"],
             "split-loaded-external-backends-without-shared-runtime"
         );
+        assert!(auto_downgraded_rendered["diagnostics"]["hints"]
+            .as_array()
+            .expect("hints array")
+            .iter()
+            .any(|item| item
+                .as_str()
+                .unwrap_or_default()
+                .contains("hook command mode adjusted under backend pressure: base=allowed, effective=query-only")));
+        assert!(auto_downgraded_rendered["diagnostics"]["hints"]
+            .as_array()
+            .expect("hints array")
+            .iter()
+            .any(|item| item
+                .as_str()
+                .unwrap_or_default()
+                .contains("inline hook install path auto-downgraded to query-only: split-loaded-external-backends-without-shared-runtime")));
 
         let legacy_rendered = render_injection_result_json(
             &config,
