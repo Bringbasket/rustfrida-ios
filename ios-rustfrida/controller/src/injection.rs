@@ -5543,6 +5543,14 @@ fn failure_diagnostics_to_json(
             phase = "script".into();
             code = "loadjs".into();
             failed_step = Some("loadJs");
+        } else if message.contains("both hook strategies blocked injection") {
+            phase = "hook-policy".into();
+            code = "both-hook-policies-blocked".into();
+            hook_blocked_by = Some("both".into());
+            hook_recommendation = parse_message_suffix_after_prefix(
+                &message,
+                "both hook strategies blocked injection:",
+            );
         } else if message.contains("target hook strategy blocked injection") {
             phase = "hook-policy".into();
             code = "target-hook-policy-blocked".into();
@@ -15030,6 +15038,39 @@ mod tests {
         assert_eq!(
             legacy_rendered["diagnostics"]["hook"]["recommendation"],
             "external backend already loaded in target"
+        );
+
+        let legacy_both_rendered = render_injection_result_json(
+            &config,
+            42,
+            "/tmp/iosrf.sock",
+            &plan,
+            &environment,
+            &doctor,
+            &preflight,
+            None,
+            None,
+            None,
+            None,
+            false,
+            None,
+            None,
+            &[],
+            Some(&Error::State(
+                "both hook strategies blocked injection: both sides are in query-only mode".into(),
+            )),
+        );
+        assert_eq!(legacy_both_rendered["diagnostics"]["phase"], "hook-policy");
+        assert_eq!(legacy_both_rendered["diagnostics"]["code"], "both-hook-policies-blocked");
+        assert_eq!(legacy_both_rendered["diagnostics"]["hookBlockedBy"], "both");
+        assert_eq!(
+            legacy_both_rendered["diagnostics"]["hookRecommendation"],
+            "both sides are in query-only mode"
+        );
+        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["blockedBy"], "both");
+        assert_eq!(
+            legacy_both_rendered["diagnostics"]["hook"]["recommendation"],
+            "both sides are in query-only mode"
         );
 
         let missing_blocked_by_rendered = render_injection_result_json(
