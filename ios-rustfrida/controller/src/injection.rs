@@ -5343,6 +5343,15 @@ fn normalize_hook_blocked_by(value: Option<String>) -> Option<String> {
 }
 
 #[cfg(unix)]
+fn normalize_hook_command_mode(value: Option<String>) -> Option<String> {
+    match value.as_deref() {
+        Some("allowed" | "query-only" | "cleanup-only" | "blocked" | "unknown") => value,
+        Some(_) => Some("unknown".into()),
+        None => None,
+    }
+}
+
+#[cfg(unix)]
 fn push_unique_hint(hints: &mut Vec<String>, hint: impl Into<String>) {
     let hint = hint.into();
     if !hint.is_empty() && !hints.iter().any(|existing| existing == &hint) {
@@ -5533,7 +5542,7 @@ fn failure_diagnostics_to_json(
                 Some("both") => "both-hook-policies-blocked".into(),
                 _ => "hook-effective-blocked".into(),
             };
-            hook_command_mode = parsed.command_mode;
+            hook_command_mode = normalize_hook_command_mode(parsed.command_mode);
             if let Some(mode) = hook_command_mode.as_deref() {
                 push_unique_hint(
                     &mut hints,
@@ -15039,6 +15048,32 @@ mod tests {
         assert_eq!(invalid_blocked_by_rendered["diagnostics"]["code"], "hook-effective-blocked");
         assert_eq!(invalid_blocked_by_rendered["diagnostics"]["hookBlockedBy"], "unknown");
         assert_eq!(invalid_blocked_by_rendered["diagnostics"]["hook"]["blockedBy"], "unknown");
+
+        let invalid_command_mode_rendered = render_injection_result_json(
+            &config,
+            42,
+            "/tmp/iosrf.sock",
+            &plan,
+            &environment,
+            &doctor,
+            &preflight,
+            None,
+            None,
+            None,
+            None,
+            false,
+            None,
+            None,
+            &[],
+            Some(&Error::State(
+                "hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=garbage; recommendation=invalid commandMode".into(),
+            )),
+        );
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hookBlockedBy"], "target");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hookCommandMode"], "unknown");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["blockedBy"], "target");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["commandMode"], "unknown");
     }
 
     #[test]
