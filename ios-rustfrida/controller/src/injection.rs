@@ -2251,6 +2251,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("templates")
             .cloned()
             .unwrap_or(json!([])),
+        "defaultTemplate": routing_decision_ready_default
+            .get("templates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "defaultCommandJsonTemplateCount": routing_decision_ready_default
             .get("commandJsonTemplateCount")
             .cloned()
@@ -2259,6 +2265,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("commandJsonTemplates")
             .cloned()
             .unwrap_or(json!([])),
+        "defaultCommandJsonTemplate": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "defaultMatchConfidence": routing_decision_ready_default
             .get("matchConfidence")
             .cloned()
@@ -2299,6 +2311,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("knownErrorCodes")
             .cloned()
             .unwrap_or(json!([])),
+        "resolveKnownErrorCodeFirst": routing_decision_ready_resolve
+            .get("knownErrorCodes")
+            .and_then(Value::as_array)
+            .and_then(|codes| codes.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveKnownErrorCodeLast": routing_decision_ready_resolve
+            .get("knownErrorCodes")
+            .and_then(Value::as_array)
+            .and_then(|codes| codes.last())
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveMissingErrorCodeHint": routing_decision_ready_resolve
             .get("missingErrorCodeHint")
             .cloned()
@@ -2417,6 +2441,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("knownPhases")
             .cloned()
             .unwrap_or(json!([])),
+        "phaseResolveKnownPhaseFirst": routing_decision_ready_phase_resolve
+            .get("knownPhases")
+            .and_then(Value::as_array)
+            .and_then(|phases| phases.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveKnownPhaseLast": routing_decision_ready_phase_resolve
+            .get("knownPhases")
+            .and_then(Value::as_array)
+            .and_then(|phases| phases.last())
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseResolveMissingPhaseHint": routing_decision_ready_phase_resolve
             .get("missingPhaseHint")
             .cloned()
@@ -2714,6 +2750,16 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "phaseResolve": routing_decision_ready_phase_resolve,
         "phaseCount": routing_decision_ready_phase_entries.len(),
         "phases": routing_decision_ready_phase_entries,
+        "phaseFirst": routing_decision_ready_phase_entries
+            .first()
+            .and_then(|entry| entry.get("phase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseLast": routing_decision_ready_phase_entries
+            .last()
+            .and_then(|entry| entry.get("phase"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseIndex": routing_decision_ready_phase_index,
         "phasePreflight": routing_decision_ready_phase_preflight.clone(),
         "phasePreflightErrorCodeCount": routing_decision_ready_phase_preflight
@@ -2742,6 +2788,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("templates")
             .cloned()
             .unwrap_or(json!([])),
+        "phasePreflightTemplate": routing_decision_ready_phase_preflight
+            .get("templates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "phasePreflightCommandJsonTemplateCount": routing_decision_ready_phase_preflight
             .get("commandJsonTemplateCount")
             .cloned()
@@ -2750,6 +2802,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("commandJsonTemplates")
             .cloned()
             .unwrap_or(json!([])),
+        "phasePreflightCommandJsonTemplate": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseDiagnose": routing_decision_ready_phase_diagnose.clone(),
         "phaseDiagnoseErrorCodeCount": routing_decision_ready_phase_diagnose
             .get("errorCodeCount")
@@ -2777,6 +2835,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("templates")
             .cloned()
             .unwrap_or(json!([])),
+        "phaseDiagnoseTemplate": routing_decision_ready_phase_diagnose
+            .get("templates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseDiagnoseCommandJsonTemplateCount": routing_decision_ready_phase_diagnose
             .get("commandJsonTemplateCount")
             .cloned()
@@ -2785,6 +2849,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("commandJsonTemplates")
             .cloned()
             .unwrap_or(json!([])),
+        "phaseDiagnoseCommandJsonTemplate": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "defaultPhase": routing_decision_ready_default_phase,
     });
     let routing_decision = json!({
@@ -9499,6 +9569,14 @@ mod tests {
             "hook-fallback-preflight-timeout"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodeFirst"],
+            "hook-fallback-diagnose-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodeLast"],
+            "hook-fallback-preflight-timeout"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingErrorCodeHint"],
             "if errorCode is not in knownErrorCodes, use resolve.default"
         );
@@ -9612,6 +9690,14 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhases"][1],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhaseFirst"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhaseLast"],
             "preflight"
         );
         assert_eq!(
@@ -9896,6 +9982,14 @@ mod tests {
             2
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseFirst"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseLast"],
+            "preflight"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["defaultPhase"],
             "preflight"
         );
@@ -9920,6 +10014,10 @@ mod tests {
             "controller --preflight-only --preflight-json --pid <pid>"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultTemplate"],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateCount"],
             1
         );
@@ -9933,6 +10031,10 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplates"][0]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplate"]["phase"],
             "preflight"
         );
         assert_eq!(
@@ -10604,11 +10706,19 @@ mod tests {
             "controller --preflight-only --preflight-json --pid <pid>"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightTemplate"],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateCount"],
             1
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplates"][0]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplate"]["phase"],
             "preflight"
         );
         assert_eq!(
@@ -10640,11 +10750,19 @@ mod tests {
             "native.hookenv"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseTemplate"],
+            "native.hookenv"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateCount"],
             1
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplates"][0]["phase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplate"]["phase"],
             "diagnose"
         );
         assert_eq!(
