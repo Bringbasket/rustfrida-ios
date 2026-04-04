@@ -2271,6 +2271,76 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|templates| templates.first())
             .cloned()
             .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateKind": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("kind"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplatePhase": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("phase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateErrorCode": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("errorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateTimeoutErrorCode": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("timeoutErrorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateRetryable": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("retryable"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateMaxSuggestedRetries": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("maxSuggestedRetries"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateRetryDelayHintMs": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("retryDelayHintMs"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateTimeoutHintMs": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("timeoutHintMs"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateTimeoutAction": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("timeoutAction"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateCommandJsonEligible": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("commandJsonEligible"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "defaultMatchConfidence": routing_decision_ready_default
             .get("matchConfidence")
             .cloned()
@@ -3206,6 +3276,81 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|templates| templates.first())
             .cloned()
             .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateKind": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("kind"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplatePhase": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("phase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateErrorCode": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("errorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateTimeoutErrorCode":
+            routing_decision_ready_phase_preflight
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("timeoutErrorCode"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateRetryable": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("retryable"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateMaxSuggestedRetries":
+            routing_decision_ready_phase_preflight
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("maxSuggestedRetries"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateRetryDelayHintMs":
+            routing_decision_ready_phase_preflight
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("retryDelayHintMs"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateTimeoutHintMs":
+            routing_decision_ready_phase_preflight
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("timeoutHintMs"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateTimeoutAction": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("timeoutAction"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateCommandJsonEligible":
+            routing_decision_ready_phase_preflight
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("commandJsonEligible"))
+                .cloned()
+                .unwrap_or(Value::Null),
         "phaseDiagnose": routing_decision_ready_phase_diagnose.clone(),
         "phaseDiagnoseErrorCodeCount": routing_decision_ready_phase_diagnose
             .get("errorCodeCount")
@@ -3269,6 +3414,81 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|templates| templates.first())
             .cloned()
             .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplateKind": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("kind"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplatePhase": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("phase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplateErrorCode": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("errorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplateTimeoutErrorCode":
+            routing_decision_ready_phase_diagnose
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("timeoutErrorCode"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplateRetryable": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("retryable"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplateMaxSuggestedRetries":
+            routing_decision_ready_phase_diagnose
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("maxSuggestedRetries"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplateRetryDelayHintMs":
+            routing_decision_ready_phase_diagnose
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("retryDelayHintMs"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplateTimeoutHintMs":
+            routing_decision_ready_phase_diagnose
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("timeoutHintMs"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplateTimeoutAction": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("timeoutAction"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplateCommandJsonEligible":
+            routing_decision_ready_phase_diagnose
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("commandJsonEligible"))
+                .cloned()
+                .unwrap_or(Value::Null),
         "defaultPhase": routing_decision_ready_default_phase,
     });
     let routing_decision = json!({
@@ -10564,6 +10784,52 @@ mod tests {
             "preflight"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateKind"],
+            "controller-cli"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplatePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateErrorCode"],
+            "hook-fallback-preflight-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["defaultCommandJsonTemplateTimeoutErrorCode"],
+            "hook-fallback-preflight-timeout"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateRetryable"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["defaultCommandJsonTemplateMaxSuggestedRetries"],
+            2
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["defaultCommandJsonTemplateRetryDelayHintMs"],
+            500
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["defaultCommandJsonTemplateTimeoutHintMs"],
+            8000
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["defaultCommandJsonTemplateTimeoutAction"],
+            "re-run-preflight-or-switch-to-query-only"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["defaultCommandJsonTemplateCommandJsonEligible"],
+            false
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["escalationKey"],
             "preflight-refresh"
         );
@@ -11415,6 +11681,54 @@ mod tests {
             "preflight"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateKind"],
+            "controller-cli"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplatePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonTemplateErrorCode"],
+            "hook-fallback-preflight-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonTemplateTimeoutErrorCode"],
+            "hook-fallback-preflight-timeout"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonTemplateRetryable"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonTemplateMaxSuggestedRetries"],
+            2
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonTemplateRetryDelayHintMs"],
+            500
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonTemplateTimeoutHintMs"],
+            8000
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonTemplateTimeoutAction"],
+            "re-run-preflight-or-switch-to-query-only"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonTemplateCommandJsonEligible"],
+            false
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnose"]["phase"],
             "diagnose"
         );
@@ -11469,6 +11783,54 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplate"]["phase"],
             "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateKind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplatePhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonTemplateErrorCode"],
+            "hook-fallback-diagnose-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonTemplateTimeoutErrorCode"],
+            "hook-fallback-diagnose-timeout"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonTemplateRetryable"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonTemplateMaxSuggestedRetries"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonTemplateRetryDelayHintMs"],
+            250
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonTemplateTimeoutHintMs"],
+            4000
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonTemplateTimeoutAction"],
+            "refresh-hook-environment-and-retry"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonTemplateCommandJsonEligible"],
+            true
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedEscalationKey"],
