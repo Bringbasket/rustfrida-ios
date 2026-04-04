@@ -2683,6 +2683,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("missingErrorCodeHint")
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveMissingHint": routing_decision_ready_resolve
+            .get("missingErrorCodeHint")
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveDefaultMatched": routing_decision_ready_resolve
             .get("defaultMatched")
             .cloned()
@@ -3093,6 +3097,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolveMissingPhaseHint": routing_decision_ready_phase_resolve
+            .get("missingPhaseHint")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveMissingHint": routing_decision_ready_phase_resolve
             .get("missingPhaseHint")
             .cloned()
             .unwrap_or(Value::Null),
@@ -10631,6 +10639,10 @@ mod tests {
             "if errorCode is not in knownErrorCodes, use resolve.default"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingHint"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingErrorCodeHint"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveDefaultMatched"],
             false
         );
@@ -10923,6 +10935,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingPhaseHint"],
             "if phase is not in knownPhases, use phaseResolve.default"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingHint"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingPhaseHint"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefaultPhase"],
