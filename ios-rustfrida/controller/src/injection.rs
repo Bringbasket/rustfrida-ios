@@ -2259,6 +2259,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("commandJsonTemplates")
             .cloned()
             .unwrap_or(json!([])),
+        "defaultMatchConfidence": routing_decision_ready_default
+            .get("matchConfidence")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultResolvedFrom": routing_decision_ready_default
+            .get("resolvedFrom")
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveLookupKey": routing_decision_ready_resolve
             .get("lookupKey")
             .cloned()
@@ -2597,6 +2605,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "phaseCount": routing_decision_ready_phase_entries.len(),
         "phases": routing_decision_ready_phase_entries,
         "phaseIndex": routing_decision_ready_phase_index,
+        "phasePreflight": routing_decision_ready_phase_preflight.clone(),
         "phasePreflightErrorCodeCount": routing_decision_ready_phase_preflight
             .get("errorCodeCount")
             .cloned()
@@ -2609,6 +2618,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("escalationKeys")
             .cloned()
             .unwrap_or(json!([])),
+        "phasePreflightPrimaryEscalationKey": routing_decision_ready_phase_preflight
+            .get("escalationKeys")
+            .and_then(Value::as_array)
+            .and_then(|keys| keys.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "phasePreflightTemplateCount": routing_decision_ready_phase_preflight
             .get("templateCount")
             .cloned()
@@ -2625,6 +2640,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("commandJsonTemplates")
             .cloned()
             .unwrap_or(json!([])),
+        "phaseDiagnose": routing_decision_ready_phase_diagnose.clone(),
         "phaseDiagnoseErrorCodeCount": routing_decision_ready_phase_diagnose
             .get("errorCodeCount")
             .cloned()
@@ -2637,6 +2653,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("escalationKeys")
             .cloned()
             .unwrap_or(json!([])),
+        "phaseDiagnosePrimaryEscalationKey": routing_decision_ready_phase_diagnose
+            .get("escalationKeys")
+            .and_then(Value::as_array)
+            .and_then(|keys| keys.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseDiagnoseTemplateCount": routing_decision_ready_phase_diagnose
             .get("templateCount")
             .cloned()
@@ -9702,6 +9724,14 @@ mod tests {
             1
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultMatchConfidence"],
+            "default"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultResolvedFrom"],
+            "defaultRecommendedEscalationKey"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplates"][0]["phase"],
             "preflight"
         );
@@ -10346,6 +10376,10 @@ mod tests {
             1
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflight"]["phase"],
+            "preflight"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightErrorCodeCount"],
             4
         );
@@ -10355,6 +10389,10 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightEscalationKeys"][0],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightPrimaryEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
@@ -10374,6 +10412,10 @@ mod tests {
             "preflight"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnose"]["phase"],
+            "diagnose"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseErrorCodeCount"],
             2
         );
@@ -10383,6 +10425,10 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseEscalationKeys"][0],
+            "policy-review"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnosePrimaryEscalationKey"],
             "policy-review"
         );
         assert_eq!(
