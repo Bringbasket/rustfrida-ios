@@ -1079,8 +1079,13 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let command_mode = hook_effective_command_mode(actions);
     let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
     let loaded_in_target_count = json_u64_field(backend_matrix, "loadedInTargetCount");
+    let loaded_in_both_count = json_u64_field(backend_matrix, "loadedInBothCount");
     let filesystem_only_in_either_count = json_u64_field(backend_matrix, "filesystemOnlyInEitherCount");
     let shared_backend_count = json_array_len(backend_matrix, "sharedBackendIds");
+    let total_loaded_backend_count =
+        loaded_in_controller_count + loaded_in_target_count - loaded_in_both_count;
+    let single_external_backend_loaded = total_loaded_backend_count == 1;
+    let multiple_external_backends_loaded = total_loaded_backend_count > 1;
 
     let backend_pressure = if loaded_in_controller_count > 0 && loaded_in_target_count > 0 {
         "both"
@@ -4340,6 +4345,9 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "commandMode": command_mode,
         "preferredPath": preferred_path,
         "backendPressure": backend_pressure,
+        "loadedExternalBackendCount": total_loaded_backend_count,
+        "singleExternalBackendLoaded": single_external_backend_loaded,
+        "multipleExternalBackendsLoaded": multiple_external_backends_loaded,
         "sharedBackendCount": shared_backend_count,
         "branchExecutionOrder": branch_execution_order,
         "readyBranchCount": ready_branch_count,
@@ -10308,6 +10316,9 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
+        assert_eq!(rendered["hook"]["automation"]["loadedExternalBackendCount"], 0);
+        assert_eq!(rendered["hook"]["automation"]["singleExternalBackendLoaded"], false);
+        assert_eq!(rendered["hook"]["automation"]["multipleExternalBackendsLoaded"], false);
         assert_eq!(rendered["hook"]["automation"]["branchExecutionOrder"][0], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["readyBranchCount"], 5);
         assert_eq!(rendered["hook"]["automation"]["blockedBranchCount"], 0);
@@ -10697,6 +10708,9 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
+        assert_eq!(rendered["hook"]["automation"]["loadedExternalBackendCount"], 0);
+        assert_eq!(rendered["hook"]["automation"]["singleExternalBackendLoaded"], false);
+        assert_eq!(rendered["hook"]["automation"]["multipleExternalBackendsLoaded"], false);
         assert_eq!(rendered["hook"]["automation"]["branchExecutionOrder"][0], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["readyBranchCount"], 5);
         assert_eq!(rendered["hook"]["automation"]["blockedBranchCount"], 0);
@@ -10884,6 +10898,9 @@ mod tests {
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
         assert_eq!(automation["preferredPath"], "cleanup-only");
         assert_eq!(automation["backendPressure"], "none");
+        assert_eq!(automation["loadedExternalBackendCount"], 0);
+        assert_eq!(automation["singleExternalBackendLoaded"], false);
+        assert_eq!(automation["multipleExternalBackendsLoaded"], false);
         assert_eq!(automation["branchExecutionOrder"][0], "hook.status");
         assert_eq!(automation["nextActionKey"], "hook.status");
         assert_eq!(automation["nextReadyActionKey"], "hook.status");
@@ -14469,6 +14486,9 @@ mod tests {
         assert_eq!(coexistence["nextActionTemplates"][0], "objc.classes <filter>");
         assert_eq!(automation["backendPressure"], "both");
         assert_eq!(automation["preferredPath"], "inline-risky");
+        assert_eq!(automation["loadedExternalBackendCount"], 2);
+        assert_eq!(automation["singleExternalBackendLoaded"], false);
+        assert_eq!(automation["multipleExternalBackendsLoaded"], true);
         assert_eq!(automation["branchExecutionOrder"][0], "hook.query");
         assert_eq!(automation["nextActionKey"], "hook.query");
         assert_eq!(automation["nextReadyActionKey"], "hook.query");
@@ -14584,6 +14604,9 @@ mod tests {
         assert_eq!(coexistence["loadedExternalBackendCount"], 0);
 
         assert_eq!(automation["preferredPath"], "inline-cautious");
+        assert_eq!(automation["loadedExternalBackendCount"], 0);
+        assert_eq!(automation["singleExternalBackendLoaded"], false);
+        assert_eq!(automation["multipleExternalBackendsLoaded"], false);
         assert_eq!(automation["suggestedSequence"][1], "controller --preflight-only --preflight-json --pid <pid>");
 
         let templates = automation["commandTemplates"].as_array().expect("command templates");
