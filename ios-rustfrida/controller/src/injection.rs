@@ -2597,6 +2597,13 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|example| example.get("result"))
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyResultEffective": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("result"))
+            .and_then(|result| result.get("effective"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveExampleQueryOnlyResultMatched": routing_decision_ready_resolve
             .get("examples")
             .and_then(|examples| examples.get("queryOnlyInstallFailure"))
@@ -2966,6 +2973,13 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("examples")
             .and_then(|examples| examples.get("queryOnlyInstallFailure"))
             .and_then(|example| example.get("result"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyResultEffective": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("result"))
+            .and_then(|result| result.get("effective"))
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolveExampleQueryOnlyResultMatched": routing_decision_ready_phase_resolve
@@ -11518,6 +11532,11 @@ mod tests {
             json!(null)
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["resolveExampleQueryOnlyResultEffective"],
+            json!(null)
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResultMatched"],
             json!(null)
         );
@@ -11813,6 +11832,11 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResult"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyResultEffective"],
             json!(null)
         );
         assert_eq!(
@@ -12653,6 +12677,12 @@ mod tests {
             "query-only-path"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["resolveExampleQueryOnlyResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResult"]
+                ["effective"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResultMatched"],
             true
         );
@@ -12900,6 +12930,12 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResult"]["effective"]["phase"],
             "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResult"]
+                ["effective"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]
