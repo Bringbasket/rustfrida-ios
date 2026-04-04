@@ -797,13 +797,14 @@ fn hook_action_command_templates(action_key: &str, preferred_path: &str) -> Vec<
                 "shook <type> <method> # risky-with-external-backend",
                 "hfl <module> <offset> # risky-with-external-backend",
             ],
-            _ => &[
+            "inline-safe" => &[
                 "trace <objc-filter|native-target>",
                 "stalker <objc-filter|native-target>",
                 "jhook <class> <selector> [meta]",
                 "shook <type> <method>",
                 "hfl <module> <offset>",
             ],
+            _ => &[],
         },
         "hook.status" => &[
             "trace status",
@@ -14522,6 +14523,22 @@ mod tests {
         assert_eq!(entries[2]["cliArgs"][0], "--inject-json");
         assert_eq!(entries[2]["cliArgs"][1], "--pid");
         assert_eq!(entries[2]["cliArgs"][2], "<pid>");
+    }
+
+    #[test]
+    fn hook_install_templates_are_suppressed_when_path_is_not_inline() {
+        assert_eq!(
+            hook_action_command_templates("hook.install", "query-only"),
+            Vec::<String>::new()
+        );
+        assert_eq!(
+            hook_action_command_templates("hook.install", "cleanup-only"),
+            Vec::<String>::new()
+        );
+        assert_eq!(
+            hook_action_command_templates("hook.install", "blocked"),
+            Vec::<String>::new()
+        );
     }
 
     #[test]
