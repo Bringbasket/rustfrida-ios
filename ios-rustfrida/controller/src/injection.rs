@@ -850,6 +850,8 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextActionBranch": recommended_action.map(hook_automation_branch),
         "nextActionReason": recommended_action.map(|item| item.recommendation.clone()),
         "nextStepId": next_step_id,
+        "nextStepActionKey": recommended_action.map(|item| item.action_key),
+        "nextStepCommandGroup": recommended_action.map(|item| item.command_group),
         "nextStepCommand": next_step_command,
         "nextStepPhase": next_step_phase,
         "nextStepCommandJsonEligible": recommended_action.map(|_| next_step_command_json_eligible),
@@ -4760,6 +4762,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 .and_then(|entry| entry.get("source"))
                 .cloned()
                 .unwrap_or(Value::Null),
+            "nextStepActionKey": fallback_next_chain_step
+                .and_then(|entry| entry.get("actionKey"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepCommandGroup": fallback_next_chain_step
+                .and_then(|entry| entry.get("commandGroup"))
+                .cloned()
+                .unwrap_or(Value::Null),
             "nextStepCommand": fallback_next_plan_step
                 .and_then(|entry| entry.get("command"))
                 .cloned()
@@ -5019,6 +5029,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextActionBranch": selected_action.map(hook_automation_branch),
         "nextActionReadyToRun": next_action_ready_to_run,
         "nextStepId": next_step_id,
+        "nextStepActionKey": selected_action.map(|item| item.action_key),
+        "nextStepCommandGroup": selected_action.map(|item| item.command_group),
         "nextStepCommand": next_step_command,
         "nextStepPhase": next_step_phase,
         "nextStepCommandJsonEligible": selected_action.map(|_| next_step_command_json_eligible),
@@ -11300,6 +11312,8 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandGroup"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandJsonEligible"], true);
@@ -11556,6 +11570,8 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["automation"]["nextStepActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["nextStepCommandGroup"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["automation"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandJsonEligible"], true);
@@ -12117,6 +12133,8 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandGroup"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandJsonEligible"], true);
@@ -12373,6 +12391,8 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["automation"]["nextStepActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["nextStepCommandGroup"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["automation"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandJsonEligible"], true);
@@ -12729,6 +12749,8 @@ mod tests {
         assert_eq!(automation["nextActionBranch"], "run");
         assert_eq!(automation["nextActionReadyToRun"], true);
         assert_eq!(automation["nextStepId"], "next-action:hook.status:0");
+        assert_eq!(automation["nextStepActionKey"], "hook.status");
+        assert_eq!(automation["nextStepCommandGroup"], "hook-status");
         assert_eq!(automation["nextStepCommand"], "trace status");
         assert_eq!(automation["nextStepPhase"], "cleanup");
         assert_eq!(automation["nextStepCommandJsonEligible"], true);
@@ -12991,6 +13013,8 @@ mod tests {
         assert!(automation["nextReadyActionKey"].is_null());
         assert_eq!(automation["nextActionReadyToRun"], false);
         assert_eq!(automation["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(automation["nextStepActionKey"], "hook.query");
+        assert_eq!(automation["nextStepCommandGroup"], "query");
         assert_eq!(automation["nextStepCommand"], "objc.classes <filter>");
         assert_eq!(automation["nextStepPhase"], "query");
         assert_eq!(automation["nextStepCommandJsonEligible"], true);
@@ -13280,6 +13304,8 @@ mod tests {
         );
         assert_eq!(automation["fallbackPlan"]["nextStepId"], "fallback-plan:0");
         assert_eq!(automation["fallbackPlan"]["nextStepSource"], "fallback-plan");
+        assert!(automation["fallbackPlan"]["nextStepActionKey"].is_null());
+        assert!(automation["fallbackPlan"]["nextStepCommandGroup"].is_null());
         assert_eq!(automation["fallbackPlan"]["nextStepCommand"], "native.hookenv");
         assert_eq!(automation["fallbackPlan"]["nextStepPhase"], "diagnose");
         assert_eq!(automation["fallbackPlan"]["nextStepCommandJsonEligible"], true);
