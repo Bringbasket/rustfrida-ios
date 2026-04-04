@@ -2675,6 +2675,11 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("defaultReason")
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveDefaultEffective": routing_decision_ready_resolve
+            .get("default")
+            .and_then(|result| result.get("effective"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveDefaultEffectivePhase": routing_decision_ready_resolve
             .get("defaultEffectivePhase")
             .cloned()
@@ -3055,6 +3060,11 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .unwrap_or(Value::Null),
         "phaseResolveDefaultReason": routing_decision_ready_phase_resolve
             .get("defaultReason")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveDefaultEffective": routing_decision_ready_phase_resolve
+            .get("default")
+            .and_then(|result| result.get("effective"))
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolveDefaultEffectivePhase": routing_decision_ready_phase_resolve
@@ -10557,6 +10567,19 @@ mod tests {
             "missing-error-code"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveDefaultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveDefault"]["effective"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveDefaultEffective"]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveDefaultEffective"]
+                ["escalationKey"],
+            "preflight-refresh"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveDefaultEffectivePhase"],
             "preflight"
         );
@@ -10816,6 +10839,20 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefaultReason"],
             "missing-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefaultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefault"]["effective"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefaultEffective"]
+                ["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefaultEffective"]
+                ["escalationKeys"][0],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefaultEffectivePhase"],
