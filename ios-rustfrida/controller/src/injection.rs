@@ -1858,6 +1858,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .get("phase")
         .cloned()
         .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_preflight = routing_decision_ready_phase_index
+        .get("preflight")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_diagnose = routing_decision_ready_phase_index
+        .get("diagnose")
+        .cloned()
+        .unwrap_or(Value::Null);
     let routing_decision_ready_phase_resolve_index = routing_decision_ready_phase_index
         .iter()
         .fold(Map::<String, Value>::new(), |mut map, (phase, entry)| {
@@ -2589,6 +2597,62 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "phaseCount": routing_decision_ready_phase_entries.len(),
         "phases": routing_decision_ready_phase_entries,
         "phaseIndex": routing_decision_ready_phase_index,
+        "phasePreflightErrorCodeCount": routing_decision_ready_phase_preflight
+            .get("errorCodeCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightEscalationKeyCount": routing_decision_ready_phase_preflight
+            .get("escalationKeyCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightEscalationKeys": routing_decision_ready_phase_preflight
+            .get("escalationKeys")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phasePreflightTemplateCount": routing_decision_ready_phase_preflight
+            .get("templateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightTemplates": routing_decision_ready_phase_preflight
+            .get("templates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phasePreflightCommandJsonTemplateCount": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplates": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseDiagnoseErrorCodeCount": routing_decision_ready_phase_diagnose
+            .get("errorCodeCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseEscalationKeyCount": routing_decision_ready_phase_diagnose
+            .get("escalationKeyCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseEscalationKeys": routing_decision_ready_phase_diagnose
+            .get("escalationKeys")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseDiagnoseTemplateCount": routing_decision_ready_phase_diagnose
+            .get("templateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseTemplates": routing_decision_ready_phase_diagnose
+            .get("templates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseDiagnoseCommandJsonTemplateCount": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplates": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
         "defaultPhase": routing_decision_ready_default_phase,
     });
     let routing_decision = json!({
@@ -10280,6 +10344,62 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseIndex"]["diagnose"]["commandJsonTemplateCount"],
             1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightErrorCodeCount"],
+            4
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightEscalationKeyCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightEscalationKeys"][0],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightTemplates"][0],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplates"][0]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseErrorCodeCount"],
+            2
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseEscalationKeyCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseEscalationKeys"][0],
+            "policy-review"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseTemplates"][0],
+            "native.hookenv"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplates"][0]["phase"],
+            "diagnose"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedEscalationKey"],
