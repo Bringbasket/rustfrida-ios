@@ -5284,7 +5284,6 @@ struct ParsedHookEffectiveBlockedDetails {
     fallback_action_key: Option<String>,
     fallback_command: Option<String>,
     fallback_phase: Option<String>,
-    fallback_available: Option<bool>,
 }
 
 #[cfg(unix)]
@@ -5295,7 +5294,11 @@ fn compute_hook_fallback_available(
 ) -> Option<bool> {
     match (fallback_action_key, fallback_command, fallback_phase) {
         (Some(action_key), Some(command), Some(phase))
-            if action_key != "<none>" && command != "<none>" && phase != "<none>" =>
+            if action_key != "<none>"
+                && action_key != "unknown"
+                && command != "<none>"
+                && phase != "<none>"
+                && phase != "unknown" =>
         {
             Some(true)
         }
@@ -5322,11 +5325,6 @@ fn parse_hook_effective_blocked_details(message: &str) -> ParsedHookEffectiveBlo
         recommendation: parse_error_field_with_boundaries(message, "recommendation", &[]),
         coexistence_mode: parse_error_field(message, "coexistenceMode"),
         backend_pressure: parse_error_field(message, "backendPressure"),
-        fallback_available: compute_hook_fallback_available(
-            fallback_action_key.as_deref(),
-            fallback_command.as_deref(),
-            fallback_phase.as_deref(),
-        ),
         fallback_action_key,
         fallback_command,
         fallback_phase,
@@ -5346,6 +5344,35 @@ fn normalize_hook_blocked_by(value: Option<String>) -> Option<String> {
 fn normalize_hook_command_mode(value: Option<String>) -> Option<String> {
     match value.as_deref() {
         Some("allowed" | "query-only" | "cleanup-only" | "blocked" | "unknown") => value,
+        Some(_) => Some("unknown".into()),
+        None => None,
+    }
+}
+
+#[cfg(unix)]
+fn normalize_hook_coexistence_mode(value: Option<String>) -> Option<String> {
+    match value.as_deref() {
+        Some(
+            "inline-safe" | "inline-risky" | "query-only" | "cleanup-only" | "blocked" | "unknown",
+        ) => value,
+        Some(_) => Some("unknown".into()),
+        None => None,
+    }
+}
+
+#[cfg(unix)]
+fn normalize_hook_backend_pressure(value: Option<String>) -> Option<String> {
+    match value.as_deref() {
+        Some("none" | "controller" | "target" | "both" | "unknown") => value,
+        Some(_) => Some("unknown".into()),
+        None => None,
+    }
+}
+
+#[cfg(unix)]
+fn normalize_hook_fallback_phase(value: Option<String>) -> Option<String> {
+    match value.as_deref() {
+        Some("preflight" | "diagnose" | "query" | "cleanup" | "inject" | "hook-install" | "unknown") => value,
         Some(_) => Some("unknown".into()),
         None => None,
     }
@@ -5550,12 +5577,16 @@ fn failure_diagnostics_to_json(
                 );
             }
             hook_recommendation = parsed.recommendation;
-            coexistence_mode = parsed.coexistence_mode;
-            backend_pressure = parsed.backend_pressure;
+            coexistence_mode = normalize_hook_coexistence_mode(parsed.coexistence_mode);
+            backend_pressure = normalize_hook_backend_pressure(parsed.backend_pressure);
             fallback_action_key = parsed.fallback_action_key;
             fallback_command = parsed.fallback_command;
-            fallback_phase = parsed.fallback_phase;
-            hook_fallback_available = parsed.fallback_available;
+            fallback_phase = normalize_hook_fallback_phase(parsed.fallback_phase);
+            hook_fallback_available = compute_hook_fallback_available(
+                fallback_action_key.as_deref(),
+                fallback_command.as_deref(),
+                fallback_phase.as_deref(),
+            );
         } else if message.contains("timed out waiting") {
             phase = "controller-socket".into();
             code = "agent-connect-timeout".into();
@@ -15066,14 +15097,22 @@ mod tests {
             None,
             &[],
             Some(&Error::State(
-                "hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=garbage; recommendation=invalid commandMode".into(),
+                "hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=garbage coexistenceMode=weird backendPressure=strange fallbackActionKey=hook.status fallbackCommand=trace status fallbackPhase=oops; recommendation=invalid commandMode".into(),
             )),
         );
         assert_eq!(invalid_command_mode_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
         assert_eq!(invalid_command_mode_rendered["diagnostics"]["hookBlockedBy"], "target");
         assert_eq!(invalid_command_mode_rendered["diagnostics"]["hookCommandMode"], "unknown");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["coexistenceMode"], "unknown");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["backendPressure"], "unknown");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["fallbackPhase"], "unknown");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hookFallbackAvailable"], false);
         assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["blockedBy"], "target");
         assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["commandMode"], "unknown");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["coexistenceMode"], "unknown");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["backendPressure"], "unknown");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["fallbackPhase"], "unknown");
+        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["fallbackAvailable"], false);
     }
 
     #[test]
