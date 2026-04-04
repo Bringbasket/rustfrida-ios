@@ -819,6 +819,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextActionReason": recommended_action.map(|item| item.recommendation.clone()),
         "nextStep": next_step,
         "nextStepChainSource": next_step_chain_source,
+        "nextStepChainLimit": next_step_chain_limit,
         "nextStepChainCount": next_step_chain.len(),
         "nextStepChain": next_step_chain,
         "nextStepChainTruncated": next_step_chain_truncated,
@@ -4488,6 +4489,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "commandJsonTemplates": fallback_command_json_templates,
             "commandJsonEligibleTemplateCount": fallback_eligible_command_json_template_count,
             "nextStepChainSource": next_step_chain_source,
+            "nextStepChainLimit": next_step_chain_limit,
             "nextStepChainCount": next_step_chain.len(),
             "nextStepChain": next_step_chain.clone(),
             "nextStepChainTruncated": next_step_chain_truncated,
@@ -4601,6 +4603,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextActionReadyToRun": next_action_ready_to_run,
         "nextStep": next_step,
         "nextStepChainSource": next_step_chain_source,
+        "nextStepChainLimit": next_step_chain_limit,
         "nextStepChainCount": next_step_chain.len(),
         "nextStepChain": next_step_chain,
         "nextStepChainTruncated": next_step_chain_truncated,
@@ -10709,6 +10712,7 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["phase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["readyToRun"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainCount"], 3);
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][0]["command"],
@@ -10754,6 +10758,7 @@ mod tests {
             false
         );
         assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextStepChainCount"], 1);
         assert_eq!(rendered["hook"]["automation"]["nextStepChain"][0]["source"], "next-action");
         assert_eq!(
@@ -11161,6 +11166,7 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["phase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["readyToRun"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainCount"], 3);
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][0]["command"],
@@ -11206,6 +11212,7 @@ mod tests {
             false
         );
         assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextStepChainCount"], 1);
         assert_eq!(rendered["hook"]["automation"]["nextStepChain"][0]["source"], "next-action");
         assert_eq!(
@@ -11410,6 +11417,7 @@ mod tests {
         assert_eq!(automation["nextStep"]["readyToRun"], true);
         assert_eq!(automation["nextStep"]["requiresFallback"], false);
         assert_eq!(automation["nextStepChainSource"], "next-action");
+        assert_eq!(automation["nextStepChainLimit"], 3);
         assert_eq!(automation["nextStepChainCount"], 1);
         assert_eq!(automation["nextStepChain"][0]["source"], "next-action");
         assert_eq!(automation["nextStepChain"][0]["command"], "trace status");
@@ -11544,6 +11552,7 @@ mod tests {
         assert_eq!(automation["nextStep"]["readyToRun"], false);
         assert_eq!(automation["nextStep"]["requiresFallback"], true);
         assert_eq!(automation["nextStepChainSource"], "fallback-plan");
+        assert_eq!(automation["nextStepChainLimit"], 3);
         assert_eq!(automation["nextStepChainCount"], 2);
         assert_eq!(automation["nextStepChain"][0]["source"], "fallback-plan");
         assert_eq!(automation["nextStepChain"][0]["command"], "native.hookenv");
@@ -11565,6 +11574,7 @@ mod tests {
         assert_eq!(automation["fallbackPlan"]["phaseCount"], 2);
         assert_eq!(automation["fallbackPlan"]["phaseOrder"], json!(["diagnose", "preflight"]));
         assert_eq!(automation["fallbackPlan"]["nextStepChainSource"], "fallback-plan");
+        assert_eq!(automation["fallbackPlan"]["nextStepChainLimit"], 3);
         assert_eq!(automation["fallbackPlan"]["nextStepChainCount"], 2);
         assert_eq!(automation["fallbackPlan"]["nextStepChain"][0]["command"], "native.hookenv");
         assert_eq!(
