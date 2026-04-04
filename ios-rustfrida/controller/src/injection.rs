@@ -806,6 +806,28 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
     };
     let active_step = next_step_chain.first();
     let next_step_chain_truncated = next_action_command_json_templates.len() > next_step_chain_limit;
+    let next_action_plan = recommended_action
+        .map(|item| {
+            json!({
+                "actionKey": item.action_key,
+                "commandGroup": item.command_group,
+                "allowed": item.allowed,
+                "blockedBy": item.blocked_by,
+                "branch": hook_automation_branch(item),
+                "priority": item.priority,
+                "recommendation": item.recommendation,
+                "prerequisiteCount": 0,
+                "prerequisiteActionKeys": Vec::<String>::new(),
+                "blockedPrerequisiteCount": 0,
+                "blockedPrerequisiteActionKeys": Vec::<String>::new(),
+                "readyToRun": item.allowed,
+                "templateCount": next_action_templates.len(),
+                "templates": next_action_templates.clone(),
+                "commandJsonTemplateCount": next_action_command_json_templates.len(),
+                "commandJsonTemplates": next_action_command_json_templates.clone(),
+            })
+        })
+        .unwrap_or(Value::Null);
 
     let install_action = actions.iter().find(|item| item.action_key == "hook.install");
     let external_backend_loaded = loaded_in_controller_count > 0 || loaded_in_target_count > 0;
@@ -854,6 +876,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextActionBranch": recommended_action.map(hook_automation_branch),
         "nextActionReadyToRun": recommended_action.map(|item| item.allowed),
         "nextActionReason": recommended_action.map(|item| item.recommendation.clone()),
+        "nextActionPlan": next_action_plan,
         "nextStepId": next_step_id,
         "nextStepSource": recommended_action.map(|_| "next-action"),
         "nextStepActionKey": recommended_action.map(|item| item.action_key),
@@ -11385,6 +11408,21 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionReadyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["actionKey"],
+            "hook.query"
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["allowed"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["branch"], "run");
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["readyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"],
+            3
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonTemplateCount"],
+            3
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepSource"], "next-action");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
@@ -12242,6 +12280,21 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionReadyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["actionKey"],
+            "hook.query"
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["allowed"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["branch"], "run");
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["readyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"],
+            3
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonTemplateCount"],
+            3
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepSource"], "next-action");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
