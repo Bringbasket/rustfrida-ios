@@ -730,6 +730,47 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
             })
         })
         .unwrap_or(Value::Null);
+    let next_step_chain_limit = 3usize;
+    let next_step_chain = recommended_action
+        .map(|item| {
+            next_action_command_json_templates
+                .iter()
+                .take(next_step_chain_limit)
+                .enumerate()
+                .map(|(index, entry)| {
+                    json!({
+                        "index": index,
+                        "source": "next-action",
+                        "actionKey": item.action_key,
+                        "commandGroup": item.command_group,
+                        "command": entry.get("command").cloned().unwrap_or(Value::Null),
+                        "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
+                        "kind": entry.get("kind").cloned().unwrap_or(Value::Null),
+                        "commandJsonEligible": entry
+                            .get("commandJsonEligible")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "retryable": entry.get("retryable").cloned().unwrap_or(Value::Null),
+                        "maxSuggestedRetries": entry
+                            .get("maxSuggestedRetries")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "errorCode": entry.get("errorCode").cloned().unwrap_or(Value::Null),
+                        "timeoutErrorCode": entry
+                            .get("timeoutErrorCode")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let next_step_chain_source = if recommended_action.is_some() {
+        "next-action"
+    } else {
+        "none"
+    };
+    let next_step_chain_truncated = next_action_command_json_templates.len() > next_step_chain_limit;
 
     let install_action = actions.iter().find(|item| item.action_key == "hook.install");
     let external_backend_loaded = loaded_in_controller_count > 0 || loaded_in_target_count > 0;
@@ -777,6 +818,10 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextActionBranch": recommended_action.map(hook_automation_branch),
         "nextActionReason": recommended_action.map(|item| item.recommendation.clone()),
         "nextStep": next_step,
+        "nextStepChainSource": next_step_chain_source,
+        "nextStepChainCount": next_step_chain.len(),
+        "nextStepChain": next_step_chain,
+        "nextStepChainTruncated": next_step_chain_truncated,
         "nextActionTemplateCount": next_action_templates.len(),
         "nextActionTemplates": next_action_templates,
         "nextActionCommandJsonTemplateCount": next_action_command_json_templates.len(),
@@ -10663,6 +10708,24 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["phase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["readyToRun"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainCount"], 3);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][1]["command"],
+            "native.images <filter>"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][2]["command"],
+            "swift.types <filter>"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChainTruncated"],
+            false
+        );
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["automation"]["loadedExternalBackendCount"], 0);
@@ -11097,6 +11160,24 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["phase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["readyToRun"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainCount"], 3);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][1]["command"],
+            "native.images <filter>"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][2]["command"],
+            "swift.types <filter>"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChainTruncated"],
+            false
+        );
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["automation"]["loadedExternalBackendCount"], 0);
