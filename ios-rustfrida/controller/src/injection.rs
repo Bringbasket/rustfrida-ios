@@ -4506,6 +4506,35 @@ fn hook_environment_to_json(
     report: &native_api::HookEnvironmentReport,
     strategy: Option<&native_api::HookStrategyDecision>,
 ) -> Value {
+    let command_mode = strategy.map(|item| item.command_mode());
+    let coexistence_mode = match command_mode {
+        Some("allowed") => {
+            if report.loaded_backend_count() > 0 {
+                "inline-risky"
+            } else if report.filesystem_only_backend_count() > 0 {
+                "inline-cautious"
+            } else {
+                "inline-safe"
+            }
+        }
+        Some("query-only") => "query-only",
+        Some("cleanup-only") => "cleanup-only",
+        Some("blocked") => "blocked",
+        _ if report.loaded_backend_count() > 0 => "unknown-risky",
+        _ if report.filesystem_only_backend_count() > 0 => "unknown-cautious",
+        _ => "unknown",
+    };
+    let coexistence_recommendation = match coexistence_mode {
+        "inline-safe" => "inline hooks are allowed and no external backend is loaded",
+        "inline-cautious" => "filesystem-only backend artifacts were detected; preflight before hook-install",
+        "inline-risky" => "external backend already loaded; prefer query/status first, then inline install only if necessary",
+        "query-only" => "current policy blocks hook-install; stay on query commands",
+        "cleanup-only" => "only status/stop commands are allowed under current policy",
+        "blocked" => "no hook command group is currently allowed",
+        "unknown-risky" => "external backend is loaded but strategy is unavailable; run preflight before hook-install",
+        "unknown-cautious" => "backend filesystem artifacts are present; verify hook policy and run preflight",
+        _ => "hook strategy is unavailable; run native.hookenv and preflight for guidance",
+    };
     let risk_level = if let Some(strategy) = strategy {
         match strategy.command_mode() {
             "blocked" => "blocked",
@@ -4527,8 +4556,13 @@ fn hook_environment_to_json(
         "activeBackend": report.active_backend,
         "conflictState": report.conflict_state(),
         "riskLevel": risk_level,
-        "commandMode": strategy.map(|item| item.command_mode()),
+        "commandMode": command_mode,
+        "coexistenceMode": coexistence_mode,
+        "coexistenceRecommendation": coexistence_recommendation,
         "coexistenceLayerAvailable": false,
+        "coexistenceLayerStatus": "not-implemented",
+        "externalBackendLoaded": report.loaded_backend_count() > 0,
+        "filesystemOnlyBackendDetected": report.filesystem_only_backend_count() > 0,
         "loadedBackendCount": report.loaded_backend_count(),
         "filesystemOnlyBackendCount": report.filesystem_only_backend_count(),
         "loadedImageCount": report.loaded_image_count(),
@@ -9700,6 +9734,13 @@ mod tests {
         assert_eq!(rendered["environment"]["hookPolicy"], "warn");
         assert_eq!(rendered["environment"]["hookStrategy"]["commandMode"], "allowed");
         assert!(rendered["environment"]["hookEnvironment"]["recommendedActions"].is_array());
+        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceMode"], "inline-risky");
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceRecommendation"],
+            "external backend already loaded; prefer query/status first, then inline install only if necessary"
+        );
+        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceLayerStatus"], "not-implemented");
+        assert_eq!(rendered["environment"]["hookEnvironment"]["externalBackendLoaded"], true);
         assert_eq!(rendered["doctor"]["ready"], false);
         assert_eq!(rendered["plan"]["target"]["pid"], 42);
         assert_eq!(rendered["plan"]["bootstrap"]["stackSizeHex"], json!("0x4000"));
@@ -10031,11 +10072,27 @@ mod tests {
         );
         assert_eq!(rendered["environment"]["hookStrategy"]["commandMode"], "allowed");
         assert!(rendered["environment"]["hookEnvironment"]["recommendedActions"].is_array());
+        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceMode"], "inline-safe");
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceRecommendation"],
+            "inline hooks are allowed and no external backend is loaded"
+        );
+        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceLayerStatus"], "not-implemented");
+        assert_eq!(rendered["environment"]["hookEnvironment"]["externalBackendLoaded"], false);
         assert_eq!(rendered["environment"]["hookStrategy"]["bootstrapInjectionAllowed"], true);
         assert_eq!(rendered["environment"]["hookStrategy"]["queryCommandsAllowed"], true);
         assert_eq!(rendered["environment"]["hookStrategy"]["hookInstallCommandsAllowed"], true);
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["conflictState"], "none");
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["riskLevel"], "normal");
+        assert_eq!(rendered["preflight"]["targetHookEnvironment"]["coexistenceMode"], "inline-safe");
+        assert_eq!(
+            rendered["preflight"]["targetHookEnvironment"]["coexistenceRecommendation"],
+            "inline hooks are allowed and no external backend is loaded"
+        );
+        assert_eq!(
+            rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerStatus"],
+            "not-implemented"
+        );
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerAvailable"], false);
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["loadedBackendCount"], 0);
         assert_eq!(rendered["payload"], json!(null));
