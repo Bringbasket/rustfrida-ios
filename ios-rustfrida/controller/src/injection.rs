@@ -2348,6 +2348,72 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|examples| examples.get("queryOnlyInstallFailure"))
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyErrorCode": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("errorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyBlockedBy": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("blockedBy"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyBlockedBySource": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("blockedBySource"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyIsBlocked": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("isBlocked"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyAvailable": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("available"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyMatched": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("matched"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyUsedDefault": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("usedDefault"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyReason": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("reason"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyEffectivePhase": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("effectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyEffectiveEscalationKey": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("effectiveEscalationKey"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyWouldUsePath": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("wouldUseQueryOnlyPath"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveErrorCodeCount": routing_decision_ready_resolve
             .get("errorCodeCount")
             .cloned()
@@ -2521,6 +2587,78 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "phaseResolveExampleQueryOnlyInstallFailure": routing_decision_ready_phase_resolve
             .get("examples")
             .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlySourceErrorCode": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("sourceErrorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyPhase": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("phase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyBlockedBy": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("blockedBy"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyBlockedBySource": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("blockedBySource"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyIsBlocked": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("isBlocked"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyAvailable": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("available"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyMatched": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("matched"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyUsedDefault": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("usedDefault"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyReason": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("reason"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyEffectivePhase": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("effectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyEffectiveEscalationKey": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("effectiveEscalationKey"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyWouldUsePhase": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("wouldUseQueryPhase"))
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolvePhaseCount": routing_decision_ready_phase_resolve
@@ -10436,6 +10574,51 @@ mod tests {
             false
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyErrorCode"],
+            "hook-fallback-hook-install-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyBlockedBy"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyBlockedBySource"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyIsBlocked"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyAvailable"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyMatched"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyUsedDefault"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyReason"],
+            "missing-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyEffectivePhase"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["resolveExampleQueryOnlyEffectiveEscalationKey"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyWouldUsePath"],
+            false
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyInstallFailure"]["reason"],
             "missing-error-code"
         );
@@ -10657,6 +10840,55 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlySourceErrorCode"],
+            "hook-fallback-hook-install-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyPhase"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyBlockedBy"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyBlockedBySource"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyIsBlocked"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyAvailable"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyMatched"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyUsedDefault"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyReason"],
+            "missing-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyEffectivePhase"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyEffectiveEscalationKey"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyWouldUsePhase"],
             false
         );
         assert_eq!(
@@ -11260,6 +11492,51 @@ mod tests {
             true
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyErrorCode"],
+            "hook-fallback-hook-install-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyBlockedBy"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyBlockedBySource"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyIsBlocked"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyAvailable"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyMatched"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyUsedDefault"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyReason"],
+            "matched-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyEffectivePhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["resolveExampleQueryOnlyEffectiveEscalationKey"],
+            "query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyWouldUsePath"],
+            true
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyInstallFailure"]["reason"],
             "matched-error-code"
         );
@@ -11423,6 +11700,55 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlySourceErrorCode"],
+            "hook-fallback-hook-install-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyBlockedBy"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyBlockedBySource"],
+            "both"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyIsBlocked"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyAvailable"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyMatched"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyUsedDefault"],
+            false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyReason"],
+            "matched-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyEffectivePhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyEffectiveEscalationKey"],
+            "query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyWouldUsePhase"],
             true
         );
         assert_eq!(
