@@ -855,6 +855,9 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextStepId": next_step_id,
         "nextStepActionKey": recommended_action.map(|item| item.action_key),
         "nextStepCommandGroup": recommended_action.map(|item| item.command_group),
+        "nextStepAllowed": recommended_action.map(|item| item.allowed),
+        "nextStepBlockedBy": recommended_action.map(|item| item.blocked_by),
+        "nextStepBranch": recommended_action.map(hook_automation_branch),
         "nextStepCommand": next_step_command,
         "nextStepPhase": next_step_phase,
         "nextStepCommandJsonEligible": recommended_action.map(|_| next_step_command_json_eligible),
@@ -5079,6 +5082,9 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextStepId": next_step_id,
         "nextStepActionKey": selected_action.map(|item| item.action_key),
         "nextStepCommandGroup": selected_action.map(|item| item.command_group),
+        "nextStepAllowed": selected_action.map(|item| item.allowed),
+        "nextStepBlockedBy": selected_action.map(|item| item.blocked_by),
+        "nextStepBranch": selected_action.map(hook_automation_branch),
         "nextStepCommand": next_step_command,
         "nextStepPhase": next_step_phase,
         "nextStepCommandJsonEligible": selected_action.map(|_| next_step_command_json_eligible),
@@ -11374,6 +11380,9 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandGroup"], "query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepAllowed"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepBlockedBy"], "none");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepBranch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandJsonEligible"], true);
@@ -11644,6 +11653,9 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["automation"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandGroup"], "query");
+        assert_eq!(rendered["hook"]["automation"]["nextStepAllowed"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextStepBlockedBy"], "none");
+        assert_eq!(rendered["hook"]["automation"]["nextStepBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["automation"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandJsonEligible"], true);
@@ -12219,6 +12231,9 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandGroup"], "query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepAllowed"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepBlockedBy"], "none");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepBranch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandJsonEligible"], true);
@@ -12489,6 +12504,9 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["automation"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandGroup"], "query");
+        assert_eq!(rendered["hook"]["automation"]["nextStepAllowed"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextStepBlockedBy"], "none");
+        assert_eq!(rendered["hook"]["automation"]["nextStepBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["automation"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandJsonEligible"], true);
@@ -12859,6 +12877,9 @@ mod tests {
         assert_eq!(automation["nextStepId"], "next-action:hook.status:0");
         assert_eq!(automation["nextStepActionKey"], "hook.status");
         assert_eq!(automation["nextStepCommandGroup"], "hook-status");
+        assert_eq!(automation["nextStepAllowed"], true);
+        assert_eq!(automation["nextStepBlockedBy"], "none");
+        assert_eq!(automation["nextStepBranch"], "run");
         assert_eq!(automation["nextStepCommand"], "trace status");
         assert_eq!(automation["nextStepPhase"], "cleanup");
         assert_eq!(automation["nextStepCommandJsonEligible"], true);
@@ -13129,6 +13150,9 @@ mod tests {
         assert_eq!(automation["nextStepId"], "next-action:hook.query:0");
         assert_eq!(automation["nextStepActionKey"], "hook.query");
         assert_eq!(automation["nextStepCommandGroup"], "query");
+        assert_eq!(automation["nextStepAllowed"], false);
+        assert_eq!(automation["nextStepBlockedBy"], "both");
+        assert_eq!(automation["nextStepBranch"], "skip-both-policies");
         assert_eq!(automation["nextStepCommand"], "objc.classes <filter>");
         assert_eq!(automation["nextStepPhase"], "query");
         assert_eq!(automation["nextStepCommandJsonEligible"], true);
