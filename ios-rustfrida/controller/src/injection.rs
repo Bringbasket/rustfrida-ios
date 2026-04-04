@@ -2691,6 +2691,11 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("knownErrorCodes")
             .cloned()
             .unwrap_or(json!([])),
+        "resolveKnownEntriesCount": routing_decision_ready_resolve
+            .get("knownErrorCodes")
+            .and_then(Value::as_array)
+            .map(|codes| json!(codes.len()))
+            .unwrap_or(Value::Null),
         "resolveKnownErrorCodeFirst": routing_decision_ready_resolve
             .get("knownErrorCodes")
             .and_then(Value::as_array)
@@ -3156,6 +3161,11 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("knownPhases")
             .cloned()
             .unwrap_or(json!([])),
+        "phaseResolveKnownEntriesCount": routing_decision_ready_phase_resolve
+            .get("knownPhases")
+            .and_then(Value::as_array)
+            .map(|phases| json!(phases.len()))
+            .unwrap_or(Value::Null),
         "phaseResolveKnownPhaseFirst": routing_decision_ready_phase_resolve
             .get("knownPhases")
             .and_then(Value::as_array)
@@ -10747,6 +10757,14 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodes"]
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownEntriesCount"],
+            6
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownEntriesCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownCount"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodes"][5],
             "hook-fallback-preflight-timeout"
         );
@@ -11087,6 +11105,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownList"],
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhases"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownEntriesCount"],
+            2
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownEntriesCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownCount"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhases"][1],
