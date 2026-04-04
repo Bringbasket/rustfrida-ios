@@ -4462,6 +4462,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let fallback_plan = if next_action_ready_to_run {
         Value::Null
     } else {
+        let fallback_next_step = next_step_chain.first();
         json!({
             "trigger": "next-action-not-ready",
             "reason": fallback_reason,
@@ -4510,6 +4511,38 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "commandJsonTemplateCount": fallback_command_json_templates.len(),
             "commandJsonTemplates": fallback_command_json_templates,
             "commandJsonEligibleTemplateCount": fallback_eligible_command_json_template_count,
+            "nextStepId": fallback_next_step
+                .and_then(|entry| entry.get("id"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepSource": fallback_next_step
+                .and_then(|entry| entry.get("source"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepCommand": fallback_next_step
+                .and_then(|entry| entry.get("command"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepPhase": fallback_next_step
+                .and_then(|entry| entry.get("phase"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepCommandJsonEligible": fallback_next_step
+                .and_then(|entry| entry.get("commandJsonEligible"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepRetryable": fallback_next_step
+                .and_then(|entry| entry.get("retryable"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepErrorCode": fallback_next_step
+                .and_then(|entry| entry.get("errorCode"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepTimeoutErrorCode": fallback_next_step
+                .and_then(|entry| entry.get("timeoutErrorCode"))
+                .cloned()
+                .unwrap_or(Value::Null),
             "nextStepChainSource": next_step_chain_source,
             "nextStepChainLimit": next_step_chain_limit,
             "nextStepChainCount": next_step_chain.len(),
@@ -11747,6 +11780,17 @@ mod tests {
             "controller --preflight-only --preflight-json"
         );
         assert_eq!(automation["fallbackPlan"]["nextStepChainTruncated"], false);
+        assert_eq!(automation["fallbackPlan"]["nextStepId"], "fallback-plan:0");
+        assert_eq!(automation["fallbackPlan"]["nextStepSource"], "fallback-plan");
+        assert_eq!(automation["fallbackPlan"]["nextStepCommand"], "native.hookenv");
+        assert_eq!(automation["fallbackPlan"]["nextStepPhase"], "diagnose");
+        assert_eq!(automation["fallbackPlan"]["nextStepCommandJsonEligible"], true);
+        assert_eq!(automation["fallbackPlan"]["nextStepRetryable"], true);
+        assert_eq!(automation["fallbackPlan"]["nextStepErrorCode"], "hook-fallback-diagnose-failed");
+        assert_eq!(
+            automation["fallbackPlan"]["nextStepTimeoutErrorCode"],
+            "hook-fallback-diagnose-timeout"
+        );
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicyCount"], 2);
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["phase"], "diagnose");
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["retryable"], true);
