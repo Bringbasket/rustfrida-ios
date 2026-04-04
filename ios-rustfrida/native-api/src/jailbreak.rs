@@ -117,6 +117,12 @@ pub struct HookRecommendedAction {
     pub reason: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HookCoexistenceLayerStatus {
+    pub available: bool,
+    pub status: &'static str,
+}
+
 #[derive(Debug, Clone, Copy)]
 struct KnownHookBackend {
     id: &'static str,
@@ -255,6 +261,47 @@ pub fn hook_environment_recommended_actions(
 
     actions.sort_by_key(|action| (action.priority, command_group_sort_order(&action.command_group)));
     actions
+}
+
+pub fn hook_coexistence_layer_status(
+    report: &HookEnvironmentReport,
+    decision: Option<&HookStrategyDecision>,
+) -> HookCoexistenceLayerStatus {
+    hook_coexistence_layer_status_for_mode(
+        decision.map(HookStrategyDecision::command_mode),
+        report.loaded_backend_count() > 0,
+        report.filesystem_only_backend_count() > 0,
+    )
+}
+
+pub fn hook_coexistence_layer_status_for_mode(
+    command_mode: Option<&str>,
+    external_backend_loaded: bool,
+    filesystem_only_backend_detected: bool,
+) -> HookCoexistenceLayerStatus {
+    if !external_backend_loaded {
+        return HookCoexistenceLayerStatus {
+            available: true,
+            status: if filesystem_only_backend_detected {
+                "not-required-filesystem-only"
+            } else {
+                "not-required"
+            },
+        };
+    }
+
+    let status = match command_mode {
+        Some("allowed") => "missing-inline-risky",
+        Some("query-only") => "missing-query-only",
+        Some("cleanup-only") => "missing-cleanup-only",
+        Some("blocked") => "missing-blocked",
+        _ => "missing-unknown",
+    };
+
+    HookCoexistenceLayerStatus {
+        available: false,
+        status,
+    }
 }
 
 #[allow(dead_code)]
@@ -576,8 +623,8 @@ fn command_group_sort_order(command_group: &str) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::{
-        detect_hook_environment_with, hook_environment_recommendations, hook_environment_recommended_actions,
-        resolve_hook_strategy_with_report,
+        detect_hook_environment_with, hook_coexistence_layer_status, hook_coexistence_layer_status_for_mode,
+        hook_environment_recommendations, hook_environment_recommended_actions, resolve_hook_strategy_with_report,
         HookEnvironmentReport, HookPolicy,
     };
 
@@ -861,5 +908,45 @@ mod tests {
         assert!(stop.recommendation.contains("cleanup-only mode"));
         assert_eq!(actions[0].command_group, "hook-status");
         assert_eq!(actions[1].command_group, "hook-stop");
+    }
+
+    #[test]
+    fn coexistence_layer_status_is_not_required_without_external_backend() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let status = hook_coexistence_layer_status(&report, None);
+        assert!(status.available);
+        assert_eq!(status.status, "not-required");
+    }
+
+    #[test]
+    fn coexistence_layer_status_marks_filesystem_only_as_not_required() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![super::HookBackendInfo {
+                id: "libhooker".into(),
+                display_name: "libhooker".into(),
+                loaded_images: vec![],
+                filesystem_paths: vec!["/var/jb/usr/lib/libhooker.dylib".into()],
+            }],
+            warnings: vec![],
+        };
+        let status = hook_coexistence_layer_status(&report, None);
+        assert!(status.available);
+        assert_eq!(status.status, "not-required-filesystem-only");
+    }
+
+    #[test]
+    fn coexistence_layer_status_reports_missing_layer_when_external_backend_loaded() {
+        let status = hook_coexistence_layer_status_for_mode(Some("cleanup-only"), true, false);
+        assert!(!status.available);
+        assert_eq!(status.status, "missing-cleanup-only");
+
+        let unknown_status = hook_coexistence_layer_status_for_mode(None, true, false);
+        assert!(!unknown_status.available);
+        assert_eq!(unknown_status.status, "missing-unknown");
     }
 }

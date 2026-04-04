@@ -13,7 +13,8 @@ use common::{
     LEGACY_AGENT_PATH_ROOTFUL,
 };
 use native_api::{
-    enumerate_images, hook_environment_recommendations, hook_environment_recommended_actions,
+    enumerate_images, hook_coexistence_layer_status, hook_coexistence_layer_status_for_mode,
+    hook_environment_recommendations, hook_environment_recommended_actions,
     probe_injection_environment, BootstrapStatus,
     InjectionEnvironmentReport, InjectionPlan, InjectionTarget, InjectionTargetPreflightReport, InjectionTrace,
     LoaderSymbolRole, MachInjector, ResolvedLoaderSymbol,
@@ -662,13 +663,18 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
 
     let install_action = actions.iter().find(|item| item.action_key == "hook.install");
     let external_backend_loaded = loaded_in_controller_count > 0 || loaded_in_target_count > 0;
+    let coexistence_layer = hook_coexistence_layer_status_for_mode(
+        Some(command_mode),
+        external_backend_loaded,
+        filesystem_only_in_either_count > 0,
+    );
 
     json!({
         "mode": mode,
         "strategy": strategy,
         "riskLevel": risk_level,
-        "coexistenceLayerAvailable": false,
-        "coexistenceLayerStatus": "not-implemented",
+        "coexistenceLayerAvailable": coexistence_layer.available,
+        "coexistenceLayerStatus": coexistence_layer.status,
         "commandMode": command_mode,
         "backendPressure": backend_pressure,
         "externalBackendLoaded": external_backend_loaded,
@@ -4535,6 +4541,7 @@ fn hook_environment_to_json(
         "unknown-cautious" => "backend filesystem artifacts are present; verify hook policy and run preflight",
         _ => "hook strategy is unavailable; run native.hookenv and preflight for guidance",
     };
+    let coexistence_layer = hook_coexistence_layer_status(report, strategy);
     let risk_level = if let Some(strategy) = strategy {
         match strategy.command_mode() {
             "blocked" => "blocked",
@@ -4559,8 +4566,8 @@ fn hook_environment_to_json(
         "commandMode": command_mode,
         "coexistenceMode": coexistence_mode,
         "coexistenceRecommendation": coexistence_recommendation,
-        "coexistenceLayerAvailable": false,
-        "coexistenceLayerStatus": "not-implemented",
+        "coexistenceLayerAvailable": coexistence_layer.available,
+        "coexistenceLayerStatus": coexistence_layer.status,
         "externalBackendLoaded": report.loaded_backend_count() > 0,
         "filesystemOnlyBackendDetected": report.filesystem_only_backend_count() > 0,
         "loadedBackendCount": report.loaded_backend_count(),
@@ -10048,7 +10055,11 @@ mod tests {
             rendered["environment"]["hookEnvironment"]["coexistenceRecommendation"],
             "external backend already loaded; prefer query/status first, then inline install only if necessary"
         );
-        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceLayerStatus"], "not-implemented");
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceLayerStatus"],
+            "missing-inline-risky"
+        );
+        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceLayerAvailable"], false);
         assert_eq!(rendered["environment"]["hookEnvironment"]["externalBackendLoaded"], true);
         assert_eq!(rendered["doctor"]["ready"], false);
         assert_eq!(rendered["plan"]["target"]["pid"], 42);
@@ -10386,7 +10397,11 @@ mod tests {
             rendered["environment"]["hookEnvironment"]["coexistenceRecommendation"],
             "inline hooks are allowed and no external backend is loaded"
         );
-        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceLayerStatus"], "not-implemented");
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceLayerStatus"],
+            "not-required"
+        );
+        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceLayerAvailable"], true);
         assert_eq!(rendered["environment"]["hookEnvironment"]["externalBackendLoaded"], false);
         assert_eq!(rendered["environment"]["hookStrategy"]["bootstrapInjectionAllowed"], true);
         assert_eq!(rendered["environment"]["hookStrategy"]["queryCommandsAllowed"], true);
@@ -10400,9 +10415,9 @@ mod tests {
         );
         assert_eq!(
             rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerStatus"],
-            "not-implemented"
+            "not-required"
         );
-        assert_eq!(rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerAvailable"], false);
+        assert_eq!(rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerAvailable"], true);
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["loadedBackendCount"], 0);
         assert_eq!(rendered["diagnostics"]["code"], "bind-socket");
         assert!(rendered["diagnostics"]["hook"].is_null());

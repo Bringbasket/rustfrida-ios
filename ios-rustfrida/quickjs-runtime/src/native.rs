@@ -12,6 +12,7 @@ use native_api::{
     find_image_imports,
     find_image_install_name, find_image_linkedit_info, find_image_load_commands, find_image_rpaths,
     find_image_sections, find_image_segments, find_image_source_version, find_image_uuid, find_native_symbols, find_symbol_by_address,
+    hook_coexistence_layer_status,
     hook_environment_recommendations, image_build_version_support_available, image_chained_fixups_support_available,
     hook_environment_recommended_actions,
     image_code_signature_support_available, image_dependency_support_available, image_data_in_code_support_available,
@@ -93,8 +94,17 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "coexistenceRecommendation",
         JSValue::string(ctx, coexistence_recommendation),
     );
-    result.set_property(ctx, "coexistenceLayerAvailable", JSValue::bool(false));
-    result.set_property(ctx, "coexistenceLayerStatus", JSValue::string(ctx, "not-implemented"));
+    let coexistence_layer = hook_coexistence_layer_status(report, decision.as_ref());
+    result.set_property(
+        ctx,
+        "coexistenceLayerAvailable",
+        JSValue::bool(coexistence_layer.available),
+    );
+    result.set_property(
+        ctx,
+        "coexistenceLayerStatus",
+        JSValue::string(ctx, coexistence_layer.status),
+    );
     result.set_property(ctx, "externalBackendLoaded", JSValue::bool(loaded_backend_count > 0));
     result.set_property(
         ctx,
