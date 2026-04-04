@@ -5350,6 +5350,26 @@ fn normalize_hook_command_mode(value: Option<String>) -> Option<String> {
 }
 
 #[cfg(unix)]
+fn normalize_hook_action_key(value: Option<String>) -> Option<String> {
+    match value.as_deref() {
+        Some("hook.query" | "hook.bootstrap" | "hook.install" | "hook.status" | "hook.stop" | "<none>" | "unknown") => {
+            value
+        }
+        Some(_) => Some("unknown".into()),
+        None => None,
+    }
+}
+
+#[cfg(unix)]
+fn normalize_hook_command_group(value: Option<String>) -> Option<String> {
+    match value.as_deref() {
+        Some("query" | "bootstrap" | "hook-install" | "hook-status" | "hook-stop" | "unknown") => value,
+        Some(_) => Some("unknown".into()),
+        None => None,
+    }
+}
+
+#[cfg(unix)]
 fn normalize_hook_coexistence_mode(value: Option<String>) -> Option<String> {
     match value.as_deref() {
         Some(
@@ -5568,8 +5588,8 @@ fn failure_diagnostics_to_json(
         } else if message.contains("hook-effective-blocked") {
             phase = "hook-policy".into();
             let parsed = parse_hook_effective_blocked_details(&message);
-            hook_action_key = parsed.action_key;
-            hook_command_group = parsed.command_group;
+            hook_action_key = normalize_hook_action_key(parsed.action_key);
+            hook_command_group = normalize_hook_command_group(parsed.command_group);
             hook_blocked_by = normalize_hook_blocked_by(parsed.blocked_by).or_else(|| Some("unknown".into()));
             code = match hook_blocked_by.as_deref() {
                 Some("controller") => "controller-hook-policy-blocked".into(),
@@ -5587,7 +5607,7 @@ fn failure_diagnostics_to_json(
             hook_recommendation = parsed.recommendation;
             coexistence_mode = normalize_hook_coexistence_mode(parsed.coexistence_mode);
             backend_pressure = normalize_hook_backend_pressure(parsed.backend_pressure);
-            fallback_action_key = parsed.fallback_action_key;
+            fallback_action_key = normalize_hook_action_key(parsed.fallback_action_key);
             fallback_command = parsed.fallback_command;
             fallback_phase = normalize_hook_fallback_phase(parsed.fallback_phase);
             hook_fallback_available = compute_hook_fallback_available(
@@ -15154,6 +15174,36 @@ mod tests {
         assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["backendPressure"], "unknown");
         assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["fallbackPhase"], "unknown");
         assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["fallbackAvailable"], false);
+
+        let invalid_action_fields_rendered = render_injection_result_json(
+            &config,
+            42,
+            "/tmp/iosrf.sock",
+            &plan,
+            &environment,
+            &doctor,
+            &preflight,
+            None,
+            None,
+            None,
+            None,
+            false,
+            None,
+            None,
+            &[],
+            Some(&Error::State(
+                "hook-effective-blocked actionKey=badkey commandGroup=weird blockedBy=target commandMode=query-only fallbackActionKey=oops fallbackCommand=trace status fallbackPhase=query; recommendation=invalid action metadata".into(),
+            )),
+        );
+        assert_eq!(invalid_action_fields_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
+        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hookActionKey"], "unknown");
+        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hookCommandGroup"], "unknown");
+        assert_eq!(invalid_action_fields_rendered["diagnostics"]["fallbackActionKey"], "unknown");
+        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hookFallbackAvailable"], false);
+        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hook"]["actionKey"], "unknown");
+        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hook"]["commandGroup"], "unknown");
+        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hook"]["fallbackActionKey"], "unknown");
+        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hook"]["fallbackAvailable"], false);
     }
 
     #[test]
