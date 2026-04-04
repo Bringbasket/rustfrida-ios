@@ -2418,6 +2418,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|examples| examples.get("knownResult"))
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveExampleKnownResultEffective": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("knownResult"))
+            .and_then(|result| result.get("effective"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveExampleKnownResultEffectivePhase": routing_decision_ready_resolve
             .get("examples")
             .and_then(|examples| examples.get("knownResult"))
@@ -2466,6 +2472,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "resolveExampleMissingResult": routing_decision_ready_resolve
             .get("examples")
             .and_then(|examples| examples.get("missingResult"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleMissingResultEffective": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("missingResult"))
+            .and_then(|result| result.get("effective"))
             .cloned()
             .unwrap_or(Value::Null),
         "resolveExampleMissingResultEffectivePhase": routing_decision_ready_resolve
@@ -2760,6 +2772,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|examples| examples.get("knownResult"))
             .cloned()
             .unwrap_or(Value::Null),
+        "phaseResolveExampleKnownResultEffective": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("knownResult"))
+            .and_then(|result| result.get("effective"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseResolveExampleKnownResultEffectivePhase": routing_decision_ready_phase_resolve
             .get("examples")
             .and_then(|examples| examples.get("knownResult"))
@@ -2808,6 +2826,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "phaseResolveExampleMissingResult": routing_decision_ready_phase_resolve
             .get("examples")
             .and_then(|examples| examples.get("missingResult"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleMissingResultEffective": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("missingResult"))
+            .and_then(|result| result.get("effective"))
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolveExampleMissingResultEffectivePhase": routing_decision_ready_phase_resolve
@@ -10355,6 +10379,21 @@ mod tests {
             "matched-error-code"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResult"]
+                ["effective"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResultEffective"]
+                ["phase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResultEffective"]
+                ["escalationKey"],
+            "policy-review"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]
                 ["resolveExampleKnownResultEffectivePhase"],
             "diagnose"
@@ -10391,6 +10430,21 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResult"]["reason"],
             "missing-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResult"]
+                ["effective"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResultEffective"]
+                ["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResultEffective"]
+                ["escalationKey"],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]
@@ -10555,6 +10609,21 @@ mod tests {
             "matched-phase"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownResult"]
+                ["effective"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleKnownResultEffective"]["phase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleKnownResultEffective"]["escalationKeys"][0],
+            "policy-review"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]
                 ["phaseResolveExampleKnownResultEffectivePhase"],
             "diagnose"
@@ -10591,6 +10660,21 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingResult"]["reason"],
             "missing-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingResult"]
+                ["effective"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleMissingResultEffective"]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleMissingResultEffective"]["escalationKeys"][0],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]
