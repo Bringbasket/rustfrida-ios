@@ -2663,6 +2663,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("errorCodeCount")
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveKnownVolume": routing_decision_ready_resolve
+            .get("errorCodeCount")
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveKnownMagnitude": routing_decision_ready_resolve
             .get("errorCodeCount")
             .cloned()
@@ -3121,6 +3125,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolveKnownAmount": routing_decision_ready_phase_resolve
+            .get("phaseCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveKnownVolume": routing_decision_ready_phase_resolve
             .get("phaseCount")
             .cloned()
             .unwrap_or(Value::Null),
@@ -10711,6 +10719,10 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownCount"]
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownVolume"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownCount"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownMagnitude"],
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownCount"]
         );
@@ -11046,6 +11058,10 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownAmount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownCount"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownVolume"],
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownCount"]
         );
         assert_eq!(
