@@ -3271,6 +3271,11 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("queryOnlyResult")
             .cloned()
             .unwrap_or(Value::Null),
+        "queryOnlyResolveResultEffective": routing_decision_ready_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("effective"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "queryOnlyResolveResultMatched": routing_decision_ready_resolve
             .get("queryOnlyResult")
             .and_then(|result| result.get("matched"))
@@ -3298,6 +3303,11 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .unwrap_or(Value::Null),
         "queryOnlyPhaseResolveResult": routing_decision_ready_phase_resolve
             .get("queryOnlyResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyPhaseResolveResultEffective": routing_decision_ready_phase_resolve
+            .get("queryOnlyResult")
+            .and_then(|result| result.get("effective"))
             .cloned()
             .unwrap_or(Value::Null),
         "queryOnlyPhaseResolveResultMatched": routing_decision_ready_phase_resolve
@@ -11030,6 +11040,10 @@ mod tests {
             json!(null)
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffective"],
+            json!(null)
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultMatched"],
             json!(null)
         );
@@ -11052,6 +11066,10 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResult"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffective"],
             json!(null)
         );
         assert_eq!(
@@ -12716,6 +12734,10 @@ mod tests {
             "query-only-path"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResult"]["effective"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultMatched"],
             true
         );
@@ -12739,6 +12761,11 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResult"]["effective"]["phase"],
             "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResult"]
+                ["effective"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultMatched"],
@@ -13029,8 +13056,17 @@ mod tests {
             "query-only-path"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResult"]["effective"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResult"]["effective"]["phase"],
             "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResult"]
+                ["effective"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["phase"],
