@@ -700,6 +700,36 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         .iter()
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
+    let next_step_command = next_action_templates.first().cloned();
+    let next_step_command_json_template = next_action_command_json_templates.first().cloned();
+    let next_step_phase = next_step_command_json_template
+        .as_ref()
+        .and_then(|entry| entry.get("phase"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned);
+    let next_step_command_json_eligible = next_step_command_json_template
+        .as_ref()
+        .and_then(|entry| entry.get("commandJsonEligible"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    let next_step = recommended_action
+        .map(|item| {
+            json!({
+                "actionKey": item.action_key,
+                "commandGroup": item.command_group,
+                "allowed": item.allowed,
+                "branch": hook_automation_branch(item),
+                "reason": item.recommendation,
+                "preferredPath": preferred_path,
+                "readyToRun": item.allowed,
+                "requiresFallback": !item.allowed,
+                "command": next_step_command,
+                "phase": next_step_phase,
+                "commandJsonEligible": next_step_command_json_eligible,
+                "commandJsonTemplate": next_step_command_json_template,
+            })
+        })
+        .unwrap_or(Value::Null);
 
     let install_action = actions.iter().find(|item| item.action_key == "hook.install");
     let external_backend_loaded = loaded_in_controller_count > 0 || loaded_in_target_count > 0;
@@ -746,6 +776,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextActionAllowed": recommended_action.map(|item| item.allowed),
         "nextActionBranch": recommended_action.map(hook_automation_branch),
         "nextActionReason": recommended_action.map(|item| item.recommendation.clone()),
+        "nextStep": next_step,
         "nextActionTemplateCount": next_action_templates.len(),
         "nextActionTemplates": next_action_templates,
         "nextActionCommandJsonTemplateCount": next_action_command_json_templates.len(),
@@ -1253,6 +1284,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .iter()
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
+    let next_step_command = next_action_templates.first().cloned();
+    let next_step_command_json_template = next_action_command_json_templates.first().cloned();
+    let next_step_phase = next_step_command_json_template
+        .as_ref()
+        .and_then(|entry| entry.get("phase"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned);
+    let next_step_command_json_eligible = next_step_command_json_template
+        .as_ref()
+        .and_then(|entry| entry.get("commandJsonEligible"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
     let next_action_prerequisites = selected_action
         .map(|item| {
             hook_action_prerequisites(item.action_key)
@@ -1330,6 +1373,26 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .iter()
         .filter(|step| step.get("retryable").and_then(Value::as_bool).unwrap_or(false))
         .count();
+    let next_step = selected_action
+        .map(|item| {
+            json!({
+                "actionKey": item.action_key,
+                "commandGroup": item.command_group,
+                "allowed": item.allowed,
+                "branch": hook_automation_branch(item),
+                "blockedBy": item.blocked_by,
+                "reason": item.recommendation,
+                "preferredPath": preferred_path,
+                "readyToRun": next_action_ready_to_run,
+                "requiresFallback": !next_action_ready_to_run,
+                "fallbackActionKey": fallback_action_key,
+                "command": next_step_command,
+                "phase": next_step_phase,
+                "commandJsonEligible": next_step_command_json_eligible,
+                "commandJsonTemplate": next_step_command_json_template,
+            })
+        })
+        .unwrap_or(Value::Null);
     let fallback_total_retry_budget = fallback_steps
         .iter()
         .map(|step| step.get("maxSuggestedRetries").and_then(Value::as_u64).unwrap_or(0))
@@ -4409,6 +4472,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextActionBlockedBy": selected_action.map(|item| item.blocked_by),
         "nextActionBranch": selected_action.map(hook_automation_branch),
         "nextActionReadyToRun": next_action_ready_to_run,
+        "nextStep": next_step,
         "hasFallbackPlan": !next_action_ready_to_run,
         "fallbackPlan": fallback_plan,
         "nextActionPlan": next_action_plan,
@@ -10506,6 +10570,13 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["actionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStep"]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["phase"], "query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["readyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["automation"]["loadedExternalBackendCount"], 0);
@@ -10522,6 +10593,17 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextStep"]["actionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStep"]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(rendered["hook"]["automation"]["nextStep"]["phase"], "query");
+        assert_eq!(rendered["hook"]["automation"]["nextStep"]["readyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStep"]["requiresFallback"],
+            false
+        );
         assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
         assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
@@ -10911,6 +10993,13 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["actionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStep"]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["phase"], "query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["readyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["automation"]["loadedExternalBackendCount"], 0);
@@ -10927,6 +11016,17 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextStep"]["actionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStep"]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(rendered["hook"]["automation"]["nextStep"]["phase"], "query");
+        assert_eq!(rendered["hook"]["automation"]["nextStep"]["readyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStep"]["requiresFallback"],
+            false
+        );
         assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
         assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
@@ -11115,6 +11215,11 @@ mod tests {
         assert_eq!(automation["nextActionBlockedBy"], "none");
         assert_eq!(automation["nextActionBranch"], "run");
         assert_eq!(automation["nextActionReadyToRun"], true);
+        assert_eq!(automation["nextStep"]["actionKey"], "hook.status");
+        assert_eq!(automation["nextStep"]["command"], "trace status");
+        assert_eq!(automation["nextStep"]["phase"], "cleanup");
+        assert_eq!(automation["nextStep"]["readyToRun"], true);
+        assert_eq!(automation["nextStep"]["requiresFallback"], false);
         assert_eq!(automation["hasFallbackPlan"], false);
         assert!(automation["fallbackPlan"].is_null());
         assert_eq!(automation["hasSuggestedSequence"], true);
@@ -11238,6 +11343,11 @@ mod tests {
         assert_eq!(automation["nextActionKey"], "hook.query");
         assert!(automation["nextReadyActionKey"].is_null());
         assert_eq!(automation["nextActionReadyToRun"], false);
+        assert_eq!(automation["nextStep"]["actionKey"], "hook.query");
+        assert_eq!(automation["nextStep"]["command"], "objc.classes <filter>");
+        assert_eq!(automation["nextStep"]["phase"], "query");
+        assert_eq!(automation["nextStep"]["readyToRun"], false);
+        assert_eq!(automation["nextStep"]["requiresFallback"], true);
         assert_eq!(automation["hasFallbackPlan"], true);
         assert_eq!(automation["fallbackPlan"]["trigger"], "next-action-not-ready");
         assert_eq!(automation["fallbackPlan"]["fromActionKey"], "hook.query");
