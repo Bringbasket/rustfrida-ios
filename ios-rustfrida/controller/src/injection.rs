@@ -1585,6 +1585,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     } else {
         "fallback-plan"
     };
+    let active_step = next_step_chain.first();
     let next_step_chain_truncated =
         !next_action_ready_to_run && fallback_command_json_templates.len() > next_step_chain_limit;
     let fallback_total_retry_budget = fallback_steps
@@ -4801,6 +4802,43 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextStepChainCount": next_step_chain.len(),
         "nextStepChain": next_step_chain,
         "nextStepChainTruncated": next_step_chain_truncated,
+        "activeStepSource": next_step_chain_source,
+        "activeStepId": active_step
+            .and_then(|entry| entry.get("id"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepCommand": active_step
+            .and_then(|entry| entry.get("command"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepPhase": active_step
+            .and_then(|entry| entry.get("phase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepKind": active_step
+            .and_then(|entry| entry.get("kind"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepCommandJsonEligible": active_step
+            .and_then(|entry| entry.get("commandJsonEligible"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepRetryable": active_step
+            .and_then(|entry| entry.get("retryable"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepMaxSuggestedRetries": active_step
+            .and_then(|entry| entry.get("maxSuggestedRetries"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepErrorCode": active_step
+            .and_then(|entry| entry.get("errorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepTimeoutErrorCode": active_step
+            .and_then(|entry| entry.get("timeoutErrorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "hasFallbackPlan": !next_action_ready_to_run,
         "fallbackPlan": fallback_plan,
         "nextActionPlan": next_action_plan,
@@ -11058,6 +11096,11 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandJsonEligible"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepRequiresFallback"], false);
+        assert_eq!(rendered["hook"]["automation"]["activeStepSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["activeStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["automation"]["activeStepCommand"], "objc.classes <filter>");
+        assert_eq!(rendered["hook"]["automation"]["activeStepPhase"], "query");
+        assert_eq!(rendered["hook"]["automation"]["activeStepCommandJsonEligible"], true);
         assert_eq!(
             rendered["hook"]["automation"]["nextStep"]["id"],
             "next-action:hook.query:0"
@@ -11648,6 +11691,11 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandJsonEligible"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepRequiresFallback"], false);
+        assert_eq!(rendered["hook"]["automation"]["activeStepSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["activeStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["automation"]["activeStepCommand"], "objc.classes <filter>");
+        assert_eq!(rendered["hook"]["automation"]["activeStepPhase"], "query");
+        assert_eq!(rendered["hook"]["automation"]["activeStepCommandJsonEligible"], true);
         assert_eq!(
             rendered["hook"]["automation"]["nextStep"]["id"],
             "next-action:hook.query:0"
@@ -11969,6 +12017,11 @@ mod tests {
         );
         assert_eq!(automation["nextStepReadyToRun"], true);
         assert_eq!(automation["nextStepRequiresFallback"], false);
+        assert_eq!(automation["activeStepSource"], "next-action");
+        assert_eq!(automation["activeStepId"], "next-action:hook.status:0");
+        assert_eq!(automation["activeStepCommand"], "trace status");
+        assert_eq!(automation["activeStepPhase"], "cleanup");
+        assert_eq!(automation["activeStepCommandJsonEligible"], true);
         assert_eq!(automation["nextStep"]["id"], "next-action:hook.status:0");
         assert_eq!(automation["nextStep"]["actionKey"], "hook.status");
         assert_eq!(automation["nextStep"]["command"], "trace status");
@@ -12160,6 +12213,17 @@ mod tests {
         );
         assert_eq!(automation["nextStepReadyToRun"], false);
         assert_eq!(automation["nextStepRequiresFallback"], true);
+        assert_eq!(automation["activeStepSource"], "fallback-plan");
+        assert_eq!(automation["activeStepId"], "fallback-plan:0");
+        assert_eq!(automation["activeStepCommand"], "native.hookenv");
+        assert_eq!(automation["activeStepPhase"], "diagnose");
+        assert_eq!(automation["activeStepCommandJsonEligible"], true);
+        assert_eq!(automation["activeStepRetryable"], true);
+        assert_eq!(automation["activeStepErrorCode"], "hook-fallback-diagnose-failed");
+        assert_eq!(
+            automation["activeStepTimeoutErrorCode"],
+            "hook-fallback-diagnose-timeout"
+        );
         assert_eq!(automation["nextStep"]["id"], "next-action:hook.query:0");
         assert_eq!(automation["nextStep"]["actionKey"], "hook.query");
         assert_eq!(automation["nextStep"]["command"], "objc.classes <filter>");
