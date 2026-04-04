@@ -860,6 +860,22 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
             .as_ref()
             .and_then(|entry| entry.get("timeoutErrorCode"))
             .cloned(),
+        "nextStepRisk": next_step_command_json_template
+            .as_ref()
+            .and_then(|entry| entry.get("risk"))
+            .cloned(),
+        "nextStepPlaceholderCount": next_step_command_json_template
+            .as_ref()
+            .and_then(|entry| entry.get("placeholderCount"))
+            .cloned(),
+        "nextStepPlaceholders": next_step_command_json_template
+            .as_ref()
+            .and_then(|entry| entry.get("placeholders"))
+            .cloned(),
+        "nextStepCliArgs": next_step_command_json_template
+            .as_ref()
+            .and_then(|entry| entry.get("cliArgs"))
+            .cloned(),
         "nextStepReadyToRun": recommended_action.map(|item| item.allowed),
         "nextStepRequiresFallback": recommended_action.map(|item| !item.allowed),
         "nextStep": next_step,
@@ -4596,6 +4612,22 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 .and_then(|entry| entry.get("timeoutErrorCode"))
                 .cloned()
                 .unwrap_or(Value::Null),
+            "nextStepRisk": fallback_next_plan_step
+                .and_then(|entry| entry.get("risk"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepPlaceholderCount": fallback_next_plan_step
+                .and_then(|entry| entry.get("placeholderCount"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepPlaceholders": fallback_next_plan_step
+                .and_then(|entry| entry.get("placeholders"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepCliArgs": fallback_next_plan_step
+                .and_then(|entry| entry.get("cliArgs"))
+                .cloned()
+                .unwrap_or(Value::Null),
             "nextStepChainSource": next_step_chain_source,
             "nextStepChainLimit": next_step_chain_limit,
             "nextStepChainCount": next_step_chain.len(),
@@ -4744,6 +4776,22 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextStepTimeoutErrorCode": next_step_command_json_template
             .as_ref()
             .and_then(|entry| entry.get("timeoutErrorCode"))
+            .cloned(),
+        "nextStepRisk": next_step_command_json_template
+            .as_ref()
+            .and_then(|entry| entry.get("risk"))
+            .cloned(),
+        "nextStepPlaceholderCount": next_step_command_json_template
+            .as_ref()
+            .and_then(|entry| entry.get("placeholderCount"))
+            .cloned(),
+        "nextStepPlaceholders": next_step_command_json_template
+            .as_ref()
+            .and_then(|entry| entry.get("placeholders"))
+            .cloned(),
+        "nextStepCliArgs": next_step_command_json_template
+            .as_ref()
+            .and_then(|entry| entry.get("cliArgs"))
             .cloned(),
         "nextStepReadyToRun": selected_action.map(|_| next_action_ready_to_run),
         "nextStepRequiresFallback": selected_action.map(|_| !next_action_ready_to_run),
@@ -10941,6 +10989,22 @@ mod tests {
             rendered["hook"]["coexistence"]["nextStepTimeoutErrorCode"],
             rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutErrorCode"]
         );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepRisk"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["risk"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepPlaceholderCount"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholderCount"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepPlaceholders"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholders"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepCliArgs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["cliArgs"]
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainCount"], 3);
@@ -11040,6 +11104,22 @@ mod tests {
         assert_eq!(
             rendered["hook"]["automation"]["nextStepTimeoutErrorCode"],
             rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["timeoutErrorCode"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepRisk"],
+            rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["risk"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepPlaceholderCount"],
+            rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["placeholderCount"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepPlaceholders"],
+            rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["placeholders"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepCliArgs"],
+            rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["cliArgs"]
         );
         assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["nextStepChainLimit"], 3);
@@ -11499,6 +11579,22 @@ mod tests {
             rendered["hook"]["coexistence"]["nextStepTimeoutErrorCode"],
             rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutErrorCode"]
         );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepRisk"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["risk"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepPlaceholderCount"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholderCount"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepPlaceholders"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholders"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepCliArgs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["cliArgs"]
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainCount"], 3);
@@ -11598,6 +11694,22 @@ mod tests {
         assert_eq!(
             rendered["hook"]["automation"]["nextStepTimeoutErrorCode"],
             rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["timeoutErrorCode"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepRisk"],
+            rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["risk"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepPlaceholderCount"],
+            rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["placeholderCount"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepPlaceholders"],
+            rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["placeholders"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepCliArgs"],
+            rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["cliArgs"]
         );
         assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["nextStepChainLimit"], 3);
@@ -11839,6 +11951,22 @@ mod tests {
             automation["nextStepTimeoutErrorCode"],
             automation["nextStep"]["commandJsonTemplate"]["timeoutErrorCode"]
         );
+        assert_eq!(
+            automation["nextStepRisk"],
+            automation["nextStep"]["commandJsonTemplate"]["risk"]
+        );
+        assert_eq!(
+            automation["nextStepPlaceholderCount"],
+            automation["nextStep"]["commandJsonTemplate"]["placeholderCount"]
+        );
+        assert_eq!(
+            automation["nextStepPlaceholders"],
+            automation["nextStep"]["commandJsonTemplate"]["placeholders"]
+        );
+        assert_eq!(
+            automation["nextStepCliArgs"],
+            automation["nextStep"]["commandJsonTemplate"]["cliArgs"]
+        );
         assert_eq!(automation["nextStepReadyToRun"], true);
         assert_eq!(automation["nextStepRequiresFallback"], false);
         assert_eq!(automation["nextStep"]["id"], "next-action:hook.status:0");
@@ -12014,6 +12142,22 @@ mod tests {
             automation["nextStepTimeoutErrorCode"],
             automation["nextStep"]["commandJsonTemplate"]["timeoutErrorCode"]
         );
+        assert_eq!(
+            automation["nextStepRisk"],
+            automation["nextStep"]["commandJsonTemplate"]["risk"]
+        );
+        assert_eq!(
+            automation["nextStepPlaceholderCount"],
+            automation["nextStep"]["commandJsonTemplate"]["placeholderCount"]
+        );
+        assert_eq!(
+            automation["nextStepPlaceholders"],
+            automation["nextStep"]["commandJsonTemplate"]["placeholders"]
+        );
+        assert_eq!(
+            automation["nextStepCliArgs"],
+            automation["nextStep"]["commandJsonTemplate"]["cliArgs"]
+        );
         assert_eq!(automation["nextStepReadyToRun"], false);
         assert_eq!(automation["nextStepRequiresFallback"], true);
         assert_eq!(automation["nextStep"]["id"], "next-action:hook.query:0");
@@ -12087,6 +12231,22 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["nextStepTimeoutErrorCode"],
             "hook-fallback-diagnose-timeout"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["nextStepRisk"],
+            automation["fallbackPlan"]["steps"][0]["risk"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["nextStepPlaceholderCount"],
+            automation["fallbackPlan"]["steps"][0]["placeholderCount"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["nextStepPlaceholders"],
+            automation["fallbackPlan"]["steps"][0]["placeholders"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["nextStepCliArgs"],
+            automation["fallbackPlan"]["steps"][0]["cliArgs"]
         );
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicyCount"], 2);
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["phase"], "diagnose");
