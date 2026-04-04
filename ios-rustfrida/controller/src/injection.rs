@@ -5228,6 +5228,34 @@ fn parse_error_field(message: &str, key: &str) -> Option<String> {
 }
 
 #[cfg(unix)]
+fn parse_error_field_with_boundaries(message: &str, key: &str, next_keys: &[&str]) -> Option<String> {
+    let marker = format!("{key}=");
+    let start = message.find(&marker)? + marker.len();
+    let tail = &message[start..];
+    let mut end = tail.len();
+
+    for next_key in next_keys {
+        let next_marker = format!(" {next_key}=");
+        if let Some(index) = tail.find(&next_marker) {
+            end = end.min(index);
+        }
+    }
+    if let Some(index) = tail.find(';') {
+        end = end.min(index);
+    }
+    if let Some(index) = tail.find(',') {
+        end = end.min(index);
+    }
+
+    let value = tail[..end].trim();
+    if value.is_empty() {
+        None
+    } else {
+        Some(value.to_string())
+    }
+}
+
+#[cfg(unix)]
 fn parse_error_status_field(message: &str) -> Option<String> {
     parse_error_field(message, "status")
 }
@@ -5297,6 +5325,11 @@ fn failure_diagnostics_to_json(
     let mut bootstrap_status: Option<String> = None;
     let mut hints = Vec::new();
     let mut failed_step = None;
+    let mut coexistence_mode: Option<String> = None;
+    let mut backend_pressure: Option<String> = None;
+    let mut fallback_action_key: Option<String> = None;
+    let mut fallback_command: Option<String> = None;
+    let mut fallback_phase: Option<String> = None;
 
     if let Some(trace) = trace {
         if let Some(report) = trace.bootstrap_report.as_ref() {
@@ -5406,6 +5439,15 @@ fn failure_diagnostics_to_json(
                     format!("effective hook command mode during failure: {mode}"),
                 );
             }
+            coexistence_mode = parse_error_field(&message, "coexistenceMode");
+            backend_pressure = parse_error_field(&message, "backendPressure");
+            fallback_action_key = parse_error_field(&message, "fallbackActionKey");
+            fallback_command = parse_error_field_with_boundaries(
+                &message,
+                "fallbackCommand",
+                &["fallbackPhase", "recommendation"],
+            );
+            fallback_phase = parse_error_field(&message, "fallbackPhase");
         } else if message.contains("timed out waiting") {
             phase = "controller-socket".into();
             code = "agent-connect-timeout".into();
@@ -5479,6 +5521,11 @@ fn failure_diagnostics_to_json(
         "bootstrapStatus": bootstrap_status,
         "handshakeStage": handshake_stage,
         "failedStep": failed_step,
+        "coexistenceMode": coexistence_mode,
+        "backendPressure": backend_pressure,
+        "fallbackActionKey": fallback_action_key,
+        "fallbackCommand": fallback_command,
+        "fallbackPhase": fallback_phase,
         "hints": hints,
     })
 }
@@ -14702,12 +14749,17 @@ mod tests {
             None,
             &[],
             Some(&Error::State(
-                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only; recommendation=blocked by target hook policy".into(),
+                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
             )),
         );
 
         assert_eq!(rendered["diagnostics"]["phase"], "hook-policy");
         assert_eq!(rendered["diagnostics"]["code"], "target-hook-policy-blocked");
+        assert_eq!(rendered["diagnostics"]["coexistenceMode"], "cleanup-only");
+        assert_eq!(rendered["diagnostics"]["backendPressure"], "both");
+        assert_eq!(rendered["diagnostics"]["fallbackActionKey"], "hook.status");
+        assert_eq!(rendered["diagnostics"]["fallbackCommand"], "trace status");
+        assert_eq!(rendered["diagnostics"]["fallbackPhase"], "cleanup");
         assert!(rendered["diagnostics"]["hints"]
             .as_array()
             .expect("hints array")
