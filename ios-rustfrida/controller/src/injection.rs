@@ -739,6 +739,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
                 .enumerate()
                 .map(|(index, entry)| {
                     json!({
+                        "id": format!("next-action:{}:{}", item.action_key, index),
                         "index": index,
                         "source": "next-action",
                         "actionKey": item.action_key,
@@ -1445,6 +1446,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|item| {
                 next_step_command.as_ref().map(|command| {
                     json!({
+                        "id": format!("next-action:{}:0", item.action_key),
                         "index": 0,
                         "source": "next-action",
                         "actionKey": item.action_key,
@@ -1485,6 +1487,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .enumerate()
             .map(|(index, entry)| {
                 json!({
+                    "id": format!("fallback-plan:{index}"),
                     "index": index,
                     "source": "fallback-plan",
                     "command": entry.get("command").cloned().unwrap_or(Value::Null),
