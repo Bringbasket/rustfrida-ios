@@ -911,6 +911,14 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextStepChainTruncated": next_step_chain_truncated,
         "activeStep": active_step.cloned().unwrap_or(Value::Null),
         "activeStepSource": next_step_chain_source,
+        "activeStepActionKey": active_step
+            .and_then(|entry| entry.get("actionKey"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepCommandGroup": active_step
+            .and_then(|entry| entry.get("commandGroup"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "activeStepId": active_step
             .and_then(|entry| entry.get("id"))
             .cloned()
@@ -4822,6 +4830,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 .and_then(|entry| entry.get("source"))
                 .cloned()
                 .unwrap_or(Value::Null),
+            "activeStepActionKey": fallback_next_chain_step
+                .and_then(|entry| entry.get("actionKey"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepCommandGroup": fallback_next_chain_step
+                .and_then(|entry| entry.get("commandGroup"))
+                .cloned()
+                .unwrap_or(Value::Null),
             "activeStepId": fallback_next_chain_step
                 .and_then(|entry| entry.get("id"))
                 .cloned()
@@ -5064,6 +5080,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextStepChainTruncated": next_step_chain_truncated,
         "activeStep": active_step.cloned().unwrap_or(Value::Null),
         "activeStepSource": next_step_chain_source,
+        "activeStepActionKey": active_step
+            .and_then(|entry| entry.get("actionKey"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepCommandGroup": active_step
+            .and_then(|entry| entry.get("commandGroup"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "activeStepId": active_step
             .and_then(|entry| entry.get("id"))
             .cloned()
@@ -11342,6 +11366,14 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["coexistence"]["activeStepSource"], "next-action");
         assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepActionKey"],
+            rendered["hook"]["coexistence"]["activeStep"]["actionKey"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepCommandGroup"],
+            rendered["hook"]["coexistence"]["activeStep"]["commandGroup"]
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["activeStep"]["id"],
             rendered["hook"]["coexistence"]["nextStepChain"][0]["id"]
         );
@@ -11530,6 +11562,14 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepRequiresFallback"], false);
         assert_eq!(rendered["hook"]["automation"]["activeStepSource"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepActionKey"],
+            rendered["hook"]["automation"]["activeStep"]["actionKey"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepCommandGroup"],
+            rendered["hook"]["automation"]["activeStep"]["commandGroup"]
+        );
         assert_eq!(
             rendered["hook"]["automation"]["activeStep"]["id"],
             rendered["hook"]["automation"]["nextStepChain"][0]["id"]
@@ -12143,6 +12183,14 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["coexistence"]["activeStepSource"], "next-action");
         assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepActionKey"],
+            rendered["hook"]["coexistence"]["activeStep"]["actionKey"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepCommandGroup"],
+            rendered["hook"]["coexistence"]["activeStep"]["commandGroup"]
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["activeStep"]["id"],
             rendered["hook"]["coexistence"]["nextStepChain"][0]["id"]
         );
@@ -12331,6 +12379,14 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepRequiresFallback"], false);
         assert_eq!(rendered["hook"]["automation"]["activeStepSource"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepActionKey"],
+            rendered["hook"]["automation"]["activeStep"]["actionKey"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepCommandGroup"],
+            rendered["hook"]["automation"]["activeStep"]["commandGroup"]
+        );
         assert_eq!(
             rendered["hook"]["automation"]["activeStep"]["id"],
             rendered["hook"]["automation"]["nextStepChain"][0]["id"]
@@ -12728,6 +12784,14 @@ mod tests {
         assert_eq!(automation["nextStepRequiresFallback"], false);
         assert_eq!(automation["activeStepSource"], "next-action");
         assert_eq!(
+            automation["activeStepActionKey"],
+            automation["activeStep"]["actionKey"]
+        );
+        assert_eq!(
+            automation["activeStepCommandGroup"],
+            automation["activeStep"]["commandGroup"]
+        );
+        assert_eq!(
             automation["activeStep"]["id"],
             automation["nextStepChain"][0]["id"]
         );
@@ -12982,6 +13046,14 @@ mod tests {
         assert_eq!(automation["nextStepRequiresFallback"], true);
         assert_eq!(automation["activeStepSource"], "fallback-plan");
         assert_eq!(
+            automation["activeStepActionKey"],
+            automation["activeStep"]["actionKey"]
+        );
+        assert_eq!(
+            automation["activeStepCommandGroup"],
+            automation["activeStep"]["commandGroup"]
+        );
+        assert_eq!(
             automation["activeStep"]["id"],
             automation["nextStepChain"][0]["id"]
         );
@@ -13125,6 +13197,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["activeStepSource"],
             automation["fallbackPlan"]["nextStepChain"][0]["source"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepActionKey"],
+            automation["fallbackPlan"]["nextStepChain"][0]["actionKey"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepCommandGroup"],
+            automation["fallbackPlan"]["nextStepChain"][0]["commandGroup"]
         );
         assert_eq!(
             automation["fallbackPlan"]["activeStepId"],
