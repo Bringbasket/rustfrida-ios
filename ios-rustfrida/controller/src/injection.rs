@@ -720,7 +720,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
     let next_step = recommended_action
         .map(|item| {
             json!({
-                "id": next_step_id,
+                "id": next_step_id.clone(),
                 "actionKey": item.action_key,
                 "commandGroup": item.command_group,
                 "allowed": item.allowed,
@@ -729,10 +729,10 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
                 "preferredPath": preferred_path,
                 "readyToRun": item.allowed,
                 "requiresFallback": !item.allowed,
-                "command": next_step_command,
-                "phase": next_step_phase,
+                "command": next_step_command.clone(),
+                "phase": next_step_phase.clone(),
                 "commandJsonEligible": next_step_command_json_eligible,
-                "commandJsonTemplate": next_step_command_json_template,
+                "commandJsonTemplate": next_step_command_json_template.clone(),
             })
         })
         .unwrap_or(Value::Null);
@@ -824,6 +824,12 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextActionAllowed": recommended_action.map(|item| item.allowed),
         "nextActionBranch": recommended_action.map(hook_automation_branch),
         "nextActionReason": recommended_action.map(|item| item.recommendation.clone()),
+        "nextStepId": next_step_id,
+        "nextStepCommand": next_step_command,
+        "nextStepPhase": next_step_phase,
+        "nextStepCommandJsonEligible": recommended_action.map(|_| next_step_command_json_eligible),
+        "nextStepReadyToRun": recommended_action.map(|item| item.allowed),
+        "nextStepRequiresFallback": recommended_action.map(|item| !item.allowed),
         "nextStep": next_step,
         "nextStepChainSource": next_step_chain_source,
         "nextStepChainLimit": next_step_chain_limit,
@@ -1435,7 +1441,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let next_step = selected_action
         .map(|item| {
             json!({
-                "id": next_step_id,
+                "id": next_step_id.clone(),
                 "actionKey": item.action_key,
                 "commandGroup": item.command_group,
                 "allowed": item.allowed,
@@ -1446,10 +1452,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 "readyToRun": next_action_ready_to_run,
                 "requiresFallback": !next_action_ready_to_run,
                 "fallbackActionKey": fallback_action_key,
-                "command": next_step_command,
-                "phase": next_step_phase,
+                "command": next_step_command.clone(),
+                "phase": next_step_phase.clone(),
                 "commandJsonEligible": next_step_command_json_eligible,
-                "commandJsonTemplate": next_step_command_json_template,
+                "commandJsonTemplate": next_step_command_json_template.clone(),
             })
         })
         .unwrap_or(Value::Null);
@@ -4617,6 +4623,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextActionBlockedBy": selected_action.map(|item| item.blocked_by),
         "nextActionBranch": selected_action.map(hook_automation_branch),
         "nextActionReadyToRun": next_action_ready_to_run,
+        "nextStepId": next_step_id,
+        "nextStepCommand": next_step_command,
+        "nextStepPhase": next_step_phase,
+        "nextStepCommandJsonEligible": selected_action.map(|_| next_step_command_json_eligible),
+        "nextStepReadyToRun": selected_action.map(|_| next_action_ready_to_run),
+        "nextStepRequiresFallback": selected_action.map(|_| !next_action_ready_to_run),
         "nextStep": next_step,
         "nextStepChainSource": next_step_chain_source,
         "nextStepChainLimit": next_step_chain_limit,
@@ -10762,6 +10774,12 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepCommand"], "objc.classes <filter>");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepPhase"], "query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandJsonEligible"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepReadyToRun"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepRequiresFallback"], false);
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStep"]["id"],
             "next-action:hook.query:0"
@@ -10820,6 +10838,12 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["automation"]["nextStepCommand"], "objc.classes <filter>");
+        assert_eq!(rendered["hook"]["automation"]["nextStepPhase"], "query");
+        assert_eq!(rendered["hook"]["automation"]["nextStepCommandJsonEligible"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextStepRequiresFallback"], false);
         assert_eq!(
             rendered["hook"]["automation"]["nextStep"]["id"],
             "next-action:hook.query:0"
@@ -11244,6 +11268,12 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepCommand"], "objc.classes <filter>");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepPhase"], "query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandJsonEligible"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepReadyToRun"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepRequiresFallback"], false);
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStep"]["id"],
             "next-action:hook.query:0"
@@ -11302,6 +11332,12 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["automation"]["nextStepCommand"], "objc.classes <filter>");
+        assert_eq!(rendered["hook"]["automation"]["nextStepPhase"], "query");
+        assert_eq!(rendered["hook"]["automation"]["nextStepCommandJsonEligible"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
+        assert_eq!(rendered["hook"]["automation"]["nextStepRequiresFallback"], false);
         assert_eq!(
             rendered["hook"]["automation"]["nextStep"]["id"],
             "next-action:hook.query:0"
@@ -11521,6 +11557,12 @@ mod tests {
         assert_eq!(automation["nextActionBlockedBy"], "none");
         assert_eq!(automation["nextActionBranch"], "run");
         assert_eq!(automation["nextActionReadyToRun"], true);
+        assert_eq!(automation["nextStepId"], "next-action:hook.status:0");
+        assert_eq!(automation["nextStepCommand"], "trace status");
+        assert_eq!(automation["nextStepPhase"], "cleanup");
+        assert_eq!(automation["nextStepCommandJsonEligible"], true);
+        assert_eq!(automation["nextStepReadyToRun"], true);
+        assert_eq!(automation["nextStepRequiresFallback"], false);
         assert_eq!(automation["nextStep"]["id"], "next-action:hook.status:0");
         assert_eq!(automation["nextStep"]["actionKey"], "hook.status");
         assert_eq!(automation["nextStep"]["command"], "trace status");
@@ -11658,6 +11700,12 @@ mod tests {
         assert_eq!(automation["nextActionKey"], "hook.query");
         assert!(automation["nextReadyActionKey"].is_null());
         assert_eq!(automation["nextActionReadyToRun"], false);
+        assert_eq!(automation["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(automation["nextStepCommand"], "objc.classes <filter>");
+        assert_eq!(automation["nextStepPhase"], "query");
+        assert_eq!(automation["nextStepCommandJsonEligible"], true);
+        assert_eq!(automation["nextStepReadyToRun"], false);
+        assert_eq!(automation["nextStepRequiresFallback"], true);
         assert_eq!(automation["nextStep"]["id"], "next-action:hook.query:0");
         assert_eq!(automation["nextStep"]["actionKey"], "hook.query");
         assert_eq!(automation["nextStep"]["command"], "objc.classes <filter>");
