@@ -2313,6 +2313,16 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|examples| examples.get("knownResult"))
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveExampleKnownEffectivePhase": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("knownEffectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleKnownEffectiveEscalationKey": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("knownEffectiveEscalationKey"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveExampleMissingErrorCode": routing_decision_ready_resolve
             .get("examples")
             .and_then(|examples| examples.get("missingErrorCode"))
@@ -2321,6 +2331,16 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "resolveExampleMissingResult": routing_decision_ready_resolve
             .get("examples")
             .and_then(|examples| examples.get("missingResult"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleMissingEffectivePhase": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("missingEffectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleMissingEffectiveEscalationKey": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("missingEffectiveEscalationKey"))
             .cloned()
             .unwrap_or(Value::Null),
         "resolveExampleQueryOnlyInstallFailure": routing_decision_ready_resolve
@@ -2468,6 +2488,16 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|examples| examples.get("knownResult"))
             .cloned()
             .unwrap_or(Value::Null),
+        "phaseResolveExampleKnownEffectivePhase": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("knownEffectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleKnownEffectiveEscalationKey": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("knownEffectiveEscalationKey"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseResolveExampleMissingPhase": routing_decision_ready_phase_resolve
             .get("examples")
             .and_then(|examples| examples.get("missingPhase"))
@@ -2476,6 +2506,16 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "phaseResolveExampleMissingResult": routing_decision_ready_phase_resolve
             .get("examples")
             .and_then(|examples| examples.get("missingResult"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleMissingEffectivePhase": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("missingEffectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleMissingEffectiveEscalationKey": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("missingEffectiveEscalationKey"))
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolveExampleQueryOnlyInstallFailure": routing_decision_ready_phase_resolve
@@ -9615,12 +9655,28 @@ mod tests {
             "matched-error-code"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownEffectivePhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownEffectiveEscalationKey"],
+            "policy-review"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingErrorCode"],
             "hook-fallback-unknown"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResult"]["reason"],
             "missing-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingEffectiveEscalationKey"],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveErrorCodeCount"],
@@ -9755,12 +9811,28 @@ mod tests {
             "matched-phase"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownEffectivePhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownEffectiveEscalationKey"],
+            "policy-review"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingPhase"],
             "unknown"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingResult"]["reason"],
             "missing-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingEffectiveEscalationKey"],
+            "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolvePhaseCount"],
