@@ -2400,6 +2400,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("index")
             .cloned()
             .unwrap_or(json!({})),
+        "resolveIndexEntries": routing_decision_ready_resolve
+            .get("index")
+            .cloned()
+            .unwrap_or(json!({})),
         "resolveDefault": routing_decision_ready_resolve
             .get("default")
             .cloned()
@@ -2799,6 +2803,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolveIndex": routing_decision_ready_phase_resolve
+            .get("index")
+            .cloned()
+            .unwrap_or(json!({})),
+        "phaseResolveIndexEntries": routing_decision_ready_phase_resolve
             .get("index")
             .cloned()
             .unwrap_or(json!({})),
@@ -10469,6 +10477,10 @@ mod tests {
             "matched-error-code"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveIndexEntries"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveIndex"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveDefault"]["reason"],
             "missing-error-code"
         );
@@ -10757,6 +10769,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveIndex"]["preflight"]["reason"],
             "matched-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveIndexEntries"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveIndex"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefault"]["reason"],
