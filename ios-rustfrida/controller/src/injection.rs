@@ -1619,6 +1619,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                         "command": command,
                         "phase": next_step_phase,
                         "readyToRun": true,
+                        "requiresFallback": false,
                         "commandJsonEligible": next_step_command_json_eligible,
                         "kind": next_step_command_json_template
                             .as_ref()
@@ -1697,6 +1698,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                     "source": "fallback-plan",
                     "command": entry.get("command").cloned().unwrap_or(Value::Null),
                     "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
+                    "readyToRun": true,
+                    "requiresFallback": true,
                     "kind": entry.get("kind").cloned().unwrap_or(Value::Null),
                     "commandJsonEligible": entry
                         .get("commandJsonEligible")
@@ -4973,6 +4976,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .unwrap_or(Value::Null),
         "activeStepPhase": active_step
             .and_then(|entry| entry.get("phase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepReadyToRun": active_step
+            .and_then(|entry| entry.get("readyToRun"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepRequiresFallback": active_step
+            .and_then(|entry| entry.get("requiresFallback"))
             .cloned()
             .unwrap_or(Value::Null),
         "activeStepKind": active_step
@@ -11403,6 +11414,11 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["activeStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["automation"]["activeStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["automation"]["activeStepPhase"], "query");
+        assert_eq!(rendered["hook"]["automation"]["activeStepReadyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepRequiresFallback"],
+            false
+        );
         assert_eq!(rendered["hook"]["automation"]["activeStepCommandJsonEligible"], true);
         assert_eq!(
             rendered["hook"]["automation"]["activeStepRetryable"],
@@ -12157,6 +12173,11 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["activeStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["automation"]["activeStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["automation"]["activeStepPhase"], "query");
+        assert_eq!(rendered["hook"]["automation"]["activeStepReadyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepRequiresFallback"],
+            false
+        );
         assert_eq!(rendered["hook"]["automation"]["activeStepCommandJsonEligible"], true);
         assert_eq!(
             rendered["hook"]["automation"]["activeStepRetryable"],
@@ -12527,6 +12548,8 @@ mod tests {
         assert_eq!(automation["activeStepId"], "next-action:hook.status:0");
         assert_eq!(automation["activeStepCommand"], "trace status");
         assert_eq!(automation["activeStepPhase"], "cleanup");
+        assert_eq!(automation["activeStepReadyToRun"], true);
+        assert_eq!(automation["activeStepRequiresFallback"], false);
         assert_eq!(automation["activeStepCommandJsonEligible"], true);
         assert_eq!(
             automation["activeStepRetryable"],
@@ -12767,6 +12790,8 @@ mod tests {
         assert_eq!(automation["activeStepId"], "fallback-plan:0");
         assert_eq!(automation["activeStepCommand"], "native.hookenv");
         assert_eq!(automation["activeStepPhase"], "diagnose");
+        assert_eq!(automation["activeStepReadyToRun"], true);
+        assert_eq!(automation["activeStepRequiresFallback"], true);
         assert_eq!(automation["activeStepCommandJsonEligible"], true);
         assert_eq!(
             automation["activeStepRetryable"],
