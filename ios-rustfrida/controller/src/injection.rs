@@ -2655,6 +2655,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("errorCodeCount")
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveKnownTotal": routing_decision_ready_resolve
+            .get("errorCodeCount")
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveKnownLength": routing_decision_ready_resolve
             .get("errorCodeCount")
             .cloned()
@@ -3097,6 +3101,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolveKnownCount": routing_decision_ready_phase_resolve
+            .get("phaseCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveKnownTotal": routing_decision_ready_phase_resolve
             .get("phaseCount")
             .cloned()
             .unwrap_or(Value::Null),
@@ -10671,6 +10679,10 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveErrorCodeCount"]
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownTotal"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownCount"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownLength"],
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownCount"]
         );
@@ -10991,6 +11003,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownCount"],
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolvePhaseCount"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownTotal"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownCount"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownLength"],
