@@ -5602,6 +5602,7 @@ struct ParsedHookEffectiveBlockedDetails {
     coexistence_mode: Option<String>,
     backend_pressure: Option<String>,
     fallback_action_key: Option<String>,
+    fallback_step_id: Option<String>,
     fallback_command: Option<String>,
     fallback_phase: Option<String>,
 }
@@ -5630,6 +5631,7 @@ fn compute_hook_fallback_available(
 #[cfg(unix)]
 fn parse_hook_effective_blocked_details(message: &str) -> ParsedHookEffectiveBlockedDetails {
     let fallback_action_key = parse_error_field(message, "fallbackActionKey");
+    let fallback_step_id = parse_error_field(message, "fallbackStepId");
     let fallback_command = parse_error_field_with_boundaries(
         message,
         "fallbackCommand",
@@ -5650,6 +5652,7 @@ fn parse_hook_effective_blocked_details(message: &str) -> ParsedHookEffectiveBlo
         coexistence_mode: parse_error_field(message, "coexistenceMode"),
         backend_pressure: parse_error_field(message, "backendPressure"),
         fallback_action_key,
+        fallback_step_id,
         fallback_command,
         fallback_phase,
     }
@@ -5743,6 +5746,25 @@ fn normalize_hook_fallback_phase(value: Option<String>) -> Option<String> {
 }
 
 #[cfg(unix)]
+fn is_valid_hook_fallback_step_id(value: &str) -> bool {
+    !value.is_empty()
+        && (value.starts_with("next-action:") || value.starts_with("fallback-plan:"))
+        && value
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, ':' | '-' | '.' | '_'))
+}
+
+#[cfg(unix)]
+fn normalize_hook_fallback_step_id(value: Option<String>) -> Option<String> {
+    match value {
+        Some(value) if value == "<none>" || value == "unknown" => Some(value),
+        Some(value) if is_valid_hook_fallback_step_id(&value) => Some(value),
+        Some(_) => Some("unknown".into()),
+        None => None,
+    }
+}
+
+#[cfg(unix)]
 fn push_unique_hint(hints: &mut Vec<String>, hint: impl Into<String>) {
     let hint = hint.into();
     if !hint.is_empty() && !hints.iter().any(|existing| existing == &hint) {
@@ -5819,6 +5841,7 @@ fn failure_diagnostics_to_json(
     let mut coexistence_mode: Option<String> = None;
     let mut backend_pressure: Option<String> = None;
     let mut fallback_action_key: Option<String> = None;
+    let mut fallback_step_id: Option<String> = None;
     let mut fallback_command: Option<String> = None;
     let mut fallback_phase: Option<String> = None;
     let mut hook_fallback_available: Option<bool> = None;
@@ -5964,6 +5987,7 @@ fn failure_diagnostics_to_json(
             coexistence_mode = normalize_hook_coexistence_mode(parsed.coexistence_mode);
             backend_pressure = normalize_hook_backend_pressure(parsed.backend_pressure);
             fallback_action_key = normalize_hook_action_key(parsed.fallback_action_key);
+            fallback_step_id = normalize_hook_fallback_step_id(parsed.fallback_step_id);
             fallback_command = parsed.fallback_command;
             fallback_phase = normalize_hook_fallback_phase(parsed.fallback_phase);
             hook_fallback_available = compute_hook_fallback_available(
@@ -6048,6 +6072,7 @@ fn failure_diagnostics_to_json(
         coexistence_mode.get_or_insert_with(|| "unknown".into());
         backend_pressure.get_or_insert_with(|| "unknown".into());
         fallback_action_key.get_or_insert_with(|| "unknown".into());
+        fallback_step_id.get_or_insert_with(|| "unknown".into());
         fallback_phase.get_or_insert_with(|| "unknown".into());
         hook_fallback_available.get_or_insert(false);
 
@@ -6092,7 +6117,8 @@ fn failure_diagnostics_to_json(
                     push_unique_hint(
                         &mut hints,
                         format!(
-                            "fallback command available: action={action_key}, phase={phase_label}, command={command}"
+                            "fallback command available: action={action_key}, phase={phase_label}, command={command}, stepId={}",
+                            fallback_step_id.as_deref().unwrap_or("unknown")
                         ),
                     );
                 }
@@ -6113,6 +6139,7 @@ fn failure_diagnostics_to_json(
         || coexistence_mode.is_some()
         || backend_pressure.is_some()
         || fallback_action_key.is_some()
+        || fallback_step_id.is_some()
         || fallback_command.is_some()
         || fallback_phase.is_some()
         || hook_fallback_available.is_some();
@@ -6130,6 +6157,7 @@ fn failure_diagnostics_to_json(
             "coexistenceMode": coexistence_mode,
             "backendPressure": backend_pressure,
             "fallbackActionKey": fallback_action_key,
+            "fallbackStepId": fallback_step_id,
             "fallbackCommand": fallback_command,
             "fallbackPhase": fallback_phase,
             "fallbackAvailable": hook_fallback_available,
@@ -6156,6 +6184,7 @@ fn failure_diagnostics_to_json(
         "coexistenceMode": coexistence_mode.clone(),
         "backendPressure": backend_pressure.clone(),
         "fallbackActionKey": fallback_action_key.clone(),
+        "fallbackStepId": fallback_step_id.clone(),
         "fallbackCommand": fallback_command.clone(),
         "fallbackPhase": fallback_phase.clone(),
         "hookFallbackAvailable": hook_fallback_available,
@@ -7852,6 +7881,11 @@ fn ensure_inline_hooks_allowed_for_command(
         .get("nextActionKey")
         .and_then(Value::as_str)
         .unwrap_or("<none>");
+    let fallback_step_id = coexistence
+        .get("nextStep")
+        .and_then(|value| value.get("id"))
+        .and_then(Value::as_str)
+        .unwrap_or("<none>");
     let fallback_command = coexistence
         .get("nextActionTemplates")
         .and_then(Value::as_array)
@@ -7872,7 +7906,7 @@ fn ensure_inline_hooks_allowed_for_command(
         blocked_details.join("; ")
     };
     Err(Error::State(format!(
-        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={} baseCommandMode={} effectiveCommandMode={} autoDowngradedToQueryOnly={} autoDowngradeReason={} coexistenceMode={} backendPressure={} fallbackActionKey={} fallbackCommand={} fallbackPhase={}; recommendation={}; {}",
+        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={} baseCommandMode={} effectiveCommandMode={} autoDowngradedToQueryOnly={} autoDowngradeReason={} coexistenceMode={} backendPressure={} fallbackActionKey={} fallbackStepId={} fallbackCommand={} fallbackPhase={}; recommendation={}; {}",
         effective_action.action_key,
         effective_action.command_group,
         effective_action.blocked_by,
@@ -7884,6 +7918,7 @@ fn ensure_inline_hooks_allowed_for_command(
         coexistence_mode,
         backend_pressure,
         fallback_action_key,
+        fallback_step_id,
         fallback_command,
         fallback_phase,
         effective_action.recommendation,
@@ -10210,6 +10245,9 @@ mod tests {
         assert!(query_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(query_err.to_string().contains("backendPressure=both"));
         assert!(query_err.to_string().contains("fallbackActionKey=hook.status"));
+        assert!(query_err
+            .to_string()
+            .contains("fallbackStepId=next-action:hook.status:0"));
         assert!(query_err.to_string().contains("fallbackCommand=trace status"));
         assert!(query_err.to_string().contains("fallbackPhase=cleanup"));
 
@@ -10233,6 +10271,9 @@ mod tests {
         assert!(install_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(install_err.to_string().contains("backendPressure=both"));
         assert!(install_err.to_string().contains("fallbackActionKey=hook.status"));
+        assert!(install_err
+            .to_string()
+            .contains("fallbackStepId=next-action:hook.status:0"));
         assert!(install_err.to_string().contains("fallbackCommand=trace status"));
         assert!(install_err.to_string().contains("fallbackPhase=cleanup"));
     }
@@ -10306,6 +10347,7 @@ mod tests {
         assert!(rendered.contains("coexistenceMode=query-only"));
         assert!(rendered.contains("backendPressure=both"));
         assert!(rendered.contains("fallbackActionKey=hook.query"));
+        assert!(rendered.contains("fallbackStepId=next-action:hook.query:0"));
         assert!(rendered.contains("fallbackCommand=objc.classes <filter>"));
         assert!(rendered.contains("fallbackPhase=query"));
         assert!(rendered.contains("controller policy=query-only-external-loaded"));
@@ -10981,7 +11023,7 @@ mod tests {
         let hook_blocked_rendered = render_command_error_json_with_context(
             "trace UIViewController",
             &Error::State(
-                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
+                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackStepId=next-action:hook.status:0 fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
             ),
             &[],
             &CommandJsonContext {
@@ -11016,6 +11058,10 @@ mod tests {
         assert_eq!(
             hook_blocked_rendered["diagnostics"]["hook"]["autoDowngradeReason"],
             "<none>"
+        );
+        assert_eq!(
+            hook_blocked_rendered["diagnostics"]["hook"]["fallbackStepId"],
+            "next-action:hook.status:0"
         );
         assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["fallbackCommand"], "trace status");
         assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["fallbackAvailable"], true);
@@ -15800,7 +15846,7 @@ mod tests {
             None,
             &[],
             Some(&Error::State(
-                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
+                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackStepId=next-action:hook.status:0 fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
             )),
         );
 
@@ -15821,6 +15867,7 @@ mod tests {
         assert_eq!(rendered["diagnostics"]["coexistenceMode"], "cleanup-only");
         assert_eq!(rendered["diagnostics"]["backendPressure"], "both");
         assert_eq!(rendered["diagnostics"]["fallbackActionKey"], "hook.status");
+        assert_eq!(rendered["diagnostics"]["fallbackStepId"], "next-action:hook.status:0");
         assert_eq!(rendered["diagnostics"]["fallbackCommand"], "trace status");
         assert_eq!(rendered["diagnostics"]["fallbackPhase"], "cleanup");
         assert_eq!(rendered["diagnostics"]["hookFallbackAvailable"], true);
@@ -15842,6 +15889,10 @@ mod tests {
         assert_eq!(rendered["diagnostics"]["hook"]["coexistenceMode"], "cleanup-only");
         assert_eq!(rendered["diagnostics"]["hook"]["backendPressure"], "both");
         assert_eq!(rendered["diagnostics"]["hook"]["fallbackActionKey"], "hook.status");
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["fallbackStepId"],
+            "next-action:hook.status:0"
+        );
         assert_eq!(rendered["diagnostics"]["hook"]["fallbackCommand"], "trace status");
         assert_eq!(rendered["diagnostics"]["hook"]["fallbackPhase"], "cleanup");
         assert_eq!(rendered["diagnostics"]["hook"]["fallbackAvailable"], true);
@@ -15860,7 +15911,7 @@ mod tests {
             .any(|item| item
                 .as_str()
                 .unwrap_or_default()
-                .contains("fallback command available: action=hook.status, phase=cleanup, command=trace status")));
+                .contains("fallback command available: action=hook.status, phase=cleanup, command=trace status, stepId=next-action:hook.status:0")));
 
         let auto_downgraded_rendered = render_injection_result_json(
             &config,
@@ -15879,7 +15930,7 @@ mod tests {
             None,
             &[],
             Some(&Error::State(
-                "hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=allowed effectiveCommandMode=query-only autoDowngradedToQueryOnly=true autoDowngradeReason=split-loaded-external-backends-without-shared-runtime coexistenceMode=query-only backendPressure=both fallbackActionKey=hook.query fallbackCommand=objc.classes <filter> fallbackPhase=query; recommendation=split backend downgrade".into(),
+                "hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=allowed effectiveCommandMode=query-only autoDowngradedToQueryOnly=true autoDowngradeReason=split-loaded-external-backends-without-shared-runtime coexistenceMode=query-only backendPressure=both fallbackActionKey=hook.query fallbackStepId=next-action:hook.query:0 fallbackCommand=objc.classes <filter> fallbackPhase=query; recommendation=split backend downgrade".into(),
             )),
         );
         assert_eq!(
@@ -15966,6 +16017,7 @@ mod tests {
         assert_eq!(legacy_rendered["diagnostics"]["coexistenceMode"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["backendPressure"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["fallbackActionKey"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["fallbackStepId"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["fallbackPhase"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["hookFallbackAvailable"], false);
         assert_eq!(legacy_rendered["diagnostics"]["hook"]["actionKey"], "unknown");
@@ -15992,6 +16044,7 @@ mod tests {
         assert_eq!(legacy_rendered["diagnostics"]["hook"]["coexistenceMode"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["hook"]["backendPressure"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["hook"]["fallbackActionKey"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["fallbackStepId"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["hook"]["fallbackPhase"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["hook"]["fallbackAvailable"], false);
 
