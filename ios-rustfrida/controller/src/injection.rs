@@ -5428,9 +5428,11 @@ fn failure_diagnostics_to_json(
         } else if message.contains("target hook strategy blocked injection") {
             phase = "hook-policy".into();
             code = "target-hook-policy-blocked".into();
+            hook_blocked_by = Some("target".into());
         } else if message.contains("hook strategy blocked injection") {
             phase = "hook-policy".into();
             code = "controller-hook-policy-blocked".into();
+            hook_blocked_by = Some("controller".into());
         } else if message.contains("hook-effective-blocked") {
             phase = "hook-policy".into();
             hook_action_key = parse_error_field(&message, "actionKey");
@@ -14808,6 +14810,28 @@ mod tests {
                 .as_str()
                 .unwrap_or_default()
                 .contains("effective hook command mode during failure: query-only")));
+
+        let legacy_rendered = render_injection_result_json(
+            &config,
+            42,
+            "/tmp/iosrf.sock",
+            &plan,
+            &environment,
+            &doctor,
+            &preflight,
+            None,
+            None,
+            None,
+            None,
+            false,
+            None,
+            None,
+            &[],
+            Some(&Error::State("target hook strategy blocked injection: external backend already loaded in target".into())),
+        );
+        assert_eq!(legacy_rendered["diagnostics"]["phase"], "hook-policy");
+        assert_eq!(legacy_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
+        assert_eq!(legacy_rendered["diagnostics"]["hookBlockedBy"], "target");
     }
 
     #[test]
