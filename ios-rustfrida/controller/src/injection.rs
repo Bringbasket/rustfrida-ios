@@ -579,6 +579,8 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "allowed" => {
             if backend_pressure == "none" {
                 "inline-safe"
+            } else if backend_pressure == "filesystem-only" {
+                "inline-cautious"
             } else {
                 "inline-risky"
             }
@@ -589,6 +591,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
     };
     let strategy = match mode {
         "inline-safe" => "internal-inline-preferred",
+        "inline-cautious" => "filesystem-candidate-cautious",
         "inline-risky" => "external-backend-coexist-risky",
         "query-only" => "query-only-fallback",
         "cleanup-only" => "cleanup-only-fallback",
@@ -597,6 +600,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
     let risk_level = match mode {
         "blocked" => "blocked",
         "cleanup-only" => "high",
+        "inline-cautious" => "cautious",
         "query-only" => "elevated",
         "inline-risky" => "elevated",
         _ => "normal",
@@ -742,6 +746,13 @@ fn hook_automation_suggested_sequence(preferred_path: &str) -> Vec<String> {
             "trace <objc-filter|native-target>",
             "stalker <objc-filter|native-target>",
         ],
+        "inline-cautious" => &[
+            "native.hookenv",
+            "controller --preflight-only --preflight-json --pid <pid>",
+            "trace status",
+            "trace <objc-filter|native-target> # caution-filesystem-only-backend-artifacts",
+            "stalker <objc-filter|native-target> # caution-filesystem-only-backend-artifacts",
+        ],
         "inline-risky" => &[
             "native.hookenv",
             "trace status",
@@ -796,6 +807,13 @@ fn hook_action_command_templates(action_key: &str, preferred_path: &str) -> Vec<
                 "jhook <class> <selector> [meta] # risky-with-external-backend",
                 "shook <type> <method> # risky-with-external-backend",
                 "hfl <module> <offset> # risky-with-external-backend",
+            ],
+            "inline-cautious" => &[
+                "trace <objc-filter|native-target> # caution-filesystem-only-backend-artifacts",
+                "stalker <objc-filter|native-target> # caution-filesystem-only-backend-artifacts",
+                "jhook <class> <selector> [meta] # caution-filesystem-only-backend-artifacts",
+                "shook <type> <method> # caution-filesystem-only-backend-artifacts",
+                "hfl <module> <offset> # caution-filesystem-only-backend-artifacts",
             ],
             "inline-safe" => &[
                 "trace <objc-filter|native-target>",
@@ -864,6 +882,8 @@ fn command_template_placeholders(command: &str) -> Vec<String> {
 fn command_template_risk(template: &str) -> &'static str {
     if template.contains("# risky-with-external-backend") {
         "risky-with-external-backend"
+    } else if template.contains("# caution-filesystem-only-backend-artifacts") {
+        "cautious-filesystem-only-backend-artifacts"
     } else {
         "normal"
     }
@@ -1066,6 +1086,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "allowed" => {
             if backend_pressure == "none" {
                 "inline-safe"
+            } else if backend_pressure == "filesystem-only" {
+                "inline-cautious"
             } else {
                 "inline-risky"
             }
@@ -14459,6 +14481,72 @@ mod tests {
             .as_str()
             .unwrap_or_default()
             .contains("risky-with-external-backend"));
+    }
+
+    #[test]
+    fn hook_backend_matrix_filesystem_only_prefers_inline_cautious_path() {
+        let controller_report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![HookBackendInfo {
+                id: "libhooker".into(),
+                display_name: "libhooker".into(),
+                loaded_images: vec![],
+                filesystem_paths: vec!["/var/jb/usr/lib/libhooker.dylib".into()],
+            }],
+            warnings: vec![],
+        };
+        let target_report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![HookBackendInfo {
+                id: "libhooker".into(),
+                display_name: "libhooker".into(),
+                loaded_images: vec![],
+                filesystem_paths: vec!["/var/jb/usr/lib/libhooker.dylib".into()],
+            }],
+            warnings: vec![],
+        };
+
+        let rendered = hook_backend_matrix_to_json(&controller_report, &target_report);
+        assert_eq!(rendered["loadedInControllerCount"], 0);
+        assert_eq!(rendered["loadedInTargetCount"], 0);
+        assert_eq!(rendered["filesystemOnlyInEitherCount"], 1);
+
+        let strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-cautious".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: Some("filesystem-only backend artifacts detected".into()),
+        };
+        let controller_actions = hook_environment_recommended_actions(&controller_report, Some(&strategy));
+        let target_actions = hook_environment_recommended_actions(&target_report, Some(&strategy));
+        let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
+
+        let coexistence = super::hook_coexistence_to_json(&effective_actions, &rendered);
+        let automation = hook_automation_to_json(&effective_actions, &rendered);
+
+        assert_eq!(coexistence["mode"], "inline-cautious");
+        assert_eq!(coexistence["strategy"], "filesystem-candidate-cautious");
+        assert_eq!(coexistence["riskLevel"], "cautious");
+        assert_eq!(coexistence["backendPressure"], "filesystem-only");
+
+        assert_eq!(automation["preferredPath"], "inline-cautious");
+        assert_eq!(automation["suggestedSequence"][1], "controller --preflight-only --preflight-json --pid <pid>");
+
+        let templates = automation["commandTemplates"].as_array().expect("command templates");
+        let install_templates = templates
+            .iter()
+            .find(|item| item["actionKey"] == "hook.install")
+            .expect("hook.install templates");
+        assert_eq!(install_templates["templateCount"], 5);
+        assert_eq!(
+            install_templates["commandJsonTemplates"][0]["risk"],
+            "cautious-filesystem-only-backend-artifacts"
+        );
+        assert!(install_templates["templates"][0]
+            .as_str()
+            .unwrap_or_default()
+            .contains("caution-filesystem-only-backend-artifacts"));
     }
 
     #[test]
