@@ -2263,6 +2263,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("outputShape")
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveIndex": routing_decision_ready_resolve
+            .get("index")
+            .cloned()
+            .unwrap_or(json!({})),
+        "resolveDefault": routing_decision_ready_resolve
+            .get("default")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExamples": routing_decision_ready_resolve
+            .get("examples")
+            .cloned()
+            .unwrap_or(json!({})),
         "resolveErrorCodeCount": routing_decision_ready_resolve
             .get("errorCodeCount")
             .cloned()
@@ -2339,6 +2351,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("outputShape")
             .cloned()
             .unwrap_or(Value::Null),
+        "phaseResolveIndex": routing_decision_ready_phase_resolve
+            .get("index")
+            .cloned()
+            .unwrap_or(json!({})),
+        "phaseResolveDefault": routing_decision_ready_phase_resolve
+            .get("default")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExamples": routing_decision_ready_phase_resolve
+            .get("examples")
+            .cloned()
+            .unwrap_or(json!({})),
         "phaseResolvePhaseCount": routing_decision_ready_phase_resolve
             .get("phaseCount")
             .cloned()
@@ -9203,6 +9227,18 @@ mod tests {
             "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveIndex"]["hook-fallback-preflight-failed"]["reason"],
+            "matched-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveDefault"]["reason"],
+            "missing-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExamples"]["knownErrorCode"],
+            "hook-fallback-diagnose-failed"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveErrorCodeCount"],
             6
         );
@@ -9281,6 +9317,18 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveOutputShape"],
             "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveIndex"]["preflight"]["reason"],
+            "matched-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefault"]["reason"],
+            "missing-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExamples"]["knownPhase"],
+            "diagnose"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolvePhaseCount"],
