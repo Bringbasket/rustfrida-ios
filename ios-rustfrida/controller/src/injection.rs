@@ -7145,17 +7145,30 @@ fn ensure_inline_hooks_allowed_for_command(
     }
 
     let command_mode = hook_effective_command_mode(&effective_actions);
+    let backend_matrix =
+        hook_backend_matrix_to_json(&injection_environment.hook_environment, &preflight.target_hook_environment);
+    let coexistence = hook_coexistence_to_json(&effective_actions, &backend_matrix);
+    let coexistence_mode = coexistence
+        .get("mode")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
+    let backend_pressure = coexistence
+        .get("backendPressure")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
     let detail_text = if blocked_details.is_empty() {
         effective_action.recommendation.clone()
     } else {
         blocked_details.join("; ")
     };
     Err(Error::State(format!(
-        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={}; recommendation={}; {}",
+        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={} coexistenceMode={} backendPressure={}; recommendation={}; {}",
         effective_action.action_key,
         effective_action.command_group,
         effective_action.blocked_by,
         command_mode,
+        coexistence_mode,
+        backend_pressure,
         effective_action.recommendation,
         detail_text
     )))
@@ -9469,12 +9482,16 @@ mod tests {
         assert!(query_err.to_string().contains("hook-effective-blocked"));
         assert!(query_err.to_string().contains("blockedBy=both"));
         assert!(query_err.to_string().contains("commandMode=cleanup-only"));
+        assert!(query_err.to_string().contains("coexistenceMode=cleanup-only"));
+        assert!(query_err.to_string().contains("backendPressure=both"));
 
         let install_err = ensure_inline_hooks_allowed_for_command("trace UIViewController", &environment, &preflight)
             .expect_err("hook install should be blocked in cleanup-only mode");
         assert!(install_err.to_string().contains("forbids hook-install commands"));
         assert!(install_err.to_string().contains("blockedBy=both"));
         assert!(install_err.to_string().contains("commandMode=cleanup-only"));
+        assert!(install_err.to_string().contains("coexistenceMode=cleanup-only"));
+        assert!(install_err.to_string().contains("backendPressure=both"));
     }
 
     #[test]
@@ -9539,6 +9556,8 @@ mod tests {
         assert!(rendered.contains("hook-effective-blocked"));
         assert!(rendered.contains("blockedBy=both"));
         assert!(rendered.contains("commandMode=query-only"));
+        assert!(rendered.contains("coexistenceMode=query-only"));
+        assert!(rendered.contains("backendPressure=both"));
         assert!(rendered.contains("controller policy=query-only-external-loaded"));
         assert!(rendered.contains("target policy=query-only-external-loaded"));
     }
