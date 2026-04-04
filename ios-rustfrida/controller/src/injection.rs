@@ -5541,6 +5541,34 @@ fn failure_diagnostics_to_json(
     }
 
     push_agent_path_hints(config, &mut hints);
+    let hook_details_present = hook_action_key.is_some()
+        || hook_command_group.is_some()
+        || hook_blocked_by.is_some()
+        || hook_command_mode.is_some()
+        || hook_recommendation.is_some()
+        || coexistence_mode.is_some()
+        || backend_pressure.is_some()
+        || fallback_action_key.is_some()
+        || fallback_command.is_some()
+        || fallback_phase.is_some()
+        || hook_fallback_available.is_some();
+    let hook_diagnostics = if hook_details_present {
+        json!({
+            "actionKey": hook_action_key,
+            "commandGroup": hook_command_group,
+            "blockedBy": hook_blocked_by,
+            "commandMode": hook_command_mode,
+            "recommendation": hook_recommendation,
+            "coexistenceMode": coexistence_mode,
+            "backendPressure": backend_pressure,
+            "fallbackActionKey": fallback_action_key,
+            "fallbackCommand": fallback_command,
+            "fallbackPhase": fallback_phase,
+            "fallbackAvailable": hook_fallback_available,
+        })
+    } else {
+        Value::Null
+    };
 
     json!({
         "phase": phase,
@@ -5548,17 +5576,18 @@ fn failure_diagnostics_to_json(
         "bootstrapStatus": bootstrap_status,
         "handshakeStage": handshake_stage,
         "failedStep": failed_step,
-        "hookActionKey": hook_action_key,
-        "hookCommandGroup": hook_command_group,
-        "hookBlockedBy": hook_blocked_by,
-        "hookCommandMode": hook_command_mode,
-        "hookRecommendation": hook_recommendation,
-        "coexistenceMode": coexistence_mode,
-        "backendPressure": backend_pressure,
-        "fallbackActionKey": fallback_action_key,
-        "fallbackCommand": fallback_command,
-        "fallbackPhase": fallback_phase,
+        "hookActionKey": hook_action_key.clone(),
+        "hookCommandGroup": hook_command_group.clone(),
+        "hookBlockedBy": hook_blocked_by.clone(),
+        "hookCommandMode": hook_command_mode.clone(),
+        "hookRecommendation": hook_recommendation.clone(),
+        "coexistenceMode": coexistence_mode.clone(),
+        "backendPressure": backend_pressure.clone(),
+        "fallbackActionKey": fallback_action_key.clone(),
+        "fallbackCommand": fallback_command.clone(),
+        "fallbackPhase": fallback_phase.clone(),
         "hookFallbackAvailable": hook_fallback_available,
+        "hook": hook_diagnostics,
         "hints": hints,
     })
 }
@@ -14802,6 +14831,20 @@ mod tests {
         assert_eq!(rendered["diagnostics"]["fallbackCommand"], "trace status");
         assert_eq!(rendered["diagnostics"]["fallbackPhase"], "cleanup");
         assert_eq!(rendered["diagnostics"]["hookFallbackAvailable"], true);
+        assert_eq!(rendered["diagnostics"]["hook"]["actionKey"], "hook.install");
+        assert_eq!(rendered["diagnostics"]["hook"]["commandGroup"], "hook-install");
+        assert_eq!(rendered["diagnostics"]["hook"]["blockedBy"], "target");
+        assert_eq!(rendered["diagnostics"]["hook"]["commandMode"], "query-only");
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["recommendation"],
+            "blocked by target hook policy"
+        );
+        assert_eq!(rendered["diagnostics"]["hook"]["coexistenceMode"], "cleanup-only");
+        assert_eq!(rendered["diagnostics"]["hook"]["backendPressure"], "both");
+        assert_eq!(rendered["diagnostics"]["hook"]["fallbackActionKey"], "hook.status");
+        assert_eq!(rendered["diagnostics"]["hook"]["fallbackCommand"], "trace status");
+        assert_eq!(rendered["diagnostics"]["hook"]["fallbackPhase"], "cleanup");
+        assert_eq!(rendered["diagnostics"]["hook"]["fallbackAvailable"], true);
         assert!(rendered["diagnostics"]["hints"]
             .as_array()
             .expect("hints array")
@@ -14832,6 +14875,7 @@ mod tests {
         assert_eq!(legacy_rendered["diagnostics"]["phase"], "hook-policy");
         assert_eq!(legacy_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
         assert_eq!(legacy_rendered["diagnostics"]["hookBlockedBy"], "target");
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["blockedBy"], "target");
     }
 
     #[test]
