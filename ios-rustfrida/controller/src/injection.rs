@@ -10252,9 +10252,40 @@ mod tests {
         );
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerAvailable"], false);
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["loadedBackendCount"], 0);
+        assert_eq!(rendered["diagnostics"]["code"], "bind-socket");
+        assert!(rendered["diagnostics"]["hook"].is_null());
         assert_eq!(rendered["payload"], json!(null));
         assert_eq!(rendered["items"], json!([]));
         assert_eq!(rendered["logs"][0], "bootstrap pending");
+
+        let hook_blocked_rendered = render_command_error_json_with_context(
+            "trace UIViewController",
+            &Error::State(
+                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
+            ),
+            &[],
+            &CommandJsonContext {
+                config: &config,
+                pid: 42,
+                socket_path: "/tmp/iosrf.sock",
+                plan: &plan,
+                injection_environment: &environment,
+                doctor: &doctor,
+                preflight: &preflight,
+                trace: None,
+                hello: None,
+                ping: None,
+                hook_environment_notice: None,
+                hook_environment_checked: false,
+                jsinit_result: None,
+                loadjs_result: None,
+            },
+        );
+        assert_eq!(hook_blocked_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
+        assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["actionKey"], "hook.install");
+        assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["blockedBy"], "target");
+        assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["fallbackCommand"], "trace status");
+        assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["fallbackAvailable"], true);
     }
 
     #[test]
