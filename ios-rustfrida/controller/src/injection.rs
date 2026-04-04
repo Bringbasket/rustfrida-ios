@@ -5380,6 +5380,10 @@ struct ParsedHookEffectiveBlockedDetails {
     command_group: Option<String>,
     blocked_by: Option<String>,
     command_mode: Option<String>,
+    base_command_mode: Option<String>,
+    effective_command_mode: Option<String>,
+    auto_downgraded_to_query_only: Option<String>,
+    auto_downgrade_reason: Option<String>,
     recommendation: Option<String>,
     coexistence_mode: Option<String>,
     backend_pressure: Option<String>,
@@ -5424,6 +5428,10 @@ fn parse_hook_effective_blocked_details(message: &str) -> ParsedHookEffectiveBlo
         command_group: parse_error_field(message, "commandGroup"),
         blocked_by: parse_error_field(message, "blockedBy"),
         command_mode: parse_error_field(message, "commandMode"),
+        base_command_mode: parse_error_field(message, "baseCommandMode"),
+        effective_command_mode: parse_error_field(message, "effectiveCommandMode"),
+        auto_downgraded_to_query_only: parse_error_field(message, "autoDowngradedToQueryOnly"),
+        auto_downgrade_reason: parse_error_field(message, "autoDowngradeReason"),
         recommendation: parse_error_field_with_boundaries(message, "recommendation", &[]),
         coexistence_mode: parse_error_field(message, "coexistenceMode"),
         backend_pressure: parse_error_field(message, "backendPressure"),
@@ -5446,6 +5454,26 @@ fn normalize_hook_blocked_by(value: Option<String>) -> Option<String> {
 fn normalize_hook_command_mode(value: Option<String>) -> Option<String> {
     match value.as_deref() {
         Some("allowed" | "query-only" | "cleanup-only" | "blocked" | "unknown") => value,
+        Some(_) => Some("unknown".into()),
+        None => None,
+    }
+}
+
+#[cfg(unix)]
+fn parse_bool_token(value: Option<String>) -> Option<bool> {
+    match value.as_deref() {
+        Some("true") => Some(true),
+        Some("false") => Some(false),
+        _ => None,
+    }
+}
+
+#[cfg(unix)]
+fn normalize_hook_auto_downgrade_reason(value: Option<String>) -> Option<String> {
+    match value.as_deref() {
+        Some(
+            HOOK_MODE_AUTO_DOWNGRADE_REASON_SPLIT_BACKEND_LOADED | "<none>" | "unknown",
+        ) => value,
         Some(_) => Some("unknown".into()),
         None => None,
     }
@@ -5569,6 +5597,10 @@ fn failure_diagnostics_to_json(
     let mut hook_command_group: Option<String> = None;
     let mut hook_blocked_by: Option<String> = None;
     let mut hook_command_mode: Option<String> = None;
+    let mut hook_base_command_mode: Option<String> = None;
+    let mut hook_effective_command_mode: Option<String> = None;
+    let mut hook_auto_downgraded_to_query_only: Option<bool> = None;
+    let mut hook_auto_downgrade_reason: Option<String> = None;
     let mut hook_recommendation: Option<String> = None;
     let mut coexistence_mode: Option<String> = None;
     let mut backend_pressure: Option<String> = None;
@@ -5699,7 +5731,15 @@ fn failure_diagnostics_to_json(
                 Some("both") => "both-hook-policies-blocked".into(),
                 _ => "hook-effective-blocked".into(),
             };
-            hook_command_mode = normalize_hook_command_mode(parsed.command_mode);
+            let legacy_command_mode = normalize_hook_command_mode(parsed.command_mode);
+            hook_base_command_mode = normalize_hook_command_mode(parsed.base_command_mode);
+            hook_effective_command_mode =
+                normalize_hook_command_mode(parsed.effective_command_mode).or_else(|| legacy_command_mode.clone());
+            hook_command_mode = hook_effective_command_mode
+                .clone()
+                .or_else(|| legacy_command_mode.clone());
+            hook_auto_downgraded_to_query_only = parse_bool_token(parsed.auto_downgraded_to_query_only);
+            hook_auto_downgrade_reason = normalize_hook_auto_downgrade_reason(parsed.auto_downgrade_reason);
             if let Some(mode) = hook_command_mode.as_deref() {
                 push_unique_hint(
                     &mut hints,
@@ -5787,6 +5827,10 @@ fn failure_diagnostics_to_json(
         hook_command_group.get_or_insert_with(|| "unknown".into());
         hook_blocked_by.get_or_insert_with(|| "unknown".into());
         hook_command_mode.get_or_insert_with(|| "unknown".into());
+        hook_base_command_mode.get_or_insert_with(|| "unknown".into());
+        hook_effective_command_mode.get_or_insert_with(|| "unknown".into());
+        hook_auto_downgraded_to_query_only.get_or_insert(false);
+        hook_auto_downgrade_reason.get_or_insert_with(|| "unknown".into());
         coexistence_mode.get_or_insert_with(|| "unknown".into());
         backend_pressure.get_or_insert_with(|| "unknown".into());
         fallback_action_key.get_or_insert_with(|| "unknown".into());
@@ -5799,6 +5843,10 @@ fn failure_diagnostics_to_json(
         || hook_command_group.is_some()
         || hook_blocked_by.is_some()
         || hook_command_mode.is_some()
+        || hook_base_command_mode.is_some()
+        || hook_effective_command_mode.is_some()
+        || hook_auto_downgraded_to_query_only.is_some()
+        || hook_auto_downgrade_reason.is_some()
         || hook_recommendation.is_some()
         || coexistence_mode.is_some()
         || backend_pressure.is_some()
@@ -5812,6 +5860,10 @@ fn failure_diagnostics_to_json(
             "commandGroup": hook_command_group,
             "blockedBy": hook_blocked_by,
             "commandMode": hook_command_mode,
+            "baseCommandMode": hook_base_command_mode,
+            "effectiveCommandMode": hook_effective_command_mode,
+            "autoDowngradedToQueryOnly": hook_auto_downgraded_to_query_only,
+            "autoDowngradeReason": hook_auto_downgrade_reason,
             "recommendation": hook_recommendation,
             "coexistenceMode": coexistence_mode,
             "backendPressure": backend_pressure,
@@ -5834,6 +5886,10 @@ fn failure_diagnostics_to_json(
         "hookCommandGroup": hook_command_group.clone(),
         "hookBlockedBy": hook_blocked_by.clone(),
         "hookCommandMode": hook_command_mode.clone(),
+        "hookBaseCommandMode": hook_base_command_mode.clone(),
+        "hookEffectiveCommandMode": hook_effective_command_mode.clone(),
+        "hookAutoDowngradedToQueryOnly": hook_auto_downgraded_to_query_only,
+        "hookAutoDowngradeReason": hook_auto_downgrade_reason.clone(),
         "hookRecommendation": hook_recommendation.clone(),
         "coexistenceMode": coexistence_mode.clone(),
         "backendPressure": backend_pressure.clone(),
@@ -7507,9 +7563,20 @@ fn ensure_inline_hooks_allowed_for_command(
         ));
     }
 
-    let command_mode = hook_effective_command_mode(&effective_actions);
+    let base_command_mode = hook_effective_command_mode(&effective_actions);
     let backend_matrix =
         hook_backend_matrix_to_json(&injection_environment.hook_environment, &preflight.target_hook_environment);
+    let loaded_in_controller_count = json_u64_field(&backend_matrix, "loadedInControllerCount");
+    let loaded_in_target_count = json_u64_field(&backend_matrix, "loadedInTargetCount");
+    let loaded_in_both_count = json_u64_field(&backend_matrix, "loadedInBothCount");
+    let (effective_command_mode, auto_downgraded_to_query_only, auto_downgrade_reason) =
+        hook_command_mode_with_backend_pressure(
+            base_command_mode,
+            loaded_in_controller_count,
+            loaded_in_target_count,
+            loaded_in_both_count,
+        );
+    let command_mode = effective_command_mode;
     let coexistence = hook_coexistence_to_json(&effective_actions, &backend_matrix);
     let coexistence_mode = coexistence
         .get("mode")
@@ -7536,17 +7603,22 @@ fn ensure_inline_hooks_allowed_for_command(
         .and_then(|entry| entry.get("phase"))
         .and_then(Value::as_str)
         .unwrap_or("<none>");
+    let auto_downgrade_reason = auto_downgrade_reason.unwrap_or("<none>");
     let detail_text = if blocked_details.is_empty() {
         effective_action.recommendation.clone()
     } else {
         blocked_details.join("; ")
     };
     Err(Error::State(format!(
-        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={} coexistenceMode={} backendPressure={} fallbackActionKey={} fallbackCommand={} fallbackPhase={}; recommendation={}; {}",
+        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={} baseCommandMode={} effectiveCommandMode={} autoDowngradedToQueryOnly={} autoDowngradeReason={} coexistenceMode={} backendPressure={} fallbackActionKey={} fallbackCommand={} fallbackPhase={}; recommendation={}; {}",
         effective_action.action_key,
         effective_action.command_group,
         effective_action.blocked_by,
         command_mode,
+        base_command_mode,
+        effective_command_mode,
+        auto_downgraded_to_query_only,
+        auto_downgrade_reason,
         coexistence_mode,
         backend_pressure,
         fallback_action_key,
@@ -9865,6 +9937,14 @@ mod tests {
         assert!(query_err.to_string().contains("hook-effective-blocked"));
         assert!(query_err.to_string().contains("blockedBy=both"));
         assert!(query_err.to_string().contains("commandMode=cleanup-only"));
+        assert!(query_err.to_string().contains("baseCommandMode=cleanup-only"));
+        assert!(query_err.to_string().contains("effectiveCommandMode=cleanup-only"));
+        assert!(query_err
+            .to_string()
+            .contains("autoDowngradedToQueryOnly=false"));
+        assert!(query_err
+            .to_string()
+            .contains("autoDowngradeReason=<none>"));
         assert!(query_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(query_err.to_string().contains("backendPressure=both"));
         assert!(query_err.to_string().contains("fallbackActionKey=hook.status"));
@@ -9876,6 +9956,18 @@ mod tests {
         assert!(install_err.to_string().contains("forbids hook-install commands"));
         assert!(install_err.to_string().contains("blockedBy=both"));
         assert!(install_err.to_string().contains("commandMode=cleanup-only"));
+        assert!(install_err
+            .to_string()
+            .contains("baseCommandMode=cleanup-only"));
+        assert!(install_err
+            .to_string()
+            .contains("effectiveCommandMode=cleanup-only"));
+        assert!(install_err
+            .to_string()
+            .contains("autoDowngradedToQueryOnly=false"));
+        assert!(install_err
+            .to_string()
+            .contains("autoDowngradeReason=<none>"));
         assert!(install_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(install_err.to_string().contains("backendPressure=both"));
         assert!(install_err.to_string().contains("fallbackActionKey=hook.status"));
@@ -9945,6 +10037,10 @@ mod tests {
         assert!(rendered.contains("hook-effective-blocked"));
         assert!(rendered.contains("blockedBy=both"));
         assert!(rendered.contains("commandMode=query-only"));
+        assert!(rendered.contains("baseCommandMode=query-only"));
+        assert!(rendered.contains("effectiveCommandMode=query-only"));
+        assert!(rendered.contains("autoDowngradedToQueryOnly=false"));
+        assert!(rendered.contains("autoDowngradeReason=<none>"));
         assert!(rendered.contains("coexistenceMode=query-only"));
         assert!(rendered.contains("backendPressure=both"));
         assert!(rendered.contains("fallbackActionKey=hook.query"));
@@ -10550,7 +10646,7 @@ mod tests {
         let hook_blocked_rendered = render_command_error_json_with_context(
             "trace UIViewController",
             &Error::State(
-                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
+                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
             ),
             &[],
             &CommandJsonContext {
@@ -10573,6 +10669,19 @@ mod tests {
         assert_eq!(hook_blocked_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
         assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["actionKey"], "hook.install");
         assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["blockedBy"], "target");
+        assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["baseCommandMode"], "query-only");
+        assert_eq!(
+            hook_blocked_rendered["diagnostics"]["hook"]["effectiveCommandMode"],
+            "query-only"
+        );
+        assert_eq!(
+            hook_blocked_rendered["diagnostics"]["hook"]["autoDowngradedToQueryOnly"],
+            false
+        );
+        assert_eq!(
+            hook_blocked_rendered["diagnostics"]["hook"]["autoDowngradeReason"],
+            "<none>"
+        );
         assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["fallbackCommand"], "trace status");
         assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["fallbackAvailable"], true);
     }
@@ -15239,7 +15348,7 @@ mod tests {
             None,
             &[],
             Some(&Error::State(
-                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
+                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
             )),
         );
 
@@ -15249,6 +15358,10 @@ mod tests {
         assert_eq!(rendered["diagnostics"]["hookCommandGroup"], "hook-install");
         assert_eq!(rendered["diagnostics"]["hookBlockedBy"], "target");
         assert_eq!(rendered["diagnostics"]["hookCommandMode"], "query-only");
+        assert_eq!(rendered["diagnostics"]["hookBaseCommandMode"], "query-only");
+        assert_eq!(rendered["diagnostics"]["hookEffectiveCommandMode"], "query-only");
+        assert_eq!(rendered["diagnostics"]["hookAutoDowngradedToQueryOnly"], false);
+        assert_eq!(rendered["diagnostics"]["hookAutoDowngradeReason"], "<none>");
         assert_eq!(
             rendered["diagnostics"]["hookRecommendation"],
             "blocked by target hook policy"
@@ -15263,6 +15376,13 @@ mod tests {
         assert_eq!(rendered["diagnostics"]["hook"]["commandGroup"], "hook-install");
         assert_eq!(rendered["diagnostics"]["hook"]["blockedBy"], "target");
         assert_eq!(rendered["diagnostics"]["hook"]["commandMode"], "query-only");
+        assert_eq!(rendered["diagnostics"]["hook"]["baseCommandMode"], "query-only");
+        assert_eq!(rendered["diagnostics"]["hook"]["effectiveCommandMode"], "query-only");
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["autoDowngradedToQueryOnly"],
+            false
+        );
+        assert_eq!(rendered["diagnostics"]["hook"]["autoDowngradeReason"], "<none>");
         assert_eq!(
             rendered["diagnostics"]["hook"]["recommendation"],
             "blocked by target hook policy"
@@ -15281,6 +15401,59 @@ mod tests {
                 .as_str()
                 .unwrap_or_default()
                 .contains("effective hook command mode during failure: query-only")));
+
+        let auto_downgraded_rendered = render_injection_result_json(
+            &config,
+            42,
+            "/tmp/iosrf.sock",
+            &plan,
+            &environment,
+            &doctor,
+            &preflight,
+            None,
+            None,
+            None,
+            None,
+            false,
+            None,
+            None,
+            &[],
+            Some(&Error::State(
+                "hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=allowed effectiveCommandMode=query-only autoDowngradedToQueryOnly=true autoDowngradeReason=split-loaded-external-backends-without-shared-runtime coexistenceMode=query-only backendPressure=both fallbackActionKey=hook.query fallbackCommand=objc.classes <filter> fallbackPhase=query; recommendation=split backend downgrade".into(),
+            )),
+        );
+        assert_eq!(
+            auto_downgraded_rendered["diagnostics"]["hookBaseCommandMode"],
+            "allowed"
+        );
+        assert_eq!(
+            auto_downgraded_rendered["diagnostics"]["hookEffectiveCommandMode"],
+            "query-only"
+        );
+        assert_eq!(
+            auto_downgraded_rendered["diagnostics"]["hookAutoDowngradedToQueryOnly"],
+            true
+        );
+        assert_eq!(
+            auto_downgraded_rendered["diagnostics"]["hookAutoDowngradeReason"],
+            "split-loaded-external-backends-without-shared-runtime"
+        );
+        assert_eq!(
+            auto_downgraded_rendered["diagnostics"]["hook"]["baseCommandMode"],
+            "allowed"
+        );
+        assert_eq!(
+            auto_downgraded_rendered["diagnostics"]["hook"]["effectiveCommandMode"],
+            "query-only"
+        );
+        assert_eq!(
+            auto_downgraded_rendered["diagnostics"]["hook"]["autoDowngradedToQueryOnly"],
+            true
+        );
+        assert_eq!(
+            auto_downgraded_rendered["diagnostics"]["hook"]["autoDowngradeReason"],
+            "split-loaded-external-backends-without-shared-runtime"
+        );
 
         let legacy_rendered = render_injection_result_json(
             &config,
@@ -15306,6 +15479,10 @@ mod tests {
         assert_eq!(legacy_rendered["diagnostics"]["hookCommandGroup"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["hookBlockedBy"], "target");
         assert_eq!(legacy_rendered["diagnostics"]["hookCommandMode"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hookBaseCommandMode"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hookEffectiveCommandMode"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hookAutoDowngradedToQueryOnly"], false);
+        assert_eq!(legacy_rendered["diagnostics"]["hookAutoDowngradeReason"], "unknown");
         assert_eq!(
             legacy_rendered["diagnostics"]["hookRecommendation"],
             "external backend already loaded in target"
@@ -15319,6 +15496,19 @@ mod tests {
         assert_eq!(legacy_rendered["diagnostics"]["hook"]["commandGroup"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["hook"]["blockedBy"], "target");
         assert_eq!(legacy_rendered["diagnostics"]["hook"]["commandMode"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["baseCommandMode"], "unknown");
+        assert_eq!(
+            legacy_rendered["diagnostics"]["hook"]["effectiveCommandMode"],
+            "unknown"
+        );
+        assert_eq!(
+            legacy_rendered["diagnostics"]["hook"]["autoDowngradedToQueryOnly"],
+            false
+        );
+        assert_eq!(
+            legacy_rendered["diagnostics"]["hook"]["autoDowngradeReason"],
+            "unknown"
+        );
         assert_eq!(
             legacy_rendered["diagnostics"]["hook"]["recommendation"],
             "external backend already loaded in target"
