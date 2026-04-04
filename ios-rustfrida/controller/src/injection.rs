@@ -10718,12 +10718,24 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainCount"], 3);
         assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["id"],
+            "next-action:hook.query:0"
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][0]["command"],
             "objc.classes <filter>"
         );
         assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][1]["id"],
+            "next-action:hook.query:1"
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][1]["command"],
             "native.images <filter>"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][2]["id"],
+            "next-action:hook.query:2"
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][2]["command"],
@@ -10764,6 +10776,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextStepChainCount"], 1);
         assert_eq!(rendered["hook"]["automation"]["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChain"][0]["id"],
+            "next-action:hook.query:0"
+        );
         assert_eq!(
             rendered["hook"]["automation"]["nextStepChain"][0]["command"],
             "objc.classes <filter>"
@@ -11172,12 +11188,24 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainCount"], 3);
         assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["id"],
+            "next-action:hook.query:0"
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][0]["command"],
             "objc.classes <filter>"
         );
         assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][1]["id"],
+            "next-action:hook.query:1"
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][1]["command"],
             "native.images <filter>"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][2]["id"],
+            "next-action:hook.query:2"
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][2]["command"],
@@ -11218,6 +11246,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextStepChainCount"], 1);
         assert_eq!(rendered["hook"]["automation"]["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChain"][0]["id"],
+            "next-action:hook.query:0"
+        );
         assert_eq!(
             rendered["hook"]["automation"]["nextStepChain"][0]["command"],
             "objc.classes <filter>"
@@ -11423,6 +11455,7 @@ mod tests {
         assert_eq!(automation["nextStepChainLimit"], 3);
         assert_eq!(automation["nextStepChainCount"], 1);
         assert_eq!(automation["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(automation["nextStepChain"][0]["id"], "next-action:hook.status:0");
         assert_eq!(automation["nextStepChain"][0]["command"], "trace status");
         assert_eq!(automation["nextStepChain"][0]["phase"], "cleanup");
         assert_eq!(automation["nextStepChainTruncated"], false);
@@ -11558,8 +11591,10 @@ mod tests {
         assert_eq!(automation["nextStepChainLimit"], 3);
         assert_eq!(automation["nextStepChainCount"], 2);
         assert_eq!(automation["nextStepChain"][0]["source"], "fallback-plan");
+        assert_eq!(automation["nextStepChain"][0]["id"], "fallback-plan:0");
         assert_eq!(automation["nextStepChain"][0]["command"], "native.hookenv");
         assert_eq!(automation["nextStepChain"][0]["phase"], "diagnose");
+        assert_eq!(automation["nextStepChain"][1]["id"], "fallback-plan:1");
         assert_eq!(automation["nextStepChain"][1]["command"], "controller --preflight-only --preflight-json");
         assert_eq!(automation["nextStepChain"][1]["phase"], "preflight");
         assert_eq!(automation["nextStepChainTruncated"], false);
@@ -11579,7 +11614,9 @@ mod tests {
         assert_eq!(automation["fallbackPlan"]["nextStepChainSource"], "fallback-plan");
         assert_eq!(automation["fallbackPlan"]["nextStepChainLimit"], 3);
         assert_eq!(automation["fallbackPlan"]["nextStepChainCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["nextStepChain"][0]["id"], "fallback-plan:0");
         assert_eq!(automation["fallbackPlan"]["nextStepChain"][0]["command"], "native.hookenv");
+        assert_eq!(automation["fallbackPlan"]["nextStepChain"][1]["id"], "fallback-plan:1");
         assert_eq!(
             automation["fallbackPlan"]["nextStepChain"][1]["command"],
             "controller --preflight-only --preflight-json"
