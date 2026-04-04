@@ -750,6 +750,9 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
                         "source": "next-action",
                         "actionKey": item.action_key,
                         "commandGroup": item.command_group,
+                        "allowed": item.allowed,
+                        "blockedBy": item.blocked_by,
+                        "branch": hook_automation_branch(item),
                         "command": entry.get("command").cloned().unwrap_or(Value::Null),
                         "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
                         "readyToRun": item.allowed,
@@ -913,6 +916,18 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextStepChainTruncated": next_step_chain_truncated,
         "activeStep": active_step.cloned().unwrap_or(Value::Null),
         "activeStepSource": next_step_chain_source,
+        "activeStepAllowed": active_step
+            .and_then(|entry| entry.get("allowed"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepBlockedBy": active_step
+            .and_then(|entry| entry.get("blockedBy"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepBranch": active_step
+            .and_then(|entry| entry.get("branch"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "activeStepActionKey": active_step
             .and_then(|entry| entry.get("actionKey"))
             .cloned()
@@ -1583,6 +1598,9 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 "source": "fallback-plan",
                 "actionKey": fallback_action_key.clone(),
                 "commandGroup": fallback_action_command_group.clone(),
+                "allowed": Value::Null,
+                "blockedBy": Value::Null,
+                "branch": Value::Null,
                 "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
                 "command": entry.get("command").cloned().unwrap_or(Value::Null),
                 "readyToRun": true,
@@ -1644,6 +1662,9 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                         "source": "next-action",
                         "actionKey": item.action_key,
                         "commandGroup": item.command_group,
+                        "allowed": item.allowed,
+                        "blockedBy": item.blocked_by,
+                        "branch": hook_automation_branch(item),
                         "command": command,
                         "phase": next_step_phase,
                         "readyToRun": true,
@@ -1726,6 +1747,9 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                     "source": "fallback-plan",
                     "actionKey": fallback_action_key.clone(),
                     "commandGroup": fallback_action_command_group.clone(),
+                    "allowed": Value::Null,
+                    "blockedBy": Value::Null,
+                    "branch": Value::Null,
                     "command": entry.get("command").cloned().unwrap_or(Value::Null),
                     "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
                     "readyToRun": true,
@@ -4770,6 +4794,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 .and_then(|entry| entry.get("commandGroup"))
                 .cloned()
                 .unwrap_or(Value::Null),
+            "nextStepAllowed": fallback_next_chain_step
+                .and_then(|entry| entry.get("allowed"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepBlockedBy": fallback_next_chain_step
+                .and_then(|entry| entry.get("blockedBy"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepBranch": fallback_next_chain_step
+                .and_then(|entry| entry.get("branch"))
+                .cloned()
+                .unwrap_or(Value::Null),
             "nextStepCommand": fallback_next_plan_step
                 .and_then(|entry| entry.get("command"))
                 .cloned()
@@ -4838,6 +4874,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "activeStep": fallback_next_chain_step.cloned().unwrap_or(Value::Null),
             "activeStepSource": fallback_next_chain_step
                 .and_then(|entry| entry.get("source"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepAllowed": fallback_next_chain_step
+                .and_then(|entry| entry.get("allowed"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepBlockedBy": fallback_next_chain_step
+                .and_then(|entry| entry.get("blockedBy"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepBranch": fallback_next_chain_step
+                .and_then(|entry| entry.get("branch"))
                 .cloned()
                 .unwrap_or(Value::Null),
             "activeStepActionKey": fallback_next_chain_step
@@ -5092,6 +5140,18 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextStepChainTruncated": next_step_chain_truncated,
         "activeStep": active_step.cloned().unwrap_or(Value::Null),
         "activeStepSource": next_step_chain_source,
+        "activeStepAllowed": active_step
+            .and_then(|entry| entry.get("allowed"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepBlockedBy": active_step
+            .and_then(|entry| entry.get("blockedBy"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepBranch": active_step
+            .and_then(|entry| entry.get("branch"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "activeStepActionKey": active_step
             .and_then(|entry| entry.get("actionKey"))
             .cloned()
@@ -11380,6 +11440,18 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["coexistence"]["activeStepSource"], "next-action");
         assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepAllowed"],
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["allowed"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepBlockedBy"],
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["blockedBy"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepBranch"],
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["branch"]
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["activeStepActionKey"],
             rendered["hook"]["coexistence"]["activeStep"]["actionKey"]
         );
@@ -11578,6 +11650,18 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepRequiresFallback"], false);
         assert_eq!(rendered["hook"]["automation"]["activeStepSource"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepAllowed"],
+            rendered["hook"]["automation"]["nextStepChain"][0]["allowed"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepBlockedBy"],
+            rendered["hook"]["automation"]["nextStepChain"][0]["blockedBy"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepBranch"],
+            rendered["hook"]["automation"]["nextStepChain"][0]["branch"]
+        );
         assert_eq!(
             rendered["hook"]["automation"]["activeStepActionKey"],
             rendered["hook"]["automation"]["activeStep"]["actionKey"]
@@ -12201,6 +12285,18 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["coexistence"]["activeStepSource"], "next-action");
         assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepAllowed"],
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["allowed"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepBlockedBy"],
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["blockedBy"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepBranch"],
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["branch"]
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["activeStepActionKey"],
             rendered["hook"]["coexistence"]["activeStep"]["actionKey"]
         );
@@ -12399,6 +12495,18 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepRequiresFallback"], false);
         assert_eq!(rendered["hook"]["automation"]["activeStepSource"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepAllowed"],
+            rendered["hook"]["automation"]["nextStepChain"][0]["allowed"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepBlockedBy"],
+            rendered["hook"]["automation"]["nextStepChain"][0]["blockedBy"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepBranch"],
+            rendered["hook"]["automation"]["nextStepChain"][0]["branch"]
+        );
         assert_eq!(
             rendered["hook"]["automation"]["activeStepActionKey"],
             rendered["hook"]["automation"]["activeStep"]["actionKey"]
@@ -12805,6 +12913,9 @@ mod tests {
         assert_eq!(automation["nextStepReadyToRun"], true);
         assert_eq!(automation["nextStepRequiresFallback"], false);
         assert_eq!(automation["activeStepSource"], "next-action");
+        assert_eq!(automation["activeStepAllowed"], true);
+        assert_eq!(automation["activeStepBlockedBy"], "none");
+        assert_eq!(automation["activeStepBranch"], "run");
         assert_eq!(
             automation["activeStepActionKey"],
             automation["activeStep"]["actionKey"]
@@ -12888,6 +12999,9 @@ mod tests {
         assert_eq!(automation["nextStepChain"][0]["phase"], "cleanup");
         assert_eq!(automation["nextStepChain"][0]["readyToRun"], true);
         assert_eq!(automation["nextStepChain"][0]["requiresFallback"], false);
+        assert_eq!(automation["nextStepChain"][0]["allowed"], true);
+        assert_eq!(automation["nextStepChain"][0]["blockedBy"], "none");
+        assert_eq!(automation["nextStepChain"][0]["branch"], "run");
         assert_eq!(automation["nextStepChainTruncated"], false);
         assert_eq!(automation["hasFallbackPlan"], false);
         assert!(automation["fallbackPlan"].is_null());
@@ -13070,6 +13184,18 @@ mod tests {
         assert_eq!(automation["nextStepRequiresFallback"], true);
         assert_eq!(automation["activeStepSource"], "fallback-plan");
         assert_eq!(
+            automation["activeStepAllowed"],
+            automation["nextStepChain"][0]["allowed"]
+        );
+        assert_eq!(
+            automation["activeStepBlockedBy"],
+            automation["nextStepChain"][0]["blockedBy"]
+        );
+        assert_eq!(
+            automation["activeStepBranch"],
+            automation["nextStepChain"][0]["branch"]
+        );
+        assert_eq!(
             automation["activeStepActionKey"],
             automation["activeStep"]["actionKey"]
         );
@@ -13148,6 +13274,9 @@ mod tests {
         assert_eq!(automation["nextStepChain"][0]["id"], "fallback-plan:0");
         assert!(automation["nextStepChain"][0]["actionKey"].is_null());
         assert!(automation["nextStepChain"][0]["commandGroup"].is_null());
+        assert!(automation["nextStepChain"][0]["allowed"].is_null());
+        assert!(automation["nextStepChain"][0]["blockedBy"].is_null());
+        assert!(automation["nextStepChain"][0]["branch"].is_null());
         assert_eq!(automation["nextStepChain"][0]["command"], "native.hookenv");
         assert_eq!(automation["nextStepChain"][0]["phase"], "diagnose");
         assert_eq!(automation["nextStepChain"][0]["readyToRun"], true);
@@ -13155,6 +13284,9 @@ mod tests {
         assert_eq!(automation["nextStepChain"][1]["id"], "fallback-plan:1");
         assert!(automation["nextStepChain"][1]["actionKey"].is_null());
         assert!(automation["nextStepChain"][1]["commandGroup"].is_null());
+        assert!(automation["nextStepChain"][1]["allowed"].is_null());
+        assert!(automation["nextStepChain"][1]["blockedBy"].is_null());
+        assert!(automation["nextStepChain"][1]["branch"].is_null());
         assert_eq!(automation["nextStepChain"][1]["command"], "controller --preflight-only --preflight-json");
         assert_eq!(automation["nextStepChain"][1]["phase"], "preflight");
         assert_eq!(automation["nextStepChain"][1]["readyToRun"], true);
@@ -13221,6 +13353,18 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["activeStepSource"],
             automation["fallbackPlan"]["nextStepChain"][0]["source"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepAllowed"],
+            automation["fallbackPlan"]["nextStepChain"][0]["allowed"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepBlockedBy"],
+            automation["fallbackPlan"]["nextStepChain"][0]["blockedBy"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepBranch"],
+            automation["fallbackPlan"]["nextStepChain"][0]["branch"]
         );
         assert_eq!(
             automation["fallbackPlan"]["activeStepActionKey"],
@@ -13306,6 +13450,9 @@ mod tests {
         assert_eq!(automation["fallbackPlan"]["nextStepSource"], "fallback-plan");
         assert!(automation["fallbackPlan"]["nextStepActionKey"].is_null());
         assert!(automation["fallbackPlan"]["nextStepCommandGroup"].is_null());
+        assert!(automation["fallbackPlan"]["nextStepAllowed"].is_null());
+        assert!(automation["fallbackPlan"]["nextStepBlockedBy"].is_null());
+        assert!(automation["fallbackPlan"]["nextStepBranch"].is_null());
         assert_eq!(automation["fallbackPlan"]["nextStepCommand"], "native.hookenv");
         assert_eq!(automation["fallbackPlan"]["nextStepPhase"], "diagnose");
         assert_eq!(automation["fallbackPlan"]["nextStepCommandJsonEligible"], true);
