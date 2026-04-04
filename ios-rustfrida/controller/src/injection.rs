@@ -560,8 +560,11 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
     let command_mode = hook_effective_command_mode(actions);
     let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
     let loaded_in_target_count = json_u64_field(backend_matrix, "loadedInTargetCount");
+    let loaded_in_both_count = json_u64_field(backend_matrix, "loadedInBothCount");
     let filesystem_only_in_either_count = json_u64_field(backend_matrix, "filesystemOnlyInEitherCount");
     let shared_backend_count = json_array_len(backend_matrix, "sharedBackendIds");
+    let total_loaded_backend_count =
+        loaded_in_controller_count + loaded_in_target_count - loaded_in_both_count;
 
     let backend_pressure = if loaded_in_controller_count > 0 && loaded_in_target_count > 0 {
         "both"
@@ -667,6 +670,10 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
 
     let install_action = actions.iter().find(|item| item.action_key == "hook.install");
     let external_backend_loaded = loaded_in_controller_count > 0 || loaded_in_target_count > 0;
+    let single_external_backend_loaded = total_loaded_backend_count == 1;
+    let multiple_external_backends_loaded = total_loaded_backend_count > 1;
+    let controller_multiple_external_backends_loaded = loaded_in_controller_count > 1;
+    let target_multiple_external_backends_loaded = loaded_in_target_count > 1;
     let coexistence_layer = hook_coexistence_layer_status_for_mode(
         Some(command_mode),
         external_backend_loaded,
@@ -682,9 +689,14 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "commandMode": command_mode,
         "backendPressure": backend_pressure,
         "externalBackendLoaded": external_backend_loaded,
+        "singleExternalBackendLoaded": single_external_backend_loaded,
+        "multipleExternalBackendsLoaded": multiple_external_backends_loaded,
         "externalBackendInController": loaded_in_controller_count > 0,
         "externalBackendInTarget": loaded_in_target_count > 0,
+        "controllerMultipleExternalBackendsLoaded": controller_multiple_external_backends_loaded,
+        "targetMultipleExternalBackendsLoaded": target_multiple_external_backends_loaded,
         "sharedExternalBackend": shared_backend_count > 0,
+        "loadedExternalBackendCount": total_loaded_backend_count,
         "filesystemOnlyBackendDetected": filesystem_only_in_either_count > 0,
         "preferredPath": preferred_path,
         "queryCommandsAllowed": hook_effective_allowed_for(actions, "hook.query"),
@@ -4565,18 +4577,20 @@ fn hook_environment_to_json(
         _ => "hook strategy is unavailable; run native.hookenv and preflight for guidance",
     };
     let coexistence_layer = hook_coexistence_layer_status(report, strategy);
+    let loaded_backend_count = report.loaded_backend_count();
+    let filesystem_only_backend_count = report.filesystem_only_backend_count();
     let risk_level = if let Some(strategy) = strategy {
         match strategy.command_mode() {
             "blocked" => "blocked",
             "cleanup-only" => "cleanup-only",
             "query-only" => "query-only",
-            _ if report.loaded_backend_count() > 0 => "risky",
-            _ if report.filesystem_only_backend_count() > 0 => "cautious",
+            _ if loaded_backend_count > 0 => "risky",
+            _ if filesystem_only_backend_count > 0 => "cautious",
             _ => "normal",
         }
-    } else if report.loaded_backend_count() > 0 {
+    } else if loaded_backend_count > 0 {
         "risky"
-    } else if report.filesystem_only_backend_count() > 0 {
+    } else if filesystem_only_backend_count > 0 {
         "cautious"
     } else {
         "normal"
@@ -4591,10 +4605,12 @@ fn hook_environment_to_json(
         "coexistenceRecommendation": coexistence_recommendation,
         "coexistenceLayerAvailable": coexistence_layer.available,
         "coexistenceLayerStatus": coexistence_layer.status,
-        "externalBackendLoaded": report.loaded_backend_count() > 0,
-        "filesystemOnlyBackendDetected": report.filesystem_only_backend_count() > 0,
-        "loadedBackendCount": report.loaded_backend_count(),
-        "filesystemOnlyBackendCount": report.filesystem_only_backend_count(),
+        "externalBackendLoaded": loaded_backend_count > 0,
+        "singleExternalBackendLoaded": loaded_backend_count == 1,
+        "multipleExternalBackendsLoaded": loaded_backend_count > 1,
+        "filesystemOnlyBackendDetected": filesystem_only_backend_count > 0,
+        "loadedBackendCount": loaded_backend_count,
+        "filesystemOnlyBackendCount": filesystem_only_backend_count,
         "loadedImageCount": report.loaded_image_count(),
         "filesystemPathCount": report.filesystem_path_count(),
         "recommendedActions": hook_environment_recommended_actions(report, strategy)
@@ -10084,6 +10100,11 @@ mod tests {
         );
         assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceLayerAvailable"], false);
         assert_eq!(rendered["environment"]["hookEnvironment"]["externalBackendLoaded"], true);
+        assert_eq!(rendered["environment"]["hookEnvironment"]["singleExternalBackendLoaded"], true);
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["multipleExternalBackendsLoaded"],
+            false
+        );
         assert_eq!(rendered["doctor"]["ready"], false);
         assert_eq!(rendered["plan"]["target"]["pid"], 42);
         assert_eq!(rendered["plan"]["bootstrap"]["stackSizeHex"], json!("0x4000"));
@@ -10277,6 +10298,12 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["strategy"], "internal-inline-preferred");
         assert_eq!(rendered["hook"]["coexistence"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["externalBackendLoaded"], false);
+        assert_eq!(rendered["hook"]["coexistence"]["singleExternalBackendLoaded"], false);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["multipleExternalBackendsLoaded"],
+            false
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
@@ -10426,6 +10453,11 @@ mod tests {
         );
         assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceLayerAvailable"], true);
         assert_eq!(rendered["environment"]["hookEnvironment"]["externalBackendLoaded"], false);
+        assert_eq!(rendered["environment"]["hookEnvironment"]["singleExternalBackendLoaded"], false);
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["multipleExternalBackendsLoaded"],
+            false
+        );
         assert_eq!(rendered["environment"]["hookStrategy"]["bootstrapInjectionAllowed"], true);
         assert_eq!(rendered["environment"]["hookStrategy"]["queryCommandsAllowed"], true);
         assert_eq!(rendered["environment"]["hookStrategy"]["hookInstallCommandsAllowed"], true);
@@ -10442,6 +10474,14 @@ mod tests {
         );
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerAvailable"], true);
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["loadedBackendCount"], 0);
+        assert_eq!(
+            rendered["preflight"]["targetHookEnvironment"]["singleExternalBackendLoaded"],
+            false
+        );
+        assert_eq!(
+            rendered["preflight"]["targetHookEnvironment"]["multipleExternalBackendsLoaded"],
+            false
+        );
         assert_eq!(rendered["diagnostics"]["code"], "bind-socket");
         assert!(rendered["diagnostics"]["hook"].is_null());
         assert_eq!(rendered["payload"], json!(null));
@@ -10647,6 +10687,12 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["strategy"], "internal-inline-preferred");
         assert_eq!(rendered["hook"]["coexistence"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["externalBackendLoaded"], false);
+        assert_eq!(rendered["hook"]["coexistence"]["singleExternalBackendLoaded"], false);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["multipleExternalBackendsLoaded"],
+            false
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
@@ -14411,6 +14457,9 @@ mod tests {
         assert_eq!(coexistence["commandMode"], "allowed");
         assert_eq!(coexistence["backendPressure"], "both");
         assert_eq!(coexistence["externalBackendLoaded"], true);
+        assert_eq!(coexistence["singleExternalBackendLoaded"], false);
+        assert_eq!(coexistence["multipleExternalBackendsLoaded"], true);
+        assert_eq!(coexistence["loadedExternalBackendCount"], 2);
         assert_eq!(coexistence["externalBackendInController"], true);
         assert_eq!(coexistence["externalBackendInTarget"], true);
         assert_eq!(coexistence["sharedExternalBackend"], true);
@@ -14529,6 +14578,10 @@ mod tests {
         assert_eq!(coexistence["strategy"], "filesystem-candidate-cautious");
         assert_eq!(coexistence["riskLevel"], "cautious");
         assert_eq!(coexistence["backendPressure"], "filesystem-only");
+        assert_eq!(coexistence["externalBackendLoaded"], false);
+        assert_eq!(coexistence["singleExternalBackendLoaded"], false);
+        assert_eq!(coexistence["multipleExternalBackendsLoaded"], false);
+        assert_eq!(coexistence["loadedExternalBackendCount"], 0);
 
         assert_eq!(automation["preferredPath"], "inline-cautious");
         assert_eq!(automation["suggestedSequence"][1], "controller --preflight-only --preflight-json --pid <pid>");

@@ -47,6 +47,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     let filesystem_only_backend_count = report.filesystem_only_backend_count();
     let loaded_image_count = report.loaded_image_count();
     let filesystem_path_count = report.filesystem_path_count();
+    let single_external_backend_loaded = loaded_backend_count == 1;
+    let multiple_external_backends_loaded = loaded_backend_count > 1;
     let conflict_state = report.conflict_state();
     let risk_level = match command_mode {
         "blocked" => "blocked",
@@ -106,6 +108,16 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         JSValue::string(ctx, coexistence_layer.status),
     );
     result.set_property(ctx, "externalBackendLoaded", JSValue::bool(loaded_backend_count > 0));
+    result.set_property(
+        ctx,
+        "singleExternalBackendLoaded",
+        JSValue::bool(single_external_backend_loaded),
+    );
+    result.set_property(
+        ctx,
+        "multipleExternalBackendsLoaded",
+        JSValue::bool(multiple_external_backends_loaded),
+    );
     result.set_property(
         ctx,
         "filesystemOnlyBackendDetected",

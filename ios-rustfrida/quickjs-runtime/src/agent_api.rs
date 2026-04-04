@@ -2312,6 +2312,8 @@ function formatHookEnvironmentReport(report) {
     lines.push('coexistence_layer_available=' + String(!!report.coexistenceLayerAvailable));
     lines.push('coexistence_layer_status=' + String(report.coexistenceLayerStatus));
     lines.push('external_backend_loaded=' + String(!!report.externalBackendLoaded));
+    lines.push('single_external_backend_loaded=' + String(!!report.singleExternalBackendLoaded));
+    lines.push('multiple_external_backends_loaded=' + String(!!report.multipleExternalBackendsLoaded));
     lines.push('filesystem_only_backend_detected=' + String(!!report.filesystemOnlyBackendDetected));
     lines.push('loaded_backend_count=' + String(Number(report.loadedBackendCount || 0)));
     lines.push('filesystem_only_backend_count=' + String(Number(report.filesystemOnlyBackendCount || 0)));
