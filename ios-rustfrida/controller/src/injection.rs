@@ -2702,6 +2702,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|codes| codes.first())
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveKnownEntriesFirst": routing_decision_ready_resolve
+            .get("knownErrorCodes")
+            .and_then(Value::as_array)
+            .and_then(|codes| codes.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveKnownFirst": routing_decision_ready_resolve
             .get("knownErrorCodes")
             .and_then(Value::as_array)
@@ -2715,6 +2721,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .cloned()
             .unwrap_or(Value::Null),
         "resolveKnownErrorCodeLast": routing_decision_ready_resolve
+            .get("knownErrorCodes")
+            .and_then(Value::as_array)
+            .and_then(|codes| codes.last())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveKnownEntriesLast": routing_decision_ready_resolve
             .get("knownErrorCodes")
             .and_then(Value::as_array)
             .and_then(|codes| codes.last())
@@ -3172,6 +3184,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|phases| phases.first())
             .cloned()
             .unwrap_or(Value::Null),
+        "phaseResolveKnownEntriesFirst": routing_decision_ready_phase_resolve
+            .get("knownPhases")
+            .and_then(Value::as_array)
+            .and_then(|phases| phases.first())
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseResolveKnownFirst": routing_decision_ready_phase_resolve
             .get("knownPhases")
             .and_then(Value::as_array)
@@ -3185,6 +3203,12 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolveKnownPhaseLast": routing_decision_ready_phase_resolve
+            .get("knownPhases")
+            .and_then(Value::as_array)
+            .and_then(|phases| phases.last())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveKnownEntriesLast": routing_decision_ready_phase_resolve
             .get("knownPhases")
             .and_then(Value::as_array)
             .and_then(|phases| phases.last())
@@ -10773,6 +10797,10 @@ mod tests {
             "hook-fallback-diagnose-failed"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownEntriesFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodeFirst"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownFirst"],
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodeFirst"]
         );
@@ -10783,6 +10811,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodeLast"],
             "hook-fallback-preflight-timeout"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownEntriesLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodeLast"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownLast"],
@@ -11123,6 +11155,10 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownEntriesFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhaseFirst"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownFirst"],
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhaseFirst"]
         );
@@ -11133,6 +11169,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhaseLast"],
             "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownEntriesLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhaseLast"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownLast"],
