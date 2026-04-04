@@ -2643,6 +2643,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("errorCodeCount")
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveIndexCount": routing_decision_ready_resolve
+            .get("errorCodeCount")
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveKnownErrorCodes": routing_decision_ready_resolve
             .get("knownErrorCodes")
             .cloned()
@@ -3045,6 +3049,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolvePhaseCount": routing_decision_ready_phase_resolve
+            .get("phaseCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveIndexCount": routing_decision_ready_phase_resolve
             .get("phaseCount")
             .cloned()
             .unwrap_or(Value::Null),
@@ -10579,6 +10587,10 @@ mod tests {
             6
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveIndexCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveErrorCodeCount"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodes"][0],
             "hook-fallback-diagnose-failed"
         );
@@ -10863,6 +10875,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolvePhaseCount"],
             2
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveIndexCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolvePhaseCount"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhases"][0],
