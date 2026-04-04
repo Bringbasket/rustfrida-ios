@@ -5272,6 +5272,68 @@ fn parse_message_suffix_after_prefix(message: &str, prefix: &str) -> Option<Stri
 }
 
 #[cfg(unix)]
+#[derive(Default)]
+struct ParsedHookEffectiveBlockedDetails {
+    action_key: Option<String>,
+    command_group: Option<String>,
+    blocked_by: Option<String>,
+    command_mode: Option<String>,
+    recommendation: Option<String>,
+    coexistence_mode: Option<String>,
+    backend_pressure: Option<String>,
+    fallback_action_key: Option<String>,
+    fallback_command: Option<String>,
+    fallback_phase: Option<String>,
+    fallback_available: Option<bool>,
+}
+
+#[cfg(unix)]
+fn compute_hook_fallback_available(
+    fallback_action_key: Option<&str>,
+    fallback_command: Option<&str>,
+    fallback_phase: Option<&str>,
+) -> Option<bool> {
+    match (fallback_action_key, fallback_command, fallback_phase) {
+        (Some(action_key), Some(command), Some(phase))
+            if action_key != "<none>" && command != "<none>" && phase != "<none>" =>
+        {
+            Some(true)
+        }
+        (Some(_), Some(_), Some(_)) => Some(false),
+        _ => None,
+    }
+}
+
+#[cfg(unix)]
+fn parse_hook_effective_blocked_details(message: &str) -> ParsedHookEffectiveBlockedDetails {
+    let fallback_action_key = parse_error_field(message, "fallbackActionKey");
+    let fallback_command = parse_error_field_with_boundaries(
+        message,
+        "fallbackCommand",
+        &["fallbackPhase", "recommendation"],
+    );
+    let fallback_phase = parse_error_field(message, "fallbackPhase");
+
+    ParsedHookEffectiveBlockedDetails {
+        action_key: parse_error_field(message, "actionKey"),
+        command_group: parse_error_field(message, "commandGroup"),
+        blocked_by: parse_error_field(message, "blockedBy"),
+        command_mode: parse_error_field(message, "commandMode"),
+        recommendation: parse_error_field_with_boundaries(message, "recommendation", &[]),
+        coexistence_mode: parse_error_field(message, "coexistenceMode"),
+        backend_pressure: parse_error_field(message, "backendPressure"),
+        fallback_available: compute_hook_fallback_available(
+            fallback_action_key.as_deref(),
+            fallback_command.as_deref(),
+            fallback_phase.as_deref(),
+        ),
+        fallback_action_key,
+        fallback_command,
+        fallback_phase,
+    }
+}
+
+#[cfg(unix)]
 fn push_unique_hint(hints: &mut Vec<String>, hint: impl Into<String>) {
     let hint = hint.into();
     if !hint.is_empty() && !hints.iter().any(|existing| existing == &hint) {
@@ -5452,46 +5514,30 @@ fn failure_diagnostics_to_json(
                 parse_message_suffix_after_prefix(&message, "hook strategy blocked injection:");
         } else if message.contains("hook-effective-blocked") {
             phase = "hook-policy".into();
-            hook_action_key = parse_error_field(&message, "actionKey");
-            hook_command_group = parse_error_field(&message, "commandGroup");
-            hook_blocked_by = parse_error_field(&message, "blockedBy");
+            let parsed = parse_hook_effective_blocked_details(&message);
+            hook_action_key = parsed.action_key;
+            hook_command_group = parsed.command_group;
+            hook_blocked_by = parsed.blocked_by;
             code = match hook_blocked_by.as_deref() {
                 Some("controller") => "controller-hook-policy-blocked".into(),
                 Some("target") => "target-hook-policy-blocked".into(),
                 Some("both") => "both-hook-policies-blocked".into(),
                 _ => "hook-effective-blocked".into(),
             };
-            hook_command_mode = parse_error_field(&message, "commandMode");
+            hook_command_mode = parsed.command_mode;
             if let Some(mode) = hook_command_mode.as_deref() {
                 push_unique_hint(
                     &mut hints,
                     format!("effective hook command mode during failure: {mode}"),
                 );
             }
-            hook_recommendation =
-                parse_error_field_with_boundaries(&message, "recommendation", &[]);
-            coexistence_mode = parse_error_field(&message, "coexistenceMode");
-            backend_pressure = parse_error_field(&message, "backendPressure");
-            fallback_action_key = parse_error_field(&message, "fallbackActionKey");
-            fallback_command = parse_error_field_with_boundaries(
-                &message,
-                "fallbackCommand",
-                &["fallbackPhase", "recommendation"],
-            );
-            fallback_phase = parse_error_field(&message, "fallbackPhase");
-            hook_fallback_available = match (
-                fallback_action_key.as_deref(),
-                fallback_command.as_deref(),
-                fallback_phase.as_deref(),
-            ) {
-                (Some(action_key), Some(command), Some(phase))
-                    if action_key != "<none>" && command != "<none>" && phase != "<none>" =>
-                {
-                    Some(true)
-                }
-                (Some(_), Some(_), Some(_)) => Some(false),
-                _ => None,
-            };
+            hook_recommendation = parsed.recommendation;
+            coexistence_mode = parsed.coexistence_mode;
+            backend_pressure = parsed.backend_pressure;
+            fallback_action_key = parsed.fallback_action_key;
+            fallback_command = parsed.fallback_command;
+            fallback_phase = parsed.fallback_phase;
+            hook_fallback_available = parsed.fallback_available;
         } else if message.contains("timed out waiting") {
             phase = "controller-socket".into();
             code = "agent-connect-timeout".into();
