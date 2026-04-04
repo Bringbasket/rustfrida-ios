@@ -2303,6 +2303,31 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("examples")
             .cloned()
             .unwrap_or(json!({})),
+        "resolveExampleKnownErrorCode": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("knownErrorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleKnownResult": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("knownResult"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleMissingErrorCode": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("missingErrorCode"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleMissingResult": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("missingResult"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyInstallFailure": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveErrorCodeCount": routing_decision_ready_resolve
             .get("errorCodeCount")
             .cloned()
@@ -2433,6 +2458,31 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("examples")
             .cloned()
             .unwrap_or(json!({})),
+        "phaseResolveExampleKnownPhase": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("knownPhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleKnownResult": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("knownResult"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleMissingPhase": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("missingPhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleMissingResult": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("missingResult"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyInstallFailure": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseResolvePhaseCount": routing_decision_ready_phase_resolve
             .get("phaseCount")
             .cloned()
@@ -9557,6 +9607,22 @@ mod tests {
             "hook-fallback-diagnose-failed"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownErrorCode"],
+            "hook-fallback-diagnose-failed"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResult"]["reason"],
+            "matched-error-code"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingErrorCode"],
+            "hook-fallback-unknown"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResult"]["reason"],
+            "missing-error-code"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveErrorCodeCount"],
             6
         );
@@ -9679,6 +9745,22 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExamples"]["knownPhase"],
             "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownPhase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownResult"]["reason"],
+            "matched-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingPhase"],
+            "unknown"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingResult"]["reason"],
+            "missing-phase"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolvePhaseCount"],
@@ -10282,6 +10364,10 @@ mod tests {
             false
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyInstallFailure"]["reason"],
+            "missing-error-code"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["lookupKey"],
             "phase"
         );
@@ -10500,6 +10586,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
             false
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyInstallFailure"]["reason"],
+            "missing-phase"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["matched"],
@@ -11098,6 +11188,10 @@ mod tests {
             true
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyInstallFailure"]["reason"],
+            "matched-error-code"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyErrorCode"],
             "hook-fallback-hook-install-failed"
         );
@@ -11258,6 +11352,10 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
             true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyInstallFailure"]["reason"],
+            "matched-phase"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyWouldUsePhase"],
