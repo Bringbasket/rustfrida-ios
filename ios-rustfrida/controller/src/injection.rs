@@ -2079,7 +2079,19 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "policy": "index-then-default",
         "outputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
         "errorCodeCount": routing_decision_ready_known_error_codes.len(),
-        "knownErrorCodes": routing_decision_ready_known_error_codes,
+        "knownErrorCodes": routing_decision_ready_known_error_codes.clone(),
+        "knownEntries": routing_decision_ready_known_error_codes.clone(),
+        "knownList": routing_decision_ready_known_error_codes.clone(),
+        "knownEntriesCount": routing_decision_ready_known_error_codes.len(),
+        "knownErrorCodesCount": routing_decision_ready_known_error_codes.len(),
+        "knownErrorCodeFirst": routing_decision_ready_known_error_codes.first(),
+        "knownErrorCodesFirst": routing_decision_ready_known_error_codes.first(),
+        "knownEntriesFirst": routing_decision_ready_known_error_codes.first(),
+        "knownFirst": routing_decision_ready_known_error_codes.first(),
+        "knownErrorCodeLast": routing_decision_ready_known_error_codes.last(),
+        "knownErrorCodesLast": routing_decision_ready_known_error_codes.last(),
+        "knownEntriesLast": routing_decision_ready_known_error_codes.last(),
+        "knownLast": routing_decision_ready_known_error_codes.last(),
         "missingErrorCodeHint": "if errorCode is not in knownErrorCodes, use resolve.default",
         "defaultMatched": routing_decision_ready_resolve_default_matched,
         "defaultUsedDefault": routing_decision_ready_resolve_default_used_default,
@@ -2151,7 +2163,19 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "policy": "index-then-defaultPhase",
         "outputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
         "phaseCount": routing_decision_ready_known_phases.len(),
-        "knownPhases": routing_decision_ready_known_phases,
+        "knownPhases": routing_decision_ready_known_phases.clone(),
+        "knownEntries": routing_decision_ready_known_phases.clone(),
+        "knownList": routing_decision_ready_known_phases.clone(),
+        "knownEntriesCount": routing_decision_ready_known_phases.len(),
+        "knownPhasesCount": routing_decision_ready_known_phases.len(),
+        "knownPhaseFirst": routing_decision_ready_known_phases.first(),
+        "knownPhasesFirst": routing_decision_ready_known_phases.first(),
+        "knownEntriesFirst": routing_decision_ready_known_phases.first(),
+        "knownFirst": routing_decision_ready_known_phases.first(),
+        "knownPhaseLast": routing_decision_ready_known_phases.last(),
+        "knownPhasesLast": routing_decision_ready_known_phases.last(),
+        "knownEntriesLast": routing_decision_ready_known_phases.last(),
+        "knownLast": routing_decision_ready_known_phases.last(),
         "defaultPhase": routing_decision_ready_default_phase.clone(),
         "missingPhaseHint": "if phase is not in knownPhases, use phaseResolve.default",
         "defaultMatched": routing_decision_ready_phase_resolve_default_matched,
@@ -11760,12 +11784,60 @@ mod tests {
             6
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownEntries"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownList"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownEntriesCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["errorCodeCount"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodesCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["errorCodeCount"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][0],
             "hook-fallback-diagnose-failed"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodeFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][0]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodesFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][0]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownEntriesFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][0]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][0]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][5],
             "hook-fallback-preflight-timeout"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodeLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][5]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodesLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][5]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownEntriesLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][5]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["knownErrorCodes"][5]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["missingErrorCodeHint"],
@@ -12047,12 +12119,60 @@ mod tests {
             2
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownEntries"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownList"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownEntriesCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["phaseCount"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhasesCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["phaseCount"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"][0],
             "diagnose"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhaseFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"][0]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhasesFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"][0]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownEntriesFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"][0]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownFirst"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"][0]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"][1],
             "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhaseLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"][1]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhasesLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"][1]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownEntriesLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"][1]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownLast"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["knownPhases"][1]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["defaultPhase"],
