@@ -4798,6 +4798,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "nextStepChainCount": next_step_chain.len(),
             "nextStepChain": next_step_chain.clone(),
             "nextStepChainTruncated": next_step_chain_truncated,
+            "activeStep": fallback_next_chain_step.cloned().unwrap_or(Value::Null),
         })
     };
     let next_action_plan = selected_action
@@ -12954,6 +12955,18 @@ mod tests {
             "controller --preflight-only --preflight-json"
         );
         assert_eq!(automation["fallbackPlan"]["nextStepChainTruncated"], false);
+        assert_eq!(
+            automation["fallbackPlan"]["activeStep"]["id"],
+            automation["fallbackPlan"]["nextStepChain"][0]["id"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStep"]["command"],
+            automation["fallbackPlan"]["nextStepChain"][0]["command"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStep"]["phase"],
+            automation["fallbackPlan"]["nextStepChain"][0]["phase"]
+        );
         assert_eq!(automation["fallbackPlan"]["nextStepId"], "fallback-plan:0");
         assert_eq!(automation["fallbackPlan"]["nextStepSource"], "fallback-plan");
         assert_eq!(automation["fallbackPlan"]["nextStepCommand"], "native.hookenv");
