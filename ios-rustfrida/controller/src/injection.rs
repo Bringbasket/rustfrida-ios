@@ -2663,6 +2663,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .get("knownErrorCodes")
             .cloned()
             .unwrap_or(json!([])),
+        "resolveKnownList": routing_decision_ready_resolve
+            .get("knownErrorCodes")
+            .cloned()
+            .unwrap_or(json!([])),
         "resolveKnownErrorCodeFirst": routing_decision_ready_resolve
             .get("knownErrorCodes")
             .and_then(Value::as_array)
@@ -3097,6 +3101,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .cloned()
             .unwrap_or(json!([])),
         "phaseResolveKnownEntries": routing_decision_ready_phase_resolve
+            .get("knownPhases")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseResolveKnownList": routing_decision_ready_phase_resolve
             .get("knownPhases")
             .cloned()
             .unwrap_or(json!([])),
@@ -10663,6 +10671,10 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodes"]
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownList"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodes"]
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownErrorCodes"][5],
             "hook-fallback-preflight-timeout"
         );
@@ -10974,6 +10986,10 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownEntries"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhases"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownList"],
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownPhases"]
         );
         assert_eq!(
