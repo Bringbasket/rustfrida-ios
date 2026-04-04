@@ -5329,6 +5329,7 @@ fn failure_diagnostics_to_json(
     let mut hook_command_group: Option<String> = None;
     let mut hook_blocked_by: Option<String> = None;
     let mut hook_command_mode: Option<String> = None;
+    let mut hook_recommendation: Option<String> = None;
     let mut coexistence_mode: Option<String> = None;
     let mut backend_pressure: Option<String> = None;
     let mut fallback_action_key: Option<String> = None;
@@ -5447,6 +5448,8 @@ fn failure_diagnostics_to_json(
                     format!("effective hook command mode during failure: {mode}"),
                 );
             }
+            hook_recommendation =
+                parse_error_field_with_boundaries(&message, "recommendation", &[]);
             coexistence_mode = parse_error_field(&message, "coexistenceMode");
             backend_pressure = parse_error_field(&message, "backendPressure");
             fallback_action_key = parse_error_field(&message, "fallbackActionKey");
@@ -5533,6 +5536,7 @@ fn failure_diagnostics_to_json(
         "hookCommandGroup": hook_command_group,
         "hookBlockedBy": hook_blocked_by,
         "hookCommandMode": hook_command_mode,
+        "hookRecommendation": hook_recommendation,
         "coexistenceMode": coexistence_mode,
         "backendPressure": backend_pressure,
         "fallbackActionKey": fallback_action_key,
@@ -14771,6 +14775,10 @@ mod tests {
         assert_eq!(rendered["diagnostics"]["hookCommandGroup"], "hook-install");
         assert_eq!(rendered["diagnostics"]["hookBlockedBy"], "target");
         assert_eq!(rendered["diagnostics"]["hookCommandMode"], "query-only");
+        assert_eq!(
+            rendered["diagnostics"]["hookRecommendation"],
+            "blocked by target hook policy"
+        );
         assert_eq!(rendered["diagnostics"]["coexistenceMode"], "cleanup-only");
         assert_eq!(rendered["diagnostics"]["backendPressure"], "both");
         assert_eq!(rendered["diagnostics"]["fallbackActionKey"], "hook.status");
