@@ -762,11 +762,33 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
                             .get("maxSuggestedRetries")
                             .cloned()
                             .unwrap_or(Value::Null),
+                        "retryDelayHintMs": entry
+                            .get("retryDelayHintMs")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "timeoutHintMs": entry
+                            .get("timeoutHintMs")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "timeoutAction": entry
+                            .get("timeoutAction")
+                            .cloned()
+                            .unwrap_or(Value::Null),
                         "errorCode": entry.get("errorCode").cloned().unwrap_or(Value::Null),
                         "timeoutErrorCode": entry
                             .get("timeoutErrorCode")
                             .cloned()
                             .unwrap_or(Value::Null),
+                        "risk": entry.get("risk").cloned().unwrap_or(Value::Null),
+                        "placeholderCount": entry
+                            .get("placeholderCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "placeholders": entry
+                            .get("placeholders")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "cliArgs": entry.get("cliArgs").cloned().unwrap_or(Value::Null),
                     })
                 })
                 .collect::<Vec<_>>()
@@ -11145,6 +11167,54 @@ mod tests {
             "objc.classes <filter>"
         );
         assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["kind"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["kind"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["retryable"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["retryable"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["maxSuggestedRetries"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["maxSuggestedRetries"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["retryDelayHintMs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["retryDelayHintMs"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["timeoutHintMs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutHintMs"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["timeoutAction"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutAction"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["errorCode"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["errorCode"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["timeoutErrorCode"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutErrorCode"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["risk"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["risk"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["placeholderCount"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholderCount"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["placeholders"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholders"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["cliArgs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["cliArgs"]
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][1]["id"],
             "next-action:hook.query:1"
         );
@@ -11782,6 +11852,54 @@ mod tests {
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][0]["command"],
             "objc.classes <filter>"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["kind"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["kind"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["retryable"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["retryable"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["maxSuggestedRetries"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["maxSuggestedRetries"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["retryDelayHintMs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["retryDelayHintMs"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["timeoutHintMs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutHintMs"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["timeoutAction"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutAction"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["errorCode"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["errorCode"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["timeoutErrorCode"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["timeoutErrorCode"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["risk"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["risk"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["placeholderCount"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholderCount"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["placeholders"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["placeholders"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["cliArgs"],
+            rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["cliArgs"]
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][1]["id"],
