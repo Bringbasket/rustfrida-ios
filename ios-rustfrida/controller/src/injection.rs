@@ -909,6 +909,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextStepChainCount": next_step_chain.len(),
         "nextStepChain": next_step_chain,
         "nextStepChainTruncated": next_step_chain_truncated,
+        "activeStep": active_step.cloned().unwrap_or(Value::Null),
         "activeStepSource": next_step_chain_source,
         "activeStepId": active_step
             .and_then(|entry| entry.get("id"))
@@ -4965,6 +4966,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextStepChainCount": next_step_chain.len(),
         "nextStepChain": next_step_chain,
         "nextStepChainTruncated": next_step_chain_truncated,
+        "activeStep": active_step.cloned().unwrap_or(Value::Null),
         "activeStepSource": next_step_chain_source,
         "activeStepId": active_step
             .and_then(|entry| entry.get("id"))
@@ -11244,6 +11246,14 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["coexistence"]["activeStepSource"], "next-action");
         assert_eq!(
+            rendered["hook"]["coexistence"]["activeStep"]["id"],
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["id"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStep"]["command"],
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["command"]
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["activeStepId"],
             "next-action:hook.query:0"
         );
@@ -11416,6 +11426,14 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepRequiresFallback"], false);
         assert_eq!(rendered["hook"]["automation"]["activeStepSource"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStep"]["id"],
+            rendered["hook"]["automation"]["nextStepChain"][0]["id"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStep"]["command"],
+            rendered["hook"]["automation"]["nextStepChain"][0]["command"]
+        );
         assert_eq!(rendered["hook"]["automation"]["activeStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["automation"]["activeStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["automation"]["activeStepPhase"], "query");
@@ -12013,6 +12031,14 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["coexistence"]["activeStepSource"], "next-action");
         assert_eq!(
+            rendered["hook"]["coexistence"]["activeStep"]["id"],
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["id"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStep"]["command"],
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["command"]
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["activeStepId"],
             "next-action:hook.query:0"
         );
@@ -12185,6 +12211,14 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepRequiresFallback"], false);
         assert_eq!(rendered["hook"]["automation"]["activeStepSource"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStep"]["id"],
+            rendered["hook"]["automation"]["nextStepChain"][0]["id"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStep"]["command"],
+            rendered["hook"]["automation"]["nextStepChain"][0]["command"]
+        );
         assert_eq!(rendered["hook"]["automation"]["activeStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["automation"]["activeStepCommand"], "objc.classes <filter>");
         assert_eq!(rendered["hook"]["automation"]["activeStepPhase"], "query");
@@ -12565,6 +12599,14 @@ mod tests {
         assert_eq!(automation["nextStepReadyToRun"], true);
         assert_eq!(automation["nextStepRequiresFallback"], false);
         assert_eq!(automation["activeStepSource"], "next-action");
+        assert_eq!(
+            automation["activeStep"]["id"],
+            automation["nextStepChain"][0]["id"]
+        );
+        assert_eq!(
+            automation["activeStep"]["command"],
+            automation["nextStepChain"][0]["command"]
+        );
         assert_eq!(automation["activeStepId"], "next-action:hook.status:0");
         assert_eq!(automation["activeStepCommand"], "trace status");
         assert_eq!(automation["activeStepPhase"], "cleanup");
@@ -12809,6 +12851,14 @@ mod tests {
         assert_eq!(automation["nextStepReadyToRun"], false);
         assert_eq!(automation["nextStepRequiresFallback"], true);
         assert_eq!(automation["activeStepSource"], "fallback-plan");
+        assert_eq!(
+            automation["activeStep"]["id"],
+            automation["nextStepChain"][0]["id"]
+        );
+        assert_eq!(
+            automation["activeStep"]["command"],
+            automation["nextStepChain"][0]["command"]
+        );
         assert_eq!(automation["activeStepId"], "fallback-plan:0");
         assert_eq!(automation["activeStepCommand"], "native.hookenv");
         assert_eq!(automation["activeStepPhase"], "diagnose");
