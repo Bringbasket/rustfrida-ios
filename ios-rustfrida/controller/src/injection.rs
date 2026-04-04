@@ -14422,6 +14422,7 @@ mod tests {
         assert!(rendered["trace"].is_null());
         assert_eq!(rendered["diagnostics"]["phase"], "mach");
         assert_eq!(rendered["diagnostics"]["code"], "task-for-pid");
+        assert!(rendered["diagnostics"]["hook"].is_null());
         assert_eq!(rendered["diagnostics"]["handshakeStage"], "awaiting-hello");
         assert_eq!(rendered["diagnostics"]["failedStep"], "hello");
         assert!(rendered["diagnostics"]["hints"]
@@ -14529,6 +14530,7 @@ mod tests {
 
         assert_eq!(rendered["diagnostics"]["phase"], "remote-thread");
         assert_eq!(rendered["diagnostics"]["code"], "thread-create-running");
+        assert!(rendered["diagnostics"]["hook"].is_null());
     }
 
     #[test]
@@ -14625,6 +14627,7 @@ mod tests {
 
         assert_eq!(rendered["diagnostics"]["phase"], "script");
         assert_eq!(rendered["diagnostics"]["code"], "script-read");
+        assert!(rendered["diagnostics"]["hook"].is_null());
     }
 
     #[test]
@@ -14721,6 +14724,7 @@ mod tests {
 
         assert_eq!(rendered["diagnostics"]["phase"], "controller-socket");
         assert_eq!(rendered["diagnostics"]["code"], "bind-socket");
+        assert!(rendered["diagnostics"]["hook"].is_null());
     }
 
     #[test]
@@ -15011,6 +15015,7 @@ mod tests {
 
         assert_eq!(rendered["diagnostics"]["phase"], "remote-bootstrap");
         assert_eq!(rendered["diagnostics"]["code"], "connect-failed");
+        assert!(rendered["diagnostics"]["hook"].is_null());
         assert_eq!(rendered["diagnostics"]["bootstrapStatus"], "connect-failed");
         assert_eq!(rendered["diagnostics"]["handshakeStage"], "awaiting-hello");
         assert_eq!(rendered["diagnostics"]["failedStep"], "hello");
@@ -15171,6 +15176,7 @@ mod tests {
         assert_eq!(rendered["handshake"]["steps"]["loadJs"], "pending");
         assert_eq!(rendered["diagnostics"]["phase"], "script");
         assert_eq!(rendered["diagnostics"]["code"], "jsinit");
+        assert!(rendered["diagnostics"]["hook"].is_null());
         assert_eq!(rendered["diagnostics"]["handshakeStage"], "awaiting-jsinit");
         assert_eq!(rendered["diagnostics"]["failedStep"], "jsInit");
         assert_eq!(
