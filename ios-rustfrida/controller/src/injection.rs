@@ -712,9 +712,15 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         .and_then(|entry| entry.get("commandJsonEligible"))
         .and_then(Value::as_bool)
         .unwrap_or(false);
+    let next_step_id = recommended_action.and_then(|item| {
+        next_step_command
+            .as_ref()
+            .map(|_| format!("next-action:{}:0", item.action_key))
+    });
     let next_step = recommended_action
         .map(|item| {
             json!({
+                "id": next_step_id,
                 "actionKey": item.action_key,
                 "commandGroup": item.command_group,
                 "allowed": item.allowed,
@@ -1397,6 +1403,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .enumerate()
         .map(|(index, entry)| {
             json!({
+                "id": format!("fallback-plan:{index}"),
                 "index": index,
                 "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
                 "command": entry.get("command").cloned().unwrap_or(Value::Null),
@@ -1420,9 +1427,15 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .iter()
         .filter(|step| step.get("retryable").and_then(Value::as_bool).unwrap_or(false))
         .count();
+    let next_step_id = selected_action.and_then(|item| {
+        next_step_command
+            .as_ref()
+            .map(|_| format!("next-action:{}:0", item.action_key))
+    });
     let next_step = selected_action
         .map(|item| {
             json!({
+                "id": next_step_id,
                 "actionKey": item.action_key,
                 "commandGroup": item.command_group,
                 "allowed": item.allowed,
@@ -10707,6 +10720,10 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStep"]["id"],
+            "next-action:hook.query:0"
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["actionKey"], "hook.query");
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStep"]["command"],
@@ -10761,6 +10778,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStep"]["id"],
+            "next-action:hook.query:0"
+        );
         assert_eq!(rendered["hook"]["automation"]["nextStep"]["actionKey"], "hook.query");
         assert_eq!(
             rendered["hook"]["automation"]["nextStep"]["command"],
@@ -11177,6 +11198,10 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStep"]["id"],
+            "next-action:hook.query:0"
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStep"]["actionKey"], "hook.query");
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStep"]["command"],
@@ -11231,6 +11256,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStep"]["id"],
+            "next-action:hook.query:0"
+        );
         assert_eq!(rendered["hook"]["automation"]["nextStep"]["actionKey"], "hook.query");
         assert_eq!(
             rendered["hook"]["automation"]["nextStep"]["command"],
@@ -11446,6 +11475,7 @@ mod tests {
         assert_eq!(automation["nextActionBlockedBy"], "none");
         assert_eq!(automation["nextActionBranch"], "run");
         assert_eq!(automation["nextActionReadyToRun"], true);
+        assert_eq!(automation["nextStep"]["id"], "next-action:hook.status:0");
         assert_eq!(automation["nextStep"]["actionKey"], "hook.status");
         assert_eq!(automation["nextStep"]["command"], "trace status");
         assert_eq!(automation["nextStep"]["phase"], "cleanup");
@@ -11582,6 +11612,7 @@ mod tests {
         assert_eq!(automation["nextActionKey"], "hook.query");
         assert!(automation["nextReadyActionKey"].is_null());
         assert_eq!(automation["nextActionReadyToRun"], false);
+        assert_eq!(automation["nextStep"]["id"], "next-action:hook.query:0");
         assert_eq!(automation["nextStep"]["actionKey"], "hook.query");
         assert_eq!(automation["nextStep"]["command"], "objc.classes <filter>");
         assert_eq!(automation["nextStep"]["phase"], "query");
@@ -11704,6 +11735,7 @@ mod tests {
         assert_eq!(automation["fallbackPlan"]["stepCount"], 2);
         assert_eq!(automation["fallbackPlan"]["retryableStepCount"], 2);
         assert_eq!(automation["fallbackPlan"]["totalRetryBudget"], 3);
+        assert_eq!(automation["fallbackPlan"]["steps"][0]["id"], "fallback-plan:0");
         assert_eq!(automation["fallbackPlan"]["steps"][0]["phase"], "diagnose");
         assert_eq!(automation["fallbackPlan"]["steps"][0]["command"], "native.hookenv");
         assert_eq!(automation["fallbackPlan"]["steps"][0]["retryable"], true);
@@ -11722,6 +11754,7 @@ mod tests {
             automation["fallbackPlan"]["steps"][0]["timeoutErrorCode"],
             "hook-fallback-diagnose-timeout"
         );
+        assert_eq!(automation["fallbackPlan"]["steps"][1]["id"], "fallback-plan:1");
         assert_eq!(automation["fallbackPlan"]["steps"][1]["phase"], "preflight");
         assert_eq!(
             automation["fallbackPlan"]["steps"][1]["command"],
