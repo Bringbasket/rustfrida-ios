@@ -7156,19 +7156,39 @@ fn ensure_inline_hooks_allowed_for_command(
         .get("backendPressure")
         .and_then(Value::as_str)
         .unwrap_or("unknown");
+    let fallback_action_key = coexistence
+        .get("nextActionKey")
+        .and_then(Value::as_str)
+        .unwrap_or("<none>");
+    let fallback_command = coexistence
+        .get("nextActionTemplates")
+        .and_then(Value::as_array)
+        .and_then(|templates| templates.first())
+        .and_then(Value::as_str)
+        .unwrap_or("<none>");
+    let fallback_phase = coexistence
+        .get("nextActionCommandJsonTemplates")
+        .and_then(Value::as_array)
+        .and_then(|templates| templates.first())
+        .and_then(|entry| entry.get("phase"))
+        .and_then(Value::as_str)
+        .unwrap_or("<none>");
     let detail_text = if blocked_details.is_empty() {
         effective_action.recommendation.clone()
     } else {
         blocked_details.join("; ")
     };
     Err(Error::State(format!(
-        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={} coexistenceMode={} backendPressure={}; recommendation={}; {}",
+        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={} coexistenceMode={} backendPressure={} fallbackActionKey={} fallbackCommand={} fallbackPhase={}; recommendation={}; {}",
         effective_action.action_key,
         effective_action.command_group,
         effective_action.blocked_by,
         command_mode,
         coexistence_mode,
         backend_pressure,
+        fallback_action_key,
+        fallback_command,
+        fallback_phase,
         effective_action.recommendation,
         detail_text
     )))
@@ -9484,6 +9504,9 @@ mod tests {
         assert!(query_err.to_string().contains("commandMode=cleanup-only"));
         assert!(query_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(query_err.to_string().contains("backendPressure=both"));
+        assert!(query_err.to_string().contains("fallbackActionKey=hook.status"));
+        assert!(query_err.to_string().contains("fallbackCommand=trace status"));
+        assert!(query_err.to_string().contains("fallbackPhase=cleanup"));
 
         let install_err = ensure_inline_hooks_allowed_for_command("trace UIViewController", &environment, &preflight)
             .expect_err("hook install should be blocked in cleanup-only mode");
@@ -9492,6 +9515,9 @@ mod tests {
         assert!(install_err.to_string().contains("commandMode=cleanup-only"));
         assert!(install_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(install_err.to_string().contains("backendPressure=both"));
+        assert!(install_err.to_string().contains("fallbackActionKey=hook.status"));
+        assert!(install_err.to_string().contains("fallbackCommand=trace status"));
+        assert!(install_err.to_string().contains("fallbackPhase=cleanup"));
     }
 
     #[test]
@@ -9558,6 +9584,9 @@ mod tests {
         assert!(rendered.contains("commandMode=query-only"));
         assert!(rendered.contains("coexistenceMode=query-only"));
         assert!(rendered.contains("backendPressure=both"));
+        assert!(rendered.contains("fallbackActionKey=hook.query"));
+        assert!(rendered.contains("fallbackCommand=objc.classes <filter>"));
+        assert!(rendered.contains("fallbackPhase=query"));
         assert!(rendered.contains("controller policy=query-only-external-loaded"));
         assert!(rendered.contains("target policy=query-only-external-loaded"));
     }
