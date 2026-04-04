@@ -5335,6 +5335,7 @@ fn failure_diagnostics_to_json(
     let mut fallback_action_key: Option<String> = None;
     let mut fallback_command: Option<String> = None;
     let mut fallback_phase: Option<String> = None;
+    let mut hook_fallback_available: Option<bool> = None;
 
     if let Some(trace) = trace {
         if let Some(report) = trace.bootstrap_report.as_ref() {
@@ -5459,6 +5460,19 @@ fn failure_diagnostics_to_json(
                 &["fallbackPhase", "recommendation"],
             );
             fallback_phase = parse_error_field(&message, "fallbackPhase");
+            hook_fallback_available = match (
+                fallback_action_key.as_deref(),
+                fallback_command.as_deref(),
+                fallback_phase.as_deref(),
+            ) {
+                (Some(action_key), Some(command), Some(phase))
+                    if action_key != "<none>" && command != "<none>" && phase != "<none>" =>
+                {
+                    Some(true)
+                }
+                (Some(_), Some(_), Some(_)) => Some(false),
+                _ => None,
+            };
         } else if message.contains("timed out waiting") {
             phase = "controller-socket".into();
             code = "agent-connect-timeout".into();
@@ -5542,6 +5556,7 @@ fn failure_diagnostics_to_json(
         "fallbackActionKey": fallback_action_key,
         "fallbackCommand": fallback_command,
         "fallbackPhase": fallback_phase,
+        "hookFallbackAvailable": hook_fallback_available,
         "hints": hints,
     })
 }
@@ -14784,6 +14799,7 @@ mod tests {
         assert_eq!(rendered["diagnostics"]["fallbackActionKey"], "hook.status");
         assert_eq!(rendered["diagnostics"]["fallbackCommand"], "trace status");
         assert_eq!(rendered["diagnostics"]["fallbackPhase"], "cleanup");
+        assert_eq!(rendered["diagnostics"]["hookFallbackAvailable"], true);
         assert!(rendered["diagnostics"]["hints"]
             .as_array()
             .expect("hints array")
