@@ -5325,6 +5325,10 @@ fn failure_diagnostics_to_json(
     let mut bootstrap_status: Option<String> = None;
     let mut hints = Vec::new();
     let mut failed_step = None;
+    let mut hook_action_key: Option<String> = None;
+    let mut hook_command_group: Option<String> = None;
+    let mut hook_blocked_by: Option<String> = None;
+    let mut hook_command_mode: Option<String> = None;
     let mut coexistence_mode: Option<String> = None;
     let mut backend_pressure: Option<String> = None;
     let mut fallback_action_key: Option<String> = None;
@@ -5427,13 +5431,17 @@ fn failure_diagnostics_to_json(
             code = "controller-hook-policy-blocked".into();
         } else if message.contains("hook-effective-blocked") {
             phase = "hook-policy".into();
-            code = match parse_error_field(&message, "blockedBy").as_deref() {
+            hook_action_key = parse_error_field(&message, "actionKey");
+            hook_command_group = parse_error_field(&message, "commandGroup");
+            hook_blocked_by = parse_error_field(&message, "blockedBy");
+            code = match hook_blocked_by.as_deref() {
                 Some("controller") => "controller-hook-policy-blocked".into(),
                 Some("target") => "target-hook-policy-blocked".into(),
                 Some("both") => "both-hook-policies-blocked".into(),
                 _ => "hook-effective-blocked".into(),
             };
-            if let Some(mode) = parse_error_field(&message, "commandMode") {
+            hook_command_mode = parse_error_field(&message, "commandMode");
+            if let Some(mode) = hook_command_mode.as_deref() {
                 push_unique_hint(
                     &mut hints,
                     format!("effective hook command mode during failure: {mode}"),
@@ -5521,6 +5529,10 @@ fn failure_diagnostics_to_json(
         "bootstrapStatus": bootstrap_status,
         "handshakeStage": handshake_stage,
         "failedStep": failed_step,
+        "hookActionKey": hook_action_key,
+        "hookCommandGroup": hook_command_group,
+        "hookBlockedBy": hook_blocked_by,
+        "hookCommandMode": hook_command_mode,
         "coexistenceMode": coexistence_mode,
         "backendPressure": backend_pressure,
         "fallbackActionKey": fallback_action_key,
@@ -14755,6 +14767,10 @@ mod tests {
 
         assert_eq!(rendered["diagnostics"]["phase"], "hook-policy");
         assert_eq!(rendered["diagnostics"]["code"], "target-hook-policy-blocked");
+        assert_eq!(rendered["diagnostics"]["hookActionKey"], "hook.install");
+        assert_eq!(rendered["diagnostics"]["hookCommandGroup"], "hook-install");
+        assert_eq!(rendered["diagnostics"]["hookBlockedBy"], "target");
+        assert_eq!(rendered["diagnostics"]["hookCommandMode"], "query-only");
         assert_eq!(rendered["diagnostics"]["coexistenceMode"], "cleanup-only");
         assert_eq!(rendered["diagnostics"]["backendPressure"], "both");
         assert_eq!(rendered["diagnostics"]["fallbackActionKey"], "hook.status");
