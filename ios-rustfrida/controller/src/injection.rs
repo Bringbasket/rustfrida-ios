@@ -2271,6 +2271,41 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|templates| templates.first())
             .cloned()
             .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateCommand": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("command"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateRisk": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("risk"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplatePlaceholderCount": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("placeholderCount"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplatePlaceholders": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("placeholders"))
+            .cloned()
+            .unwrap_or(json!([])),
+        "defaultCommandJsonTemplateCliArgs": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("cliArgs"))
+            .cloned()
+            .unwrap_or(json!([])),
         "defaultCommandJsonTemplateKind": routing_decision_ready_default
             .get("commandJsonTemplates")
             .and_then(Value::as_array)
@@ -3276,6 +3311,42 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|templates| templates.first())
             .cloned()
             .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateCommand": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("command"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateRisk": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("risk"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplatePlaceholderCount":
+            routing_decision_ready_phase_preflight
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("placeholderCount"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplatePlaceholders": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("placeholders"))
+            .cloned()
+            .unwrap_or(json!([])),
+        "phasePreflightCommandJsonTemplateCliArgs": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("cliArgs"))
+            .cloned()
+            .unwrap_or(json!([])),
         "phasePreflightCommandJsonTemplateKind": routing_decision_ready_phase_preflight
             .get("commandJsonTemplates")
             .and_then(Value::as_array)
@@ -3414,6 +3485,42 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .and_then(|templates| templates.first())
             .cloned()
             .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplateCommand": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("command"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplateRisk": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("risk"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplatePlaceholderCount":
+            routing_decision_ready_phase_diagnose
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|templates| templates.first())
+                .and_then(|template| template.get("placeholderCount"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonTemplatePlaceholders": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("placeholders"))
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseDiagnoseCommandJsonTemplateCliArgs": routing_decision_ready_phase_diagnose
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|templates| templates.first())
+            .and_then(|template| template.get("cliArgs"))
+            .cloned()
+            .unwrap_or(json!([])),
         "phaseDiagnoseCommandJsonTemplateKind": routing_decision_ready_phase_diagnose
             .get("commandJsonTemplates")
             .and_then(Value::as_array)
@@ -10784,6 +10891,27 @@ mod tests {
             "preflight"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateCommand"],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateRisk"],
+            "normal"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["defaultCommandJsonTemplatePlaceholderCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplatePlaceholders"],
+            json!(["<pid>"])
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateCliArgs"],
+            json!(["--preflight-only", "--preflight-json", "--pid", "<pid>"])
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateKind"],
             "controller-cli"
         );
@@ -11681,6 +11809,28 @@ mod tests {
             "preflight"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateCommand"],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateRisk"],
+            "normal"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonTemplatePlaceholderCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonTemplatePlaceholders"],
+            json!(["<pid>"])
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateCliArgs"],
+            json!(["--preflight-only", "--preflight-json", "--pid", "<pid>"])
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateKind"],
             "controller-cli"
         );
@@ -11783,6 +11933,28 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplate"]["phase"],
             "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateCommand"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateRisk"],
+            "normal"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonTemplatePlaceholderCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonTemplatePlaceholders"],
+            json!([])
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateCliArgs"],
+            json!(["--pid", "<pid>", "--command", "native.hookenv", "--command-json"])
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateKind"],
