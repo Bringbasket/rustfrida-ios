@@ -5261,6 +5261,17 @@ fn parse_error_status_field(message: &str) -> Option<String> {
 }
 
 #[cfg(unix)]
+fn parse_message_suffix_after_prefix(message: &str, prefix: &str) -> Option<String> {
+    let (_, suffix) = message.split_once(prefix)?;
+    let suffix = suffix.trim();
+    if suffix.is_empty() {
+        None
+    } else {
+        Some(suffix.to_string())
+    }
+}
+
+#[cfg(unix)]
 fn push_unique_hint(hints: &mut Vec<String>, hint: impl Into<String>) {
     let hint = hint.into();
     if !hint.is_empty() && !hints.iter().any(|existing| existing == &hint) {
@@ -5429,10 +5440,16 @@ fn failure_diagnostics_to_json(
             phase = "hook-policy".into();
             code = "target-hook-policy-blocked".into();
             hook_blocked_by = Some("target".into());
+            hook_recommendation = parse_message_suffix_after_prefix(
+                &message,
+                "target hook strategy blocked injection:",
+            );
         } else if message.contains("hook strategy blocked injection") {
             phase = "hook-policy".into();
             code = "controller-hook-policy-blocked".into();
             hook_blocked_by = Some("controller".into());
+            hook_recommendation =
+                parse_message_suffix_after_prefix(&message, "hook strategy blocked injection:");
         } else if message.contains("hook-effective-blocked") {
             phase = "hook-policy".into();
             hook_action_key = parse_error_field(&message, "actionKey");
@@ -14910,7 +14927,15 @@ mod tests {
         assert_eq!(legacy_rendered["diagnostics"]["phase"], "hook-policy");
         assert_eq!(legacy_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
         assert_eq!(legacy_rendered["diagnostics"]["hookBlockedBy"], "target");
+        assert_eq!(
+            legacy_rendered["diagnostics"]["hookRecommendation"],
+            "external backend already loaded in target"
+        );
         assert_eq!(legacy_rendered["diagnostics"]["hook"]["blockedBy"], "target");
+        assert_eq!(
+            legacy_rendered["diagnostics"]["hook"]["recommendation"],
+            "external backend already loaded in target"
+        );
     }
 
     #[test]
