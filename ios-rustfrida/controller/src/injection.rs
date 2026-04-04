@@ -1570,10 +1570,13 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             json!({
                 "id": format!("fallback-plan:{index}"),
                 "index": index,
+                "source": "fallback-plan",
                 "actionKey": fallback_action_key.clone(),
                 "commandGroup": fallback_action_command_group.clone(),
                 "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
                 "command": entry.get("command").cloned().unwrap_or(Value::Null),
+                "readyToRun": true,
+                "requiresFallback": true,
                 "kind": entry.get("kind").cloned().unwrap_or(Value::Null),
                 "commandJsonEligible": entry.get("commandJsonEligible").cloned().unwrap_or(Value::Null),
                 "risk": entry.get("risk").cloned().unwrap_or(Value::Null),
@@ -13072,8 +13075,14 @@ mod tests {
             automation["fallbackPlan"]["templates"][1],
             "controller --preflight-only --preflight-json"
         );
+        assert_eq!(automation["fallbackPlan"]["steps"][0]["source"], "fallback-plan");
+        assert_eq!(automation["fallbackPlan"]["steps"][0]["readyToRun"], true);
+        assert_eq!(automation["fallbackPlan"]["steps"][0]["requiresFallback"], true);
         assert!(automation["fallbackPlan"]["steps"][0]["actionKey"].is_null());
         assert!(automation["fallbackPlan"]["steps"][0]["commandGroup"].is_null());
+        assert_eq!(automation["fallbackPlan"]["steps"][1]["source"], "fallback-plan");
+        assert_eq!(automation["fallbackPlan"]["steps"][1]["readyToRun"], true);
+        assert_eq!(automation["fallbackPlan"]["steps"][1]["requiresFallback"], true);
         assert!(automation["fallbackPlan"]["steps"][1]["actionKey"].is_null());
         assert!(automation["fallbackPlan"]["steps"][1]["commandGroup"].is_null());
         assert_eq!(automation["fallbackPlan"]["phaseCount"], 2);
@@ -13099,6 +13108,18 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["activeStep"]["phase"],
+            automation["fallbackPlan"]["nextStepChain"][0]["phase"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["steps"][0]["id"],
+            automation["fallbackPlan"]["nextStepChain"][0]["id"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["steps"][0]["command"],
+            automation["fallbackPlan"]["nextStepChain"][0]["command"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["steps"][0]["phase"],
             automation["fallbackPlan"]["nextStepChain"][0]["phase"]
         );
         assert_eq!(
