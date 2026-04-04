@@ -1000,6 +1000,14 @@ fn hook_effective_action_order(action_key: &str) -> usize {
 }
 
 #[cfg(unix)]
+fn hook_action_command_group(action_key: &str) -> Option<&'static str> {
+    HOOK_EFFECTIVE_ACTIONS
+        .iter()
+        .find(|(key, _)| *key == action_key)
+        .map(|(_, command_group)| *command_group)
+}
+
+#[cfg(unix)]
 fn hook_automation_branch(action: &HookEffectiveAction) -> &'static str {
     if action.allowed {
         "run"
@@ -1523,6 +1531,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     } else {
         next_ready_action_key.clone()
     };
+    let fallback_action_command_group = fallback_action_key
+        .as_deref()
+        .and_then(hook_action_command_group)
+        .map(ToOwned::to_owned);
     let fallback_reason = if next_action_ready_to_run {
         None
     } else if selected_action.is_none() {
@@ -1558,6 +1570,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             json!({
                 "id": format!("fallback-plan:{index}"),
                 "index": index,
+                "actionKey": fallback_action_key.clone(),
+                "commandGroup": fallback_action_command_group.clone(),
                 "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
                 "command": entry.get("command").cloned().unwrap_or(Value::Null),
                 "kind": entry.get("kind").cloned().unwrap_or(Value::Null),
@@ -1697,6 +1711,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                     "id": format!("fallback-plan:{index}"),
                     "index": index,
                     "source": "fallback-plan",
+                    "actionKey": fallback_action_key.clone(),
+                    "commandGroup": fallback_action_command_group.clone(),
                     "command": entry.get("command").cloned().unwrap_or(Value::Null),
                     "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
                     "readyToRun": true,
@@ -11328,6 +11344,14 @@ mod tests {
             "next-action:hook.query:0"
         );
         assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["actionKey"],
+            "hook.query"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["commandGroup"],
+            "query"
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][0]["command"],
             "objc.classes <filter>"
         );
@@ -11558,6 +11582,14 @@ mod tests {
         assert_eq!(
             rendered["hook"]["automation"]["nextStepChain"][0]["id"],
             "next-action:hook.query:0"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChain"][0]["actionKey"],
+            "hook.query"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChain"][0]["commandGroup"],
+            "query"
         );
         assert_eq!(
             rendered["hook"]["automation"]["nextStepChain"][0]["command"],
@@ -12113,6 +12145,14 @@ mod tests {
             "next-action:hook.query:0"
         );
         assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["actionKey"],
+            "hook.query"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepChain"][0]["commandGroup"],
+            "query"
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["nextStepChain"][0]["command"],
             "objc.classes <filter>"
         );
@@ -12343,6 +12383,14 @@ mod tests {
         assert_eq!(
             rendered["hook"]["automation"]["nextStepChain"][0]["id"],
             "next-action:hook.query:0"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChain"][0]["actionKey"],
+            "hook.query"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChain"][0]["commandGroup"],
+            "query"
         );
         assert_eq!(
             rendered["hook"]["automation"]["nextStepChain"][0]["command"],
@@ -12669,6 +12717,8 @@ mod tests {
         assert_eq!(automation["nextStepChainCount"], 1);
         assert_eq!(automation["nextStepChain"][0]["source"], "next-action");
         assert_eq!(automation["nextStepChain"][0]["id"], "next-action:hook.status:0");
+        assert_eq!(automation["nextStepChain"][0]["actionKey"], "hook.status");
+        assert_eq!(automation["nextStepChain"][0]["commandGroup"], "hook-status");
         assert_eq!(automation["nextStepChain"][0]["command"], "trace status");
         assert_eq!(automation["nextStepChain"][0]["phase"], "cleanup");
         assert_eq!(automation["nextStepChain"][0]["readyToRun"], true);
@@ -12921,11 +12971,15 @@ mod tests {
         assert_eq!(automation["nextStepChainCount"], 2);
         assert_eq!(automation["nextStepChain"][0]["source"], "fallback-plan");
         assert_eq!(automation["nextStepChain"][0]["id"], "fallback-plan:0");
+        assert!(automation["nextStepChain"][0]["actionKey"].is_null());
+        assert!(automation["nextStepChain"][0]["commandGroup"].is_null());
         assert_eq!(automation["nextStepChain"][0]["command"], "native.hookenv");
         assert_eq!(automation["nextStepChain"][0]["phase"], "diagnose");
         assert_eq!(automation["nextStepChain"][0]["readyToRun"], true);
         assert_eq!(automation["nextStepChain"][0]["requiresFallback"], true);
         assert_eq!(automation["nextStepChain"][1]["id"], "fallback-plan:1");
+        assert!(automation["nextStepChain"][1]["actionKey"].is_null());
+        assert!(automation["nextStepChain"][1]["commandGroup"].is_null());
         assert_eq!(automation["nextStepChain"][1]["command"], "controller --preflight-only --preflight-json");
         assert_eq!(automation["nextStepChain"][1]["phase"], "preflight");
         assert_eq!(automation["nextStepChain"][1]["readyToRun"], true);
@@ -12942,6 +12996,10 @@ mod tests {
             automation["fallbackPlan"]["templates"][1],
             "controller --preflight-only --preflight-json"
         );
+        assert!(automation["fallbackPlan"]["steps"][0]["actionKey"].is_null());
+        assert!(automation["fallbackPlan"]["steps"][0]["commandGroup"].is_null());
+        assert!(automation["fallbackPlan"]["steps"][1]["actionKey"].is_null());
+        assert!(automation["fallbackPlan"]["steps"][1]["commandGroup"].is_null());
         assert_eq!(automation["fallbackPlan"]["phaseCount"], 2);
         assert_eq!(automation["fallbackPlan"]["phaseOrder"], json!(["diagnose", "preflight"]));
         assert_eq!(automation["fallbackPlan"]["nextStepChainSource"], "fallback-plan");
