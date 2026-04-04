@@ -1393,6 +1393,84 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             })
         })
         .unwrap_or(Value::Null);
+    let next_step_chain_limit = 3usize;
+    let next_step_chain = if next_action_ready_to_run {
+        selected_action
+            .and_then(|item| {
+                next_step_command.as_ref().map(|command| {
+                    json!({
+                        "index": 0,
+                        "source": "next-action",
+                        "actionKey": item.action_key,
+                        "commandGroup": item.command_group,
+                        "command": command,
+                        "phase": next_step_phase,
+                        "readyToRun": true,
+                        "commandJsonEligible": next_step_command_json_eligible,
+                        "kind": next_step_command_json_template
+                            .as_ref()
+                            .and_then(|entry| entry.get("kind"))
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "retryable": next_step_command_json_template
+                            .as_ref()
+                            .and_then(|entry| entry.get("retryable"))
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "errorCode": next_step_command_json_template
+                            .as_ref()
+                            .and_then(|entry| entry.get("errorCode"))
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "timeoutErrorCode": next_step_command_json_template
+                            .as_ref()
+                            .and_then(|entry| entry.get("timeoutErrorCode"))
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                    })
+                })
+            })
+            .into_iter()
+            .collect::<Vec<_>>()
+    } else {
+        fallback_command_json_templates
+            .iter()
+            .take(next_step_chain_limit)
+            .enumerate()
+            .map(|(index, entry)| {
+                json!({
+                    "index": index,
+                    "source": "fallback-plan",
+                    "command": entry.get("command").cloned().unwrap_or(Value::Null),
+                    "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
+                    "kind": entry.get("kind").cloned().unwrap_or(Value::Null),
+                    "commandJsonEligible": entry
+                        .get("commandJsonEligible")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    "retryable": entry.get("retryable").cloned().unwrap_or(Value::Null),
+                    "maxSuggestedRetries": entry
+                        .get("maxSuggestedRetries")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    "errorCode": entry.get("errorCode").cloned().unwrap_or(Value::Null),
+                    "timeoutErrorCode": entry
+                        .get("timeoutErrorCode")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                })
+            })
+            .collect::<Vec<_>>()
+    };
+    let next_step_chain_source = if next_action_ready_to_run {
+        "next-action"
+    } else if fallback_command_json_templates.is_empty() {
+        "none"
+    } else {
+        "fallback-plan"
+    };
+    let next_step_chain_truncated =
+        !next_action_ready_to_run && fallback_command_json_templates.len() > next_step_chain_limit;
     let fallback_total_retry_budget = fallback_steps
         .iter()
         .map(|step| step.get("maxSuggestedRetries").and_then(Value::as_u64).unwrap_or(0))
@@ -4364,6 +4442,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "commandJsonTemplateCount": fallback_command_json_templates.len(),
             "commandJsonTemplates": fallback_command_json_templates,
             "commandJsonEligibleTemplateCount": fallback_eligible_command_json_template_count,
+            "nextStepChainSource": next_step_chain_source,
+            "nextStepChainCount": next_step_chain.len(),
+            "nextStepChain": next_step_chain.clone(),
+            "nextStepChainTruncated": next_step_chain_truncated,
         })
     };
     let next_action_plan = selected_action
@@ -4473,6 +4555,10 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextActionBranch": selected_action.map(hook_automation_branch),
         "nextActionReadyToRun": next_action_ready_to_run,
         "nextStep": next_step,
+        "nextStepChainSource": next_step_chain_source,
+        "nextStepChainCount": next_step_chain.len(),
+        "nextStepChain": next_step_chain,
+        "nextStepChainTruncated": next_step_chain_truncated,
         "hasFallbackPlan": !next_action_ready_to_run,
         "fallbackPlan": fallback_plan,
         "nextActionPlan": next_action_plan,
@@ -10604,6 +10690,17 @@ mod tests {
             rendered["hook"]["automation"]["nextStep"]["requiresFallback"],
             false
         );
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainCount"], 1);
+        assert_eq!(rendered["hook"]["automation"]["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChain"][0]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChainTruncated"],
+            false
+        );
         assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
         assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
@@ -11027,6 +11124,17 @@ mod tests {
             rendered["hook"]["automation"]["nextStep"]["requiresFallback"],
             false
         );
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainCount"], 1);
+        assert_eq!(rendered["hook"]["automation"]["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChain"][0]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChainTruncated"],
+            false
+        );
         assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
         assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
@@ -11220,6 +11328,12 @@ mod tests {
         assert_eq!(automation["nextStep"]["phase"], "cleanup");
         assert_eq!(automation["nextStep"]["readyToRun"], true);
         assert_eq!(automation["nextStep"]["requiresFallback"], false);
+        assert_eq!(automation["nextStepChainSource"], "next-action");
+        assert_eq!(automation["nextStepChainCount"], 1);
+        assert_eq!(automation["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(automation["nextStepChain"][0]["command"], "trace status");
+        assert_eq!(automation["nextStepChain"][0]["phase"], "cleanup");
+        assert_eq!(automation["nextStepChainTruncated"], false);
         assert_eq!(automation["hasFallbackPlan"], false);
         assert!(automation["fallbackPlan"].is_null());
         assert_eq!(automation["hasSuggestedSequence"], true);
@@ -11348,6 +11462,14 @@ mod tests {
         assert_eq!(automation["nextStep"]["phase"], "query");
         assert_eq!(automation["nextStep"]["readyToRun"], false);
         assert_eq!(automation["nextStep"]["requiresFallback"], true);
+        assert_eq!(automation["nextStepChainSource"], "fallback-plan");
+        assert_eq!(automation["nextStepChainCount"], 2);
+        assert_eq!(automation["nextStepChain"][0]["source"], "fallback-plan");
+        assert_eq!(automation["nextStepChain"][0]["command"], "native.hookenv");
+        assert_eq!(automation["nextStepChain"][0]["phase"], "diagnose");
+        assert_eq!(automation["nextStepChain"][1]["command"], "controller --preflight-only --preflight-json");
+        assert_eq!(automation["nextStepChain"][1]["phase"], "preflight");
+        assert_eq!(automation["nextStepChainTruncated"], false);
         assert_eq!(automation["hasFallbackPlan"], true);
         assert_eq!(automation["fallbackPlan"]["trigger"], "next-action-not-ready");
         assert_eq!(automation["fallbackPlan"]["fromActionKey"], "hook.query");
@@ -11361,6 +11483,14 @@ mod tests {
         );
         assert_eq!(automation["fallbackPlan"]["phaseCount"], 2);
         assert_eq!(automation["fallbackPlan"]["phaseOrder"], json!(["diagnose", "preflight"]));
+        assert_eq!(automation["fallbackPlan"]["nextStepChainSource"], "fallback-plan");
+        assert_eq!(automation["fallbackPlan"]["nextStepChainCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["nextStepChain"][0]["command"], "native.hookenv");
+        assert_eq!(
+            automation["fallbackPlan"]["nextStepChain"][1]["command"],
+            "controller --preflight-only --preflight-json"
+        );
+        assert_eq!(automation["fallbackPlan"]["nextStepChainTruncated"], false);
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicyCount"], 2);
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["phase"], "diagnose");
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["retryable"], true);
