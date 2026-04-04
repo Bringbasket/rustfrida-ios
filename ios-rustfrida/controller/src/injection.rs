@@ -852,6 +852,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextActionAllowed": recommended_action.map(|item| item.allowed),
         "nextActionBlockedBy": recommended_action.map(|item| item.blocked_by),
         "nextActionBranch": recommended_action.map(hook_automation_branch),
+        "nextActionReadyToRun": recommended_action.map(|item| item.allowed),
         "nextActionReason": recommended_action.map(|item| item.recommendation.clone()),
         "nextStepId": next_step_id,
         "nextStepActionKey": recommended_action.map(|item| item.action_key),
@@ -11381,6 +11382,7 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBranch"], "run");
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionReadyToRun"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandGroup"], "query");
@@ -12235,6 +12237,7 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBranch"], "run");
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionReadyToRun"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandGroup"], "query");
