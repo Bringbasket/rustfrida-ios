@@ -5680,6 +5680,18 @@ fn failure_diagnostics_to_json(
         };
     }
 
+    if phase == "hook-policy" {
+        hook_action_key.get_or_insert_with(|| "unknown".into());
+        hook_command_group.get_or_insert_with(|| "unknown".into());
+        hook_blocked_by.get_or_insert_with(|| "unknown".into());
+        hook_command_mode.get_or_insert_with(|| "unknown".into());
+        coexistence_mode.get_or_insert_with(|| "unknown".into());
+        backend_pressure.get_or_insert_with(|| "unknown".into());
+        fallback_action_key.get_or_insert_with(|| "unknown".into());
+        fallback_phase.get_or_insert_with(|| "unknown".into());
+        hook_fallback_available.get_or_insert(false);
+    }
+
     push_agent_path_hints(config, &mut hints);
     let hook_details_present = hook_action_key.is_some()
         || hook_command_group.is_some()
@@ -15049,16 +15061,32 @@ mod tests {
         );
         assert_eq!(legacy_rendered["diagnostics"]["phase"], "hook-policy");
         assert_eq!(legacy_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
+        assert_eq!(legacy_rendered["diagnostics"]["hookActionKey"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hookCommandGroup"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["hookBlockedBy"], "target");
+        assert_eq!(legacy_rendered["diagnostics"]["hookCommandMode"], "unknown");
         assert_eq!(
             legacy_rendered["diagnostics"]["hookRecommendation"],
             "external backend already loaded in target"
         );
+        assert_eq!(legacy_rendered["diagnostics"]["coexistenceMode"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["backendPressure"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["fallbackActionKey"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["fallbackPhase"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hookFallbackAvailable"], false);
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["actionKey"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["commandGroup"], "unknown");
         assert_eq!(legacy_rendered["diagnostics"]["hook"]["blockedBy"], "target");
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["commandMode"], "unknown");
         assert_eq!(
             legacy_rendered["diagnostics"]["hook"]["recommendation"],
             "external backend already loaded in target"
         );
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["coexistenceMode"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["backendPressure"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["fallbackActionKey"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["fallbackPhase"], "unknown");
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["fallbackAvailable"], false);
 
         let legacy_both_rendered = render_injection_result_json(
             &config,
@@ -15082,15 +15110,116 @@ mod tests {
         );
         assert_eq!(legacy_both_rendered["diagnostics"]["phase"], "hook-policy");
         assert_eq!(legacy_both_rendered["diagnostics"]["code"], "both-hook-policies-blocked");
+        assert_eq!(legacy_both_rendered["diagnostics"]["hookActionKey"], "unknown");
+        assert_eq!(legacy_both_rendered["diagnostics"]["hookCommandGroup"], "unknown");
         assert_eq!(legacy_both_rendered["diagnostics"]["hookBlockedBy"], "both");
+        assert_eq!(legacy_both_rendered["diagnostics"]["hookCommandMode"], "unknown");
         assert_eq!(
             legacy_both_rendered["diagnostics"]["hookRecommendation"],
             "both sides are in query-only mode"
         );
+        assert_eq!(legacy_both_rendered["diagnostics"]["coexistenceMode"], "unknown");
+        assert_eq!(legacy_both_rendered["diagnostics"]["backendPressure"], "unknown");
+        assert_eq!(legacy_both_rendered["diagnostics"]["fallbackActionKey"], "unknown");
+        assert_eq!(legacy_both_rendered["diagnostics"]["fallbackPhase"], "unknown");
+        assert_eq!(legacy_both_rendered["diagnostics"]["hookFallbackAvailable"], false);
+        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["actionKey"], "unknown");
+        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["commandGroup"], "unknown");
         assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["blockedBy"], "both");
+        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["commandMode"], "unknown");
         assert_eq!(
             legacy_both_rendered["diagnostics"]["hook"]["recommendation"],
             "both sides are in query-only mode"
+        );
+        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["coexistenceMode"], "unknown");
+        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["backendPressure"], "unknown");
+        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["fallbackActionKey"], "unknown");
+        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["fallbackPhase"], "unknown");
+        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["fallbackAvailable"], false);
+
+        let legacy_controller_rendered = render_injection_result_json(
+            &config,
+            42,
+            "/tmp/iosrf.sock",
+            &plan,
+            &environment,
+            &doctor,
+            &preflight,
+            None,
+            None,
+            None,
+            None,
+            false,
+            None,
+            None,
+            &[],
+            Some(&Error::State(
+                "hook strategy blocked injection: local controller backend mismatch".into(),
+            )),
+        );
+        assert_eq!(legacy_controller_rendered["diagnostics"]["phase"], "hook-policy");
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["code"],
+            "controller-hook-policy-blocked"
+        );
+        assert_eq!(legacy_controller_rendered["diagnostics"]["hookActionKey"], "unknown");
+        assert_eq!(legacy_controller_rendered["diagnostics"]["hookCommandGroup"], "unknown");
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hookBlockedBy"],
+            "controller"
+        );
+        assert_eq!(legacy_controller_rendered["diagnostics"]["hookCommandMode"], "unknown");
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hookRecommendation"],
+            "local controller backend mismatch"
+        );
+        assert_eq!(legacy_controller_rendered["diagnostics"]["coexistenceMode"], "unknown");
+        assert_eq!(legacy_controller_rendered["diagnostics"]["backendPressure"], "unknown");
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["fallbackActionKey"],
+            "unknown"
+        );
+        assert_eq!(legacy_controller_rendered["diagnostics"]["fallbackPhase"], "unknown");
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hookFallbackAvailable"],
+            false
+        );
+        assert_eq!(legacy_controller_rendered["diagnostics"]["hook"]["actionKey"], "unknown");
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hook"]["commandGroup"],
+            "unknown"
+        );
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hook"]["blockedBy"],
+            "controller"
+        );
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hook"]["commandMode"],
+            "unknown"
+        );
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hook"]["recommendation"],
+            "local controller backend mismatch"
+        );
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hook"]["coexistenceMode"],
+            "unknown"
+        );
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hook"]["backendPressure"],
+            "unknown"
+        );
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hook"]["fallbackActionKey"],
+            "unknown"
+        );
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hook"]["fallbackPhase"],
+            "unknown"
+        );
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hook"]["fallbackAvailable"],
+            false
         );
 
         let missing_blocked_by_rendered = render_injection_result_json(
