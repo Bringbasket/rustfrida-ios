@@ -855,6 +855,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextActionReadyToRun": recommended_action.map(|item| item.allowed),
         "nextActionReason": recommended_action.map(|item| item.recommendation.clone()),
         "nextStepId": next_step_id,
+        "nextStepSource": recommended_action.map(|_| "next-action"),
         "nextStepActionKey": recommended_action.map(|item| item.action_key),
         "nextStepCommandGroup": recommended_action.map(|item| item.command_group),
         "nextStepAllowed": recommended_action.map(|item| item.allowed),
@@ -5082,6 +5083,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "nextActionBranch": selected_action.map(hook_automation_branch),
         "nextActionReadyToRun": next_action_ready_to_run,
         "nextStepId": next_step_id,
+        "nextStepSource": selected_action.map(|_| "next-action"),
         "nextStepActionKey": selected_action.map(|item| item.action_key),
         "nextStepCommandGroup": selected_action.map(|item| item.command_group),
         "nextStepAllowed": selected_action.map(|item| item.allowed),
@@ -11384,6 +11386,7 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionReadyToRun"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepSource"], "next-action");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandGroup"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepAllowed"], true);
@@ -11657,6 +11660,7 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["automation"]["nextStepSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandGroup"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStepAllowed"], true);
@@ -12239,6 +12243,7 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionReadyToRun"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepSource"], "next-action");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandGroup"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepAllowed"], true);
@@ -12512,6 +12517,7 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionBranch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionReadyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(rendered["hook"]["automation"]["nextStepSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandGroup"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStepAllowed"], true);
@@ -12885,6 +12891,7 @@ mod tests {
         assert_eq!(automation["nextActionBranch"], "run");
         assert_eq!(automation["nextActionReadyToRun"], true);
         assert_eq!(automation["nextStepId"], "next-action:hook.status:0");
+        assert_eq!(automation["nextStepSource"], "next-action");
         assert_eq!(automation["nextStepActionKey"], "hook.status");
         assert_eq!(automation["nextStepCommandGroup"], "hook-status");
         assert_eq!(automation["nextStepAllowed"], true);
@@ -13158,6 +13165,7 @@ mod tests {
         assert!(automation["nextReadyActionKey"].is_null());
         assert_eq!(automation["nextActionReadyToRun"], false);
         assert_eq!(automation["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(automation["nextStepSource"], "next-action");
         assert_eq!(automation["nextStepActionKey"], "hook.query");
         assert_eq!(automation["nextStepCommandGroup"], "query");
         assert_eq!(automation["nextStepAllowed"], false);
