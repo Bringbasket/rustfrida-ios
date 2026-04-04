@@ -4815,6 +4815,82 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             "nextStepChain": next_step_chain.clone(),
             "nextStepChainTruncated": next_step_chain_truncated,
             "activeStep": fallback_next_chain_step.cloned().unwrap_or(Value::Null),
+            "activeStepSource": fallback_next_chain_step
+                .and_then(|entry| entry.get("source"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepId": fallback_next_chain_step
+                .and_then(|entry| entry.get("id"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepCommand": fallback_next_chain_step
+                .and_then(|entry| entry.get("command"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepPhase": fallback_next_chain_step
+                .and_then(|entry| entry.get("phase"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepReadyToRun": fallback_next_chain_step
+                .and_then(|entry| entry.get("readyToRun"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepRequiresFallback": fallback_next_chain_step
+                .and_then(|entry| entry.get("requiresFallback"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepKind": fallback_next_chain_step
+                .and_then(|entry| entry.get("kind"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepCommandJsonEligible": fallback_next_chain_step
+                .and_then(|entry| entry.get("commandJsonEligible"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepRetryable": fallback_next_chain_step
+                .and_then(|entry| entry.get("retryable"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepMaxSuggestedRetries": fallback_next_chain_step
+                .and_then(|entry| entry.get("maxSuggestedRetries"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepRetryDelayHintMs": fallback_next_chain_step
+                .and_then(|entry| entry.get("retryDelayHintMs"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepTimeoutHintMs": fallback_next_chain_step
+                .and_then(|entry| entry.get("timeoutHintMs"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepTimeoutAction": fallback_next_chain_step
+                .and_then(|entry| entry.get("timeoutAction"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepErrorCode": fallback_next_chain_step
+                .and_then(|entry| entry.get("errorCode"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepTimeoutErrorCode": fallback_next_chain_step
+                .and_then(|entry| entry.get("timeoutErrorCode"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepRisk": fallback_next_chain_step
+                .and_then(|entry| entry.get("risk"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepPlaceholderCount": fallback_next_chain_step
+                .and_then(|entry| entry.get("placeholderCount"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepPlaceholders": fallback_next_chain_step
+                .and_then(|entry| entry.get("placeholders"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepCliArgs": fallback_next_chain_step
+                .and_then(|entry| entry.get("cliArgs"))
+                .cloned()
+                .unwrap_or(Value::Null),
         })
     };
     let next_action_plan = selected_action
@@ -13024,6 +13100,82 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["activeStep"]["phase"],
             automation["fallbackPlan"]["nextStepChain"][0]["phase"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepSource"],
+            automation["fallbackPlan"]["nextStepChain"][0]["source"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepId"],
+            automation["fallbackPlan"]["nextStepChain"][0]["id"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepCommand"],
+            automation["fallbackPlan"]["nextStepChain"][0]["command"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepPhase"],
+            automation["fallbackPlan"]["nextStepChain"][0]["phase"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepReadyToRun"],
+            automation["fallbackPlan"]["nextStepChain"][0]["readyToRun"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepRequiresFallback"],
+            automation["fallbackPlan"]["nextStepChain"][0]["requiresFallback"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepKind"],
+            automation["fallbackPlan"]["nextStepChain"][0]["kind"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepCommandJsonEligible"],
+            automation["fallbackPlan"]["nextStepChain"][0]["commandJsonEligible"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepRetryable"],
+            automation["fallbackPlan"]["nextStepChain"][0]["retryable"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepMaxSuggestedRetries"],
+            automation["fallbackPlan"]["nextStepChain"][0]["maxSuggestedRetries"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepRetryDelayHintMs"],
+            automation["fallbackPlan"]["nextStepChain"][0]["retryDelayHintMs"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepTimeoutHintMs"],
+            automation["fallbackPlan"]["nextStepChain"][0]["timeoutHintMs"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepTimeoutAction"],
+            automation["fallbackPlan"]["nextStepChain"][0]["timeoutAction"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepErrorCode"],
+            automation["fallbackPlan"]["nextStepChain"][0]["errorCode"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepTimeoutErrorCode"],
+            automation["fallbackPlan"]["nextStepChain"][0]["timeoutErrorCode"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepRisk"],
+            automation["fallbackPlan"]["nextStepChain"][0]["risk"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepPlaceholderCount"],
+            automation["fallbackPlan"]["nextStepChain"][0]["placeholderCount"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepPlaceholders"],
+            automation["fallbackPlan"]["nextStepChain"][0]["placeholders"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["activeStepCliArgs"],
+            automation["fallbackPlan"]["nextStepChain"][0]["cliArgs"]
         );
         assert_eq!(automation["fallbackPlan"]["nextStepId"], "fallback-plan:0");
         assert_eq!(automation["fallbackPlan"]["nextStepSource"], "fallback-plan");
