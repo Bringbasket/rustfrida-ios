@@ -555,6 +555,147 @@ fn hook_effective_to_json(actions: &[HookEffectiveAction]) -> Value {
 }
 
 #[cfg(unix)]
+fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
+    let command_mode = hook_effective_command_mode(actions);
+    let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
+    let loaded_in_target_count = json_u64_field(backend_matrix, "loadedInTargetCount");
+    let filesystem_only_in_either_count = json_u64_field(backend_matrix, "filesystemOnlyInEitherCount");
+    let shared_backend_count = json_array_len(backend_matrix, "sharedBackendIds");
+
+    let backend_pressure = if loaded_in_controller_count > 0 && loaded_in_target_count > 0 {
+        "both"
+    } else if loaded_in_controller_count > 0 {
+        "controller"
+    } else if loaded_in_target_count > 0 {
+        "target"
+    } else if filesystem_only_in_either_count > 0 {
+        "filesystem-only"
+    } else {
+        "none"
+    };
+
+    let mode = match command_mode {
+        "allowed" => {
+            if backend_pressure == "none" {
+                "inline-safe"
+            } else {
+                "inline-risky"
+            }
+        }
+        "query-only" => "query-only",
+        "cleanup-only" => "cleanup-only",
+        _ => "blocked",
+    };
+    let strategy = match mode {
+        "inline-safe" => "internal-inline-preferred",
+        "inline-risky" => "external-backend-coexist-risky",
+        "query-only" => "query-only-fallback",
+        "cleanup-only" => "cleanup-only-fallback",
+        _ => "blocked-no-compatible-path",
+    };
+    let risk_level = match mode {
+        "blocked" => "blocked",
+        "cleanup-only" => "high",
+        "query-only" => "elevated",
+        "inline-risky" => "elevated",
+        _ => "normal",
+    };
+
+    let mode_rank = |action_key: &str| -> u8 {
+        match command_mode {
+            "cleanup-only" => match action_key {
+                "hook.status" => 0,
+                "hook.stop" => 1,
+                "hook.bootstrap" => 2,
+                "hook.query" => 3,
+                "hook.install" => 4,
+                _ => 5,
+            },
+            "query-only" => match action_key {
+                "hook.query" => 0,
+                "hook.bootstrap" => 1,
+                "hook.status" => 2,
+                "hook.stop" => 3,
+                "hook.install" => 4,
+                _ => 5,
+            },
+            "blocked" => match action_key {
+                "hook.query" => 0,
+                "hook.status" => 1,
+                "hook.stop" => 2,
+                "hook.bootstrap" => 3,
+                "hook.install" => 4,
+                _ => 5,
+            },
+            _ => match action_key {
+                "hook.query" => 0,
+                "hook.bootstrap" => 1,
+                "hook.install" => 2,
+                "hook.status" => 3,
+                "hook.stop" => 4,
+                _ => 5,
+            },
+        }
+    };
+
+    let recommended_action = actions
+        .iter()
+        .filter(|item| item.allowed)
+        .min_by_key(|item| (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key)))
+        .or_else(|| {
+            actions
+                .iter()
+                .filter(|item| !item.allowed)
+                .min_by_key(|item| {
+                    (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key))
+                })
+        });
+
+    let preferred_path = mode;
+    let next_action_templates = recommended_action
+        .map(|item| hook_action_command_templates(item.action_key, preferred_path))
+        .unwrap_or_default();
+    let next_action_command_json_templates = next_action_templates
+        .iter()
+        .map(|template| command_json_template_entry(template))
+        .collect::<Vec<_>>();
+
+    let install_action = actions.iter().find(|item| item.action_key == "hook.install");
+    let external_backend_loaded = loaded_in_controller_count > 0 || loaded_in_target_count > 0;
+
+    json!({
+        "mode": mode,
+        "strategy": strategy,
+        "riskLevel": risk_level,
+        "coexistenceLayerAvailable": false,
+        "coexistenceLayerStatus": "not-implemented",
+        "commandMode": command_mode,
+        "backendPressure": backend_pressure,
+        "externalBackendLoaded": external_backend_loaded,
+        "externalBackendInController": loaded_in_controller_count > 0,
+        "externalBackendInTarget": loaded_in_target_count > 0,
+        "sharedExternalBackend": shared_backend_count > 0,
+        "filesystemOnlyBackendDetected": filesystem_only_in_either_count > 0,
+        "preferredPath": preferred_path,
+        "queryCommandsAllowed": hook_effective_allowed_for(actions, "hook.query"),
+        "hookInstallAllowed": hook_effective_allowed_for(actions, "hook.install"),
+        "hookStatusAllowed": hook_effective_allowed_for(actions, "hook.status"),
+        "hookStopAllowed": hook_effective_allowed_for(actions, "hook.stop"),
+        "installBlockedBy": install_action.map(|item| item.blocked_by),
+        "installRecommendation": install_action.map(|item| item.recommendation.clone()),
+        "nextActionKey": recommended_action.map(|item| item.action_key),
+        "nextActionAllowed": recommended_action.map(|item| item.allowed),
+        "nextActionBranch": recommended_action.map(hook_automation_branch),
+        "nextActionReason": recommended_action.map(|item| item.recommendation.clone()),
+        "nextActionTemplateCount": next_action_templates.len(),
+        "nextActionTemplates": next_action_templates,
+        "nextActionCommandJsonTemplateCount": next_action_command_json_templates.len(),
+        "nextActionCommandJsonEligibleTemplateCount": command_json_eligible_count(&next_action_command_json_templates),
+        "nextActionCommandJsonTemplates": next_action_command_json_templates,
+    })
+}
+
+#[cfg(unix)]
 fn hook_effective_action_order(action_key: &str) -> usize {
     HOOK_EFFECTIVE_ACTIONS
         .iter()
@@ -4212,6 +4353,7 @@ fn hook_shortcuts_to_json(
         "effectiveActions": hook_effective_actions_to_json(&effective_actions),
         "effective": hook_effective_to_json(&effective_actions),
         "backendMatrix": backend_matrix.clone(),
+        "coexistence": hook_coexistence_to_json(&effective_actions, &backend_matrix),
         "automation": hook_automation_to_json(&effective_actions, &backend_matrix),
     })
 }
@@ -9747,6 +9889,12 @@ mod tests {
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["both"], 0);
         assert!(rendered["hook"]["backendMatrix"]["entries"].is_array());
         assert_eq!(rendered["hook"]["backendMatrix"]["entryCount"], 0);
+        assert_eq!(rendered["hook"]["coexistence"]["mode"], "inline-safe");
+        assert_eq!(rendered["hook"]["coexistence"]["strategy"], "internal-inline-preferred");
+        assert_eq!(rendered["hook"]["coexistence"]["backendPressure"], "none");
+        assert_eq!(rendered["hook"]["coexistence"]["externalBackendLoaded"], false);
+        assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["automation"]["branchExecutionOrder"][0], "hook.query");
@@ -10060,6 +10208,12 @@ mod tests {
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["both"], 0);
         assert!(rendered["hook"]["backendMatrix"]["entries"].is_array());
         assert_eq!(rendered["hook"]["backendMatrix"]["entryCount"], 0);
+        assert_eq!(rendered["hook"]["coexistence"]["mode"], "inline-safe");
+        assert_eq!(rendered["hook"]["coexistence"]["strategy"], "internal-inline-preferred");
+        assert_eq!(rendered["hook"]["coexistence"]["backendPressure"], "none");
+        assert_eq!(rendered["hook"]["coexistence"]["externalBackendLoaded"], false);
+        assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["automation"]["branchExecutionOrder"][0], "hook.query");
@@ -13814,7 +13968,21 @@ mod tests {
         let controller_actions = hook_environment_recommended_actions(&controller_report, Some(&controller_strategy));
         let target_actions = hook_environment_recommended_actions(&target_report, Some(&target_strategy));
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
+        let coexistence = super::hook_coexistence_to_json(&effective_actions, &rendered);
         let automation = hook_automation_to_json(&effective_actions, &rendered);
+        assert_eq!(coexistence["mode"], "inline-risky");
+        assert_eq!(coexistence["strategy"], "external-backend-coexist-risky");
+        assert_eq!(coexistence["riskLevel"], "elevated");
+        assert_eq!(coexistence["commandMode"], "allowed");
+        assert_eq!(coexistence["backendPressure"], "both");
+        assert_eq!(coexistence["externalBackendLoaded"], true);
+        assert_eq!(coexistence["externalBackendInController"], true);
+        assert_eq!(coexistence["externalBackendInTarget"], true);
+        assert_eq!(coexistence["sharedExternalBackend"], true);
+        assert_eq!(coexistence["hookInstallAllowed"], true);
+        assert_eq!(coexistence["nextActionKey"], "hook.query");
+        assert_eq!(coexistence["nextActionTemplateCount"], 3);
+        assert_eq!(coexistence["nextActionTemplates"][0], "objc.classes <filter>");
         assert_eq!(automation["backendPressure"], "both");
         assert_eq!(automation["preferredPath"], "inline-risky");
         assert_eq!(automation["branchExecutionOrder"][0], "hook.query");
