@@ -2285,6 +2285,26 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
+                            return report.hasSuggestedSequence === Array.isArray(report.suggestedSequence) &&
+                                Array.isArray(report.commandTemplates) &&
+                                report.commandTemplates.length === report.recommendedActions.length &&
+                                report.commandTemplates.every((entry) =>
+                                    typeof entry.actionKey === 'string' &&
+                                    typeof entry.commandGroup === 'string' &&
+                                    Array.isArray(entry.templates) &&
+                                    Array.isArray(entry.commandJsonTemplates) &&
+                                    entry.templateCount === entry.templates.length &&
+                                    entry.commandJsonTemplateCount === entry.commandJsonTemplates.length);
+                        })()"#,
+                    )
+                    .expect("native hook env command template aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
                 "true"

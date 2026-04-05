@@ -1181,6 +1181,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         .count();
     let blocked_branch_count = ordered_action_indices.len().saturating_sub(ready_branch_count);
     let suggested_sequence = hook_automation_suggested_sequence(coexistence_mode);
+    let command_templates = ffi::JS_NewArray(ctx);
     result.set_property(
         ctx,
         "recommendedActionCount",
@@ -1215,7 +1216,33 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         ),
         None => result.set_property(ctx, "nextBlockedActionKey", JSValue::null()),
     };
+    result.set_property(
+        ctx,
+        "hasSuggestedSequence",
+        JSValue::bool(!suggested_sequence.is_empty()),
+    );
     set_string_array_property(ctx, result.raw(), "suggestedSequence", &suggested_sequence);
+    for (index, action) in recommended_actions_vec.iter().enumerate() {
+        let templates = hook_action_command_templates(&action.action_key, coexistence_mode);
+        let item = JSValue(ffi::JS_NewObject(ctx));
+        item.set_property(ctx, "actionKey", JSValue::string(ctx, &action.action_key));
+        item.set_property(ctx, "commandGroup", JSValue::string(ctx, &action.command_group));
+        item.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
+        set_string_array_property(ctx, item.raw(), "templates", &templates);
+        let command_json_templates_array = ffi::JS_NewArray(ctx);
+        for (template_index, template) in templates.iter().enumerate() {
+            ffi::JS_SetPropertyUint32(
+                ctx,
+                command_json_templates_array,
+                template_index as u32,
+                hook_command_json_template_to_js(ctx, template),
+            );
+        }
+        item.set_property(ctx, "commandJsonTemplateCount", JSValue::int(templates.len() as i32));
+        item.set_property(ctx, "commandJsonTemplates", JSValue(command_json_templates_array));
+        ffi::JS_SetPropertyUint32(ctx, command_templates, index as u32, item.raw());
+    }
+    result.set_property(ctx, "commandTemplates", JSValue(command_templates));
     match next_action {
         Some(action) => {
             let next_action_templates = hook_action_command_templates(&action.action_key, coexistence_mode);
