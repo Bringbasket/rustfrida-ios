@@ -1106,6 +1106,22 @@ fn json_string_array_field(value: &Value, key: &str) -> Vec<String> {
 }
 
 #[cfg(unix)]
+fn command_template_group_to_json(group_key: &str, templates: Vec<String>) -> Value {
+    let command_json_templates = templates
+        .iter()
+        .map(|template| command_json_template_entry(template))
+        .collect::<Vec<_>>();
+    json!({
+        "groupKey": group_key,
+        "templateCount": templates.len(),
+        "templates": templates,
+        "commandJsonTemplateCount": command_json_templates.len(),
+        "commandJsonTemplates": command_json_templates,
+        "commandJsonEligibleTemplateCount": command_json_eligible_count(&command_json_templates),
+    })
+}
+
+#[cfg(unix)]
 fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str, command_mode: &str) -> Value {
     let topology_kind = backend_matrix
         .get("topology")
@@ -1188,6 +1204,35 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         },
         _ => "observe backend state before choosing an adaptation path",
     };
+    let query_templates = hook_action_command_templates("hook.query", preferred_path);
+    let preflight_templates = vec![
+        "native.hookenv".to_string(),
+        "controller --preflight-only --preflight-json --pid <pid>".to_string(),
+    ];
+    let cleanup_templates = {
+        let mut templates = hook_action_command_templates("hook.status", preferred_path);
+        templates.extend(hook_action_command_templates("hook.stop", preferred_path));
+        templates
+    };
+    let install_templates = hook_action_command_templates("hook.install", preferred_path);
+    let query_group = command_template_group_to_json("query", query_templates);
+    let preflight_group = command_template_group_to_json("preflight", preflight_templates);
+    let cleanup_group = command_template_group_to_json("cleanup", cleanup_templates);
+    let install_group = command_template_group_to_json("install", install_templates);
+    let preferred_group_key = match recommended_action_bias {
+        "query" => "query",
+        "preflight" => "preflight",
+        "cleanup" => "cleanup",
+        "install" => "install",
+        _ => "none",
+    };
+    let preferred_group = match preferred_group_key {
+        "query" => query_group.clone(),
+        "preflight" => preflight_group.clone(),
+        "cleanup" => cleanup_group.clone(),
+        "install" => install_group.clone(),
+        _ => command_template_group_to_json("none", Vec::new()),
+    };
 
     json!({
         "mode": mode,
@@ -1206,6 +1251,74 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         "controllerLoadedOnlyBackendIds": controller_loaded_only_backend_ids,
         "targetLoadedOnlyBackendIds": target_loaded_only_backend_ids,
         "filesystemOnlyBackendIds": filesystem_only_backend_ids,
+        "queryTemplates": query_group.get("templates").cloned().unwrap_or(Value::Null),
+        "queryTemplateCount": query_group.get("templateCount").cloned().unwrap_or(Value::Null),
+        "queryCommandJsonTemplates": query_group
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryCommandJsonTemplateCount": query_group
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "preflightTemplates": preflight_group.get("templates").cloned().unwrap_or(Value::Null),
+        "preflightTemplateCount": preflight_group
+            .get("templateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "preflightCommandJsonTemplates": preflight_group
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "preflightCommandJsonTemplateCount": preflight_group
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "cleanupTemplates": cleanup_group.get("templates").cloned().unwrap_or(Value::Null),
+        "cleanupTemplateCount": cleanup_group
+            .get("templateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "cleanupCommandJsonTemplates": cleanup_group
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "cleanupCommandJsonTemplateCount": cleanup_group
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "installTemplates": install_group.get("templates").cloned().unwrap_or(Value::Null),
+        "installTemplateCount": install_group
+            .get("templateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "installCommandJsonTemplates": install_group
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "installCommandJsonTemplateCount": install_group
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryGroup": query_group,
+        "preflightGroup": preflight_group,
+        "cleanupGroup": cleanup_group,
+        "installGroup": install_group,
+        "preferredGroupKey": preferred_group_key,
+        "preferredGroup": preferred_group.clone(),
+        "preferredTemplates": preferred_group.get("templates").cloned().unwrap_or(Value::Null),
+        "preferredTemplateCount": preferred_group
+            .get("templateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "preferredCommandJsonTemplates": preferred_group
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "preferredCommandJsonTemplateCount": preferred_group
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
     })
 }
 
@@ -11581,6 +11694,22 @@ mod tests {
             "no external backend runtime pressure is active; inline install can proceed directly"
         );
         assert_eq!(
+            rendered["hook"]["coexistence"]["backendAdaptation"]["preferredGroupKey"],
+            "install"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["backendAdaptation"]["preferredTemplateCount"],
+            5
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["backendAdaptation"]["installTemplateCount"],
+            5
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["backendAdaptation"]["queryTemplateCount"],
+            3
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["backendAdaptation"]["inlineInstallReadyNow"],
             true
         );
@@ -11867,6 +11996,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["backendAdaptationMode"], "no-adaptation-needed");
         assert_eq!(rendered["hook"]["automation"]["backendAdaptationAlignment"], "clean");
         assert_eq!(rendered["hook"]["automation"]["backendAdaptationBias"], "install");
+        assert_eq!(
+            rendered["hook"]["automation"]["backendAdaptation"]["preferredGroupKey"],
+            "install"
+        );
         assert_eq!(
             rendered["hook"]["automation"]["backendAdaptation"]["inlineInstallReadyNow"],
             true
@@ -17238,6 +17371,9 @@ mod tests {
         assert_eq!(coexistence["backendAdaptationMode"], "runtime-alignment-required");
         assert_eq!(coexistence["backendAdaptationAlignment"], "split");
         assert_eq!(coexistence["backendAdaptationBias"], "query");
+        assert_eq!(coexistence["backendAdaptation"]["preferredGroupKey"], "query");
+        assert_eq!(coexistence["backendAdaptation"]["preferredTemplateCount"], 3);
+        assert_eq!(coexistence["backendAdaptation"]["installTemplateCount"], 0);
         assert_eq!(
             coexistence["backendAdaptation"]["controllerLoadedOnlyBackendIds"],
             json!(["ellekit"])
@@ -17264,6 +17400,8 @@ mod tests {
         assert_eq!(automation["backendAdaptationMode"], "runtime-alignment-required");
         assert_eq!(automation["backendAdaptationAlignment"], "split");
         assert_eq!(automation["backendAdaptationBias"], "query");
+        assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "query");
+        assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 3);
         assert_eq!(automation["backendAdaptation"]["requiresQueryPhase"], true);
         assert_eq!(automation["backendAdaptation"]["requiresCleanupPhase"], false);
         assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
@@ -17378,6 +17516,9 @@ mod tests {
         assert_eq!(coexistence["backendAdaptationMode"], "preflight-before-inline");
         assert_eq!(coexistence["backendAdaptationAlignment"], "filesystem-only");
         assert_eq!(coexistence["backendAdaptationBias"], "preflight");
+        assert_eq!(coexistence["backendAdaptation"]["preferredGroupKey"], "preflight");
+        assert_eq!(coexistence["backendAdaptation"]["preferredTemplateCount"], 2);
+        assert_eq!(coexistence["backendAdaptation"]["preflightTemplates"][1], "controller --preflight-only --preflight-json --pid <pid>");
         assert_eq!(coexistence["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
         assert_eq!(
@@ -17389,6 +17530,8 @@ mod tests {
         assert_eq!(automation["backendAdaptationMode"], "preflight-before-inline");
         assert_eq!(automation["backendAdaptationAlignment"], "filesystem-only");
         assert_eq!(automation["backendAdaptationBias"], "preflight");
+        assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "preflight");
+        assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 2);
         assert_eq!(automation["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
         assert_eq!(automation["loadedExternalBackendCount"], 0);
