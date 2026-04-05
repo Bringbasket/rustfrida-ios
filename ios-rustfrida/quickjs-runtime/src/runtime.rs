@@ -2370,9 +2370,8 @@ undefined;
                             const backendSpecificOk =
                                 Array.isArray(adaptation.backendSpecificRecommendations) &&
                                 adaptation.backendSpecificRecommendationCount === adaptation.backendSpecificRecommendations.length &&
-                                adaptation.conflictBackendPairCount === 0 &&
                                 Array.isArray(adaptation.conflictBackendPairs) &&
-                                adaptation.conflictBackendPairs.length === 0 &&
+                                adaptation.conflictBackendPairCount === adaptation.conflictBackendPairs.length &&
                                 ((adaptation.backendSpecificRecommendationCount === 0 &&
                                     adaptation.preferredBackendRecommendation === null &&
                                     adaptation.preferredBackendId === null &&
@@ -2393,6 +2392,35 @@ undefined;
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateCommand === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateCommand &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateKind === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateKind &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateEligible === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateEligible));
+                            const conflictPairOk =
+                                ((adaptation.conflictBackendPairCount === 0 &&
+                                    adaptation.preferredConflictBackendPair === null &&
+                                    adaptation.preferredConflictBackendPairKey === null &&
+                                    adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplate === null &&
+                                    adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateCommand === null &&
+                                    adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateKind === null &&
+                                    adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateEligible === null &&
+                                    adaptation.preferredConflictResolutionGroupKey === null &&
+                                    adaptation.preferredConflictResolutionReason === null &&
+                                    adaptation.preferredConflictResolutionTemplates === null &&
+                                    adaptation.preferredConflictResolutionTemplateCount === null &&
+                                    adaptation.preferredConflictResolutionChain === null &&
+                                    adaptation.preferredConflictResolutionChainCount === null) ||
+                                (adaptation.conflictBackendPairCount > 0 &&
+                                    typeof adaptation.preferredConflictBackendPair === 'object' &&
+                                    adaptation.preferredConflictBackendPair !== null &&
+                                    adaptation.preferredConflictBackendPairKey === adaptation.preferredConflictBackendPair.pairKey &&
+                                    adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateCommand === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateCommand &&
+                                    adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateKind === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateKind &&
+                                    adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateEligible === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateEligible &&
+                                    adaptation.preferredConflictResolutionGroupKey === adaptation.preferredConflictBackendPair.suggestedGroupKey &&
+                                    adaptation.preferredConflictResolutionReason === adaptation.preferredConflictBackendPair.resolutionReason &&
+                                    Array.isArray(adaptation.preferredConflictResolutionTemplates) &&
+                                    adaptation.preferredConflictResolutionTemplateCount === adaptation.preferredConflictBackendPair.templateCount &&
+                                    adaptation.preferredConflictResolutionTemplateCount === adaptation.preferredConflictResolutionTemplates.length &&
+                                    Array.isArray(adaptation.preferredConflictResolutionChain) &&
+                                    adaptation.preferredConflictResolutionChainCount === adaptation.preferredConflictBackendPair.resolutionChainCount &&
+                                    adaptation.preferredConflictResolutionChainCount === adaptation.preferredConflictResolutionChain.length));
                             return typeof adaptation === 'object' &&
                                 adaptation !== null &&
                                 report.backendAdaptationMode === adaptation.mode &&
@@ -2410,7 +2438,8 @@ undefined;
                                 groupsOk &&
                                 nestedGroupsOk &&
                                 primaryTemplateOk &&
-                                backendSpecificOk;
+                                backendSpecificOk &&
+                                conflictPairOk;
                         })()"#,
                     )
                     .expect("native hook env backend adaptation summary"),
