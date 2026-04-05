@@ -158,6 +158,54 @@ fn hook_action_prerequisites(action_key: &str) -> &'static [&'static str] {
     }
 }
 
+fn hook_effective_action_order(action_key: &str) -> usize {
+    match action_key {
+        "hook.query" => 0,
+        "hook.bootstrap" => 1,
+        "hook.install" => 2,
+        "hook.status" => 3,
+        "hook.stop" => 4,
+        _ => usize::MAX,
+    }
+}
+
+fn hook_action_mode_rank(command_mode: &str, action_key: &str) -> u8 {
+    match command_mode {
+        "cleanup-only" => match action_key {
+            "hook.status" => 0,
+            "hook.stop" => 1,
+            "hook.bootstrap" => 2,
+            "hook.query" => 3,
+            "hook.install" => 4,
+            _ => 5,
+        },
+        "query-only" => match action_key {
+            "hook.query" => 0,
+            "hook.status" => 1,
+            "hook.stop" => 2,
+            "hook.bootstrap" => 3,
+            "hook.install" => 4,
+            _ => 5,
+        },
+        _ => match action_key {
+            "hook.query" => 0,
+            "hook.bootstrap" => 1,
+            "hook.install" => 2,
+            "hook.status" => 3,
+            "hook.stop" => 4,
+            _ => 5,
+        },
+    }
+}
+
+fn hook_action_blocked_by(action: &native_api::HookRecommendedAction) -> &'static str {
+    if action.allowed {
+        "none"
+    } else {
+        "policy"
+    }
+}
+
 fn normalize_command_template_for_cli(template: &str) -> String {
     template
         .split(" #")
@@ -336,12 +384,27 @@ fn hook_action_branch(action: &native_api::HookRecommendedAction) -> &'static st
     if action.allowed {
         "run"
     } else {
-        "blocked"
+        "skip-policy"
     }
+}
+
+fn hook_action_ready_to_run(
+    actions: &[native_api::HookRecommendedAction],
+    action: &native_api::HookRecommendedAction,
+) -> bool {
+    action.allowed
+        && hook_action_prerequisites(&action.action_key).iter().all(|required| {
+            actions
+                .iter()
+                .find(|candidate| candidate.action_key == *required)
+                .map(|candidate| candidate.allowed)
+                .unwrap_or(true)
+        })
 }
 
 unsafe fn hook_next_action_plan_to_js(
     ctx: *mut ffi::JSContext,
+    actions: &[native_api::HookRecommendedAction],
     action: &native_api::HookRecommendedAction,
     templates: &[String],
 ) -> ffi::JSValue {
@@ -349,6 +412,17 @@ unsafe fn hook_next_action_plan_to_js(
     let prerequisite_action_keys = hook_action_prerequisites(&action.action_key)
         .iter()
         .map(|item| (*item).to_string())
+        .collect::<Vec<_>>();
+    let blocked_prerequisite_action_keys = prerequisite_action_keys
+        .iter()
+        .filter(|required| {
+            actions
+                .iter()
+                .find(|candidate| candidate.action_key == required.as_str())
+                .map(|candidate| !candidate.allowed)
+                .unwrap_or(false)
+        })
+        .cloned()
         .collect::<Vec<_>>();
     let command_json_templates_array = ffi::JS_NewArray(ctx);
     let mut command_json_template_count = 0usize;
@@ -370,19 +444,33 @@ unsafe fn hook_next_action_plan_to_js(
     plan.set_property(ctx, "actionKey", JSValue::string(ctx, &action.action_key));
     plan.set_property(ctx, "commandGroup", JSValue::string(ctx, &action.command_group));
     plan.set_property(ctx, "allowed", JSValue::bool(action.allowed));
+    plan.set_property(ctx, "blockedBy", JSValue::string(ctx, hook_action_blocked_by(action)));
     plan.set_property(ctx, "status", JSValue::string(ctx, &action.status));
     plan.set_property(ctx, "priority", JSValue::int(action.priority as i32));
     plan.set_property(ctx, "recommendation", JSValue::string(ctx, &action.recommendation));
     plan.set_property(ctx, "branch", JSValue::string(ctx, hook_action_branch(action)));
-    plan.set_property(ctx, "readyToRun", JSValue::bool(action.allowed));
+    plan.set_property(
+        ctx,
+        "readyToRun",
+        JSValue::bool(hook_action_ready_to_run(actions, action)),
+    );
     plan.set_property(
         ctx,
         "prerequisiteCount",
         JSValue::int(prerequisite_action_keys.len() as i32),
     );
     set_string_array_property(ctx, plan.raw(), "prerequisiteActionKeys", &prerequisite_action_keys);
-    plan.set_property(ctx, "blockedPrerequisiteCount", JSValue::int(0));
-    set_string_array_property(ctx, plan.raw(), "blockedPrerequisiteActionKeys", &[]);
+    plan.set_property(
+        ctx,
+        "blockedPrerequisiteCount",
+        JSValue::int(blocked_prerequisite_action_keys.len() as i32),
+    );
+    set_string_array_property(
+        ctx,
+        plan.raw(),
+        "blockedPrerequisiteActionKeys",
+        &blocked_prerequisite_action_keys,
+    );
     plan.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
     set_string_array_property(ctx, plan.raw(), "templates", templates);
     plan.set_property(
@@ -569,10 +657,38 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     let recommended_actions_vec = hook_environment_recommended_actions(report, decision.as_ref());
     let allowed_action_count = recommended_actions_vec.iter().filter(|action| action.allowed).count();
     let blocked_action_count = recommended_actions_vec.len().saturating_sub(allowed_action_count);
-    let next_action = recommended_actions_vec
+    let mut ordered_action_indices = (0..recommended_actions_vec.len()).collect::<Vec<_>>();
+    ordered_action_indices.sort_by_key(|index| {
+        let action = &recommended_actions_vec[*index];
+        (
+            hook_action_mode_rank(command_mode, &action.action_key),
+            action.priority,
+            hook_effective_action_order(&action.action_key),
+        )
+    });
+    let next_action_index = ordered_action_indices
         .iter()
-        .find(|action| action.allowed)
-        .or_else(|| recommended_actions_vec.first());
+        .copied()
+        .find(|index| recommended_actions_vec[*index].allowed);
+    let blocked_action_index = ordered_action_indices
+        .iter()
+        .copied()
+        .find(|index| !recommended_actions_vec[*index].allowed);
+    let selected_action_index = next_action_index.or(blocked_action_index);
+    let next_action = selected_action_index.map(|index| &recommended_actions_vec[index]);
+    let next_ready_action_index = ordered_action_indices
+        .iter()
+        .copied()
+        .find(|index| hook_action_ready_to_run(&recommended_actions_vec, &recommended_actions_vec[*index]));
+    let branch_execution_order = ordered_action_indices
+        .iter()
+        .map(|index| recommended_actions_vec[*index].action_key.clone())
+        .collect::<Vec<_>>();
+    let ready_branch_count = ordered_action_indices
+        .iter()
+        .filter(|index| hook_action_ready_to_run(&recommended_actions_vec, &recommended_actions_vec[**index]))
+        .count();
+    let blocked_branch_count = ordered_action_indices.len().saturating_sub(ready_branch_count);
     let suggested_sequence = hook_automation_suggested_sequence(coexistence_mode);
     result.set_property(
         ctx,
@@ -581,6 +697,33 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     );
     result.set_property(ctx, "allowedActionCount", JSValue::int(allowed_action_count as i32));
     result.set_property(ctx, "blockedActionCount", JSValue::int(blocked_action_count as i32));
+    result.set_property(ctx, "readyBranchCount", JSValue::int(ready_branch_count as i32));
+    result.set_property(ctx, "blockedBranchCount", JSValue::int(blocked_branch_count as i32));
+    set_string_array_property(ctx, result.raw(), "branchExecutionOrder", &branch_execution_order);
+    match next_ready_action_index {
+        Some(index) => result.set_property(
+            ctx,
+            "nextReadyActionKey",
+            JSValue::string(ctx, &recommended_actions_vec[index].action_key),
+        ),
+        None => result.set_property(ctx, "nextReadyActionKey", JSValue::null()),
+    };
+    match next_action_index {
+        Some(index) => result.set_property(
+            ctx,
+            "nextRunnableActionKey",
+            JSValue::string(ctx, &recommended_actions_vec[index].action_key),
+        ),
+        None => result.set_property(ctx, "nextRunnableActionKey", JSValue::null()),
+    };
+    match blocked_action_index {
+        Some(index) => result.set_property(
+            ctx,
+            "nextBlockedActionKey",
+            JSValue::string(ctx, &recommended_actions_vec[index].action_key),
+        ),
+        None => result.set_property(ctx, "nextBlockedActionKey", JSValue::null()),
+    };
     set_string_array_property(ctx, result.raw(), "suggestedSequence", &suggested_sequence);
     match next_action {
         Some(action) => {
@@ -641,7 +784,12 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             result.set_property(
                 ctx,
                 "nextActionPlan",
-                JSValue(hook_next_action_plan_to_js(ctx, action, &next_action_templates)),
+                JSValue(hook_next_action_plan_to_js(
+                    ctx,
+                    &recommended_actions_vec,
+                    action,
+                    &next_action_templates,
+                )),
             );
             match &action.reason {
                 Some(reason) => result.set_property(ctx, "nextActionReason", JSValue::string(ctx, reason)),
@@ -670,6 +818,96 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             result.set_property(ctx, "nextActionPlan", JSValue::null());
         }
     }
+
+    let action_branches = ffi::JS_NewArray(ctx);
+    for (entry_index, action_index) in ordered_action_indices.iter().enumerate() {
+        let action = &recommended_actions_vec[*action_index];
+        let templates = hook_action_command_templates(&action.action_key, coexistence_mode);
+        let command_json_templates = templates
+            .iter()
+            .map(|template| hook_command_json_template_to_js(ctx, template))
+            .collect::<Vec<_>>();
+        let command_json_eligible_template_count = command_json_templates
+            .iter()
+            .filter(|entry| {
+                JSValue(**entry)
+                    .get_property(ctx, "commandJsonEligible")
+                    .to_bool()
+                    .unwrap_or(false)
+            })
+            .count();
+        let prerequisites = hook_action_prerequisites(&action.action_key)
+            .iter()
+            .map(|item| (*item).to_string())
+            .collect::<Vec<_>>();
+        let blocked_prerequisites = prerequisites
+            .iter()
+            .filter(|required| {
+                recommended_actions_vec
+                    .iter()
+                    .find(|candidate| candidate.action_key == required.as_str())
+                    .map(|candidate| !candidate.allowed)
+                    .unwrap_or(false)
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let branch = JSValue(ffi::JS_NewObject(ctx));
+        let command_json_templates_array = ffi::JS_NewArray(ctx);
+        for (template_index, template) in command_json_templates.iter().enumerate() {
+            ffi::JS_SetPropertyUint32(ctx, command_json_templates_array, template_index as u32, *template);
+        }
+        branch.set_property(ctx, "actionKey", JSValue::string(ctx, &action.action_key));
+        branch.set_property(ctx, "commandGroup", JSValue::string(ctx, &action.command_group));
+        branch.set_property(ctx, "allowed", JSValue::bool(action.allowed));
+        branch.set_property(ctx, "branch", JSValue::string(ctx, hook_action_branch(action)));
+        branch.set_property(ctx, "blockedBy", JSValue::string(ctx, hook_action_blocked_by(action)));
+        branch.set_property(
+            ctx,
+            "executionRank",
+            JSValue::int(hook_action_mode_rank(command_mode, &action.action_key) as i32),
+        );
+        branch.set_property(ctx, "executionIndex", JSValue::int(entry_index as i32));
+        branch.set_property(ctx, "priority", JSValue::int(action.priority as i32));
+        branch.set_property(ctx, "recommendation", JSValue::string(ctx, &action.recommendation));
+        branch.set_property(
+            ctx,
+            "selectedAsNext",
+            JSValue::bool(selected_action_index == Some(*action_index)),
+        );
+        branch.set_property(ctx, "prerequisiteCount", JSValue::int(prerequisites.len() as i32));
+        set_string_array_property(ctx, branch.raw(), "prerequisiteActionKeys", &prerequisites);
+        branch.set_property(
+            ctx,
+            "blockedPrerequisiteCount",
+            JSValue::int(blocked_prerequisites.len() as i32),
+        );
+        set_string_array_property(
+            ctx,
+            branch.raw(),
+            "blockedPrerequisiteActionKeys",
+            &blocked_prerequisites,
+        );
+        branch.set_property(
+            ctx,
+            "readyToRun",
+            JSValue::bool(hook_action_ready_to_run(&recommended_actions_vec, action)),
+        );
+        branch.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
+        set_string_array_property(ctx, branch.raw(), "templates", &templates);
+        branch.set_property(
+            ctx,
+            "commandJsonTemplateCount",
+            JSValue::int(command_json_templates.len() as i32),
+        );
+        branch.set_property(
+            ctx,
+            "commandJsonEligibleTemplateCount",
+            JSValue::int(command_json_eligible_template_count as i32),
+        );
+        branch.set_property(ctx, "commandJsonTemplates", JSValue(command_json_templates_array));
+        ffi::JS_SetPropertyUint32(ctx, action_branches, entry_index as u32, branch.raw());
+    }
+    result.set_property(ctx, "actionBranches", JSValue(action_branches));
 
     let recommended_actions = ffi::JS_NewArray(ctx);
     for (index, action) in recommended_actions_vec.iter().enumerate() {
