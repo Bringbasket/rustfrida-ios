@@ -2531,6 +2531,54 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 resolve_value.set_property(ctx, "index", ready_value.get_property(ctx, "resolveIndex"));
                 resolve_value.set_property(ctx, "default", ready_value.get_property(ctx, "resolveDefault"));
                 resolve_value.set_property(ctx, "examples", ready_value.get_property(ctx, "resolveExamples"));
+                resolve_value.set_property(
+                    ctx,
+                    "queryOnlyErrorCode",
+                    query_only_example.get_property(ctx, "errorCode"),
+                );
+                resolve_value.set_property(
+                    ctx,
+                    "queryOnlyBlockedBy",
+                    query_only_example.get_property(ctx, "blockedBy"),
+                );
+                resolve_value.set_property(
+                    ctx,
+                    "queryOnlyBlockedBySource",
+                    query_only_example.get_property(ctx, "blockedBySource"),
+                );
+                resolve_value.set_property(
+                    ctx,
+                    "queryOnlyIsBlocked",
+                    query_only_example.get_property(ctx, "isBlocked"),
+                );
+                resolve_value.set_property(
+                    ctx,
+                    "queryOnlyAvailable",
+                    query_only_example.get_property(ctx, "available"),
+                );
+                resolve_value.set_property(ctx, "queryOnlyMatched", query_only_example.get_property(ctx, "matched"));
+                resolve_value.set_property(
+                    ctx,
+                    "queryOnlyUsedDefault",
+                    query_only_example.get_property(ctx, "usedDefault"),
+                );
+                resolve_value.set_property(ctx, "queryOnlyReason", query_only_example.get_property(ctx, "reason"));
+                resolve_value.set_property(
+                    ctx,
+                    "queryOnlyEffectivePhase",
+                    query_only_example.get_property(ctx, "effectivePhase"),
+                );
+                resolve_value.set_property(
+                    ctx,
+                    "queryOnlyEffectiveEscalationKey",
+                    query_only_example.get_property(ctx, "effectiveEscalationKey"),
+                );
+                resolve_value.set_property(
+                    ctx,
+                    "queryOnlyWouldUsePath",
+                    query_only_example.get_property(ctx, "wouldUseQueryOnlyPath"),
+                );
+                resolve_value.set_property(ctx, "queryOnlyResult", query_only_result.dup(ctx));
                 ready_value.set_property(ctx, "resolve", resolve_value);
 
                 let mut phase_error_codes = BTreeMap::<String, Vec<String>>::new();
@@ -2990,6 +3038,71 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 phase_resolve_value.set_property(ctx, "index", phase_resolve_index.dup(ctx));
                 phase_resolve_value.set_property(ctx, "default", phase_resolve_default.dup(ctx));
                 phase_resolve_value.set_property(ctx, "examples", phase_resolve_examples.dup(ctx));
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlySourceErrorCode",
+                    query_only_phase_example.get_property(ctx, "sourceErrorCode"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyBlockedBy",
+                    query_only_phase_example.get_property(ctx, "blockedBy"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyBlockedBySource",
+                    query_only_phase_example.get_property(ctx, "blockedBySource"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyIsBlocked",
+                    query_only_phase_example.get_property(ctx, "isBlocked"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyPhase",
+                    query_only_phase_example.get_property(ctx, "phase"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyAvailable",
+                    query_only_phase_example.get_property(ctx, "available"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyMatched",
+                    query_only_phase_example.get_property(ctx, "matched"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyUsedDefault",
+                    query_only_phase_example.get_property(ctx, "usedDefault"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyReason",
+                    query_only_phase_example.get_property(ctx, "reason"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyEffectivePhase",
+                    query_only_phase_example.get_property(ctx, "effectivePhase"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyEffectiveEscalationKey",
+                    query_only_phase_example.get_property(ctx, "effectiveEscalationKey"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyWouldUsePhase",
+                    query_only_phase_example.get_property(ctx, "wouldUseQueryPhase"),
+                );
+                phase_resolve_value.set_property(
+                    ctx,
+                    "queryOnlyResult",
+                    query_only_phase_example.get_property(ctx, "result"),
+                );
 
                 ready_value.set_property(ctx, "phaseResolveLookupKey", JSValue::string(ctx, "phase"));
                 ready_value.set_property(

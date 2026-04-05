@@ -2044,6 +2044,46 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
+                            if (!report.hasFallbackPlan || report.fallbackPlan === null || report.fallbackPlan.routingDecision === null || report.fallbackPlan.routingDecision.ready === null) {
+                                return true;
+                            }
+                            const ready = report.fallbackPlan.routingDecision.ready;
+                            if (ready.resolve === null || ready.phaseResolve === null) {
+                                return true;
+                            }
+                            const resolve = ready.resolve;
+                            const phaseResolve = ready.phaseResolve;
+                            const resolveOk =
+                                typeof resolve.queryOnlyBlockedBy === 'string' &&
+                                typeof resolve.queryOnlyBlockedBySource === 'string' &&
+                                typeof resolve.queryOnlyIsBlocked === 'boolean' &&
+                                typeof resolve.queryOnlyAvailable === 'boolean' &&
+                                typeof resolve.queryOnlyMatched === 'boolean' &&
+                                typeof resolve.queryOnlyUsedDefault === 'boolean' &&
+                                typeof resolve.queryOnlyReason === 'string' &&
+                                typeof resolve.queryOnlyWouldUsePath === 'boolean' &&
+                                (resolve.queryOnlyErrorCode === null || typeof resolve.queryOnlyErrorCode === 'string');
+                            const phaseResolveOk =
+                                typeof phaseResolve.queryOnlyBlockedBy === 'string' &&
+                                typeof phaseResolve.queryOnlyBlockedBySource === 'string' &&
+                                typeof phaseResolve.queryOnlyIsBlocked === 'boolean' &&
+                                typeof phaseResolve.queryOnlyAvailable === 'boolean' &&
+                                typeof phaseResolve.queryOnlyMatched === 'boolean' &&
+                                typeof phaseResolve.queryOnlyUsedDefault === 'boolean' &&
+                                typeof phaseResolve.queryOnlyReason === 'string' &&
+                                typeof phaseResolve.queryOnlyWouldUsePhase === 'boolean' &&
+                                (phaseResolve.queryOnlySourceErrorCode === null || typeof phaseResolve.queryOnlySourceErrorCode === 'string');
+                            return resolveOk && phaseResolveOk;
+                        })()"#,
+                    )
+                    .expect("native hook env nested query-only aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
                 "true"
