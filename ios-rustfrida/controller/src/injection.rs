@@ -4144,6 +4144,126 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
+        "preferredConflictResolutionQueryOnlyResolveBlockedBy": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveBlockedBy"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyResolveBlockedBySource": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveBlockedBySource"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyResolveIsBlocked": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveIsBlocked"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyResolveAvailable": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveAvailable"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyResolveMatched": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveMatched"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyResolveUsedDefault": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveUsedDefault"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyResolveReason": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveReason"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyResolveEffectivePhase": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveEffectivePhase"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveEffectiveEscalationKey"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyResolveWouldUsePath": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveWouldUsePath"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyResolveResultEffectivePhase": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveResultEffectivePhase"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyResolveResultEffectiveEscalationKey"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
         "preferredConflictResolutionPhaseResolveKnownCount": if has_preferred_conflict_backend_pair {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
@@ -4410,6 +4530,146 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
                 .and_then(|value| value.get("phaseResolveExampleQueryOnlyResultEffectiveEscalationKey"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveSourceErrorCode"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolvePhase": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolvePhase"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveBlockedBy"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveBlockedBySource"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveIsBlocked"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveAvailable": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveAvailable"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveMatched": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveMatched"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveUsedDefault"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveReason": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveReason"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveEffectivePhase"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveEffectiveEscalationKey"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveWouldUsePhase"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveResultEffectivePhase"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("queryOnlyPhaseResolveResultEffectiveEscalationKey"))
                 .cloned()
                 .unwrap_or(Value::Null)
         } else {
@@ -21479,6 +21739,54 @@ mod tests {
             preferred_conflict_ready["resolveExampleQueryOnlyResultEffectiveEscalationKey"]
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBy"],
+            preferred_conflict_ready["queryOnlyResolveBlockedBy"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBySource"],
+            preferred_conflict_ready["queryOnlyResolveBlockedBySource"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveIsBlocked"],
+            preferred_conflict_ready["queryOnlyResolveIsBlocked"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveAvailable"],
+            preferred_conflict_ready["queryOnlyResolveAvailable"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveMatched"],
+            preferred_conflict_ready["queryOnlyResolveMatched"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveUsedDefault"],
+            preferred_conflict_ready["queryOnlyResolveUsedDefault"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveReason"],
+            preferred_conflict_ready["queryOnlyResolveReason"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectivePhase"],
+            preferred_conflict_ready["queryOnlyResolveEffectivePhase"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey"],
+            preferred_conflict_ready["queryOnlyResolveEffectiveEscalationKey"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveWouldUsePath"],
+            preferred_conflict_ready["queryOnlyResolveWouldUsePath"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectivePhase"],
+            preferred_conflict_ready["queryOnlyResolveResultEffectivePhase"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey"],
+            preferred_conflict_ready["queryOnlyResolveResultEffectiveEscalationKey"]
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]
                 ["preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlySourceErrorCode"]
@@ -21548,6 +21856,62 @@ mod tests {
                 ["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey"],
             preferred_conflict_ready
                 ["phaseResolveExampleQueryOnlyResultEffectiveEscalationKey"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode"],
+            preferred_conflict_ready["queryOnlyPhaseResolveSourceErrorCode"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolvePhase"],
+            preferred_conflict_ready["queryOnlyPhaseResolvePhase"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy"],
+            preferred_conflict_ready["queryOnlyPhaseResolveBlockedBy"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource"],
+            preferred_conflict_ready["queryOnlyPhaseResolveBlockedBySource"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked"],
+            preferred_conflict_ready["queryOnlyPhaseResolveIsBlocked"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveAvailable"],
+            preferred_conflict_ready["queryOnlyPhaseResolveAvailable"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveMatched"],
+            preferred_conflict_ready["queryOnlyPhaseResolveMatched"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault"],
+            preferred_conflict_ready["queryOnlyPhaseResolveUsedDefault"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveReason"],
+            preferred_conflict_ready["queryOnlyPhaseResolveReason"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase"],
+            preferred_conflict_ready["queryOnlyPhaseResolveEffectivePhase"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey"],
+            preferred_conflict_ready["queryOnlyPhaseResolveEffectiveEscalationKey"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase"],
+            preferred_conflict_ready["queryOnlyPhaseResolveWouldUsePhase"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase"],
+            preferred_conflict_ready["queryOnlyPhaseResolveResultEffectivePhase"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"],
+            preferred_conflict_ready["queryOnlyPhaseResolveResultEffectiveEscalationKey"]
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolve"]["index"]["query"]["effective"]["phase"],
@@ -22244,6 +22608,54 @@ mod tests {
             preferred_conflict_ready["resolveExampleQueryOnlyResultEffectiveEscalationKey"]
         );
         assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBy"],
+            preferred_conflict_ready["queryOnlyResolveBlockedBy"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBySource"],
+            preferred_conflict_ready["queryOnlyResolveBlockedBySource"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveIsBlocked"],
+            preferred_conflict_ready["queryOnlyResolveIsBlocked"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveAvailable"],
+            preferred_conflict_ready["queryOnlyResolveAvailable"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveMatched"],
+            preferred_conflict_ready["queryOnlyResolveMatched"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveUsedDefault"],
+            preferred_conflict_ready["queryOnlyResolveUsedDefault"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveReason"],
+            preferred_conflict_ready["queryOnlyResolveReason"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectivePhase"],
+            preferred_conflict_ready["queryOnlyResolveEffectivePhase"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey"],
+            preferred_conflict_ready["queryOnlyResolveEffectiveEscalationKey"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveWouldUsePath"],
+            preferred_conflict_ready["queryOnlyResolveWouldUsePath"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectivePhase"],
+            preferred_conflict_ready["queryOnlyResolveResultEffectivePhase"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey"],
+            preferred_conflict_ready["queryOnlyResolveResultEffectiveEscalationKey"]
+        );
+        assert_eq!(
             automation["backendAdaptation"]
                 ["preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlySourceErrorCode"]
@@ -22313,6 +22725,62 @@ mod tests {
                 ["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey"],
             preferred_conflict_ready
                 ["phaseResolveExampleQueryOnlyResultEffectiveEscalationKey"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode"],
+            preferred_conflict_ready["queryOnlyPhaseResolveSourceErrorCode"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolvePhase"],
+            preferred_conflict_ready["queryOnlyPhaseResolvePhase"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy"],
+            preferred_conflict_ready["queryOnlyPhaseResolveBlockedBy"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource"],
+            preferred_conflict_ready["queryOnlyPhaseResolveBlockedBySource"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked"],
+            preferred_conflict_ready["queryOnlyPhaseResolveIsBlocked"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveAvailable"],
+            preferred_conflict_ready["queryOnlyPhaseResolveAvailable"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveMatched"],
+            preferred_conflict_ready["queryOnlyPhaseResolveMatched"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault"],
+            preferred_conflict_ready["queryOnlyPhaseResolveUsedDefault"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveReason"],
+            preferred_conflict_ready["queryOnlyPhaseResolveReason"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase"],
+            preferred_conflict_ready["queryOnlyPhaseResolveEffectivePhase"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey"],
+            preferred_conflict_ready["queryOnlyPhaseResolveEffectiveEscalationKey"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase"],
+            preferred_conflict_ready["queryOnlyPhaseResolveWouldUsePhase"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase"],
+            preferred_conflict_ready["queryOnlyPhaseResolveResultEffectivePhase"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"],
+            preferred_conflict_ready["queryOnlyPhaseResolveResultEffectiveEscalationKey"]
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase"],
@@ -22610,6 +23078,18 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBy"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBySource"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveIsBlocked"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveAvailable"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveMatched"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveUsedDefault"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveReason"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectivePhase"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveWouldUsePath"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectivePhase"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndexCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultReason"].is_null());
@@ -22637,6 +23117,20 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolvePhase"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveAvailable"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveMatched"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveReason"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQuery"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryErrorCodeCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryEscalationKeyCount"].is_null());
@@ -22797,6 +23291,18 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBy"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBySource"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveIsBlocked"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveAvailable"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveMatched"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveUsedDefault"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveReason"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectivePhase"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveWouldUsePath"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectivePhase"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndexCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultReason"].is_null());
@@ -22824,6 +23330,20 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolvePhase"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveAvailable"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveMatched"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveReason"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQuery"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryErrorCodeCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryEscalationKeyCount"].is_null());
