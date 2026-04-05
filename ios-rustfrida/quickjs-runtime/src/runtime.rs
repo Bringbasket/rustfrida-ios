@@ -2409,7 +2409,8 @@ undefined;
                                     adaptation.preferredConflictResolutionPhaseOrder === null &&
                                     adaptation.preferredConflictResolutionRetryableStepCount === null &&
                                     adaptation.preferredConflictResolutionTotalRetryBudget === null &&
-                                    adaptation.preferredConflictResolutionTerminationPolicy === null) ||
+                                    adaptation.preferredConflictResolutionTerminationPolicy === null &&
+                                    adaptation.preferredConflictResolutionRouting === null) ||
                                 (adaptation.conflictBackendPairCount > 0 &&
                                     typeof adaptation.preferredConflictBackendPair === 'object' &&
                                     adaptation.preferredConflictBackendPair !== null &&
@@ -2432,7 +2433,19 @@ undefined;
                                     typeof adaptation.preferredConflictResolutionTerminationPolicy === 'object' &&
                                     adaptation.preferredConflictResolutionTerminationPolicy !== null &&
                                     adaptation.preferredConflictResolutionTerminationPolicy.retryableStepCount === adaptation.preferredConflictResolutionRetryableStepCount &&
-                                    adaptation.preferredConflictResolutionTerminationPolicy.totalRetryBudget === adaptation.preferredConflictResolutionTotalRetryBudget));
+                                    adaptation.preferredConflictResolutionTerminationPolicy.totalRetryBudget === adaptation.preferredConflictResolutionTotalRetryBudget &&
+                                    typeof adaptation.preferredConflictResolutionRouting === 'object' &&
+                                    adaptation.preferredConflictResolutionRouting !== null &&
+                                    adaptation.preferredConflictResolutionRouting.phaseRetryPolicyCount === adaptation.preferredConflictResolutionRouting.phaseRetryPolicies.length &&
+                                    adaptation.preferredConflictResolutionRouting.phaseTimeoutPolicyCount === adaptation.preferredConflictResolutionRouting.phaseTimeoutPolicies.length &&
+                                    adaptation.preferredConflictResolutionRouting.phaseErrorCodeCount === adaptation.preferredConflictResolutionRouting.phaseErrorCodes.length &&
+                                    adaptation.preferredConflictResolutionRouting.escalationRecommendationCount === adaptation.preferredConflictResolutionRouting.escalationRecommendations.length &&
+                                    typeof adaptation.preferredConflictResolutionRouting.suggestedEscalationKey === 'string' &&
+                                    adaptation.preferredConflictResolutionRouting.errorCodeRoutingCount === adaptation.preferredConflictResolutionRouting.errorCodeRoutingResolvedCount &&
+                                    typeof adaptation.preferredConflictResolutionRouting.routingDecision === 'object' &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision !== null &&
+                                    typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready === 'object' &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready !== null));
                             return typeof adaptation === 'object' &&
                                 adaptation !== null &&
                                 report.backendAdaptationMode === adaptation.mode &&

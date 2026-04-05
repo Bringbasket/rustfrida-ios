@@ -1423,6 +1423,352 @@ unsafe fn hook_backend_conflict_resolution_chain_entry_to_js(
     item.raw()
 }
 
+unsafe fn hook_conflict_resolution_routing_to_js(
+    ctx: *mut ffi::JSContext,
+    steps: &[(&str, &str, &str)],
+    query_templates: &[String],
+    preflight_templates: &[String],
+    cleanup_templates: &[String],
+) -> ffi::JSValue {
+    use std::collections::BTreeMap;
+
+    if steps.is_empty() {
+        return JSValue::null().raw();
+    }
+
+    let routing = JSValue(ffi::JS_NewObject(ctx));
+    let phase_retry_policies = ffi::JS_NewArray(ctx);
+    let phase_timeout_policies = ffi::JS_NewArray(ctx);
+    let phase_error_codes = ffi::JS_NewArray(ctx);
+    let escalation_recommendations = ffi::JS_NewArray(ctx);
+
+    let mut error_code_routing_candidates = BTreeMap::<String, (String, String, Vec<String>)>::new();
+
+    for (index, (group_key, phase, reason)) in steps.iter().enumerate() {
+        let templates = hook_backend_templates_for_group(
+            group_key,
+            query_templates,
+            preflight_templates,
+            cleanup_templates,
+        );
+        let (retryable, max_suggested_retries, retry_delay_hint_ms) =
+            hook_conflict_resolution_phase_retry_policy(phase);
+        let (timeout_hint_ms, timeout_action) = hook_conflict_resolution_phase_timeout_policy(phase);
+        let error_code = hook_conflict_resolution_phase_failure_code(phase).to_string();
+        let timeout_error_code = hook_conflict_resolution_phase_timeout_error_code(phase).to_string();
+
+        let retry_policy = JSValue(ffi::JS_NewObject(ctx));
+        retry_policy.set_property(ctx, "phase", JSValue::string(ctx, phase));
+        retry_policy.set_property(ctx, "retryable", JSValue::bool(retryable));
+        retry_policy.set_property(
+            ctx,
+            "maxSuggestedRetries",
+            JSValue::int(max_suggested_retries as i32),
+        );
+        retry_policy.set_property(
+            ctx,
+            "retryDelayHintMs",
+            JSValue(js_u64_to_js_number_or_bigint(ctx, retry_delay_hint_ms as u64)),
+        );
+        retry_policy.set_property(
+            ctx,
+            "timeoutHintMs",
+            JSValue(js_u64_to_js_number_or_bigint(ctx, timeout_hint_ms)),
+        );
+        retry_policy.set_property(ctx, "timeoutAction", JSValue::string(ctx, timeout_action));
+        retry_policy.set_property(ctx, "errorCode", JSValue::string(ctx, &error_code));
+        retry_policy.set_property(
+            ctx,
+            "timeoutErrorCode",
+            JSValue::string(ctx, &timeout_error_code),
+        );
+        ffi::JS_SetPropertyUint32(ctx, phase_retry_policies, index as u32, retry_policy.raw());
+
+        let timeout_policy = JSValue(ffi::JS_NewObject(ctx));
+        timeout_policy.set_property(ctx, "phase", JSValue::string(ctx, phase));
+        timeout_policy.set_property(
+            ctx,
+            "timeoutHintMs",
+            JSValue(js_u64_to_js_number_or_bigint(ctx, timeout_hint_ms)),
+        );
+        timeout_policy.set_property(ctx, "timeoutAction", JSValue::string(ctx, timeout_action));
+        timeout_policy.set_property(ctx, "errorCode", JSValue::string(ctx, &error_code));
+        timeout_policy.set_property(
+            ctx,
+            "timeoutErrorCode",
+            JSValue::string(ctx, &timeout_error_code),
+        );
+        ffi::JS_SetPropertyUint32(ctx, phase_timeout_policies, index as u32, timeout_policy.raw());
+
+        let error_codes = JSValue(ffi::JS_NewObject(ctx));
+        error_codes.set_property(ctx, "phase", JSValue::string(ctx, phase));
+        error_codes.set_property(ctx, "errorCode", JSValue::string(ctx, &error_code));
+        error_codes.set_property(
+            ctx,
+            "timeoutErrorCode",
+            JSValue::string(ctx, &timeout_error_code),
+        );
+        ffi::JS_SetPropertyUint32(ctx, phase_error_codes, index as u32, error_codes.raw());
+
+        let escalation_key = format!("conflict-{group_key}");
+        let recommendation = JSValue(hook_escalation_recommendation_to_js(
+            ctx,
+            &escalation_key,
+            &format!("phase-{phase}-failed"),
+            phase,
+            reason,
+            None,
+            templates,
+            &[error_code.clone(), timeout_error_code.clone()],
+        ));
+        ffi::JS_SetPropertyUint32(ctx, escalation_recommendations, index as u32, recommendation.raw());
+
+        for code in [error_code, timeout_error_code] {
+            error_code_routing_candidates
+                .entry(code)
+                .or_insert_with(|| (escalation_key.clone(), (*phase).to_string(), templates.to_vec()));
+        }
+    }
+
+    let error_code_routing = JSValue(ffi::JS_NewObject(ctx));
+    let error_code_routing_entries = ffi::JS_NewArray(ctx);
+    let error_code_routing_resolved = JSValue(ffi::JS_NewObject(ctx));
+    for (entry_index, (error_code, (escalation_key, phase, templates))) in
+        error_code_routing_candidates.iter().enumerate()
+    {
+        let (command_json_templates, _) = hook_command_json_template_array_to_js(ctx, templates);
+        let resolved = JSValue(ffi::JS_NewObject(ctx));
+        resolved.set_property(ctx, "escalationKey", JSValue::string(ctx, escalation_key));
+        resolved.set_property(
+            ctx,
+            "effectiveEscalationKey",
+            JSValue::string(ctx, escalation_key),
+        );
+        resolved.set_property(ctx, "phase", JSValue::string(ctx, phase));
+        resolved.set_property(ctx, "effectivePhase", JSValue::string(ctx, phase));
+        resolved.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
+        set_string_array_property(ctx, resolved.raw(), "templates", templates);
+        resolved.set_property(
+            ctx,
+            "commandJsonTemplateCount",
+            JSValue::int(templates.len() as i32),
+        );
+        resolved.set_property(ctx, "commandJsonTemplates", JSValue(command_json_templates));
+
+        error_code_routing.set_property(ctx, error_code, JSValue::string(ctx, escalation_key));
+        error_code_routing_resolved.set_property(ctx, error_code, resolved.dup(ctx));
+
+        let entry = JSValue(ffi::JS_NewObject(ctx));
+        entry.set_property(ctx, "errorCode", JSValue::string(ctx, error_code));
+        entry.set_property(ctx, "candidateCount", JSValue::int(1));
+        entry.set_property(
+            ctx,
+            "candidateEscalationKeys",
+            JSValue(string_vec_to_js_array(ctx, &[escalation_key.clone()])),
+        );
+        entry.set_property(
+            ctx,
+            "recommendedEscalationKey",
+            JSValue::string(ctx, escalation_key),
+        );
+        entry.set_property(
+            ctx,
+            "effectiveEscalationKey",
+            JSValue::string(ctx, escalation_key),
+        );
+        entry.set_property(ctx, "matchConfidence", JSValue::string(ctx, "exact"));
+        entry.set_property(ctx, "resolvedFrom", JSValue::string(ctx, "errorCodeRouting"));
+        entry.set_property(ctx, "recommendedPhase", JSValue::string(ctx, phase));
+        entry.set_property(ctx, "effectivePhase", JSValue::string(ctx, phase));
+        entry.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
+        entry.set_property(
+            ctx,
+            "commandJsonTemplateCount",
+            JSValue::int(templates.len() as i32),
+        );
+        ffi::JS_SetPropertyUint32(ctx, error_code_routing_entries, entry_index as u32, entry.raw());
+        resolved.free(ctx);
+    }
+
+    let (default_group_key, default_phase, _) = steps[0];
+    let default_templates = hook_backend_templates_for_group(
+        default_group_key,
+        query_templates,
+        preflight_templates,
+        cleanup_templates,
+    );
+    let default_escalation_key = format!("conflict-{default_group_key}");
+    let (default_command_json_templates, _) = hook_command_json_template_array_to_js(ctx, default_templates);
+
+    let default_value = JSValue(ffi::JS_NewObject(ctx));
+    default_value.set_property(
+        ctx,
+        "matchConfidence",
+        JSValue::string(ctx, "default"),
+    );
+    default_value.set_property(
+        ctx,
+        "resolvedFrom",
+        JSValue::string(ctx, "defaultRecommendedEscalationKey"),
+    );
+    default_value.set_property(
+        ctx,
+        "escalationKey",
+        JSValue::string(ctx, &default_escalation_key),
+    );
+    default_value.set_property(
+        ctx,
+        "effectiveEscalationKey",
+        JSValue::string(ctx, &default_escalation_key),
+    );
+    default_value.set_property(ctx, "phase", JSValue::string(ctx, default_phase));
+    default_value.set_property(
+        ctx,
+        "effectivePhase",
+        JSValue::string(ctx, default_phase),
+    );
+    default_value.set_property(
+        ctx,
+        "templateCount",
+        JSValue::int(default_templates.len() as i32),
+    );
+    set_string_array_property(ctx, default_value.raw(), "templates", default_templates);
+    default_value.set_property(
+        ctx,
+        "commandJsonTemplateCount",
+        JSValue::int(default_templates.len() as i32),
+    );
+    default_value.set_property(
+        ctx,
+        "commandJsonTemplates",
+        JSValue(default_command_json_templates),
+    );
+
+    let routing_decision = JSValue(ffi::JS_NewObject(ctx));
+    routing_decision.set_property(ctx, "lookupKey", JSValue::string(ctx, "errorCode"));
+    routing_decision.set_property(
+        ctx,
+        "policy",
+        JSValue::string(ctx, "index-then-default"),
+    );
+    routing_decision.set_property(
+        ctx,
+        "outputShape",
+        JSValue::string(
+            ctx,
+            "{ escalationKey, effectiveEscalationKey, phase, effectivePhase }",
+        ),
+    );
+    routing_decision.set_property(
+        ctx,
+        "entryCount",
+        JSValue::int(error_code_routing_candidates.len() as i32),
+    );
+    routing_decision.set_property(
+        ctx,
+        "defaultRecommendedEscalationKey",
+        JSValue::string(ctx, &default_escalation_key),
+    );
+    routing_decision.set_property(
+        ctx,
+        "defaultRecommendedPhase",
+        JSValue::string(ctx, default_phase),
+    );
+    routing_decision.set_property(
+        ctx,
+        "defaultEffectiveEscalationKey",
+        JSValue::string(ctx, &default_escalation_key),
+    );
+    routing_decision.set_property(
+        ctx,
+        "defaultEffectivePhase",
+        JSValue::string(ctx, default_phase),
+    );
+    routing_decision.set_property(
+        ctx,
+        "defaultRecommendedTemplateCount",
+        JSValue::int(default_templates.len() as i32),
+    );
+    set_string_array_property(
+        ctx,
+        routing_decision.raw(),
+        "defaultRecommendedTemplates",
+        default_templates,
+    );
+    routing_decision.set_property(
+        ctx,
+        "defaultRecommendedCommandJsonTemplateCount",
+        JSValue::int(default_templates.len() as i32),
+    );
+    routing_decision.set_property(
+        ctx,
+        "defaultRecommendedCommandJsonTemplates",
+        default_value.get_property(ctx, "commandJsonTemplates"),
+    );
+    routing_decision.set_property(ctx, "default", default_value.dup(ctx));
+
+    let ready_value = JSValue(ffi::JS_NewObject(ctx));
+    ready_value.set_property(
+        ctx,
+        "lookupRule",
+        JSValue::string(ctx, "index[errorCode] || default"),
+    );
+    ready_value.set_property(ctx, "index", error_code_routing_resolved.dup(ctx));
+    ready_value.set_property(ctx, "default", default_value.dup(ctx));
+    ready_value.set_property(
+        ctx,
+        "defaultEscalationKey",
+        JSValue::string(ctx, &default_escalation_key),
+    );
+    ready_value.set_property(
+        ctx,
+        "defaultEffectiveEscalationKey",
+        JSValue::string(ctx, &default_escalation_key),
+    );
+    ready_value.set_property(ctx, "defaultPhase", JSValue::string(ctx, default_phase));
+    ready_value.set_property(
+        ctx,
+        "defaultEffectivePhase",
+        JSValue::string(ctx, default_phase),
+    );
+    routing_decision.set_property(ctx, "ready", ready_value);
+    default_value.free(ctx);
+
+    routing.set_property(ctx, "phaseRetryPolicyCount", JSValue::int(steps.len() as i32));
+    routing.set_property(ctx, "phaseRetryPolicies", JSValue(phase_retry_policies));
+    routing.set_property(ctx, "phaseTimeoutPolicyCount", JSValue::int(steps.len() as i32));
+    routing.set_property(ctx, "phaseTimeoutPolicies", JSValue(phase_timeout_policies));
+    routing.set_property(ctx, "phaseErrorCodeCount", JSValue::int(steps.len() as i32));
+    routing.set_property(ctx, "phaseErrorCodes", JSValue(phase_error_codes));
+    routing.set_property(
+        ctx,
+        "escalationRecommendationCount",
+        JSValue::int(steps.len() as i32),
+    );
+    routing.set_property(ctx, "escalationRecommendations", JSValue(escalation_recommendations));
+    routing.set_property(
+        ctx,
+        "suggestedEscalationKey",
+        JSValue::string(ctx, &default_escalation_key),
+    );
+    routing.set_property(
+        ctx,
+        "errorCodeRoutingCount",
+        JSValue::int(error_code_routing_candidates.len() as i32),
+    );
+    routing.set_property(ctx, "errorCodeRouting", error_code_routing);
+    routing.set_property(
+        ctx,
+        "errorCodeRoutingResolvedCount",
+        JSValue::int(error_code_routing_candidates.len() as i32),
+    );
+    routing.set_property(ctx, "errorCodeRoutingResolved", error_code_routing_resolved);
+    routing.set_property(ctx, "errorCodeRoutingEntries", JSValue(error_code_routing_entries));
+    routing.set_property(ctx, "routingDecision", routing_decision);
+
+    routing.raw()
+}
+
 unsafe fn hook_backend_conflict_pair_to_js(
     ctx: *mut ffi::JSContext,
     left_backend: &native_api::HookBackendInfo,
@@ -2162,14 +2508,25 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     "preferredConflictResolutionTotalRetryBudget",
                     JSValue(js_u64_to_js_number_or_bigint(ctx, total_retry_budget)),
                 );
-                backend_adaptation.set_property(
+            backend_adaptation.set_property(
+                ctx,
+                "preferredConflictResolutionTerminationPolicy",
+                termination_policy,
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredConflictResolutionRouting",
+                JSValue(hook_conflict_resolution_routing_to_js(
                     ctx,
-                    "preferredConflictResolutionTerminationPolicy",
-                    termination_policy,
-                );
-            } else {
-                backend_adaptation.set_property(
-                    ctx,
+                    &conflict_resolution_steps,
+                    &query_templates,
+                    &preflight_templates,
+                    &cleanup_templates,
+                )),
+            );
+        } else {
+            backend_adaptation.set_property(
+                ctx,
                     "preferredConflictResolutionPhaseOrder",
                     JSValue::null(),
                 );
@@ -2186,6 +2543,11 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 backend_adaptation.set_property(
                     ctx,
                     "preferredConflictResolutionTerminationPolicy",
+                    JSValue::null(),
+                );
+                backend_adaptation.set_property(
+                    ctx,
+                    "preferredConflictResolutionRouting",
                     JSValue::null(),
                 );
             }
@@ -2207,6 +2569,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredConflictResolutionRetryableStepCount",
                 "preferredConflictResolutionTotalRetryBudget",
                 "preferredConflictResolutionTerminationPolicy",
+                "preferredConflictResolutionRouting",
             ] {
                 backend_adaptation.set_property(ctx, key, JSValue::null());
             }
