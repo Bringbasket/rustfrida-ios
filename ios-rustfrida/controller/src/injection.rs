@@ -2767,6 +2767,20 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("commandJsonEligible")
                 .cloned()
                 .unwrap_or(Value::Null),
+            "selectedCommandJsonTemplate": backend_adaptation_next_step
+                .get("commandJsonTemplate")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "selectedCommandJsonTemplateCommand": backend_adaptation_next_step
+                .get("commandJsonTemplate")
+                .and_then(|value| value.get("command"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "selectedCommandJsonTemplateKind": backend_adaptation_next_step
+                .get("commandJsonTemplate")
+                .and_then(|value| value.get("kind"))
+                .cloned()
+                .unwrap_or(Value::Null),
             "selectedKind": backend_adaptation_next_step
                 .get("kind")
                 .cloned()
@@ -2995,6 +3009,18 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .unwrap_or(Value::Null),
         "executionSelectedCommandJsonEligible": backend_adaptation_execution_summary
             .get("selectedCommandJsonEligible")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedCommandJsonTemplate": backend_adaptation_execution_summary
+            .get("selectedCommandJsonTemplate")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedCommandJsonTemplateCommand": backend_adaptation_execution_summary
+            .get("selectedCommandJsonTemplateCommand")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedCommandJsonTemplateKind": backend_adaptation_execution_summary
+            .get("selectedCommandJsonTemplateKind")
             .cloned()
             .unwrap_or(Value::Null),
         "executionSelectedKind": backend_adaptation_execution_summary
@@ -19730,6 +19756,14 @@ mod tests {
             coexistence["backendAdaptation"]["executionSelectedCommand"],
             "objc.classes <filter>"
         );
+        assert_eq!(
+            coexistence["backendAdaptation"]["executionSelectedCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["executionSelectedCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(coexistence["backendAdaptation"]["executionSelectedPhase"], "query");
         assert_eq!(
             coexistence["backendAdaptation"]["executionSelectedRequiresFallback"],
@@ -20015,6 +20049,14 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["executionSelectedBranch"], "run");
         assert_eq!(automation["backendAdaptation"]["executionSelectedPreferredPath"], "query");
         assert_eq!(automation["backendAdaptation"]["executionSelectedErrorCode"], "hook-fallback-query-failed");
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedCommandJsonTemplate"]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(automation["backendAdaptation"]["executionSelectedRetryDelayHintMs"], 250);
         assert_eq!(automation["backendAdaptation"]["executionSelectedTimeoutHintMs"], 5000);
         assert_eq!(automation["backendAdaptation"]["executionSelectedRequiresFallback"], false);
@@ -20258,6 +20300,14 @@ mod tests {
         );
         assert_eq!(coexistence["backendAdaptation"]["executionSelectedBranch"], "run");
         assert_eq!(coexistence["backendAdaptation"]["executionSelectedCommand"], "native.hookenv");
+        assert_eq!(
+            coexistence["backendAdaptation"]["executionSelectedCommandJsonTemplateCommand"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["executionSelectedCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(coexistence["backendAdaptation"]["executionSelectedPhase"], "preflight");
         assert_eq!(
             coexistence["backendAdaptation"]["executionSelectedRequiresFallback"],
@@ -20318,6 +20368,14 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["executionSelectedBranch"], "run");
         assert_eq!(automation["backendAdaptation"]["executionSelectedPreferredPath"], "preflight");
         assert_eq!(automation["backendAdaptation"]["executionSelectedTimeoutErrorCode"], "hook-fallback-diagnose-timeout");
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedCommandJsonTemplate"]["command"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(automation["backendAdaptation"]["executionSelectedRetryDelayHintMs"], 250);
         assert_eq!(automation["backendAdaptation"]["executionSelectedTimeoutHintMs"], 4000);
         assert_eq!(automation["backendAdaptation"]["executionSelectedRequiresFallback"], false);
