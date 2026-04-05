@@ -1660,6 +1660,8 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         "missingResult": routing_decision_ready_phase_resolve_default,
     });
     let routing_decision_ready = json!({
+        "lookupRule": "index[errorCode] || default",
+        "entryCount": error_code_routing_entries.len(),
         "index": routing_decision_ready_index,
         "defaultEscalationKey": routing_decision_ready_default
             .get("escalationKey")
@@ -1724,18 +1726,166 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         "resolvePolicy": "index[errorCode] || default",
         "resolveOutputShape": "effective",
         "resolveIndex": routing_decision_ready_resolve_index,
+        "resolveIndexEntries": routing_decision_ready_resolve_index,
         "resolveDefault": routing_decision_ready_resolve_default,
         "resolveExamples": routing_decision_ready_resolve_examples,
         "resolveErrorCodeCount": routing_decision_ready_known_error_codes.len(),
+        "resolveIndexCount": routing_decision_ready_known_error_codes.len(),
+        "resolveKnownCount": routing_decision_ready_known_error_codes.len(),
         "resolveKnownErrorCodes": routing_decision_ready_known_error_codes,
+        "resolveDefaultMatched": routing_decision_ready_resolve_default
+            .get("matched")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveDefaultUsedDefault": routing_decision_ready_resolve_default
+            .get("usedDefault")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveDefaultReason": routing_decision_ready_resolve_default
+            .get("reason")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveDefaultEffective": routing_decision_ready_resolve_default
+            .get("effective")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveDefaultEffectivePhase": routing_decision_ready_resolve_default
+            .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveDefaultEffectiveEscalationKey": routing_decision_ready_resolve_default
+            .get("effectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleKnownErrorCode": routing_decision_ready_resolve_examples
+            .get("knownErrorCode")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleKnownResult": routing_decision_ready_resolve_examples
+            .get("knownResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleKnownResultEffective": routing_decision_ready_resolve_examples
+            .get("knownResult")
+            .and_then(|result| result.get("effective"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleKnownResultEffectivePhase": routing_decision_ready_resolve_examples
+            .get("knownResult")
+            .and_then(|result| result.get("effectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleKnownResultEffectiveEscalationKey": routing_decision_ready_resolve_examples
+            .get("knownResult")
+            .and_then(|result| result.get("effectiveEscalationKey"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleMissingErrorCode": routing_decision_ready_resolve_examples
+            .get("missingErrorCode")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleMissingResult": routing_decision_ready_resolve_examples
+            .get("missingResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleMissingResultEffective": routing_decision_ready_resolve_examples
+            .get("missingResult")
+            .and_then(|result| result.get("effective"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleMissingResultEffectivePhase": routing_decision_ready_resolve_examples
+            .get("missingResult")
+            .and_then(|result| result.get("effectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleMissingResultEffectiveEscalationKey": routing_decision_ready_resolve_examples
+            .get("missingResult")
+            .and_then(|result| result.get("effectiveEscalationKey"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseResolveLookupKey": "phase",
         "phaseResolvePolicy": "phaseIndex[phase] || default",
         "phaseResolveOutputShape": "effective",
         "phaseResolveIndex": routing_decision_ready_phase_resolve_index,
+        "phaseResolveIndexEntries": routing_decision_ready_phase_resolve_index,
         "phaseResolveDefault": routing_decision_ready_phase_resolve_default,
         "phaseResolveExamples": routing_decision_ready_phase_resolve_examples,
         "phaseResolvePhaseCount": routing_decision_ready_known_phases.len(),
+        "phaseResolveIndexCount": routing_decision_ready_known_phases.len(),
+        "phaseResolveKnownCount": routing_decision_ready_known_phases.len(),
         "phaseResolveKnownPhases": routing_decision_ready_known_phases,
+        "phaseResolveDefaultMatched": routing_decision_ready_phase_resolve_default
+            .get("matched")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveDefaultUsedDefault": routing_decision_ready_phase_resolve_default
+            .get("usedDefault")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveDefaultReason": routing_decision_ready_phase_resolve_default
+            .get("reason")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveDefaultEffective": routing_decision_ready_phase_resolve_default
+            .get("effective")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveDefaultEffectivePhase": routing_decision_ready_phase_resolve_default
+            .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveDefaultEffectiveEscalationKey": routing_decision_ready_phase_resolve_default
+            .get("effectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleKnownPhase": routing_decision_ready_phase_resolve_examples
+            .get("knownPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleKnownResult": routing_decision_ready_phase_resolve_examples
+            .get("knownResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleKnownResultEffective": routing_decision_ready_phase_resolve_examples
+            .get("knownResult")
+            .and_then(|result| result.get("effective"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleKnownResultEffectivePhase": routing_decision_ready_phase_resolve_examples
+            .get("knownResult")
+            .and_then(|result| result.get("effectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleKnownResultEffectiveEscalationKey":
+            routing_decision_ready_phase_resolve_examples
+                .get("knownResult")
+                .and_then(|result| result.get("effectiveEscalationKey"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phaseResolveExampleMissingPhase": routing_decision_ready_phase_resolve_examples
+            .get("missingPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleMissingResult": routing_decision_ready_phase_resolve_examples
+            .get("missingResult")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleMissingResultEffective": routing_decision_ready_phase_resolve_examples
+            .get("missingResult")
+            .and_then(|result| result.get("effective"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleMissingResultEffectivePhase": routing_decision_ready_phase_resolve_examples
+            .get("missingResult")
+            .and_then(|result| result.get("effectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleMissingResultEffectiveEscalationKey":
+            routing_decision_ready_phase_resolve_examples
+                .get("missingResult")
+                .and_then(|result| result.get("effectiveEscalationKey"))
+                .cloned()
+                .unwrap_or(Value::Null),
         "default": routing_decision_ready_default,
         "resolve": {
             "lookupKey": "errorCode",
@@ -18514,6 +18664,10 @@ mod tests {
             "conflict-query"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["lookupRule"],
+            "index[errorCode] || default"
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["defaultEscalationKey"],
             "conflict-query"
         );
@@ -18526,12 +18680,52 @@ mod tests {
             "missing-error-code"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveIndexEntries"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveIndex"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveKnownCount"],
+            4
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveDefaultReason"],
+            "missing-error-code"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveExampleKnownResultEffectiveEscalationKey"],
+            "conflict-preflight"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveExampleMissingResultEffectivePhase"],
+            "query"
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolve"]["index"]["query"]["effective"]["phase"],
             "query"
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolve"]["default"]["reason"],
             "missing-phase"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveIndexEntries"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveIndex"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveKnownCount"],
+            2
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveDefaultReason"],
+            "missing-phase"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveExampleKnownResultEffectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveExampleMissingResultEffectiveEscalationKey"],
+            "conflict-query"
         );
         assert_eq!(
             coexistence["backendAdaptation"]["controllerLoadedOnlyBackendIds"],
@@ -18603,6 +18797,30 @@ mod tests {
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveExamples"]["knownResult"]["reason"],
             "matched-phase"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveIndexCount"],
+            4
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveExampleKnownErrorCode"],
+            "hook-fallback-preflight-failed"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveExampleMissingResultEffectiveEscalationKey"],
+            "conflict-query"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveIndexCount"],
+            2
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveExampleKnownPhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveDefaultEffectivePhase"],
+            "query"
         );
         assert_eq!(automation["backendAdaptation"]["requiresQueryPhase"], true);
         assert_eq!(automation["backendAdaptation"]["requiresCleanupPhase"], false);
