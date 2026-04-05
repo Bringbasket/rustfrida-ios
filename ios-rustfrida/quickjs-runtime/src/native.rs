@@ -36,6 +36,28 @@ unsafe fn set_string_array_property(ctx: *mut ffi::JSContext, obj: ffi::JSValue,
     JSValue(obj).set_property(ctx, name, JSValue(array));
 }
 
+unsafe fn hook_recommended_action_to_js(
+    ctx: *mut ffi::JSContext,
+    action: &native_api::HookRecommendedAction,
+) -> JSValue {
+    let item = JSValue(ffi::JS_NewObject(ctx));
+    item.set_property(ctx, "commandGroup", JSValue::string(ctx, &action.command_group));
+    item.set_property(ctx, "actionKey", JSValue::string(ctx, &action.action_key));
+    item.set_property(ctx, "priority", JSValue::int(action.priority as i32));
+    item.set_property(ctx, "allowed", JSValue::bool(action.allowed));
+    item.set_property(ctx, "status", JSValue::string(ctx, &action.status));
+    item.set_property(
+        ctx,
+        "recommendation",
+        JSValue::string(ctx, &action.recommendation),
+    );
+    match &action.reason {
+        Some(reason) => item.set_property(ctx, "reason", JSValue::string(ctx, reason)),
+        None => item.set_property(ctx, "reason", JSValue::null()),
+    };
+    item
+}
+
 unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnvironmentReport) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
     let decision = resolve_hook_strategy().ok();
@@ -199,23 +221,75 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     }
     result.set_property(ctx, "recommendations", JSValue(recommendations));
 
-    let recommended_actions = ffi::JS_NewArray(ctx);
-    for (index, action) in hook_environment_recommended_actions(report, decision.as_ref())
+    let recommended_actions_vec = hook_environment_recommended_actions(report, decision.as_ref());
+    let allowed_action_count = recommended_actions_vec
         .iter()
-        .enumerate()
-    {
-        let item = JSValue(ffi::JS_NewObject(ctx));
-        item.set_property(ctx, "commandGroup", JSValue::string(ctx, &action.command_group));
-        item.set_property(ctx, "actionKey", JSValue::string(ctx, &action.action_key));
-        item.set_property(ctx, "priority", JSValue::int(action.priority as i32));
-        item.set_property(ctx, "allowed", JSValue::bool(action.allowed));
-        item.set_property(ctx, "status", JSValue::string(ctx, &action.status));
-        item.set_property(ctx, "recommendation", JSValue::string(ctx, &action.recommendation));
-        match &action.reason {
-            Some(reason) => item.set_property(ctx, "reason", JSValue::string(ctx, reason)),
-            None => item.set_property(ctx, "reason", JSValue::null()),
-        };
-        ffi::JS_SetPropertyUint32(ctx, recommended_actions, index as u32, item.raw());
+        .filter(|action| action.allowed)
+        .count();
+    let blocked_action_count = recommended_actions_vec.len().saturating_sub(allowed_action_count);
+    let next_action = recommended_actions_vec
+        .iter()
+        .find(|action| action.allowed)
+        .or_else(|| recommended_actions_vec.first());
+    result.set_property(
+        ctx,
+        "recommendedActionCount",
+        JSValue::int(recommended_actions_vec.len() as i32),
+    );
+    result.set_property(
+        ctx,
+        "allowedActionCount",
+        JSValue::int(allowed_action_count as i32),
+    );
+    result.set_property(
+        ctx,
+        "blockedActionCount",
+        JSValue::int(blocked_action_count as i32),
+    );
+    match next_action {
+        Some(action) => {
+            result.set_property(ctx, "nextAction", hook_recommended_action_to_js(ctx, action));
+            result.set_property(
+                ctx,
+                "nextActionCommandGroup",
+                JSValue::string(ctx, &action.command_group),
+            );
+            result.set_property(ctx, "nextActionKey", JSValue::string(ctx, &action.action_key));
+            result.set_property(ctx, "nextActionPriority", JSValue::int(action.priority as i32));
+            result.set_property(ctx, "nextActionAllowed", JSValue::bool(action.allowed));
+            result.set_property(ctx, "nextActionStatus", JSValue::string(ctx, &action.status));
+            result.set_property(
+                ctx,
+                "nextActionRecommendation",
+                JSValue::string(ctx, &action.recommendation),
+            );
+            match &action.reason {
+                Some(reason) => {
+                    result.set_property(ctx, "nextActionReason", JSValue::string(ctx, reason))
+                }
+                None => result.set_property(ctx, "nextActionReason", JSValue::null()),
+            };
+        }
+        None => {
+            result.set_property(ctx, "nextAction", JSValue::null());
+            result.set_property(ctx, "nextActionCommandGroup", JSValue::null());
+            result.set_property(ctx, "nextActionKey", JSValue::null());
+            result.set_property(ctx, "nextActionPriority", JSValue::null());
+            result.set_property(ctx, "nextActionAllowed", JSValue::null());
+            result.set_property(ctx, "nextActionStatus", JSValue::null());
+            result.set_property(ctx, "nextActionRecommendation", JSValue::null());
+            result.set_property(ctx, "nextActionReason", JSValue::null());
+        }
+    }
+
+    let recommended_actions = ffi::JS_NewArray(ctx);
+    for (index, action) in recommended_actions_vec.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            recommended_actions,
+            index as u32,
+            hook_recommended_action_to_js(ctx, action).raw(),
+        );
     }
     result.set_property(ctx, "recommendedActions", JSValue(recommended_actions));
 
