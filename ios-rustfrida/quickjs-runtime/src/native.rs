@@ -1201,6 +1201,77 @@ unsafe fn hook_command_template_group_to_js(
     group.raw()
 }
 
+unsafe fn hook_backend_specific_recommendation_to_js(
+    ctx: *mut ffi::JSContext,
+    backend: &native_api::HookBackendInfo,
+    scope: &str,
+    state: &str,
+    loaded_by: &str,
+    suggested_group_key: &str,
+    suggested_phase: &str,
+    reason: &str,
+    priority: u8,
+    templates: &[String],
+) -> ffi::JSValue {
+    let item = JSValue(ffi::JS_NewObject(ctx));
+    let (command_json_templates, command_json_eligible_template_count) =
+        hook_command_json_template_array_to_js(ctx, templates);
+
+    item.set_property(ctx, "backendId", JSValue::string(ctx, &backend.id));
+    item.set_property(ctx, "displayName", JSValue::string(ctx, &backend.display_name));
+    item.set_property(ctx, "scope", JSValue::string(ctx, scope));
+    item.set_property(ctx, "state", JSValue::string(ctx, state));
+    item.set_property(ctx, "visibleInController", JSValue::null());
+    item.set_property(ctx, "visibleInTarget", JSValue::null());
+    item.set_property(ctx, "loadedBy", JSValue::string(ctx, loaded_by));
+    item.set_property(
+        ctx,
+        "suggestedGroupKey",
+        JSValue::string(ctx, suggested_group_key),
+    );
+    item.set_property(ctx, "suggestedPhase", JSValue::string(ctx, suggested_phase));
+    item.set_property(ctx, "reason", JSValue::string(ctx, reason));
+    item.set_property(ctx, "priority", JSValue::int(priority as i32));
+    item.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
+    set_string_array_property(ctx, item.raw(), "templates", templates);
+    item.set_property(ctx, "commandJsonTemplateCount", JSValue::int(templates.len() as i32));
+    item.set_property(ctx, "commandJsonTemplates", JSValue(command_json_templates));
+    item.set_property(
+        ctx,
+        "commandJsonEligibleTemplateCount",
+        JSValue::int(command_json_eligible_template_count as i32),
+    );
+    match templates.first() {
+        Some(template) => {
+            let primary = JSValue(hook_command_json_template_to_js(ctx, template));
+            item.set_property(
+                ctx,
+                "primaryCommandJsonTemplateCommand",
+                primary.get_property(ctx, "command"),
+            );
+            item.set_property(
+                ctx,
+                "primaryCommandJsonTemplateKind",
+                primary.get_property(ctx, "kind"),
+            );
+            item.set_property(
+                ctx,
+                "primaryCommandJsonTemplateEligible",
+                primary.get_property(ctx, "commandJsonEligible"),
+            );
+            item.set_property(ctx, "primaryCommandJsonTemplate", primary);
+        }
+        None => {
+            item.set_property(ctx, "primaryCommandJsonTemplate", JSValue::null());
+            item.set_property(ctx, "primaryCommandJsonTemplateCommand", JSValue::null());
+            item.set_property(ctx, "primaryCommandJsonTemplateKind", JSValue::null());
+            item.set_property(ctx, "primaryCommandJsonTemplateEligible", JSValue::null());
+        }
+    }
+
+    item.raw()
+}
+
 unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnvironmentReport) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
     let decision = resolve_hook_strategy().ok();
@@ -1294,6 +1365,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "install" => install_templates.clone(),
         _ => Vec::new(),
     };
+    let backend_specific_recommendations = ffi::JS_NewArray(ctx);
+    let mut backend_specific_recommendation_count = 0usize;
+    let mut preferred_backend_recommendation: Option<JSValue> = None;
     let backend_adaptation_allowed = preferred_group_key != "none";
     let backend_adaptation = JSValue(ffi::JS_NewObject(ctx));
     backend_adaptation.set_property(ctx, "mode", JSValue::string(ctx, backend_adaptation_mode));
@@ -1349,6 +1423,151 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             &preferred_templates,
         )),
     );
+    let mut backend_recommendation_entries = report
+        .backends
+        .iter()
+        .filter_map(|backend| {
+            let has_loaded_runtime = !backend.loaded_images.is_empty();
+            let has_filesystem_artifact = !backend.filesystem_paths.is_empty();
+            if !has_loaded_runtime && !has_filesystem_artifact {
+                return None;
+            }
+            let (scope, state, loaded_by, suggested_group_key, suggested_phase, reason, priority, templates) =
+                if command_mode == "cleanup-only" {
+                    (
+                        if has_loaded_runtime { "shared" } else { "filesystem-only" },
+                        if has_loaded_runtime {
+                            "loaded-runtime"
+                        } else {
+                            "filesystem-artifact"
+                        },
+                        if has_loaded_runtime { "self" } else { "filesystem-only" },
+                        "cleanup",
+                        "cleanup",
+                        "current policy only allows cleanup or status commands before retrying hook install",
+                        0u8,
+                        cleanup_templates.clone(),
+                    )
+                } else if has_filesystem_artifact && !has_loaded_runtime {
+                    (
+                        "filesystem-only",
+                        "filesystem-artifact",
+                        "filesystem-only",
+                        "preflight",
+                        "preflight",
+                        "filesystem artifact detected for this backend; refresh diagnostics before inline install",
+                        1u8,
+                        preflight_templates.clone(),
+                    )
+                } else {
+                    (
+                        "shared",
+                        "loaded-runtime",
+                        "self",
+                        "query",
+                        "query",
+                        if multiple_external_backends_loaded {
+                            "multiple external backend runtimes are loaded in this process; inspect this backend before changing hook state"
+                        } else {
+                            "this backend runtime is loaded in the current process; query first before changing hook state"
+                        },
+                        2u8,
+                        query_templates.clone(),
+                    )
+                };
+            Some((
+                suggested_group_key == preferred_group_key,
+                priority,
+                backend.id.clone(),
+                hook_backend_specific_recommendation_to_js(
+                    ctx,
+                    backend,
+                    scope,
+                    state,
+                    loaded_by,
+                    suggested_group_key,
+                    suggested_phase,
+                    reason,
+                    priority,
+                    &templates,
+                ),
+            ))
+        })
+        .collect::<Vec<_>>();
+    backend_recommendation_entries.sort_by(|left, right| {
+        (!left.0, left.1, left.2.as_str()).cmp(&(!right.0, right.1, right.2.as_str()))
+    });
+    for (index, (_, _, _, item)) in backend_recommendation_entries.iter().enumerate() {
+        let item_value = JSValue(*item);
+        if index == 0 {
+            preferred_backend_recommendation = Some(item_value.dup(ctx));
+        }
+        ffi::JS_SetPropertyUint32(ctx, backend_specific_recommendations, index as u32, item_value.raw());
+        backend_specific_recommendation_count += 1;
+    }
+    backend_adaptation.set_property(
+        ctx,
+        "backendSpecificRecommendationCount",
+        JSValue::int(backend_specific_recommendation_count as i32),
+    );
+    backend_adaptation.set_property(
+        ctx,
+        "backendSpecificRecommendations",
+        JSValue(backend_specific_recommendations),
+    );
+    match &preferred_backend_recommendation {
+        Some(item) => backend_adaptation.set_property(ctx, "preferredBackendRecommendation", item.dup(ctx)),
+        None => backend_adaptation.set_property(ctx, "preferredBackendRecommendation", JSValue::null()),
+    };
+    match &preferred_backend_recommendation {
+        Some(item) => {
+            backend_adaptation.set_property(ctx, "preferredBackendId", item.get_property(ctx, "backendId"));
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendDisplayName",
+                item.get_property(ctx, "displayName"),
+            );
+            backend_adaptation.set_property(ctx, "preferredBackendScope", item.get_property(ctx, "scope"));
+            backend_adaptation.set_property(ctx, "preferredBackendReason", item.get_property(ctx, "reason"));
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendPrimaryCommandJsonTemplate",
+                item.get_property(ctx, "primaryCommandJsonTemplate"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendPrimaryCommandJsonTemplateCommand",
+                item.get_property(ctx, "primaryCommandJsonTemplateCommand"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendPrimaryCommandJsonTemplateKind",
+                item.get_property(ctx, "primaryCommandJsonTemplateKind"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendPrimaryCommandJsonTemplateEligible",
+                item.get_property(ctx, "primaryCommandJsonTemplateEligible"),
+            );
+        }
+        None => {
+            for key in [
+                "preferredBackendId",
+                "preferredBackendDisplayName",
+                "preferredBackendScope",
+                "preferredBackendReason",
+                "preferredBackendPrimaryCommandJsonTemplate",
+                "preferredBackendPrimaryCommandJsonTemplateCommand",
+                "preferredBackendPrimaryCommandJsonTemplateKind",
+                "preferredBackendPrimaryCommandJsonTemplateEligible",
+            ] {
+                backend_adaptation.set_property(ctx, key, JSValue::null());
+            }
+        }
+    }
+    let conflict_backend_pairs = ffi::JS_NewArray(ctx);
+    backend_adaptation.set_property(ctx, "conflictBackendPairCount", JSValue::int(0));
+    backend_adaptation.set_property(ctx, "conflictBackendPairs", JSValue(conflict_backend_pairs));
     let backend_adaptation_step_chain = ffi::JS_NewArray(ctx);
     let mut backend_adaptation_retry_budget = 0u64;
     for (index, template) in preferred_templates.iter().enumerate() {
@@ -1499,6 +1718,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     } else {
         None
     };
+    if let Some(item) = &preferred_backend_recommendation {
+        item.free(ctx);
+    }
     match &backend_adaptation_execution_summary {
         Some(summary) => backend_adaptation.set_property(ctx, "executionSummary", summary.dup(ctx)),
         None => backend_adaptation.set_property(ctx, "executionSummary", JSValue::null()),

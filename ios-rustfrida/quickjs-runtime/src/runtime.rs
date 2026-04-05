@@ -2367,6 +2367,32 @@ undefined;
                                         entry.primaryCommandJsonTemplateKind === entry.primaryCommandJsonTemplate.kind &&
                                         entry.primaryCommandJsonTemplateEligible === entry.primaryCommandJsonTemplate.commandJsonEligible));
                             });
+                            const backendSpecificOk =
+                                Array.isArray(adaptation.backendSpecificRecommendations) &&
+                                adaptation.backendSpecificRecommendationCount === adaptation.backendSpecificRecommendations.length &&
+                                adaptation.conflictBackendPairCount === 0 &&
+                                Array.isArray(adaptation.conflictBackendPairs) &&
+                                adaptation.conflictBackendPairs.length === 0 &&
+                                ((adaptation.backendSpecificRecommendationCount === 0 &&
+                                    adaptation.preferredBackendRecommendation === null &&
+                                    adaptation.preferredBackendId === null &&
+                                    adaptation.preferredBackendDisplayName === null &&
+                                    adaptation.preferredBackendScope === null &&
+                                    adaptation.preferredBackendReason === null &&
+                                    adaptation.preferredBackendPrimaryCommandJsonTemplate === null &&
+                                    adaptation.preferredBackendPrimaryCommandJsonTemplateCommand === null &&
+                                    adaptation.preferredBackendPrimaryCommandJsonTemplateKind === null &&
+                                    adaptation.preferredBackendPrimaryCommandJsonTemplateEligible === null) ||
+                                (adaptation.backendSpecificRecommendationCount > 0 &&
+                                    typeof adaptation.preferredBackendRecommendation === 'object' &&
+                                    adaptation.preferredBackendRecommendation !== null &&
+                                    adaptation.preferredBackendId === adaptation.preferredBackendRecommendation.backendId &&
+                                    adaptation.preferredBackendDisplayName === adaptation.preferredBackendRecommendation.displayName &&
+                                    adaptation.preferredBackendScope === adaptation.preferredBackendRecommendation.scope &&
+                                    adaptation.preferredBackendReason === adaptation.preferredBackendRecommendation.reason &&
+                                    adaptation.preferredBackendPrimaryCommandJsonTemplateCommand === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateCommand &&
+                                    adaptation.preferredBackendPrimaryCommandJsonTemplateKind === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateKind &&
+                                    adaptation.preferredBackendPrimaryCommandJsonTemplateEligible === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateEligible));
                             return typeof adaptation === 'object' &&
                                 adaptation !== null &&
                                 report.backendAdaptationMode === adaptation.mode &&
@@ -2383,7 +2409,8 @@ undefined;
                                 preferredCountOk &&
                                 groupsOk &&
                                 nestedGroupsOk &&
-                                primaryTemplateOk;
+                                primaryTemplateOk &&
+                                backendSpecificOk;
                         })()"#,
                     )
                     .expect("native hook env backend adaptation summary"),
