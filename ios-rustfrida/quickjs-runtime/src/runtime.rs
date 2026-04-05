@@ -1799,6 +1799,11 @@ undefined;
                                             typeof report.fallbackPlan.routingDecision.default === 'object') &&
                                         (report.fallbackPlan.routingDecision.ready === null ||
                                             (typeof report.fallbackPlan.routingDecision.ready.lookupRule === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.entryCount === 'number' &&
+                                                (report.fallbackPlan.routingDecision.ready.defaultEscalationKey === null ||
+                                                    typeof report.fallbackPlan.routingDecision.ready.defaultEscalationKey === 'string') &&
+                                                (report.fallbackPlan.routingDecision.ready.defaultPhase === null ||
+                                                    typeof report.fallbackPlan.routingDecision.ready.defaultPhase === 'string') &&
                                                 typeof report.fallbackPlan.routingDecision.ready.resolveLookupKey === 'string' &&
                                                 typeof report.fallbackPlan.routingDecision.ready.resolvePolicy === 'string' &&
                                                 typeof report.fallbackPlan.routingDecision.ready.resolveOutputShape === 'string' &&
@@ -1814,6 +1819,8 @@ undefined;
                                                 report.fallbackPlan.routingDecision.ready.resolveDefault !== null &&
                                                 typeof report.fallbackPlan.routingDecision.ready.resolveExamples === 'object' &&
                                                 report.fallbackPlan.routingDecision.ready.resolveExamples !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolve === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.resolve !== null &&
                                                 report.fallbackPlan.routingDecision.ready.resolveIndexEntries === report.fallbackPlan.routingDecision.ready.resolveIndex &&
                                                 report.fallbackPlan.routingDecision.ready.resolveDefault.reason === 'missing-error-code' &&
                                                 typeof report.fallbackPlan.routingDecision.ready.resolveExamples.missingErrorCode === 'string' &&
@@ -1827,7 +1834,36 @@ undefined;
                                                 typeof report.fallbackPlan.routingDecision.ready.resolveMissingErrorCodeHint === 'string' &&
                                                 typeof report.fallbackPlan.routingDecision.ready.resolveExampleQueryOnlyInstallFailure === 'object' &&
                                                 report.fallbackPlan.routingDecision.ready.resolveExampleQueryOnlyInstallFailure !== null &&
-                                                typeof report.fallbackPlan.routingDecision.ready.resolveExampleQueryOnlyWouldUsePath === 'boolean')) &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveExampleQueryOnlyWouldUsePath === 'boolean' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseCount === 'number' &&
+                                                Array.isArray(report.fallbackPlan.routingDecision.ready.phases) &&
+                                                report.fallbackPlan.routingDecision.ready.phaseCount === report.fallbackPlan.routingDecision.ready.phases.length &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseIndex === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.phaseIndex !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolveLookupKey === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolvePolicy === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolveOutputShape === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolveIndex === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.phaseResolveIndex !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolveIndexEntries === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.phaseResolveIndexEntries !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolveDefault === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.phaseResolveDefault !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolveExamples === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.phaseResolveExamples !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolve === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.phaseResolve !== null &&
+                                                report.fallbackPlan.routingDecision.ready.phaseResolveIndexEntries === report.fallbackPlan.routingDecision.ready.phaseResolveIndex &&
+                                                report.fallbackPlan.routingDecision.ready.phaseResolveDefault.reason === 'missing-phase' &&
+                                                (report.fallbackPlan.routingDecision.ready.phaseResolveExampleKnownPhase === null ||
+                                                    typeof report.fallbackPlan.routingDecision.ready.phaseResolveExampleKnownPhase === 'string') &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolveExampleMissingPhase === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolvePhaseCount === 'number' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolveKnownCount === 'number' &&
+                                                Array.isArray(report.fallbackPlan.routingDecision.ready.phaseResolveKnownPhases) &&
+                                                report.fallbackPlan.routingDecision.ready.phaseResolveKnownPhases.length === report.fallbackPlan.routingDecision.ready.phaseResolveKnownCount &&
+                                                typeof report.fallbackPlan.routingDecision.ready.phaseResolveMissingPhaseHint === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.queryOnlyPhaseResolveAvailable === 'boolean')) &&
                                         (report.fallbackPlan.suggestedEscalationKey === null ||
                                             typeof report.fallbackPlan.suggestedEscalationKey === 'string') &&
                                         (report.fallbackPlan.escalationRecommendations.length === 0 ||
