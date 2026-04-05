@@ -5396,6 +5396,8 @@ fn hook_backend_matrix_to_json(
     let mut controller_only_backend_ids = Vec::new();
     let mut target_only_backend_ids = Vec::new();
     let mut loaded_in_both_backend_ids = Vec::new();
+    let mut loaded_only_in_controller_backend_ids = Vec::new();
+    let mut loaded_only_in_target_backend_ids = Vec::new();
     let mut filesystem_only_backend_ids = Vec::new();
 
     let mut loaded_in_controller_count = 0usize;
@@ -5423,6 +5425,10 @@ fn hook_backend_matrix_to_json(
         if controller_loaded && target_loaded {
             loaded_in_both_count += 1;
             loaded_in_both_backend_ids.push(id.clone());
+        } else if controller_loaded {
+            loaded_only_in_controller_backend_ids.push(id.clone());
+        } else if target_loaded {
+            loaded_only_in_target_backend_ids.push(id.clone());
         }
         if filesystem_only {
             filesystem_only_in_either_count += 1;
@@ -5439,6 +5445,28 @@ fn hook_backend_matrix_to_json(
         entries.push(entry);
     }
 
+    let topology_kind = if loaded_in_both_count > 0 {
+        if !loaded_only_in_controller_backend_ids.is_empty() && !loaded_only_in_target_backend_ids.is_empty() {
+            "shared-and-split-loaded"
+        } else if !loaded_only_in_controller_backend_ids.is_empty() {
+            "shared-plus-controller-loaded"
+        } else if !loaded_only_in_target_backend_ids.is_empty() {
+            "shared-plus-target-loaded"
+        } else {
+            "shared-loaded"
+        }
+    } else if !loaded_only_in_controller_backend_ids.is_empty() && !loaded_only_in_target_backend_ids.is_empty() {
+        "split-loaded"
+    } else if !loaded_only_in_controller_backend_ids.is_empty() {
+        "controller-loaded-only"
+    } else if !loaded_only_in_target_backend_ids.is_empty() {
+        "target-loaded-only"
+    } else if filesystem_only_in_either_count > 0 {
+        "filesystem-only"
+    } else {
+        "clean"
+    };
+
     json!({
         "entryCount": entries.len(),
         "entries": entries,
@@ -5450,7 +5478,19 @@ fn hook_backend_matrix_to_json(
         "controllerOnlyBackendIds": controller_only_backend_ids,
         "targetOnlyBackendIds": target_only_backend_ids,
         "loadedInBothBackendIds": loaded_in_both_backend_ids,
+        "loadedOnlyInControllerBackendIds": loaded_only_in_controller_backend_ids,
+        "loadedOnlyInTargetBackendIds": loaded_only_in_target_backend_ids,
         "filesystemOnlyBackendIds": filesystem_only_backend_ids,
+        "topology": {
+            "kind": topology_kind,
+            "sharedVisibility": !shared_backend_ids.is_empty(),
+            "controllerOnlyVisibility": !controller_only_backend_ids.is_empty(),
+            "targetOnlyVisibility": !target_only_backend_ids.is_empty(),
+            "sharedLoadedRuntime": !loaded_in_both_backend_ids.is_empty(),
+            "controllerOnlyLoadedRuntime": !loaded_only_in_controller_backend_ids.is_empty(),
+            "targetOnlyLoadedRuntime": !loaded_only_in_target_backend_ids.is_empty(),
+            "filesystemOnlyArtifacts": !filesystem_only_backend_ids.is_empty(),
+        },
     })
 }
 
@@ -16988,7 +17028,17 @@ mod tests {
         assert_eq!(rendered["sharedBackendIds"], json!(["ellekit"]));
         assert_eq!(rendered["controllerOnlyBackendIds"], json!(["substitute"]));
         assert_eq!(rendered["targetOnlyBackendIds"], json!(["substrate"]));
+        assert_eq!(rendered["loadedOnlyInControllerBackendIds"], json!(["ellekit"]));
+        assert_eq!(rendered["loadedOnlyInTargetBackendIds"], json!(["substrate"]));
         assert_eq!(rendered["filesystemOnlyBackendIds"], json!(["substitute"]));
+        assert_eq!(rendered["topology"]["kind"], "split-loaded");
+        assert_eq!(rendered["topology"]["sharedVisibility"], true);
+        assert_eq!(rendered["topology"]["controllerOnlyVisibility"], true);
+        assert_eq!(rendered["topology"]["targetOnlyVisibility"], true);
+        assert_eq!(rendered["topology"]["sharedLoadedRuntime"], false);
+        assert_eq!(rendered["topology"]["controllerOnlyLoadedRuntime"], true);
+        assert_eq!(rendered["topology"]["targetOnlyLoadedRuntime"], true);
+        assert_eq!(rendered["topology"]["filesystemOnlyArtifacts"], true);
 
         let entries = rendered["entries"].as_array().expect("matrix entries");
         let shared = entries
@@ -17125,6 +17175,16 @@ mod tests {
         assert_eq!(rendered["loadedInControllerCount"], 0);
         assert_eq!(rendered["loadedInTargetCount"], 0);
         assert_eq!(rendered["filesystemOnlyInEitherCount"], 1);
+        assert_eq!(rendered["loadedOnlyInControllerBackendIds"], json!([]));
+        assert_eq!(rendered["loadedOnlyInTargetBackendIds"], json!([]));
+        assert_eq!(rendered["topology"]["kind"], "filesystem-only");
+        assert_eq!(rendered["topology"]["sharedVisibility"], true);
+        assert_eq!(rendered["topology"]["controllerOnlyVisibility"], false);
+        assert_eq!(rendered["topology"]["targetOnlyVisibility"], false);
+        assert_eq!(rendered["topology"]["sharedLoadedRuntime"], false);
+        assert_eq!(rendered["topology"]["controllerOnlyLoadedRuntime"], false);
+        assert_eq!(rendered["topology"]["targetOnlyLoadedRuntime"], false);
+        assert_eq!(rendered["topology"]["filesystemOnlyArtifacts"], true);
 
         let strategy = HookStrategyDecision {
             policy: HookPolicy::Warn,
