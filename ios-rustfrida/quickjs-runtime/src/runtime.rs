@@ -2193,21 +2193,25 @@ undefined;
                             const nextStepOk =
                                 (report.nextStep === null &&
                                     report.nextStepCommandJsonTemplate === null &&
+                                    report.nextStepCommandJsonTemplateEligible === null &&
                                     report.nextStepCommandJsonTemplateCommand === null &&
                                     report.nextStepCommandJsonTemplateKind === null) ||
                                 (typeof report.nextStep === 'object' &&
                                     report.nextStep !== null &&
                                     report.nextStepCommandJsonTemplate === report.nextStep.commandJsonTemplate &&
+                                    report.nextStepCommandJsonTemplateEligible === report.nextStep.commandJsonTemplateEligible &&
                                     report.nextStepCommandJsonTemplateCommand === report.nextStep.commandJsonTemplate.command &&
                                     report.nextStepCommandJsonTemplateKind === report.nextStep.commandJsonTemplate.kind);
                             const activeStepOk =
                                 (report.activeStep === null &&
                                     report.activeStepCommandJsonTemplate === null &&
+                                    report.activeStepCommandJsonTemplateEligible === null &&
                                     report.activeStepCommandJsonTemplateCommand === null &&
                                     report.activeStepCommandJsonTemplateKind === null) ||
                                 (typeof report.activeStep === 'object' &&
                                     report.activeStep !== null &&
                                     report.activeStepCommandJsonTemplate === report.activeStep.commandJsonTemplate &&
+                                    report.activeStepCommandJsonTemplateEligible === report.activeStep.commandJsonTemplateEligible &&
                                     report.activeStepCommandJsonTemplateCommand === report.activeStep.commandJsonTemplate.command &&
                                     report.activeStepCommandJsonTemplateKind === report.activeStep.commandJsonTemplate.kind);
                             return nextStepOk && activeStepOk;
