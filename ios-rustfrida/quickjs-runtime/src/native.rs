@@ -42,6 +42,234 @@ unsafe fn string_vec_to_js_array(ctx: *mut ffi::JSContext, items: &[String]) -> 
     array
 }
 
+unsafe fn js_array_first(item: JSValue, ctx: *mut ffi::JSContext) -> JSValue {
+    item.get_property(ctx, "0")
+}
+
+unsafe fn js_array_last(item: JSValue, ctx: *mut ffi::JSContext) -> JSValue {
+    let length = item.get_property(ctx, "length").to_int().unwrap_or(0);
+    if length <= 0 {
+        JSValue::null()
+    } else {
+        item.get_property(ctx, &(length - 1).to_string())
+    }
+}
+
+unsafe fn set_phase_ready_aliases(
+    ctx: *mut ffi::JSContext,
+    ready_value: &JSValue,
+    prefix: &str,
+    phase_entry: &JSValue,
+    include_first_last_error_codes: bool,
+    include_detailed_command_json_template: bool,
+) {
+    let phase_field = format!("{prefix}");
+    let error_code_count_field = format!("{prefix}ErrorCodeCount");
+    let error_codes_field = format!("{prefix}ErrorCodes");
+    let error_code_first_field = format!("{prefix}ErrorCodeFirst");
+    let error_code_last_field = format!("{prefix}ErrorCodeLast");
+    let escalation_key_count_field = format!("{prefix}EscalationKeyCount");
+    let escalation_keys_field = format!("{prefix}EscalationKeys");
+    let primary_escalation_key_field = format!("{prefix}PrimaryEscalationKey");
+    let template_count_field = format!("{prefix}TemplateCount");
+    let templates_field = format!("{prefix}Templates");
+    let template_field = format!("{prefix}Template");
+    let command_json_template_count_field = format!("{prefix}CommandJsonTemplateCount");
+    let command_json_templates_field = format!("{prefix}CommandJsonTemplates");
+    let command_json_template_field = format!("{prefix}CommandJsonTemplate");
+    let command_json_template_command_field = format!("{prefix}CommandJsonTemplateCommand");
+
+    let is_present = !(phase_entry.is_null() || phase_entry.is_undefined());
+    let empty_strings = JSValue(ffi::JS_NewArray(ctx));
+
+    if is_present {
+        ready_value.set_property(ctx, &phase_field, phase_entry.dup(ctx));
+        ready_value.set_property(
+            ctx,
+            &error_code_count_field,
+            phase_entry.get_property(ctx, "errorCodeCount"),
+        );
+        let error_codes = phase_entry.get_property(ctx, "errorCodes");
+        ready_value.set_property(ctx, &error_codes_field, error_codes.dup(ctx));
+        if include_first_last_error_codes {
+            ready_value.set_property(ctx, &error_code_first_field, js_array_first(error_codes.dup(ctx), ctx));
+            ready_value.set_property(ctx, &error_code_last_field, js_array_last(error_codes, ctx));
+        }
+        ready_value.set_property(
+            ctx,
+            &escalation_key_count_field,
+            phase_entry.get_property(ctx, "escalationKeyCount"),
+        );
+        let escalation_keys = phase_entry.get_property(ctx, "escalationKeys");
+        ready_value.set_property(ctx, &escalation_keys_field, escalation_keys.dup(ctx));
+        ready_value.set_property(ctx, &primary_escalation_key_field, js_array_first(escalation_keys, ctx));
+        ready_value.set_property(
+            ctx,
+            &template_count_field,
+            phase_entry.get_property(ctx, "templateCount"),
+        );
+        let templates = phase_entry.get_property(ctx, "templates");
+        ready_value.set_property(ctx, &templates_field, templates.dup(ctx));
+        ready_value.set_property(ctx, &template_field, js_array_first(templates, ctx));
+        ready_value.set_property(
+            ctx,
+            &command_json_template_count_field,
+            phase_entry.get_property(ctx, "commandJsonTemplateCount"),
+        );
+        let command_json_templates = phase_entry.get_property(ctx, "commandJsonTemplates");
+        let command_json_template = js_array_first(command_json_templates.dup(ctx), ctx);
+        ready_value.set_property(ctx, &command_json_templates_field, command_json_templates);
+        ready_value.set_property(ctx, &command_json_template_field, command_json_template.dup(ctx));
+        ready_value.set_property(
+            ctx,
+            &command_json_template_command_field,
+            command_json_template.get_property(ctx, "command"),
+        );
+        if include_detailed_command_json_template {
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateRisk"),
+                command_json_template.get_property(ctx, "risk"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplatePlaceholderCount"),
+                command_json_template.get_property(ctx, "placeholderCount"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplatePlaceholders"),
+                command_json_template.get_property(ctx, "placeholders"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateCliArgs"),
+                command_json_template.get_property(ctx, "cliArgs"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateKind"),
+                command_json_template.get_property(ctx, "kind"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplatePhase"),
+                command_json_template.get_property(ctx, "phase"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateErrorCode"),
+                command_json_template.get_property(ctx, "errorCode"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateTimeoutErrorCode"),
+                command_json_template.get_property(ctx, "timeoutErrorCode"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateRetryable"),
+                command_json_template.get_property(ctx, "retryable"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateMaxSuggestedRetries"),
+                command_json_template.get_property(ctx, "maxSuggestedRetries"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateRetryDelayHintMs"),
+                command_json_template.get_property(ctx, "retryDelayHintMs"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateTimeoutHintMs"),
+                command_json_template.get_property(ctx, "timeoutHintMs"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateTimeoutAction"),
+                command_json_template.get_property(ctx, "timeoutAction"),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateCommandJsonEligible"),
+                command_json_template.get_property(ctx, "commandJsonEligible"),
+            );
+        }
+    } else {
+        ready_value.set_property(ctx, &phase_field, JSValue::null());
+        ready_value.set_property(ctx, &error_code_count_field, JSValue::null());
+        ready_value.set_property(ctx, &error_codes_field, empty_strings.dup(ctx));
+        if include_first_last_error_codes {
+            ready_value.set_property(ctx, &error_code_first_field, JSValue::null());
+            ready_value.set_property(ctx, &error_code_last_field, JSValue::null());
+        }
+        ready_value.set_property(ctx, &escalation_key_count_field, JSValue::null());
+        ready_value.set_property(ctx, &escalation_keys_field, empty_strings.dup(ctx));
+        ready_value.set_property(ctx, &primary_escalation_key_field, JSValue::null());
+        ready_value.set_property(ctx, &template_count_field, JSValue::null());
+        ready_value.set_property(ctx, &templates_field, empty_strings.dup(ctx));
+        ready_value.set_property(ctx, &template_field, JSValue::null());
+        ready_value.set_property(ctx, &command_json_template_count_field, JSValue::null());
+        ready_value.set_property(ctx, &command_json_templates_field, JSValue(ffi::JS_NewArray(ctx)));
+        ready_value.set_property(ctx, &command_json_template_field, JSValue::null());
+        ready_value.set_property(ctx, &command_json_template_command_field, JSValue::null());
+        if include_detailed_command_json_template {
+            ready_value.set_property(ctx, &format!("{prefix}CommandJsonTemplateRisk"), JSValue::null());
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplatePlaceholderCount"),
+                JSValue::null(),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplatePlaceholders"),
+                JSValue(ffi::JS_NewArray(ctx)),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateCliArgs"),
+                JSValue(ffi::JS_NewArray(ctx)),
+            );
+            ready_value.set_property(ctx, &format!("{prefix}CommandJsonTemplateKind"), JSValue::null());
+            ready_value.set_property(ctx, &format!("{prefix}CommandJsonTemplatePhase"), JSValue::null());
+            ready_value.set_property(ctx, &format!("{prefix}CommandJsonTemplateErrorCode"), JSValue::null());
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateTimeoutErrorCode"),
+                JSValue::null(),
+            );
+            ready_value.set_property(ctx, &format!("{prefix}CommandJsonTemplateRetryable"), JSValue::null());
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateMaxSuggestedRetries"),
+                JSValue::null(),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateRetryDelayHintMs"),
+                JSValue::null(),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateTimeoutHintMs"),
+                JSValue::null(),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateTimeoutAction"),
+                JSValue::null(),
+            );
+            ready_value.set_property(
+                ctx,
+                &format!("{prefix}CommandJsonTemplateCommandJsonEligible"),
+                JSValue::null(),
+            );
+        }
+    }
+}
+
 unsafe fn hook_recommended_action_to_js(
     ctx: *mut ffi::JSContext,
     action: &native_api::HookRecommendedAction,
@@ -3108,11 +3336,12 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     None => ready_value.set_property(ctx, "phaseLast", JSValue::null()),
                 };
                 ready_value.set_property(ctx, "phaseIndex", phase_index);
-                ready_value.set_property(ctx, "phaseQuery", phase_query);
-                ready_value.set_property(ctx, "phasePreflight", phase_preflight);
-                ready_value.set_property(ctx, "phaseDiagnose", phase_diagnose);
-                ready_value.set_property(ctx, "phaseCleanup", phase_cleanup);
+                set_phase_ready_aliases(ctx, &ready_value, "phaseQuery", &phase_query, false, false);
+                set_phase_ready_aliases(ctx, &ready_value, "phasePreflight", &phase_preflight, true, true);
+                set_phase_ready_aliases(ctx, &ready_value, "phaseDiagnose", &phase_diagnose, true, true);
+                set_phase_ready_aliases(ctx, &ready_value, "phaseCleanup", &phase_cleanup, false, false);
                 ready_value.set_property(ctx, "phaseResolve", phase_resolve_value);
+                ready_value.set_property(ctx, "defaultPhase", default_phase);
                 ready_value.set_property(ctx, "default", ready_default);
                 routing_decision.set_property(ctx, "ready", ready_value);
             }
@@ -3175,10 +3404,11 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 ready_value.set_property(ctx, "phaseCount", JSValue::int(0));
                 ready_value.set_property(ctx, "phaseFirst", JSValue::null());
                 ready_value.set_property(ctx, "phaseLast", JSValue::null());
-                ready_value.set_property(ctx, "phaseQuery", JSValue::null());
-                ready_value.set_property(ctx, "phasePreflight", JSValue::null());
-                ready_value.set_property(ctx, "phaseDiagnose", JSValue::null());
-                ready_value.set_property(ctx, "phaseCleanup", JSValue::null());
+                set_phase_ready_aliases(ctx, &ready_value, "phaseQuery", &JSValue::null(), false, false);
+                set_phase_ready_aliases(ctx, &ready_value, "phasePreflight", &JSValue::null(), true, true);
+                set_phase_ready_aliases(ctx, &ready_value, "phaseDiagnose", &JSValue::null(), true, true);
+                set_phase_ready_aliases(ctx, &ready_value, "phaseCleanup", &JSValue::null(), false, false);
+                ready_value.set_property(ctx, "defaultPhase", JSValue::null());
                 routing_decision.set_property(ctx, "ready", ready_value);
             }
         }

@@ -1937,6 +1937,69 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
+                            if (!report.hasFallbackPlan || report.fallbackPlan === null || report.fallbackPlan.routingDecision === null || report.fallbackPlan.routingDecision.ready === null) {
+                                return true;
+                            }
+                            const ready = report.fallbackPlan.routingDecision.ready;
+                            const phasePreflightOk =
+                                (ready.phasePreflight === null ||
+                                    (typeof ready.phasePreflightErrorCodeCount === 'number' &&
+                                        Array.isArray(ready.phasePreflightErrorCodes) &&
+                                        Array.isArray(ready.phasePreflightEscalationKeys) &&
+                                        typeof ready.phasePreflightPrimaryEscalationKey === 'string' &&
+                                        typeof ready.phasePreflightTemplateCount === 'number' &&
+                                        Array.isArray(ready.phasePreflightTemplates) &&
+                                        typeof ready.phasePreflightCommandJsonTemplateCount === 'number' &&
+                                        Array.isArray(ready.phasePreflightCommandJsonTemplates) &&
+                                        typeof ready.phasePreflightCommandJsonTemplate === 'object' &&
+                                        ready.phasePreflightCommandJsonTemplate !== null &&
+                                        typeof ready.phasePreflightCommandJsonTemplateCommand === 'string' &&
+                                        typeof ready.phasePreflightCommandJsonTemplateRisk === 'string' &&
+                                        Array.isArray(ready.phasePreflightCommandJsonTemplatePlaceholders) &&
+                                        Array.isArray(ready.phasePreflightCommandJsonTemplateCliArgs)));
+                            const phaseDiagnoseOk =
+                                (ready.phaseDiagnose === null ||
+                                    (typeof ready.phaseDiagnoseErrorCodeCount === 'number' &&
+                                        Array.isArray(ready.phaseDiagnoseErrorCodes) &&
+                                        Array.isArray(ready.phaseDiagnoseEscalationKeys) &&
+                                        typeof ready.phaseDiagnosePrimaryEscalationKey === 'string' &&
+                                        typeof ready.phaseDiagnoseTemplateCount === 'number' &&
+                                        Array.isArray(ready.phaseDiagnoseTemplates) &&
+                                        typeof ready.phaseDiagnoseCommandJsonTemplateCount === 'number' &&
+                                        Array.isArray(ready.phaseDiagnoseCommandJsonTemplates) &&
+                                        typeof ready.phaseDiagnoseCommandJsonTemplate === 'object' &&
+                                        ready.phaseDiagnoseCommandJsonTemplate !== null &&
+                                        typeof ready.phaseDiagnoseCommandJsonTemplateCommand === 'string' &&
+                                        typeof ready.phaseDiagnoseCommandJsonTemplateRisk === 'string' &&
+                                        Array.isArray(ready.phaseDiagnoseCommandJsonTemplatePlaceholders) &&
+                                        Array.isArray(ready.phaseDiagnoseCommandJsonTemplateCliArgs)));
+                            const phaseCleanupOk =
+                                (ready.phaseCleanup === null ||
+                                    (typeof ready.phaseCleanupTemplateCount === 'number' &&
+                                        Array.isArray(ready.phaseCleanupTemplates) &&
+                                        typeof ready.phaseCleanupCommandJsonTemplateCount === 'number' &&
+                                        Array.isArray(ready.phaseCleanupCommandJsonTemplates)));
+                            const phaseQueryOk =
+                                (ready.phaseQuery === null ||
+                                    (typeof ready.phaseQueryTemplateCount === 'number' &&
+                                        Array.isArray(ready.phaseQueryTemplates) &&
+                                        typeof ready.phaseQueryCommandJsonTemplateCount === 'number' &&
+                                        Array.isArray(ready.phaseQueryCommandJsonTemplates)));
+                            return (ready.defaultPhase === null || typeof ready.defaultPhase === 'string') &&
+                                phasePreflightOk &&
+                                phaseDiagnoseOk &&
+                                phaseCleanupOk &&
+                                phaseQueryOk;
+                        })()"#,
+                    )
+                    .expect("native hook env phase aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
                 "true"
