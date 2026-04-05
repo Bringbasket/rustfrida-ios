@@ -2391,6 +2391,49 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
+                            const adaptation = report.backendAdaptation;
+                            const hasPreferredGroup = adaptation.preferredGroupKey !== 'none';
+                            const nextStepOk = !hasPreferredGroup ? (
+                                adaptation.nextStep === null &&
+                                adaptation.nextStepId === null &&
+                                adaptation.stepChain === null &&
+                                adaptation.activeStep === null &&
+                                adaptation.executionSummary === null
+                            ) : (
+                                Array.isArray(adaptation.stepChain) &&
+                                adaptation.stepChain.length === adaptation.stepChainCount &&
+                                adaptation.stepChain.length === adaptation.stepChainLimit &&
+                                adaptation.stepChainTruncated === false &&
+                                typeof adaptation.nextStep === 'object' &&
+                                adaptation.nextStep !== null &&
+                                adaptation.nextStepId === adaptation.nextStep.id &&
+                                adaptation.nextStepSource === adaptation.nextStep.source &&
+                                adaptation.nextStepCommandGroup === adaptation.nextStep.commandGroup &&
+                                adaptation.nextStepPreferredPath === adaptation.nextStep.preferredPath &&
+                                adaptation.nextStepCommandJsonTemplateCommand === adaptation.nextStep.commandJsonTemplateCommand &&
+                                typeof adaptation.activeStep === 'object' &&
+                                adaptation.activeStep !== null &&
+                                adaptation.activeStepId === adaptation.activeStep.id &&
+                                adaptation.activeStepCommand === adaptation.activeStep.command &&
+                                typeof adaptation.executionSummary === 'object' &&
+                                adaptation.executionSummary !== null &&
+                                adaptation.executionKind === adaptation.executionSummary.kind &&
+                                adaptation.executionSelectedId === adaptation.executionSummary.selectedId &&
+                                adaptation.executionSelectedCommand === adaptation.executionSummary.selectedCommand &&
+                                adaptation.executionSelectedCommandJsonTemplateCommand === adaptation.executionSummary.selectedCommandJsonTemplateCommand &&
+                                adaptation.executionSelectedPreferredPath === adaptation.executionSummary.selectedPreferredPath
+                            );
+                            return nextStepOk;
+                        })()"#,
+                    )
+                    .expect("native hook env backend adaptation execution aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
                 "true"

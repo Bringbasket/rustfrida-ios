@@ -954,6 +954,94 @@ unsafe fn hook_next_action_plan_to_js(
     plan.raw()
 }
 
+unsafe fn hook_backend_adaptation_step_from_command_json_template_to_js(
+    ctx: *mut ffi::JSContext,
+    group_key: &str,
+    allowed: bool,
+    reason: &str,
+    index: usize,
+    template: ffi::JSValue,
+) -> ffi::JSValue {
+    let item = JSValue(ffi::JS_NewObject(ctx));
+    let template_value = JSValue(template);
+    let blocked_by = if allowed { "none" } else { "both" };
+    let branch = if allowed { "run" } else { "blocked" };
+
+    item.set_property(ctx, "index", JSValue::int(index as i32));
+    item.set_property(
+        ctx,
+        "id",
+        JSValue::string(ctx, &format!("backend-adaptation-preferred-group:{group_key}:{index}")),
+    );
+    item.set_property(
+        ctx,
+        "source",
+        JSValue::string(ctx, "backend-adaptation-preferred-group"),
+    );
+    item.set_property(ctx, "actionKey", JSValue::null());
+    item.set_property(ctx, "commandGroup", JSValue::string(ctx, group_key));
+    item.set_property(ctx, "allowed", JSValue::bool(allowed));
+    item.set_property(ctx, "blockedBy", JSValue::string(ctx, blocked_by));
+    item.set_property(ctx, "branch", JSValue::string(ctx, branch));
+    item.set_property(ctx, "reason", JSValue::string(ctx, reason));
+    item.set_property(ctx, "preferredPath", JSValue::string(ctx, group_key));
+    item.set_property(ctx, "readyToRun", JSValue::bool(allowed));
+    item.set_property(ctx, "requiresFallback", JSValue::bool(false));
+    item.set_property(ctx, "command", template_value.get_property(ctx, "command"));
+    if group_key == "none" {
+        item.set_property(ctx, "phase", JSValue::null());
+    } else {
+        item.set_property(ctx, "phase", JSValue::string(ctx, group_key));
+    }
+    item.set_property(
+        ctx,
+        "commandJsonEligible",
+        template_value.get_property(ctx, "commandJsonEligible"),
+    );
+    item.set_property(ctx, "commandJsonTemplate", template_value.dup(ctx));
+    item.set_property(
+        ctx,
+        "commandJsonTemplateCommand",
+        template_value.get_property(ctx, "command"),
+    );
+    item.set_property(ctx, "commandJsonTemplateKind", template_value.get_property(ctx, "kind"));
+    item.set_property(
+        ctx,
+        "commandJsonTemplateEligible",
+        template_value.get_property(ctx, "commandJsonEligible"),
+    );
+    item.set_property(ctx, "kind", template_value.get_property(ctx, "kind"));
+    item.set_property(ctx, "retryable", template_value.get_property(ctx, "retryable"));
+    item.set_property(
+        ctx,
+        "maxSuggestedRetries",
+        template_value.get_property(ctx, "maxSuggestedRetries"),
+    );
+    item.set_property(
+        ctx,
+        "retryDelayHintMs",
+        template_value.get_property(ctx, "retryDelayHintMs"),
+    );
+    item.set_property(ctx, "timeoutHintMs", template_value.get_property(ctx, "timeoutHintMs"));
+    item.set_property(ctx, "timeoutAction", template_value.get_property(ctx, "timeoutAction"));
+    item.set_property(ctx, "errorCode", template_value.get_property(ctx, "errorCode"));
+    item.set_property(
+        ctx,
+        "timeoutErrorCode",
+        template_value.get_property(ctx, "timeoutErrorCode"),
+    );
+    item.set_property(ctx, "risk", template_value.get_property(ctx, "risk"));
+    item.set_property(
+        ctx,
+        "placeholderCount",
+        template_value.get_property(ctx, "placeholderCount"),
+    );
+    item.set_property(ctx, "placeholders", template_value.get_property(ctx, "placeholders"));
+    item.set_property(ctx, "cliArgs", template_value.get_property(ctx, "cliArgs"));
+
+    item.raw()
+}
+
 fn hook_backend_adaptation_topology_kind(
     loaded_backend_count: usize,
     filesystem_only_backend_count: usize,
@@ -1206,6 +1294,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "install" => install_templates.clone(),
         _ => Vec::new(),
     };
+    let backend_adaptation_allowed = preferred_group_key != "none";
     let backend_adaptation = JSValue(ffi::JS_NewObject(ctx));
     backend_adaptation.set_property(ctx, "mode", JSValue::string(ctx, backend_adaptation_mode));
     backend_adaptation.set_property(ctx, "alignment", JSValue::string(ctx, backend_adaptation_alignment));
@@ -1260,6 +1349,615 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             &preferred_templates,
         )),
     );
+    let backend_adaptation_step_chain = ffi::JS_NewArray(ctx);
+    let mut backend_adaptation_retry_budget = 0u64;
+    for (index, template) in preferred_templates.iter().enumerate() {
+        let template_value = JSValue(hook_command_json_template_to_js(ctx, template));
+        let step = JSValue(hook_backend_adaptation_step_from_command_json_template_to_js(
+            ctx,
+            preferred_group_key,
+            backend_adaptation_allowed,
+            backend_adaptation_summary,
+            index,
+            template_value.raw(),
+        ));
+        template_value.free(ctx);
+        backend_adaptation_retry_budget += step
+            .get_property(ctx, "maxSuggestedRetries")
+            .to_i64(ctx)
+            .unwrap_or(0)
+            .max(0) as u64;
+        ffi::JS_SetPropertyUint32(ctx, backend_adaptation_step_chain, index as u32, step.raw());
+    }
+    let backend_adaptation_step_chain_count = preferred_templates.len();
+    let backend_adaptation_step_chain_source = if backend_adaptation_allowed && backend_adaptation_step_chain_count > 0
+    {
+        Some("backend-adaptation-preferred-group")
+    } else {
+        None
+    };
+    let backend_adaptation_execution_summary = if let Some(source) = backend_adaptation_step_chain_source {
+        let summary = JSValue(ffi::JS_NewObject(ctx));
+        let selected_step = JSValue(ffi::JS_GetPropertyUint32(ctx, backend_adaptation_step_chain, 0));
+        summary.set_property(ctx, "kind", JSValue::string(ctx, "preferred-group"));
+        summary.set_property(ctx, "source", JSValue::string(ctx, source));
+        summary.set_property(ctx, "mode", JSValue::string(ctx, backend_adaptation_mode));
+        summary.set_property(ctx, "alignment", JSValue::string(ctx, backend_adaptation_alignment));
+        summary.set_property(ctx, "preferredGroupKey", JSValue::string(ctx, preferred_group_key));
+        summary.set_property(ctx, "selectedId", selected_step.get_property(ctx, "id"));
+        summary.set_property(ctx, "selectedSource", selected_step.get_property(ctx, "source"));
+        summary.set_property(ctx, "selectedActionKey", selected_step.get_property(ctx, "actionKey"));
+        summary.set_property(ctx, "selectedAllowed", selected_step.get_property(ctx, "allowed"));
+        summary.set_property(ctx, "selectedBlockedBy", selected_step.get_property(ctx, "blockedBy"));
+        summary.set_property(ctx, "selectedBranch", selected_step.get_property(ctx, "branch"));
+        summary.set_property(ctx, "selectedPhase", selected_step.get_property(ctx, "phase"));
+        summary.set_property(ctx, "selectedCommand", selected_step.get_property(ctx, "command"));
+        summary.set_property(ctx, "selectedReason", selected_step.get_property(ctx, "reason"));
+        summary.set_property(
+            ctx,
+            "selectedPreferredPath",
+            selected_step.get_property(ctx, "preferredPath"),
+        );
+        summary.set_property(
+            ctx,
+            "selectedCommandGroup",
+            selected_step.get_property(ctx, "commandGroup"),
+        );
+        summary.set_property(ctx, "selectedRetryable", selected_step.get_property(ctx, "retryable"));
+        summary.set_property(ctx, "selectedErrorCode", selected_step.get_property(ctx, "errorCode"));
+        summary.set_property(
+            ctx,
+            "selectedTimeoutErrorCode",
+            selected_step.get_property(ctx, "timeoutErrorCode"),
+        );
+        summary.set_property(
+            ctx,
+            "selectedTimeoutAction",
+            selected_step.get_property(ctx, "timeoutAction"),
+        );
+        summary.set_property(ctx, "selectedReadyToRun", selected_step.get_property(ctx, "readyToRun"));
+        summary.set_property(
+            ctx,
+            "selectedRequiresFallback",
+            selected_step.get_property(ctx, "requiresFallback"),
+        );
+        summary.set_property(
+            ctx,
+            "selectedCommandJsonEligible",
+            selected_step.get_property(ctx, "commandJsonEligible"),
+        );
+        summary.set_property(
+            ctx,
+            "selectedCommandJsonTemplate",
+            selected_step.get_property(ctx, "commandJsonTemplate"),
+        );
+        summary.set_property(
+            ctx,
+            "selectedCommandJsonTemplateCommand",
+            selected_step.get_property(ctx, "commandJsonTemplateCommand"),
+        );
+        summary.set_property(
+            ctx,
+            "selectedCommandJsonTemplateKind",
+            selected_step.get_property(ctx, "commandJsonTemplateKind"),
+        );
+        summary.set_property(ctx, "selectedKind", selected_step.get_property(ctx, "kind"));
+        summary.set_property(
+            ctx,
+            "selectedMaxSuggestedRetries",
+            selected_step.get_property(ctx, "maxSuggestedRetries"),
+        );
+        summary.set_property(
+            ctx,
+            "selectedRetryDelayHintMs",
+            selected_step.get_property(ctx, "retryDelayHintMs"),
+        );
+        summary.set_property(
+            ctx,
+            "selectedTimeoutHintMs",
+            selected_step.get_property(ctx, "timeoutHintMs"),
+        );
+        summary.set_property(ctx, "selectedRisk", selected_step.get_property(ctx, "risk"));
+        summary.set_property(
+            ctx,
+            "selectedPlaceholderCount",
+            selected_step.get_property(ctx, "placeholderCount"),
+        );
+        summary.set_property(
+            ctx,
+            "selectedPlaceholders",
+            selected_step.get_property(ctx, "placeholders"),
+        );
+        summary.set_property(ctx, "selectedCliArgs", selected_step.get_property(ctx, "cliArgs"));
+        summary.set_property(
+            ctx,
+            "chainCount",
+            JSValue::int(backend_adaptation_step_chain_count as i32),
+        );
+        summary.set_property(
+            ctx,
+            "phaseOrder",
+            JSValue(string_vec_to_js_array(ctx, &[preferred_group_key.to_string(); 1])),
+        );
+        summary.set_property(
+            ctx,
+            "retryableStepCount",
+            JSValue::int(backend_adaptation_step_chain_count as i32),
+        );
+        summary.set_property(ctx, "hasConflictPair", JSValue::bool(false));
+        summary.set_property(ctx, "requiresQueryPhase", JSValue::bool(requires_query_phase));
+        summary.set_property(ctx, "requiresPreflight", JSValue::bool(requires_preflight));
+        summary.set_property(ctx, "requiresCleanupPhase", JSValue::bool(requires_cleanup_phase));
+        summary.set_property(ctx, "inlineInstallReadyNow", JSValue::bool(inline_install_ready_now));
+        summary.set_property(
+            ctx,
+            "retryBudget",
+            JSValue(js_u64_to_js_number_or_bigint(ctx, backend_adaptation_retry_budget)),
+        );
+        selected_step.free(ctx);
+        Some(summary)
+    } else {
+        None
+    };
+    match &backend_adaptation_execution_summary {
+        Some(summary) => backend_adaptation.set_property(ctx, "executionSummary", summary.dup(ctx)),
+        None => backend_adaptation.set_property(ctx, "executionSummary", JSValue::null()),
+    };
+    match &backend_adaptation_execution_summary {
+        Some(summary) => {
+            backend_adaptation.set_property(ctx, "executionKind", summary.get_property(ctx, "kind"));
+            backend_adaptation.set_property(ctx, "executionSelectedId", summary.get_property(ctx, "selectedId"));
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedSource",
+                summary.get_property(ctx, "selectedSource"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedActionKey",
+                summary.get_property(ctx, "selectedActionKey"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedAllowed",
+                summary.get_property(ctx, "selectedAllowed"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedBlockedBy",
+                summary.get_property(ctx, "selectedBlockedBy"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedBranch",
+                summary.get_property(ctx, "selectedBranch"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedPhase",
+                summary.get_property(ctx, "selectedPhase"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedCommand",
+                summary.get_property(ctx, "selectedCommand"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedReason",
+                summary.get_property(ctx, "selectedReason"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedPreferredPath",
+                summary.get_property(ctx, "selectedPreferredPath"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedCommandGroup",
+                summary.get_property(ctx, "selectedCommandGroup"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedRetryable",
+                summary.get_property(ctx, "selectedRetryable"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedErrorCode",
+                summary.get_property(ctx, "selectedErrorCode"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedTimeoutErrorCode",
+                summary.get_property(ctx, "selectedTimeoutErrorCode"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedTimeoutAction",
+                summary.get_property(ctx, "selectedTimeoutAction"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedReadyToRun",
+                summary.get_property(ctx, "selectedReadyToRun"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedRequiresFallback",
+                summary.get_property(ctx, "selectedRequiresFallback"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedCommandJsonEligible",
+                summary.get_property(ctx, "selectedCommandJsonEligible"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedCommandJsonTemplate",
+                summary.get_property(ctx, "selectedCommandJsonTemplate"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedCommandJsonTemplateCommand",
+                summary.get_property(ctx, "selectedCommandJsonTemplateCommand"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedCommandJsonTemplateKind",
+                summary.get_property(ctx, "selectedCommandJsonTemplateKind"),
+            );
+            backend_adaptation.set_property(ctx, "executionSelectedKind", summary.get_property(ctx, "selectedKind"));
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedMaxSuggestedRetries",
+                summary.get_property(ctx, "selectedMaxSuggestedRetries"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedRetryDelayHintMs",
+                summary.get_property(ctx, "selectedRetryDelayHintMs"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedTimeoutHintMs",
+                summary.get_property(ctx, "selectedTimeoutHintMs"),
+            );
+            backend_adaptation.set_property(ctx, "executionSelectedRisk", summary.get_property(ctx, "selectedRisk"));
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedPlaceholderCount",
+                summary.get_property(ctx, "selectedPlaceholderCount"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedPlaceholders",
+                summary.get_property(ctx, "selectedPlaceholders"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionSelectedCliArgs",
+                summary.get_property(ctx, "selectedCliArgs"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionRequiresQueryPhase",
+                summary.get_property(ctx, "requiresQueryPhase"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionRequiresPreflight",
+                summary.get_property(ctx, "requiresPreflight"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionRequiresCleanupPhase",
+                summary.get_property(ctx, "requiresCleanupPhase"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionInlineInstallReadyNow",
+                summary.get_property(ctx, "inlineInstallReadyNow"),
+            );
+            backend_adaptation.set_property(ctx, "executionRetryBudget", summary.get_property(ctx, "retryBudget"));
+        }
+        None => {
+            for key in [
+                "executionKind",
+                "executionSelectedId",
+                "executionSelectedSource",
+                "executionSelectedActionKey",
+                "executionSelectedAllowed",
+                "executionSelectedBlockedBy",
+                "executionSelectedBranch",
+                "executionSelectedPhase",
+                "executionSelectedCommand",
+                "executionSelectedReason",
+                "executionSelectedPreferredPath",
+                "executionSelectedCommandGroup",
+                "executionSelectedRetryable",
+                "executionSelectedErrorCode",
+                "executionSelectedTimeoutErrorCode",
+                "executionSelectedTimeoutAction",
+                "executionSelectedReadyToRun",
+                "executionSelectedRequiresFallback",
+                "executionSelectedCommandJsonEligible",
+                "executionSelectedCommandJsonTemplate",
+                "executionSelectedCommandJsonTemplateCommand",
+                "executionSelectedCommandJsonTemplateKind",
+                "executionSelectedKind",
+                "executionSelectedMaxSuggestedRetries",
+                "executionSelectedRetryDelayHintMs",
+                "executionSelectedTimeoutHintMs",
+                "executionSelectedRisk",
+                "executionSelectedPlaceholderCount",
+                "executionSelectedPlaceholders",
+                "executionSelectedCliArgs",
+                "executionRequiresQueryPhase",
+                "executionRequiresPreflight",
+                "executionRequiresCleanupPhase",
+                "executionInlineInstallReadyNow",
+                "executionRetryBudget",
+            ] {
+                backend_adaptation.set_property(ctx, key, JSValue::null());
+            }
+        }
+    }
+    if let Some(summary) = &backend_adaptation_execution_summary {
+        summary.free(ctx);
+    }
+    if let Some(source) = backend_adaptation_step_chain_source {
+        let next_step = JSValue(ffi::JS_GetPropertyUint32(ctx, backend_adaptation_step_chain, 0));
+        backend_adaptation.set_property(ctx, "nextStep", next_step.dup(ctx));
+        backend_adaptation.set_property(ctx, "nextStepId", next_step.get_property(ctx, "id"));
+        backend_adaptation.set_property(ctx, "nextStepSource", next_step.get_property(ctx, "source"));
+        backend_adaptation.set_property(ctx, "nextStepActionKey", next_step.get_property(ctx, "actionKey"));
+        backend_adaptation.set_property(ctx, "nextStepCommandGroup", next_step.get_property(ctx, "commandGroup"));
+        backend_adaptation.set_property(ctx, "nextStepAllowed", next_step.get_property(ctx, "allowed"));
+        backend_adaptation.set_property(ctx, "nextStepBlockedBy", next_step.get_property(ctx, "blockedBy"));
+        backend_adaptation.set_property(ctx, "nextStepBranch", next_step.get_property(ctx, "branch"));
+        backend_adaptation.set_property(ctx, "nextStepReason", next_step.get_property(ctx, "reason"));
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepPreferredPath",
+            next_step.get_property(ctx, "preferredPath"),
+        );
+        backend_adaptation.set_property(ctx, "nextStepCommand", next_step.get_property(ctx, "command"));
+        backend_adaptation.set_property(ctx, "nextStepPhase", next_step.get_property(ctx, "phase"));
+        backend_adaptation.set_property(ctx, "nextStepKind", next_step.get_property(ctx, "kind"));
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepCommandJsonEligible",
+            next_step.get_property(ctx, "commandJsonEligible"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepCommandJsonTemplate",
+            next_step.get_property(ctx, "commandJsonTemplate"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepCommandJsonTemplateCommand",
+            next_step.get_property(ctx, "commandJsonTemplateCommand"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepCommandJsonTemplateKind",
+            next_step.get_property(ctx, "commandJsonTemplateKind"),
+        );
+        backend_adaptation.set_property(ctx, "nextStepRetryable", next_step.get_property(ctx, "retryable"));
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepMaxSuggestedRetries",
+            next_step.get_property(ctx, "maxSuggestedRetries"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepRetryDelayHintMs",
+            next_step.get_property(ctx, "retryDelayHintMs"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepTimeoutHintMs",
+            next_step.get_property(ctx, "timeoutHintMs"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepTimeoutAction",
+            next_step.get_property(ctx, "timeoutAction"),
+        );
+        backend_adaptation.set_property(ctx, "nextStepErrorCode", next_step.get_property(ctx, "errorCode"));
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepTimeoutErrorCode",
+            next_step.get_property(ctx, "timeoutErrorCode"),
+        );
+        backend_adaptation.set_property(ctx, "nextStepRisk", next_step.get_property(ctx, "risk"));
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepPlaceholderCount",
+            next_step.get_property(ctx, "placeholderCount"),
+        );
+        backend_adaptation.set_property(ctx, "nextStepPlaceholders", next_step.get_property(ctx, "placeholders"));
+        backend_adaptation.set_property(ctx, "nextStepCliArgs", next_step.get_property(ctx, "cliArgs"));
+        backend_adaptation.set_property(ctx, "nextStepReadyToRun", next_step.get_property(ctx, "readyToRun"));
+        backend_adaptation.set_property(
+            ctx,
+            "nextStepRequiresFallback",
+            next_step.get_property(ctx, "requiresFallback"),
+        );
+        backend_adaptation.set_property(ctx, "stepChainSource", JSValue::string(ctx, source));
+        backend_adaptation.set_property(
+            ctx,
+            "stepChainLimit",
+            JSValue::int(backend_adaptation_step_chain_count as i32),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "stepChainCount",
+            JSValue::int(backend_adaptation_step_chain_count as i32),
+        );
+        backend_adaptation.set_property(ctx, "stepChain", JSValue(backend_adaptation_step_chain));
+        backend_adaptation.set_property(ctx, "stepChainTruncated", JSValue::bool(false));
+        backend_adaptation.set_property(ctx, "activeStep", next_step);
+        let active_step = backend_adaptation.get_property(ctx, "activeStep");
+        backend_adaptation.set_property(ctx, "activeStepSource", active_step.get_property(ctx, "source"));
+        backend_adaptation.set_property(ctx, "activeStepAllowed", active_step.get_property(ctx, "allowed"));
+        backend_adaptation.set_property(ctx, "activeStepBlockedBy", active_step.get_property(ctx, "blockedBy"));
+        backend_adaptation.set_property(ctx, "activeStepBranch", active_step.get_property(ctx, "branch"));
+        backend_adaptation.set_property(ctx, "activeStepReason", active_step.get_property(ctx, "reason"));
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepPreferredPath",
+            active_step.get_property(ctx, "preferredPath"),
+        );
+        backend_adaptation.set_property(ctx, "activeStepActionKey", active_step.get_property(ctx, "actionKey"));
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepCommandGroup",
+            active_step.get_property(ctx, "commandGroup"),
+        );
+        backend_adaptation.set_property(ctx, "activeStepId", active_step.get_property(ctx, "id"));
+        backend_adaptation.set_property(ctx, "activeStepCommand", active_step.get_property(ctx, "command"));
+        backend_adaptation.set_property(ctx, "activeStepPhase", active_step.get_property(ctx, "phase"));
+        backend_adaptation.set_property(ctx, "activeStepReadyToRun", active_step.get_property(ctx, "readyToRun"));
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepRequiresFallback",
+            active_step.get_property(ctx, "requiresFallback"),
+        );
+        backend_adaptation.set_property(ctx, "activeStepKind", active_step.get_property(ctx, "kind"));
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepCommandJsonEligible",
+            active_step.get_property(ctx, "commandJsonEligible"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepCommandJsonTemplate",
+            active_step.get_property(ctx, "commandJsonTemplate"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepCommandJsonTemplateCommand",
+            active_step.get_property(ctx, "commandJsonTemplateCommand"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepCommandJsonTemplateKind",
+            active_step.get_property(ctx, "commandJsonTemplateKind"),
+        );
+        backend_adaptation.set_property(ctx, "activeStepRetryable", active_step.get_property(ctx, "retryable"));
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepMaxSuggestedRetries",
+            active_step.get_property(ctx, "maxSuggestedRetries"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepRetryDelayHintMs",
+            active_step.get_property(ctx, "retryDelayHintMs"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepTimeoutHintMs",
+            active_step.get_property(ctx, "timeoutHintMs"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepTimeoutAction",
+            active_step.get_property(ctx, "timeoutAction"),
+        );
+        backend_adaptation.set_property(ctx, "activeStepErrorCode", active_step.get_property(ctx, "errorCode"));
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepTimeoutErrorCode",
+            active_step.get_property(ctx, "timeoutErrorCode"),
+        );
+        backend_adaptation.set_property(ctx, "activeStepRisk", active_step.get_property(ctx, "risk"));
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepPlaceholderCount",
+            active_step.get_property(ctx, "placeholderCount"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "activeStepPlaceholders",
+            active_step.get_property(ctx, "placeholders"),
+        );
+        backend_adaptation.set_property(ctx, "activeStepCliArgs", active_step.get_property(ctx, "cliArgs"));
+        active_step.free(ctx);
+    } else {
+        for key in [
+            "nextStep",
+            "nextStepId",
+            "nextStepSource",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepReason",
+            "nextStepPreferredPath",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepKind",
+            "nextStepCommandJsonEligible",
+            "nextStepCommandJsonTemplate",
+            "nextStepCommandJsonTemplateCommand",
+            "nextStepCommandJsonTemplateKind",
+            "nextStepRetryable",
+            "nextStepMaxSuggestedRetries",
+            "nextStepRetryDelayHintMs",
+            "nextStepTimeoutHintMs",
+            "nextStepTimeoutAction",
+            "nextStepErrorCode",
+            "nextStepTimeoutErrorCode",
+            "nextStepRisk",
+            "nextStepPlaceholderCount",
+            "nextStepPlaceholders",
+            "nextStepCliArgs",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+            "stepChainSource",
+            "stepChainLimit",
+            "stepChainCount",
+            "stepChain",
+            "stepChainTruncated",
+            "activeStep",
+            "activeStepSource",
+            "activeStepAllowed",
+            "activeStepBlockedBy",
+            "activeStepBranch",
+            "activeStepReason",
+            "activeStepPreferredPath",
+            "activeStepActionKey",
+            "activeStepCommandGroup",
+            "activeStepId",
+            "activeStepCommand",
+            "activeStepPhase",
+            "activeStepReadyToRun",
+            "activeStepRequiresFallback",
+            "activeStepKind",
+            "activeStepCommandJsonEligible",
+            "activeStepCommandJsonTemplate",
+            "activeStepCommandJsonTemplateCommand",
+            "activeStepCommandJsonTemplateKind",
+            "activeStepRetryable",
+            "activeStepMaxSuggestedRetries",
+            "activeStepRetryDelayHintMs",
+            "activeStepTimeoutHintMs",
+            "activeStepTimeoutAction",
+            "activeStepErrorCode",
+            "activeStepTimeoutErrorCode",
+            "activeStepRisk",
+            "activeStepPlaceholderCount",
+            "activeStepPlaceholders",
+            "activeStepCliArgs",
+        ] {
+            backend_adaptation.set_property(ctx, key, JSValue::null());
+        }
+    }
 
     match &report.active_backend {
         Some(active) => result.set_property(ctx, "activeBackend", JSValue::string(ctx, active)),
