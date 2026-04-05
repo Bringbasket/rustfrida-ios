@@ -2405,7 +2405,11 @@ undefined;
                                     adaptation.preferredConflictResolutionTemplates === null &&
                                     adaptation.preferredConflictResolutionTemplateCount === null &&
                                     adaptation.preferredConflictResolutionChain === null &&
-                                    adaptation.preferredConflictResolutionChainCount === null) ||
+                                    adaptation.preferredConflictResolutionChainCount === null &&
+                                    adaptation.preferredConflictResolutionPhaseOrder === null &&
+                                    adaptation.preferredConflictResolutionRetryableStepCount === null &&
+                                    adaptation.preferredConflictResolutionTotalRetryBudget === null &&
+                                    adaptation.preferredConflictResolutionTerminationPolicy === null) ||
                                 (adaptation.conflictBackendPairCount > 0 &&
                                     typeof adaptation.preferredConflictBackendPair === 'object' &&
                                     adaptation.preferredConflictBackendPair !== null &&
@@ -2420,7 +2424,15 @@ undefined;
                                     adaptation.preferredConflictResolutionTemplateCount === adaptation.preferredConflictResolutionTemplates.length &&
                                     Array.isArray(adaptation.preferredConflictResolutionChain) &&
                                     adaptation.preferredConflictResolutionChainCount === adaptation.preferredConflictBackendPair.resolutionChainCount &&
-                                    adaptation.preferredConflictResolutionChainCount === adaptation.preferredConflictResolutionChain.length));
+                                    adaptation.preferredConflictResolutionChainCount === adaptation.preferredConflictResolutionChain.length &&
+                                    Array.isArray(adaptation.preferredConflictResolutionPhaseOrder) &&
+                                    adaptation.preferredConflictResolutionPhaseOrder.length === adaptation.preferredConflictResolutionChainCount &&
+                                    adaptation.preferredConflictResolutionRetryableStepCount === adaptation.preferredConflictResolutionChain.filter((entry) => entry.retryable === true).length &&
+                                    adaptation.preferredConflictResolutionTotalRetryBudget === adaptation.preferredConflictResolutionChain.reduce((total, entry) => total + Number(entry.maxSuggestedRetries || 0), 0) &&
+                                    typeof adaptation.preferredConflictResolutionTerminationPolicy === 'object' &&
+                                    adaptation.preferredConflictResolutionTerminationPolicy !== null &&
+                                    adaptation.preferredConflictResolutionTerminationPolicy.retryableStepCount === adaptation.preferredConflictResolutionRetryableStepCount &&
+                                    adaptation.preferredConflictResolutionTerminationPolicy.totalRetryBudget === adaptation.preferredConflictResolutionTotalRetryBudget));
                             return typeof adaptation === 'object' &&
                                 adaptation !== null &&
                                 report.backendAdaptationMode === adaptation.mode &&

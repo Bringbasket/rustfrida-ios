@@ -2095,6 +2095,100 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredConflictResolutionChainCount",
                 item.get_property(ctx, "resolutionChainCount"),
             );
+            if !conflict_resolution_steps.is_empty() {
+                let phase_order = conflict_resolution_steps
+                    .iter()
+                    .map(|(_, phase, _)| (*phase).to_string())
+                    .collect::<Vec<_>>();
+                let retryable_step_count = conflict_resolution_steps
+                    .iter()
+                    .filter(|(_, phase, _)| {
+                        hook_conflict_resolution_phase_retry_policy(phase).0
+                    })
+                    .count();
+                let total_retry_budget = conflict_resolution_steps
+                    .iter()
+                    .map(|(_, phase, _)| hook_conflict_resolution_phase_retry_policy(phase).1 as u64)
+                    .sum::<u64>();
+                let termination_policy = JSValue(ffi::JS_NewObject(ctx));
+                termination_policy.set_property(
+                    ctx,
+                    "mode",
+                    JSValue::string(ctx, "phase-retry-budget"),
+                );
+                termination_policy.set_property(
+                    ctx,
+                    "terminateWhen",
+                    JSValue::string(
+                        ctx,
+                        "all-retryable-conflict-resolution-steps-exhausted",
+                    ),
+                );
+                termination_policy.set_property(
+                    ctx,
+                    "escalateWhen",
+                    JSValue::string(
+                        ctx,
+                        "non-retryable-conflict-step-failed-or-budget-exhausted",
+                    ),
+                );
+                termination_policy.set_property(
+                    ctx,
+                    "timeoutEscalateWhen",
+                    JSValue::string(ctx, "phase-timeout-exceeded"),
+                );
+                termination_policy.set_property(
+                    ctx,
+                    "retryableStepCount",
+                    JSValue::int(retryable_step_count as i32),
+                );
+                termination_policy.set_property(
+                    ctx,
+                    "totalRetryBudget",
+                    JSValue(js_u64_to_js_number_or_bigint(ctx, total_retry_budget)),
+                );
+                backend_adaptation.set_property(
+                    ctx,
+                    "preferredConflictResolutionPhaseOrder",
+                    JSValue(string_vec_to_js_array(ctx, &phase_order)),
+                );
+                backend_adaptation.set_property(
+                    ctx,
+                    "preferredConflictResolutionRetryableStepCount",
+                    JSValue::int(retryable_step_count as i32),
+                );
+                backend_adaptation.set_property(
+                    ctx,
+                    "preferredConflictResolutionTotalRetryBudget",
+                    JSValue(js_u64_to_js_number_or_bigint(ctx, total_retry_budget)),
+                );
+                backend_adaptation.set_property(
+                    ctx,
+                    "preferredConflictResolutionTerminationPolicy",
+                    termination_policy,
+                );
+            } else {
+                backend_adaptation.set_property(
+                    ctx,
+                    "preferredConflictResolutionPhaseOrder",
+                    JSValue::null(),
+                );
+                backend_adaptation.set_property(
+                    ctx,
+                    "preferredConflictResolutionRetryableStepCount",
+                    JSValue::null(),
+                );
+                backend_adaptation.set_property(
+                    ctx,
+                    "preferredConflictResolutionTotalRetryBudget",
+                    JSValue::null(),
+                );
+                backend_adaptation.set_property(
+                    ctx,
+                    "preferredConflictResolutionTerminationPolicy",
+                    JSValue::null(),
+                );
+            }
         }
         None => {
             for key in [
@@ -2109,6 +2203,10 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredConflictResolutionTemplateCount",
                 "preferredConflictResolutionChain",
                 "preferredConflictResolutionChainCount",
+                "preferredConflictResolutionPhaseOrder",
+                "preferredConflictResolutionRetryableStepCount",
+                "preferredConflictResolutionTotalRetryBudget",
+                "preferredConflictResolutionTerminationPolicy",
             ] {
                 backend_adaptation.set_property(ctx, key, JSValue::null());
             }
