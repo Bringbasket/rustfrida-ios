@@ -2445,7 +2445,15 @@ undefined;
                                     typeof adaptation.preferredConflictResolutionRouting.routingDecision === 'object' &&
                                     adaptation.preferredConflictResolutionRouting.routingDecision !== null &&
                                     typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready === 'object' &&
-                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready !== null));
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready !== null &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.entryCount === adaptation.preferredConflictResolutionRouting.errorCodeRoutingCount &&
+                                    typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolve === 'object' &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolve !== null &&
+                                    typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolve === 'object' &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolve !== null &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phases.length &&
+                                    typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseIndex === 'object' &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseIndex !== null));
                             return typeof adaptation === 'object' &&
                                 adaptation !== null &&
                                 report.backendAdaptationMode === adaptation.mode &&

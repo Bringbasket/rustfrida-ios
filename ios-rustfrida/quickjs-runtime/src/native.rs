@@ -1432,6 +1432,12 @@ unsafe fn hook_conflict_resolution_routing_to_js(
 ) -> ffi::JSValue {
     use std::collections::BTreeMap;
 
+    struct PhaseRoutingSummary {
+        error_codes: Vec<String>,
+        escalation_keys: Vec<String>,
+        templates: Vec<String>,
+    }
+
     if steps.is_empty() {
         return JSValue::null().raw();
     }
@@ -1443,6 +1449,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     let escalation_recommendations = ffi::JS_NewArray(ctx);
 
     let mut error_code_routing_candidates = BTreeMap::<String, (String, String, Vec<String>)>::new();
+    let mut phase_summaries = BTreeMap::<String, PhaseRoutingSummary>::new();
 
     for (index, (group_key, phase, reason)) in steps.iter().enumerate() {
         let templates = hook_backend_templates_for_group(
@@ -1456,6 +1463,32 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         let (timeout_hint_ms, timeout_action) = hook_conflict_resolution_phase_timeout_policy(phase);
         let error_code = hook_conflict_resolution_phase_failure_code(phase).to_string();
         let timeout_error_code = hook_conflict_resolution_phase_timeout_error_code(phase).to_string();
+        let escalation_key = format!("conflict-{group_key}");
+
+        let phase_summary = phase_summaries
+            .entry((*phase).to_string())
+            .or_insert_with(|| PhaseRoutingSummary {
+                error_codes: Vec::new(),
+                escalation_keys: Vec::new(),
+                templates: Vec::new(),
+            });
+        for code in [&error_code, &timeout_error_code] {
+            if !phase_summary.error_codes.iter().any(|item| item == code) {
+                phase_summary.error_codes.push(code.clone());
+            }
+        }
+        if !phase_summary
+            .escalation_keys
+            .iter()
+            .any(|item| item == &escalation_key)
+        {
+            phase_summary.escalation_keys.push(escalation_key.clone());
+        }
+        for template in templates {
+            if !phase_summary.templates.iter().any(|item| item == template) {
+                phase_summary.templates.push(template.clone());
+            }
+        }
 
         let retry_policy = JSValue(ffi::JS_NewObject(ctx));
         retry_policy.set_property(ctx, "phase", JSValue::string(ctx, phase));
@@ -1510,7 +1543,6 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         );
         ffi::JS_SetPropertyUint32(ctx, phase_error_codes, index as u32, error_codes.raw());
 
-        let escalation_key = format!("conflict-{group_key}");
         let recommendation = JSValue(hook_escalation_recommendation_to_js(
             ctx,
             &escalation_key,
@@ -1664,6 +1696,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         "entryCount",
         JSValue::int(error_code_routing_candidates.len() as i32),
     );
+    routing_decision.set_property(ctx, "entries", JSValue(error_code_routing_entries).dup(ctx));
     routing_decision.set_property(
         ctx,
         "defaultRecommendedEscalationKey",
@@ -1713,6 +1746,11 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         "lookupRule",
         JSValue::string(ctx, "index[errorCode] || default"),
     );
+    ready_value.set_property(
+        ctx,
+        "entryCount",
+        JSValue::int(error_code_routing_candidates.len() as i32),
+    );
     ready_value.set_property(ctx, "index", error_code_routing_resolved.dup(ctx));
     ready_value.set_property(ctx, "default", default_value.dup(ctx));
     ready_value.set_property(
@@ -1731,7 +1769,257 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         "defaultEffectivePhase",
         JSValue::string(ctx, default_phase),
     );
+    ready_value.set_property(
+        ctx,
+        "defaultTemplateCount",
+        JSValue::int(default_templates.len() as i32),
+    );
+    set_string_array_property(ctx, ready_value.raw(), "defaultTemplates", default_templates);
+    let (ready_default_command_json_templates, _) = hook_command_json_template_array_to_js(ctx, default_templates);
+    ready_value.set_property(
+        ctx,
+        "defaultCommandJsonTemplateCount",
+        JSValue::int(default_templates.len() as i32),
+    );
+    ready_value.set_property(
+        ctx,
+        "defaultCommandJsonTemplates",
+        JSValue(ready_default_command_json_templates),
+    );
+
+    let resolve_index = JSValue(ffi::JS_NewObject(ctx));
+    let known_error_codes = error_code_routing_candidates
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>();
+    for error_code in &known_error_codes {
+        let Some((escalation_key, phase, _)) = error_code_routing_candidates.get(error_code) else {
+            continue;
+        };
+        let effective = error_code_routing_resolved.get_property(ctx, error_code);
+        let resolved = JSValue(ffi::JS_NewObject(ctx));
+        resolved.set_property(ctx, "matched", JSValue::bool(true));
+        resolved.set_property(ctx, "usedDefault", JSValue::bool(false));
+        resolved.set_property(ctx, "reason", JSValue::string(ctx, "matched-error-code"));
+        resolved.set_property(ctx, "effectivePhase", JSValue::string(ctx, phase));
+        resolved.set_property(
+            ctx,
+            "effectiveEscalationKey",
+            JSValue::string(ctx, escalation_key),
+        );
+        resolved.set_property(ctx, "effective", effective);
+        resolve_index.set_property(ctx, error_code, resolved);
+    }
+
+    let resolve_default = JSValue(ffi::JS_NewObject(ctx));
+    resolve_default.set_property(ctx, "matched", JSValue::bool(false));
+    resolve_default.set_property(ctx, "usedDefault", JSValue::bool(true));
+    resolve_default.set_property(ctx, "reason", JSValue::string(ctx, "missing-error-code"));
+    resolve_default.set_property(ctx, "effectivePhase", JSValue::string(ctx, default_phase));
+    resolve_default.set_property(
+        ctx,
+        "effectiveEscalationKey",
+        JSValue::string(ctx, &default_escalation_key),
+    );
+    resolve_default.set_property(ctx, "effective", default_value.dup(ctx));
+
+    let resolve_examples = JSValue(ffi::JS_NewObject(ctx));
+    match known_error_codes.first() {
+        Some(error_code) => {
+            resolve_examples.set_property(ctx, "knownErrorCode", JSValue::string(ctx, error_code));
+            resolve_examples.set_property(ctx, "knownResult", resolve_index.get_property(ctx, error_code));
+        }
+        None => {
+            resolve_examples.set_property(ctx, "knownErrorCode", JSValue::null());
+            resolve_examples.set_property(ctx, "knownResult", JSValue::null());
+        }
+    }
+    resolve_examples.set_property(ctx, "missingErrorCode", JSValue::string(ctx, "hook-fallback-unknown"));
+    resolve_examples.set_property(ctx, "missingResult", resolve_default.dup(ctx));
+
+    let resolve_value = JSValue(ffi::JS_NewObject(ctx));
+    resolve_value.set_property(ctx, "lookupKey", JSValue::string(ctx, "errorCode"));
+    resolve_value.set_property(
+        ctx,
+        "policy",
+        JSValue::string(ctx, "index[errorCode] || default"),
+    );
+    resolve_value.set_property(ctx, "outputShape", JSValue::string(ctx, "effective"));
+    resolve_value.set_property(ctx, "index", resolve_index);
+    resolve_value.set_property(ctx, "default", resolve_default);
+    resolve_value.set_property(ctx, "examples", resolve_examples);
+    ready_value.set_property(ctx, "resolve", resolve_value.dup(ctx));
+
+    let phase_entries = ffi::JS_NewArray(ctx);
+    let phase_index = JSValue(ffi::JS_NewObject(ctx));
+    let mut known_phases = Vec::<String>::new();
+    for (entry_index, (phase, summary)) in phase_summaries.iter().enumerate() {
+        let phase_entry = JSValue(ffi::JS_NewObject(ctx));
+        let (phase_command_json_templates, _) =
+            hook_command_json_template_array_to_js(ctx, &summary.templates);
+        phase_entry.set_property(ctx, "phase", JSValue::string(ctx, phase));
+        phase_entry.set_property(
+            ctx,
+            "errorCodeCount",
+            JSValue::int(summary.error_codes.len() as i32),
+        );
+        phase_entry.set_property(
+            ctx,
+            "errorCodes",
+            JSValue(string_vec_to_js_array(ctx, &summary.error_codes)),
+        );
+        phase_entry.set_property(
+            ctx,
+            "escalationKeyCount",
+            JSValue::int(summary.escalation_keys.len() as i32),
+        );
+        phase_entry.set_property(
+            ctx,
+            "escalationKeys",
+            JSValue(string_vec_to_js_array(ctx, &summary.escalation_keys)),
+        );
+        phase_entry.set_property(
+            ctx,
+            "templateCount",
+            JSValue::int(summary.templates.len() as i32),
+        );
+        set_string_array_property(ctx, phase_entry.raw(), "templates", &summary.templates);
+        phase_entry.set_property(
+            ctx,
+            "commandJsonTemplateCount",
+            JSValue::int(summary.templates.len() as i32),
+        );
+        phase_entry.set_property(
+            ctx,
+            "commandJsonTemplates",
+            JSValue(phase_command_json_templates),
+        );
+        ffi::JS_SetPropertyUint32(ctx, phase_entries, entry_index as u32, phase_entry.dup(ctx).raw());
+        phase_index.set_property(ctx, phase, phase_entry);
+        known_phases.push(phase.clone());
+    }
+
+    let phase_query = phase_index.get_property(ctx, "query");
+    if phase_query.is_null() || phase_query.is_undefined() {
+        ready_value.set_property(ctx, "phaseQuery", JSValue::null());
+    } else {
+        ready_value.set_property(ctx, "phaseQuery", phase_query);
+    }
+    let phase_preflight = phase_index.get_property(ctx, "preflight");
+    if phase_preflight.is_null() || phase_preflight.is_undefined() {
+        ready_value.set_property(ctx, "phasePreflight", JSValue::null());
+    } else {
+        ready_value.set_property(ctx, "phasePreflight", phase_preflight);
+    }
+    let phase_cleanup = phase_index.get_property(ctx, "cleanup");
+    if phase_cleanup.is_null() || phase_cleanup.is_undefined() {
+        ready_value.set_property(ctx, "phaseCleanup", JSValue::null());
+    } else {
+        ready_value.set_property(ctx, "phaseCleanup", phase_cleanup);
+    }
+
+    let phase_resolve_index = JSValue(ffi::JS_NewObject(ctx));
+    for phase in &known_phases {
+        let phase_entry = phase_index.get_property(ctx, phase);
+        let primary_escalation_key = phase_summaries
+            .get(phase)
+            .and_then(|summary| summary.escalation_keys.first())
+            .cloned();
+        let resolved = JSValue(ffi::JS_NewObject(ctx));
+        resolved.set_property(ctx, "matched", JSValue::bool(true));
+        resolved.set_property(ctx, "usedDefault", JSValue::bool(false));
+        resolved.set_property(ctx, "reason", JSValue::string(ctx, "matched-phase"));
+        resolved.set_property(ctx, "effectivePhase", JSValue::string(ctx, phase));
+        match primary_escalation_key {
+            Some(ref value) => {
+                resolved.set_property(ctx, "effectiveEscalationKey", JSValue::string(ctx, value));
+            }
+            None => {
+                resolved.set_property(ctx, "effectiveEscalationKey", JSValue::null());
+            }
+        }
+        resolved.set_property(ctx, "effective", phase_entry);
+        phase_resolve_index.set_property(ctx, phase, resolved);
+    }
+
+    let default_phase_entry = phase_index.get_property(ctx, default_phase);
+    let phase_resolve_default = JSValue(ffi::JS_NewObject(ctx));
+    phase_resolve_default.set_property(ctx, "matched", JSValue::bool(false));
+    phase_resolve_default.set_property(ctx, "usedDefault", JSValue::bool(true));
+    phase_resolve_default.set_property(ctx, "reason", JSValue::string(ctx, "missing-phase"));
+    if default_phase_entry.is_null() || default_phase_entry.is_undefined() {
+        phase_resolve_default.set_property(ctx, "effectivePhase", JSValue::string(ctx, default_phase));
+        phase_resolve_default.set_property(
+            ctx,
+            "effectiveEscalationKey",
+            JSValue::string(ctx, &default_escalation_key),
+        );
+        phase_resolve_default.set_property(ctx, "effective", JSValue::null());
+    } else {
+        let effective_escalation_key = phase_summaries
+            .get(default_phase)
+            .and_then(|summary| summary.escalation_keys.first())
+            .cloned();
+        phase_resolve_default.set_property(ctx, "effectivePhase", JSValue::string(ctx, default_phase));
+        match effective_escalation_key {
+            Some(ref value) => {
+                phase_resolve_default.set_property(ctx, "effectiveEscalationKey", JSValue::string(ctx, value));
+            }
+            None => {
+                phase_resolve_default.set_property(ctx, "effectiveEscalationKey", JSValue::null());
+            }
+        }
+        phase_resolve_default.set_property(ctx, "effective", default_phase_entry);
+    }
+
+    let phase_resolve_examples = JSValue(ffi::JS_NewObject(ctx));
+    match known_phases.first() {
+        Some(phase) => {
+            phase_resolve_examples.set_property(ctx, "knownPhase", JSValue::string(ctx, phase));
+            phase_resolve_examples.set_property(
+                ctx,
+                "knownResult",
+                phase_resolve_index.get_property(ctx, phase),
+            );
+        }
+        None => {
+            phase_resolve_examples.set_property(ctx, "knownPhase", JSValue::null());
+            phase_resolve_examples.set_property(ctx, "knownResult", JSValue::null());
+        }
+    }
+    phase_resolve_examples.set_property(ctx, "missingPhase", JSValue::string(ctx, "unknown"));
+    phase_resolve_examples.set_property(ctx, "missingResult", phase_resolve_default.dup(ctx));
+
+    let phase_resolve_value = JSValue(ffi::JS_NewObject(ctx));
+    phase_resolve_value.set_property(ctx, "lookupKey", JSValue::string(ctx, "phase"));
+    phase_resolve_value.set_property(
+        ctx,
+        "policy",
+        JSValue::string(ctx, "phaseIndex[phase] || default"),
+    );
+    phase_resolve_value.set_property(ctx, "outputShape", JSValue::string(ctx, "effective"));
+    phase_resolve_value.set_property(ctx, "index", phase_resolve_index);
+    phase_resolve_value.set_property(ctx, "default", phase_resolve_default);
+    phase_resolve_value.set_property(ctx, "examples", phase_resolve_examples);
+    ready_value.set_property(ctx, "phaseResolve", phase_resolve_value.dup(ctx));
+
+    ready_value.set_property(ctx, "phaseCount", JSValue::int(known_phases.len() as i32));
+    ready_value.set_property(ctx, "phases", JSValue(phase_entries));
+    ready_value.set_property(ctx, "phaseIndex", phase_index.dup(ctx));
+    if let Some(first_phase) = known_phases.first() {
+        ready_value.set_property(ctx, "phaseFirst", phase_index.get_property(ctx, first_phase));
+    } else {
+        ready_value.set_property(ctx, "phaseFirst", JSValue::null());
+    }
+    if let Some(last_phase) = known_phases.last() {
+        ready_value.set_property(ctx, "phaseLast", phase_index.get_property(ctx, last_phase));
+    } else {
+        ready_value.set_property(ctx, "phaseLast", JSValue::null());
+    }
     routing_decision.set_property(ctx, "ready", ready_value);
+    resolve_value.free(ctx);
+    phase_resolve_value.free(ctx);
+    phase_index.free(ctx);
     default_value.free(ctx);
 
     routing.set_property(ctx, "phaseRetryPolicyCount", JSValue::int(steps.len() as i32));
