@@ -2322,6 +2322,39 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
+                            const adaptation = report.backendAdaptation;
+                            const preferredCountOk =
+                                adaptation.preferredTemplateCount === adaptation.preferredTemplates.length &&
+                                adaptation.preferredCommandJsonTemplateCount === adaptation.preferredCommandJsonTemplates.length;
+                            const groupsOk = ['query', 'preflight', 'cleanup', 'install'].every((group) =>
+                                adaptation[`${group}TemplateCount`] === adaptation[`${group}Templates`].length &&
+                                adaptation[`${group}CommandJsonTemplateCount`] === adaptation[`${group}CommandJsonTemplates`].length
+                            );
+                            return typeof adaptation === 'object' &&
+                                adaptation !== null &&
+                                report.backendAdaptationMode === adaptation.mode &&
+                                report.backendAdaptationAlignment === adaptation.alignment &&
+                                report.backendAdaptationBias === adaptation.recommendedActionBias &&
+                                report.backendAdaptationSummary === adaptation.summary &&
+                                typeof adaptation.topologyKind === 'string' &&
+                                typeof adaptation.source === 'string' &&
+                                typeof adaptation.preferredGroupKey === 'string' &&
+                                typeof adaptation.requiresQueryPhase === 'boolean' &&
+                                typeof adaptation.requiresPreflight === 'boolean' &&
+                                typeof adaptation.requiresCleanupPhase === 'boolean' &&
+                                typeof adaptation.inlineInstallReadyNow === 'boolean' &&
+                                preferredCountOk &&
+                                groupsOk;
+                        })()"#,
+                    )
+                    .expect("native hook env backend adaptation summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
                 "true"

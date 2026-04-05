@@ -954,6 +954,94 @@ unsafe fn hook_next_action_plan_to_js(
     plan.raw()
 }
 
+fn hook_backend_adaptation_topology_kind(
+    loaded_backend_count: usize,
+    filesystem_only_backend_count: usize,
+) -> &'static str {
+    if loaded_backend_count > 1 {
+        "split-loaded"
+    } else if loaded_backend_count == 1 {
+        "shared-loaded"
+    } else if filesystem_only_backend_count > 0 {
+        "filesystem-only"
+    } else {
+        "clean"
+    }
+}
+
+fn hook_backend_adaptation_alignment(topology_kind: &str) -> &'static str {
+    match topology_kind {
+        "clean" => "clean",
+        "filesystem-only" => "filesystem-only",
+        "shared-loaded" => "shared",
+        "split-loaded" => "split",
+        _ => "unknown",
+    }
+}
+
+fn hook_backend_adaptation_mode(topology_kind: &str) -> &'static str {
+    match topology_kind {
+        "clean" => "no-adaptation-needed",
+        "filesystem-only" => "preflight-before-inline",
+        "shared-loaded" => "shared-runtime-query-first",
+        "split-loaded" => "runtime-alignment-required",
+        _ => "unknown",
+    }
+}
+
+fn hook_backend_adaptation_summary(recommended_action_bias: &str, topology_kind: &str) -> &'static str {
+    match recommended_action_bias {
+        "blocked" => "no compatible hook path is currently available",
+        "cleanup" => {
+            "current policy only allows cleanup or status commands; stop existing hooks before retrying"
+        }
+        "preflight" => {
+            "only filesystem backend artifacts were detected; run preflight before inline install"
+        }
+        "install" => "no external backend runtime pressure is active; inline install can proceed directly",
+        "query" => match topology_kind {
+            "shared-loaded" => {
+                "an external backend runtime is already loaded in this process; query first before changing hook state"
+            }
+            "split-loaded" => {
+                "multiple external backend runtimes are loaded in this process; stay query-first until hook state is aligned"
+            }
+            _ => "query-first adaptation is recommended before changing hook state",
+        },
+        _ => "observe backend state before choosing an adaptation path",
+    }
+}
+
+unsafe fn hook_set_command_template_group_properties(
+    ctx: *mut ffi::JSContext,
+    target: &JSValue,
+    prefix: &str,
+    templates: &[String],
+) {
+    let templates_key = format!("{prefix}Templates");
+    let template_count_key = format!("{prefix}TemplateCount");
+    let command_json_templates_key = format!("{prefix}CommandJsonTemplates");
+    let command_json_template_count_key = format!("{prefix}CommandJsonTemplateCount");
+    let command_json_templates = ffi::JS_NewArray(ctx);
+
+    set_string_array_property(ctx, target.raw(), &templates_key, templates);
+    target.set_property(ctx, &template_count_key, JSValue::int(templates.len() as i32));
+    for (index, template) in templates.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            command_json_templates,
+            index as u32,
+            hook_command_json_template_to_js(ctx, template),
+        );
+    }
+    target.set_property(
+        ctx,
+        &command_json_template_count_key,
+        JSValue::int(templates.len() as i32),
+    );
+    target.set_property(ctx, &command_json_templates_key, JSValue(command_json_templates));
+}
+
 unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnvironmentReport) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
     let decision = resolve_hook_strategy().ok();
@@ -965,6 +1053,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     let single_external_backend_loaded = loaded_backend_count == 1;
     let multiple_external_backends_loaded = loaded_backend_count > 1;
     let conflict_state = report.conflict_state();
+    let topology_kind = hook_backend_adaptation_topology_kind(loaded_backend_count, filesystem_only_backend_count);
     let risk_level = match command_mode {
         "blocked" => "blocked",
         "cleanup-only" => "cleanup-only",
@@ -999,6 +1088,74 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "blocked" => "no hook command group is currently allowed",
         _ => "hook strategy is unavailable; run native.hookenv and preflight for guidance",
     };
+    let requires_cleanup_phase = command_mode == "cleanup-only";
+    let requires_preflight =
+        topology_kind == "filesystem-only" || matches!(coexistence_mode, "inline-cautious" | "inline-risky");
+    let requires_query_phase = matches!(coexistence_mode, "query-only" | "inline-risky")
+        || matches!(topology_kind, "shared-loaded" | "split-loaded");
+    let inline_install_ready_now = topology_kind == "clean" && coexistence_mode == "inline-safe";
+    let backend_adaptation_alignment = hook_backend_adaptation_alignment(topology_kind);
+    let backend_adaptation_mode = hook_backend_adaptation_mode(topology_kind);
+    let backend_adaptation_bias = if command_mode == "blocked" {
+        "blocked"
+    } else if requires_cleanup_phase {
+        "cleanup"
+    } else if topology_kind == "filesystem-only" {
+        "preflight"
+    } else if inline_install_ready_now {
+        "install"
+    } else if requires_query_phase {
+        "query"
+    } else {
+        "observe"
+    };
+    let backend_adaptation_summary = hook_backend_adaptation_summary(backend_adaptation_bias, topology_kind);
+    let query_templates = hook_action_command_templates("hook.query", coexistence_mode);
+    let preflight_templates = vec![
+        "native.hookenv".to_string(),
+        "controller --preflight-only --preflight-json --pid <pid>".to_string(),
+    ];
+    let cleanup_templates = {
+        let mut templates = hook_action_command_templates("hook.status", coexistence_mode);
+        templates.extend(hook_action_command_templates("hook.stop", coexistence_mode));
+        templates
+    };
+    let install_templates = hook_action_command_templates("hook.install", coexistence_mode);
+    let preferred_group_key = match backend_adaptation_bias {
+        "query" => "query",
+        "preflight" => "preflight",
+        "cleanup" => "cleanup",
+        "install" => "install",
+        _ => "none",
+    };
+    let preferred_templates = match preferred_group_key {
+        "query" => query_templates.clone(),
+        "preflight" => preflight_templates.clone(),
+        "cleanup" => cleanup_templates.clone(),
+        "install" => install_templates.clone(),
+        _ => Vec::new(),
+    };
+    let backend_adaptation = JSValue(ffi::JS_NewObject(ctx));
+    backend_adaptation.set_property(ctx, "mode", JSValue::string(ctx, backend_adaptation_mode));
+    backend_adaptation.set_property(ctx, "alignment", JSValue::string(ctx, backend_adaptation_alignment));
+    backend_adaptation.set_property(
+        ctx,
+        "recommendedActionBias",
+        JSValue::string(ctx, backend_adaptation_bias),
+    );
+    backend_adaptation.set_property(ctx, "summary", JSValue::string(ctx, backend_adaptation_summary));
+    backend_adaptation.set_property(ctx, "topologyKind", JSValue::string(ctx, topology_kind));
+    backend_adaptation.set_property(ctx, "source", JSValue::string(ctx, "native-hookenv-single-process"));
+    backend_adaptation.set_property(ctx, "requiresQueryPhase", JSValue::bool(requires_query_phase));
+    backend_adaptation.set_property(ctx, "requiresPreflight", JSValue::bool(requires_preflight));
+    backend_adaptation.set_property(ctx, "requiresCleanupPhase", JSValue::bool(requires_cleanup_phase));
+    backend_adaptation.set_property(ctx, "inlineInstallReadyNow", JSValue::bool(inline_install_ready_now));
+    backend_adaptation.set_property(ctx, "preferredGroupKey", JSValue::string(ctx, preferred_group_key));
+    hook_set_command_template_group_properties(ctx, &backend_adaptation, "query", &query_templates);
+    hook_set_command_template_group_properties(ctx, &backend_adaptation, "preflight", &preflight_templates);
+    hook_set_command_template_group_properties(ctx, &backend_adaptation, "cleanup", &cleanup_templates);
+    hook_set_command_template_group_properties(ctx, &backend_adaptation, "install", &install_templates);
+    hook_set_command_template_group_properties(ctx, &backend_adaptation, "preferred", &preferred_templates);
 
     match &report.active_backend {
         Some(active) => result.set_property(ctx, "activeBackend", JSValue::string(ctx, active)),
@@ -1013,6 +1170,27 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     result.set_property(ctx, "preferredPath", JSValue::string(ctx, coexistence_mode));
     result.set_property(ctx, "autoDowngradedToQueryOnly", JSValue::bool(false));
     result.set_property(ctx, "autoDowngradeReason", JSValue::null());
+    result.set_property(ctx, "backendAdaptation", backend_adaptation);
+    result.set_property(
+        ctx,
+        "backendAdaptationMode",
+        JSValue::string(ctx, backend_adaptation_mode),
+    );
+    result.set_property(
+        ctx,
+        "backendAdaptationAlignment",
+        JSValue::string(ctx, backend_adaptation_alignment),
+    );
+    result.set_property(
+        ctx,
+        "backendAdaptationBias",
+        JSValue::string(ctx, backend_adaptation_bias),
+    );
+    result.set_property(
+        ctx,
+        "backendAdaptationSummary",
+        JSValue::string(ctx, backend_adaptation_summary),
+    );
     result.set_property(
         ctx,
         "coexistenceRecommendation",
