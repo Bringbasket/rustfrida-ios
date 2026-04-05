@@ -2056,6 +2056,22 @@ undefined;
                             }
                             const resolve = ready.resolve;
                             const phaseResolve = ready.phaseResolve;
+                            const resolveResultOk =
+                                (resolve.queryOnlyResult === null &&
+                                    resolve.queryOnlyResultEffective === null &&
+                                    resolve.queryOnlyResultMatched === null &&
+                                    resolve.queryOnlyResultUsedDefault === null &&
+                                    resolve.queryOnlyResultReason === null &&
+                                    resolve.queryOnlyResultEffectivePhase === null &&
+                                    resolve.queryOnlyResultEffectiveEscalationKey === null) ||
+                                (typeof resolve.queryOnlyResult === 'object' &&
+                                    resolve.queryOnlyResult !== null &&
+                                    resolve.queryOnlyResultEffective === resolve.queryOnlyResult.effective &&
+                                    resolve.queryOnlyResultMatched === resolve.queryOnlyResult.matched &&
+                                    resolve.queryOnlyResultUsedDefault === resolve.queryOnlyResult.usedDefault &&
+                                    resolve.queryOnlyResultReason === resolve.queryOnlyResult.reason &&
+                                    resolve.queryOnlyResultEffectivePhase === resolve.queryOnlyResult.effectivePhase &&
+                                    resolve.queryOnlyResultEffectiveEscalationKey === resolve.queryOnlyResult.effectiveEscalationKey);
                             const resolveOk =
                                 typeof resolve.queryOnlyBlockedBy === 'string' &&
                                 typeof resolve.queryOnlyBlockedBySource === 'string' &&
@@ -2065,7 +2081,24 @@ undefined;
                                 typeof resolve.queryOnlyUsedDefault === 'boolean' &&
                                 typeof resolve.queryOnlyReason === 'string' &&
                                 typeof resolve.queryOnlyWouldUsePath === 'boolean' &&
-                                (resolve.queryOnlyErrorCode === null || typeof resolve.queryOnlyErrorCode === 'string');
+                                (resolve.queryOnlyErrorCode === null || typeof resolve.queryOnlyErrorCode === 'string') &&
+                                resolveResultOk;
+                            const phaseResolveResultOk =
+                                (phaseResolve.queryOnlyResult === null &&
+                                    phaseResolve.queryOnlyResultEffective === null &&
+                                    phaseResolve.queryOnlyResultMatched === null &&
+                                    phaseResolve.queryOnlyResultUsedDefault === null &&
+                                    phaseResolve.queryOnlyResultReason === null &&
+                                    phaseResolve.queryOnlyResultEffectivePhase === null &&
+                                    phaseResolve.queryOnlyResultEffectiveEscalationKey === null) ||
+                                (typeof phaseResolve.queryOnlyResult === 'object' &&
+                                    phaseResolve.queryOnlyResult !== null &&
+                                    phaseResolve.queryOnlyResultEffective === phaseResolve.queryOnlyResult.effective &&
+                                    phaseResolve.queryOnlyResultMatched === phaseResolve.queryOnlyResult.matched &&
+                                    phaseResolve.queryOnlyResultUsedDefault === phaseResolve.queryOnlyResult.usedDefault &&
+                                    phaseResolve.queryOnlyResultReason === phaseResolve.queryOnlyResult.reason &&
+                                    phaseResolve.queryOnlyResultEffectivePhase === phaseResolve.queryOnlyResult.effectivePhase &&
+                                    phaseResolve.queryOnlyResultEffectiveEscalationKey === phaseResolve.queryOnlyResult.effectiveEscalationKey);
                             const phaseResolveOk =
                                 typeof phaseResolve.queryOnlyBlockedBy === 'string' &&
                                 typeof phaseResolve.queryOnlyBlockedBySource === 'string' &&
@@ -2075,11 +2108,81 @@ undefined;
                                 typeof phaseResolve.queryOnlyUsedDefault === 'boolean' &&
                                 typeof phaseResolve.queryOnlyReason === 'string' &&
                                 typeof phaseResolve.queryOnlyWouldUsePhase === 'boolean' &&
-                                (phaseResolve.queryOnlySourceErrorCode === null || typeof phaseResolve.queryOnlySourceErrorCode === 'string');
+                                (phaseResolve.queryOnlySourceErrorCode === null || typeof phaseResolve.queryOnlySourceErrorCode === 'string') &&
+                                phaseResolveResultOk;
                             return resolveOk && phaseResolveOk;
                         })()"#,
                     )
                     .expect("native hook env nested query-only aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
+                            if (!report.hasFallbackPlan || report.fallbackPlan === null || report.fallbackPlan.routingDecision === null || report.fallbackPlan.routingDecision.ready === null) {
+                                return true;
+                            }
+                            const ready = report.fallbackPlan.routingDecision.ready;
+                            if (ready.resolve === null || ready.phaseResolve === null) {
+                                return true;
+                            }
+                            return ready.queryOnlyErrorCode === ready.resolve.queryOnlyErrorCode &&
+                                ready.queryOnlySourceErrorCode === ready.phaseResolve.queryOnlySourceErrorCode &&
+                                ready.queryOnlyBlockedBy === ready.resolve.queryOnlyBlockedBy &&
+                                ready.queryOnlyResolveBlockedBy === ready.resolve.queryOnlyBlockedBy &&
+                                ready.queryOnlyBlockedBySource === ready.resolve.queryOnlyBlockedBySource &&
+                                ready.queryOnlyResolveBlockedBySource === ready.resolve.queryOnlyBlockedBySource &&
+                                ready.queryOnlyIsBlocked === ready.resolve.queryOnlyIsBlocked &&
+                                ready.queryOnlyResolveIsBlocked === ready.resolve.queryOnlyIsBlocked &&
+                                ready.queryOnlyPhase === ready.phaseResolve.queryOnlyPhase &&
+                                ready.queryOnlyPhaseResolveSourceErrorCode === ready.phaseResolve.queryOnlySourceErrorCode &&
+                                ready.queryOnlyPhaseResolvePhase === ready.phaseResolve.queryOnlyPhase &&
+                                ready.queryOnlyPhaseResolveBlockedBy === ready.phaseResolve.queryOnlyBlockedBy &&
+                                ready.queryOnlyPhaseResolveBlockedBySource === ready.phaseResolve.queryOnlyBlockedBySource &&
+                                ready.queryOnlyPhaseResolveIsBlocked === ready.phaseResolve.queryOnlyIsBlocked &&
+                                ready.queryOnlyPhaseResolveAvailable === ready.phaseResolve.queryOnlyAvailable &&
+                                ready.queryOnlyAvailable === ready.resolve.queryOnlyAvailable &&
+                                ready.queryOnlyResolveAvailable === ready.resolve.queryOnlyAvailable &&
+                                ready.queryOnlyMatched === ready.resolve.queryOnlyMatched &&
+                                ready.queryOnlyResolveMatched === ready.resolve.queryOnlyMatched &&
+                                ready.queryOnlyUsedDefault === ready.resolve.queryOnlyUsedDefault &&
+                                ready.queryOnlyResolveUsedDefault === ready.resolve.queryOnlyUsedDefault &&
+                                ready.queryOnlyReason === ready.resolve.queryOnlyReason &&
+                                ready.queryOnlyResolveReason === ready.resolve.queryOnlyReason &&
+                                ready.queryOnlyEffectivePhase === ready.resolve.queryOnlyEffectivePhase &&
+                                ready.queryOnlyResolveEffectivePhase === ready.resolve.queryOnlyEffectivePhase &&
+                                ready.queryOnlyEffectiveEscalationKey === ready.resolve.queryOnlyEffectiveEscalationKey &&
+                                ready.queryOnlyResolveEffectiveEscalationKey === ready.resolve.queryOnlyEffectiveEscalationKey &&
+                                ready.queryOnlyWouldUsePath === ready.resolve.queryOnlyWouldUsePath &&
+                                ready.queryOnlyResolveWouldUsePath === ready.resolve.queryOnlyWouldUsePath &&
+                                ready.queryOnlyWouldUsePhase === ready.phaseResolve.queryOnlyWouldUsePhase &&
+                                ready.queryOnlyPhaseResolveWouldUsePhase === ready.phaseResolve.queryOnlyWouldUsePhase &&
+                                ready.queryOnlyResult === ready.resolve.queryOnlyResult &&
+                                ready.queryOnlyResultEffective === ready.resolve.queryOnlyResultEffective &&
+                                ready.queryOnlyResultMatched === ready.resolve.queryOnlyResultMatched &&
+                                ready.queryOnlyResultUsedDefault === ready.resolve.queryOnlyResultUsedDefault &&
+                                ready.queryOnlyResultReason === ready.resolve.queryOnlyResultReason &&
+                                ready.queryOnlyResultEffectivePhase === ready.resolve.queryOnlyResultEffectivePhase &&
+                                ready.queryOnlyResultEffectiveEscalationKey === ready.resolve.queryOnlyResultEffectiveEscalationKey &&
+                                ready.queryOnlyResolveResult === ready.resolve.queryOnlyResult &&
+                                ready.queryOnlyResolveResultEffective === ready.resolve.queryOnlyResultEffective &&
+                                ready.queryOnlyResolveResultMatched === ready.resolve.queryOnlyResultMatched &&
+                                ready.queryOnlyResolveResultUsedDefault === ready.resolve.queryOnlyResultUsedDefault &&
+                                ready.queryOnlyResolveResultReason === ready.resolve.queryOnlyResultReason &&
+                                ready.queryOnlyResolveResultEffectivePhase === ready.resolve.queryOnlyResultEffectivePhase &&
+                                ready.queryOnlyResolveResultEffectiveEscalationKey === ready.resolve.queryOnlyResultEffectiveEscalationKey &&
+                                ready.queryOnlyPhaseResolveResult === ready.phaseResolve.queryOnlyResult &&
+                                ready.queryOnlyPhaseResolveResultEffective === ready.phaseResolve.queryOnlyResultEffective &&
+                                ready.queryOnlyPhaseResolveResultMatched === ready.phaseResolve.queryOnlyResultMatched &&
+                                ready.queryOnlyPhaseResolveResultUsedDefault === ready.phaseResolve.queryOnlyResultUsedDefault &&
+                                ready.queryOnlyPhaseResolveResultReason === ready.phaseResolve.queryOnlyResultReason &&
+                                ready.queryOnlyPhaseResolveResultEffectivePhase === ready.phaseResolve.queryOnlyResultEffectivePhase &&
+                                ready.queryOnlyPhaseResolveResultEffectiveEscalationKey === ready.phaseResolve.queryOnlyResultEffectiveEscalationKey;
+                        })()"#,
+                    )
+                    .expect("native hook env ready query-only aliases"),
                 "true"
             );
             assert_eq!(
