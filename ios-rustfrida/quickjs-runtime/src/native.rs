@@ -1758,6 +1758,10 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 resolve_default.set_property(ctx, "effective", ready_default.dup(ctx));
 
                 let resolve_examples = JSValue(ffi::JS_NewObject(ctx));
+                let known_error_codes = error_code_routing_candidates
+                    .keys()
+                    .cloned()
+                    .collect::<Vec<_>>();
                 match example_known_error_code {
                     Some(ref error_code) => {
                         resolve_examples.set_property(ctx, "knownErrorCode", JSValue::string(ctx, error_code));
@@ -1772,17 +1776,461 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                         resolve_examples.set_property(ctx, "knownResult", JSValue::null());
                     }
                 }
+                let known_result = resolve_examples.get_property(ctx, "knownResult");
+                let known_effective = known_result.get_property(ctx, "effective");
+                resolve_examples.set_property(ctx, "knownEffectivePhase", known_result.get_property(ctx, "effectivePhase"));
+                resolve_examples.set_property(
+                    ctx,
+                    "knownEffectiveEscalationKey",
+                    known_result.get_property(ctx, "effectiveEscalationKey"),
+                );
                 resolve_examples.set_property(
                     ctx,
                     "missingErrorCode",
                     JSValue::string(ctx, "hook-fallback-unknown"),
                 );
                 resolve_examples.set_property(ctx, "missingResult", resolve_default.dup(ctx));
+                resolve_examples.set_property(
+                    ctx,
+                    "missingEffectivePhase",
+                    resolve_default.get_property(ctx, "effectivePhase"),
+                );
+                resolve_examples.set_property(
+                    ctx,
+                    "missingEffectiveEscalationKey",
+                    resolve_default.get_property(ctx, "effectiveEscalationKey"),
+                );
+
+                let query_only_error_code = "hook-fallback-hook-install-failed";
+                let query_only_result = resolve_index.get_property(ctx, query_only_error_code);
+                let query_only_blocked_by = recommended_actions_vec
+                    .iter()
+                    .find(|action| action.action_key == "hook.install")
+                    .map(|action| hook_action_blocked_by(action).to_string())
+                    .unwrap_or_else(|| "none".to_string());
+                let query_only_available = !query_only_result.is_null() && !query_only_result.is_undefined();
+                let query_only_example = JSValue(ffi::JS_NewObject(ctx));
+                query_only_example.set_property(ctx, "errorCode", JSValue::string(ctx, query_only_error_code));
+                query_only_example.set_property(ctx, "blockedBy", JSValue::string(ctx, &query_only_blocked_by));
+                query_only_example.set_property(
+                    ctx,
+                    "blockedBySource",
+                    JSValue::string(ctx, if query_only_blocked_by == "none" { "none" } else { &query_only_blocked_by }),
+                );
+                query_only_example.set_property(ctx, "isBlocked", JSValue::bool(query_only_blocked_by != "none"));
+                query_only_example.set_property(ctx, "available", JSValue::bool(query_only_available));
+                if query_only_available {
+                    query_only_example.set_property(ctx, "matched", query_only_result.get_property(ctx, "matched"));
+                    query_only_example.set_property(
+                        ctx,
+                        "usedDefault",
+                        query_only_result.get_property(ctx, "usedDefault"),
+                    );
+                    query_only_example.set_property(ctx, "reason", query_only_result.get_property(ctx, "reason"));
+                    query_only_example.set_property(
+                        ctx,
+                        "effectivePhase",
+                        query_only_result.get_property(ctx, "effectivePhase"),
+                    );
+                    query_only_example.set_property(
+                        ctx,
+                        "effectiveEscalationKey",
+                        query_only_result.get_property(ctx, "effectiveEscalationKey"),
+                    );
+                    query_only_example.set_property(ctx, "result", query_only_result.dup(ctx));
+                    query_only_example.set_property(
+                        ctx,
+                        "wouldUseQueryOnlyPath",
+                        JSValue::bool(
+                            query_only_result
+                                .get_property(ctx, "effectiveEscalationKey")
+                                .to_string(ctx)
+                                .as_deref()
+                                == Some("query-only-path"),
+                        ),
+                    );
+                } else {
+                    query_only_example.set_property(ctx, "matched", JSValue::bool(false));
+                    query_only_example.set_property(ctx, "usedDefault", JSValue::bool(true));
+                    query_only_example.set_property(ctx, "reason", JSValue::string(ctx, "missing-error-code"));
+                    query_only_example.set_property(ctx, "effectivePhase", JSValue::null());
+                    query_only_example.set_property(ctx, "effectiveEscalationKey", JSValue::null());
+                    query_only_example.set_property(ctx, "result", JSValue::null());
+                    query_only_example.set_property(ctx, "wouldUseQueryOnlyPath", JSValue::bool(false));
+                }
+                resolve_examples.set_property(ctx, "queryOnlyInstallFailure", query_only_example);
 
                 ready_value.set_property(ctx, "resolveIndex", resolve_index.dup(ctx));
                 ready_value.set_property(ctx, "resolveIndexEntries", resolve_index);
                 ready_value.set_property(ctx, "resolveDefault", resolve_default.dup(ctx));
                 ready_value.set_property(ctx, "resolveExamples", resolve_examples);
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleKnownErrorCode",
+                    resolve_examples.get_property(ctx, "knownErrorCode"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleKnownResult",
+                    resolve_examples.get_property(ctx, "knownResult"),
+                );
+                ready_value.set_property(ctx, "resolveExampleKnownResultEffective", known_effective.dup(ctx));
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleKnownResultEffectivePhase",
+                    known_result.get_property(ctx, "effectivePhase"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleKnownResultEffectiveEscalationKey",
+                    known_result.get_property(ctx, "effectiveEscalationKey"),
+                );
+                ready_value.set_property(ctx, "resolveExampleKnownMatched", known_result.get_property(ctx, "matched"));
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleKnownUsedDefault",
+                    known_result.get_property(ctx, "usedDefault"),
+                );
+                ready_value.set_property(ctx, "resolveExampleKnownReason", known_result.get_property(ctx, "reason"));
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleKnownEffectivePhase",
+                    resolve_examples.get_property(ctx, "knownEffectivePhase"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleKnownEffectiveEscalationKey",
+                    resolve_examples.get_property(ctx, "knownEffectiveEscalationKey"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleMissingErrorCode",
+                    resolve_examples.get_property(ctx, "missingErrorCode"),
+                );
+                let missing_result = resolve_examples.get_property(ctx, "missingResult");
+                let missing_effective = missing_result.get_property(ctx, "effective");
+                ready_value.set_property(ctx, "resolveExampleMissingResult", missing_result.dup(ctx));
+                ready_value.set_property(ctx, "resolveExampleMissingResultEffective", missing_effective.dup(ctx));
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleMissingResultEffectivePhase",
+                    missing_result.get_property(ctx, "effectivePhase"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleMissingResultEffectiveEscalationKey",
+                    missing_result.get_property(ctx, "effectiveEscalationKey"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleMissingMatched",
+                    missing_result.get_property(ctx, "matched"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleMissingUsedDefault",
+                    missing_result.get_property(ctx, "usedDefault"),
+                );
+                ready_value.set_property(ctx, "resolveExampleMissingReason", missing_result.get_property(ctx, "reason"));
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleMissingEffectivePhase",
+                    resolve_examples.get_property(ctx, "missingEffectivePhase"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleMissingEffectiveEscalationKey",
+                    resolve_examples.get_property(ctx, "missingEffectiveEscalationKey"),
+                );
+                let query_only_example = resolve_examples.get_property(ctx, "queryOnlyInstallFailure");
+                let query_only_result = query_only_example.get_property(ctx, "result");
+                let query_only_result_effective = query_only_result.get_property(ctx, "effective");
+                ready_value.set_property(ctx, "resolveExampleQueryOnlyInstallFailure", query_only_example.dup(ctx));
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyErrorCode",
+                    query_only_example.get_property(ctx, "errorCode"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyBlockedBy",
+                    query_only_example.get_property(ctx, "blockedBy"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyBlockedBySource",
+                    query_only_example.get_property(ctx, "blockedBySource"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyIsBlocked",
+                    query_only_example.get_property(ctx, "isBlocked"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyAvailable",
+                    query_only_example.get_property(ctx, "available"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyMatched",
+                    query_only_example.get_property(ctx, "matched"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyUsedDefault",
+                    query_only_example.get_property(ctx, "usedDefault"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyReason",
+                    query_only_example.get_property(ctx, "reason"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyEffectivePhase",
+                    query_only_example.get_property(ctx, "effectivePhase"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyEffectiveEscalationKey",
+                    query_only_example.get_property(ctx, "effectiveEscalationKey"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyWouldUsePath",
+                    query_only_example.get_property(ctx, "wouldUseQueryOnlyPath"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyResult",
+                    query_only_result.dup(ctx),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyResultEffective",
+                    query_only_result_effective.dup(ctx),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyResultMatched",
+                    query_only_result.get_property(ctx, "matched"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyResultUsedDefault",
+                    query_only_result.get_property(ctx, "usedDefault"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyResultReason",
+                    query_only_result.get_property(ctx, "reason"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyResultEffectivePhase",
+                    query_only_result.get_property(ctx, "effectivePhase"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveExampleQueryOnlyResultEffectiveEscalationKey",
+                    query_only_result.get_property(ctx, "effectiveEscalationKey"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveErrorCodeCount",
+                    JSValue::int(known_error_codes.len() as i32),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveIndexCount",
+                    JSValue::int(known_error_codes.len() as i32),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownCount",
+                    JSValue::int(known_error_codes.len() as i32),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownTotal",
+                    JSValue::int(known_error_codes.len() as i32),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownAmount",
+                    JSValue::int(known_error_codes.len() as i32),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownVolume",
+                    JSValue::int(known_error_codes.len() as i32),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownMagnitude",
+                    JSValue::int(known_error_codes.len() as i32),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownSize",
+                    JSValue::int(known_error_codes.len() as i32),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownLength",
+                    JSValue::int(known_error_codes.len() as i32),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownErrorCodes",
+                    JSValue(string_vec_to_js_array(ctx, &known_error_codes)),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownEntries",
+                    JSValue(string_vec_to_js_array(ctx, &known_error_codes)),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownList",
+                    JSValue(string_vec_to_js_array(ctx, &known_error_codes)),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownEntriesCount",
+                    JSValue::int(known_error_codes.len() as i32),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownErrorCodesCount",
+                    JSValue::int(known_error_codes.len() as i32),
+                );
+                match known_error_codes.first() {
+                    Some(value) => {
+                        ready_value.set_property(ctx, "resolveKnownErrorCodeFirst", JSValue::string(ctx, value));
+                        ready_value.set_property(ctx, "resolveKnownErrorCodesFirst", JSValue::string(ctx, value));
+                        ready_value.set_property(ctx, "resolveKnownEntriesFirst", JSValue::string(ctx, value));
+                        ready_value.set_property(ctx, "resolveKnownFirst", JSValue::string(ctx, value));
+                        ready_value.set_property(ctx, "resolveIndexFirst", JSValue::string(ctx, value));
+                    }
+                    None => {
+                        ready_value.set_property(ctx, "resolveKnownErrorCodeFirst", JSValue::null());
+                        ready_value.set_property(ctx, "resolveKnownErrorCodesFirst", JSValue::null());
+                        ready_value.set_property(ctx, "resolveKnownEntriesFirst", JSValue::null());
+                        ready_value.set_property(ctx, "resolveKnownFirst", JSValue::null());
+                        ready_value.set_property(ctx, "resolveIndexFirst", JSValue::null());
+                    }
+                }
+                match known_error_codes.last() {
+                    Some(value) => {
+                        ready_value.set_property(ctx, "resolveKnownErrorCodeLast", JSValue::string(ctx, value));
+                        ready_value.set_property(ctx, "resolveKnownErrorCodesLast", JSValue::string(ctx, value));
+                        ready_value.set_property(ctx, "resolveKnownEntriesLast", JSValue::string(ctx, value));
+                        ready_value.set_property(ctx, "resolveKnownLast", JSValue::string(ctx, value));
+                        ready_value.set_property(ctx, "resolveIndexLast", JSValue::string(ctx, value));
+                    }
+                    None => {
+                        ready_value.set_property(ctx, "resolveKnownErrorCodeLast", JSValue::null());
+                        ready_value.set_property(ctx, "resolveKnownErrorCodesLast", JSValue::null());
+                        ready_value.set_property(ctx, "resolveKnownEntriesLast", JSValue::null());
+                        ready_value.set_property(ctx, "resolveKnownLast", JSValue::null());
+                        ready_value.set_property(ctx, "resolveIndexLast", JSValue::null());
+                    }
+                }
+                ready_value.set_property(
+                    ctx,
+                    "resolveMissingErrorCodeHint",
+                    JSValue::string(ctx, "hook-fallback-unknown"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveMissingHint",
+                    JSValue::string(ctx, "hook-fallback-unknown"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveDefaultMatched",
+                    resolve_default.get_property(ctx, "matched"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveDefaultUsedDefault",
+                    resolve_default.get_property(ctx, "usedDefault"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveDefaultReason",
+                    resolve_default.get_property(ctx, "reason"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveDefaultEffective",
+                    resolve_default.get_property(ctx, "effective"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveDefaultEffectivePhase",
+                    resolve_default.get_property(ctx, "effectivePhase"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveDefaultEffectiveEscalationKey",
+                    resolve_default.get_property(ctx, "effectiveEscalationKey"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownErrorCode",
+                    resolve_examples.get_property(ctx, "knownErrorCode"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownResult",
+                    resolve_examples.get_property(ctx, "knownResult"),
+                );
+                ready_value.set_property(ctx, "resolveKnownResultEffective", known_effective.dup(ctx));
+                ready_value.set_property(ctx, "resolveKnownEffective", known_effective);
+                ready_value.set_property(ctx, "resolveKnownMatched", known_result.get_property(ctx, "matched"));
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownUsedDefault",
+                    known_result.get_property(ctx, "usedDefault"),
+                );
+                ready_value.set_property(ctx, "resolveKnownReason", known_result.get_property(ctx, "reason"));
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownEffectivePhase",
+                    resolve_examples.get_property(ctx, "knownEffectivePhase"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveKnownEffectiveEscalationKey",
+                    resolve_examples.get_property(ctx, "knownEffectiveEscalationKey"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveMissingErrorCode",
+                    resolve_examples.get_property(ctx, "missingErrorCode"),
+                );
+                ready_value.set_property(ctx, "resolveMissingResult", missing_result.dup(ctx));
+                ready_value.set_property(ctx, "resolveMissingResultEffective", missing_effective.dup(ctx));
+                ready_value.set_property(ctx, "resolveMissingMatched", missing_result.get_property(ctx, "matched"));
+                ready_value.set_property(
+                    ctx,
+                    "resolveMissingUsedDefault",
+                    missing_result.get_property(ctx, "usedDefault"),
+                );
+                ready_value.set_property(ctx, "resolveMissingReason", missing_result.get_property(ctx, "reason"));
+                ready_value.set_property(
+                    ctx,
+                    "resolveMissingEffectivePhase",
+                    resolve_examples.get_property(ctx, "missingEffectivePhase"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "resolveMissingEffectiveEscalationKey",
+                    resolve_examples.get_property(ctx, "missingEffectiveEscalationKey"),
+                );
                 ready_value.set_property(ctx, "default", ready_default);
                 routing_decision.set_property(ctx, "ready", ready_value);
             }

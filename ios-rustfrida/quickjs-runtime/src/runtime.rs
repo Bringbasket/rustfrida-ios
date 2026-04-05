@@ -1816,7 +1816,18 @@ undefined;
                                                 report.fallbackPlan.routingDecision.ready.resolveExamples !== null &&
                                                 report.fallbackPlan.routingDecision.ready.resolveIndexEntries === report.fallbackPlan.routingDecision.ready.resolveIndex &&
                                                 report.fallbackPlan.routingDecision.ready.resolveDefault.reason === 'missing-error-code' &&
-                                                typeof report.fallbackPlan.routingDecision.ready.resolveExamples.missingErrorCode === 'string')) &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveExamples.missingErrorCode === 'string' &&
+                                                (report.fallbackPlan.routingDecision.ready.resolveExampleKnownErrorCode === null ||
+                                                    typeof report.fallbackPlan.routingDecision.ready.resolveExampleKnownErrorCode === 'string') &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveExampleMissingErrorCode === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveErrorCodeCount === 'number' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveKnownCount === 'number' &&
+                                                Array.isArray(report.fallbackPlan.routingDecision.ready.resolveKnownErrorCodes) &&
+                                                report.fallbackPlan.routingDecision.ready.resolveKnownErrorCodes.length === report.fallbackPlan.routingDecision.ready.resolveKnownCount &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveMissingErrorCodeHint === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveExampleQueryOnlyInstallFailure === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.resolveExampleQueryOnlyInstallFailure !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveExampleQueryOnlyWouldUsePath === 'boolean')) &&
                                         (report.fallbackPlan.suggestedEscalationKey === null ||
                                             typeof report.fallbackPlan.suggestedEscalationKey === 'string') &&
                                         (report.fallbackPlan.escalationRecommendations.length === 0 ||
