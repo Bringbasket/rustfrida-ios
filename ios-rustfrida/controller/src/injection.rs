@@ -2335,6 +2335,34 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                         _ => return None,
                     }
                 };
+            let suggested_group = match suggested_group_key {
+                "query" => &query_group,
+                "preflight" => &preflight_group,
+                "cleanup" => &cleanup_group,
+                "install" => &install_group,
+                _ => &preferred_group,
+            };
+            let suggested_templates = suggested_group
+                .get("templates")
+                .cloned()
+                .unwrap_or(Value::Null);
+            let suggested_template_count = suggested_group
+                .get("templateCount")
+                .cloned()
+                .unwrap_or(Value::Null);
+            let suggested_command_json_templates = suggested_group
+                .get("commandJsonTemplates")
+                .cloned()
+                .unwrap_or(Value::Null);
+            let suggested_command_json_template_count = suggested_group
+                .get("commandJsonTemplateCount")
+                .cloned()
+                .unwrap_or(Value::Null);
+            let primary_command_json_template = suggested_command_json_templates
+                .as_array()
+                .and_then(|items| items.first())
+                .cloned()
+                .unwrap_or(Value::Null);
             Some(json!({
                 "backendId": backend_id,
                 "displayName": display_name,
@@ -2347,6 +2375,23 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 "suggestedPhase": suggested_phase,
                 "reason": reason,
                 "priority": priority,
+                "templates": suggested_templates,
+                "templateCount": suggested_template_count,
+                "commandJsonTemplates": suggested_command_json_templates,
+                "commandJsonTemplateCount": suggested_command_json_template_count,
+                "primaryCommandJsonTemplate": primary_command_json_template.clone(),
+                "primaryCommandJsonTemplateCommand": primary_command_json_template
+                    .get("command")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "primaryCommandJsonTemplateKind": primary_command_json_template
+                    .get("kind")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "primaryCommandJsonTemplateEligible": primary_command_json_template
+                    .get("commandJsonEligible")
+                    .cloned()
+                    .unwrap_or(Value::Null),
             }))
         })
         .collect::<Vec<_>>();
@@ -2668,6 +2713,11 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             let conflict_resolution_command_json_template_count =
                 conflict_resolution_command_json_template_count.clone();
             let preferred_conflict_resolution_chain = preferred_conflict_resolution_chain.clone();
+            let conflict_primary_command_json_template = conflict_resolution_command_json_templates
+                .as_array()
+                .and_then(|items| items.first())
+                .cloned()
+                .unwrap_or(Value::Null);
             target_loaded_only_backend_ids.iter().map(move |target_backend_id| {
                 json!({
                     "pairKey": format!("{controller_backend_id}->{target_backend_id}"),
@@ -2681,6 +2731,19 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                     "templateCount": conflict_resolution_template_count.clone(),
                     "commandJsonTemplates": conflict_resolution_command_json_templates.clone(),
                     "commandJsonTemplateCount": conflict_resolution_command_json_template_count.clone(),
+                    "primaryCommandJsonTemplate": conflict_primary_command_json_template.clone(),
+                    "primaryCommandJsonTemplateCommand": conflict_primary_command_json_template
+                        .get("command")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    "primaryCommandJsonTemplateKind": conflict_primary_command_json_template
+                        .get("kind")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    "primaryCommandJsonTemplateEligible": conflict_primary_command_json_template
+                        .get("commandJsonEligible")
+                        .cloned()
+                        .unwrap_or(Value::Null),
                     "resolutionChain": preferred_conflict_resolution_chain.clone(),
                     "resolutionChainCount": preferred_conflict_resolution_chain.len(),
                 })
@@ -19964,6 +20027,18 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "ellekit");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "controller");
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendRecommendation"]["primaryCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendRecommendation"]["primaryCommandJsonTemplateKind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["backendSpecificRecommendations"][0]["primaryCommandJsonTemplateEligible"],
+            true
+        );
         assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 1);
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["pairKey"],
@@ -19976,6 +20051,18 @@ mod tests {
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["templateCount"],
             3
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["primaryCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["primaryCommandJsonTemplateKind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["primaryCommandJsonTemplateEligible"],
+            true
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairKey"],
@@ -20287,6 +20374,14 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "ellekit");
         assert_eq!(automation["backendAdaptation"]["conflictBackendPairCount"], 1);
+        assert_eq!(
+            automation["backendAdaptation"]["preferredBackendRecommendation"]["primaryCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["backendSpecificRecommendations"][1]["primaryCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictBackendPairKey"],
             "ellekit->substrate"
@@ -20616,6 +20711,14 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "filesystem-only");
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendRecommendation"]["primaryCommandJsonTemplateCommand"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendRecommendation"]["primaryCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 0);
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPair"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());
@@ -20704,6 +20807,10 @@ mod tests {
         );
         assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "libhooker");
+        assert_eq!(
+            automation["backendAdaptation"]["preferredBackendRecommendation"]["primaryCommandJsonTemplateEligible"],
+            true
+        );
         assert_eq!(automation["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
         assert!(automation["backendAdaptation"]["preferredConflictResolutionNextStep"].is_null());
