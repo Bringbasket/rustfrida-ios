@@ -2481,6 +2481,8 @@ undefined;
                                 adaptation.preferredConflictResolutionNextStepId === adaptation.preferredConflictResolutionNextStep.id &&
                                 adaptation.preferredConflictResolutionNextStepSource === adaptation.preferredConflictResolutionNextStep.source &&
                                 adaptation.preferredConflictResolutionNextStepCommand === adaptation.preferredConflictResolutionNextStep.command &&
+                                adaptation.preferredConflictResolutionNextStepReason === adaptation.preferredConflictResolutionNextStep.reason &&
+                                adaptation.preferredConflictResolutionNextStepPreferredPath === adaptation.preferredConflictResolutionNextStep.preferredPath &&
                                 adaptation.preferredConflictResolutionNextStepPhase === adaptation.preferredConflictResolutionNextStep.phase &&
                                 adaptation.preferredConflictResolutionNextStepCommandJsonTemplateCommand === adaptation.preferredConflictResolutionNextStep.commandJsonTemplateCommand &&
                                 adaptation.preferredConflictResolutionNextStepCommandJsonTemplateKind === adaptation.preferredConflictResolutionNextStep.commandJsonTemplateKind &&
@@ -2490,9 +2492,26 @@ undefined;
                                 adaptation.preferredConflictResolutionStepChainTruncated === false &&
                                 typeof adaptation.preferredConflictResolutionActiveStep === 'object' &&
                                 adaptation.preferredConflictResolutionActiveStep !== null &&
+                                adaptation.preferredConflictResolutionActiveStepAllowed === adaptation.preferredConflictResolutionActiveStep.allowed &&
+                                adaptation.preferredConflictResolutionActiveStepBlockedBy === adaptation.preferredConflictResolutionActiveStep.blockedBy &&
+                                adaptation.preferredConflictResolutionActiveStepBranch === adaptation.preferredConflictResolutionActiveStep.branch &&
+                                adaptation.preferredConflictResolutionActiveStepReason === adaptation.preferredConflictResolutionActiveStep.reason &&
+                                adaptation.preferredConflictResolutionActiveStepPreferredPath === adaptation.preferredConflictResolutionActiveStep.preferredPath &&
+                                adaptation.preferredConflictResolutionActiveStepActionKey === adaptation.preferredConflictResolutionActiveStep.actionKey &&
+                                adaptation.preferredConflictResolutionActiveStepCommandGroup === adaptation.preferredConflictResolutionActiveStep.commandGroup &&
                                 adaptation.preferredConflictResolutionActiveStepId === adaptation.preferredConflictResolutionActiveStep.id &&
                                 adaptation.preferredConflictResolutionActiveStepCommand === adaptation.preferredConflictResolutionActiveStep.command &&
                                 adaptation.preferredConflictResolutionActiveStepPhase === adaptation.preferredConflictResolutionActiveStep.phase
+                                && adaptation.preferredConflictResolutionActiveStepReadyToRun === adaptation.preferredConflictResolutionActiveStep.readyToRun
+                                && adaptation.preferredConflictResolutionActiveStepRequiresFallback === adaptation.preferredConflictResolutionActiveStep.requiresFallback
+                                && adaptation.preferredConflictResolutionActiveStepKind === adaptation.preferredConflictResolutionActiveStep.kind
+                                && adaptation.preferredConflictResolutionActiveStepMaxSuggestedRetries === adaptation.preferredConflictResolutionActiveStep.maxSuggestedRetries
+                                && adaptation.preferredConflictResolutionActiveStepRetryDelayHintMs === adaptation.preferredConflictResolutionActiveStep.retryDelayHintMs
+                                && adaptation.preferredConflictResolutionActiveStepTimeoutHintMs === adaptation.preferredConflictResolutionActiveStep.timeoutHintMs
+                                && adaptation.preferredConflictResolutionActiveStepTimeoutAction === adaptation.preferredConflictResolutionActiveStep.timeoutAction
+                                && adaptation.preferredConflictResolutionActiveStepTimeoutErrorCode === adaptation.preferredConflictResolutionActiveStep.timeoutErrorCode
+                                && adaptation.preferredConflictResolutionActiveStepRisk === adaptation.preferredConflictResolutionActiveStep.risk
+                                && adaptation.preferredConflictResolutionActiveStepPlaceholderCount === adaptation.preferredConflictResolutionActiveStep.placeholderCount
                             );
                             const nextStepOk = !hasExecutionPath ? (
                                 adaptation.nextStep === null &&

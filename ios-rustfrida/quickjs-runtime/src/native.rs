@@ -2922,6 +2922,16 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         );
         backend_adaptation.set_property(
             ctx,
+            "preferredConflictResolutionNextStepReason",
+            backend_adaptation.get_property(ctx, "nextStepReason"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepPreferredPath",
+            backend_adaptation.get_property(ctx, "nextStepPreferredPath"),
+        );
+        backend_adaptation.set_property(
+            ctx,
             "preferredConflictResolutionNextStepPhase",
             backend_adaptation.get_property(ctx, "nextStepPhase"),
         );
@@ -3052,6 +3062,41 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         );
         backend_adaptation.set_property(
             ctx,
+            "preferredConflictResolutionActiveStepAllowed",
+            backend_adaptation.get_property(ctx, "activeStepAllowed"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepBlockedBy",
+            backend_adaptation.get_property(ctx, "activeStepBlockedBy"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepBranch",
+            backend_adaptation.get_property(ctx, "activeStepBranch"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepReason",
+            backend_adaptation.get_property(ctx, "activeStepReason"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepPreferredPath",
+            backend_adaptation.get_property(ctx, "activeStepPreferredPath"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepActionKey",
+            backend_adaptation.get_property(ctx, "activeStepActionKey"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepCommandGroup",
+            backend_adaptation.get_property(ctx, "activeStepCommandGroup"),
+        );
+        backend_adaptation.set_property(
+            ctx,
             "preferredConflictResolutionActiveStepId",
             backend_adaptation.get_property(ctx, "activeStepId"),
         );
@@ -3087,13 +3132,73 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         );
         backend_adaptation.set_property(
             ctx,
+            "preferredConflictResolutionActiveStepReadyToRun",
+            backend_adaptation.get_property(ctx, "activeStepReadyToRun"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepRequiresFallback",
+            backend_adaptation.get_property(ctx, "activeStepRequiresFallback"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepKind",
+            backend_adaptation.get_property(ctx, "activeStepKind"),
+        );
+        backend_adaptation.set_property(
+            ctx,
             "preferredConflictResolutionActiveStepRetryable",
             backend_adaptation.get_property(ctx, "activeStepRetryable"),
         );
         backend_adaptation.set_property(
             ctx,
+            "preferredConflictResolutionActiveStepMaxSuggestedRetries",
+            backend_adaptation.get_property(ctx, "activeStepMaxSuggestedRetries"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepRetryDelayHintMs",
+            backend_adaptation.get_property(ctx, "activeStepRetryDelayHintMs"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepTimeoutHintMs",
+            backend_adaptation.get_property(ctx, "activeStepTimeoutHintMs"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepTimeoutAction",
+            backend_adaptation.get_property(ctx, "activeStepTimeoutAction"),
+        );
+        backend_adaptation.set_property(
+            ctx,
             "preferredConflictResolutionActiveStepErrorCode",
             backend_adaptation.get_property(ctx, "activeStepErrorCode"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepTimeoutErrorCode",
+            backend_adaptation.get_property(ctx, "activeStepTimeoutErrorCode"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepRisk",
+            backend_adaptation.get_property(ctx, "activeStepRisk"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepPlaceholderCount",
+            backend_adaptation.get_property(ctx, "activeStepPlaceholderCount"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepPlaceholders",
+            backend_adaptation.get_property(ctx, "activeStepPlaceholders"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepCliArgs",
+            backend_adaptation.get_property(ctx, "activeStepCliArgs"),
         );
     } else {
         for key in [
@@ -3101,6 +3206,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             "preferredConflictResolutionNextStepId",
             "preferredConflictResolutionNextStepSource",
             "preferredConflictResolutionNextStepCommand",
+            "preferredConflictResolutionNextStepReason",
+            "preferredConflictResolutionNextStepPreferredPath",
             "preferredConflictResolutionNextStepPhase",
             "preferredConflictResolutionNextStepKind",
             "preferredConflictResolutionNextStepCommandJsonEligible",
@@ -3127,15 +3234,34 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             "preferredConflictResolutionStepChainTruncated",
             "preferredConflictResolutionActiveStep",
             "preferredConflictResolutionActiveStepSource",
+            "preferredConflictResolutionActiveStepAllowed",
+            "preferredConflictResolutionActiveStepBlockedBy",
+            "preferredConflictResolutionActiveStepBranch",
+            "preferredConflictResolutionActiveStepReason",
+            "preferredConflictResolutionActiveStepPreferredPath",
+            "preferredConflictResolutionActiveStepActionKey",
+            "preferredConflictResolutionActiveStepCommandGroup",
             "preferredConflictResolutionActiveStepId",
             "preferredConflictResolutionActiveStepCommand",
             "preferredConflictResolutionActiveStepPhase",
+            "preferredConflictResolutionActiveStepReadyToRun",
+            "preferredConflictResolutionActiveStepRequiresFallback",
+            "preferredConflictResolutionActiveStepKind",
             "preferredConflictResolutionActiveStepCommandJsonEligible",
             "preferredConflictResolutionActiveStepCommandJsonTemplate",
             "preferredConflictResolutionActiveStepCommandJsonTemplateCommand",
             "preferredConflictResolutionActiveStepCommandJsonTemplateKind",
             "preferredConflictResolutionActiveStepRetryable",
+            "preferredConflictResolutionActiveStepMaxSuggestedRetries",
+            "preferredConflictResolutionActiveStepRetryDelayHintMs",
+            "preferredConflictResolutionActiveStepTimeoutHintMs",
+            "preferredConflictResolutionActiveStepTimeoutAction",
             "preferredConflictResolutionActiveStepErrorCode",
+            "preferredConflictResolutionActiveStepTimeoutErrorCode",
+            "preferredConflictResolutionActiveStepRisk",
+            "preferredConflictResolutionActiveStepPlaceholderCount",
+            "preferredConflictResolutionActiveStepPlaceholders",
+            "preferredConflictResolutionActiveStepCliArgs",
         ] {
             backend_adaptation.set_property(ctx, key, JSValue::null());
         }
