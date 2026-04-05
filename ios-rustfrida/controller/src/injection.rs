@@ -5247,6 +5247,106 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
+        "preferredConflictResolutionPhaseCleanup": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseCleanup"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseCleanupErrorCodeCount": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseCleanup"))
+                .and_then(|value| value.get("errorCodeCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseCleanupEscalationKeyCount": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseCleanup"))
+                .and_then(|value| value.get("escalationKeyCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseCleanupEscalationKeys": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseCleanup"))
+                .and_then(|value| value.get("escalationKeys"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseCleanupPrimaryEscalationKey": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseCleanup"))
+                .and_then(|value| value.get("escalationKeys"))
+                .and_then(Value::as_array)
+                .and_then(|value| value.first())
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseCleanupTemplateCount": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseCleanupTemplateCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseCleanup"))
+                .and_then(|value| value.get("commandJsonTemplateCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseCleanupCommandJsonTemplate": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseCleanup"))
+                .and_then(|value| value.get("commandJsonTemplates"))
+                .and_then(Value::as_array)
+                .and_then(|value| value.first())
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseCleanupCommandJsonTemplateCommand": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseCleanupCommandJsonTemplateCommand"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
         "preferredConflictResolutionNextStep": if has_preferred_conflict_backend_pair {
             preferred_conflict_resolution_next_step.clone()
         } else {
@@ -23748,6 +23848,15 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateCommand"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateKind"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateEligible"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanup"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupErrorCodeCount"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupEscalationKeyCount"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupEscalationKeys"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupPrimaryEscalationKey"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupTemplateCount"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplate"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCommand"].is_null());
         assert_eq!(coexistence["backendAdaptation"]["preflightTemplates"][1], "controller --preflight-only --preflight-json --pid <pid>");
         assert_eq!(coexistence["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
@@ -23992,6 +24101,15 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateCommand"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateKind"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateEligible"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanup"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupErrorCodeCount"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupEscalationKeyCount"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupEscalationKeys"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupPrimaryEscalationKey"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupTemplateCount"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplate"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCommand"].is_null());
         assert_eq!(automation["loadedExternalBackendCount"], 0);
         assert_eq!(automation["singleExternalBackendLoaded"], false);
         assert_eq!(automation["multipleExternalBackendsLoaded"], false);
