@@ -1849,6 +1849,125 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     resolve_value.set_property(ctx, "default", resolve_default);
     resolve_value.set_property(ctx, "examples", resolve_examples);
     ready_value.set_property(ctx, "resolve", resolve_value.dup(ctx));
+    ready_value.set_property(ctx, "resolveLookupKey", JSValue::string(ctx, "errorCode"));
+    ready_value.set_property(
+        ctx,
+        "resolvePolicy",
+        JSValue::string(ctx, "index[errorCode] || default"),
+    );
+    ready_value.set_property(ctx, "resolveOutputShape", JSValue::string(ctx, "effective"));
+    ready_value.set_property(ctx, "resolveIndex", resolve_value.get_property(ctx, "index"));
+    ready_value.set_property(ctx, "resolveIndexEntries", resolve_value.get_property(ctx, "index"));
+    ready_value.set_property(ctx, "resolveDefault", resolve_value.get_property(ctx, "default"));
+    ready_value.set_property(ctx, "resolveExamples", resolve_value.get_property(ctx, "examples"));
+    ready_value.set_property(
+        ctx,
+        "resolveErrorCodeCount",
+        JSValue::int(known_error_codes.len() as i32),
+    );
+    ready_value.set_property(ctx, "resolveIndexCount", JSValue::int(known_error_codes.len() as i32));
+    ready_value.set_property(ctx, "resolveKnownCount", JSValue::int(known_error_codes.len() as i32));
+    ready_value.set_property(
+        ctx,
+        "resolveKnownErrorCodes",
+        JSValue(string_vec_to_js_array(ctx, &known_error_codes)),
+    );
+    ready_value.set_property(ctx, "resolveDefaultMatched", resolve_default.get_property(ctx, "matched"));
+    ready_value.set_property(
+        ctx,
+        "resolveDefaultUsedDefault",
+        resolve_default.get_property(ctx, "usedDefault"),
+    );
+    ready_value.set_property(ctx, "resolveDefaultReason", resolve_default.get_property(ctx, "reason"));
+    ready_value.set_property(
+        ctx,
+        "resolveDefaultEffective",
+        resolve_default.get_property(ctx, "effective"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveDefaultEffectivePhase",
+        resolve_default.get_property(ctx, "effectivePhase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveDefaultEffectiveEscalationKey",
+        resolve_default.get_property(ctx, "effectiveEscalationKey"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleKnownErrorCode",
+        resolve_examples.get_property(ctx, "knownErrorCode"),
+    );
+    let resolve_known_result = resolve_examples.get_property(ctx, "knownResult");
+    ready_value.set_property(
+        ctx,
+        "resolveExampleKnownResult",
+        resolve_known_result.dup(ctx),
+    );
+    if resolve_known_result.is_null() || resolve_known_result.is_undefined() {
+        ready_value.set_property(ctx, "resolveExampleKnownResultEffective", JSValue::null());
+        ready_value.set_property(ctx, "resolveExampleKnownResultEffectivePhase", JSValue::null());
+        ready_value.set_property(
+            ctx,
+            "resolveExampleKnownResultEffectiveEscalationKey",
+            JSValue::null(),
+        );
+    } else {
+        ready_value.set_property(
+            ctx,
+            "resolveExampleKnownResultEffective",
+            resolve_known_result.get_property(ctx, "effective"),
+        );
+        ready_value.set_property(
+            ctx,
+            "resolveExampleKnownResultEffectivePhase",
+            resolve_known_result.get_property(ctx, "effectivePhase"),
+        );
+        ready_value.set_property(
+            ctx,
+            "resolveExampleKnownResultEffectiveEscalationKey",
+            resolve_known_result.get_property(ctx, "effectiveEscalationKey"),
+        );
+    }
+    resolve_known_result.free(ctx);
+    ready_value.set_property(
+        ctx,
+        "resolveExampleMissingErrorCode",
+        resolve_examples.get_property(ctx, "missingErrorCode"),
+    );
+    let resolve_missing_result = resolve_examples.get_property(ctx, "missingResult");
+    ready_value.set_property(
+        ctx,
+        "resolveExampleMissingResult",
+        resolve_missing_result.dup(ctx),
+    );
+    if resolve_missing_result.is_null() || resolve_missing_result.is_undefined() {
+        ready_value.set_property(ctx, "resolveExampleMissingResultEffective", JSValue::null());
+        ready_value.set_property(ctx, "resolveExampleMissingResultEffectivePhase", JSValue::null());
+        ready_value.set_property(
+            ctx,
+            "resolveExampleMissingResultEffectiveEscalationKey",
+            JSValue::null(),
+        );
+    } else {
+        ready_value.set_property(
+            ctx,
+            "resolveExampleMissingResultEffective",
+            resolve_missing_result.get_property(ctx, "effective"),
+        );
+        ready_value.set_property(
+            ctx,
+            "resolveExampleMissingResultEffectivePhase",
+            resolve_missing_result.get_property(ctx, "effectivePhase"),
+        );
+        ready_value.set_property(
+            ctx,
+            "resolveExampleMissingResultEffectiveEscalationKey",
+            resolve_missing_result.get_property(ctx, "effectiveEscalationKey"),
+        );
+    }
+    resolve_missing_result.free(ctx);
 
     let phase_entries = ffi::JS_NewArray(ctx);
     let phase_index = JSValue(ffi::JS_NewObject(ctx));
@@ -2002,6 +2121,161 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     phase_resolve_value.set_property(ctx, "default", phase_resolve_default);
     phase_resolve_value.set_property(ctx, "examples", phase_resolve_examples);
     ready_value.set_property(ctx, "phaseResolve", phase_resolve_value.dup(ctx));
+    ready_value.set_property(ctx, "phaseResolveLookupKey", JSValue::string(ctx, "phase"));
+    ready_value.set_property(
+        ctx,
+        "phaseResolvePolicy",
+        JSValue::string(ctx, "phaseIndex[phase] || default"),
+    );
+    ready_value.set_property(ctx, "phaseResolveOutputShape", JSValue::string(ctx, "effective"));
+    ready_value.set_property(ctx, "phaseResolveIndex", phase_resolve_value.get_property(ctx, "index"));
+    ready_value.set_property(
+        ctx,
+        "phaseResolveIndexEntries",
+        phase_resolve_value.get_property(ctx, "index"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveDefault",
+        phase_resolve_value.get_property(ctx, "default"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExamples",
+        phase_resolve_value.get_property(ctx, "examples"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolvePhaseCount",
+        JSValue::int(known_phases.len() as i32),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveIndexCount",
+        JSValue::int(known_phases.len() as i32),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveKnownCount",
+        JSValue::int(known_phases.len() as i32),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveKnownPhases",
+        JSValue(string_vec_to_js_array(ctx, &known_phases)),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveDefaultMatched",
+        phase_resolve_default.get_property(ctx, "matched"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveDefaultUsedDefault",
+        phase_resolve_default.get_property(ctx, "usedDefault"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveDefaultReason",
+        phase_resolve_default.get_property(ctx, "reason"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveDefaultEffective",
+        phase_resolve_default.get_property(ctx, "effective"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveDefaultEffectivePhase",
+        phase_resolve_default.get_property(ctx, "effectivePhase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveDefaultEffectiveEscalationKey",
+        phase_resolve_default.get_property(ctx, "effectiveEscalationKey"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleKnownPhase",
+        phase_resolve_examples.get_property(ctx, "knownPhase"),
+    );
+    let phase_resolve_known_result = phase_resolve_examples.get_property(ctx, "knownResult");
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleKnownResult",
+        phase_resolve_known_result.dup(ctx),
+    );
+    if phase_resolve_known_result.is_null() || phase_resolve_known_result.is_undefined() {
+        ready_value.set_property(ctx, "phaseResolveExampleKnownResultEffective", JSValue::null());
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleKnownResultEffectivePhase",
+            JSValue::null(),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleKnownResultEffectiveEscalationKey",
+            JSValue::null(),
+        );
+    } else {
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleKnownResultEffective",
+            phase_resolve_known_result.get_property(ctx, "effective"),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleKnownResultEffectivePhase",
+            phase_resolve_known_result.get_property(ctx, "effectivePhase"),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleKnownResultEffectiveEscalationKey",
+            phase_resolve_known_result.get_property(ctx, "effectiveEscalationKey"),
+        );
+    }
+    phase_resolve_known_result.free(ctx);
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleMissingPhase",
+        phase_resolve_examples.get_property(ctx, "missingPhase"),
+    );
+    let phase_resolve_missing_result = phase_resolve_examples.get_property(ctx, "missingResult");
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleMissingResult",
+        phase_resolve_missing_result.dup(ctx),
+    );
+    if phase_resolve_missing_result.is_null() || phase_resolve_missing_result.is_undefined() {
+        ready_value.set_property(ctx, "phaseResolveExampleMissingResultEffective", JSValue::null());
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleMissingResultEffectivePhase",
+            JSValue::null(),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleMissingResultEffectiveEscalationKey",
+            JSValue::null(),
+        );
+    } else {
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleMissingResultEffective",
+            phase_resolve_missing_result.get_property(ctx, "effective"),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleMissingResultEffectivePhase",
+            phase_resolve_missing_result.get_property(ctx, "effectivePhase"),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleMissingResultEffectiveEscalationKey",
+            phase_resolve_missing_result.get_property(ctx, "effectiveEscalationKey"),
+        );
+    }
+    phase_resolve_missing_result.free(ctx);
 
     ready_value.set_property(ctx, "phaseCount", JSValue::int(known_phases.len() as i32));
     ready_value.set_property(ctx, "phases", JSValue(phase_entries));

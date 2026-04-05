@@ -2451,6 +2451,9 @@ undefined;
                                     adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolve !== null &&
                                     typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolve === 'object' &&
                                     adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolve !== null &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveIndexCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveKnownCount &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveIndexCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveKnownCount &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefaultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.defaultEffectivePhase &&
                                     adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phases.length &&
                                     typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseIndex === 'object' &&
                                     adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseIndex !== null &&
