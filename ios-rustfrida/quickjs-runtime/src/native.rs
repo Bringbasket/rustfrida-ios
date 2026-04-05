@@ -2899,6 +2899,247 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             backend_adaptation.set_property(ctx, key, JSValue::null());
         }
     }
+    if has_preferred_conflict_backend_pair {
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStep",
+            backend_adaptation.get_property(ctx, "nextStep"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepId",
+            backend_adaptation.get_property(ctx, "nextStepId"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepSource",
+            backend_adaptation.get_property(ctx, "nextStepSource"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepCommand",
+            backend_adaptation.get_property(ctx, "nextStepCommand"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepPhase",
+            backend_adaptation.get_property(ctx, "nextStepPhase"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepKind",
+            backend_adaptation.get_property(ctx, "nextStepKind"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepCommandJsonEligible",
+            backend_adaptation.get_property(ctx, "nextStepCommandJsonEligible"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepCommandJsonTemplate",
+            backend_adaptation.get_property(ctx, "nextStepCommandJsonTemplate"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepCommandJsonTemplateCommand",
+            backend_adaptation.get_property(ctx, "nextStepCommandJsonTemplateCommand"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepCommandJsonTemplateKind",
+            backend_adaptation.get_property(ctx, "nextStepCommandJsonTemplateKind"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepRetryable",
+            backend_adaptation.get_property(ctx, "nextStepRetryable"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepMaxSuggestedRetries",
+            backend_adaptation.get_property(ctx, "nextStepMaxSuggestedRetries"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepRetryDelayHintMs",
+            backend_adaptation.get_property(ctx, "nextStepRetryDelayHintMs"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepTimeoutHintMs",
+            backend_adaptation.get_property(ctx, "nextStepTimeoutHintMs"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepTimeoutAction",
+            backend_adaptation.get_property(ctx, "nextStepTimeoutAction"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepErrorCode",
+            backend_adaptation.get_property(ctx, "nextStepErrorCode"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepTimeoutErrorCode",
+            backend_adaptation.get_property(ctx, "nextStepTimeoutErrorCode"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepRisk",
+            backend_adaptation.get_property(ctx, "nextStepRisk"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepPlaceholderCount",
+            backend_adaptation.get_property(ctx, "nextStepPlaceholderCount"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepPlaceholders",
+            backend_adaptation.get_property(ctx, "nextStepPlaceholders"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepCliArgs",
+            backend_adaptation.get_property(ctx, "nextStepCliArgs"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepReadyToRun",
+            backend_adaptation.get_property(ctx, "nextStepReadyToRun"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionNextStepRequiresFallback",
+            backend_adaptation.get_property(ctx, "nextStepRequiresFallback"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionStepChainSource",
+            backend_adaptation.get_property(ctx, "stepChainSource"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionStepChainLimit",
+            backend_adaptation.get_property(ctx, "stepChainLimit"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionStepChainCount",
+            backend_adaptation.get_property(ctx, "stepChainCount"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionStepChain",
+            backend_adaptation.get_property(ctx, "stepChain"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionStepChainTruncated",
+            backend_adaptation.get_property(ctx, "stepChainTruncated"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStep",
+            backend_adaptation.get_property(ctx, "activeStep"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepSource",
+            backend_adaptation.get_property(ctx, "activeStepSource"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepId",
+            backend_adaptation.get_property(ctx, "activeStepId"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepCommand",
+            backend_adaptation.get_property(ctx, "activeStepCommand"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepPhase",
+            backend_adaptation.get_property(ctx, "activeStepPhase"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepCommandJsonEligible",
+            backend_adaptation.get_property(ctx, "activeStepCommandJsonEligible"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepCommandJsonTemplate",
+            backend_adaptation.get_property(ctx, "activeStepCommandJsonTemplate"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepCommandJsonTemplateCommand",
+            backend_adaptation.get_property(ctx, "activeStepCommandJsonTemplateCommand"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepCommandJsonTemplateKind",
+            backend_adaptation.get_property(ctx, "activeStepCommandJsonTemplateKind"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepRetryable",
+            backend_adaptation.get_property(ctx, "activeStepRetryable"),
+        );
+        backend_adaptation.set_property(
+            ctx,
+            "preferredConflictResolutionActiveStepErrorCode",
+            backend_adaptation.get_property(ctx, "activeStepErrorCode"),
+        );
+    } else {
+        for key in [
+            "preferredConflictResolutionNextStep",
+            "preferredConflictResolutionNextStepId",
+            "preferredConflictResolutionNextStepSource",
+            "preferredConflictResolutionNextStepCommand",
+            "preferredConflictResolutionNextStepPhase",
+            "preferredConflictResolutionNextStepKind",
+            "preferredConflictResolutionNextStepCommandJsonEligible",
+            "preferredConflictResolutionNextStepCommandJsonTemplate",
+            "preferredConflictResolutionNextStepCommandJsonTemplateCommand",
+            "preferredConflictResolutionNextStepCommandJsonTemplateKind",
+            "preferredConflictResolutionNextStepRetryable",
+            "preferredConflictResolutionNextStepMaxSuggestedRetries",
+            "preferredConflictResolutionNextStepRetryDelayHintMs",
+            "preferredConflictResolutionNextStepTimeoutHintMs",
+            "preferredConflictResolutionNextStepTimeoutAction",
+            "preferredConflictResolutionNextStepErrorCode",
+            "preferredConflictResolutionNextStepTimeoutErrorCode",
+            "preferredConflictResolutionNextStepRisk",
+            "preferredConflictResolutionNextStepPlaceholderCount",
+            "preferredConflictResolutionNextStepPlaceholders",
+            "preferredConflictResolutionNextStepCliArgs",
+            "preferredConflictResolutionNextStepReadyToRun",
+            "preferredConflictResolutionNextStepRequiresFallback",
+            "preferredConflictResolutionStepChainSource",
+            "preferredConflictResolutionStepChainLimit",
+            "preferredConflictResolutionStepChainCount",
+            "preferredConflictResolutionStepChain",
+            "preferredConflictResolutionStepChainTruncated",
+            "preferredConflictResolutionActiveStep",
+            "preferredConflictResolutionActiveStepSource",
+            "preferredConflictResolutionActiveStepId",
+            "preferredConflictResolutionActiveStepCommand",
+            "preferredConflictResolutionActiveStepPhase",
+            "preferredConflictResolutionActiveStepCommandJsonEligible",
+            "preferredConflictResolutionActiveStepCommandJsonTemplate",
+            "preferredConflictResolutionActiveStepCommandJsonTemplateCommand",
+            "preferredConflictResolutionActiveStepCommandJsonTemplateKind",
+            "preferredConflictResolutionActiveStepRetryable",
+            "preferredConflictResolutionActiveStepErrorCode",
+        ] {
+            backend_adaptation.set_property(ctx, key, JSValue::null());
+        }
+    }
 
     match &report.active_backend {
         Some(active) => result.set_property(ctx, "activeBackend", JSValue::string(ctx, active)),

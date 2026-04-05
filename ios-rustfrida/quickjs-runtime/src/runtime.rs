@@ -2471,6 +2471,29 @@ undefined;
                             const hasPreferredGroupExecutionPath =
                                 adaptation.preferredGroupKey !== 'none';
                             const hasExecutionPath = hasConflictExecutionPath || hasPreferredGroupExecutionPath;
+                            const preferredConflictExecutionOk = !hasConflictExecutionPath ? (
+                                adaptation.preferredConflictResolutionNextStep === null &&
+                                adaptation.preferredConflictResolutionStepChain === null &&
+                                adaptation.preferredConflictResolutionActiveStep === null
+                            ) : (
+                                typeof adaptation.preferredConflictResolutionNextStep === 'object' &&
+                                adaptation.preferredConflictResolutionNextStep !== null &&
+                                adaptation.preferredConflictResolutionNextStepId === adaptation.preferredConflictResolutionNextStep.id &&
+                                adaptation.preferredConflictResolutionNextStepSource === adaptation.preferredConflictResolutionNextStep.source &&
+                                adaptation.preferredConflictResolutionNextStepCommand === adaptation.preferredConflictResolutionNextStep.command &&
+                                adaptation.preferredConflictResolutionNextStepPhase === adaptation.preferredConflictResolutionNextStep.phase &&
+                                adaptation.preferredConflictResolutionNextStepCommandJsonTemplateCommand === adaptation.preferredConflictResolutionNextStep.commandJsonTemplateCommand &&
+                                adaptation.preferredConflictResolutionNextStepCommandJsonTemplateKind === adaptation.preferredConflictResolutionNextStep.commandJsonTemplateKind &&
+                                Array.isArray(adaptation.preferredConflictResolutionStepChain) &&
+                                adaptation.preferredConflictResolutionStepChainCount === adaptation.preferredConflictResolutionStepChain.length &&
+                                adaptation.preferredConflictResolutionStepChainSource === 'preferred-conflict-resolution-chain' &&
+                                adaptation.preferredConflictResolutionStepChainTruncated === false &&
+                                typeof adaptation.preferredConflictResolutionActiveStep === 'object' &&
+                                adaptation.preferredConflictResolutionActiveStep !== null &&
+                                adaptation.preferredConflictResolutionActiveStepId === adaptation.preferredConflictResolutionActiveStep.id &&
+                                adaptation.preferredConflictResolutionActiveStepCommand === adaptation.preferredConflictResolutionActiveStep.command &&
+                                adaptation.preferredConflictResolutionActiveStepPhase === adaptation.preferredConflictResolutionActiveStep.phase
+                            );
                             const nextStepOk = !hasExecutionPath ? (
                                 adaptation.nextStep === null &&
                                 adaptation.nextStepId === null &&
@@ -2508,7 +2531,7 @@ undefined;
                                     (adaptation.nextStepSource === 'backend-adaptation-preferred-group' &&
                                      adaptation.executionKind === 'preferred-group'))
                             );
-                            return nextStepOk;
+                            return preferredConflictExecutionOk && nextStepOk;
                         })()"#,
                     )
                     .expect("native hook env backend adaptation execution aliases"),
