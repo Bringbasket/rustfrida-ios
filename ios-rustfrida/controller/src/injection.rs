@@ -3600,6 +3600,40 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
+        "preferredConflictResolutionNextStepCommandJsonEligible": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step
+                .get("commandJsonEligible")
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepCommandJsonTemplate": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step
+                .get("commandJsonTemplate")
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepCommandJsonTemplateCommand": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step
+                .get("commandJsonTemplate")
+                .and_then(|value| value.get("command"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepCommandJsonTemplateKind": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step
+                .get("commandJsonTemplate")
+                .and_then(|value| value.get("kind"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
         "preferredConflictResolutionNextStepRetryable": if has_preferred_conflict_backend_pair {
             preferred_conflict_resolution_next_step.get("retryable").cloned().unwrap_or(Value::Null)
         } else {
@@ -3712,6 +3746,40 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         },
         "preferredConflictResolutionActiveStepPhase": if has_preferred_conflict_backend_pair {
             preferred_conflict_resolution_active_step.get("phase").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionActiveStepCommandJsonEligible": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_active_step
+                .get("commandJsonEligible")
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionActiveStepCommandJsonTemplate": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_active_step
+                .get("commandJsonTemplate")
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionActiveStepCommandJsonTemplateCommand": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_active_step
+                .get("commandJsonTemplate")
+                .and_then(|value| value.get("command"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionActiveStepCommandJsonTemplateKind": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_active_step
+                .get("commandJsonTemplate")
+                .and_then(|value| value.get("kind"))
+                .cloned()
+                .unwrap_or(Value::Null)
         } else {
             Value::Null
         },
@@ -19938,6 +20006,18 @@ mod tests {
             "objc.classes <filter>"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionNextStepCommandJsonEligible"],
+            true
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionNextStepCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionNextStepCommandJsonTemplateKind"],
+            "runtime-command"
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionNextStepRetryable"],
             true
         );
@@ -19952,6 +20032,18 @@ mod tests {
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionActiveStepCommand"],
             "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionActiveStepCommandJsonEligible"],
+            true
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionActiveStepCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionActiveStepCommandJsonTemplateKind"],
+            "runtime-command"
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionRetryableStepCount"],
@@ -20184,6 +20276,18 @@ mod tests {
             "preferred-conflict-resolution-chain"
         );
         assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionNextStepCommandJsonEligible"],
+            true
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionNextStepCommandJsonTemplate"]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionNextStepCommandJsonTemplateKind"],
+            "runtime-command"
+        );
+        assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionNextStepErrorCode"],
             "hook-fallback-query-failed"
         );
@@ -20194,6 +20298,18 @@ mod tests {
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionActiveStepPhase"],
             "query"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionActiveStepCommandJsonEligible"],
+            true
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionActiveStepCommandJsonTemplate"]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionActiveStepCommandJsonTemplateKind"],
+            "runtime-command"
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionRouting"]["phaseErrorCodeCount"],
@@ -20444,8 +20560,10 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPair"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStep"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStepCommandJsonTemplate"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionStepChain"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionActiveStep"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionActiveStepCommandJsonTemplate"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionTerminationPolicy"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionRouting"].is_null());
         assert_eq!(coexistence["backendAdaptation"]["preflightTemplates"][1], "controller --preflight-only --preflight-json --pid <pid>");
@@ -20517,8 +20635,10 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
         assert!(automation["backendAdaptation"]["preferredConflictResolutionNextStep"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionNextStepCommandJsonTemplate"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionStepChain"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionActiveStep"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionActiveStepCommandJsonTemplate"].is_null());
         assert_eq!(automation["loadedExternalBackendCount"], 0);
         assert_eq!(automation["singleExternalBackendLoaded"], false);
         assert_eq!(automation["multipleExternalBackendsLoaded"], false);
