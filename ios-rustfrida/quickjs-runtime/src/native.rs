@@ -1042,6 +1042,31 @@ unsafe fn hook_set_command_template_group_properties(
     target.set_property(ctx, &command_json_templates_key, JSValue(command_json_templates));
 }
 
+unsafe fn hook_command_template_group_to_js(
+    ctx: *mut ffi::JSContext,
+    group_key: &str,
+    templates: &[String],
+) -> ffi::JSValue {
+    let group = JSValue(ffi::JS_NewObject(ctx));
+    let command_json_templates = ffi::JS_NewArray(ctx);
+
+    group.set_property(ctx, "groupKey", JSValue::string(ctx, group_key));
+    set_string_array_property(ctx, group.raw(), "templates", templates);
+    group.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
+    for (index, template) in templates.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            command_json_templates,
+            index as u32,
+            hook_command_json_template_to_js(ctx, template),
+        );
+    }
+    group.set_property(ctx, "commandJsonTemplateCount", JSValue::int(templates.len() as i32));
+    group.set_property(ctx, "commandJsonTemplates", JSValue(command_json_templates));
+
+    group.raw()
+}
+
 unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnvironmentReport) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
     let decision = resolve_hook_strategy().ok();
@@ -1156,6 +1181,39 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     hook_set_command_template_group_properties(ctx, &backend_adaptation, "cleanup", &cleanup_templates);
     hook_set_command_template_group_properties(ctx, &backend_adaptation, "install", &install_templates);
     hook_set_command_template_group_properties(ctx, &backend_adaptation, "preferred", &preferred_templates);
+    backend_adaptation.set_property(
+        ctx,
+        "queryGroup",
+        JSValue(hook_command_template_group_to_js(ctx, "query", &query_templates)),
+    );
+    backend_adaptation.set_property(
+        ctx,
+        "preflightGroup",
+        JSValue(hook_command_template_group_to_js(
+            ctx,
+            "preflight",
+            &preflight_templates,
+        )),
+    );
+    backend_adaptation.set_property(
+        ctx,
+        "cleanupGroup",
+        JSValue(hook_command_template_group_to_js(ctx, "cleanup", &cleanup_templates)),
+    );
+    backend_adaptation.set_property(
+        ctx,
+        "installGroup",
+        JSValue(hook_command_template_group_to_js(ctx, "install", &install_templates)),
+    );
+    backend_adaptation.set_property(
+        ctx,
+        "preferredGroup",
+        JSValue(hook_command_template_group_to_js(
+            ctx,
+            preferred_group_key,
+            &preferred_templates,
+        )),
+    );
 
     match &report.active_backend {
         Some(active) => result.set_property(ctx, "activeBackend", JSValue::string(ctx, active)),

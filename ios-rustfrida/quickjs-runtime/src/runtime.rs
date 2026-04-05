@@ -2333,6 +2333,24 @@ undefined;
                                 adaptation[`${group}TemplateCount`] === adaptation[`${group}Templates`].length &&
                                 adaptation[`${group}CommandJsonTemplateCount`] === adaptation[`${group}CommandJsonTemplates`].length
                             );
+                            const nestedGroupsOk = [
+                                ['queryGroup', 'query'],
+                                ['preflightGroup', 'preflight'],
+                                ['cleanupGroup', 'cleanup'],
+                                ['installGroup', 'install'],
+                            ].every(([key, group]) => {
+                                const entry = adaptation[key];
+                                return typeof entry === 'object' &&
+                                    entry !== null &&
+                                    entry.groupKey === group &&
+                                    entry.templateCount === adaptation[`${group}TemplateCount`] &&
+                                    entry.commandJsonTemplateCount === adaptation[`${group}CommandJsonTemplateCount`];
+                            }) &&
+                                typeof adaptation.preferredGroup === 'object' &&
+                                adaptation.preferredGroup !== null &&
+                                adaptation.preferredGroup.groupKey === adaptation.preferredGroupKey &&
+                                adaptation.preferredGroup.templateCount === adaptation.preferredTemplateCount &&
+                                adaptation.preferredGroup.commandJsonTemplateCount === adaptation.preferredCommandJsonTemplateCount;
                             return typeof adaptation === 'object' &&
                                 adaptation !== null &&
                                 report.backendAdaptationMode === adaptation.mode &&
@@ -2347,7 +2365,8 @@ undefined;
                                 typeof adaptation.requiresCleanupPhase === 'boolean' &&
                                 typeof adaptation.inlineInstallReadyNow === 'boolean' &&
                                 preferredCountOk &&
-                                groupsOk;
+                                groupsOk &&
+                                nestedGroupsOk;
                         })()"#,
                     )
                     .expect("native hook env backend adaptation summary"),
