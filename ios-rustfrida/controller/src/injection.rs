@@ -2782,6 +2782,34 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             backend_adaptation_next_step.get("source").cloned().unwrap_or(Value::Null)
         },
+        "nextStepActionKey": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_next_step.get("actionKey").cloned().unwrap_or(Value::Null)
+        },
+        "nextStepCommandGroup": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_next_step
+                .get("commandGroup")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "nextStepAllowed": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_next_step.get("allowed").cloned().unwrap_or(Value::Null)
+        },
+        "nextStepBlockedBy": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_next_step.get("blockedBy").cloned().unwrap_or(Value::Null)
+        },
+        "nextStepBranch": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_next_step.get("branch").cloned().unwrap_or(Value::Null)
+        },
         "nextStepCommand": if backend_adaptation_step_chain_source == "none" {
             Value::Null
         } else {
@@ -2796,6 +2824,14 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             Value::Null
         } else {
             backend_adaptation_next_step.get("kind").cloned().unwrap_or(Value::Null)
+        },
+        "nextStepCommandJsonEligible": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_next_step
+                .get("commandJsonEligible")
+                .cloned()
+                .unwrap_or(Value::Null)
         },
         "nextStepRetryable": if backend_adaptation_step_chain_source == "none" {
             Value::Null
@@ -2897,6 +2933,40 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             backend_adaptation_active_step.get("source").cloned().unwrap_or(Value::Null)
         },
+        "activeStepAllowed": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step.get("allowed").cloned().unwrap_or(Value::Null)
+        },
+        "activeStepBlockedBy": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("blockedBy")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepBranch": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step.get("branch").cloned().unwrap_or(Value::Null)
+        },
+        "activeStepActionKey": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("actionKey")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepCommandGroup": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("commandGroup")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
         "activeStepId": if backend_adaptation_step_chain_source == "none" {
             Value::Null
         } else {
@@ -2912,15 +2982,110 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             backend_adaptation_active_step.get("phase").cloned().unwrap_or(Value::Null)
         },
+        "activeStepReadyToRun": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("readyToRun")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepRequiresFallback": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("requiresFallback")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepKind": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step.get("kind").cloned().unwrap_or(Value::Null)
+        },
+        "activeStepCommandJsonEligible": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("commandJsonEligible")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
         "activeStepRetryable": if backend_adaptation_step_chain_source == "none" {
             Value::Null
         } else {
             backend_adaptation_active_step.get("retryable").cloned().unwrap_or(Value::Null)
         },
+        "activeStepMaxSuggestedRetries": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("maxSuggestedRetries")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepRetryDelayHintMs": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("retryDelayHintMs")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepTimeoutHintMs": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("timeoutHintMs")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepTimeoutAction": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("timeoutAction")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
         "activeStepErrorCode": if backend_adaptation_step_chain_source == "none" {
             Value::Null
         } else {
             backend_adaptation_active_step.get("errorCode").cloned().unwrap_or(Value::Null)
+        },
+        "activeStepTimeoutErrorCode": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("timeoutErrorCode")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepRisk": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step.get("risk").cloned().unwrap_or(Value::Null)
+        },
+        "activeStepPlaceholderCount": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("placeholderCount")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepPlaceholders": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("placeholders")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepCliArgs": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step.get("cliArgs").cloned().unwrap_or(Value::Null)
         },
         "backendSpecificRecommendationCount": backend_specific_recommendations.len(),
         "backendSpecificRecommendations": backend_specific_recommendations,
@@ -19222,10 +19387,21 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["preferredGroupKey"], "query");
         assert_eq!(coexistence["backendAdaptation"]["preferredTemplateCount"], 3);
         assert_eq!(coexistence["backendAdaptation"]["nextStepSource"], "preferred-conflict-resolution-chain");
+        assert!(coexistence["backendAdaptation"]["nextStepActionKey"].is_null());
+        assert_eq!(coexistence["backendAdaptation"]["nextStepCommandGroup"], "conflict-resolution");
+        assert_eq!(coexistence["backendAdaptation"]["nextStepAllowed"], true);
+        assert_eq!(coexistence["backendAdaptation"]["nextStepBlockedBy"], "none");
+        assert_eq!(coexistence["backendAdaptation"]["nextStepBranch"], "run");
         assert_eq!(coexistence["backendAdaptation"]["nextStepPhase"], "query");
         assert_eq!(coexistence["backendAdaptation"]["nextStepCommand"], "objc.classes <filter>");
+        assert_eq!(coexistence["backendAdaptation"]["nextStepCommandJsonEligible"], true);
         assert_eq!(coexistence["backendAdaptation"]["stepChainCount"], 2);
+        assert_eq!(coexistence["backendAdaptation"]["activeStepAllowed"], true);
+        assert_eq!(coexistence["backendAdaptation"]["activeStepBlockedBy"], "none");
+        assert_eq!(coexistence["backendAdaptation"]["activeStepBranch"], "run");
+        assert_eq!(coexistence["backendAdaptation"]["activeStepCommandGroup"], "conflict-resolution");
         assert_eq!(coexistence["backendAdaptation"]["activeStepCommand"], "objc.classes <filter>");
+        assert_eq!(coexistence["backendAdaptation"]["activeStepCommandJsonEligible"], true);
         assert_eq!(coexistence["backendAdaptation"]["installTemplateCount"], 0);
         assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "ellekit");
@@ -19470,8 +19646,13 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "query");
         assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 3);
         assert_eq!(automation["backendAdaptation"]["nextStepSource"], "preferred-conflict-resolution-chain");
+        assert_eq!(automation["backendAdaptation"]["nextStepCommandGroup"], "conflict-resolution");
+        assert_eq!(automation["backendAdaptation"]["nextStepAllowed"], true);
+        assert_eq!(automation["backendAdaptation"]["nextStepBranch"], "run");
         assert_eq!(automation["backendAdaptation"]["nextStepErrorCode"], "hook-fallback-query-failed");
         assert_eq!(automation["backendAdaptation"]["stepChainCount"], 2);
+        assert_eq!(automation["backendAdaptation"]["activeStepAllowed"], true);
+        assert_eq!(automation["backendAdaptation"]["activeStepCommandGroup"], "conflict-resolution");
         assert_eq!(automation["backendAdaptation"]["activeStepPhase"], "query");
         assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "ellekit");
@@ -19686,10 +19867,17 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["preferredGroupKey"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["preferredTemplateCount"], 2);
         assert_eq!(coexistence["backendAdaptation"]["nextStepSource"], "backend-adaptation-preferred-group");
+        assert!(coexistence["backendAdaptation"]["nextStepActionKey"].is_null());
+        assert_eq!(coexistence["backendAdaptation"]["nextStepCommandGroup"], "preflight");
+        assert_eq!(coexistence["backendAdaptation"]["nextStepAllowed"], true);
         assert_eq!(coexistence["backendAdaptation"]["nextStepPhase"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["nextStepCommand"], "native.hookenv");
+        assert_eq!(coexistence["backendAdaptation"]["nextStepCommandJsonEligible"], true);
         assert_eq!(coexistence["backendAdaptation"]["stepChainCount"], 2);
+        assert_eq!(coexistence["backendAdaptation"]["activeStepAllowed"], true);
+        assert_eq!(coexistence["backendAdaptation"]["activeStepCommandGroup"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["activeStepCommand"], "native.hookenv");
+        assert_eq!(coexistence["backendAdaptation"]["activeStepCommandJsonEligible"], true);
         assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "filesystem-only");
@@ -19716,10 +19904,16 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "preflight");
         assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 2);
         assert_eq!(automation["backendAdaptation"]["nextStepSource"], "backend-adaptation-preferred-group");
+        assert_eq!(automation["backendAdaptation"]["nextStepCommandGroup"], "preflight");
+        assert_eq!(automation["backendAdaptation"]["nextStepAllowed"], true);
         assert_eq!(automation["backendAdaptation"]["nextStepPhase"], "preflight");
         assert_eq!(automation["backendAdaptation"]["nextStepCommand"], "native.hookenv");
+        assert_eq!(automation["backendAdaptation"]["nextStepCommandJsonEligible"], true);
         assert_eq!(automation["backendAdaptation"]["stepChainCount"], 2);
+        assert_eq!(automation["backendAdaptation"]["activeStepAllowed"], true);
+        assert_eq!(automation["backendAdaptation"]["activeStepCommandGroup"], "preflight");
         assert_eq!(automation["backendAdaptation"]["activeStepCommand"], "native.hookenv");
+        assert_eq!(automation["backendAdaptation"]["activeStepCommandJsonEligible"], true);
         assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(automation["backendAdaptation"]["requiresPreflight"], true);
