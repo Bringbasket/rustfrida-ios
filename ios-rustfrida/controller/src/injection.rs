@@ -23662,6 +23662,10 @@ mod tests {
             let adaptation = &rendered["backendAdaptation"];
             let ready = &adaptation["preferredConflictResolutionRouting"]["routingDecision"]["ready"];
             let phase_cleanup = &ready["phaseCleanup"];
+            let step_chain = adaptation["preferredConflictResolutionStepChain"]
+                .as_array()
+                .expect("preferred conflict resolution step chain");
+            let step = &step_chain[0];
 
             assert_eq!(rendered["commandMode"], "cleanup-only");
             assert_eq!(adaptation["preferredGroupKey"], "cleanup");
@@ -23670,9 +23674,128 @@ mod tests {
             assert_eq!(adaptation["conflictBackendPairCount"], 1);
             assert_eq!(adaptation["preferredConflictResolutionChainCount"], 1);
             assert_eq!(adaptation["preferredConflictResolutionPhaseOrder"], json!(["cleanup"]));
-            assert_eq!(adaptation["preferredConflictResolutionNextStepPhase"], "cleanup");
-            assert_eq!(adaptation["preferredConflictResolutionActiveStepPhase"], "cleanup");
             assert_eq!(adaptation["requiresCleanupPhase"], true);
+            assert_eq!(adaptation["preferredConflictResolutionRetryableStepCount"], 1);
+            assert_eq!(
+                adaptation["preferredConflictResolutionTotalRetryBudget"],
+                step["maxSuggestedRetries"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionStepChainSource"],
+                "preferred-conflict-resolution-chain"
+            );
+            assert_eq!(adaptation["preferredConflictResolutionStepChainLimit"], 1);
+            assert_eq!(adaptation["preferredConflictResolutionStepChainCount"], 1);
+            assert_eq!(adaptation["preferredConflictResolutionStepChainTruncated"], false);
+            assert_eq!(adaptation["preferredConflictResolutionNextStep"], *step);
+            assert_eq!(adaptation["preferredConflictResolutionNextStepId"], step["id"]);
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepSource"],
+                step["source"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepCommand"],
+                step["command"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepPhase"],
+                step["phase"]
+            );
+            assert_eq!(adaptation["preferredConflictResolutionNextStepKind"], step["kind"]);
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepCommandJsonEligible"],
+                step["commandJsonEligible"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepCommandJsonTemplate"],
+                step["commandJsonTemplate"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepCommandJsonTemplateCommand"],
+                step["commandJsonTemplateCommand"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepCommandJsonTemplateKind"],
+                step["commandJsonTemplateKind"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepRetryable"],
+                step["retryable"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepMaxSuggestedRetries"],
+                step["maxSuggestedRetries"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepRetryDelayHintMs"],
+                step["retryDelayHintMs"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepTimeoutHintMs"],
+                step["timeoutHintMs"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepTimeoutAction"],
+                step["timeoutAction"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepErrorCode"],
+                step["errorCode"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepTimeoutErrorCode"],
+                step["timeoutErrorCode"]
+            );
+            assert_eq!(adaptation["preferredConflictResolutionNextStepRisk"], step["risk"]);
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepPlaceholderCount"],
+                step["placeholderCount"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepPlaceholders"],
+                step["placeholders"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepCliArgs"],
+                step["cliArgs"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepReadyToRun"],
+                step["readyToRun"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionNextStepRequiresFallback"],
+                step["requiresFallback"]
+            );
+            assert_eq!(adaptation["preferredConflictResolutionActiveStep"], *step);
+            assert_eq!(adaptation["preferredConflictResolutionActiveStepSource"], step["source"]);
+            assert_eq!(adaptation["preferredConflictResolutionActiveStepId"], step["id"]);
+            assert_eq!(adaptation["preferredConflictResolutionActiveStepCommand"], step["command"]);
+            assert_eq!(adaptation["preferredConflictResolutionActiveStepPhase"], step["phase"]);
+            assert_eq!(
+                adaptation["preferredConflictResolutionActiveStepCommandJsonEligible"],
+                step["commandJsonEligible"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionActiveStepCommandJsonTemplate"],
+                step["commandJsonTemplate"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionActiveStepCommandJsonTemplateCommand"],
+                step["commandJsonTemplateCommand"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionActiveStepCommandJsonTemplateKind"],
+                step["commandJsonTemplateKind"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionActiveStepRetryable"],
+                step["retryable"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionActiveStepErrorCode"],
+                step["errorCode"]
+            );
             assert!(phase_cleanup.is_object());
             assert_eq!(adaptation["preferredConflictResolutionPhaseCleanup"], *phase_cleanup);
             assert_eq!(
