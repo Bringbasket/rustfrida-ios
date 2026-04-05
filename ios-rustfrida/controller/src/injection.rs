@@ -2398,6 +2398,18 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                             .cloned()
                             .unwrap_or(json!(false)),
                         "commandJsonTemplate": template.clone(),
+                        "commandJsonTemplateCommand": template
+                            .get("command")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonTemplateKind": template
+                            .get("kind")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonTemplateEligible": template
+                            .get("commandJsonEligible")
+                            .cloned()
+                            .unwrap_or(json!(false)),
                         "kind": template.get("kind").cloned().unwrap_or(Value::Null),
                         "retryable": template.get("retryable").cloned().unwrap_or(Value::Null),
                         "maxSuggestedRetries": template
@@ -2589,6 +2601,18 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                     .cloned()
                     .unwrap_or(json!(false)),
                 "commandJsonTemplate": command_json_template.clone(),
+                "commandJsonTemplateCommand": command_json_template
+                    .get("command")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "commandJsonTemplateKind": command_json_template
+                    .get("kind")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "commandJsonTemplateEligible": command_json_template
+                    .get("commandJsonEligible")
+                    .cloned()
+                    .unwrap_or(json!(false)),
                 "kind": command_json_template.get("kind").cloned().unwrap_or(Value::Null),
                 "retryable": entry.get("retryable").cloned().unwrap_or(Value::Null),
                 "maxSuggestedRetries": entry
@@ -20030,6 +20054,18 @@ mod tests {
             "preflight"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionStepChain"][0]["commandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionStepChain"][0]["commandJsonTemplateKind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionStepChain"][0]["commandJsonTemplateEligible"],
+            true
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionActiveStepCommand"],
             "objc.classes <filter>"
         );
@@ -20296,6 +20332,18 @@ mod tests {
             "narrow-query-filter-and-retry"
         );
         assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionStepChain"][0]["commandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionStepChain"][0]["commandJsonTemplateKind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionStepChain"][0]["commandJsonTemplateEligible"],
+            true
+        );
+        assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionActiveStepPhase"],
             "query"
         );
@@ -20540,6 +20588,18 @@ mod tests {
             "runtime-command"
         );
         assert_eq!(coexistence["backendAdaptation"]["stepChainCount"], 2);
+        assert_eq!(
+            coexistence["backendAdaptation"]["stepChain"][0]["commandJsonTemplateCommand"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["stepChain"][0]["commandJsonTemplateKind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["stepChain"][0]["commandJsonTemplateEligible"],
+            true
+        );
         assert_eq!(coexistence["backendAdaptation"]["activeStepAllowed"], true);
         assert_eq!(coexistence["backendAdaptation"]["activeStepPreferredPath"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["activeStepCommandGroup"], "preflight");
@@ -20617,6 +20677,18 @@ mod tests {
             "runtime-command"
         );
         assert_eq!(automation["backendAdaptation"]["stepChainCount"], 2);
+        assert_eq!(
+            automation["backendAdaptation"]["stepChain"][0]["commandJsonTemplateCommand"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["stepChain"][0]["commandJsonTemplateKind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["stepChain"][0]["commandJsonTemplateEligible"],
+            true
+        );
         assert_eq!(automation["backendAdaptation"]["activeStepAllowed"], true);
         assert_eq!(automation["backendAdaptation"]["activeStepPreferredPath"], "preflight");
         assert_eq!(automation["backendAdaptation"]["activeStepCommandGroup"], "preflight");
