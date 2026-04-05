@@ -1006,8 +1006,13 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     };
     result.set_property(ctx, "conflictState", JSValue::string(ctx, conflict_state));
     result.set_property(ctx, "riskLevel", JSValue::string(ctx, risk_level));
+    result.set_property(ctx, "baseCommandMode", JSValue::string(ctx, command_mode));
+    result.set_property(ctx, "effectiveCommandMode", JSValue::string(ctx, command_mode));
     result.set_property(ctx, "commandMode", JSValue::string(ctx, command_mode));
     result.set_property(ctx, "coexistenceMode", JSValue::string(ctx, coexistence_mode));
+    result.set_property(ctx, "preferredPath", JSValue::string(ctx, coexistence_mode));
+    result.set_property(ctx, "autoDowngradedToQueryOnly", JSValue::bool(false));
+    result.set_property(ctx, "autoDowngradeReason", JSValue::null());
     result.set_property(
         ctx,
         "coexistenceRecommendation",
@@ -1043,6 +1048,11 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     result.set_property(ctx, "loadedBackendCount", JSValue::int(loaded_backend_count as i32));
     result.set_property(
         ctx,
+        "loadedExternalBackendCount",
+        JSValue::int(loaded_backend_count as i32),
+    );
+    result.set_property(
+        ctx,
         "filesystemOnlyBackendCount",
         JSValue::int(filesystem_only_backend_count as i32),
     );
@@ -1071,12 +1081,27 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         );
         result.set_property(
             ctx,
+            "hookInstallAllowed",
+            JSValue::bool(decision.hook_install_commands_allowed()),
+        );
+        result.set_property(
+            ctx,
             "hookStatusCommandsAllowed",
             JSValue::bool(decision.hook_status_commands_allowed()),
         );
         result.set_property(
             ctx,
+            "hookStatusAllowed",
+            JSValue::bool(decision.hook_status_commands_allowed()),
+        );
+        result.set_property(
+            ctx,
             "hookStopCommandsAllowed",
+            JSValue::bool(decision.hook_stop_commands_allowed()),
+        );
+        result.set_property(
+            ctx,
+            "hookStopAllowed",
             JSValue::bool(decision.hook_stop_commands_allowed()),
         );
         match &decision.reason {
@@ -1091,8 +1116,11 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         result.set_property(ctx, "bootstrapInjectionAllowed", JSValue::bool(true));
         result.set_property(ctx, "queryCommandsAllowed", JSValue::bool(true));
         result.set_property(ctx, "hookInstallCommandsAllowed", JSValue::bool(true));
+        result.set_property(ctx, "hookInstallAllowed", JSValue::bool(true));
         result.set_property(ctx, "hookStatusCommandsAllowed", JSValue::bool(true));
+        result.set_property(ctx, "hookStatusAllowed", JSValue::bool(true));
         result.set_property(ctx, "hookStopCommandsAllowed", JSValue::bool(true));
+        result.set_property(ctx, "hookStopAllowed", JSValue::bool(true));
         result.set_property(ctx, "reason", JSValue::null());
     }
 

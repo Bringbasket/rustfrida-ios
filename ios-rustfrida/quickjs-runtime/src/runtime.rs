@@ -2266,6 +2266,25 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
+                            return report.baseCommandMode === report.commandMode &&
+                                report.effectiveCommandMode === report.commandMode &&
+                                report.preferredPath === report.coexistenceMode &&
+                                report.autoDowngradedToQueryOnly === false &&
+                                report.autoDowngradeReason === null &&
+                                report.loadedExternalBackendCount === report.loadedBackendCount &&
+                                report.hookInstallAllowed === report.hookInstallCommandsAllowed &&
+                                report.hookStatusAllowed === report.hookStatusCommandsAllowed &&
+                                report.hookStopAllowed === report.hookStopCommandsAllowed;
+                        })()"#,
+                    )
+                    .expect("native hook env controller-style aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
                 "true"
