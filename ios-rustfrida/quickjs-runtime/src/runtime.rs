@@ -2453,7 +2453,22 @@ undefined;
                                     adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolve !== null &&
                                     adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phases.length &&
                                     typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseIndex === 'object' &&
-                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseIndex !== null));
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseIndex !== null &&
+                                    ((adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery === null &&
+                                        adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQueryTemplateCount === null) ||
+                                        (typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery === 'object' &&
+                                            adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery !== null &&
+                                            adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQueryTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery.templates.length)) &&
+                                    ((adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflight === null &&
+                                        adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflightTemplateCount === null) ||
+                                        (typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflight === 'object' &&
+                                            adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflight !== null &&
+                                            adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflightTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflight.templates.length)) &&
+                                    ((adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup === null &&
+                                        adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanupTemplateCount === null) ||
+                                        (typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup === 'object' &&
+                                            adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup !== null &&
+                                            adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanupTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup.templates.length))));
                             return typeof adaptation === 'object' &&
                                 adaptation !== null &&
                                 report.backendAdaptationMode === adaptation.mode &&

@@ -2016,6 +2016,19 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     } else {
         ready_value.set_property(ctx, "phaseLast", JSValue::null());
     }
+    let phase_query_alias = phase_index.get_property(ctx, "query");
+    let phase_preflight_alias = phase_index.get_property(ctx, "preflight");
+    let phase_cleanup_alias = phase_index.get_property(ctx, "cleanup");
+    set_phase_ready_aliases(ctx, &ready_value, "phaseQuery", &phase_query_alias, false, false);
+    set_phase_ready_aliases(
+        ctx,
+        &ready_value,
+        "phasePreflight",
+        &phase_preflight_alias,
+        true,
+        true,
+    );
+    set_phase_ready_aliases(ctx, &ready_value, "phaseCleanup", &phase_cleanup_alias, false, false);
     routing_decision.set_property(ctx, "ready", ready_value);
     resolve_value.free(ctx);
     phase_resolve_value.free(ctx);
