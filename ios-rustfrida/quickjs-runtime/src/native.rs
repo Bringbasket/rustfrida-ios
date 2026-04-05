@@ -444,6 +444,84 @@ unsafe fn hook_step_from_command_json_template_to_js(
     item.raw()
 }
 
+fn hook_fallback_templates(suggested_sequence: &[String]) -> Vec<String> {
+    suggested_sequence
+        .iter()
+        .filter(|command| !command.trim_start().starts_with("check "))
+        .cloned()
+        .collect::<Vec<_>>()
+}
+
+unsafe fn hook_fallback_step_from_command_json_template_to_js(
+    ctx: *mut ffi::JSContext,
+    index: usize,
+    template: ffi::JSValue,
+) -> ffi::JSValue {
+    let item = JSValue(ffi::JS_NewObject(ctx));
+    let template_value = JSValue(template);
+
+    item.set_property(ctx, "index", JSValue::int(index as i32));
+    item.set_property(ctx, "source", JSValue::string(ctx, "fallback-plan"));
+    item.set_property(ctx, "id", JSValue::string(ctx, &format!("fallback-plan:{index}")));
+    item.set_property(ctx, "actionKey", JSValue::null());
+    item.set_property(ctx, "commandGroup", JSValue::null());
+    item.set_property(ctx, "allowed", JSValue::null());
+    item.set_property(ctx, "blockedBy", JSValue::null());
+    item.set_property(ctx, "branch", JSValue::null());
+    item.set_property(ctx, "command", template_value.get_property(ctx, "command"));
+    item.set_property(ctx, "phase", template_value.get_property(ctx, "phase"));
+    item.set_property(ctx, "readyToRun", JSValue::bool(true));
+    item.set_property(ctx, "requiresFallback", JSValue::bool(true));
+    item.set_property(ctx, "commandJsonTemplate", template_value.dup(ctx));
+    item.set_property(ctx, "kind", template_value.get_property(ctx, "kind"));
+    item.set_property(
+        ctx,
+        "commandJsonEligible",
+        template_value.get_property(ctx, "commandJsonEligible"),
+    );
+    item.set_property(ctx, "retryable", template_value.get_property(ctx, "retryable"));
+    item.set_property(
+        ctx,
+        "maxSuggestedRetries",
+        template_value.get_property(ctx, "maxSuggestedRetries"),
+    );
+    item.set_property(
+        ctx,
+        "retryDelayHintMs",
+        template_value.get_property(ctx, "retryDelayHintMs"),
+    );
+    item.set_property(
+        ctx,
+        "timeoutHintMs",
+        template_value.get_property(ctx, "timeoutHintMs"),
+    );
+    item.set_property(
+        ctx,
+        "timeoutAction",
+        template_value.get_property(ctx, "timeoutAction"),
+    );
+    item.set_property(ctx, "errorCode", template_value.get_property(ctx, "errorCode"));
+    item.set_property(
+        ctx,
+        "timeoutErrorCode",
+        template_value.get_property(ctx, "timeoutErrorCode"),
+    );
+    item.set_property(ctx, "risk", template_value.get_property(ctx, "risk"));
+    item.set_property(
+        ctx,
+        "placeholderCount",
+        template_value.get_property(ctx, "placeholderCount"),
+    );
+    item.set_property(
+        ctx,
+        "placeholders",
+        template_value.get_property(ctx, "placeholders"),
+    );
+    item.set_property(ctx, "cliArgs", template_value.get_property(ctx, "cliArgs"));
+
+    item.raw()
+}
+
 fn hook_action_branch(action: &native_api::HookRecommendedAction) -> &'static str {
     if action.allowed {
         "run"
@@ -744,6 +822,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         .iter()
         .copied()
         .find(|index| hook_action_ready_to_run(&recommended_actions_vec, &recommended_actions_vec[*index]));
+    let next_action_ready_to_run = next_action.map(|action| hook_action_ready_to_run(&recommended_actions_vec, action));
     let branch_execution_order = ordered_action_indices
         .iter()
         .map(|index| recommended_actions_vec[*index].action_key.clone())
@@ -806,7 +885,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 })
                 .count();
             let next_action_command_json_templates_array = ffi::JS_NewArray(ctx);
-            let next_action_ready_to_run = hook_action_ready_to_run(&recommended_actions_vec, action);
+            let next_action_ready_to_run = next_action_ready_to_run.unwrap_or(false);
             let next_step_chain_limit = 3usize;
             let next_step_chain = ffi::JS_NewArray(ctx);
             let next_step_chain_count = next_action_command_json_templates.len().min(next_step_chain_limit);
@@ -1120,6 +1199,616 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             result.set_property(ctx, "activeStepPlaceholders", JSValue::null());
             result.set_property(ctx, "activeStepCliArgs", JSValue::null());
         }
+    }
+
+    if next_action_ready_to_run == Some(false) {
+        let fallback_templates = hook_fallback_templates(&suggested_sequence);
+        let fallback_command_json_templates = fallback_templates
+            .iter()
+            .map(|template| hook_command_json_template_to_js(ctx, template))
+            .collect::<Vec<_>>();
+        let fallback_command_json_templates_array = ffi::JS_NewArray(ctx);
+        let fallback_steps = ffi::JS_NewArray(ctx);
+        let fallback_next_step_chain = ffi::JS_NewArray(ctx);
+        let fallback_step_limit = 3usize;
+        let fallback_step_count = fallback_command_json_templates.len().min(fallback_step_limit);
+        let fallback_step_truncated = fallback_command_json_templates.len() > fallback_step_limit;
+        let mut fallback_first_step: Option<ffi::JSValue> = None;
+        let mut phase_order = Vec::<String>::new();
+        let mut retryable_step_count = 0usize;
+        let mut total_retry_budget = 0usize;
+
+        for (index, entry) in fallback_command_json_templates.iter().enumerate() {
+            ffi::JS_SetPropertyUint32(ctx, fallback_command_json_templates_array, index as u32, *entry);
+            let entry_value = JSValue(*entry);
+            let phase = entry_value
+                .get_property(ctx, "phase")
+                .to_string(ctx)
+                .unwrap_or_default();
+            if !phase.is_empty() && !phase_order.iter().any(|item| item == &phase) {
+                phase_order.push(phase);
+            }
+            if entry_value
+                .get_property(ctx, "retryable")
+                .to_bool()
+                .unwrap_or(false)
+            {
+                retryable_step_count += 1;
+            }
+            total_retry_budget += entry_value
+                .get_property(ctx, "maxSuggestedRetries")
+                .to_i64(ctx)
+                .unwrap_or(0)
+                .max(0) as usize;
+            let step = JSValue(hook_fallback_step_from_command_json_template_to_js(ctx, index, *entry));
+            if index == 0 {
+                fallback_first_step = Some(step.dup(ctx).raw());
+            }
+            ffi::JS_SetPropertyUint32(ctx, fallback_steps, index as u32, step.dup(ctx).raw());
+            if index < fallback_step_limit {
+                ffi::JS_SetPropertyUint32(ctx, fallback_next_step_chain, index as u32, step.dup(ctx).raw());
+            }
+            step.free(ctx);
+        }
+
+        let phase_retry_policies = ffi::JS_NewArray(ctx);
+        let phase_timeout_policies = ffi::JS_NewArray(ctx);
+        let phase_error_codes = ffi::JS_NewArray(ctx);
+        let escalation_recommendations = ffi::JS_NewArray(ctx);
+        for (index, phase) in phase_order.iter().enumerate() {
+            let (retryable, max_suggested_retries, retry_delay_hint_ms) = phase_retry_policy(phase);
+            let (timeout_hint_ms, timeout_action) = phase_timeout_policy(phase);
+            let error_code = phase_failure_code(phase);
+            let timeout_error_code = phase_timeout_error_code(phase);
+
+            let retry_policy = JSValue(ffi::JS_NewObject(ctx));
+            retry_policy.set_property(ctx, "phase", JSValue::string(ctx, phase));
+            retry_policy.set_property(ctx, "retryable", JSValue::bool(retryable));
+            retry_policy.set_property(ctx, "maxSuggestedRetries", JSValue::int(max_suggested_retries as i32));
+            retry_policy.set_property(
+                ctx,
+                "retryDelayHintMs",
+                JSValue(js_u64_to_js_number_or_bigint(ctx, retry_delay_hint_ms)),
+            );
+            retry_policy.set_property(
+                ctx,
+                "timeoutHintMs",
+                JSValue(js_u64_to_js_number_or_bigint(ctx, timeout_hint_ms)),
+            );
+            retry_policy.set_property(ctx, "timeoutAction", JSValue::string(ctx, timeout_action));
+            retry_policy.set_property(ctx, "errorCode", JSValue::string(ctx, error_code));
+            retry_policy.set_property(ctx, "timeoutErrorCode", JSValue::string(ctx, timeout_error_code));
+            ffi::JS_SetPropertyUint32(ctx, phase_retry_policies, index as u32, retry_policy.raw());
+
+            let timeout_policy = JSValue(ffi::JS_NewObject(ctx));
+            timeout_policy.set_property(ctx, "phase", JSValue::string(ctx, phase));
+            timeout_policy.set_property(
+                ctx,
+                "timeoutHintMs",
+                JSValue(js_u64_to_js_number_or_bigint(ctx, timeout_hint_ms)),
+            );
+            timeout_policy.set_property(ctx, "timeoutAction", JSValue::string(ctx, timeout_action));
+            timeout_policy.set_property(ctx, "errorCode", JSValue::string(ctx, error_code));
+            timeout_policy.set_property(ctx, "timeoutErrorCode", JSValue::string(ctx, timeout_error_code));
+            ffi::JS_SetPropertyUint32(ctx, phase_timeout_policies, index as u32, timeout_policy.raw());
+
+            let phase_error = JSValue(ffi::JS_NewObject(ctx));
+            phase_error.set_property(ctx, "phase", JSValue::string(ctx, phase));
+            phase_error.set_property(ctx, "errorCode", JSValue::string(ctx, error_code));
+            phase_error.set_property(ctx, "timeoutErrorCode", JSValue::string(ctx, timeout_error_code));
+            ffi::JS_SetPropertyUint32(ctx, phase_error_codes, index as u32, phase_error.raw());
+
+            let escalation = JSValue(ffi::JS_NewObject(ctx));
+            escalation.set_property(ctx, "key", JSValue::string(ctx, phase));
+            escalation.set_property(ctx, "phase", JSValue::string(ctx, phase));
+            escalation.set_property(ctx, "summary", JSValue::string(ctx, timeout_action));
+            ffi::JS_SetPropertyUint32(ctx, escalation_recommendations, index as u32, escalation.raw());
+        }
+
+        let retryable_phase_count = phase_order
+            .iter()
+            .filter(|phase| phase_retry_policy(phase).0)
+            .count();
+        let non_retryable_phase_count = phase_order.len().saturating_sub(retryable_phase_count);
+        let termination_policy = JSValue(ffi::JS_NewObject(ctx));
+        termination_policy.set_property(ctx, "mode", JSValue::string(ctx, "phase-retry-budget"));
+        termination_policy.set_property(
+            ctx,
+            "terminateWhen",
+            JSValue::string(ctx, "all-retryable-steps-exhausted"),
+        );
+        termination_policy.set_property(
+            ctx,
+            "escalateWhen",
+            JSValue::string(ctx, "non-retryable-step-failed-or-retry-budget-exhausted"),
+        );
+        termination_policy.set_property(
+            ctx,
+            "timeoutEscalateWhen",
+            JSValue::string(ctx, "phase-timeout-exceeded"),
+        );
+        termination_policy.set_property(
+            ctx,
+            "retryablePhaseCount",
+            JSValue::int(retryable_phase_count as i32),
+        );
+        termination_policy.set_property(
+            ctx,
+            "nonRetryablePhaseCount",
+            JSValue::int(non_retryable_phase_count as i32),
+        );
+        termination_policy.set_property(
+            ctx,
+            "retryableStepCount",
+            JSValue::int(retryable_step_count as i32),
+        );
+        termination_policy.set_property(ctx, "totalRetryBudget", JSValue::int(total_retry_budget as i32));
+
+        let fallback_plan = JSValue(ffi::JS_NewObject(ctx));
+        fallback_plan.set_property(ctx, "trigger", JSValue::string(ctx, "next-action-not-ready"));
+        match next_action {
+            Some(action) => {
+                fallback_plan.set_property(ctx, "reason", JSValue::string(ctx, &action.recommendation));
+                fallback_plan.set_property(ctx, "fromActionKey", JSValue::string(ctx, &action.action_key));
+            }
+            None => {
+                fallback_plan.set_property(ctx, "reason", JSValue::null());
+                fallback_plan.set_property(ctx, "fromActionKey", JSValue::null());
+            }
+        }
+        fallback_plan.set_property(ctx, "toActionKey", JSValue::null());
+        fallback_plan.set_property(ctx, "usesSuggestedSequence", JSValue::bool(true));
+        fallback_plan.set_property(ctx, "templateCount", JSValue::int(fallback_templates.len() as i32));
+        set_string_array_property(ctx, fallback_plan.raw(), "templates", &fallback_templates);
+        fallback_plan.set_property(ctx, "phaseCount", JSValue::int(phase_order.len() as i32));
+        set_string_array_property(ctx, fallback_plan.raw(), "phaseOrder", &phase_order);
+        fallback_plan.set_property(ctx, "phaseRetryPolicyCount", JSValue::int(phase_order.len() as i32));
+        fallback_plan.set_property(ctx, "phaseRetryPolicies", JSValue(phase_retry_policies));
+        fallback_plan.set_property(ctx, "phaseTimeoutPolicyCount", JSValue::int(phase_order.len() as i32));
+        fallback_plan.set_property(ctx, "phaseTimeoutPolicies", JSValue(phase_timeout_policies));
+        fallback_plan.set_property(ctx, "phaseErrorCodeCount", JSValue::int(phase_order.len() as i32));
+        fallback_plan.set_property(ctx, "phaseErrorCodes", JSValue(phase_error_codes));
+        fallback_plan.set_property(ctx, "terminationPolicy", termination_policy);
+        fallback_plan.set_property(ctx, "stepCount", JSValue::int(fallback_command_json_templates.len() as i32));
+        fallback_plan.set_property(ctx, "retryableStepCount", JSValue::int(retryable_step_count as i32));
+        fallback_plan.set_property(ctx, "totalRetryBudget", JSValue::int(total_retry_budget as i32));
+        fallback_plan.set_property(ctx, "steps", JSValue(fallback_steps));
+        fallback_plan.set_property(
+            ctx,
+            "escalationRecommendationCount",
+            JSValue::int(phase_order.len() as i32),
+        );
+        fallback_plan.set_property(ctx, "escalationRecommendations", JSValue(escalation_recommendations));
+        fallback_plan.set_property(
+            ctx,
+            "commandJsonTemplateCount",
+            JSValue::int(fallback_command_json_templates.len() as i32),
+        );
+        fallback_plan.set_property(
+            ctx,
+            "commandJsonEligibleTemplateCount",
+            JSValue::int(
+                fallback_command_json_templates
+                    .iter()
+                    .filter(|entry| {
+                        JSValue(**entry)
+                            .get_property(ctx, "commandJsonEligible")
+                            .to_bool()
+                            .unwrap_or(false)
+                    })
+                    .count() as i32,
+            ),
+        );
+        fallback_plan.set_property(
+            ctx,
+            "commandJsonTemplates",
+            JSValue(fallback_command_json_templates_array),
+        );
+
+        match fallback_first_step {
+            Some(step_raw) => {
+                let step = JSValue(step_raw);
+                fallback_plan.set_property(ctx, "nextStep", step.dup(ctx));
+                fallback_plan.set_property(ctx, "nextStepId", step.get_property(ctx, "id"));
+                fallback_plan.set_property(ctx, "nextStepSource", step.get_property(ctx, "source"));
+                fallback_plan.set_property(ctx, "nextStepActionKey", step.get_property(ctx, "actionKey"));
+                fallback_plan.set_property(ctx, "nextStepCommandGroup", step.get_property(ctx, "commandGroup"));
+                fallback_plan.set_property(ctx, "nextStepAllowed", step.get_property(ctx, "allowed"));
+                fallback_plan.set_property(ctx, "nextStepBlockedBy", step.get_property(ctx, "blockedBy"));
+                fallback_plan.set_property(ctx, "nextStepBranch", step.get_property(ctx, "branch"));
+                fallback_plan.set_property(ctx, "nextStepCommand", step.get_property(ctx, "command"));
+                fallback_plan.set_property(ctx, "nextStepPhase", step.get_property(ctx, "phase"));
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepCommandJsonEligible",
+                    step.get_property(ctx, "commandJsonEligible"),
+                );
+                fallback_plan.set_property(ctx, "nextStepKind", step.get_property(ctx, "kind"));
+                fallback_plan.set_property(ctx, "nextStepRetryable", step.get_property(ctx, "retryable"));
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepMaxSuggestedRetries",
+                    step.get_property(ctx, "maxSuggestedRetries"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepRetryDelayHintMs",
+                    step.get_property(ctx, "retryDelayHintMs"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepTimeoutHintMs",
+                    step.get_property(ctx, "timeoutHintMs"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepTimeoutAction",
+                    step.get_property(ctx, "timeoutAction"),
+                );
+                fallback_plan.set_property(ctx, "nextStepErrorCode", step.get_property(ctx, "errorCode"));
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepTimeoutErrorCode",
+                    step.get_property(ctx, "timeoutErrorCode"),
+                );
+                fallback_plan.set_property(ctx, "nextStepRisk", step.get_property(ctx, "risk"));
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepPlaceholderCount",
+                    step.get_property(ctx, "placeholderCount"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepPlaceholders",
+                    step.get_property(ctx, "placeholders"),
+                );
+                fallback_plan.set_property(ctx, "nextStepCliArgs", step.get_property(ctx, "cliArgs"));
+                fallback_plan.set_property(ctx, "nextStepChainSource", JSValue::string(ctx, "fallback-plan"));
+                fallback_plan.set_property(ctx, "nextStepChainLimit", JSValue::int(fallback_step_limit as i32));
+                fallback_plan.set_property(ctx, "nextStepChainCount", JSValue::int(fallback_step_count as i32));
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepChainTruncated",
+                    JSValue::bool(fallback_step_truncated),
+                );
+                fallback_plan.set_property(ctx, "nextStepChain", JSValue(fallback_next_step_chain));
+                fallback_plan.set_property(ctx, "activeStep", step.dup(ctx));
+                fallback_plan.set_property(ctx, "activeStepSource", step.get_property(ctx, "source"));
+                fallback_plan.set_property(ctx, "activeStepAllowed", step.get_property(ctx, "allowed"));
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepBlockedBy",
+                    step.get_property(ctx, "blockedBy"),
+                );
+                fallback_plan.set_property(ctx, "activeStepBranch", step.get_property(ctx, "branch"));
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepActionKey",
+                    step.get_property(ctx, "actionKey"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepCommandGroup",
+                    step.get_property(ctx, "commandGroup"),
+                );
+                fallback_plan.set_property(ctx, "activeStepId", step.get_property(ctx, "id"));
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepCommand",
+                    step.get_property(ctx, "command"),
+                );
+                fallback_plan.set_property(ctx, "activeStepPhase", step.get_property(ctx, "phase"));
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepReadyToRun",
+                    step.get_property(ctx, "readyToRun"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepRequiresFallback",
+                    step.get_property(ctx, "requiresFallback"),
+                );
+                fallback_plan.set_property(ctx, "activeStepKind", step.get_property(ctx, "kind"));
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepCommandJsonEligible",
+                    step.get_property(ctx, "commandJsonEligible"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepRetryable",
+                    step.get_property(ctx, "retryable"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepMaxSuggestedRetries",
+                    step.get_property(ctx, "maxSuggestedRetries"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepRetryDelayHintMs",
+                    step.get_property(ctx, "retryDelayHintMs"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepTimeoutHintMs",
+                    step.get_property(ctx, "timeoutHintMs"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepTimeoutAction",
+                    step.get_property(ctx, "timeoutAction"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepErrorCode",
+                    step.get_property(ctx, "errorCode"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepTimeoutErrorCode",
+                    step.get_property(ctx, "timeoutErrorCode"),
+                );
+                fallback_plan.set_property(ctx, "activeStepRisk", step.get_property(ctx, "risk"));
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepPlaceholderCount",
+                    step.get_property(ctx, "placeholderCount"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepPlaceholders",
+                    step.get_property(ctx, "placeholders"),
+                );
+                fallback_plan.set_property(ctx, "activeStepCliArgs", step.get_property(ctx, "cliArgs"));
+                step.free(ctx);
+            }
+            None => {
+                fallback_plan.set_property(ctx, "nextStep", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepId", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepSource", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepActionKey", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepCommandGroup", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepAllowed", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepBlockedBy", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepBranch", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepCommand", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepPhase", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepCommandJsonEligible", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepKind", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepRetryable", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepMaxSuggestedRetries", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepRetryDelayHintMs", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepTimeoutHintMs", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepTimeoutAction", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepErrorCode", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepTimeoutErrorCode", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepRisk", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepPlaceholderCount", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepPlaceholders", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepCliArgs", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepChainSource", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepChainLimit", JSValue::int(0));
+                fallback_plan.set_property(ctx, "nextStepChainCount", JSValue::int(0));
+                fallback_plan.set_property(ctx, "nextStepChainTruncated", JSValue::bool(false));
+                let next_step_chain = ffi::JS_NewArray(ctx);
+                fallback_plan.set_property(ctx, "nextStepChain", JSValue(next_step_chain));
+                fallback_plan.set_property(ctx, "activeStep", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepSource", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepAllowed", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepBlockedBy", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepBranch", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepActionKey", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepCommandGroup", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepId", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepCommand", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepPhase", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepReadyToRun", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepRequiresFallback", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepKind", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepCommandJsonEligible", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepRetryable", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepMaxSuggestedRetries", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepRetryDelayHintMs", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepTimeoutHintMs", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepTimeoutAction", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepErrorCode", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepTimeoutErrorCode", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepRisk", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepPlaceholderCount", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepPlaceholders", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepCliArgs", JSValue::null());
+            }
+        }
+        fallback_plan.set_property(ctx, "steps", JSValue(fallback_steps));
+        result.set_property(ctx, "hasFallbackPlan", JSValue::bool(true));
+        result.set_property(ctx, "fallbackPlan", fallback_plan.dup(ctx));
+        result.set_property(ctx, "nextStep", fallback_plan.get_property(ctx, "nextStep"));
+        result.set_property(ctx, "nextStepId", fallback_plan.get_property(ctx, "nextStepId"));
+        result.set_property(ctx, "nextStepSource", fallback_plan.get_property(ctx, "nextStepSource"));
+        result.set_property(ctx, "nextStepActionKey", fallback_plan.get_property(ctx, "nextStepActionKey"));
+        result.set_property(
+            ctx,
+            "nextStepCommandGroup",
+            fallback_plan.get_property(ctx, "nextStepCommandGroup"),
+        );
+        result.set_property(ctx, "nextStepAllowed", fallback_plan.get_property(ctx, "nextStepAllowed"));
+        result.set_property(
+            ctx,
+            "nextStepBlockedBy",
+            fallback_plan.get_property(ctx, "nextStepBlockedBy"),
+        );
+        result.set_property(ctx, "nextStepBranch", fallback_plan.get_property(ctx, "nextStepBranch"));
+        result.set_property(ctx, "nextStepCommand", fallback_plan.get_property(ctx, "nextStepCommand"));
+        result.set_property(ctx, "nextStepPhase", fallback_plan.get_property(ctx, "nextStepPhase"));
+        result.set_property(
+            ctx,
+            "nextStepCommandJsonEligible",
+            fallback_plan.get_property(ctx, "nextStepCommandJsonEligible"),
+        );
+        result.set_property(ctx, "nextStepKind", fallback_plan.get_property(ctx, "nextStepKind"));
+        result.set_property(
+            ctx,
+            "nextStepRetryable",
+            fallback_plan.get_property(ctx, "nextStepRetryable"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepMaxSuggestedRetries",
+            fallback_plan.get_property(ctx, "nextStepMaxSuggestedRetries"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepRetryDelayHintMs",
+            fallback_plan.get_property(ctx, "nextStepRetryDelayHintMs"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepTimeoutHintMs",
+            fallback_plan.get_property(ctx, "nextStepTimeoutHintMs"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepTimeoutAction",
+            fallback_plan.get_property(ctx, "nextStepTimeoutAction"),
+        );
+        result.set_property(ctx, "nextStepErrorCode", fallback_plan.get_property(ctx, "nextStepErrorCode"));
+        result.set_property(
+            ctx,
+            "nextStepTimeoutErrorCode",
+            fallback_plan.get_property(ctx, "nextStepTimeoutErrorCode"),
+        );
+        result.set_property(ctx, "nextStepRisk", fallback_plan.get_property(ctx, "nextStepRisk"));
+        result.set_property(
+            ctx,
+            "nextStepPlaceholderCount",
+            fallback_plan.get_property(ctx, "nextStepPlaceholderCount"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepPlaceholders",
+            fallback_plan.get_property(ctx, "nextStepPlaceholders"),
+        );
+        result.set_property(ctx, "nextStepCliArgs", fallback_plan.get_property(ctx, "nextStepCliArgs"));
+        result.set_property(
+            ctx,
+            "nextStepReadyToRun",
+            fallback_plan.get_property(ctx, "activeStepReadyToRun"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepRequiresFallback",
+            fallback_plan.get_property(ctx, "activeStepRequiresFallback"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepChainSource",
+            fallback_plan.get_property(ctx, "nextStepChainSource"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepChainLimit",
+            fallback_plan.get_property(ctx, "nextStepChainLimit"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepChainCount",
+            fallback_plan.get_property(ctx, "nextStepChainCount"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepChainTruncated",
+            fallback_plan.get_property(ctx, "nextStepChainTruncated"),
+        );
+        result.set_property(ctx, "nextStepChain", fallback_plan.get_property(ctx, "nextStepChain"));
+        result.set_property(ctx, "activeStep", fallback_plan.get_property(ctx, "activeStep"));
+        result.set_property(ctx, "activeStepSource", fallback_plan.get_property(ctx, "activeStepSource"));
+        result.set_property(ctx, "activeStepAllowed", fallback_plan.get_property(ctx, "activeStepAllowed"));
+        result.set_property(
+            ctx,
+            "activeStepBlockedBy",
+            fallback_plan.get_property(ctx, "activeStepBlockedBy"),
+        );
+        result.set_property(ctx, "activeStepBranch", fallback_plan.get_property(ctx, "activeStepBranch"));
+        result.set_property(
+            ctx,
+            "activeStepActionKey",
+            fallback_plan.get_property(ctx, "activeStepActionKey"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepCommandGroup",
+            fallback_plan.get_property(ctx, "activeStepCommandGroup"),
+        );
+        result.set_property(ctx, "activeStepId", fallback_plan.get_property(ctx, "activeStepId"));
+        result.set_property(ctx, "activeStepCommand", fallback_plan.get_property(ctx, "activeStepCommand"));
+        result.set_property(ctx, "activeStepPhase", fallback_plan.get_property(ctx, "activeStepPhase"));
+        result.set_property(
+            ctx,
+            "activeStepReadyToRun",
+            fallback_plan.get_property(ctx, "activeStepReadyToRun"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepRequiresFallback",
+            fallback_plan.get_property(ctx, "activeStepRequiresFallback"),
+        );
+        result.set_property(ctx, "activeStepKind", fallback_plan.get_property(ctx, "activeStepKind"));
+        result.set_property(
+            ctx,
+            "activeStepCommandJsonEligible",
+            fallback_plan.get_property(ctx, "activeStepCommandJsonEligible"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepRetryable",
+            fallback_plan.get_property(ctx, "activeStepRetryable"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepMaxSuggestedRetries",
+            fallback_plan.get_property(ctx, "activeStepMaxSuggestedRetries"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepRetryDelayHintMs",
+            fallback_plan.get_property(ctx, "activeStepRetryDelayHintMs"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepTimeoutHintMs",
+            fallback_plan.get_property(ctx, "activeStepTimeoutHintMs"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepTimeoutAction",
+            fallback_plan.get_property(ctx, "activeStepTimeoutAction"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepErrorCode",
+            fallback_plan.get_property(ctx, "activeStepErrorCode"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepTimeoutErrorCode",
+            fallback_plan.get_property(ctx, "activeStepTimeoutErrorCode"),
+        );
+        result.set_property(ctx, "activeStepRisk", fallback_plan.get_property(ctx, "activeStepRisk"));
+        result.set_property(
+            ctx,
+            "activeStepPlaceholderCount",
+            fallback_plan.get_property(ctx, "activeStepPlaceholderCount"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepPlaceholders",
+            fallback_plan.get_property(ctx, "activeStepPlaceholders"),
+        );
+        result.set_property(ctx, "activeStepCliArgs", fallback_plan.get_property(ctx, "activeStepCliArgs"));
+    } else {
+        result.set_property(ctx, "hasFallbackPlan", JSValue::bool(false));
+        result.set_property(ctx, "fallbackPlan", JSValue::null());
     }
 
     let action_branches = ffi::JS_NewArray(ctx);
