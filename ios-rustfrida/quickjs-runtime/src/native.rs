@@ -1308,6 +1308,57 @@ fn hook_conflict_resolution_phase_timeout_error_code(phase: &str) -> &'static st
     }
 }
 
+fn hook_conflict_resolution_steps_for_group(
+    group_key: &str,
+) -> Vec<(&'static str, &'static str, &'static str)> {
+    match group_key {
+        "query" => vec![
+            (
+                "query",
+                "query",
+                "use runtime queries first to inspect the mismatched backend states in this process",
+            ),
+            (
+                "preflight",
+                "preflight",
+                "refresh diagnostics after querying before attempting to realign backend runtimes",
+            ),
+        ],
+        "preflight" => vec![
+            (
+                "preflight",
+                "preflight",
+                "refresh diagnostics before choosing a runtime alignment action",
+            ),
+            (
+                "query",
+                "query",
+                "use runtime queries after preflight to confirm backend visibility and scope",
+            ),
+        ],
+        "cleanup" => vec![(
+            "cleanup",
+            "cleanup",
+            "clean up active hook state before attempting to realign backend runtimes",
+        )],
+        _ => Vec::new(),
+    }
+}
+
+fn hook_backend_templates_for_group<'a>(
+    group_key: &str,
+    query_templates: &'a [String],
+    preflight_templates: &'a [String],
+    cleanup_templates: &'a [String],
+) -> &'a [String] {
+    match group_key {
+        "query" => query_templates,
+        "preflight" => preflight_templates,
+        "cleanup" => cleanup_templates,
+        _ => &[],
+    }
+}
+
 unsafe fn hook_backend_conflict_resolution_chain_entry_to_js(
     ctx: *mut ffi::JSContext,
     index: usize,
@@ -1379,44 +1430,31 @@ unsafe fn hook_backend_conflict_pair_to_js(
     suggested_group_key: &str,
     suggested_phase: &str,
     resolution_reason: &str,
-    templates: &[String],
+    query_templates: &[String],
+    preflight_templates: &[String],
+    cleanup_templates: &[String],
 ) -> ffi::JSValue {
     let item = JSValue(ffi::JS_NewObject(ctx));
+    let templates = hook_backend_templates_for_group(
+        suggested_group_key,
+        query_templates,
+        preflight_templates,
+        cleanup_templates,
+    );
     let (command_json_templates, command_json_eligible_template_count) =
         hook_command_json_template_array_to_js(ctx, templates);
     let pair_key = format!("{}->{}", left_backend.id, right_backend.id);
     let resolution_chain = ffi::JS_NewArray(ctx);
-    let resolution_steps = match suggested_group_key {
-        "query" => vec![
-            ("query", "query", "use runtime queries first to inspect the mismatched backend states in this process"),
-            (
-                "preflight",
-                "preflight",
-                "refresh diagnostics after querying before attempting to realign backend runtimes",
-            ),
-        ],
-        "preflight" => vec![
-            (
-                "preflight",
-                "preflight",
-                "refresh diagnostics before choosing a runtime alignment action",
-            ),
-            (
-                "query",
-                "query",
-                "use runtime queries after preflight to confirm backend visibility and scope",
-            ),
-        ],
-        "cleanup" => vec![(
-            "cleanup",
-            "cleanup",
-            "clean up active hook state before attempting to realign backend runtimes",
-        )],
-        _ => Vec::new(),
-    };
+    let resolution_steps = hook_conflict_resolution_steps_for_group(suggested_group_key);
     for (index, (group_key, phase, reason)) in resolution_steps.iter().enumerate() {
+        let step_templates = hook_backend_templates_for_group(
+            group_key,
+            query_templates,
+            preflight_templates,
+            cleanup_templates,
+        );
         let entry = JSValue(hook_backend_conflict_resolution_chain_entry_to_js(
-            ctx, index, group_key, phase, reason, templates,
+            ctx, index, group_key, phase, reason, step_templates,
         ));
         ffi::JS_SetPropertyUint32(ctx, resolution_chain, index as u32, entry.raw());
     }
@@ -1511,6 +1549,129 @@ unsafe fn hook_backend_conflict_pair_to_js(
         JSValue::int(resolution_steps.len() as i32),
     );
     item.set_property(ctx, "resolutionChain", JSValue(resolution_chain));
+
+    item.raw()
+}
+
+unsafe fn hook_backend_conflict_resolution_step_to_js(
+    ctx: *mut ffi::JSContext,
+    preferred_path: &str,
+    index: usize,
+    group_key: &str,
+    phase: &str,
+    reason: &str,
+    templates: &[String],
+) -> ffi::JSValue {
+    let item = JSValue(ffi::JS_NewObject(ctx));
+    let allowed = group_key != "none";
+    let blocked_by = if allowed { "none" } else { "both" };
+    let branch = if allowed { "run" } else { "blocked" };
+    let (retryable, max_suggested_retries, retry_delay_hint_ms) =
+        hook_conflict_resolution_phase_retry_policy(phase);
+    let (timeout_hint_ms, timeout_action) = hook_conflict_resolution_phase_timeout_policy(phase);
+    let command_json_template = match templates.first() {
+        Some(template) => JSValue(hook_command_json_template_to_js(ctx, template)),
+        None => JSValue::null(),
+    };
+
+    item.set_property(ctx, "index", JSValue::int(index as i32));
+    item.set_property(
+        ctx,
+        "id",
+        JSValue::string(ctx, &format!("preferred-conflict-resolution:{index}")),
+    );
+    item.set_property(
+        ctx,
+        "source",
+        JSValue::string(ctx, "preferred-conflict-resolution-chain"),
+    );
+    item.set_property(ctx, "actionKey", JSValue::null());
+    item.set_property(ctx, "commandGroup", JSValue::string(ctx, "conflict-resolution"));
+    item.set_property(ctx, "allowed", JSValue::bool(allowed));
+    item.set_property(ctx, "blockedBy", JSValue::string(ctx, blocked_by));
+    item.set_property(ctx, "branch", JSValue::string(ctx, branch));
+    item.set_property(ctx, "reason", JSValue::string(ctx, reason));
+    item.set_property(ctx, "preferredPath", JSValue::string(ctx, preferred_path));
+    item.set_property(ctx, "readyToRun", JSValue::bool(allowed));
+    item.set_property(ctx, "requiresFallback", JSValue::bool(false));
+    if command_json_template.is_null() {
+        item.set_property(ctx, "command", JSValue::null());
+        item.set_property(ctx, "commandJsonEligible", JSValue::null());
+        item.set_property(ctx, "commandJsonTemplate", JSValue::null());
+        item.set_property(ctx, "commandJsonTemplateCommand", JSValue::null());
+        item.set_property(ctx, "commandJsonTemplateKind", JSValue::null());
+        item.set_property(ctx, "commandJsonTemplateEligible", JSValue::null());
+        item.set_property(ctx, "kind", JSValue::null());
+        item.set_property(ctx, "risk", JSValue::null());
+        item.set_property(ctx, "placeholderCount", JSValue::null());
+        item.set_property(ctx, "placeholders", JSValue::null());
+        item.set_property(ctx, "cliArgs", JSValue::null());
+    } else {
+        item.set_property(ctx, "command", command_json_template.get_property(ctx, "command"));
+        item.set_property(
+            ctx,
+            "commandJsonEligible",
+            command_json_template.get_property(ctx, "commandJsonEligible"),
+        );
+        item.set_property(ctx, "commandJsonTemplate", command_json_template.dup(ctx));
+        item.set_property(
+            ctx,
+            "commandJsonTemplateCommand",
+            command_json_template.get_property(ctx, "command"),
+        );
+        item.set_property(
+            ctx,
+            "commandJsonTemplateKind",
+            command_json_template.get_property(ctx, "kind"),
+        );
+        item.set_property(
+            ctx,
+            "commandJsonTemplateEligible",
+            command_json_template.get_property(ctx, "commandJsonEligible"),
+        );
+        item.set_property(ctx, "kind", command_json_template.get_property(ctx, "kind"));
+        item.set_property(ctx, "risk", command_json_template.get_property(ctx, "risk"));
+        item.set_property(
+            ctx,
+            "placeholderCount",
+            command_json_template.get_property(ctx, "placeholderCount"),
+        );
+        item.set_property(
+            ctx,
+            "placeholders",
+            command_json_template.get_property(ctx, "placeholders"),
+        );
+        item.set_property(ctx, "cliArgs", command_json_template.get_property(ctx, "cliArgs"));
+        command_json_template.free(ctx);
+    }
+    item.set_property(ctx, "phase", JSValue::string(ctx, phase));
+    item.set_property(ctx, "retryable", JSValue::bool(retryable));
+    item.set_property(
+        ctx,
+        "maxSuggestedRetries",
+        JSValue::int(max_suggested_retries as i32),
+    );
+    item.set_property(
+        ctx,
+        "retryDelayHintMs",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, retry_delay_hint_ms as u64)),
+    );
+    item.set_property(
+        ctx,
+        "timeoutHintMs",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, timeout_hint_ms)),
+    );
+    item.set_property(ctx, "timeoutAction", JSValue::string(ctx, timeout_action));
+    item.set_property(
+        ctx,
+        "errorCode",
+        JSValue::string(ctx, hook_conflict_resolution_phase_failure_code(phase)),
+    );
+    item.set_property(
+        ctx,
+        "timeoutErrorCode",
+        JSValue::string(ctx, hook_conflict_resolution_phase_timeout_error_code(phase)),
+    );
 
     item.raw()
 }
@@ -1832,12 +1993,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "query" => "keep the flow query-first until backend runtimes in this process are aligned",
         _ => "no compatible conflict resolution path is currently available",
     };
-    let conflict_resolution_templates = match conflict_resolution_group_key {
-        "query" => query_templates.clone(),
-        "preflight" => preflight_templates.clone(),
-        "cleanup" => cleanup_templates.clone(),
-        _ => Vec::new(),
-    };
+    let conflict_resolution_steps = hook_conflict_resolution_steps_for_group(conflict_resolution_group_key);
     let conflict_backend_pairs = ffi::JS_NewArray(ctx);
     let mut conflict_backend_pair_count = 0usize;
     let loaded_backends = report
@@ -1856,7 +2012,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 conflict_resolution_group_key,
                 conflict_resolution_phase,
                 conflict_resolution_reason,
-                &conflict_resolution_templates,
+                &query_templates,
+                &preflight_templates,
+                &cleanup_templates,
             ));
             if conflict_backend_pair_count == 0 {
                 preferred_conflict_backend_pair = Some(pair.dup(ctx));
@@ -1956,37 +2114,105 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             }
         }
     }
+    let has_preferred_conflict_backend_pair = preferred_conflict_backend_pair.is_some();
     let backend_adaptation_step_chain = ffi::JS_NewArray(ctx);
     let mut backend_adaptation_retry_budget = 0u64;
-    for (index, template) in preferred_templates.iter().enumerate() {
-        let template_value = JSValue(hook_command_json_template_to_js(ctx, template));
-        let step = JSValue(hook_backend_adaptation_step_from_command_json_template_to_js(
-            ctx,
-            preferred_group_key,
-            backend_adaptation_allowed,
-            backend_adaptation_summary,
-            index,
-            template_value.raw(),
-        ));
-        template_value.free(ctx);
-        backend_adaptation_retry_budget += step
-            .get_property(ctx, "maxSuggestedRetries")
-            .to_i64(ctx)
-            .unwrap_or(0)
-            .max(0) as u64;
-        ffi::JS_SetPropertyUint32(ctx, backend_adaptation_step_chain, index as u32, step.raw());
-    }
-    let backend_adaptation_step_chain_count = preferred_templates.len();
-    let backend_adaptation_step_chain_source = if backend_adaptation_allowed && backend_adaptation_step_chain_count > 0
+    let mut backend_adaptation_phase_order = Vec::new();
+    let mut backend_adaptation_retryable_step_count = 0usize;
+    let backend_adaptation_execution_kind = if has_preferred_conflict_backend_pair {
+        "conflict-resolution"
+    } else {
+        "preferred-group"
+    };
+    let backend_adaptation_step_chain_source = if has_preferred_conflict_backend_pair
+        && conflict_resolution_group_key != "none"
+        && !conflict_resolution_steps.is_empty()
     {
+        for (index, (group_key, phase, reason)) in conflict_resolution_steps.iter().enumerate() {
+            let templates = hook_backend_templates_for_group(
+                group_key,
+                &query_templates,
+                &preflight_templates,
+                &cleanup_templates,
+            );
+            let step = JSValue(hook_backend_conflict_resolution_step_to_js(
+                ctx,
+                conflict_resolution_group_key,
+                index,
+                group_key,
+                phase,
+                reason,
+                templates,
+            ));
+            backend_adaptation_retry_budget += step
+                .get_property(ctx, "maxSuggestedRetries")
+                .to_i64(ctx)
+                .unwrap_or(0)
+                .max(0) as u64;
+            if step
+                .get_property(ctx, "retryable")
+                .to_bool()
+                .unwrap_or(false)
+            {
+                backend_adaptation_retryable_step_count += 1;
+            }
+            backend_adaptation_phase_order.push((*phase).to_string());
+            ffi::JS_SetPropertyUint32(ctx, backend_adaptation_step_chain, index as u32, step.raw());
+        }
+        Some("preferred-conflict-resolution-chain")
+    } else if backend_adaptation_allowed && !preferred_templates.is_empty() {
+        for (index, template) in preferred_templates.iter().enumerate() {
+            let template_value = JSValue(hook_command_json_template_to_js(ctx, template));
+            let step = JSValue(hook_backend_adaptation_step_from_command_json_template_to_js(
+                ctx,
+                preferred_group_key,
+                backend_adaptation_allowed,
+                backend_adaptation_summary,
+                index,
+                template_value.raw(),
+            ));
+            template_value.free(ctx);
+            backend_adaptation_retry_budget += step
+                .get_property(ctx, "maxSuggestedRetries")
+                .to_i64(ctx)
+                .unwrap_or(0)
+                .max(0) as u64;
+            if step
+                .get_property(ctx, "retryable")
+                .to_bool()
+                .unwrap_or(false)
+            {
+                backend_adaptation_retryable_step_count += 1;
+            }
+            if preferred_group_key != "none" {
+                backend_adaptation_phase_order.push(preferred_group_key.to_string());
+            }
+            ffi::JS_SetPropertyUint32(ctx, backend_adaptation_step_chain, index as u32, step.raw());
+        }
         Some("backend-adaptation-preferred-group")
     } else {
         None
     };
+    let backend_adaptation_step_chain_count = if backend_adaptation_step_chain_source.is_some() {
+        if has_preferred_conflict_backend_pair
+            && conflict_resolution_group_key != "none"
+            && !conflict_resolution_steps.is_empty()
+        {
+            conflict_resolution_steps.len()
+        } else {
+            preferred_templates.len()
+        }
+    } else {
+        0
+    };
     let backend_adaptation_execution_summary = if let Some(source) = backend_adaptation_step_chain_source {
         let summary = JSValue(ffi::JS_NewObject(ctx));
         let selected_step = JSValue(ffi::JS_GetPropertyUint32(ctx, backend_adaptation_step_chain, 0));
-        summary.set_property(ctx, "kind", JSValue::string(ctx, "preferred-group"));
+        summary.set_property(
+            ctx,
+            "kind",
+            JSValue::string(ctx, backend_adaptation_execution_kind),
+        );
         summary.set_property(ctx, "source", JSValue::string(ctx, source));
         summary.set_property(ctx, "mode", JSValue::string(ctx, backend_adaptation_mode));
         summary.set_property(ctx, "alignment", JSValue::string(ctx, backend_adaptation_alignment));
@@ -2084,12 +2310,12 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         summary.set_property(
             ctx,
             "phaseOrder",
-            JSValue(string_vec_to_js_array(ctx, &[preferred_group_key.to_string(); 1])),
+            JSValue(string_vec_to_js_array(ctx, &backend_adaptation_phase_order)),
         );
         summary.set_property(
             ctx,
             "retryableStepCount",
-            JSValue::int(backend_adaptation_step_chain_count as i32),
+            JSValue::int(backend_adaptation_retryable_step_count as i32),
         );
         summary.set_property(
             ctx,

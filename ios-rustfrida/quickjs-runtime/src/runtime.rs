@@ -2451,8 +2451,15 @@ undefined;
                         r#"(function() {
                             const report = Native.detectHookEnvironment();
                             const adaptation = report.backendAdaptation;
-                            const hasPreferredGroup = adaptation.preferredGroupKey !== 'none';
-                            const nextStepOk = !hasPreferredGroup ? (
+                            const hasConflictExecutionPath =
+                                adaptation.conflictBackendPairCount > 0 &&
+                                adaptation.preferredConflictResolutionGroupKey !== null &&
+                                adaptation.preferredConflictResolutionGroupKey !== 'none' &&
+                                adaptation.preferredConflictResolutionChainCount > 0;
+                            const hasPreferredGroupExecutionPath =
+                                adaptation.preferredGroupKey !== 'none';
+                            const hasExecutionPath = hasConflictExecutionPath || hasPreferredGroupExecutionPath;
+                            const nextStepOk = !hasExecutionPath ? (
                                 adaptation.nextStep === null &&
                                 adaptation.nextStepId === null &&
                                 adaptation.stepChain === null &&
@@ -2480,7 +2487,14 @@ undefined;
                                 adaptation.executionSelectedId === adaptation.executionSummary.selectedId &&
                                 adaptation.executionSelectedCommand === adaptation.executionSummary.selectedCommand &&
                                 adaptation.executionSelectedCommandJsonTemplateCommand === adaptation.executionSummary.selectedCommandJsonTemplateCommand &&
-                                adaptation.executionSelectedPreferredPath === adaptation.executionSummary.selectedPreferredPath
+                                adaptation.executionSelectedPreferredPath === adaptation.executionSummary.selectedPreferredPath &&
+                                (!hasConflictExecutionPath ||
+                                    (adaptation.nextStepSource === 'preferred-conflict-resolution-chain' &&
+                                     adaptation.nextStepCommandGroup === 'conflict-resolution' &&
+                                     adaptation.executionKind === 'conflict-resolution')) &&
+                                (!hasPreferredGroupExecutionPath || hasConflictExecutionPath ||
+                                    (adaptation.nextStepSource === 'backend-adaptation-preferred-group' &&
+                                     adaptation.executionKind === 'preferred-group'))
                             );
                             return nextStepOk;
                         })()"#,
