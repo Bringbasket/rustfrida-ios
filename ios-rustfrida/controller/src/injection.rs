@@ -3595,12 +3595,44 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .as_ref()
             .and_then(|item| item.get("reason"))
             .cloned(),
+        "preferredBackendPrimaryCommandJsonTemplate": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("primaryCommandJsonTemplate"))
+            .cloned(),
+        "preferredBackendPrimaryCommandJsonTemplateCommand": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("primaryCommandJsonTemplateCommand"))
+            .cloned(),
+        "preferredBackendPrimaryCommandJsonTemplateKind": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("primaryCommandJsonTemplateKind"))
+            .cloned(),
+        "preferredBackendPrimaryCommandJsonTemplateEligible": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("primaryCommandJsonTemplateEligible"))
+            .cloned(),
         "conflictBackendPairCount": conflict_backend_pairs.len(),
         "conflictBackendPairs": conflict_backend_pairs,
         "preferredConflictBackendPair": preferred_conflict_backend_pair.clone(),
         "preferredConflictBackendPairKey": preferred_conflict_backend_pair
             .as_ref()
             .and_then(|item| item.get("pairKey"))
+            .cloned(),
+        "preferredConflictBackendPairPrimaryCommandJsonTemplate": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("primaryCommandJsonTemplate"))
+            .cloned(),
+        "preferredConflictBackendPairPrimaryCommandJsonTemplateCommand": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("primaryCommandJsonTemplateCommand"))
+            .cloned(),
+        "preferredConflictBackendPairPrimaryCommandJsonTemplateKind": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("primaryCommandJsonTemplateKind"))
+            .cloned(),
+        "preferredConflictBackendPairPrimaryCommandJsonTemplateEligible": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("primaryCommandJsonTemplateEligible"))
             .cloned(),
         "preferredConflictResolutionGroupKey": preferred_conflict_backend_pair
             .as_ref()
@@ -20028,6 +20060,18 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "ellekit");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "controller");
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateKind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateEligible"],
+            true
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendRecommendation"]["primaryCommandJsonTemplateCommand"],
             "objc.classes <filter>"
         );
@@ -20067,6 +20111,18 @@ mod tests {
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairKey"],
             "ellekit->substrate"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairPrimaryCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairPrimaryCommandJsonTemplateKind"],
+            "runtime-command"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairPrimaryCommandJsonTemplateEligible"],
+            true
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionGroupKey"],
@@ -20375,6 +20431,14 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "ellekit");
         assert_eq!(automation["backendAdaptation"]["conflictBackendPairCount"], 1);
         assert_eq!(
+            automation["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateEligible"],
+            true
+        );
+        assert_eq!(
             automation["backendAdaptation"]["preferredBackendRecommendation"]["primaryCommandJsonTemplateCommand"],
             "objc.classes <filter>"
         );
@@ -20385,6 +20449,10 @@ mod tests {
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictBackendPairKey"],
             "ellekit->substrate"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictBackendPairPrimaryCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionGroupKey"],
@@ -20712,6 +20780,14 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "filesystem-only");
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateEligible"],
+            true
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendRecommendation"]["primaryCommandJsonTemplateCommand"],
             "native.hookenv"
         );
@@ -20807,6 +20883,10 @@ mod tests {
         );
         assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "libhooker");
+        assert_eq!(
+            automation["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
+            "native.hookenv"
+        );
         assert_eq!(
             automation["backendAdaptation"]["preferredBackendRecommendation"]["primaryCommandJsonTemplateEligible"],
             true
