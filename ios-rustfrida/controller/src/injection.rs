@@ -2483,6 +2483,89 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         };
     let preferred_conflict_resolution_routing =
         conflict_resolution_routing_to_json(&preferred_conflict_resolution_chain);
+    let preferred_conflict_resolution_step_chain = preferred_conflict_resolution_chain
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| {
+            let command_json_template = entry
+                .get("commandJsonTemplates")
+                .and_then(Value::as_array)
+                .and_then(|items| items.first())
+                .cloned()
+                .unwrap_or(Value::Null);
+            let command = command_json_template
+                .get("command")
+                .cloned()
+                .or_else(|| {
+                    entry.get("templates")
+                        .and_then(Value::as_array)
+                        .and_then(|items| items.first())
+                        .cloned()
+                })
+                .unwrap_or(Value::Null);
+            json!({
+                "id": format!("preferred-conflict-resolution:{index}"),
+                "source": "preferred-conflict-resolution-chain",
+                "index": index,
+                "actionKey": Value::Null,
+                "commandGroup": "conflict-resolution",
+                "allowed": true,
+                "blockedBy": "none",
+                "branch": "run",
+                "readyToRun": true,
+                "requiresFallback": false,
+                "command": command,
+                "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
+                "commandJsonEligible": command_json_template
+                    .get("commandJsonEligible")
+                    .cloned()
+                    .unwrap_or(json!(false)),
+                "commandJsonTemplate": command_json_template.clone(),
+                "kind": command_json_template.get("kind").cloned().unwrap_or(Value::Null),
+                "retryable": entry.get("retryable").cloned().unwrap_or(Value::Null),
+                "maxSuggestedRetries": entry
+                    .get("maxSuggestedRetries")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "retryDelayHintMs": entry
+                    .get("retryDelayHintMs")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "timeoutHintMs": entry
+                    .get("timeoutHintMs")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "timeoutAction": entry
+                    .get("timeoutAction")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "errorCode": entry.get("errorCode").cloned().unwrap_or(Value::Null),
+                "timeoutErrorCode": entry
+                    .get("timeoutErrorCode")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "risk": command_json_template.get("risk").cloned().unwrap_or(Value::Null),
+                "placeholderCount": command_json_template
+                    .get("placeholderCount")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "placeholders": command_json_template
+                    .get("placeholders")
+                    .cloned()
+                    .unwrap_or(json!([])),
+                "cliArgs": command_json_template
+                    .get("cliArgs")
+                    .cloned()
+                    .unwrap_or(json!([])),
+            })
+        })
+        .collect::<Vec<_>>();
+    let preferred_conflict_resolution_next_step =
+        preferred_conflict_resolution_step_chain.first().cloned().unwrap_or(Value::Null);
+    let preferred_conflict_resolution_active_step = preferred_conflict_resolution_step_chain
+        .first()
+        .cloned()
+        .unwrap_or(Value::Null);
     let conflict_backend_pairs = controller_loaded_only_backend_ids
         .iter()
         .flat_map(|controller_backend_id| {
@@ -2678,6 +2761,161 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         },
         "preferredConflictResolutionRouting": if has_preferred_conflict_backend_pair {
             preferred_conflict_resolution_routing
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStep": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.clone()
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepId": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("id").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepSource": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("source").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepCommand": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("command").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepPhase": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("phase").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepKind": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("kind").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepRetryable": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("retryable").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepMaxSuggestedRetries": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("maxSuggestedRetries").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepRetryDelayHintMs": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("retryDelayHintMs").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepTimeoutHintMs": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("timeoutHintMs").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepTimeoutAction": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("timeoutAction").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepErrorCode": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("errorCode").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepTimeoutErrorCode": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("timeoutErrorCode").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepRisk": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("risk").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepPlaceholderCount": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("placeholderCount").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepPlaceholders": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("placeholders").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepCliArgs": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("cliArgs").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepReadyToRun": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("readyToRun").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionNextStepRequiresFallback": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_next_step.get("requiresFallback").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionStepChainSource": if has_preferred_conflict_backend_pair {
+            json!("preferred-conflict-resolution-chain")
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionStepChainLimit": if has_preferred_conflict_backend_pair {
+            json!(preferred_conflict_resolution_step_chain.len())
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionStepChainCount": if has_preferred_conflict_backend_pair {
+            json!(preferred_conflict_resolution_step_chain.len())
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionStepChain": if has_preferred_conflict_backend_pair {
+            json!(preferred_conflict_resolution_step_chain)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionStepChainTruncated": if has_preferred_conflict_backend_pair {
+            json!(false)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionActiveStep": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_active_step.clone()
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionActiveStepSource": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_active_step.get("source").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionActiveStepId": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_active_step.get("id").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionActiveStepCommand": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_active_step.get("command").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionActiveStepPhase": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_active_step.get("phase").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionActiveStepRetryable": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_active_step.get("retryable").cloned().unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionActiveStepErrorCode": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_active_step.get("errorCode").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
@@ -18806,6 +19044,30 @@ mod tests {
             json!(["query", "preflight"])
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionNextStepPhase"],
+            "query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionNextStepCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionNextStepRetryable"],
+            true
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionStepChainCount"],
+            2
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionStepChain"][1]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionActiveStepCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionRetryableStepCount"],
             2
         );
@@ -18987,6 +19249,22 @@ mod tests {
             json!(["query", "preflight"])
         );
         assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionNextStepSource"],
+            "preferred-conflict-resolution-chain"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionNextStepErrorCode"],
+            "hook-fallback-query-failed"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionStepChain"][0]["timeoutAction"],
+            "narrow-query-filter-and-retry"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionActiveStepPhase"],
+            "query"
+        );
+        assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionRouting"]["phaseErrorCodeCount"],
             2
         );
@@ -19165,6 +19443,9 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 0);
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPair"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStep"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionStepChain"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionActiveStep"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionTerminationPolicy"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionRouting"].is_null());
         assert_eq!(coexistence["backendAdaptation"]["preflightTemplates"][1], "controller --preflight-only --preflight-json --pid <pid>");
@@ -19185,6 +19466,9 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(automation["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionNextStep"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionStepChain"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionActiveStep"].is_null());
         assert_eq!(automation["loadedExternalBackendCount"], 0);
         assert_eq!(automation["singleExternalBackendLoaded"], false);
         assert_eq!(automation["multipleExternalBackendsLoaded"], false);
