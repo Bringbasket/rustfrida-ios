@@ -279,6 +279,8 @@ unsafe fn hook_recommended_action_to_js(
     item.set_property(ctx, "actionKey", JSValue::string(ctx, &action.action_key));
     item.set_property(ctx, "priority", JSValue::int(action.priority as i32));
     item.set_property(ctx, "allowed", JSValue::bool(action.allowed));
+    item.set_property(ctx, "blockedBy", JSValue::string(ctx, hook_action_blocked_by(action)));
+    item.set_property(ctx, "branch", JSValue::string(ctx, hook_action_branch(action)));
     item.set_property(ctx, "status", JSValue::string(ctx, &action.status));
     item.set_property(ctx, "recommendation", JSValue::string(ctx, &action.recommendation));
     match &action.reason {
@@ -1235,6 +1237,16 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             result.set_property(ctx, "nextActionKey", JSValue::string(ctx, &action.action_key));
             result.set_property(ctx, "nextActionPriority", JSValue::int(action.priority as i32));
             result.set_property(ctx, "nextActionAllowed", JSValue::bool(action.allowed));
+            result.set_property(
+                ctx,
+                "nextActionBlockedBy",
+                JSValue::string(ctx, hook_action_blocked_by(action)),
+            );
+            result.set_property(
+                ctx,
+                "nextActionBranch",
+                JSValue::string(ctx, hook_action_branch(action)),
+            );
             result.set_property(ctx, "nextActionStatus", JSValue::string(ctx, &action.status));
             result.set_property(
                 ctx,
@@ -1505,6 +1517,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             result.set_property(ctx, "nextActionKey", JSValue::null());
             result.set_property(ctx, "nextActionPriority", JSValue::null());
             result.set_property(ctx, "nextActionAllowed", JSValue::null());
+            result.set_property(ctx, "nextActionBlockedBy", JSValue::null());
+            result.set_property(ctx, "nextActionBranch", JSValue::null());
             result.set_property(ctx, "nextActionStatus", JSValue::null());
             result.set_property(ctx, "nextActionRecommendation", JSValue::null());
             result.set_property(ctx, "nextActionReason", JSValue::null());
