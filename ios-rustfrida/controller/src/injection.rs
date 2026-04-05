@@ -840,6 +840,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         external_backend_loaded,
         filesystem_only_in_either_count > 0,
     );
+    let backend_adaptation = hook_backend_adaptation_to_json(backend_matrix, preferred_path, command_mode);
 
     json!({
         "mode": mode,
@@ -864,6 +865,11 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "loadedExternalBackendCount": total_loaded_backend_count,
         "filesystemOnlyBackendDetected": filesystem_only_in_either_count > 0,
         "preferredPath": preferred_path,
+        "backendAdaptation": backend_adaptation.clone(),
+        "backendAdaptationMode": backend_adaptation.get("mode").cloned(),
+        "backendAdaptationAlignment": backend_adaptation.get("alignment").cloned(),
+        "backendAdaptationBias": backend_adaptation.get("recommendedActionBias").cloned(),
+        "backendAdaptationSummary": backend_adaptation.get("summary").cloned(),
         "queryCommandsAllowed": hook_effective_allowed_for(actions, "hook.query"),
         "hookInstallAllowed": hook_effective_allowed_for(actions, "hook.install"),
         "hookStatusAllowed": hook_effective_allowed_for(actions, "hook.status"),
@@ -1083,6 +1089,124 @@ fn json_u64_field(value: &Value, key: &str) -> u64 {
 #[cfg(unix)]
 fn json_array_len(value: &Value, key: &str) -> usize {
     value.get(key).and_then(Value::as_array).map_or(0, Vec::len)
+}
+
+#[cfg(unix)]
+fn json_string_array_field(value: &Value, key: &str) -> Vec<String> {
+    value.get(key)
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default()
+}
+
+#[cfg(unix)]
+fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str, command_mode: &str) -> Value {
+    let topology_kind = backend_matrix
+        .get("topology")
+        .and_then(|value| value.get("kind"))
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
+    let shared_loaded_backend_ids = json_string_array_field(backend_matrix, "loadedInBothBackendIds");
+    let controller_loaded_only_backend_ids =
+        json_string_array_field(backend_matrix, "loadedOnlyInControllerBackendIds");
+    let target_loaded_only_backend_ids = json_string_array_field(backend_matrix, "loadedOnlyInTargetBackendIds");
+    let filesystem_only_backend_ids = json_string_array_field(backend_matrix, "filesystemOnlyBackendIds");
+
+    let alignment = match topology_kind {
+        "clean" => "clean",
+        "filesystem-only" => "filesystem-only",
+        "shared-loaded" => "shared",
+        "controller-loaded-only" | "shared-plus-controller-loaded" => "controller-leading",
+        "target-loaded-only" | "shared-plus-target-loaded" => "target-leading",
+        "split-loaded" | "shared-and-split-loaded" => "split",
+        _ => "unknown",
+    };
+    let mode = match topology_kind {
+        "clean" => "no-adaptation-needed",
+        "filesystem-only" => "preflight-before-inline",
+        "shared-loaded" => "shared-runtime-query-first",
+        "controller-loaded-only" | "target-loaded-only" => "side-specific-runtime-query-first",
+        "shared-plus-controller-loaded" | "shared-plus-target-loaded" => {
+            "shared-runtime-with-sidecar-query-first"
+        }
+        "split-loaded" | "shared-and-split-loaded" => "runtime-alignment-required",
+        _ => "unknown",
+    };
+    let requires_cleanup_phase = command_mode == "cleanup-only";
+    let requires_preflight =
+        topology_kind == "filesystem-only" || matches!(preferred_path, "inline-cautious" | "inline-risky");
+    let requires_query_phase = matches!(preferred_path, "query-only" | "inline-risky")
+        || matches!(
+            topology_kind,
+            "shared-loaded"
+                | "controller-loaded-only"
+                | "target-loaded-only"
+                | "shared-plus-controller-loaded"
+                | "shared-plus-target-loaded"
+                | "split-loaded"
+                | "shared-and-split-loaded"
+        );
+    let inline_install_ready_now = topology_kind == "clean" && preferred_path == "inline-safe";
+    let recommended_action_bias = if command_mode == "blocked" {
+        "blocked"
+    } else if requires_cleanup_phase {
+        "cleanup"
+    } else if topology_kind == "filesystem-only" {
+        "preflight"
+    } else if inline_install_ready_now {
+        "install"
+    } else if requires_query_phase {
+        "query"
+    } else {
+        "observe"
+    };
+    let summary = match recommended_action_bias {
+        "blocked" => "no compatible hook path is currently available",
+        "cleanup" => "current policy only allows cleanup or status commands; stop existing hooks before retrying",
+        "preflight" => "only filesystem backend artifacts were detected; run preflight before inline install",
+        "install" => "no external backend runtime pressure is active; inline install can proceed directly",
+        "query" => match topology_kind {
+            "shared-loaded" => {
+                "the same external backend runtime is already loaded on both sides; query first before attempting coexistence"
+            }
+            "controller-loaded-only" | "target-loaded-only" => {
+                "an external backend runtime is only loaded on one side; query first and avoid immediate inline install"
+            }
+            "shared-plus-controller-loaded" | "shared-plus-target-loaded" => {
+                "a shared backend runtime exists, but one side also has extra loaded backends; query first before adapting"
+            }
+            "split-loaded" | "shared-and-split-loaded" => {
+                "controller and target are not aligned on loaded backend runtimes; stay query-first until runtimes are aligned"
+            }
+            _ => "query-first adaptation is recommended before changing hook state",
+        },
+        _ => "observe backend state before choosing an adaptation path",
+    };
+
+    json!({
+        "mode": mode,
+        "alignment": alignment,
+        "recommendedActionBias": recommended_action_bias,
+        "summary": summary,
+        "requiresQueryPhase": requires_query_phase,
+        "requiresPreflight": requires_preflight,
+        "requiresCleanupPhase": requires_cleanup_phase,
+        "inlineInstallReadyNow": inline_install_ready_now,
+        "sharedLoadedBackendCount": shared_loaded_backend_ids.len(),
+        "controllerLoadedOnlyBackendCount": controller_loaded_only_backend_ids.len(),
+        "targetLoadedOnlyBackendCount": target_loaded_only_backend_ids.len(),
+        "filesystemOnlyBackendCount": filesystem_only_backend_ids.len(),
+        "sharedLoadedBackendIds": shared_loaded_backend_ids,
+        "controllerLoadedOnlyBackendIds": controller_loaded_only_backend_ids,
+        "targetLoadedOnlyBackendIds": target_loaded_only_backend_ids,
+        "filesystemOnlyBackendIds": filesystem_only_backend_ids,
+    })
 }
 
 #[cfg(unix)]
@@ -1456,6 +1580,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "cleanup-only" => "cleanup-only",
         _ => "blocked",
     };
+    let backend_adaptation = hook_backend_adaptation_to_json(backend_matrix, preferred_path, command_mode);
 
     let mode_rank = |action_key: &str| -> u8 {
         match command_mode {
@@ -5089,6 +5214,11 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "autoDowngradeReason": auto_downgrade_reason,
         "preferredPath": preferred_path,
         "backendPressure": backend_pressure,
+        "backendAdaptation": backend_adaptation.clone(),
+        "backendAdaptationMode": backend_adaptation.get("mode").cloned(),
+        "backendAdaptationAlignment": backend_adaptation.get("alignment").cloned(),
+        "backendAdaptationBias": backend_adaptation.get("recommendedActionBias").cloned(),
+        "backendAdaptationSummary": backend_adaptation.get("summary").cloned(),
         "loadedExternalBackendCount": total_loaded_backend_count,
         "singleExternalBackendLoaded": single_external_backend_loaded,
         "multipleExternalBackendsLoaded": multiple_external_backends_loaded,
@@ -11443,6 +11573,17 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["coexistence"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
+        assert_eq!(rendered["hook"]["coexistence"]["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(rendered["hook"]["coexistence"]["backendAdaptationAlignment"], "clean");
+        assert_eq!(rendered["hook"]["coexistence"]["backendAdaptationBias"], "install");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["backendAdaptationSummary"],
+            "no external backend runtime pressure is active; inline install can proceed directly"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["backendAdaptation"]["inlineInstallReadyNow"],
+            true
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBlockedBy"], "none");
@@ -11723,6 +11864,13 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
+        assert_eq!(rendered["hook"]["automation"]["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(rendered["hook"]["automation"]["backendAdaptationAlignment"], "clean");
+        assert_eq!(rendered["hook"]["automation"]["backendAdaptationBias"], "install");
+        assert_eq!(
+            rendered["hook"]["automation"]["backendAdaptation"]["inlineInstallReadyNow"],
+            true
+        );
         assert_eq!(rendered["hook"]["automation"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["automation"]["singleExternalBackendLoaded"], false);
         assert_eq!(rendered["hook"]["automation"]["multipleExternalBackendsLoaded"], false);
@@ -17087,6 +17235,19 @@ mod tests {
         assert_eq!(coexistence["externalBackendInTarget"], true);
         assert_eq!(coexistence["sharedExternalBackend"], true);
         assert_eq!(coexistence["hookInstallAllowed"], true);
+        assert_eq!(coexistence["backendAdaptationMode"], "runtime-alignment-required");
+        assert_eq!(coexistence["backendAdaptationAlignment"], "split");
+        assert_eq!(coexistence["backendAdaptationBias"], "query");
+        assert_eq!(
+            coexistence["backendAdaptation"]["controllerLoadedOnlyBackendIds"],
+            json!(["ellekit"])
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["targetLoadedOnlyBackendIds"],
+            json!(["substrate"])
+        );
+        assert_eq!(coexistence["backendAdaptation"]["requiresQueryPhase"], true);
+        assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
         assert_eq!(coexistence["nextActionKey"], "hook.query");
         assert_eq!(coexistence["nextActionTemplateCount"], 3);
         assert_eq!(coexistence["nextActionTemplates"][0], "objc.classes <filter>");
@@ -17100,6 +17261,12 @@ mod tests {
         );
         assert_eq!(automation["backendPressure"], "both");
         assert_eq!(automation["preferredPath"], "query-only");
+        assert_eq!(automation["backendAdaptationMode"], "runtime-alignment-required");
+        assert_eq!(automation["backendAdaptationAlignment"], "split");
+        assert_eq!(automation["backendAdaptationBias"], "query");
+        assert_eq!(automation["backendAdaptation"]["requiresQueryPhase"], true);
+        assert_eq!(automation["backendAdaptation"]["requiresCleanupPhase"], false);
+        assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
         assert_eq!(automation["loadedExternalBackendCount"], 2);
         assert_eq!(automation["singleExternalBackendLoaded"], false);
         assert_eq!(automation["multipleExternalBackendsLoaded"], true);
@@ -17208,8 +17375,22 @@ mod tests {
         assert_eq!(coexistence["singleExternalBackendLoaded"], false);
         assert_eq!(coexistence["multipleExternalBackendsLoaded"], false);
         assert_eq!(coexistence["loadedExternalBackendCount"], 0);
+        assert_eq!(coexistence["backendAdaptationMode"], "preflight-before-inline");
+        assert_eq!(coexistence["backendAdaptationAlignment"], "filesystem-only");
+        assert_eq!(coexistence["backendAdaptationBias"], "preflight");
+        assert_eq!(coexistence["backendAdaptation"]["requiresPreflight"], true);
+        assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
+        assert_eq!(
+            coexistence["backendAdaptation"]["filesystemOnlyBackendIds"],
+            json!(["libhooker"])
+        );
 
         assert_eq!(automation["preferredPath"], "inline-cautious");
+        assert_eq!(automation["backendAdaptationMode"], "preflight-before-inline");
+        assert_eq!(automation["backendAdaptationAlignment"], "filesystem-only");
+        assert_eq!(automation["backendAdaptationBias"], "preflight");
+        assert_eq!(automation["backendAdaptation"]["requiresPreflight"], true);
+        assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
         assert_eq!(automation["loadedExternalBackendCount"], 0);
         assert_eq!(automation["singleExternalBackendLoaded"], false);
         assert_eq!(automation["multipleExternalBackendsLoaded"], false);
