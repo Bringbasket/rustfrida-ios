@@ -1129,12 +1129,23 @@ fn conflict_resolution_chain_entry(
     reason: &str,
     group: &Value,
 ) -> Value {
+    let (retryable, max_suggested_retries, retry_delay_hint_ms) = phase_retry_policy(phase);
+    let (timeout_hint_ms, timeout_action) = phase_timeout_policy(phase);
+    let error_code = phase_failure_code(phase);
+    let timeout_error_code = phase_timeout_error_code(phase);
     json!({
         "id": format!("conflict-resolution:{group_key}:{index}"),
         "index": index,
         "groupKey": group_key,
         "phase": phase,
         "reason": reason,
+        "retryable": retryable,
+        "maxSuggestedRetries": max_suggested_retries,
+        "retryDelayHintMs": retry_delay_hint_ms,
+        "timeoutHintMs": timeout_hint_ms,
+        "timeoutAction": timeout_action,
+        "errorCode": error_code,
+        "timeoutErrorCode": timeout_error_code,
         "templates": group.get("templates").cloned().unwrap_or(Value::Null),
         "templateCount": group.get("templateCount").cloned().unwrap_or(Value::Null),
         "commandJsonTemplates": group.get("commandJsonTemplates").cloned().unwrap_or(Value::Null),
@@ -1457,6 +1468,32 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         )],
         _ => Vec::new(),
     };
+    let preferred_conflict_resolution_phase_order = preferred_conflict_resolution_chain
+        .iter()
+        .filter_map(|entry| entry.get("phase").and_then(Value::as_str))
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
+    let preferred_conflict_resolution_retryable_step_count = preferred_conflict_resolution_chain
+        .iter()
+        .filter(|entry| entry.get("retryable").and_then(Value::as_bool).unwrap_or(false))
+        .count();
+    let preferred_conflict_resolution_total_retry_budget = preferred_conflict_resolution_chain
+        .iter()
+        .map(|entry| entry.get("maxSuggestedRetries").and_then(Value::as_u64).unwrap_or(0))
+        .sum::<u64>();
+    let preferred_conflict_resolution_termination_policy =
+        if preferred_conflict_resolution_chain.is_empty() {
+            Value::Null
+        } else {
+            json!({
+                "mode": "phase-retry-budget",
+                "terminateWhen": "all-retryable-conflict-resolution-steps-exhausted",
+                "escalateWhen": "non-retryable-conflict-step-failed-or-budget-exhausted",
+                "timeoutEscalateWhen": "phase-timeout-exceeded",
+                "retryableStepCount": preferred_conflict_resolution_retryable_step_count,
+                "totalRetryBudget": preferred_conflict_resolution_total_retry_budget,
+            })
+        };
     let conflict_backend_pairs = controller_loaded_only_backend_ids
         .iter()
         .flat_map(|controller_backend_id| {
@@ -1487,6 +1524,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         })
         .collect::<Vec<_>>();
     let preferred_conflict_backend_pair = conflict_backend_pairs.first().cloned();
+    let has_preferred_conflict_backend_pair = preferred_conflict_backend_pair.is_some();
 
     json!({
         "mode": mode,
@@ -1623,6 +1661,32 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .as_ref()
             .and_then(|item| item.get("resolutionChainCount"))
             .cloned(),
+        "preferredConflictResolutionPhaseOrder": if !has_preferred_conflict_backend_pair
+            || preferred_conflict_resolution_phase_order.is_empty()
+        {
+            Value::Null
+        } else {
+            json!(preferred_conflict_resolution_phase_order)
+        },
+        "preferredConflictResolutionRetryableStepCount": if !has_preferred_conflict_backend_pair
+            || preferred_conflict_resolution_chain.is_empty()
+        {
+            Value::Null
+        } else {
+            json!(preferred_conflict_resolution_retryable_step_count)
+        },
+        "preferredConflictResolutionTotalRetryBudget": if !has_preferred_conflict_backend_pair
+            || preferred_conflict_resolution_chain.is_empty()
+        {
+            Value::Null
+        } else {
+            json!(preferred_conflict_resolution_total_retry_budget)
+        },
+        "preferredConflictResolutionTerminationPolicy": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_termination_policy
+        } else {
+            Value::Null
+        },
     })
 }
 
@@ -17724,6 +17788,18 @@ mod tests {
             "query"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["resolutionChain"][0]["retryable"],
+            true
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["resolutionChain"][0]["maxSuggestedRetries"],
+            1
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["resolutionChain"][1]["timeoutAction"],
+            "re-run-preflight-or-switch-to-query-only"
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["resolutionChain"][1]["groupKey"],
             "preflight"
         );
@@ -17732,12 +17808,28 @@ mod tests {
             2
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseOrder"],
+            json!(["query", "preflight"])
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRetryableStepCount"],
+            2
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionTotalRetryBudget"],
+            3
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionChain"][0]["groupKey"],
             "query"
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionChain"][1]["groupKey"],
             "preflight"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionTerminationPolicy"]["mode"],
+            "phase-retry-budget"
         );
         assert_eq!(
             coexistence["backendAdaptation"]["controllerLoadedOnlyBackendIds"],
@@ -17785,6 +17877,10 @@ mod tests {
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionChain"][0]["groupKey"],
             "query"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseOrder"],
+            json!(["query", "preflight"])
         );
         assert_eq!(automation["backendAdaptation"]["requiresQueryPhase"], true);
         assert_eq!(automation["backendAdaptation"]["requiresCleanupPhase"], false);
@@ -17908,6 +18004,7 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 0);
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPair"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionTerminationPolicy"].is_null());
         assert_eq!(coexistence["backendAdaptation"]["preflightTemplates"][1], "controller --preflight-only --preflight-json --pid <pid>");
         assert_eq!(coexistence["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
