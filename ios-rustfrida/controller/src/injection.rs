@@ -1233,6 +1233,134 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         "install" => install_group.clone(),
         _ => command_template_group_to_json("none", Vec::new()),
     };
+    let mut backend_specific_recommendations = backend_matrix
+        .get("entries")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| {
+            let backend_id = entry.get("id").and_then(Value::as_str)?;
+            let display_name = entry
+                .get("displayName")
+                .and_then(Value::as_str)
+                .unwrap_or(backend_id);
+            let loaded_by = entry.get("loadedBy").and_then(Value::as_str).unwrap_or("none");
+            let filesystem_only = entry
+                .get("filesystemOnlyInEither")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let visible_in_controller = entry
+                .get("visibleInController")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let visible_in_target = entry
+                .get("visibleInTarget")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let (scope, state, suggested_group_key, suggested_phase, reason, priority) =
+                if command_mode == "cleanup-only" && (loaded_by != "none" || filesystem_only) {
+                    (
+                        if filesystem_only {
+                            "filesystem-only"
+                        } else {
+                            loaded_by
+                        },
+                        if filesystem_only {
+                            "filesystem-artifact"
+                        } else {
+                            "loaded-runtime"
+                        },
+                        "cleanup",
+                        "cleanup",
+                        "current policy only allows cleanup or status commands before retrying hook install",
+                        0u8,
+                    )
+                } else if filesystem_only {
+                    (
+                        "filesystem-only",
+                        "filesystem-artifact",
+                        "preflight",
+                        "preflight",
+                        "filesystem artifact detected for this backend; refresh diagnostics before inline install",
+                        1u8,
+                    )
+                } else {
+                    match loaded_by {
+                        "both" => (
+                            "shared",
+                            "loaded-runtime",
+                            "query",
+                            "query",
+                            "this backend runtime is loaded on both controller and target; query first before changing hook state",
+                            2u8,
+                        ),
+                        "controller" => (
+                            "controller",
+                            "loaded-runtime",
+                            "query",
+                            "query",
+                            "this backend runtime is only loaded in controller; keep the flow query-first until target alignment is confirmed",
+                            3u8,
+                        ),
+                        "target" => (
+                            "target",
+                            "loaded-runtime",
+                            "query",
+                            "query",
+                            "this backend runtime is only loaded in target; keep the flow query-first until controller alignment is confirmed",
+                            3u8,
+                        ),
+                        _ => return None,
+                    }
+                };
+            Some(json!({
+                "backendId": backend_id,
+                "displayName": display_name,
+                "scope": scope,
+                "state": state,
+                "visibleInController": visible_in_controller,
+                "visibleInTarget": visible_in_target,
+                "loadedBy": loaded_by,
+                "suggestedGroupKey": suggested_group_key,
+                "suggestedPhase": suggested_phase,
+                "reason": reason,
+                "priority": priority,
+            }))
+        })
+        .collect::<Vec<_>>();
+    backend_specific_recommendations.sort_by(|left, right| {
+        let left_key = (
+            left.get("suggestedGroupKey")
+                .and_then(Value::as_str)
+                .map(|value| value != preferred_group_key)
+                .unwrap_or(true),
+            left.get("priority").and_then(Value::as_u64).unwrap_or(u64::MAX),
+            left.get("backendId").and_then(Value::as_str).unwrap_or(""),
+        );
+        let right_key = (
+            right.get("suggestedGroupKey")
+                .and_then(Value::as_str)
+                .map(|value| value != preferred_group_key)
+                .unwrap_or(true),
+            right.get("priority").and_then(Value::as_u64).unwrap_or(u64::MAX),
+            right.get("backendId").and_then(Value::as_str).unwrap_or(""),
+        );
+        left_key.cmp(&right_key)
+    });
+    let preferred_backend_recommendation = backend_specific_recommendations.first().cloned();
+    let conflict_backend_pairs = controller_loaded_only_backend_ids
+        .iter()
+        .flat_map(|controller_backend_id| {
+            target_loaded_only_backend_ids.iter().map(move |target_backend_id| {
+                json!({
+                    "pairKey": format!("{controller_backend_id}->{target_backend_id}"),
+                    "controllerBackendId": controller_backend_id,
+                    "targetBackendId": target_backend_id,
+                    "reason": "controller and target are loaded with different backend runtimes",
+                })
+            })
+        })
+        .collect::<Vec<_>>();
 
     json!({
         "mode": mode,
@@ -1319,6 +1447,27 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .get("commandJsonTemplateCount")
             .cloned()
             .unwrap_or(Value::Null),
+        "backendSpecificRecommendationCount": backend_specific_recommendations.len(),
+        "backendSpecificRecommendations": backend_specific_recommendations,
+        "preferredBackendRecommendation": preferred_backend_recommendation.clone(),
+        "preferredBackendId": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("backendId"))
+            .cloned(),
+        "preferredBackendDisplayName": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("displayName"))
+            .cloned(),
+        "preferredBackendScope": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("scope"))
+            .cloned(),
+        "preferredBackendReason": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("reason"))
+            .cloned(),
+        "conflictBackendPairCount": conflict_backend_pairs.len(),
+        "conflictBackendPairs": conflict_backend_pairs,
     })
 }
 
@@ -11698,6 +11847,11 @@ mod tests {
             "install"
         );
         assert_eq!(
+            rendered["hook"]["coexistence"]["backendAdaptation"]["backendSpecificRecommendationCount"],
+            0
+        );
+        assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendRecommendation"].is_null());
+        assert_eq!(
             rendered["hook"]["coexistence"]["backendAdaptation"]["preferredTemplateCount"],
             5
         );
@@ -11999,6 +12153,10 @@ mod tests {
         assert_eq!(
             rendered["hook"]["automation"]["backendAdaptation"]["preferredGroupKey"],
             "install"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["backendAdaptation"]["backendSpecificRecommendationCount"],
+            0
         );
         assert_eq!(
             rendered["hook"]["automation"]["backendAdaptation"]["inlineInstallReadyNow"],
@@ -17374,6 +17532,14 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["preferredGroupKey"], "query");
         assert_eq!(coexistence["backendAdaptation"]["preferredTemplateCount"], 3);
         assert_eq!(coexistence["backendAdaptation"]["installTemplateCount"], 0);
+        assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "ellekit");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "controller");
+        assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 1);
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["pairKey"],
+            "ellekit->substrate"
+        );
         assert_eq!(
             coexistence["backendAdaptation"]["controllerLoadedOnlyBackendIds"],
             json!(["ellekit"])
@@ -17402,6 +17568,9 @@ mod tests {
         assert_eq!(automation["backendAdaptationBias"], "query");
         assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "query");
         assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 3);
+        assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
+        assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "ellekit");
+        assert_eq!(automation["backendAdaptation"]["conflictBackendPairCount"], 1);
         assert_eq!(automation["backendAdaptation"]["requiresQueryPhase"], true);
         assert_eq!(automation["backendAdaptation"]["requiresCleanupPhase"], false);
         assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
@@ -17518,6 +17687,10 @@ mod tests {
         assert_eq!(coexistence["backendAdaptationBias"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["preferredGroupKey"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["preferredTemplateCount"], 2);
+        assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "libhooker");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "filesystem-only");
+        assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 0);
         assert_eq!(coexistence["backendAdaptation"]["preflightTemplates"][1], "controller --preflight-only --preflight-json --pid <pid>");
         assert_eq!(coexistence["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
@@ -17532,6 +17705,8 @@ mod tests {
         assert_eq!(automation["backendAdaptationBias"], "preflight");
         assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "preflight");
         assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 2);
+        assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
+        assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(automation["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
         assert_eq!(automation["loadedExternalBackendCount"], 0);
