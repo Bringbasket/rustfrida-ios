@@ -11392,7 +11392,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.hookenv'); return value.indexOf('conflict_state=') !== -1 && value.indexOf('risk_level=') !== -1 && value.indexOf('command_mode=') !== -1 && value.indexOf('coexistence_mode=') !== -1 && value.indexOf('coexistence_recommendation=') !== -1 && value.indexOf('recommended_action ') !== -1 && value.indexOf('key=') !== -1 && value.indexOf('priority=') !== -1 && value.indexOf('loaded_backend_count=') !== -1 && value.indexOf('hook_install_commands_allowed=') !== -1 && value.indexOf('query_commands_allowed=') !== -1; })()")
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.hookenv'); return value.indexOf('conflict_state=') !== -1 && value.indexOf('risk_level=') !== -1 && value.indexOf('command_mode=') !== -1 && value.indexOf('coexistence_mode=') !== -1 && value.indexOf('coexistence_recommendation=') !== -1 && value.indexOf('recommended_action ') !== -1 && value.indexOf('next_action ') !== -1 && value.indexOf('recommended_action_count=') !== -1 && value.indexOf('allowed_action_count=') !== -1 && value.indexOf('blocked_action_count=') !== -1 && value.indexOf('key=') !== -1 && value.indexOf('priority=') !== -1 && value.indexOf('loaded_backend_count=') !== -1 && value.indexOf('hook_install_commands_allowed=') !== -1 && value.indexOf('query_commands_allowed=') !== -1; })()")
                     .expect("agent native hook env summary"),
                 "true"
             );

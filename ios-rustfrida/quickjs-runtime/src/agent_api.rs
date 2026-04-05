@@ -2319,6 +2319,20 @@ function formatHookEnvironmentReport(report) {
     lines.push('filesystem_only_backend_count=' + String(Number(report.filesystemOnlyBackendCount || 0)));
     lines.push('loaded_image_count=' + String(Number(report.loadedImageCount || 0)));
     lines.push('filesystem_path_count=' + String(Number(report.filesystemPathCount || 0)));
+    lines.push('recommended_action_count=' + String(Number(report.recommendedActionCount || 0)));
+    lines.push('allowed_action_count=' + String(Number(report.allowedActionCount || 0)));
+    lines.push('blocked_action_count=' + String(Number(report.blockedActionCount || 0)));
+    if (report.nextAction !== null && report.nextAction !== undefined) {
+        lines.push(
+            'next_action ' +
+                String(report.nextActionCommandGroup || report.nextAction.commandGroup || '<unknown>') +
+                ' key=' + String(report.nextActionKey || report.nextAction.actionKey || '') +
+                ' priority=' + String(Number(report.nextActionPriority === null || report.nextActionPriority === undefined ? report.nextAction.priority || 0 : report.nextActionPriority)) +
+                ' allowed=' + String(report.nextActionAllowed === null || report.nextActionAllowed === undefined ? !!report.nextAction.allowed : !!report.nextActionAllowed) +
+                ' status=' + String(report.nextActionStatus || report.nextAction.status || '') +
+                ' recommendation=' + String(report.nextActionRecommendation || report.nextAction.recommendation || '')
+        );
+    }
     if (report.reason !== null && report.reason !== undefined) {
         lines.push('reason=' + String(report.reason));
     }
