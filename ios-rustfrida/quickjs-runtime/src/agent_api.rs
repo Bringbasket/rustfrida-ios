@@ -2322,6 +2322,10 @@ function formatHookEnvironmentReport(report) {
     lines.push('recommended_action_count=' + String(Number(report.recommendedActionCount || 0)));
     lines.push('allowed_action_count=' + String(Number(report.allowedActionCount || 0)));
     lines.push('blocked_action_count=' + String(Number(report.blockedActionCount || 0)));
+    const suggestedSequence = Array.isArray(report.suggestedSequence) ? report.suggestedSequence : [];
+    for (const command of suggestedSequence) {
+        lines.push('suggested_sequence ' + String(command));
+    }
     if (report.nextAction !== null && report.nextAction !== undefined) {
         lines.push(
             'next_action ' +
@@ -2332,6 +2336,11 @@ function formatHookEnvironmentReport(report) {
                 ' status=' + String(report.nextActionStatus || report.nextAction.status || '') +
                 ' recommendation=' + String(report.nextActionRecommendation || report.nextAction.recommendation || '')
         );
+    }
+    const nextActionTemplates = Array.isArray(report.nextActionTemplates) ? report.nextActionTemplates : [];
+    lines.push('next_action_template_count=' + String(Number(report.nextActionTemplateCount || nextActionTemplates.length || 0)));
+    for (const command of nextActionTemplates) {
+        lines.push('next_action_template ' + String(command));
     }
     if (report.reason !== null && report.reason !== undefined) {
         lines.push('reason=' + String(report.reason));

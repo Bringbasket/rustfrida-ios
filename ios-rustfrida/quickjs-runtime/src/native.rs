@@ -58,6 +58,111 @@ unsafe fn hook_recommended_action_to_js(
     item
 }
 
+fn hook_automation_suggested_sequence(preferred_path: &str) -> Vec<String> {
+    let commands: &[&str] = match preferred_path {
+        "inline-safe" => &[
+            "native.hookenv",
+            "trace status",
+            "trace <objc-filter|native-target>",
+            "stalker <objc-filter|native-target>",
+        ],
+        "inline-cautious" => &[
+            "native.hookenv",
+            "controller --preflight-only --preflight-json --pid <pid>",
+            "trace status",
+            "trace <objc-filter|native-target> # caution-filesystem-only-backend-artifacts",
+            "stalker <objc-filter|native-target> # caution-filesystem-only-backend-artifacts",
+        ],
+        "inline-risky" => &[
+            "native.hookenv",
+            "trace status",
+            "trace <objc-filter|native-target> # risky-with-external-backend",
+            "stalker <objc-filter|native-target> # risky-with-external-backend",
+        ],
+        "query-only" => &[
+            "native.hookenv",
+            "objc.classes <filter>",
+            "native.images <filter>",
+            "swift.types <filter>",
+        ],
+        "cleanup-only" => &[
+            "trace status",
+            "stalker status",
+            "jhook status",
+            "shook status",
+            "hfl status",
+            "trace stop",
+            "stalker stop",
+            "jhook stop",
+            "shook stop",
+            "hfl stop",
+        ],
+        _ => &[
+            "native.hookenv",
+            "controller --preflight-only --preflight-json",
+            "check IOS_RUSTFRIDA_HOOK_POLICY and retry",
+        ],
+    };
+
+    commands.iter().map(|item| (*item).to_string()).collect::<Vec<_>>()
+}
+
+fn hook_action_command_templates(action_key: &str, preferred_path: &str) -> Vec<String> {
+    let templates: &[&str] = match action_key {
+        "hook.bootstrap" => &[
+            "native.hookenv",
+            "controller --preflight-only --preflight-json --pid <pid>",
+            "controller --inject-json --pid <pid>",
+        ],
+        "hook.query" => &[
+            "objc.classes <filter>",
+            "native.images <filter>",
+            "swift.types <filter>",
+        ],
+        "hook.install" => match preferred_path {
+            "inline-risky" => &[
+                "trace <objc-filter|native-target> # risky-with-external-backend",
+                "stalker <objc-filter|native-target> # risky-with-external-backend",
+                "jhook <class> <selector> [meta] # risky-with-external-backend",
+                "shook <type> <method> # risky-with-external-backend",
+                "hfl <module> <offset> # risky-with-external-backend",
+            ],
+            "inline-cautious" => &[
+                "trace <objc-filter|native-target> # caution-filesystem-only-backend-artifacts",
+                "stalker <objc-filter|native-target> # caution-filesystem-only-backend-artifacts",
+                "jhook <class> <selector> [meta] # caution-filesystem-only-backend-artifacts",
+                "shook <type> <method> # caution-filesystem-only-backend-artifacts",
+                "hfl <module> <offset> # caution-filesystem-only-backend-artifacts",
+            ],
+            "inline-safe" => &[
+                "trace <objc-filter|native-target>",
+                "stalker <objc-filter|native-target>",
+                "jhook <class> <selector> [meta]",
+                "shook <type> <method>",
+                "hfl <module> <offset>",
+            ],
+            _ => &[],
+        },
+        "hook.status" => &[
+            "trace status",
+            "stalker status",
+            "jhook status",
+            "shook status",
+            "hfl status",
+        ],
+        "hook.stop" => &[
+            "trace stop",
+            "stalker stop",
+            "jhook stop",
+            "shook stop",
+            "hfl stop",
+        ],
+        _ => &[],
+    };
+
+    templates.iter().map(|item| (*item).to_string()).collect::<Vec<_>>()
+}
+
 unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnvironmentReport) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
     let decision = resolve_hook_strategy().ok();
@@ -231,6 +336,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         .iter()
         .find(|action| action.allowed)
         .or_else(|| recommended_actions_vec.first());
+    let suggested_sequence = hook_automation_suggested_sequence(coexistence_mode);
     result.set_property(
         ctx,
         "recommendedActionCount",
@@ -246,8 +352,10 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "blockedActionCount",
         JSValue::int(blocked_action_count as i32),
     );
+    set_string_array_property(ctx, result.raw(), "suggestedSequence", &suggested_sequence);
     match next_action {
         Some(action) => {
+            let next_action_templates = hook_action_command_templates(&action.action_key, coexistence_mode);
             result.set_property(ctx, "nextAction", hook_recommended_action_to_js(ctx, action));
             result.set_property(
                 ctx,
@@ -262,6 +370,17 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 ctx,
                 "nextActionRecommendation",
                 JSValue::string(ctx, &action.recommendation),
+            );
+            result.set_property(
+                ctx,
+                "nextActionTemplateCount",
+                JSValue::int(next_action_templates.len() as i32),
+            );
+            set_string_array_property(
+                ctx,
+                result.raw(),
+                "nextActionTemplates",
+                &next_action_templates,
             );
             match &action.reason {
                 Some(reason) => {
@@ -279,6 +398,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             result.set_property(ctx, "nextActionStatus", JSValue::null());
             result.set_property(ctx, "nextActionRecommendation", JSValue::null());
             result.set_property(ctx, "nextActionReason", JSValue::null());
+            result.set_property(ctx, "nextActionTemplateCount", JSValue::int(0));
+            set_string_array_property(ctx, result.raw(), "nextActionTemplates", &[]);
         }
     }
 
