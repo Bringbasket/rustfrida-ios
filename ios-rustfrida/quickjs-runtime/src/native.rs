@@ -33,6 +33,14 @@ unsafe fn set_string_array_property(ctx: *mut ffi::JSContext, obj: ffi::JSValue,
     JSValue(obj).set_property(ctx, name, JSValue(array));
 }
 
+unsafe fn string_vec_to_js_array(ctx: *mut ffi::JSContext, items: &[String]) -> ffi::JSValue {
+    let array = ffi::JS_NewArray(ctx);
+    for (index, item) in items.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, JSValue::string(ctx, item).raw());
+    }
+    array
+}
+
 unsafe fn hook_recommended_action_to_js(
     ctx: *mut ffi::JSContext,
     action: &native_api::HookRecommendedAction,
@@ -518,6 +526,63 @@ unsafe fn hook_fallback_step_from_command_json_template_to_js(
         template_value.get_property(ctx, "placeholders"),
     );
     item.set_property(ctx, "cliArgs", template_value.get_property(ctx, "cliArgs"));
+
+    item.raw()
+}
+
+unsafe fn hook_command_json_template_array_to_js(
+    ctx: *mut ffi::JSContext,
+    templates: &[String],
+) -> (ffi::JSValue, usize) {
+    let array = ffi::JS_NewArray(ctx);
+    let mut eligible_count = 0usize;
+    for (index, template) in templates.iter().enumerate() {
+        let entry = JSValue(hook_command_json_template_to_js(ctx, template));
+        if entry
+            .get_property(ctx, "commandJsonEligible")
+            .to_bool()
+            .unwrap_or(false)
+        {
+            eligible_count += 1;
+        }
+        ffi::JS_SetPropertyUint32(ctx, array, index as u32, entry.raw());
+    }
+    (array, eligible_count)
+}
+
+unsafe fn hook_escalation_recommendation_to_js(
+    ctx: *mut ffi::JSContext,
+    key: &str,
+    condition: &str,
+    phase: &str,
+    reason: &str,
+    note: Option<&str>,
+    templates: &[String],
+    on_error_codes: &[String],
+) -> ffi::JSValue {
+    let item = JSValue(ffi::JS_NewObject(ctx));
+    let (command_json_templates, command_json_eligible_template_count) =
+        hook_command_json_template_array_to_js(ctx, templates);
+
+    item.set_property(ctx, "key", JSValue::string(ctx, key));
+    item.set_property(ctx, "condition", JSValue::string(ctx, condition));
+    item.set_property(ctx, "phase", JSValue::string(ctx, phase));
+    item.set_property(ctx, "reason", JSValue::string(ctx, reason));
+    match note {
+        Some(value) => item.set_property(ctx, "note", JSValue::string(ctx, value)),
+        None => item.set_property(ctx, "note", JSValue::null()),
+    };
+    item.set_property(ctx, "onErrorCodeCount", JSValue::int(on_error_codes.len() as i32));
+    item.set_property(ctx, "onErrorCodes", JSValue(string_vec_to_js_array(ctx, on_error_codes)));
+    item.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
+    set_string_array_property(ctx, item.raw(), "templates", templates);
+    item.set_property(ctx, "commandJsonTemplateCount", JSValue::int(templates.len() as i32));
+    item.set_property(ctx, "commandJsonTemplates", JSValue(command_json_templates));
+    item.set_property(
+        ctx,
+        "commandJsonEligibleTemplateCount",
+        JSValue::int(command_json_eligible_template_count as i32),
+    );
 
     item.raw()
 }
@@ -1298,11 +1363,90 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             phase_error.set_property(ctx, "timeoutErrorCode", JSValue::string(ctx, timeout_error_code));
             ffi::JS_SetPropertyUint32(ctx, phase_error_codes, index as u32, phase_error.raw());
 
-            let escalation = JSValue(ffi::JS_NewObject(ctx));
-            escalation.set_property(ctx, "key", JSValue::string(ctx, phase));
-            escalation.set_property(ctx, "phase", JSValue::string(ctx, phase));
-            escalation.set_property(ctx, "summary", JSValue::string(ctx, timeout_action));
-            ffi::JS_SetPropertyUint32(ctx, escalation_recommendations, index as u32, escalation.raw());
+        }
+
+        let mut escalation_recommendation_count = 0usize;
+        let escalation_preflight_templates =
+            vec!["controller --preflight-only --preflight-json --pid <pid>".to_string()];
+        let escalation_preflight_error_codes = vec![
+            "hook-fallback-preflight-failed".to_string(),
+            "hook-fallback-inject-failed".to_string(),
+            "hook-fallback-preflight-timeout".to_string(),
+            "hook-fallback-inject-timeout".to_string(),
+        ];
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            escalation_recommendations,
+            escalation_recommendation_count as u32,
+            hook_escalation_recommendation_to_js(
+                ctx,
+                "preflight-refresh",
+                "always",
+                "preflight",
+                "refresh target context and diagnostics before changing hook policy or retrying injection",
+                None,
+                &escalation_preflight_templates,
+                &escalation_preflight_error_codes,
+            ),
+        );
+        escalation_recommendation_count += 1;
+
+        if recommended_actions_vec
+            .iter()
+            .any(|action| action.action_key == "hook.query" && action.allowed)
+        {
+            let escalation_query_templates = vec![
+                "native.hookenv".to_string(),
+                "objc.classes <filter>".to_string(),
+                "native.images <filter>".to_string(),
+                "swift.types <filter>".to_string(),
+            ];
+            let escalation_query_error_codes = vec![
+                "hook-fallback-query-failed".to_string(),
+                "hook-fallback-query-timeout".to_string(),
+                "hook-fallback-hook-install-failed".to_string(),
+                "hook-fallback-hook-install-timeout".to_string(),
+            ];
+            ffi::JS_SetPropertyUint32(
+                ctx,
+                escalation_recommendations,
+                escalation_recommendation_count as u32,
+                hook_escalation_recommendation_to_js(
+                    ctx,
+                    "query-only-path",
+                    "query-commands-allowed",
+                    "query",
+                    "switch to query-only diagnostics path when inline hook actions are blocked",
+                    None,
+                    &escalation_query_templates,
+                    &escalation_query_error_codes,
+                ),
+            );
+            escalation_recommendation_count += 1;
+        }
+
+        if next_action.map(|action| !action.allowed).unwrap_or(false) {
+            let escalation_policy_templates = vec!["native.hookenv".to_string()];
+            let escalation_policy_error_codes = vec![
+                "hook-fallback-diagnose-failed".to_string(),
+                "hook-fallback-diagnose-timeout".to_string(),
+            ];
+            ffi::JS_SetPropertyUint32(
+                ctx,
+                escalation_recommendations,
+                escalation_recommendation_count as u32,
+                hook_escalation_recommendation_to_js(
+                    ctx,
+                    "policy-review",
+                    "selected-next-action-blocked",
+                    "diagnose",
+                    "hook policy blocked the selected next action; inspect environment summary and adjust policy before retrying",
+                    Some("review IOS_RUSTFRIDA_HOOK_POLICY / target hook backend and retry with preflight-only first"),
+                    &escalation_policy_templates,
+                    &escalation_policy_error_codes,
+                ),
+            );
+            escalation_recommendation_count += 1;
         }
 
         let retryable_phase_count = phase_order
@@ -1376,9 +1520,14 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         fallback_plan.set_property(
             ctx,
             "escalationRecommendationCount",
-            JSValue::int(phase_order.len() as i32),
+            JSValue::int(escalation_recommendation_count as i32),
         );
         fallback_plan.set_property(ctx, "escalationRecommendations", JSValue(escalation_recommendations));
+        if escalation_recommendation_count > 0 {
+            fallback_plan.set_property(ctx, "suggestedEscalationKey", JSValue::string(ctx, "preflight-refresh"));
+        } else {
+            fallback_plan.set_property(ctx, "suggestedEscalationKey", JSValue::null());
+        }
         fallback_plan.set_property(
             ctx,
             "commandJsonTemplateCount",
