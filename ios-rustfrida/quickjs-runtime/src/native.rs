@@ -1244,6 +1244,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             match first_step {
                 Some(step_raw) => {
                     let step = JSValue(step_raw);
+                    let next_step_command_json_template = step.get_property(ctx, "commandJsonTemplate");
                     result.set_property(ctx, "nextStep", step.dup(ctx));
                     result.set_property(ctx, "nextStepSource", JSValue::string(ctx, "next-action"));
                     result.set_property(ctx, "nextStepId", step.get_property(ctx, "id"));
@@ -1258,6 +1259,21 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                         ctx,
                         "nextStepCommandJsonEligible",
                         step.get_property(ctx, "commandJsonEligible"),
+                    );
+                    result.set_property(
+                        ctx,
+                        "nextStepCommandJsonTemplate",
+                        next_step_command_json_template.dup(ctx),
+                    );
+                    result.set_property(
+                        ctx,
+                        "nextStepCommandJsonTemplateCommand",
+                        next_step_command_json_template.get_property(ctx, "command"),
+                    );
+                    result.set_property(
+                        ctx,
+                        "nextStepCommandJsonTemplateKind",
+                        next_step_command_json_template.get_property(ctx, "kind"),
                     );
                     result.set_property(ctx, "nextStepKind", step.get_property(ctx, "kind"));
                     result.set_property(ctx, "nextStepRetryable", step.get_property(ctx, "retryable"));
@@ -1293,6 +1309,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                         "nextStepRequiresFallback",
                         step.get_property(ctx, "requiresFallback"),
                     );
+                    next_step_command_json_template.free(ctx);
+                    let active_step_command_json_template = step.get_property(ctx, "commandJsonTemplate");
                     result.set_property(ctx, "activeStep", step.dup(ctx));
                     result.set_property(ctx, "activeStepSource", JSValue::string(ctx, "next-action"));
                     result.set_property(ctx, "activeStepAllowed", step.get_property(ctx, "allowed"));
@@ -1314,6 +1332,21 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                         ctx,
                         "activeStepCommandJsonEligible",
                         step.get_property(ctx, "commandJsonEligible"),
+                    );
+                    result.set_property(
+                        ctx,
+                        "activeStepCommandJsonTemplate",
+                        active_step_command_json_template.dup(ctx),
+                    );
+                    result.set_property(
+                        ctx,
+                        "activeStepCommandJsonTemplateCommand",
+                        active_step_command_json_template.get_property(ctx, "command"),
+                    );
+                    result.set_property(
+                        ctx,
+                        "activeStepCommandJsonTemplateKind",
+                        active_step_command_json_template.get_property(ctx, "kind"),
                     );
                     result.set_property(ctx, "activeStepRetryable", step.get_property(ctx, "retryable"));
                     result.set_property(
@@ -1342,6 +1375,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     );
                     result.set_property(ctx, "activeStepPlaceholders", step.get_property(ctx, "placeholders"));
                     result.set_property(ctx, "activeStepCliArgs", step.get_property(ctx, "cliArgs"));
+                    active_step_command_json_template.free(ctx);
                     step.free(ctx);
                 }
                 None => {
@@ -1356,6 +1390,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     result.set_property(ctx, "nextStepCommand", JSValue::null());
                     result.set_property(ctx, "nextStepPhase", JSValue::null());
                     result.set_property(ctx, "nextStepCommandJsonEligible", JSValue::null());
+                    result.set_property(ctx, "nextStepCommandJsonTemplate", JSValue::null());
+                    result.set_property(ctx, "nextStepCommandJsonTemplateCommand", JSValue::null());
+                    result.set_property(ctx, "nextStepCommandJsonTemplateKind", JSValue::null());
                     result.set_property(ctx, "nextStepKind", JSValue::null());
                     result.set_property(ctx, "nextStepRetryable", JSValue::null());
                     result.set_property(ctx, "nextStepMaxSuggestedRetries", JSValue::null());
@@ -1384,6 +1421,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     result.set_property(ctx, "activeStepRequiresFallback", JSValue::null());
                     result.set_property(ctx, "activeStepKind", JSValue::null());
                     result.set_property(ctx, "activeStepCommandJsonEligible", JSValue::null());
+                    result.set_property(ctx, "activeStepCommandJsonTemplate", JSValue::null());
+                    result.set_property(ctx, "activeStepCommandJsonTemplateCommand", JSValue::null());
+                    result.set_property(ctx, "activeStepCommandJsonTemplateKind", JSValue::null());
                     result.set_property(ctx, "activeStepRetryable", JSValue::null());
                     result.set_property(ctx, "activeStepMaxSuggestedRetries", JSValue::null());
                     result.set_property(ctx, "activeStepRetryDelayHintMs", JSValue::null());
@@ -1439,6 +1479,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             result.set_property(ctx, "nextStepCommand", JSValue::null());
             result.set_property(ctx, "nextStepPhase", JSValue::null());
             result.set_property(ctx, "nextStepCommandJsonEligible", JSValue::null());
+            result.set_property(ctx, "nextStepCommandJsonTemplate", JSValue::null());
+            result.set_property(ctx, "nextStepCommandJsonTemplateCommand", JSValue::null());
+            result.set_property(ctx, "nextStepCommandJsonTemplateKind", JSValue::null());
             result.set_property(ctx, "nextStepKind", JSValue::null());
             result.set_property(ctx, "nextStepRetryable", JSValue::null());
             result.set_property(ctx, "nextStepMaxSuggestedRetries", JSValue::null());
@@ -1473,6 +1516,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             result.set_property(ctx, "activeStepRequiresFallback", JSValue::null());
             result.set_property(ctx, "activeStepKind", JSValue::null());
             result.set_property(ctx, "activeStepCommandJsonEligible", JSValue::null());
+            result.set_property(ctx, "activeStepCommandJsonTemplate", JSValue::null());
+            result.set_property(ctx, "activeStepCommandJsonTemplateCommand", JSValue::null());
+            result.set_property(ctx, "activeStepCommandJsonTemplateKind", JSValue::null());
             result.set_property(ctx, "activeStepRetryable", JSValue::null());
             result.set_property(ctx, "activeStepMaxSuggestedRetries", JSValue::null());
             result.set_property(ctx, "activeStepRetryDelayHintMs", JSValue::null());
@@ -3926,6 +3972,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         match fallback_first_step {
             Some(step_raw) => {
                 let step = JSValue(step_raw);
+                let next_step_command_json_template = step.get_property(ctx, "commandJsonTemplate");
                 fallback_plan.set_property(ctx, "nextStep", step.dup(ctx));
                 fallback_plan.set_property(ctx, "nextStepId", step.get_property(ctx, "id"));
                 fallback_plan.set_property(ctx, "nextStepSource", step.get_property(ctx, "source"));
@@ -3940,6 +3987,21 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     ctx,
                     "nextStepCommandJsonEligible",
                     step.get_property(ctx, "commandJsonEligible"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepCommandJsonTemplate",
+                    next_step_command_json_template.dup(ctx),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepCommandJsonTemplateCommand",
+                    next_step_command_json_template.get_property(ctx, "command"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "nextStepCommandJsonTemplateKind",
+                    next_step_command_json_template.get_property(ctx, "kind"),
                 );
                 fallback_plan.set_property(ctx, "nextStepKind", step.get_property(ctx, "kind"));
                 fallback_plan.set_property(ctx, "nextStepRetryable", step.get_property(ctx, "retryable"));
@@ -3969,11 +4031,13 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 );
                 fallback_plan.set_property(ctx, "nextStepPlaceholders", step.get_property(ctx, "placeholders"));
                 fallback_plan.set_property(ctx, "nextStepCliArgs", step.get_property(ctx, "cliArgs"));
+                next_step_command_json_template.free(ctx);
                 fallback_plan.set_property(ctx, "nextStepChainSource", JSValue::string(ctx, "fallback-plan"));
                 fallback_plan.set_property(ctx, "nextStepChainLimit", JSValue::int(fallback_step_limit as i32));
                 fallback_plan.set_property(ctx, "nextStepChainCount", JSValue::int(fallback_step_count as i32));
                 fallback_plan.set_property(ctx, "nextStepChainTruncated", JSValue::bool(fallback_step_truncated));
                 fallback_plan.set_property(ctx, "nextStepChain", JSValue(fallback_next_step_chain));
+                let active_step_command_json_template = step.get_property(ctx, "commandJsonTemplate");
                 fallback_plan.set_property(ctx, "activeStep", step.dup(ctx));
                 fallback_plan.set_property(ctx, "activeStepSource", step.get_property(ctx, "source"));
                 fallback_plan.set_property(ctx, "activeStepAllowed", step.get_property(ctx, "allowed"));
@@ -3995,6 +4059,21 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     ctx,
                     "activeStepCommandJsonEligible",
                     step.get_property(ctx, "commandJsonEligible"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepCommandJsonTemplate",
+                    active_step_command_json_template.dup(ctx),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepCommandJsonTemplateCommand",
+                    active_step_command_json_template.get_property(ctx, "command"),
+                );
+                fallback_plan.set_property(
+                    ctx,
+                    "activeStepCommandJsonTemplateKind",
+                    active_step_command_json_template.get_property(ctx, "kind"),
                 );
                 fallback_plan.set_property(ctx, "activeStepRetryable", step.get_property(ctx, "retryable"));
                 fallback_plan.set_property(
@@ -4023,6 +4102,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 );
                 fallback_plan.set_property(ctx, "activeStepPlaceholders", step.get_property(ctx, "placeholders"));
                 fallback_plan.set_property(ctx, "activeStepCliArgs", step.get_property(ctx, "cliArgs"));
+                active_step_command_json_template.free(ctx);
                 step.free(ctx);
             }
             None => {
@@ -4037,6 +4117,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 fallback_plan.set_property(ctx, "nextStepCommand", JSValue::null());
                 fallback_plan.set_property(ctx, "nextStepPhase", JSValue::null());
                 fallback_plan.set_property(ctx, "nextStepCommandJsonEligible", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepCommandJsonTemplate", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepCommandJsonTemplateCommand", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepCommandJsonTemplateKind", JSValue::null());
                 fallback_plan.set_property(ctx, "nextStepKind", JSValue::null());
                 fallback_plan.set_property(ctx, "nextStepRetryable", JSValue::null());
                 fallback_plan.set_property(ctx, "nextStepMaxSuggestedRetries", JSValue::null());
@@ -4069,6 +4152,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 fallback_plan.set_property(ctx, "activeStepRequiresFallback", JSValue::null());
                 fallback_plan.set_property(ctx, "activeStepKind", JSValue::null());
                 fallback_plan.set_property(ctx, "activeStepCommandJsonEligible", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepCommandJsonTemplate", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepCommandJsonTemplateCommand", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepCommandJsonTemplateKind", JSValue::null());
                 fallback_plan.set_property(ctx, "activeStepRetryable", JSValue::null());
                 fallback_plan.set_property(ctx, "activeStepMaxSuggestedRetries", JSValue::null());
                 fallback_plan.set_property(ctx, "activeStepRetryDelayHintMs", JSValue::null());
@@ -4119,6 +4205,21 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             ctx,
             "nextStepCommandJsonEligible",
             fallback_plan.get_property(ctx, "nextStepCommandJsonEligible"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepCommandJsonTemplate",
+            fallback_plan.get_property(ctx, "nextStepCommandJsonTemplate"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepCommandJsonTemplateCommand",
+            fallback_plan.get_property(ctx, "nextStepCommandJsonTemplateCommand"),
+        );
+        result.set_property(
+            ctx,
+            "nextStepCommandJsonTemplateKind",
+            fallback_plan.get_property(ctx, "nextStepCommandJsonTemplateKind"),
         );
         result.set_property(ctx, "nextStepKind", fallback_plan.get_property(ctx, "nextStepKind"));
         result.set_property(
@@ -4260,6 +4361,21 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             ctx,
             "activeStepCommandJsonEligible",
             fallback_plan.get_property(ctx, "activeStepCommandJsonEligible"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepCommandJsonTemplate",
+            fallback_plan.get_property(ctx, "activeStepCommandJsonTemplate"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepCommandJsonTemplateCommand",
+            fallback_plan.get_property(ctx, "activeStepCommandJsonTemplateCommand"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepCommandJsonTemplateKind",
+            fallback_plan.get_property(ctx, "activeStepCommandJsonTemplateKind"),
         );
         result.set_property(
             ctx,

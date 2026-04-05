@@ -2187,6 +2187,37 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
+                            const nextStepOk =
+                                (report.nextStep === null &&
+                                    report.nextStepCommandJsonTemplate === null &&
+                                    report.nextStepCommandJsonTemplateCommand === null &&
+                                    report.nextStepCommandJsonTemplateKind === null) ||
+                                (typeof report.nextStep === 'object' &&
+                                    report.nextStep !== null &&
+                                    report.nextStepCommandJsonTemplate === report.nextStep.commandJsonTemplate &&
+                                    report.nextStepCommandJsonTemplateCommand === report.nextStep.commandJsonTemplate.command &&
+                                    report.nextStepCommandJsonTemplateKind === report.nextStep.commandJsonTemplate.kind);
+                            const activeStepOk =
+                                (report.activeStep === null &&
+                                    report.activeStepCommandJsonTemplate === null &&
+                                    report.activeStepCommandJsonTemplateCommand === null &&
+                                    report.activeStepCommandJsonTemplateKind === null) ||
+                                (typeof report.activeStep === 'object' &&
+                                    report.activeStep !== null &&
+                                    report.activeStepCommandJsonTemplate === report.activeStep.commandJsonTemplate &&
+                                    report.activeStepCommandJsonTemplateCommand === report.activeStep.commandJsonTemplate.command &&
+                                    report.activeStepCommandJsonTemplateKind === report.activeStep.commandJsonTemplate.kind);
+                            return nextStepOk && activeStepOk;
+                        })()"#,
+                    )
+                    .expect("native hook env step command json aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
                 "true"
