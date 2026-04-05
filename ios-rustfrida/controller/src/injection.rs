@@ -2685,6 +2685,74 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         .first()
         .cloned()
         .unwrap_or(Value::Null);
+    let backend_adaptation_execution_kind = if has_preferred_conflict_backend_pair {
+        "conflict-resolution"
+    } else if preferred_group_key == "none" || backend_adaptation_step_chain.is_empty() {
+        "none"
+    } else {
+        "preferred-group"
+    };
+    let backend_adaptation_execution_summary = if backend_adaptation_execution_kind == "none" {
+        Value::Null
+    } else {
+        json!({
+            "kind": backend_adaptation_execution_kind,
+            "source": backend_adaptation_step_chain_source,
+            "mode": mode,
+            "alignment": alignment,
+            "preferredGroupKey": preferred_group_key,
+            "selectedPhase": backend_adaptation_next_step.get("phase").cloned().unwrap_or(Value::Null),
+            "selectedCommand": backend_adaptation_next_step.get("command").cloned().unwrap_or(Value::Null),
+            "selectedReason": backend_adaptation_next_step.get("reason").cloned().unwrap_or(Value::Null),
+            "selectedPreferredPath": backend_adaptation_next_step
+                .get("preferredPath")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "selectedCommandGroup": backend_adaptation_next_step
+                .get("commandGroup")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "selectedRetryable": backend_adaptation_next_step
+                .get("retryable")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "selectedErrorCode": backend_adaptation_next_step
+                .get("errorCode")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "selectedTimeoutErrorCode": backend_adaptation_next_step
+                .get("timeoutErrorCode")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "selectedTimeoutAction": backend_adaptation_next_step
+                .get("timeoutAction")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "selectedReadyToRun": backend_adaptation_next_step
+                .get("readyToRun")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "selectedCommandJsonEligible": backend_adaptation_next_step
+                .get("commandJsonEligible")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "chainCount": backend_adaptation_step_chain.len(),
+            "hasConflictPair": has_preferred_conflict_backend_pair,
+            "requiresQueryPhase": requires_query_phase,
+            "requiresPreflight": requires_preflight,
+            "requiresCleanupPhase": requires_cleanup_phase,
+            "inlineInstallReadyNow": inline_install_ready_now,
+            "retryBudget": if has_preferred_conflict_backend_pair {
+                json!(preferred_conflict_resolution_total_retry_budget)
+            } else {
+                backend_adaptation_step_chain
+                    .iter()
+                    .map(|entry| entry.get("maxSuggestedRetries").and_then(Value::as_u64).unwrap_or(0))
+                    .sum::<u64>()
+                    .into()
+            },
+        })
+    };
 
     json!({
         "mode": mode,
@@ -2769,6 +2837,99 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .unwrap_or(Value::Null),
         "preferredCommandJsonTemplateCount": preferred_group
             .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSummary": backend_adaptation_execution_summary.clone(),
+        "executionKind": backend_adaptation_execution_summary
+            .get("kind")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSource": backend_adaptation_execution_summary
+            .get("source")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionMode": backend_adaptation_execution_summary
+            .get("mode")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionAlignment": backend_adaptation_execution_summary
+            .get("alignment")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionPreferredGroupKey": backend_adaptation_execution_summary
+            .get("preferredGroupKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedPhase": backend_adaptation_execution_summary
+            .get("selectedPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedCommand": backend_adaptation_execution_summary
+            .get("selectedCommand")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedReason": backend_adaptation_execution_summary
+            .get("selectedReason")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedPreferredPath": backend_adaptation_execution_summary
+            .get("selectedPreferredPath")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedCommandGroup": backend_adaptation_execution_summary
+            .get("selectedCommandGroup")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedRetryable": backend_adaptation_execution_summary
+            .get("selectedRetryable")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedErrorCode": backend_adaptation_execution_summary
+            .get("selectedErrorCode")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedTimeoutErrorCode": backend_adaptation_execution_summary
+            .get("selectedTimeoutErrorCode")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedTimeoutAction": backend_adaptation_execution_summary
+            .get("selectedTimeoutAction")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedReadyToRun": backend_adaptation_execution_summary
+            .get("selectedReadyToRun")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionSelectedCommandJsonEligible": backend_adaptation_execution_summary
+            .get("selectedCommandJsonEligible")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionChainCount": backend_adaptation_execution_summary
+            .get("chainCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionHasConflictPair": backend_adaptation_execution_summary
+            .get("hasConflictPair")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionRequiresQueryPhase": backend_adaptation_execution_summary
+            .get("requiresQueryPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionRequiresPreflight": backend_adaptation_execution_summary
+            .get("requiresPreflight")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionRequiresCleanupPhase": backend_adaptation_execution_summary
+            .get("requiresCleanupPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionInlineInstallReadyNow": backend_adaptation_execution_summary
+            .get("inlineInstallReadyNow")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionRetryBudget": backend_adaptation_execution_summary
+            .get("retryBudget")
             .cloned()
             .unwrap_or(Value::Null),
         "nextStep": if backend_adaptation_step_chain_source == "none" {
@@ -19416,6 +19577,14 @@ mod tests {
         assert_eq!(coexistence["backendAdaptationBias"], "query");
         assert_eq!(coexistence["backendAdaptation"]["preferredGroupKey"], "query");
         assert_eq!(coexistence["backendAdaptation"]["preferredTemplateCount"], 3);
+        assert_eq!(coexistence["backendAdaptation"]["executionKind"], "conflict-resolution");
+        assert_eq!(
+            coexistence["backendAdaptation"]["executionSelectedCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(coexistence["backendAdaptation"]["executionSelectedPhase"], "query");
+        assert_eq!(coexistence["backendAdaptation"]["executionHasConflictPair"], true);
+        assert_eq!(coexistence["backendAdaptation"]["executionRetryBudget"], 3);
         assert_eq!(coexistence["backendAdaptation"]["nextStepSource"], "preferred-conflict-resolution-chain");
         assert!(coexistence["backendAdaptation"]["nextStepActionKey"].is_null());
         assert_eq!(coexistence["backendAdaptation"]["nextStepCommandGroup"], "conflict-resolution");
@@ -19683,6 +19852,9 @@ mod tests {
         assert_eq!(automation["backendAdaptationBias"], "query");
         assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "query");
         assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 3);
+        assert_eq!(automation["backendAdaptation"]["executionSource"], "preferred-conflict-resolution-chain");
+        assert_eq!(automation["backendAdaptation"]["executionSelectedPreferredPath"], "query");
+        assert_eq!(automation["backendAdaptation"]["executionSelectedErrorCode"], "hook-fallback-query-failed");
         assert_eq!(automation["backendAdaptation"]["nextStepSource"], "preferred-conflict-resolution-chain");
         assert_eq!(automation["backendAdaptation"]["nextStepCommandGroup"], "conflict-resolution");
         assert_eq!(automation["backendAdaptation"]["nextStepAllowed"], true);
@@ -19906,6 +20078,10 @@ mod tests {
         assert_eq!(coexistence["backendAdaptationBias"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["preferredGroupKey"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["preferredTemplateCount"], 2);
+        assert_eq!(coexistence["backendAdaptation"]["executionKind"], "preferred-group");
+        assert_eq!(coexistence["backendAdaptation"]["executionSelectedCommand"], "native.hookenv");
+        assert_eq!(coexistence["backendAdaptation"]["executionSelectedPhase"], "preflight");
+        assert_eq!(coexistence["backendAdaptation"]["executionHasConflictPair"], false);
         assert_eq!(coexistence["backendAdaptation"]["nextStepSource"], "backend-adaptation-preferred-group");
         assert!(coexistence["backendAdaptation"]["nextStepActionKey"].is_null());
         assert_eq!(coexistence["backendAdaptation"]["nextStepCommandGroup"], "preflight");
@@ -19949,6 +20125,9 @@ mod tests {
         assert_eq!(automation["backendAdaptationBias"], "preflight");
         assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "preflight");
         assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 2);
+        assert_eq!(automation["backendAdaptation"]["executionSource"], "backend-adaptation-preferred-group");
+        assert_eq!(automation["backendAdaptation"]["executionSelectedPreferredPath"], "preflight");
+        assert_eq!(automation["backendAdaptation"]["executionSelectedTimeoutErrorCode"], "hook-fallback-diagnose-timeout");
         assert_eq!(automation["backendAdaptation"]["nextStepSource"], "backend-adaptation-preferred-group");
         assert_eq!(automation["backendAdaptation"]["nextStepCommandGroup"], "preflight");
         assert_eq!(automation["backendAdaptation"]["nextStepAllowed"], true);
