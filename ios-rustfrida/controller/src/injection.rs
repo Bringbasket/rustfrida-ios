@@ -23597,6 +23597,147 @@ mod tests {
     }
 
     #[test]
+    fn hook_backend_matrix_split_loaded_cleanup_mode_exposes_cleanup_phase_aliases() {
+        let controller_report = HookEnvironmentReport {
+            active_backend: Some("ellekit".into()),
+            backends: vec![
+                HookBackendInfo {
+                    id: "ellekit".into(),
+                    display_name: "ElleKit".into(),
+                    loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                    filesystem_paths: vec![],
+                },
+                HookBackendInfo {
+                    id: "substitute".into(),
+                    display_name: "Substitute".into(),
+                    loaded_images: vec![],
+                    filesystem_paths: vec!["/var/jb/usr/lib/libsubstitute.dylib".into()],
+                },
+            ],
+            warnings: vec![],
+        };
+        let target_report = HookEnvironmentReport {
+            active_backend: Some("substrate".into()),
+            backends: vec![
+                HookBackendInfo {
+                    id: "ellekit".into(),
+                    display_name: "ElleKit".into(),
+                    loaded_images: vec![],
+                    filesystem_paths: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                },
+                HookBackendInfo {
+                    id: "substrate".into(),
+                    display_name: "Cydia Substrate".into(),
+                    loaded_images: vec!["/Library/MobileSubstrate/MobileSubstrate.dylib".into()],
+                    filesystem_paths: vec![],
+                },
+            ],
+            warnings: vec![],
+        };
+
+        let backend_matrix = hook_backend_matrix_to_json(&controller_report, &target_report);
+        let controller_strategy = HookStrategyDecision {
+            policy: HookPolicy::QueryOnlyExternalLoaded,
+            strategy: "query-only-external-loaded".into(),
+            allowed: true,
+            inline_hooks_allowed: false,
+            reason: Some("controller query-only".into()),
+        };
+        let target_strategy = HookStrategyDecision {
+            policy: HookPolicy::DenyExternalLoaded,
+            strategy: "cleanup-only-external-loaded".into(),
+            allowed: false,
+            inline_hooks_allowed: false,
+            reason: Some("target cleanup-only".into()),
+        };
+        let controller_actions =
+            hook_environment_recommended_actions(&controller_report, Some(&controller_strategy));
+        let target_actions =
+            hook_environment_recommended_actions(&target_report, Some(&target_strategy));
+        let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
+        let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
+        let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+
+        let assert_cleanup_aliases = |rendered: &serde_json::Value| {
+            let adaptation = &rendered["backendAdaptation"];
+            let ready = &adaptation["preferredConflictResolutionRouting"]["routingDecision"]["ready"];
+            let phase_cleanup = &ready["phaseCleanup"];
+
+            assert_eq!(rendered["commandMode"], "cleanup-only");
+            assert_eq!(adaptation["preferredGroupKey"], "cleanup");
+            assert_eq!(adaptation["preferredConflictResolutionGroupKey"], "cleanup");
+            assert_eq!(adaptation["executionKind"], "conflict-resolution");
+            assert_eq!(adaptation["conflictBackendPairCount"], 1);
+            assert_eq!(adaptation["preferredConflictResolutionChainCount"], 1);
+            assert_eq!(adaptation["preferredConflictResolutionPhaseOrder"], json!(["cleanup"]));
+            assert_eq!(adaptation["preferredConflictResolutionNextStepPhase"], "cleanup");
+            assert_eq!(adaptation["preferredConflictResolutionActiveStepPhase"], "cleanup");
+            assert_eq!(adaptation["requiresCleanupPhase"], true);
+            assert!(phase_cleanup.is_object());
+            assert_eq!(adaptation["preferredConflictResolutionPhaseCleanup"], *phase_cleanup);
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupErrorCodeCount"],
+                phase_cleanup["errorCodeCount"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupErrorCodes"],
+                phase_cleanup["errorCodes"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupEscalationKeyCount"],
+                phase_cleanup["escalationKeyCount"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupEscalationKeys"],
+                phase_cleanup["escalationKeys"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupPrimaryEscalationKey"],
+                phase_cleanup["escalationKeys"][0]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupTemplateCount"],
+                ready["phaseCleanupTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupTemplates"],
+                phase_cleanup["templates"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupTemplate"],
+                phase_cleanup["templates"][0]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount"],
+                phase_cleanup["commandJsonTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupCommandJsonTemplates"],
+                phase_cleanup["commandJsonTemplates"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupCommandJsonTemplate"],
+                phase_cleanup["commandJsonTemplates"][0]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCommand"],
+                ready["phaseCleanupCommandJsonTemplateCommand"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupCommandJsonTemplateKind"],
+                phase_cleanup["commandJsonTemplates"][0]["kind"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupCommandJsonTemplateEligible"],
+                phase_cleanup["commandJsonTemplates"][0]["commandJsonEligible"]
+            );
+        };
+
+        assert_cleanup_aliases(&coexistence);
+        assert_cleanup_aliases(&automation);
+    }
+
+    #[test]
     fn hook_backend_matrix_filesystem_only_prefers_inline_cautious_path() {
         let controller_report = HookEnvironmentReport {
             active_backend: None,
