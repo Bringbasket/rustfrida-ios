@@ -1379,6 +1379,386 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             })
         })
         .unwrap_or(Value::Null);
+    let routing_decision_ready_index = error_code_routing_entries
+        .iter()
+        .filter_map(|entry| {
+            entry.get("errorCode").and_then(Value::as_str).map(|error_code| {
+                (
+                    error_code.to_string(),
+                    json!({
+                        "escalationKey": entry.get("recommendedEscalationKey").cloned().unwrap_or(Value::Null),
+                        "phase": entry.get("recommendedPhase").cloned().unwrap_or(Value::Null),
+                        "effectiveEscalationKey": entry.get("effectiveEscalationKey").cloned().unwrap_or(Value::Null),
+                        "effectivePhase": entry.get("effectivePhase").cloned().unwrap_or(Value::Null),
+                        "templateCount": entry.get("recommendedTemplateCount").cloned().unwrap_or(Value::Null),
+                        "templates": entry.get("recommendedTemplates").cloned().unwrap_or(json!([])),
+                        "commandJsonTemplateCount": entry
+                            .get("recommendedCommandJsonTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonTemplates": entry
+                            .get("recommendedCommandJsonTemplates")
+                            .cloned()
+                            .unwrap_or(json!([])),
+                        "matchConfidence": entry.get("matchConfidence").cloned().unwrap_or(Value::Null),
+                        "resolvedFrom": entry.get("resolvedFrom").cloned().unwrap_or(Value::Null),
+                    }),
+                )
+            })
+        })
+        .fold(Map::<String, Value>::new(), |mut map, (error_code, value)| {
+            map.insert(error_code, value);
+            map
+        });
+    let routing_decision_ready_default = json!({
+        "escalationKey": routing_decision_default
+            .get("recommendedEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "effectiveEscalationKey": routing_decision_default
+            .get("effectiveEscalationKey")
+            .cloned()
+            .unwrap_or_else(|| {
+                routing_decision_default
+                    .get("recommendedEscalationKey")
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }),
+        "phase": routing_decision_default
+            .get("recommendedPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "effectivePhase": routing_decision_default
+            .get("effectivePhase")
+            .cloned()
+            .unwrap_or_else(|| {
+                routing_decision_default
+                    .get("recommendedPhase")
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }),
+        "templateCount": routing_decision_default
+            .get("recommendedTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "templates": routing_decision_default
+            .get("recommendedTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "commandJsonTemplateCount": routing_decision_default
+            .get("recommendedCommandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "commandJsonTemplates": routing_decision_default
+            .get("recommendedCommandJsonTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "matchConfidence": routing_decision_default
+            .get("matchConfidence")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolvedFrom": routing_decision_default
+            .get("resolvedFrom")
+            .cloned()
+            .unwrap_or(Value::Null),
+    });
+    let routing_decision_ready_resolve_index = routing_decision_ready_index
+        .iter()
+        .fold(Map::<String, Value>::new(), |mut map, (error_code, decision)| {
+            map.insert(
+                error_code.clone(),
+                json!({
+                    "matched": true,
+                    "usedDefault": false,
+                    "reason": "matched-error-code",
+                    "effectivePhase": decision.get("effectivePhase").cloned().unwrap_or(Value::Null),
+                    "effectiveEscalationKey": decision
+                        .get("effectiveEscalationKey")
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    "effective": decision,
+                }),
+            );
+            map
+        });
+    let routing_decision_ready_resolve_default = json!({
+        "matched": false,
+        "usedDefault": true,
+        "reason": "missing-error-code",
+        "effectivePhase": routing_decision_ready_default
+            .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "effectiveEscalationKey": routing_decision_ready_default
+            .get("effectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "effective": routing_decision_ready_default,
+    });
+    let routing_decision_ready_known_error_codes = routing_decision_ready_index
+        .keys()
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
+    let routing_decision_ready_example_known_error_code =
+        routing_decision_ready_known_error_codes.first().cloned();
+    let routing_decision_ready_example_known_result = routing_decision_ready_example_known_error_code
+        .as_ref()
+        .and_then(|error_code| routing_decision_ready_resolve_index.get(error_code))
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_resolve_examples = json!({
+        "knownErrorCode": routing_decision_ready_example_known_error_code,
+        "knownResult": routing_decision_ready_example_known_result,
+        "missingErrorCode": "hook-fallback-unknown",
+        "missingResult": routing_decision_ready_resolve_default,
+    });
+    let routing_decision_ready_phase_entries = {
+        let mut phase_groups = BTreeMap::<String, Vec<String>>::new();
+        for (error_code, decision) in &routing_decision_ready_index {
+            let phase = decision
+                .get("phase")
+                .and_then(Value::as_str)
+                .filter(|phase| !phase.is_empty())
+                .unwrap_or("unknown")
+                .to_string();
+            phase_groups.entry(phase).or_default().push(error_code.clone());
+        }
+        phase_groups
+            .iter()
+            .map(|(phase, error_codes)| {
+                let mut escalation_keys = Vec::<String>::new();
+                let mut templates = Vec::<String>::new();
+                let mut command_json_templates = Vec::<Value>::new();
+                let mut command_json_template_keys = Vec::<String>::new();
+                for error_code in error_codes {
+                    let Some(decision) = routing_decision_ready_index.get(error_code) else {
+                        continue;
+                    };
+                    if let Some(escalation_key) = decision
+                        .get("effectiveEscalationKey")
+                        .and_then(Value::as_str)
+                        .filter(|key| !key.is_empty())
+                    {
+                        if !escalation_keys.iter().any(|key| key == escalation_key) {
+                            escalation_keys.push(escalation_key.to_string());
+                        }
+                    }
+                    if let Some(items) = decision.get("templates").and_then(Value::as_array) {
+                        for item in items {
+                            if let Some(template) = item.as_str() {
+                                if !templates.iter().any(|existing| existing == template) {
+                                    templates.push(template.to_string());
+                                }
+                            }
+                        }
+                    }
+                    if let Some(items) = decision.get("commandJsonTemplates").and_then(Value::as_array) {
+                        for item in items {
+                            let key = item
+                                .get("command")
+                                .and_then(Value::as_str)
+                                .filter(|command| !command.is_empty())
+                                .map(ToOwned::to_owned)
+                                .unwrap_or_else(|| item.to_string());
+                            if !command_json_template_keys.iter().any(|existing| existing == &key) {
+                                command_json_template_keys.push(key);
+                                command_json_templates.push(item.clone());
+                            }
+                        }
+                    }
+                }
+                json!({
+                    "phase": phase,
+                    "errorCodeCount": error_codes.len(),
+                    "errorCodes": error_codes,
+                    "escalationKeyCount": escalation_keys.len(),
+                    "escalationKeys": escalation_keys,
+                    "templateCount": templates.len(),
+                    "templates": templates,
+                    "commandJsonTemplateCount": command_json_templates.len(),
+                    "commandJsonTemplates": command_json_templates,
+                })
+            })
+            .collect::<Vec<_>>()
+    };
+    let routing_decision_ready_phase_index = routing_decision_ready_phase_entries
+        .iter()
+        .filter_map(|entry| {
+            entry.get("phase")
+                .and_then(Value::as_str)
+                .map(|phase| (phase.to_string(), entry.clone()))
+        })
+        .fold(Map::<String, Value>::new(), |mut map, (phase, entry)| {
+            map.insert(phase, entry);
+            map
+        });
+    let routing_decision_ready_phase_resolve_index = routing_decision_ready_phase_index
+        .iter()
+        .fold(Map::<String, Value>::new(), |mut map, (phase, entry)| {
+            map.insert(
+                phase.clone(),
+                json!({
+                    "matched": true,
+                    "usedDefault": false,
+                    "reason": "matched-phase",
+                    "effectivePhase": entry.get("phase").cloned().unwrap_or(Value::Null),
+                    "effectiveEscalationKey": entry
+                        .get("escalationKeys")
+                        .and_then(Value::as_array)
+                        .and_then(|items| items.first())
+                        .cloned()
+                        .unwrap_or(Value::Null),
+                    "effective": entry,
+                }),
+            );
+            map
+        });
+    let routing_decision_ready_default_phase = routing_decision_ready_default
+        .get("effectivePhase")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let routing_decision_ready_phase_resolve_default_effective = routing_decision_ready_phase_index
+        .get(&routing_decision_ready_default_phase)
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_resolve_default = json!({
+        "matched": false,
+        "usedDefault": true,
+        "reason": "missing-phase",
+        "effectivePhase": routing_decision_ready_phase_resolve_default_effective
+            .get("phase")
+            .cloned()
+            .unwrap_or_else(|| routing_decision_ready_default.get("effectivePhase").cloned().unwrap_or(Value::Null)),
+        "effectiveEscalationKey": routing_decision_ready_phase_resolve_default_effective
+            .get("escalationKeys")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or_else(|| {
+                routing_decision_ready_default
+                    .get("effectiveEscalationKey")
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }),
+        "effective": routing_decision_ready_phase_resolve_default_effective,
+    });
+    let routing_decision_ready_known_phases = routing_decision_ready_phase_index
+        .keys()
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
+    let routing_decision_ready_example_known_phase = routing_decision_ready_known_phases.first().cloned();
+    let routing_decision_ready_example_known_phase_result = routing_decision_ready_example_known_phase
+        .as_ref()
+        .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_resolve_examples = json!({
+        "knownPhase": routing_decision_ready_example_known_phase,
+        "knownResult": routing_decision_ready_example_known_phase_result,
+        "missingPhase": "unknown",
+        "missingResult": routing_decision_ready_phase_resolve_default,
+    });
+    let routing_decision_ready = json!({
+        "index": routing_decision_ready_index,
+        "defaultEscalationKey": routing_decision_ready_default
+            .get("escalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveEscalationKey": routing_decision_ready_default
+            .get("effectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultPhase": routing_decision_ready_default
+            .get("phase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectivePhase": routing_decision_ready_default
+            .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultTemplateCount": routing_decision_ready_default
+            .get("templateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultTemplates": routing_decision_ready_default
+            .get("templates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "defaultTemplate": routing_decision_ready_default
+            .get("templates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateCount": routing_decision_ready_default
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplates": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "defaultCommandJsonTemplate": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonTemplateCommand": routing_decision_ready_default
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .and_then(|item| item.get("command"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultMatchConfidence": routing_decision_ready_default
+            .get("matchConfidence")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultResolvedFrom": routing_decision_ready_default
+            .get("resolvedFrom")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveLookupKey": "errorCode",
+        "resolvePolicy": "index[errorCode] || default",
+        "resolveOutputShape": "effective",
+        "resolveIndex": routing_decision_ready_resolve_index,
+        "resolveDefault": routing_decision_ready_resolve_default,
+        "resolveExamples": routing_decision_ready_resolve_examples,
+        "resolveErrorCodeCount": routing_decision_ready_known_error_codes.len(),
+        "resolveKnownErrorCodes": routing_decision_ready_known_error_codes,
+        "phaseResolveLookupKey": "phase",
+        "phaseResolvePolicy": "phaseIndex[phase] || default",
+        "phaseResolveOutputShape": "effective",
+        "phaseResolveIndex": routing_decision_ready_phase_resolve_index,
+        "phaseResolveDefault": routing_decision_ready_phase_resolve_default,
+        "phaseResolveExamples": routing_decision_ready_phase_resolve_examples,
+        "phaseResolvePhaseCount": routing_decision_ready_known_phases.len(),
+        "phaseResolveKnownPhases": routing_decision_ready_known_phases,
+        "default": routing_decision_ready_default,
+        "resolve": {
+            "lookupKey": "errorCode",
+            "policy": "index[errorCode] || default",
+            "outputShape": "effective",
+            "index": routing_decision_ready_resolve_index,
+            "default": routing_decision_ready_resolve_default,
+            "examples": routing_decision_ready_resolve_examples,
+        },
+        "phaseResolve": {
+            "lookupKey": "phase",
+            "policy": "phaseIndex[phase] || default",
+            "outputShape": "effective",
+            "index": routing_decision_ready_phase_resolve_index,
+            "default": routing_decision_ready_phase_resolve_default,
+            "examples": routing_decision_ready_phase_resolve_examples,
+        },
+        "phaseCount": routing_decision_ready_phase_entries.len(),
+        "phases": routing_decision_ready_phase_entries,
+        "phaseFirst": routing_decision_ready_phase_entries.first().cloned().unwrap_or(Value::Null),
+        "phaseLast": routing_decision_ready_phase_entries.last().cloned().unwrap_or(Value::Null),
+        "phaseIndex": routing_decision_ready_phase_index,
+    });
     let routing_decision = json!({
         "lookupKey": "errorCode",
         "policy": "first-candidate-by-chain-order",
@@ -1401,6 +1781,7 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .cloned()
             .unwrap_or(Value::Null),
         "default": routing_decision_default,
+        "ready": routing_decision_ready,
     });
 
     json!({
@@ -18129,6 +18510,30 @@ mod tests {
             "conflict-query"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["index"]["hook-fallback-query-failed"]["effectiveEscalationKey"],
+            "conflict-query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["defaultEscalationKey"],
+            "conflict-query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-query-failed"]["reason"],
+            "matched-error-code"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolve"]["default"]["reason"],
+            "missing-error-code"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolve"]["index"]["query"]["effective"]["phase"],
+            "query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolve"]["default"]["reason"],
+            "missing-phase"
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["controllerLoadedOnlyBackendIds"],
             json!(["ellekit"])
         );
@@ -18182,6 +18587,22 @@ mod tests {
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionRouting"]["phaseErrorCodeCount"],
             2
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["effectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseIndex"]["preflight"]["templateCount"],
+            2
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveExamples"]["missingResult"]["reason"],
+            "missing-error-code"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveExamples"]["knownResult"]["reason"],
+            "matched-phase"
         );
         assert_eq!(automation["backendAdaptation"]["requiresQueryPhase"], true);
         assert_eq!(automation["backendAdaptation"]["requiresCleanupPhase"], false);
