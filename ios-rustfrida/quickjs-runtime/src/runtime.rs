@@ -2457,6 +2457,14 @@ undefined;
                                     adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phases.length &&
                                     typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseIndex === 'object' &&
                                     adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseIndex !== null &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyErrorCode === 'hook-fallback-hook-install-failed' &&
+                                    typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyBlockedBy === 'string' &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlySourceErrorCode === 'hook-fallback-hook-install-failed' &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyPhase === 'query' &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyErrorCode === 'hook-fallback-hook-install-failed' &&
+                                    adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhase === 'query' &&
+                                    typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyWouldUsePath === 'boolean' &&
+                                    typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyWouldUsePhase === 'boolean' &&
                                     ((adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery === null &&
                                         adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQueryTemplateCount === null) ||
                                         (typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery === 'object' &&

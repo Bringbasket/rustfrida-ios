@@ -1836,6 +1836,52 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     }
     resolve_examples.set_property(ctx, "missingErrorCode", JSValue::string(ctx, "hook-fallback-unknown"));
     resolve_examples.set_property(ctx, "missingResult", resolve_default.dup(ctx));
+    let query_only_error_code = "hook-fallback-hook-install-failed";
+    let query_only_blocked_by = "shared-process-conflict";
+    let query_only_result = resolve_index.get_property(ctx, query_only_error_code);
+    let query_only_result_available = !(query_only_result.is_null() || query_only_result.is_undefined());
+    let query_only_example = JSValue(ffi::JS_NewObject(ctx));
+    query_only_example.set_property(ctx, "errorCode", JSValue::string(ctx, query_only_error_code));
+    query_only_example.set_property(ctx, "blockedBy", JSValue::string(ctx, query_only_blocked_by));
+    query_only_example.set_property(
+        ctx,
+        "blockedBySource",
+        JSValue::string(ctx, query_only_blocked_by),
+    );
+    query_only_example.set_property(ctx, "isBlocked", JSValue::bool(true));
+    query_only_example.set_property(ctx, "available", JSValue::bool(query_only_result_available));
+    if query_only_result_available {
+        let effective_key = query_only_result.get_property(ctx, "effectiveEscalationKey");
+        query_only_example.set_property(ctx, "matched", query_only_result.get_property(ctx, "matched"));
+        query_only_example.set_property(
+            ctx,
+            "usedDefault",
+            query_only_result.get_property(ctx, "usedDefault"),
+        );
+        query_only_example.set_property(ctx, "reason", query_only_result.get_property(ctx, "reason"));
+        query_only_example.set_property(
+            ctx,
+            "effectivePhase",
+            query_only_result.get_property(ctx, "effectivePhase"),
+        );
+        query_only_example.set_property(ctx, "effectiveEscalationKey", effective_key.dup(ctx));
+        query_only_example.set_property(ctx, "result", query_only_result.dup(ctx));
+        query_only_example.set_property(
+            ctx,
+            "wouldUseQueryOnlyPath",
+            JSValue::bool(effective_key.to_string(ctx).as_deref() == Some("query-only-path")),
+        );
+        effective_key.free(ctx);
+    } else {
+        query_only_example.set_property(ctx, "matched", JSValue::bool(false));
+        query_only_example.set_property(ctx, "usedDefault", JSValue::bool(true));
+        query_only_example.set_property(ctx, "reason", JSValue::string(ctx, "missing-error-code"));
+        query_only_example.set_property(ctx, "effectivePhase", JSValue::null());
+        query_only_example.set_property(ctx, "effectiveEscalationKey", JSValue::null());
+        query_only_example.set_property(ctx, "result", JSValue::null());
+        query_only_example.set_property(ctx, "wouldUseQueryOnlyPath", JSValue::bool(false));
+    }
+    resolve_examples.set_property(ctx, "queryOnlyInstallFailure", query_only_example.dup(ctx));
 
     let resolve_value = JSValue(ffi::JS_NewObject(ctx));
     resolve_value.set_property(ctx, "lookupKey", JSValue::string(ctx, "errorCode"));
@@ -1968,6 +2014,116 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         );
     }
     resolve_missing_result.free(ctx);
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyInstallFailure",
+        query_only_example.dup(ctx),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyErrorCode",
+        query_only_example.get_property(ctx, "errorCode"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyBlockedBy",
+        query_only_example.get_property(ctx, "blockedBy"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyBlockedBySource",
+        query_only_example.get_property(ctx, "blockedBySource"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyIsBlocked",
+        query_only_example.get_property(ctx, "isBlocked"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyAvailable",
+        query_only_example.get_property(ctx, "available"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyMatched",
+        query_only_example.get_property(ctx, "matched"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyUsedDefault",
+        query_only_example.get_property(ctx, "usedDefault"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyReason",
+        query_only_example.get_property(ctx, "reason"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyEffectivePhase",
+        query_only_example.get_property(ctx, "effectivePhase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyEffectiveEscalationKey",
+        query_only_example.get_property(ctx, "effectiveEscalationKey"),
+    );
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyWouldUsePath",
+        query_only_example.get_property(ctx, "wouldUseQueryOnlyPath"),
+    );
+    let query_only_example_result = query_only_example.get_property(ctx, "result");
+    ready_value.set_property(
+        ctx,
+        "resolveExampleQueryOnlyResult",
+        query_only_example_result.dup(ctx),
+    );
+    if query_only_example_result.is_null() || query_only_example_result.is_undefined() {
+        ready_value.set_property(ctx, "resolveExampleQueryOnlyResultEffective", JSValue::null());
+        ready_value.set_property(ctx, "resolveExampleQueryOnlyResultMatched", JSValue::null());
+        ready_value.set_property(ctx, "resolveExampleQueryOnlyResultUsedDefault", JSValue::null());
+        ready_value.set_property(ctx, "resolveExampleQueryOnlyResultReason", JSValue::null());
+        ready_value.set_property(ctx, "resolveExampleQueryOnlyResultEffectivePhase", JSValue::null());
+        ready_value.set_property(
+            ctx,
+            "resolveExampleQueryOnlyResultEffectiveEscalationKey",
+            JSValue::null(),
+        );
+    } else {
+        ready_value.set_property(
+            ctx,
+            "resolveExampleQueryOnlyResultEffective",
+            query_only_example_result.get_property(ctx, "effective"),
+        );
+        ready_value.set_property(
+            ctx,
+            "resolveExampleQueryOnlyResultMatched",
+            query_only_example_result.get_property(ctx, "matched"),
+        );
+        ready_value.set_property(
+            ctx,
+            "resolveExampleQueryOnlyResultUsedDefault",
+            query_only_example_result.get_property(ctx, "usedDefault"),
+        );
+        ready_value.set_property(
+            ctx,
+            "resolveExampleQueryOnlyResultReason",
+            query_only_example_result.get_property(ctx, "reason"),
+        );
+        ready_value.set_property(
+            ctx,
+            "resolveExampleQueryOnlyResultEffectivePhase",
+            query_only_example_result.get_property(ctx, "effectivePhase"),
+        );
+        ready_value.set_property(
+            ctx,
+            "resolveExampleQueryOnlyResultEffectiveEscalationKey",
+            query_only_example_result.get_property(ctx, "effectiveEscalationKey"),
+        );
+    }
+    query_only_example_result.free(ctx);
 
     let phase_entries = ffi::JS_NewArray(ctx);
     let phase_index = JSValue(ffi::JS_NewObject(ctx));
@@ -2108,6 +2264,69 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     }
     phase_resolve_examples.set_property(ctx, "missingPhase", JSValue::string(ctx, "unknown"));
     phase_resolve_examples.set_property(ctx, "missingResult", phase_resolve_default.dup(ctx));
+    let query_only_phase = "query";
+    let query_only_phase_result = phase_resolve_index.get_property(ctx, query_only_phase);
+    let query_only_phase_available =
+        !(query_only_phase_result.is_null() || query_only_phase_result.is_undefined());
+    let query_only_phase_example = JSValue(ffi::JS_NewObject(ctx));
+    query_only_phase_example.set_property(
+        ctx,
+        "sourceErrorCode",
+        JSValue::string(ctx, query_only_error_code),
+    );
+    query_only_phase_example.set_property(ctx, "phase", JSValue::string(ctx, query_only_phase));
+    query_only_phase_example.set_property(ctx, "blockedBy", JSValue::string(ctx, query_only_blocked_by));
+    query_only_phase_example.set_property(
+        ctx,
+        "blockedBySource",
+        JSValue::string(ctx, query_only_blocked_by),
+    );
+    query_only_phase_example.set_property(ctx, "isBlocked", JSValue::bool(true));
+    query_only_phase_example.set_property(ctx, "available", JSValue::bool(query_only_phase_available));
+    if query_only_phase_available {
+        let effective_phase = query_only_phase_result.get_property(ctx, "effectivePhase");
+        query_only_phase_example.set_property(
+            ctx,
+            "matched",
+            query_only_phase_result.get_property(ctx, "matched"),
+        );
+        query_only_phase_example.set_property(
+            ctx,
+            "usedDefault",
+            query_only_phase_result.get_property(ctx, "usedDefault"),
+        );
+        query_only_phase_example.set_property(
+            ctx,
+            "reason",
+            query_only_phase_result.get_property(ctx, "reason"),
+        );
+        query_only_phase_example.set_property(ctx, "effectivePhase", effective_phase.dup(ctx));
+        query_only_phase_example.set_property(
+            ctx,
+            "effectiveEscalationKey",
+            query_only_phase_result.get_property(ctx, "effectiveEscalationKey"),
+        );
+        query_only_phase_example.set_property(ctx, "result", query_only_phase_result.dup(ctx));
+        query_only_phase_example.set_property(
+            ctx,
+            "wouldUseQueryPhase",
+            JSValue::bool(effective_phase.to_string(ctx).as_deref() == Some(query_only_phase)),
+        );
+        effective_phase.free(ctx);
+    } else {
+        query_only_phase_example.set_property(ctx, "matched", JSValue::bool(false));
+        query_only_phase_example.set_property(ctx, "usedDefault", JSValue::bool(true));
+        query_only_phase_example.set_property(ctx, "reason", JSValue::string(ctx, "missing-phase"));
+        query_only_phase_example.set_property(ctx, "effectivePhase", JSValue::null());
+        query_only_phase_example.set_property(ctx, "effectiveEscalationKey", JSValue::null());
+        query_only_phase_example.set_property(ctx, "result", JSValue::null());
+        query_only_phase_example.set_property(ctx, "wouldUseQueryPhase", JSValue::bool(false));
+    }
+    phase_resolve_examples.set_property(
+        ctx,
+        "queryOnlyInstallFailure",
+        query_only_phase_example.dup(ctx),
+    );
 
     let phase_resolve_value = JSValue(ffi::JS_NewObject(ctx));
     phase_resolve_value.set_property(ctx, "lookupKey", JSValue::string(ctx, "phase"));
@@ -2276,6 +2495,426 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         );
     }
     phase_resolve_missing_result.free(ctx);
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyInstallFailure",
+        query_only_phase_example.dup(ctx),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlySourceErrorCode",
+        query_only_phase_example.get_property(ctx, "sourceErrorCode"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyPhase",
+        query_only_phase_example.get_property(ctx, "phase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyBlockedBy",
+        query_only_phase_example.get_property(ctx, "blockedBy"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyBlockedBySource",
+        query_only_phase_example.get_property(ctx, "blockedBySource"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyIsBlocked",
+        query_only_phase_example.get_property(ctx, "isBlocked"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyAvailable",
+        query_only_phase_example.get_property(ctx, "available"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyMatched",
+        query_only_phase_example.get_property(ctx, "matched"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyUsedDefault",
+        query_only_phase_example.get_property(ctx, "usedDefault"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyReason",
+        query_only_phase_example.get_property(ctx, "reason"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyEffectivePhase",
+        query_only_phase_example.get_property(ctx, "effectivePhase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyEffectiveEscalationKey",
+        query_only_phase_example.get_property(ctx, "effectiveEscalationKey"),
+    );
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyWouldUsePhase",
+        query_only_phase_example.get_property(ctx, "wouldUseQueryPhase"),
+    );
+    let query_only_phase_example_result = query_only_phase_example.get_property(ctx, "result");
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleQueryOnlyResult",
+        query_only_phase_example_result.dup(ctx),
+    );
+    if query_only_phase_example_result.is_null() || query_only_phase_example_result.is_undefined() {
+        ready_value.set_property(ctx, "phaseResolveExampleQueryOnlyResultEffective", JSValue::null());
+        ready_value.set_property(ctx, "phaseResolveExampleQueryOnlyResultMatched", JSValue::null());
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleQueryOnlyResultUsedDefault",
+            JSValue::null(),
+        );
+        ready_value.set_property(ctx, "phaseResolveExampleQueryOnlyResultReason", JSValue::null());
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleQueryOnlyResultEffectivePhase",
+            JSValue::null(),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleQueryOnlyResultEffectiveEscalationKey",
+            JSValue::null(),
+        );
+    } else {
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleQueryOnlyResultEffective",
+            query_only_phase_example_result.get_property(ctx, "effective"),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleQueryOnlyResultMatched",
+            query_only_phase_example_result.get_property(ctx, "matched"),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleQueryOnlyResultUsedDefault",
+            query_only_phase_example_result.get_property(ctx, "usedDefault"),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleQueryOnlyResultReason",
+            query_only_phase_example_result.get_property(ctx, "reason"),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleQueryOnlyResultEffectivePhase",
+            query_only_phase_example_result.get_property(ctx, "effectivePhase"),
+        );
+        ready_value.set_property(
+            ctx,
+            "phaseResolveExampleQueryOnlyResultEffectiveEscalationKey",
+            query_only_phase_example_result.get_property(ctx, "effectiveEscalationKey"),
+        );
+    }
+    query_only_phase_example_result.free(ctx);
+    ready_value.set_property(
+        ctx,
+        "queryOnlyErrorCode",
+        query_only_example.get_property(ctx, "errorCode"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlySourceErrorCode",
+        query_only_phase_example.get_property(ctx, "sourceErrorCode"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyBlockedBy",
+        query_only_example.get_property(ctx, "blockedBy"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveBlockedBy",
+        query_only_example.get_property(ctx, "blockedBy"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyBlockedBySource",
+        query_only_example.get_property(ctx, "blockedBySource"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveBlockedBySource",
+        query_only_example.get_property(ctx, "blockedBySource"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyIsBlocked",
+        query_only_example.get_property(ctx, "isBlocked"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveIsBlocked",
+        query_only_example.get_property(ctx, "isBlocked"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhase",
+        query_only_phase_example.get_property(ctx, "phase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveSourceErrorCode",
+        query_only_phase_example.get_property(ctx, "sourceErrorCode"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolvePhase",
+        query_only_phase_example.get_property(ctx, "phase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveBlockedBy",
+        query_only_phase_example.get_property(ctx, "blockedBy"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveBlockedBySource",
+        query_only_phase_example.get_property(ctx, "blockedBySource"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveIsBlocked",
+        query_only_phase_example.get_property(ctx, "isBlocked"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveAvailable",
+        query_only_phase_example.get_property(ctx, "available"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyAvailable",
+        query_only_example.get_property(ctx, "available"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveAvailable",
+        query_only_example.get_property(ctx, "available"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyMatched",
+        query_only_example.get_property(ctx, "matched"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveMatched",
+        query_only_example.get_property(ctx, "matched"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveMatched",
+        query_only_phase_example.get_property(ctx, "matched"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyUsedDefault",
+        query_only_example.get_property(ctx, "usedDefault"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveUsedDefault",
+        query_only_example.get_property(ctx, "usedDefault"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveUsedDefault",
+        query_only_phase_example.get_property(ctx, "usedDefault"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyReason",
+        query_only_example.get_property(ctx, "reason"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveReason",
+        query_only_example.get_property(ctx, "reason"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveReason",
+        query_only_phase_example.get_property(ctx, "reason"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyEffectivePhase",
+        query_only_example.get_property(ctx, "effectivePhase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveEffectivePhase",
+        query_only_example.get_property(ctx, "effectivePhase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveEffectivePhase",
+        query_only_phase_example.get_property(ctx, "effectivePhase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyEffectiveEscalationKey",
+        query_only_example.get_property(ctx, "effectiveEscalationKey"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveEffectiveEscalationKey",
+        query_only_example.get_property(ctx, "effectiveEscalationKey"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveEffectiveEscalationKey",
+        query_only_phase_example.get_property(ctx, "effectiveEscalationKey"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyWouldUsePath",
+        query_only_example.get_property(ctx, "wouldUseQueryOnlyPath"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveWouldUsePath",
+        query_only_example.get_property(ctx, "wouldUseQueryOnlyPath"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyWouldUsePhase",
+        query_only_phase_example.get_property(ctx, "wouldUseQueryPhase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveWouldUsePhase",
+        query_only_phase_example.get_property(ctx, "wouldUseQueryPhase"),
+    );
+    let query_only_result_alias = query_only_example.get_property(ctx, "result");
+    let query_only_result_alias_effective =
+        if query_only_result_alias.is_null() || query_only_result_alias.is_undefined() {
+            JSValue::null()
+        } else {
+            query_only_result_alias.get_property(ctx, "effective")
+        };
+    ready_value.set_property(ctx, "queryOnlyResult", query_only_result_alias.dup(ctx));
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResultEffective",
+        query_only_result_alias_effective.dup(ctx),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResultMatched",
+        query_only_example.get_property(ctx, "matched"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResultUsedDefault",
+        query_only_example.get_property(ctx, "usedDefault"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResultReason",
+        query_only_example.get_property(ctx, "reason"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResultEffectivePhase",
+        query_only_example.get_property(ctx, "effectivePhase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResultEffectiveEscalationKey",
+        query_only_example.get_property(ctx, "effectiveEscalationKey"),
+    );
+    ready_value.set_property(ctx, "queryOnlyResolveResult", query_only_result_alias.dup(ctx));
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveResultEffective",
+        query_only_result_alias_effective.dup(ctx),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveResultMatched",
+        query_only_example.get_property(ctx, "matched"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveResultUsedDefault",
+        query_only_example.get_property(ctx, "usedDefault"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveResultReason",
+        query_only_example.get_property(ctx, "reason"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveResultEffectivePhase",
+        query_only_example.get_property(ctx, "effectivePhase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyResolveResultEffectiveEscalationKey",
+        query_only_example.get_property(ctx, "effectiveEscalationKey"),
+    );
+    let query_only_phase_result_alias = query_only_phase_example.get_property(ctx, "result");
+    let query_only_phase_result_alias_effective =
+        if query_only_phase_result_alias.is_null() || query_only_phase_result_alias.is_undefined() {
+            JSValue::null()
+        } else {
+            query_only_phase_result_alias.get_property(ctx, "effective")
+        };
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveResult",
+        query_only_phase_result_alias.dup(ctx),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveResultEffective",
+        query_only_phase_result_alias_effective.dup(ctx),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveResultMatched",
+        query_only_phase_example.get_property(ctx, "matched"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveResultUsedDefault",
+        query_only_phase_example.get_property(ctx, "usedDefault"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveResultReason",
+        query_only_phase_example.get_property(ctx, "reason"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveResultEffectivePhase",
+        query_only_phase_example.get_property(ctx, "effectivePhase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "queryOnlyPhaseResolveResultEffectiveEscalationKey",
+        query_only_phase_example.get_property(ctx, "effectiveEscalationKey"),
+    );
+    query_only_result_alias.free(ctx);
+    query_only_result_alias_effective.free(ctx);
+    query_only_phase_result_alias.free(ctx);
+    query_only_phase_result_alias_effective.free(ctx);
+    query_only_phase_result.free(ctx);
+    query_only_result.free(ctx);
 
     ready_value.set_property(ctx, "phaseCount", JSValue::int(known_phases.len() as i32));
     ready_value.set_property(ctx, "phases", JSValue(phase_entries));
