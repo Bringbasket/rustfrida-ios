@@ -1157,6 +1157,276 @@ fn conflict_resolution_chain_entry(
 }
 
 #[cfg(unix)]
+fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
+    use std::collections::BTreeMap;
+
+    if chain.is_empty() {
+        return Value::Null;
+    }
+
+    let phase_retry_policies = chain
+        .iter()
+        .map(|entry| {
+            json!({
+                "phase": entry.get("phase").cloned().unwrap_or(Value::Null),
+                "retryable": entry.get("retryable").cloned().unwrap_or(Value::Null),
+                "maxSuggestedRetries": entry
+                    .get("maxSuggestedRetries")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "retryDelayHintMs": entry
+                    .get("retryDelayHintMs")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "timeoutHintMs": entry
+                    .get("timeoutHintMs")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "timeoutAction": entry
+                    .get("timeoutAction")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "errorCode": entry.get("errorCode").cloned().unwrap_or(Value::Null),
+                "timeoutErrorCode": entry
+                    .get("timeoutErrorCode")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+            })
+        })
+        .collect::<Vec<_>>();
+    let phase_timeout_policies = phase_retry_policies
+        .iter()
+        .map(|policy| {
+            json!({
+                "phase": policy.get("phase").cloned().unwrap_or(Value::Null),
+                "timeoutHintMs": policy.get("timeoutHintMs").cloned().unwrap_or(Value::Null),
+                "timeoutAction": policy.get("timeoutAction").cloned().unwrap_or(Value::Null),
+                "errorCode": policy.get("errorCode").cloned().unwrap_or(Value::Null),
+                "timeoutErrorCode": policy.get("timeoutErrorCode").cloned().unwrap_or(Value::Null),
+            })
+        })
+        .collect::<Vec<_>>();
+    let phase_error_codes = phase_retry_policies
+        .iter()
+        .map(|policy| {
+            json!({
+                "phase": policy.get("phase").cloned().unwrap_or(Value::Null),
+                "errorCode": policy.get("errorCode").cloned().unwrap_or(Value::Null),
+                "timeoutErrorCode": policy.get("timeoutErrorCode").cloned().unwrap_or(Value::Null),
+            })
+        })
+        .collect::<Vec<_>>();
+    let escalation_recommendations = chain
+        .iter()
+        .filter_map(|entry| {
+            let group_key = entry.get("groupKey").and_then(Value::as_str)?;
+            let phase = entry.get("phase").and_then(Value::as_str)?;
+            Some(json!({
+                "key": format!("conflict-{group_key}"),
+                "condition": format!("phase-{phase}-failed"),
+                "phase": phase,
+                "reason": entry.get("reason").cloned().unwrap_or(Value::Null),
+                "onErrorCodeCount": 2,
+                "onErrorCodes": vec![
+                    entry.get("errorCode").cloned().unwrap_or(Value::Null),
+                    entry.get("timeoutErrorCode").cloned().unwrap_or(Value::Null),
+                ],
+                "templateCount": entry.get("templateCount").cloned().unwrap_or(Value::Null),
+                "templates": entry.get("templates").cloned().unwrap_or(Value::Null),
+                "commandJsonTemplateCount": entry
+                    .get("commandJsonTemplateCount")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "commandJsonTemplates": entry
+                    .get("commandJsonTemplates")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+            }))
+        })
+        .collect::<Vec<_>>();
+    let escalation_recommendation_by_key = escalation_recommendations
+        .iter()
+        .filter_map(|recommendation| {
+            recommendation
+                .get("key")
+                .and_then(Value::as_str)
+                .filter(|key| !key.is_empty())
+                .map(|key| (key.to_string(), recommendation.clone()))
+        })
+        .collect::<BTreeMap<_, _>>();
+    let mut error_code_routing_candidates = BTreeMap::<String, Vec<String>>::new();
+    for recommendation in &escalation_recommendations {
+        let Some(key) = recommendation.get("key").and_then(Value::as_str) else {
+            continue;
+        };
+        let Some(error_codes) = recommendation.get("onErrorCodes").and_then(Value::as_array) else {
+            continue;
+        };
+        for error_code in error_codes {
+            let Some(error_code) = error_code.as_str() else {
+                continue;
+            };
+            if error_code.is_empty() {
+                continue;
+            }
+            let candidates = error_code_routing_candidates.entry(error_code.to_string()).or_default();
+            if !candidates.iter().any(|candidate| candidate == key) {
+                candidates.push(key.to_string());
+            }
+        }
+    }
+    let error_code_routing = error_code_routing_candidates
+        .iter()
+        .fold(Map::<String, Value>::new(), |mut map, (error_code, candidates)| {
+            if let Some(first) = candidates.first() {
+                map.insert(error_code.clone(), Value::String(first.clone()));
+            }
+            map
+        });
+    let error_code_routing_entries = error_code_routing_candidates
+        .iter()
+        .map(|(error_code, candidates)| {
+            let recommended = candidates
+                .first()
+                .and_then(|key| escalation_recommendation_by_key.get(key));
+            let recommended_escalation_key = candidates.first().cloned();
+            let recommended_phase = recommended
+                .and_then(|item| item.get("phase"))
+                .cloned()
+                .unwrap_or(Value::Null);
+            json!({
+                "errorCode": error_code,
+                "candidateCount": candidates.len(),
+                "candidateEscalationKeys": candidates,
+                "recommendedEscalationKey": recommended_escalation_key.clone(),
+                "effectiveEscalationKey": recommended_escalation_key,
+                "matchConfidence": "exact",
+                "resolvedFrom": "errorCodeRouting",
+                "recommendedPhase": recommended_phase.clone(),
+                "effectivePhase": recommended_phase,
+                "recommendedTemplateCount": recommended
+                    .and_then(|item| item.get("templateCount"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "recommendedTemplates": recommended
+                    .and_then(|item| item.get("templates"))
+                    .cloned()
+                    .unwrap_or(json!([])),
+                "recommendedCommandJsonTemplateCount": recommended
+                    .and_then(|item| item.get("commandJsonTemplateCount"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "recommendedCommandJsonTemplates": recommended
+                    .and_then(|item| item.get("commandJsonTemplates"))
+                    .cloned()
+                    .unwrap_or(json!([])),
+            })
+        })
+        .collect::<Vec<_>>();
+    let error_code_routing_resolved = error_code_routing_entries
+        .iter()
+        .filter_map(|entry| {
+            entry.get("errorCode").and_then(Value::as_str).map(|error_code| {
+                (
+                    error_code.to_string(),
+                    json!({
+                        "escalationKey": entry.get("recommendedEscalationKey").cloned().unwrap_or(Value::Null),
+                        "phase": entry.get("recommendedPhase").cloned().unwrap_or(Value::Null),
+                        "effectiveEscalationKey": entry.get("effectiveEscalationKey").cloned().unwrap_or(Value::Null),
+                        "effectivePhase": entry.get("effectivePhase").cloned().unwrap_or(Value::Null),
+                        "matchConfidence": entry.get("matchConfidence").cloned().unwrap_or(Value::Null),
+                        "resolvedFrom": entry.get("resolvedFrom").cloned().unwrap_or(Value::Null),
+                        "templateCount": entry.get("recommendedTemplateCount").cloned().unwrap_or(Value::Null),
+                        "templates": entry.get("recommendedTemplates").cloned().unwrap_or(json!([])),
+                        "commandJsonTemplateCount": entry
+                            .get("recommendedCommandJsonTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonTemplates": entry
+                            .get("recommendedCommandJsonTemplates")
+                            .cloned()
+                            .unwrap_or(json!([])),
+                    }),
+                )
+            })
+        })
+        .fold(Map::<String, Value>::new(), |mut map, (error_code, value)| {
+            map.insert(error_code, value);
+            map
+        });
+    let routing_decision_default = escalation_recommendations
+        .first()
+        .map(|item| {
+            let recommended_escalation_key = item.get("key").cloned().unwrap_or(Value::Null);
+            let recommended_phase = item.get("phase").cloned().unwrap_or(Value::Null);
+            json!({
+                "recommendedEscalationKey": recommended_escalation_key.clone(),
+                "matchConfidence": "default",
+                "resolvedFrom": "defaultRecommendedEscalationKey",
+                "recommendedPhase": recommended_phase.clone(),
+                "effectivePhase": recommended_phase,
+                "effectiveEscalationKey": recommended_escalation_key,
+                "recommendedTemplateCount": item.get("templateCount").cloned().unwrap_or(Value::Null),
+                "recommendedTemplates": item.get("templates").cloned().unwrap_or(json!([])),
+                "recommendedCommandJsonTemplateCount": item
+                    .get("commandJsonTemplateCount")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "recommendedCommandJsonTemplates": item
+                    .get("commandJsonTemplates")
+                    .cloned()
+                    .unwrap_or(json!([])),
+            })
+        })
+        .unwrap_or(Value::Null);
+    let routing_decision = json!({
+        "lookupKey": "errorCode",
+        "policy": "first-candidate-by-chain-order",
+        "entryCount": error_code_routing_entries.len(),
+        "entries": error_code_routing_entries.clone(),
+        "defaultRecommendedEscalationKey": routing_decision_default
+            .get("recommendedEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultRecommendedPhase": routing_decision_default
+            .get("recommendedPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveEscalationKey": routing_decision_default
+            .get("effectiveEscalationKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectivePhase": routing_decision_default
+            .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "default": routing_decision_default,
+    });
+
+    json!({
+        "phaseRetryPolicyCount": phase_retry_policies.len(),
+        "phaseRetryPolicies": phase_retry_policies,
+        "phaseTimeoutPolicyCount": phase_timeout_policies.len(),
+        "phaseTimeoutPolicies": phase_timeout_policies,
+        "phaseErrorCodeCount": phase_error_codes.len(),
+        "phaseErrorCodes": phase_error_codes,
+        "escalationRecommendationCount": escalation_recommendations.len(),
+        "escalationRecommendations": escalation_recommendations.clone(),
+        "suggestedEscalationKey": escalation_recommendations
+            .first()
+            .and_then(|item| item.get("key"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "errorCodeRoutingCount": error_code_routing_entries.len(),
+        "errorCodeRouting": error_code_routing,
+        "errorCodeRoutingResolvedCount": error_code_routing_resolved.len(),
+        "errorCodeRoutingResolved": error_code_routing_resolved,
+        "errorCodeRoutingEntries": error_code_routing_entries,
+        "routingDecision": routing_decision,
+    })
+}
+
+#[cfg(unix)]
 fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str, command_mode: &str) -> Value {
     let topology_kind = backend_matrix
         .get("topology")
@@ -1494,6 +1764,8 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 "totalRetryBudget": preferred_conflict_resolution_total_retry_budget,
             })
         };
+    let preferred_conflict_resolution_routing =
+        conflict_resolution_routing_to_json(&preferred_conflict_resolution_chain);
     let conflict_backend_pairs = controller_loaded_only_backend_ids
         .iter()
         .flat_map(|controller_backend_id| {
@@ -1684,6 +1956,11 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         },
         "preferredConflictResolutionTerminationPolicy": if has_preferred_conflict_backend_pair {
             preferred_conflict_resolution_termination_policy
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionRouting": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
         } else {
             Value::Null
         },
@@ -17832,6 +18109,26 @@ mod tests {
             "phase-retry-budget"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["phaseRetryPolicyCount"],
+            2
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["phaseRetryPolicies"][0]["phase"],
+            "query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["phaseTimeoutPolicies"][1]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["suggestedEscalationKey"],
+            "conflict-query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["errorCodeRouting"]["hook-fallback-query-failed"],
+            "conflict-query"
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["controllerLoadedOnlyBackendIds"],
             json!(["ellekit"])
         );
@@ -17881,6 +18178,10 @@ mod tests {
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseOrder"],
             json!(["query", "preflight"])
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["phaseErrorCodeCount"],
+            2
         );
         assert_eq!(automation["backendAdaptation"]["requiresQueryPhase"], true);
         assert_eq!(automation["backendAdaptation"]["requiresCleanupPhase"], false);
@@ -18005,6 +18306,7 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPair"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionTerminationPolicy"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionRouting"].is_null());
         assert_eq!(coexistence["backendAdaptation"]["preflightTemplates"][1], "controller --preflight-only --preflight-json --pid <pid>");
         assert_eq!(coexistence["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
