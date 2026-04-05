@@ -1022,22 +1022,32 @@ unsafe fn hook_set_command_template_group_properties(
     let template_count_key = format!("{prefix}TemplateCount");
     let command_json_templates_key = format!("{prefix}CommandJsonTemplates");
     let command_json_template_count_key = format!("{prefix}CommandJsonTemplateCount");
+    let command_json_eligible_template_count_key = format!("{prefix}CommandJsonEligibleTemplateCount");
     let command_json_templates = ffi::JS_NewArray(ctx);
+    let mut command_json_eligible_count = 0usize;
 
     set_string_array_property(ctx, target.raw(), &templates_key, templates);
     target.set_property(ctx, &template_count_key, JSValue::int(templates.len() as i32));
     for (index, template) in templates.iter().enumerate() {
-        ffi::JS_SetPropertyUint32(
-            ctx,
-            command_json_templates,
-            index as u32,
-            hook_command_json_template_to_js(ctx, template),
-        );
+        let entry = JSValue(hook_command_json_template_to_js(ctx, template));
+        if entry
+            .get_property(ctx, "commandJsonEligible")
+            .to_bool()
+            .unwrap_or(false)
+        {
+            command_json_eligible_count += 1;
+        }
+        ffi::JS_SetPropertyUint32(ctx, command_json_templates, index as u32, entry.raw());
     }
     target.set_property(
         ctx,
         &command_json_template_count_key,
         JSValue::int(templates.len() as i32),
+    );
+    target.set_property(
+        ctx,
+        &command_json_eligible_template_count_key,
+        JSValue::int(command_json_eligible_count as i32),
     );
     target.set_property(ctx, &command_json_templates_key, JSValue(command_json_templates));
 }
@@ -1049,20 +1059,56 @@ unsafe fn hook_command_template_group_to_js(
 ) -> ffi::JSValue {
     let group = JSValue(ffi::JS_NewObject(ctx));
     let command_json_templates = ffi::JS_NewArray(ctx);
+    let mut command_json_eligible_count = 0usize;
 
     group.set_property(ctx, "groupKey", JSValue::string(ctx, group_key));
     set_string_array_property(ctx, group.raw(), "templates", templates);
     group.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
     for (index, template) in templates.iter().enumerate() {
-        ffi::JS_SetPropertyUint32(
-            ctx,
-            command_json_templates,
-            index as u32,
-            hook_command_json_template_to_js(ctx, template),
-        );
+        let entry = JSValue(hook_command_json_template_to_js(ctx, template));
+        if entry
+            .get_property(ctx, "commandJsonEligible")
+            .to_bool()
+            .unwrap_or(false)
+        {
+            command_json_eligible_count += 1;
+        }
+        ffi::JS_SetPropertyUint32(ctx, command_json_templates, index as u32, entry.raw());
     }
     group.set_property(ctx, "commandJsonTemplateCount", JSValue::int(templates.len() as i32));
+    group.set_property(
+        ctx,
+        "commandJsonEligibleTemplateCount",
+        JSValue::int(command_json_eligible_count as i32),
+    );
     group.set_property(ctx, "commandJsonTemplates", JSValue(command_json_templates));
+    match templates.first() {
+        Some(template) => {
+            let primary_command_json_template = JSValue(hook_command_json_template_to_js(ctx, template));
+            group.set_property(
+                ctx,
+                "primaryCommandJsonTemplateCommand",
+                primary_command_json_template.get_property(ctx, "command"),
+            );
+            group.set_property(
+                ctx,
+                "primaryCommandJsonTemplateKind",
+                primary_command_json_template.get_property(ctx, "kind"),
+            );
+            group.set_property(
+                ctx,
+                "primaryCommandJsonTemplateEligible",
+                primary_command_json_template.get_property(ctx, "commandJsonEligible"),
+            );
+            group.set_property(ctx, "primaryCommandJsonTemplate", primary_command_json_template);
+        }
+        None => {
+            group.set_property(ctx, "primaryCommandJsonTemplate", JSValue::null());
+            group.set_property(ctx, "primaryCommandJsonTemplateCommand", JSValue::null());
+            group.set_property(ctx, "primaryCommandJsonTemplateKind", JSValue::null());
+            group.set_property(ctx, "primaryCommandJsonTemplateEligible", JSValue::null());
+        }
+    }
 
     group.raw()
 }

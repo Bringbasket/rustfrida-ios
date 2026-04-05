@@ -2344,13 +2344,29 @@ undefined;
                                     entry !== null &&
                                     entry.groupKey === group &&
                                     entry.templateCount === adaptation[`${group}TemplateCount`] &&
-                                    entry.commandJsonTemplateCount === adaptation[`${group}CommandJsonTemplateCount`];
+                                    entry.commandJsonTemplateCount === adaptation[`${group}CommandJsonTemplateCount`] &&
+                                    entry.commandJsonEligibleTemplateCount === adaptation[`${group}CommandJsonEligibleTemplateCount`];
                             }) &&
                                 typeof adaptation.preferredGroup === 'object' &&
                                 adaptation.preferredGroup !== null &&
                                 adaptation.preferredGroup.groupKey === adaptation.preferredGroupKey &&
                                 adaptation.preferredGroup.templateCount === adaptation.preferredTemplateCount &&
-                                adaptation.preferredGroup.commandJsonTemplateCount === adaptation.preferredCommandJsonTemplateCount;
+                                adaptation.preferredGroup.commandJsonTemplateCount === adaptation.preferredCommandJsonTemplateCount &&
+                                adaptation.preferredGroup.commandJsonEligibleTemplateCount === adaptation.preferredCommandJsonEligibleTemplateCount;
+                            const primaryTemplateOk = ['queryGroup', 'preflightGroup', 'cleanupGroup', 'installGroup', 'preferredGroup'].every((key) => {
+                                const entry = adaptation[key];
+                                return ((entry.templateCount === 0 &&
+                                        entry.primaryCommandJsonTemplate === null &&
+                                        entry.primaryCommandJsonTemplateCommand === null &&
+                                        entry.primaryCommandJsonTemplateKind === null &&
+                                        entry.primaryCommandJsonTemplateEligible === null) ||
+                                    (entry.templateCount > 0 &&
+                                        typeof entry.primaryCommandJsonTemplate === 'object' &&
+                                        entry.primaryCommandJsonTemplate !== null &&
+                                        entry.primaryCommandJsonTemplateCommand === entry.primaryCommandJsonTemplate.command &&
+                                        entry.primaryCommandJsonTemplateKind === entry.primaryCommandJsonTemplate.kind &&
+                                        entry.primaryCommandJsonTemplateEligible === entry.primaryCommandJsonTemplate.commandJsonEligible));
+                            });
                             return typeof adaptation === 'object' &&
                                 adaptation !== null &&
                                 report.backendAdaptationMode === adaptation.mode &&
@@ -2366,7 +2382,8 @@ undefined;
                                 typeof adaptation.inlineInstallReadyNow === 'boolean' &&
                                 preferredCountOk &&
                                 groupsOk &&
-                                nestedGroupsOk;
+                                nestedGroupsOk &&
+                                primaryTemplateOk;
                         })()"#,
                     )
                     .expect("native hook env backend adaptation summary"),
