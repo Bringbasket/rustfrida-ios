@@ -1776,6 +1776,14 @@ undefined;
                                         typeof report.fallbackPlan.escalationRecommendationCount === 'number' &&
                                         Array.isArray(report.fallbackPlan.escalationRecommendations) &&
                                         report.fallbackPlan.escalationRecommendationCount === report.fallbackPlan.escalationRecommendations.length &&
+                                        typeof report.fallbackPlan.errorCodeRoutingCount === 'number' &&
+                                        typeof report.fallbackPlan.errorCodeRouting === 'object' &&
+                                        report.fallbackPlan.errorCodeRouting !== null &&
+                                        typeof report.fallbackPlan.errorCodeRoutingResolvedCount === 'number' &&
+                                        typeof report.fallbackPlan.errorCodeRoutingResolved === 'object' &&
+                                        report.fallbackPlan.errorCodeRoutingResolved !== null &&
+                                        Array.isArray(report.fallbackPlan.errorCodeRoutingEntries) &&
+                                        report.fallbackPlan.errorCodeRoutingEntries.length === report.fallbackPlan.errorCodeRoutingCount &&
                                         (report.fallbackPlan.suggestedEscalationKey === null ||
                                             typeof report.fallbackPlan.suggestedEscalationKey === 'string') &&
                                         (report.fallbackPlan.escalationRecommendations.length === 0 ||
@@ -1793,7 +1801,20 @@ undefined;
                                                 Array.isArray(report.fallbackPlan.escalationRecommendations[0].commandJsonTemplates) &&
                                                 report.fallbackPlan.escalationRecommendations[0].commandJsonTemplateCount === report.fallbackPlan.escalationRecommendations[0].commandJsonTemplates.length &&
                                                 typeof report.fallbackPlan.escalationRecommendations[0].commandJsonEligibleTemplateCount === 'number' &&
-                                                report.fallbackPlan.escalationRecommendations[0].commandJsonEligibleTemplateCount <= report.fallbackPlan.escalationRecommendations[0].commandJsonTemplateCount))));
+                                                report.fallbackPlan.escalationRecommendations[0].commandJsonEligibleTemplateCount <= report.fallbackPlan.escalationRecommendations[0].commandJsonTemplateCount)) &&
+                                        (report.fallbackPlan.errorCodeRoutingEntries.length === 0 ||
+                                            (typeof report.fallbackPlan.errorCodeRoutingEntries[0].errorCode === 'string' &&
+                                                typeof report.fallbackPlan.errorCodeRoutingEntries[0].candidateCount === 'number' &&
+                                                Array.isArray(report.fallbackPlan.errorCodeRoutingEntries[0].candidateEscalationKeys) &&
+                                                report.fallbackPlan.errorCodeRoutingEntries[0].candidateCount === report.fallbackPlan.errorCodeRoutingEntries[0].candidateEscalationKeys.length &&
+                                                typeof report.fallbackPlan.errorCodeRoutingEntries[0].matchConfidence === 'string' &&
+                                                typeof report.fallbackPlan.errorCodeRoutingEntries[0].resolvedFrom === 'string' &&
+                                                typeof report.fallbackPlan.errorCodeRoutingEntries[0].recommendedTemplateCount === 'number' &&
+                                                Array.isArray(report.fallbackPlan.errorCodeRoutingEntries[0].recommendedTemplates) &&
+                                                report.fallbackPlan.errorCodeRoutingEntries[0].recommendedTemplateCount === report.fallbackPlan.errorCodeRoutingEntries[0].recommendedTemplates.length &&
+                                                typeof report.fallbackPlan.errorCodeRoutingEntries[0].recommendedCommandJsonTemplateCount === 'number' &&
+                                                Array.isArray(report.fallbackPlan.errorCodeRoutingEntries[0].recommendedCommandJsonTemplates) &&
+                                                report.fallbackPlan.errorCodeRoutingEntries[0].recommendedCommandJsonTemplateCount === report.fallbackPlan.errorCodeRoutingEntries[0].recommendedCommandJsonTemplates.length))));
                             return typeof report.conflictState === 'string' &&
                                 typeof report.riskLevel === 'string' &&
                                 typeof report.commandMode === 'string' &&

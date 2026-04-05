@@ -23,6 +23,7 @@ use native_api::{
     image_source_version_support_available, image_uuid_support_available, native_export_support_available,
     native_symbol_support_available, resolve_hook_strategy,
 };
+use std::collections::BTreeMap;
 use std::path::Path;
 
 unsafe fn set_string_array_property(ctx: *mut ffi::JSContext, obj: ffi::JSValue, name: &str, items: &[String]) {
@@ -1365,88 +1366,211 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
 
         }
 
-        let mut escalation_recommendation_count = 0usize;
-        let escalation_preflight_templates =
-            vec!["controller --preflight-only --preflight-json --pid <pid>".to_string()];
-        let escalation_preflight_error_codes = vec![
-            "hook-fallback-preflight-failed".to_string(),
-            "hook-fallback-inject-failed".to_string(),
-            "hook-fallback-preflight-timeout".to_string(),
-            "hook-fallback-inject-timeout".to_string(),
-        ];
-        ffi::JS_SetPropertyUint32(
-            ctx,
-            escalation_recommendations,
-            escalation_recommendation_count as u32,
-            hook_escalation_recommendation_to_js(
-                ctx,
-                "preflight-refresh",
-                "always",
-                "preflight",
-                "refresh target context and diagnostics before changing hook policy or retrying injection",
-                None,
-                &escalation_preflight_templates,
-                &escalation_preflight_error_codes,
-            ),
-        );
-        escalation_recommendation_count += 1;
+        let mut escalation_specs = vec![(
+            "preflight-refresh".to_string(),
+            "always".to_string(),
+            "preflight".to_string(),
+            "refresh target context and diagnostics before changing hook policy or retrying injection".to_string(),
+            None,
+            vec!["controller --preflight-only --preflight-json --pid <pid>".to_string()],
+            vec![
+                "hook-fallback-preflight-failed".to_string(),
+                "hook-fallback-inject-failed".to_string(),
+                "hook-fallback-preflight-timeout".to_string(),
+                "hook-fallback-inject-timeout".to_string(),
+            ],
+        )];
 
         if recommended_actions_vec
             .iter()
             .any(|action| action.action_key == "hook.query" && action.allowed)
         {
-            let escalation_query_templates = vec![
-                "native.hookenv".to_string(),
-                "objc.classes <filter>".to_string(),
-                "native.images <filter>".to_string(),
-                "swift.types <filter>".to_string(),
-            ];
-            let escalation_query_error_codes = vec![
-                "hook-fallback-query-failed".to_string(),
-                "hook-fallback-query-timeout".to_string(),
-                "hook-fallback-hook-install-failed".to_string(),
-                "hook-fallback-hook-install-timeout".to_string(),
-            ];
-            ffi::JS_SetPropertyUint32(
-                ctx,
-                escalation_recommendations,
-                escalation_recommendation_count as u32,
-                hook_escalation_recommendation_to_js(
-                    ctx,
-                    "query-only-path",
-                    "query-commands-allowed",
-                    "query",
-                    "switch to query-only diagnostics path when inline hook actions are blocked",
-                    None,
-                    &escalation_query_templates,
-                    &escalation_query_error_codes,
-                ),
-            );
-            escalation_recommendation_count += 1;
+            escalation_specs.push((
+                "query-only-path".to_string(),
+                "query-commands-allowed".to_string(),
+                "query".to_string(),
+                "switch to query-only diagnostics path when inline hook actions are blocked".to_string(),
+                None,
+                vec![
+                    "native.hookenv".to_string(),
+                    "objc.classes <filter>".to_string(),
+                    "native.images <filter>".to_string(),
+                    "swift.types <filter>".to_string(),
+                ],
+                vec![
+                    "hook-fallback-query-failed".to_string(),
+                    "hook-fallback-query-timeout".to_string(),
+                    "hook-fallback-hook-install-failed".to_string(),
+                    "hook-fallback-hook-install-timeout".to_string(),
+                ],
+            ));
         }
 
         if next_action.map(|action| !action.allowed).unwrap_or(false) {
-            let escalation_policy_templates = vec!["native.hookenv".to_string()];
-            let escalation_policy_error_codes = vec![
-                "hook-fallback-diagnose-failed".to_string(),
-                "hook-fallback-diagnose-timeout".to_string(),
-            ];
+            escalation_specs.push((
+                "policy-review".to_string(),
+                "selected-next-action-blocked".to_string(),
+                "diagnose".to_string(),
+                "hook policy blocked the selected next action; inspect environment summary and adjust policy before retrying"
+                    .to_string(),
+                Some(
+                    "review IOS_RUSTFRIDA_HOOK_POLICY / target hook backend and retry with preflight-only first"
+                        .to_string(),
+                ),
+                vec!["native.hookenv".to_string()],
+                vec![
+                    "hook-fallback-diagnose-failed".to_string(),
+                    "hook-fallback-diagnose-timeout".to_string(),
+                ],
+            ));
+        }
+
+        for (index, (key, condition, phase, reason, note, templates, on_error_codes)) in
+            escalation_specs.iter().enumerate()
+        {
             ffi::JS_SetPropertyUint32(
                 ctx,
                 escalation_recommendations,
-                escalation_recommendation_count as u32,
+                index as u32,
                 hook_escalation_recommendation_to_js(
                     ctx,
-                    "policy-review",
-                    "selected-next-action-blocked",
-                    "diagnose",
-                    "hook policy blocked the selected next action; inspect environment summary and adjust policy before retrying",
-                    Some("review IOS_RUSTFRIDA_HOOK_POLICY / target hook backend and retry with preflight-only first"),
-                    &escalation_policy_templates,
-                    &escalation_policy_error_codes,
+                    key,
+                    condition,
+                    phase,
+                    reason,
+                    note.as_deref(),
+                    templates,
+                    on_error_codes,
                 ),
             );
-            escalation_recommendation_count += 1;
+        }
+
+        let escalation_recommendation_count = escalation_specs.len();
+        let mut error_code_routing_candidates = BTreeMap::<String, Vec<usize>>::new();
+        for (spec_index, (_, _, _, _, _, _, on_error_codes)) in escalation_specs.iter().enumerate() {
+            for error_code in on_error_codes {
+                let candidates = error_code_routing_candidates
+                    .entry(error_code.clone())
+                    .or_default();
+                if !candidates.iter().any(|candidate| candidate == &spec_index) {
+                    candidates.push(spec_index);
+                }
+            }
+        }
+        let error_code_routing = JSValue(ffi::JS_NewObject(ctx));
+        let error_code_routing_entries = ffi::JS_NewArray(ctx);
+        let error_code_routing_resolved = JSValue(ffi::JS_NewObject(ctx));
+        for (entry_index, (error_code, candidate_indices)) in error_code_routing_candidates.iter().enumerate() {
+            let recommended = candidate_indices
+                .first()
+                .and_then(|index| escalation_specs.get(*index));
+            let candidate_keys = candidate_indices
+                .iter()
+                .filter_map(|index| escalation_specs.get(*index).map(|spec| spec.0.clone()))
+                .collect::<Vec<_>>();
+
+            let recommended_escalation_key = recommended.map(|spec| spec.0.as_str());
+            let recommended_phase = recommended.map(|spec| spec.2.as_str());
+            let recommended_templates = recommended
+                .map(|spec| spec.5.clone())
+                .unwrap_or_default();
+            let (recommended_command_json_templates, recommended_command_json_eligible_template_count) =
+                hook_command_json_template_array_to_js(ctx, &recommended_templates);
+
+            if let Some(key) = recommended_escalation_key {
+                error_code_routing.set_property(ctx, error_code, JSValue::string(ctx, key));
+            }
+
+            let entry = JSValue(ffi::JS_NewObject(ctx));
+            entry.set_property(ctx, "errorCode", JSValue::string(ctx, error_code));
+            entry.set_property(ctx, "candidateCount", JSValue::int(candidate_keys.len() as i32));
+            entry.set_property(
+                ctx,
+                "candidateEscalationKeys",
+                JSValue(string_vec_to_js_array(ctx, &candidate_keys)),
+            );
+            match recommended_escalation_key {
+                Some(value) => {
+                    entry.set_property(ctx, "recommendedEscalationKey", JSValue::string(ctx, value));
+                    entry.set_property(ctx, "effectiveEscalationKey", JSValue::string(ctx, value));
+                }
+                None => {
+                    entry.set_property(ctx, "recommendedEscalationKey", JSValue::null());
+                    entry.set_property(ctx, "effectiveEscalationKey", JSValue::null());
+                }
+            }
+            entry.set_property(ctx, "matchConfidence", JSValue::string(ctx, "exact"));
+            entry.set_property(ctx, "resolvedFrom", JSValue::string(ctx, "errorCodeRouting"));
+            match recommended_phase {
+                Some(value) => {
+                    entry.set_property(ctx, "recommendedPhase", JSValue::string(ctx, value));
+                    entry.set_property(ctx, "effectivePhase", JSValue::string(ctx, value));
+                }
+                None => {
+                    entry.set_property(ctx, "recommendedPhase", JSValue::null());
+                    entry.set_property(ctx, "effectivePhase", JSValue::null());
+                }
+            }
+            entry.set_property(
+                ctx,
+                "recommendedTemplateCount",
+                JSValue::int(recommended_templates.len() as i32),
+            );
+            set_string_array_property(ctx, entry.raw(), "recommendedTemplates", &recommended_templates);
+            entry.set_property(
+                ctx,
+                "recommendedCommandJsonTemplateCount",
+                JSValue::int(recommended_templates.len() as i32),
+            );
+            entry.set_property(
+                ctx,
+                "recommendedCommandJsonTemplates",
+                JSValue(recommended_command_json_templates),
+            );
+            entry.set_property(
+                ctx,
+                "recommendedCommandJsonEligibleTemplateCount",
+                JSValue::int(recommended_command_json_eligible_template_count as i32),
+            );
+            ffi::JS_SetPropertyUint32(ctx, error_code_routing_entries, entry_index as u32, entry.raw());
+
+            let resolved = JSValue(ffi::JS_NewObject(ctx));
+            match recommended_escalation_key {
+                Some(value) => {
+                    resolved.set_property(ctx, "escalationKey", JSValue::string(ctx, value));
+                    resolved.set_property(ctx, "effectiveEscalationKey", JSValue::string(ctx, value));
+                }
+                None => {
+                    resolved.set_property(ctx, "escalationKey", JSValue::null());
+                    resolved.set_property(ctx, "effectiveEscalationKey", JSValue::null());
+                }
+            }
+            match recommended_phase {
+                Some(value) => {
+                    resolved.set_property(ctx, "phase", JSValue::string(ctx, value));
+                    resolved.set_property(ctx, "effectivePhase", JSValue::string(ctx, value));
+                }
+                None => {
+                    resolved.set_property(ctx, "phase", JSValue::null());
+                    resolved.set_property(ctx, "effectivePhase", JSValue::null());
+                }
+            }
+            resolved.set_property(ctx, "matchConfidence", JSValue::string(ctx, "exact"));
+            resolved.set_property(ctx, "resolvedFrom", JSValue::string(ctx, "errorCodeRouting"));
+            resolved.set_property(ctx, "templateCount", JSValue::int(recommended_templates.len() as i32));
+            set_string_array_property(ctx, resolved.raw(), "templates", &recommended_templates);
+            let (resolved_command_json_templates, _) = hook_command_json_template_array_to_js(ctx, &recommended_templates);
+            resolved.set_property(
+                ctx,
+                "commandJsonTemplateCount",
+                JSValue::int(recommended_templates.len() as i32),
+            );
+            resolved.set_property(
+                ctx,
+                "commandJsonTemplates",
+                JSValue(resolved_command_json_templates),
+            );
+            error_code_routing_resolved.set_property(ctx, error_code, resolved);
         }
 
         let retryable_phase_count = phase_order
@@ -1523,11 +1647,29 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             JSValue::int(escalation_recommendation_count as i32),
         );
         fallback_plan.set_property(ctx, "escalationRecommendations", JSValue(escalation_recommendations));
-        if escalation_recommendation_count > 0 {
-            fallback_plan.set_property(ctx, "suggestedEscalationKey", JSValue::string(ctx, "preflight-refresh"));
-        } else {
-            fallback_plan.set_property(ctx, "suggestedEscalationKey", JSValue::null());
-        }
+        match escalation_specs.first() {
+            Some((key, _, _, _, _, _, _)) => {
+                fallback_plan.set_property(ctx, "suggestedEscalationKey", JSValue::string(ctx, key))
+            }
+            None => fallback_plan.set_property(ctx, "suggestedEscalationKey", JSValue::null()),
+        };
+        fallback_plan.set_property(
+            ctx,
+            "errorCodeRoutingCount",
+            JSValue::int(error_code_routing_candidates.len() as i32),
+        );
+        fallback_plan.set_property(ctx, "errorCodeRouting", error_code_routing);
+        fallback_plan.set_property(
+            ctx,
+            "errorCodeRoutingResolvedCount",
+            JSValue::int(error_code_routing_candidates.len() as i32),
+        );
+        fallback_plan.set_property(ctx, "errorCodeRoutingResolved", error_code_routing_resolved);
+        fallback_plan.set_property(
+            ctx,
+            "errorCodeRoutingEntries",
+            JSValue(error_code_routing_entries),
+        );
         fallback_plan.set_property(
             ctx,
             "commandJsonTemplateCount",
