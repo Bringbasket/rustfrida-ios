@@ -1182,6 +1182,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     let blocked_branch_count = ordered_action_indices.len().saturating_sub(ready_branch_count);
     let suggested_sequence = hook_automation_suggested_sequence(coexistence_mode);
     let command_templates = ffi::JS_NewArray(ctx);
+    let install_action = recommended_actions_vec
+        .iter()
+        .find(|action| action.action_key == "hook.install");
     result.set_property(
         ctx,
         "recommendedActionCount",
@@ -1221,6 +1224,24 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "hasSuggestedSequence",
         JSValue::bool(!suggested_sequence.is_empty()),
     );
+    match install_action {
+        Some(action) => {
+            result.set_property(
+                ctx,
+                "installBlockedBy",
+                JSValue::string(ctx, hook_action_blocked_by(action)),
+            );
+            result.set_property(
+                ctx,
+                "installRecommendation",
+                JSValue::string(ctx, &action.recommendation),
+            );
+        }
+        None => {
+            result.set_property(ctx, "installBlockedBy", JSValue::null());
+            result.set_property(ctx, "installRecommendation", JSValue::null());
+        }
+    }
     set_string_array_property(ctx, result.raw(), "suggestedSequence", &suggested_sequence);
     for (index, action) in recommended_actions_vec.iter().enumerate() {
         let templates = hook_action_command_templates(&action.action_key, coexistence_mode);

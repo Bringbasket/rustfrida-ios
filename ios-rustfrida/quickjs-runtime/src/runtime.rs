@@ -2305,6 +2305,23 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
+                            const install = report.recommendedActions.find((entry) => entry.actionKey === 'hook.install') || null;
+                            return (install === null &&
+                                    report.installBlockedBy === null &&
+                                    report.installRecommendation === null) ||
+                                (install !== null &&
+                                    report.installBlockedBy === install.blockedBy &&
+                                    report.installRecommendation === install.recommendation);
+                        })()"#,
+                    )
+                    .expect("native hook env install aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
                 "true"
