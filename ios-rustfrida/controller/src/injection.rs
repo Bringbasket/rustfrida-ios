@@ -1592,6 +1592,18 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             map.insert(phase, entry);
             map
         });
+    let routing_decision_ready_phase_query = routing_decision_ready_phase_index
+        .get("query")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_preflight = routing_decision_ready_phase_index
+        .get("preflight")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_cleanup = routing_decision_ready_phase_index
+        .get("cleanup")
+        .cloned()
+        .unwrap_or(Value::Null);
     let routing_decision_ready_phase_resolve_index = routing_decision_ready_phase_index
         .iter()
         .fold(Map::<String, Value>::new(), |mut map, (phase, entry)| {
@@ -1908,6 +1920,180 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         "phaseFirst": routing_decision_ready_phase_entries.first().cloned().unwrap_or(Value::Null),
         "phaseLast": routing_decision_ready_phase_entries.last().cloned().unwrap_or(Value::Null),
         "phaseIndex": routing_decision_ready_phase_index,
+        "phaseQuery": routing_decision_ready_phase_query.clone(),
+        "phaseQueryErrorCodeCount": routing_decision_ready_phase_query
+            .get("errorCodeCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseQueryErrorCodes": routing_decision_ready_phase_query
+            .get("errorCodes")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseQueryEscalationKeyCount": routing_decision_ready_phase_query
+            .get("escalationKeyCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseQueryEscalationKeys": routing_decision_ready_phase_query
+            .get("escalationKeys")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseQueryPrimaryEscalationKey": routing_decision_ready_phase_query
+            .get("escalationKeys")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseQueryTemplateCount": routing_decision_ready_phase_query
+            .get("templateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseQueryTemplates": routing_decision_ready_phase_query
+            .get("templates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseQueryTemplate": routing_decision_ready_phase_query
+            .get("templates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseQueryCommandJsonTemplateCount": routing_decision_ready_phase_query
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseQueryCommandJsonTemplates": routing_decision_ready_phase_query
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseQueryCommandJsonTemplate": routing_decision_ready_phase_query
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseQueryCommandJsonTemplateCommand": routing_decision_ready_phase_query
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .and_then(|item| item.get("command"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflight": routing_decision_ready_phase_preflight.clone(),
+        "phasePreflightErrorCodeCount": routing_decision_ready_phase_preflight
+            .get("errorCodeCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightErrorCodes": routing_decision_ready_phase_preflight
+            .get("errorCodes")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phasePreflightEscalationKeyCount": routing_decision_ready_phase_preflight
+            .get("escalationKeyCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightEscalationKeys": routing_decision_ready_phase_preflight
+            .get("escalationKeys")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phasePreflightPrimaryEscalationKey": routing_decision_ready_phase_preflight
+            .get("escalationKeys")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightTemplateCount": routing_decision_ready_phase_preflight
+            .get("templateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightTemplates": routing_decision_ready_phase_preflight
+            .get("templates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phasePreflightTemplate": routing_decision_ready_phase_preflight
+            .get("templates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateCount": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplates": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phasePreflightCommandJsonTemplate": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonTemplateCommand": routing_decision_ready_phase_preflight
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .and_then(|item| item.get("command"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseCleanup": routing_decision_ready_phase_cleanup.clone(),
+        "phaseCleanupErrorCodeCount": routing_decision_ready_phase_cleanup
+            .get("errorCodeCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseCleanupErrorCodes": routing_decision_ready_phase_cleanup
+            .get("errorCodes")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseCleanupEscalationKeyCount": routing_decision_ready_phase_cleanup
+            .get("escalationKeyCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseCleanupEscalationKeys": routing_decision_ready_phase_cleanup
+            .get("escalationKeys")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseCleanupPrimaryEscalationKey": routing_decision_ready_phase_cleanup
+            .get("escalationKeys")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseCleanupTemplateCount": routing_decision_ready_phase_cleanup
+            .get("templateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseCleanupTemplates": routing_decision_ready_phase_cleanup
+            .get("templates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseCleanupTemplate": routing_decision_ready_phase_cleanup
+            .get("templates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseCleanupCommandJsonTemplateCount": routing_decision_ready_phase_cleanup
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseCleanupCommandJsonTemplates": routing_decision_ready_phase_cleanup
+            .get("commandJsonTemplates")
+            .cloned()
+            .unwrap_or(json!([])),
+        "phaseCleanupCommandJsonTemplate": routing_decision_ready_phase_cleanup
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseCleanupCommandJsonTemplateCommand": routing_decision_ready_phase_cleanup
+            .get("commandJsonTemplates")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .and_then(|item| item.get("command"))
+            .cloned()
+            .unwrap_or(Value::Null),
     });
     let routing_decision = json!({
         "lookupKey": "errorCode",
@@ -18720,6 +18906,28 @@ mod tests {
             "missing-phase"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseQuery"]["phase"],
+            "query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseQueryTemplateCount"],
+            3
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseQueryCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phasePreflightPrimaryEscalationKey"],
+            "conflict-preflight"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phasePreflightTemplateCount"],
+            2
+        );
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseCleanup"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseCleanupTemplateCount"].is_null());
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveExampleKnownResultEffectivePhase"],
             "preflight"
         );
@@ -18822,6 +19030,19 @@ mod tests {
             automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveDefaultEffectivePhase"],
             "query"
         );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseQueryErrorCodeCount"],
+            2
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseQueryEscalationKeys"][0],
+            "conflict-query"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateCommand"],
+            "native.hookenv"
+        );
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseCleanupCommandJsonTemplate"].is_null());
         assert_eq!(automation["backendAdaptation"]["requiresQueryPhase"], true);
         assert_eq!(automation["backendAdaptation"]["requiresCleanupPhase"], false);
         assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
