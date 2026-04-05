@@ -1122,6 +1122,30 @@ fn command_template_group_to_json(group_key: &str, templates: Vec<String>) -> Va
 }
 
 #[cfg(unix)]
+fn conflict_resolution_chain_entry(
+    index: usize,
+    group_key: &str,
+    phase: &str,
+    reason: &str,
+    group: &Value,
+) -> Value {
+    json!({
+        "id": format!("conflict-resolution:{group_key}:{index}"),
+        "index": index,
+        "groupKey": group_key,
+        "phase": phase,
+        "reason": reason,
+        "templates": group.get("templates").cloned().unwrap_or(Value::Null),
+        "templateCount": group.get("templateCount").cloned().unwrap_or(Value::Null),
+        "commandJsonTemplates": group.get("commandJsonTemplates").cloned().unwrap_or(Value::Null),
+        "commandJsonTemplateCount": group
+            .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+    })
+}
+
+#[cfg(unix)]
 fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str, command_mode: &str) -> Value {
     let topology_kind = backend_matrix
         .get("topology")
@@ -1391,6 +1415,48 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         .get("commandJsonTemplateCount")
         .cloned()
         .unwrap_or(Value::Null);
+    let preferred_conflict_resolution_chain = match conflict_resolution_group_key {
+        "query" => vec![
+            conflict_resolution_chain_entry(
+                0,
+                "query",
+                "query",
+                "use runtime queries first to inspect the mismatched backend states on both sides",
+                &query_group,
+            ),
+            conflict_resolution_chain_entry(
+                1,
+                "preflight",
+                "preflight",
+                "refresh full target diagnostics before attempting to realign backend runtimes",
+                &preflight_group,
+            ),
+        ],
+        "preflight" => vec![
+            conflict_resolution_chain_entry(
+                0,
+                "preflight",
+                "preflight",
+                "refresh controller and target diagnostics before choosing a runtime alignment action",
+                &preflight_group,
+            ),
+            conflict_resolution_chain_entry(
+                1,
+                "query",
+                "query",
+                "use runtime queries after preflight to confirm backend visibility and scope",
+                &query_group,
+            ),
+        ],
+        "cleanup" => vec![conflict_resolution_chain_entry(
+            0,
+            "cleanup",
+            "cleanup",
+            "clean up active hook state before attempting to realign backend runtimes",
+            &cleanup_group,
+        )],
+        _ => Vec::new(),
+    };
     let conflict_backend_pairs = controller_loaded_only_backend_ids
         .iter()
         .flat_map(|controller_backend_id| {
@@ -1400,6 +1466,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 conflict_resolution_command_json_templates.clone();
             let conflict_resolution_command_json_template_count =
                 conflict_resolution_command_json_template_count.clone();
+            let preferred_conflict_resolution_chain = preferred_conflict_resolution_chain.clone();
             target_loaded_only_backend_ids.iter().map(move |target_backend_id| {
                 json!({
                     "pairKey": format!("{controller_backend_id}->{target_backend_id}"),
@@ -1413,6 +1480,8 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                     "templateCount": conflict_resolution_template_count.clone(),
                     "commandJsonTemplates": conflict_resolution_command_json_templates.clone(),
                     "commandJsonTemplateCount": conflict_resolution_command_json_template_count.clone(),
+                    "resolutionChain": preferred_conflict_resolution_chain.clone(),
+                    "resolutionChainCount": preferred_conflict_resolution_chain.len(),
                 })
             })
         })
@@ -1545,6 +1614,14 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         "preferredConflictResolutionTemplateCount": preferred_conflict_backend_pair
             .as_ref()
             .and_then(|item| item.get("templateCount"))
+            .cloned(),
+        "preferredConflictResolutionChain": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("resolutionChain"))
+            .cloned(),
+        "preferredConflictResolutionChainCount": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("resolutionChainCount"))
             .cloned(),
     })
 }
@@ -17639,6 +17716,30 @@ mod tests {
             3
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["resolutionChainCount"],
+            2
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["resolutionChain"][0]["groupKey"],
+            "query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["resolutionChain"][1]["groupKey"],
+            "preflight"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionChainCount"],
+            2
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionChain"][0]["groupKey"],
+            "query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionChain"][1]["groupKey"],
+            "preflight"
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["controllerLoadedOnlyBackendIds"],
             json!(["ellekit"])
         );
@@ -17675,6 +17776,14 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionGroupKey"],
+            "query"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionChainCount"],
+            2
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionChain"][0]["groupKey"],
             "query"
         );
         assert_eq!(automation["backendAdaptation"]["requiresQueryPhase"], true);
@@ -17798,6 +17907,7 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "filesystem-only");
         assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 0);
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPair"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());
         assert_eq!(coexistence["backendAdaptation"]["preflightTemplates"][1], "controller --preflight-only --preflight-json --pid <pid>");
         assert_eq!(coexistence["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
