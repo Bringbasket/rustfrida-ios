@@ -2438,6 +2438,76 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 );
                 ready_value.set_property(
                     ctx,
+                    "defaultCommandJsonTemplateRisk",
+                    ready_default_command_json_template.get_property(ctx, "risk"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplatePlaceholderCount",
+                    ready_default_command_json_template.get_property(ctx, "placeholderCount"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplatePlaceholders",
+                    ready_default_command_json_template.get_property(ctx, "placeholders"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplateCliArgs",
+                    ready_default_command_json_template.get_property(ctx, "cliArgs"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplateKind",
+                    ready_default_command_json_template.get_property(ctx, "kind"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplatePhase",
+                    ready_default_command_json_template.get_property(ctx, "phase"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplateErrorCode",
+                    ready_default_command_json_template.get_property(ctx, "errorCode"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplateTimeoutErrorCode",
+                    ready_default_command_json_template.get_property(ctx, "timeoutErrorCode"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplateRetryable",
+                    ready_default_command_json_template.get_property(ctx, "retryable"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplateMaxSuggestedRetries",
+                    ready_default_command_json_template.get_property(ctx, "maxSuggestedRetries"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplateRetryDelayHintMs",
+                    ready_default_command_json_template.get_property(ctx, "retryDelayHintMs"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplateTimeoutHintMs",
+                    ready_default_command_json_template.get_property(ctx, "timeoutHintMs"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplateTimeoutAction",
+                    ready_default_command_json_template.get_property(ctx, "timeoutAction"),
+                );
+                ready_value.set_property(
+                    ctx,
+                    "defaultCommandJsonTemplateCommandJsonEligible",
+                    ready_default_command_json_template.get_property(ctx, "commandJsonEligible"),
+                );
+                ready_value.set_property(
+                    ctx,
                     "defaultMatchConfidence",
                     ready_default.get_property(ctx, "matchConfidence"),
                 );

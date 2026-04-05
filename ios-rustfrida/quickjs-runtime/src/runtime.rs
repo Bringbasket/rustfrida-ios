@@ -2000,6 +2000,50 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
+                            if (!report.hasFallbackPlan || report.fallbackPlan === null || report.fallbackPlan.routingDecision === null || report.fallbackPlan.routingDecision.ready === null) {
+                                return true;
+                            }
+                            const ready = report.fallbackPlan.routingDecision.ready;
+                            if (ready.defaultCommandJsonTemplate === null) {
+                                return ready.defaultCommandJsonTemplateRisk === null &&
+                                    ready.defaultCommandJsonTemplatePlaceholderCount === null &&
+                                    Array.isArray(ready.defaultCommandJsonTemplatePlaceholders) &&
+                                    Array.isArray(ready.defaultCommandJsonTemplateCliArgs) &&
+                                    ready.defaultCommandJsonTemplateKind === null &&
+                                    ready.defaultCommandJsonTemplatePhase === null &&
+                                    ready.defaultCommandJsonTemplateErrorCode === null &&
+                                    ready.defaultCommandJsonTemplateTimeoutErrorCode === null &&
+                                    ready.defaultCommandJsonTemplateRetryable === null &&
+                                    ready.defaultCommandJsonTemplateMaxSuggestedRetries === null &&
+                                    ready.defaultCommandJsonTemplateRetryDelayHintMs === null &&
+                                    ready.defaultCommandJsonTemplateTimeoutHintMs === null &&
+                                    ready.defaultCommandJsonTemplateTimeoutAction === null &&
+                                    ready.defaultCommandJsonTemplateCommandJsonEligible === null;
+                            }
+                            return typeof ready.defaultCommandJsonTemplateRisk === 'string' &&
+                                typeof ready.defaultCommandJsonTemplatePlaceholderCount === 'number' &&
+                                Array.isArray(ready.defaultCommandJsonTemplatePlaceholders) &&
+                                Array.isArray(ready.defaultCommandJsonTemplateCliArgs) &&
+                                typeof ready.defaultCommandJsonTemplateKind === 'string' &&
+                                typeof ready.defaultCommandJsonTemplatePhase === 'string' &&
+                                typeof ready.defaultCommandJsonTemplateErrorCode === 'string' &&
+                                typeof ready.defaultCommandJsonTemplateTimeoutErrorCode === 'string' &&
+                                typeof ready.defaultCommandJsonTemplateRetryable === 'boolean' &&
+                                typeof ready.defaultCommandJsonTemplateMaxSuggestedRetries === 'number' &&
+                                typeof ready.defaultCommandJsonTemplateRetryDelayHintMs === 'number' &&
+                                typeof ready.defaultCommandJsonTemplateTimeoutHintMs === 'number' &&
+                                typeof ready.defaultCommandJsonTemplateTimeoutAction === 'string' &&
+                                typeof ready.defaultCommandJsonTemplateCommandJsonEligible === 'boolean';
+                        })()"#,
+                    )
+                    .expect("native hook env default template aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
                 "true"
