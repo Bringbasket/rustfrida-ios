@@ -1784,6 +1784,28 @@ undefined;
                                         report.fallbackPlan.errorCodeRoutingResolved !== null &&
                                         Array.isArray(report.fallbackPlan.errorCodeRoutingEntries) &&
                                         report.fallbackPlan.errorCodeRoutingEntries.length === report.fallbackPlan.errorCodeRoutingCount &&
+                                        typeof report.fallbackPlan.routingDecision === 'object' &&
+                                        report.fallbackPlan.routingDecision !== null &&
+                                        typeof report.fallbackPlan.routingDecision.lookupKey === 'string' &&
+                                        typeof report.fallbackPlan.routingDecision.policy === 'string' &&
+                                        typeof report.fallbackPlan.routingDecision.entryCount === 'number' &&
+                                        Array.isArray(report.fallbackPlan.routingDecision.entries) &&
+                                        report.fallbackPlan.routingDecision.entryCount === report.fallbackPlan.routingDecision.entries.length &&
+                                        (report.fallbackPlan.routingDecision.defaultRecommendedEscalationKey === null ||
+                                            typeof report.fallbackPlan.routingDecision.defaultRecommendedEscalationKey === 'string') &&
+                                        (report.fallbackPlan.routingDecision.defaultRecommendedPhase === null ||
+                                            typeof report.fallbackPlan.routingDecision.defaultRecommendedPhase === 'string') &&
+                                        (report.fallbackPlan.routingDecision.default === null ||
+                                            typeof report.fallbackPlan.routingDecision.default === 'object') &&
+                                        (report.fallbackPlan.routingDecision.ready === null ||
+                                            (typeof report.fallbackPlan.routingDecision.ready.lookupRule === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveLookupKey === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolvePolicy === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveOutputShape === 'string' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.index === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.index !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.default === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.default !== null)) &&
                                         (report.fallbackPlan.suggestedEscalationKey === null ||
                                             typeof report.fallbackPlan.suggestedEscalationKey === 'string') &&
                                         (report.fallbackPlan.escalationRecommendations.length === 0 ||

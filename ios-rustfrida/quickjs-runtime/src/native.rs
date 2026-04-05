@@ -1572,6 +1572,154 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             );
             error_code_routing_resolved.set_property(ctx, error_code, resolved);
         }
+        let routing_decision = JSValue(ffi::JS_NewObject(ctx));
+        routing_decision.set_property(ctx, "lookupKey", JSValue::string(ctx, "errorCode"));
+        routing_decision.set_property(
+            ctx,
+            "policy",
+            JSValue::string(ctx, "first-candidate-by-escalation-order"),
+        );
+        routing_decision.set_property(
+            ctx,
+            "entryCount",
+            JSValue::int(error_code_routing_candidates.len() as i32),
+        );
+        routing_decision.set_property(ctx, "entries", JSValue(error_code_routing_entries).dup(ctx));
+
+        match escalation_specs.first() {
+            Some((key, _, phase, _, _, templates, _)) => {
+                let (default_command_json_templates, default_command_json_eligible_template_count) =
+                    hook_command_json_template_array_to_js(ctx, templates);
+                routing_decision.set_property(
+                    ctx,
+                    "defaultRecommendedEscalationKey",
+                    JSValue::string(ctx, key),
+                );
+                routing_decision.set_property(ctx, "defaultRecommendedPhase", JSValue::string(ctx, phase));
+                routing_decision.set_property(
+                    ctx,
+                    "defaultEffectiveEscalationKey",
+                    JSValue::string(ctx, key),
+                );
+                routing_decision.set_property(ctx, "defaultEffectivePhase", JSValue::string(ctx, phase));
+                routing_decision.set_property(
+                    ctx,
+                    "defaultRecommendedTemplateCount",
+                    JSValue::int(templates.len() as i32),
+                );
+                set_string_array_property(
+                    ctx,
+                    routing_decision.raw(),
+                    "defaultRecommendedTemplates",
+                    templates,
+                );
+                routing_decision.set_property(
+                    ctx,
+                    "defaultRecommendedCommandJsonTemplateCount",
+                    JSValue::int(templates.len() as i32),
+                );
+                routing_decision.set_property(
+                    ctx,
+                    "defaultRecommendedCommandJsonTemplates",
+                    JSValue(default_command_json_templates).dup(ctx),
+                );
+
+                let default_value = JSValue(ffi::JS_NewObject(ctx));
+                default_value.set_property(ctx, "recommendedEscalationKey", JSValue::string(ctx, key));
+                default_value.set_property(ctx, "matchConfidence", JSValue::string(ctx, "default"));
+                default_value.set_property(
+                    ctx,
+                    "resolvedFrom",
+                    JSValue::string(ctx, "defaultRecommendedEscalationKey"),
+                );
+                default_value.set_property(ctx, "recommendedPhase", JSValue::string(ctx, phase));
+                default_value.set_property(ctx, "effectivePhase", JSValue::string(ctx, phase));
+                default_value.set_property(ctx, "effectiveEscalationKey", JSValue::string(ctx, key));
+                default_value.set_property(
+                    ctx,
+                    "recommendedTemplateCount",
+                    JSValue::int(templates.len() as i32),
+                );
+                set_string_array_property(ctx, default_value.raw(), "recommendedTemplates", templates);
+                default_value.set_property(
+                    ctx,
+                    "recommendedCommandJsonTemplateCount",
+                    JSValue::int(templates.len() as i32),
+                );
+                default_value.set_property(
+                    ctx,
+                    "recommendedCommandJsonTemplates",
+                    JSValue(default_command_json_templates),
+                );
+                default_value.set_property(
+                    ctx,
+                    "recommendedCommandJsonEligibleTemplateCount",
+                    JSValue::int(default_command_json_eligible_template_count as i32),
+                );
+                routing_decision.set_property(ctx, "default", default_value);
+
+                let ready_value = JSValue(ffi::JS_NewObject(ctx));
+                ready_value.set_property(ctx, "lookupRule", JSValue::string(ctx, "index[errorCode] || default"));
+                ready_value.set_property(ctx, "resolveLookupKey", JSValue::string(ctx, "errorCode"));
+                ready_value.set_property(ctx, "resolvePolicy", JSValue::string(ctx, "index-then-default"));
+                ready_value.set_property(
+                    ctx,
+                    "resolveOutputShape",
+                    JSValue::string(
+                        ctx,
+                        "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
+                    ),
+                );
+                ready_value.set_property(ctx, "index", error_code_routing_resolved.dup(ctx));
+                let ready_default = JSValue(ffi::JS_NewObject(ctx));
+                ready_default.set_property(ctx, "escalationKey", JSValue::string(ctx, key));
+                ready_default.set_property(ctx, "effectiveEscalationKey", JSValue::string(ctx, key));
+                ready_default.set_property(ctx, "phase", JSValue::string(ctx, phase));
+                ready_default.set_property(ctx, "effectivePhase", JSValue::string(ctx, phase));
+                ready_default.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
+                set_string_array_property(ctx, ready_default.raw(), "templates", templates);
+                let (ready_default_command_json_templates, _) =
+                    hook_command_json_template_array_to_js(ctx, templates);
+                ready_default.set_property(
+                    ctx,
+                    "commandJsonTemplateCount",
+                    JSValue::int(templates.len() as i32),
+                );
+                ready_default.set_property(
+                    ctx,
+                    "commandJsonTemplates",
+                    JSValue(ready_default_command_json_templates),
+                );
+                ready_default.set_property(ctx, "matchConfidence", JSValue::string(ctx, "default"));
+                ready_default.set_property(
+                    ctx,
+                    "resolvedFrom",
+                    JSValue::string(ctx, "defaultRecommendedEscalationKey"),
+                );
+                ready_value.set_property(ctx, "default", ready_default);
+                routing_decision.set_property(ctx, "ready", ready_value);
+            }
+            None => {
+                routing_decision.set_property(ctx, "defaultRecommendedEscalationKey", JSValue::null());
+                routing_decision.set_property(ctx, "defaultRecommendedPhase", JSValue::null());
+                routing_decision.set_property(ctx, "defaultEffectiveEscalationKey", JSValue::null());
+                routing_decision.set_property(ctx, "defaultEffectivePhase", JSValue::null());
+                routing_decision.set_property(ctx, "defaultRecommendedTemplateCount", JSValue::int(0));
+                routing_decision.set_property(ctx, "defaultRecommendedTemplates", JSValue(ffi::JS_NewArray(ctx)));
+                routing_decision.set_property(
+                    ctx,
+                    "defaultRecommendedCommandJsonTemplateCount",
+                    JSValue::int(0),
+                );
+                routing_decision.set_property(
+                    ctx,
+                    "defaultRecommendedCommandJsonTemplates",
+                    JSValue(ffi::JS_NewArray(ctx)),
+                );
+                routing_decision.set_property(ctx, "default", JSValue::null());
+                routing_decision.set_property(ctx, "ready", JSValue::null());
+            }
+        }
 
         let retryable_phase_count = phase_order
             .iter()
@@ -1670,6 +1818,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             "errorCodeRoutingEntries",
             JSValue(error_code_routing_entries),
         );
+        fallback_plan.set_property(ctx, "routingDecision", routing_decision);
         fallback_plan.set_property(
             ctx,
             "commandJsonTemplateCount",
