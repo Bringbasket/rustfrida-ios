@@ -1804,8 +1804,19 @@ undefined;
                                                 typeof report.fallbackPlan.routingDecision.ready.resolveOutputShape === 'string' &&
                                                 typeof report.fallbackPlan.routingDecision.ready.index === 'object' &&
                                                 report.fallbackPlan.routingDecision.ready.index !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveIndex === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.resolveIndex !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveIndexEntries === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.resolveIndexEntries !== null &&
                                                 typeof report.fallbackPlan.routingDecision.ready.default === 'object' &&
-                                                report.fallbackPlan.routingDecision.ready.default !== null)) &&
+                                                report.fallbackPlan.routingDecision.ready.default !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveDefault === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.resolveDefault !== null &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveExamples === 'object' &&
+                                                report.fallbackPlan.routingDecision.ready.resolveExamples !== null &&
+                                                report.fallbackPlan.routingDecision.ready.resolveIndexEntries === report.fallbackPlan.routingDecision.ready.resolveIndex &&
+                                                report.fallbackPlan.routingDecision.ready.resolveDefault.reason === 'missing-error-code' &&
+                                                typeof report.fallbackPlan.routingDecision.ready.resolveExamples.missingErrorCode === 'string')) &&
                                         (report.fallbackPlan.suggestedEscalationKey === null ||
                                             typeof report.fallbackPlan.suggestedEscalationKey === 'string') &&
                                         (report.fallbackPlan.escalationRecommendations.length === 0 ||

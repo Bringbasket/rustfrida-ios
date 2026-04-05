@@ -1696,6 +1696,93 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     "resolvedFrom",
                     JSValue::string(ctx, "defaultRecommendedEscalationKey"),
                 );
+
+                let resolve_index = JSValue(ffi::JS_NewObject(ctx));
+                let mut example_known_error_code: Option<String> = None;
+                for (error_code, candidate_indices) in error_code_routing_candidates.iter() {
+                    let recommended = candidate_indices
+                        .first()
+                        .and_then(|index| escalation_specs.get(*index));
+                    let Some((effective_key, _, effective_phase, _, _, effective_templates, _)) = recommended else {
+                        continue;
+                    };
+                    let effective = JSValue(ffi::JS_NewObject(ctx));
+                    effective.set_property(ctx, "escalationKey", JSValue::string(ctx, effective_key));
+                    effective.set_property(ctx, "effectiveEscalationKey", JSValue::string(ctx, effective_key));
+                    effective.set_property(ctx, "phase", JSValue::string(ctx, effective_phase));
+                    effective.set_property(ctx, "effectivePhase", JSValue::string(ctx, effective_phase));
+                    effective.set_property(
+                        ctx,
+                        "templateCount",
+                        JSValue::int(effective_templates.len() as i32),
+                    );
+                    set_string_array_property(ctx, effective.raw(), "templates", effective_templates);
+                    let (effective_command_json_templates, _) =
+                        hook_command_json_template_array_to_js(ctx, effective_templates);
+                    effective.set_property(
+                        ctx,
+                        "commandJsonTemplateCount",
+                        JSValue::int(effective_templates.len() as i32),
+                    );
+                    effective.set_property(
+                        ctx,
+                        "commandJsonTemplates",
+                        JSValue(effective_command_json_templates),
+                    );
+                    effective.set_property(ctx, "matchConfidence", JSValue::string(ctx, "exact"));
+                    effective.set_property(ctx, "resolvedFrom", JSValue::string(ctx, "errorCodeRouting"));
+
+                    let resolved = JSValue(ffi::JS_NewObject(ctx));
+                    resolved.set_property(ctx, "matched", JSValue::bool(true));
+                    resolved.set_property(ctx, "usedDefault", JSValue::bool(false));
+                    resolved.set_property(ctx, "reason", JSValue::string(ctx, "matched-error-code"));
+                    resolved.set_property(ctx, "effectivePhase", JSValue::string(ctx, effective_phase));
+                    resolved.set_property(
+                        ctx,
+                        "effectiveEscalationKey",
+                        JSValue::string(ctx, effective_key),
+                    );
+                    resolved.set_property(ctx, "effective", effective);
+                    resolve_index.set_property(ctx, error_code, resolved);
+                    if example_known_error_code.is_none() {
+                        example_known_error_code = Some(error_code.clone());
+                    }
+                }
+
+                let resolve_default = JSValue(ffi::JS_NewObject(ctx));
+                resolve_default.set_property(ctx, "matched", JSValue::bool(false));
+                resolve_default.set_property(ctx, "usedDefault", JSValue::bool(true));
+                resolve_default.set_property(ctx, "reason", JSValue::string(ctx, "missing-error-code"));
+                resolve_default.set_property(ctx, "effectivePhase", JSValue::string(ctx, phase));
+                resolve_default.set_property(ctx, "effectiveEscalationKey", JSValue::string(ctx, key));
+                resolve_default.set_property(ctx, "effective", ready_default.dup(ctx));
+
+                let resolve_examples = JSValue(ffi::JS_NewObject(ctx));
+                match example_known_error_code {
+                    Some(ref error_code) => {
+                        resolve_examples.set_property(ctx, "knownErrorCode", JSValue::string(ctx, error_code));
+                        resolve_examples.set_property(
+                            ctx,
+                            "knownResult",
+                            resolve_index.get_property(ctx, error_code),
+                        );
+                    }
+                    None => {
+                        resolve_examples.set_property(ctx, "knownErrorCode", JSValue::null());
+                        resolve_examples.set_property(ctx, "knownResult", JSValue::null());
+                    }
+                }
+                resolve_examples.set_property(
+                    ctx,
+                    "missingErrorCode",
+                    JSValue::string(ctx, "hook-fallback-unknown"),
+                );
+                resolve_examples.set_property(ctx, "missingResult", resolve_default.dup(ctx));
+
+                ready_value.set_property(ctx, "resolveIndex", resolve_index.dup(ctx));
+                ready_value.set_property(ctx, "resolveIndexEntries", resolve_index);
+                ready_value.set_property(ctx, "resolveDefault", resolve_default.dup(ctx));
+                ready_value.set_property(ctx, "resolveExamples", resolve_examples);
                 ready_value.set_property(ctx, "default", ready_default);
                 routing_decision.set_property(ctx, "ready", ready_value);
             }
@@ -1717,7 +1804,26 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     JSValue(ffi::JS_NewArray(ctx)),
                 );
                 routing_decision.set_property(ctx, "default", JSValue::null());
-                routing_decision.set_property(ctx, "ready", JSValue::null());
+                let ready_value = JSValue(ffi::JS_NewObject(ctx));
+                ready_value.set_property(ctx, "lookupRule", JSValue::string(ctx, "index[errorCode] || default"));
+                ready_value.set_property(ctx, "resolveLookupKey", JSValue::string(ctx, "errorCode"));
+                ready_value.set_property(ctx, "resolvePolicy", JSValue::string(ctx, "index-then-default"));
+                ready_value.set_property(
+                    ctx,
+                    "resolveOutputShape",
+                    JSValue::string(
+                        ctx,
+                        "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
+                    ),
+                );
+                let empty_object = JSValue(ffi::JS_NewObject(ctx));
+                ready_value.set_property(ctx, "index", empty_object.dup(ctx));
+                ready_value.set_property(ctx, "resolveIndex", empty_object.dup(ctx));
+                ready_value.set_property(ctx, "resolveIndexEntries", empty_object);
+                ready_value.set_property(ctx, "default", JSValue::null());
+                ready_value.set_property(ctx, "resolveDefault", JSValue::null());
+                ready_value.set_property(ctx, "resolveExamples", JSValue::null());
+                routing_decision.set_property(ctx, "ready", ready_value);
             }
         }
 
