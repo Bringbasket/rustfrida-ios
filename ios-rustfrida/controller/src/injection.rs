@@ -1348,19 +1348,76 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         left_key.cmp(&right_key)
     });
     let preferred_backend_recommendation = backend_specific_recommendations.first().cloned();
+    let conflict_resolution_group_key = if command_mode == "blocked" {
+        "none"
+    } else if requires_cleanup_phase {
+        "cleanup"
+    } else if preferred_group_key == "preflight" {
+        "preflight"
+    } else {
+        "query"
+    };
+    let conflict_resolution_group = match conflict_resolution_group_key {
+        "query" => query_group.clone(),
+        "preflight" => preflight_group.clone(),
+        "cleanup" => cleanup_group.clone(),
+        _ => command_template_group_to_json("none", Vec::new()),
+    };
+    let conflict_resolution_phase = match conflict_resolution_group_key {
+        "preflight" => "preflight",
+        "cleanup" => "cleanup",
+        "query" => "query",
+        _ => "blocked",
+    };
+    let conflict_resolution_reason = match conflict_resolution_group_key {
+        "preflight" => "refresh controller and target diagnostics before attempting runtime alignment",
+        "cleanup" => "clean up active hook state before attempting to realign backend runtimes",
+        "query" => "keep the flow query-first until controller and target backend runtimes are aligned",
+        _ => "no compatible conflict resolution path is currently available",
+    };
+    let conflict_resolution_templates = conflict_resolution_group
+        .get("templates")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let conflict_resolution_template_count = conflict_resolution_group
+        .get("templateCount")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let conflict_resolution_command_json_templates = conflict_resolution_group
+        .get("commandJsonTemplates")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let conflict_resolution_command_json_template_count = conflict_resolution_group
+        .get("commandJsonTemplateCount")
+        .cloned()
+        .unwrap_or(Value::Null);
     let conflict_backend_pairs = controller_loaded_only_backend_ids
         .iter()
         .flat_map(|controller_backend_id| {
+            let conflict_resolution_templates = conflict_resolution_templates.clone();
+            let conflict_resolution_template_count = conflict_resolution_template_count.clone();
+            let conflict_resolution_command_json_templates =
+                conflict_resolution_command_json_templates.clone();
+            let conflict_resolution_command_json_template_count =
+                conflict_resolution_command_json_template_count.clone();
             target_loaded_only_backend_ids.iter().map(move |target_backend_id| {
                 json!({
                     "pairKey": format!("{controller_backend_id}->{target_backend_id}"),
                     "controllerBackendId": controller_backend_id,
                     "targetBackendId": target_backend_id,
                     "reason": "controller and target are loaded with different backend runtimes",
+                    "suggestedGroupKey": conflict_resolution_group_key,
+                    "suggestedPhase": conflict_resolution_phase,
+                    "resolutionReason": conflict_resolution_reason,
+                    "templates": conflict_resolution_templates.clone(),
+                    "templateCount": conflict_resolution_template_count.clone(),
+                    "commandJsonTemplates": conflict_resolution_command_json_templates.clone(),
+                    "commandJsonTemplateCount": conflict_resolution_command_json_template_count.clone(),
                 })
             })
         })
         .collect::<Vec<_>>();
+    let preferred_conflict_backend_pair = conflict_backend_pairs.first().cloned();
 
     json!({
         "mode": mode,
@@ -1468,6 +1525,27 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .cloned(),
         "conflictBackendPairCount": conflict_backend_pairs.len(),
         "conflictBackendPairs": conflict_backend_pairs,
+        "preferredConflictBackendPair": preferred_conflict_backend_pair.clone(),
+        "preferredConflictBackendPairKey": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("pairKey"))
+            .cloned(),
+        "preferredConflictResolutionGroupKey": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("suggestedGroupKey"))
+            .cloned(),
+        "preferredConflictResolutionReason": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("resolutionReason"))
+            .cloned(),
+        "preferredConflictResolutionTemplates": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("templates"))
+            .cloned(),
+        "preferredConflictResolutionTemplateCount": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("templateCount"))
+            .cloned(),
     })
 }
 
@@ -17541,6 +17619,26 @@ mod tests {
             "ellekit->substrate"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["suggestedGroupKey"],
+            "query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["templateCount"],
+            3
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairKey"],
+            "ellekit->substrate"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionGroupKey"],
+            "query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionTemplateCount"],
+            3
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["controllerLoadedOnlyBackendIds"],
             json!(["ellekit"])
         );
@@ -17571,6 +17669,14 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "ellekit");
         assert_eq!(automation["backendAdaptation"]["conflictBackendPairCount"], 1);
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictBackendPairKey"],
+            "ellekit->substrate"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionGroupKey"],
+            "query"
+        );
         assert_eq!(automation["backendAdaptation"]["requiresQueryPhase"], true);
         assert_eq!(automation["backendAdaptation"]["requiresCleanupPhase"], false);
         assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
@@ -17691,6 +17797,7 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "filesystem-only");
         assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 0);
+        assert!(coexistence["backendAdaptation"]["preferredConflictBackendPair"].is_null());
         assert_eq!(coexistence["backendAdaptation"]["preflightTemplates"][1], "controller --preflight-only --preflight-json --pid <pid>");
         assert_eq!(coexistence["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
