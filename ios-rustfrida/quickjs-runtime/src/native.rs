@@ -1,30 +1,27 @@
 use crate::context::JSContext;
 use crate::ffi;
 use crate::ptr::{create_native_pointer, get_native_pointer_addr};
-use crate::util::{add_cfunction_to_object, js_i64_to_js_number_or_bigint, js_throw_internal_error, js_u64_to_js_number_or_bigint};
+use crate::util::{
+    add_cfunction_to_object, js_i64_to_js_number_or_bigint, js_throw_internal_error, js_u64_to_js_number_or_bigint,
+};
 use crate::value::JSValue;
 use native_api::{
-    detect_hook_environment, enumerate_images, find_export_by_name, find_image_build_version, find_image_by_address, find_image_by_name, find_image_chained_fixups,
-    find_image_code_signature,
-    find_image_dependencies, find_image_data_in_code, find_image_dyld_info, find_image_dylinker,
-    find_image_encryption_info,
+    detect_hook_environment, enumerate_images, find_export_by_name, find_image_build_version, find_image_by_address,
+    find_image_by_name, find_image_chained_fixups, find_image_code_signature, find_image_data_in_code,
+    find_image_dependencies, find_image_dyld_info, find_image_dylinker, find_image_encryption_info,
     find_image_entry_point, find_image_exports, find_image_exports_trie, find_image_function_starts,
-    find_image_imports,
-    find_image_install_name, find_image_linkedit_info, find_image_load_commands, find_image_rpaths,
-    find_image_sections, find_image_segments, find_image_source_version, find_image_uuid, find_native_symbols, find_symbol_by_address,
-    hook_coexistence_layer_status,
-    hook_environment_recommendations, image_build_version_support_available, image_chained_fixups_support_available,
-    hook_environment_recommended_actions,
-    image_code_signature_support_available, image_dependency_support_available, image_data_in_code_support_available,
-    image_exports_trie_support_available,
-    image_dyld_info_support_available, image_dylinker_support_available,
-    image_encryption_info_support_available, image_entry_point_support_available,
-    image_function_starts_support_available, image_import_support_available,
-    image_install_name_support_available, image_linkedit_info_support_available,
-    image_load_command_support_available, image_rpath_support_available,
-    image_section_support_available, image_segment_support_available,
-    image_source_version_support_available, image_uuid_support_available,
-    native_export_support_available, native_symbol_support_available, resolve_hook_strategy,
+    find_image_imports, find_image_install_name, find_image_linkedit_info, find_image_load_commands, find_image_rpaths,
+    find_image_sections, find_image_segments, find_image_source_version, find_image_uuid, find_native_symbols,
+    find_symbol_by_address, hook_coexistence_layer_status, hook_environment_recommendations,
+    hook_environment_recommended_actions, image_build_version_support_available,
+    image_chained_fixups_support_available, image_code_signature_support_available,
+    image_data_in_code_support_available, image_dependency_support_available, image_dyld_info_support_available,
+    image_dylinker_support_available, image_encryption_info_support_available, image_entry_point_support_available,
+    image_exports_trie_support_available, image_function_starts_support_available, image_import_support_available,
+    image_install_name_support_available, image_linkedit_info_support_available, image_load_command_support_available,
+    image_rpath_support_available, image_section_support_available, image_segment_support_available,
+    image_source_version_support_available, image_uuid_support_available, native_export_support_available,
+    native_symbol_support_available, resolve_hook_strategy,
 };
 use std::path::Path;
 
@@ -46,11 +43,7 @@ unsafe fn hook_recommended_action_to_js(
     item.set_property(ctx, "priority", JSValue::int(action.priority as i32));
     item.set_property(ctx, "allowed", JSValue::bool(action.allowed));
     item.set_property(ctx, "status", JSValue::string(ctx, &action.status));
-    item.set_property(
-        ctx,
-        "recommendation",
-        JSValue::string(ctx, &action.recommendation),
-    );
+    item.set_property(ctx, "recommendation", JSValue::string(ctx, &action.recommendation));
     match &action.reason {
         Some(reason) => item.set_property(ctx, "reason", JSValue::string(ctx, reason)),
         None => item.set_property(ctx, "reason", JSValue::null()),
@@ -150,26 +143,271 @@ fn hook_action_command_templates(action_key: &str, preferred_path: &str) -> Vec<
             "shook status",
             "hfl status",
         ],
-        "hook.stop" => &[
-            "trace stop",
-            "stalker stop",
-            "jhook stop",
-            "shook stop",
-            "hfl stop",
-        ],
+        "hook.stop" => &["trace stop", "stalker stop", "jhook stop", "shook stop", "hfl stop"],
         _ => &[],
     };
 
     templates.iter().map(|item| (*item).to_string()).collect::<Vec<_>>()
 }
 
+fn hook_action_prerequisites(action_key: &str) -> &'static [&'static str] {
+    match action_key {
+        "hook.install" => &["hook.bootstrap"],
+        "hook.stop" => &["hook.status"],
+        _ => &[],
+    }
+}
+
+fn normalize_command_template_for_cli(template: &str) -> String {
+    template
+        .split(" #")
+        .next()
+        .map(str::trim)
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn command_template_placeholders(command: &str) -> Vec<String> {
+    command
+        .split_whitespace()
+        .filter_map(|token| {
+            let trimmed = token.trim_matches(|ch: char| ch == ',' || ch == ';');
+            if trimmed.starts_with('<') && trimmed.ends_with('>') && trimmed.len() > 2 {
+                Some(trimmed.to_string())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>()
+}
+
+fn command_template_risk(template: &str) -> &'static str {
+    if template.contains("# risky-with-external-backend") {
+        "risky-with-external-backend"
+    } else if template.contains("# caution-filesystem-only-backend-artifacts") {
+        "cautious-filesystem-only-backend-artifacts"
+    } else {
+        "normal"
+    }
+}
+
+fn command_template_phase(command: &str) -> &'static str {
+    if command.starts_with("controller --preflight-only") {
+        "preflight"
+    } else if command.starts_with("controller --inject-json") {
+        "inject"
+    } else if command == "native.hookenv" {
+        "diagnose"
+    } else if command.starts_with("trace status")
+        || command.starts_with("stalker status")
+        || command.starts_with("jhook status")
+        || command.starts_with("shook status")
+        || command.starts_with("hfl status")
+        || command.starts_with("trace stop")
+        || command.starts_with("stalker stop")
+        || command.starts_with("jhook stop")
+        || command.starts_with("shook stop")
+        || command.starts_with("hfl stop")
+    {
+        "cleanup"
+    } else if command.starts_with("objc.")
+        || command.starts_with("native.images")
+        || command.starts_with("swift.")
+        || command.starts_with("pac.")
+    {
+        "query"
+    } else if command.starts_with("trace ")
+        || command.starts_with("stalker ")
+        || command.starts_with("jhook ")
+        || command.starts_with("shook ")
+        || command.starts_with("hfl ")
+    {
+        "hook-install"
+    } else {
+        "general"
+    }
+}
+
+fn phase_retry_policy(phase: &str) -> (bool, u32, u64) {
+    match phase {
+        "diagnose" => (true, 1, 250),
+        "preflight" => (true, 2, 500),
+        "query" => (true, 1, 250),
+        "cleanup" => (true, 1, 250),
+        "inject" => (false, 0, 0),
+        "hook-install" => (false, 0, 0),
+        _ => (false, 0, 0),
+    }
+}
+
+fn phase_timeout_policy(phase: &str) -> (u64, &'static str) {
+    match phase {
+        "diagnose" => (4000, "refresh-hook-environment-and-retry"),
+        "preflight" => (8000, "re-run-preflight-or-switch-to-query-only"),
+        "query" => (5000, "narrow-query-filter-and-retry"),
+        "cleanup" => (6000, "retry-cleanup-or-escalate-to-preflight"),
+        "inject" => (12000, "abort-injection-and-run-preflight"),
+        "hook-install" => (12000, "stop-hook-install-and-switch-to-query-only"),
+        _ => (5000, "abort-and-escalate"),
+    }
+}
+
+fn phase_failure_code(phase: &str) -> &'static str {
+    match phase {
+        "diagnose" => "hook-fallback-diagnose-failed",
+        "preflight" => "hook-fallback-preflight-failed",
+        "query" => "hook-fallback-query-failed",
+        "cleanup" => "hook-fallback-cleanup-failed",
+        "inject" => "hook-fallback-inject-failed",
+        "hook-install" => "hook-fallback-hook-install-failed",
+        _ => "hook-fallback-general-failed",
+    }
+}
+
+fn phase_timeout_error_code(phase: &str) -> &'static str {
+    match phase {
+        "diagnose" => "hook-fallback-diagnose-timeout",
+        "preflight" => "hook-fallback-preflight-timeout",
+        "query" => "hook-fallback-query-timeout",
+        "cleanup" => "hook-fallback-cleanup-timeout",
+        "inject" => "hook-fallback-inject-timeout",
+        "hook-install" => "hook-fallback-hook-install-timeout",
+        _ => "hook-fallback-general-timeout",
+    }
+}
+
+unsafe fn hook_command_json_template_to_js(ctx: *mut ffi::JSContext, template: &str) -> ffi::JSValue {
+    let command = normalize_command_template_for_cli(template);
+    let placeholders = command_template_placeholders(&command);
+    let risk = command_template_risk(template);
+    let phase = command_template_phase(&command);
+    let (retryable, max_suggested_retries, retry_delay_hint_ms) = phase_retry_policy(phase);
+    let (timeout_hint_ms, timeout_action) = phase_timeout_policy(phase);
+    let error_code = phase_failure_code(phase);
+    let timeout_error_code = phase_timeout_error_code(phase);
+    let result = JSValue(ffi::JS_NewObject(ctx));
+
+    result.set_property(ctx, "command", JSValue::string(ctx, &command));
+    result.set_property(ctx, "risk", JSValue::string(ctx, risk));
+    result.set_property(ctx, "phase", JSValue::string(ctx, phase));
+    result.set_property(ctx, "retryable", JSValue::bool(retryable));
+    result.set_property(ctx, "maxSuggestedRetries", JSValue::int(max_suggested_retries as i32));
+    result.set_property(
+        ctx,
+        "retryDelayHintMs",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, retry_delay_hint_ms)),
+    );
+    result.set_property(
+        ctx,
+        "timeoutHintMs",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, timeout_hint_ms)),
+    );
+    result.set_property(ctx, "timeoutAction", JSValue::string(ctx, timeout_action));
+    result.set_property(ctx, "errorCode", JSValue::string(ctx, error_code));
+    result.set_property(ctx, "timeoutErrorCode", JSValue::string(ctx, timeout_error_code));
+    result.set_property(ctx, "placeholderCount", JSValue::int(placeholders.len() as i32));
+    set_string_array_property(ctx, result.raw(), "placeholders", &placeholders);
+
+    if let Some(controller_args) = command.strip_prefix("controller ") {
+        let cli_args = controller_args
+            .split_whitespace()
+            .map(|token| token.to_string())
+            .collect::<Vec<_>>();
+        result.set_property(ctx, "kind", JSValue::string(ctx, "controller-cli"));
+        result.set_property(ctx, "commandJsonEligible", JSValue::bool(false));
+        set_string_array_property(ctx, result.raw(), "cliArgs", &cli_args);
+    } else {
+        let cli_args = vec![
+            "--pid".to_string(),
+            "<pid>".to_string(),
+            "--command".to_string(),
+            command.clone(),
+            "--command-json".to_string(),
+        ];
+        result.set_property(ctx, "kind", JSValue::string(ctx, "runtime-command"));
+        result.set_property(ctx, "commandJsonEligible", JSValue::bool(true));
+        set_string_array_property(ctx, result.raw(), "cliArgs", &cli_args);
+    }
+
+    result.raw()
+}
+
+fn hook_action_branch(action: &native_api::HookRecommendedAction) -> &'static str {
+    if action.allowed {
+        "run"
+    } else {
+        "blocked"
+    }
+}
+
+unsafe fn hook_next_action_plan_to_js(
+    ctx: *mut ffi::JSContext,
+    action: &native_api::HookRecommendedAction,
+    templates: &[String],
+) -> ffi::JSValue {
+    let plan = JSValue(ffi::JS_NewObject(ctx));
+    let prerequisite_action_keys = hook_action_prerequisites(&action.action_key)
+        .iter()
+        .map(|item| (*item).to_string())
+        .collect::<Vec<_>>();
+    let command_json_templates_array = ffi::JS_NewArray(ctx);
+    let mut command_json_template_count = 0usize;
+    let mut command_json_eligible_count = 0usize;
+
+    for (index, template) in templates.iter().enumerate() {
+        let entry = JSValue(hook_command_json_template_to_js(ctx, template));
+        if entry
+            .get_property(ctx, "commandJsonEligible")
+            .to_bool()
+            .unwrap_or(false)
+        {
+            command_json_eligible_count += 1;
+        }
+        ffi::JS_SetPropertyUint32(ctx, command_json_templates_array, index as u32, entry.raw());
+        command_json_template_count += 1;
+    }
+
+    plan.set_property(ctx, "actionKey", JSValue::string(ctx, &action.action_key));
+    plan.set_property(ctx, "commandGroup", JSValue::string(ctx, &action.command_group));
+    plan.set_property(ctx, "allowed", JSValue::bool(action.allowed));
+    plan.set_property(ctx, "status", JSValue::string(ctx, &action.status));
+    plan.set_property(ctx, "priority", JSValue::int(action.priority as i32));
+    plan.set_property(ctx, "recommendation", JSValue::string(ctx, &action.recommendation));
+    plan.set_property(ctx, "branch", JSValue::string(ctx, hook_action_branch(action)));
+    plan.set_property(ctx, "readyToRun", JSValue::bool(action.allowed));
+    plan.set_property(
+        ctx,
+        "prerequisiteCount",
+        JSValue::int(prerequisite_action_keys.len() as i32),
+    );
+    set_string_array_property(ctx, plan.raw(), "prerequisiteActionKeys", &prerequisite_action_keys);
+    plan.set_property(ctx, "blockedPrerequisiteCount", JSValue::int(0));
+    set_string_array_property(ctx, plan.raw(), "blockedPrerequisiteActionKeys", &[]);
+    plan.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
+    set_string_array_property(ctx, plan.raw(), "templates", templates);
+    plan.set_property(
+        ctx,
+        "commandJsonTemplateCount",
+        JSValue::int(command_json_template_count as i32),
+    );
+    plan.set_property(
+        ctx,
+        "commandJsonEligibleTemplateCount",
+        JSValue::int(command_json_eligible_count as i32),
+    );
+    plan.set_property(ctx, "commandJsonTemplates", JSValue(command_json_templates_array));
+    match &action.reason {
+        Some(reason) => plan.set_property(ctx, "reason", JSValue::string(ctx, reason)),
+        None => plan.set_property(ctx, "reason", JSValue::null()),
+    };
+
+    plan.raw()
+}
+
 unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnvironmentReport) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
     let decision = resolve_hook_strategy().ok();
-    let command_mode = decision
-        .as_ref()
-        .map(|item| item.command_mode())
-        .unwrap_or("allowed");
+    let command_mode = decision.as_ref().map(|item| item.command_mode()).unwrap_or("allowed");
     let loaded_backend_count = report.loaded_backend_count();
     let filesystem_only_backend_count = report.filesystem_only_backend_count();
     let loaded_image_count = report.loaded_image_count();
@@ -203,7 +441,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     let coexistence_recommendation = match coexistence_mode {
         "inline-safe" => "inline hooks are allowed and no external backend is loaded",
         "inline-cautious" => "filesystem-only backend artifacts were detected; preflight before hook-install",
-        "inline-risky" => "external backend already loaded; prefer query/status first, then inline install only if necessary",
+        "inline-risky" => {
+            "external backend already loaded; prefer query/status first, then inline install only if necessary"
+        }
         "query-only" => "current policy blocks hook-install; stay on query commands",
         "cleanup-only" => "only status/stop commands are allowed under current policy",
         "blocked" => "no hook command group is currently allowed",
@@ -327,10 +567,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     result.set_property(ctx, "recommendations", JSValue(recommendations));
 
     let recommended_actions_vec = hook_environment_recommended_actions(report, decision.as_ref());
-    let allowed_action_count = recommended_actions_vec
-        .iter()
-        .filter(|action| action.allowed)
-        .count();
+    let allowed_action_count = recommended_actions_vec.iter().filter(|action| action.allowed).count();
     let blocked_action_count = recommended_actions_vec.len().saturating_sub(allowed_action_count);
     let next_action = recommended_actions_vec
         .iter()
@@ -342,20 +579,29 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "recommendedActionCount",
         JSValue::int(recommended_actions_vec.len() as i32),
     );
-    result.set_property(
-        ctx,
-        "allowedActionCount",
-        JSValue::int(allowed_action_count as i32),
-    );
-    result.set_property(
-        ctx,
-        "blockedActionCount",
-        JSValue::int(blocked_action_count as i32),
-    );
+    result.set_property(ctx, "allowedActionCount", JSValue::int(allowed_action_count as i32));
+    result.set_property(ctx, "blockedActionCount", JSValue::int(blocked_action_count as i32));
     set_string_array_property(ctx, result.raw(), "suggestedSequence", &suggested_sequence);
     match next_action {
         Some(action) => {
             let next_action_templates = hook_action_command_templates(&action.action_key, coexistence_mode);
+            let next_action_command_json_templates = next_action_templates
+                .iter()
+                .map(|template| hook_command_json_template_to_js(ctx, template))
+                .collect::<Vec<_>>();
+            let next_action_command_json_eligible_count = next_action_command_json_templates
+                .iter()
+                .filter(|entry| {
+                    JSValue(**entry)
+                        .get_property(ctx, "commandJsonEligible")
+                        .to_bool()
+                        .unwrap_or(false)
+                })
+                .count();
+            let next_action_command_json_templates_array = ffi::JS_NewArray(ctx);
+            for (index, entry) in next_action_command_json_templates.iter().enumerate() {
+                ffi::JS_SetPropertyUint32(ctx, next_action_command_json_templates_array, index as u32, *entry);
+            }
             result.set_property(ctx, "nextAction", hook_recommended_action_to_js(ctx, action));
             result.set_property(
                 ctx,
@@ -376,16 +622,29 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "nextActionTemplateCount",
                 JSValue::int(next_action_templates.len() as i32),
             );
-            set_string_array_property(
+            set_string_array_property(ctx, result.raw(), "nextActionTemplates", &next_action_templates);
+            result.set_property(
                 ctx,
-                result.raw(),
-                "nextActionTemplates",
-                &next_action_templates,
+                "nextActionCommandJsonTemplateCount",
+                JSValue::int(next_action_command_json_templates.len() as i32),
+            );
+            result.set_property(
+                ctx,
+                "nextActionCommandJsonEligibleTemplateCount",
+                JSValue::int(next_action_command_json_eligible_count as i32),
+            );
+            result.set_property(
+                ctx,
+                "nextActionCommandJsonTemplates",
+                JSValue(next_action_command_json_templates_array),
+            );
+            result.set_property(
+                ctx,
+                "nextActionPlan",
+                JSValue(hook_next_action_plan_to_js(ctx, action, &next_action_templates)),
             );
             match &action.reason {
-                Some(reason) => {
-                    result.set_property(ctx, "nextActionReason", JSValue::string(ctx, reason))
-                }
+                Some(reason) => result.set_property(ctx, "nextActionReason", JSValue::string(ctx, reason)),
                 None => result.set_property(ctx, "nextActionReason", JSValue::null()),
             };
         }
@@ -400,6 +659,15 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             result.set_property(ctx, "nextActionReason", JSValue::null());
             result.set_property(ctx, "nextActionTemplateCount", JSValue::int(0));
             set_string_array_property(ctx, result.raw(), "nextActionTemplates", &[]);
+            result.set_property(ctx, "nextActionCommandJsonTemplateCount", JSValue::int(0));
+            result.set_property(ctx, "nextActionCommandJsonEligibleTemplateCount", JSValue::int(0));
+            let next_action_command_json_templates = ffi::JS_NewArray(ctx);
+            result.set_property(
+                ctx,
+                "nextActionCommandJsonTemplates",
+                JSValue(next_action_command_json_templates),
+            );
+            result.set_property(ctx, "nextActionPlan", JSValue::null());
         }
     }
 
@@ -420,7 +688,11 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         item.set_property(ctx, "id", JSValue::string(ctx, &backend.id));
         item.set_property(ctx, "name", JSValue::string(ctx, &backend.display_name));
         item.set_property(ctx, "loaded", JSValue::bool(!backend.loaded_images.is_empty()));
-        item.set_property(ctx, "loadedImageCount", JSValue::int(backend.loaded_images.len() as i32));
+        item.set_property(
+            ctx,
+            "loadedImageCount",
+            JSValue::int(backend.loaded_images.len() as i32),
+        );
         item.set_property(
             ctx,
             "presentOnFilesystem",
@@ -478,8 +750,16 @@ unsafe fn image_info_to_js(ctx: *mut ffi::JSContext, image: &native_api::ImageIn
     result.set_property(ctx, "name", JSValue::string(ctx, basename));
     result.set_property(ctx, "path", JSValue::string(ctx, &image.name));
     result.set_property(ctx, "base", create_native_pointer(ctx, image.base as u64));
-    result.set_property(ctx, "slide", JSValue(js_i64_to_js_number_or_bigint(ctx, image.slide as i64)));
-    result.set_property(ctx, "size", JSValue(js_u64_to_js_number_or_bigint(ctx, image.size as u64)));
+    result.set_property(
+        ctx,
+        "slide",
+        JSValue(js_i64_to_js_number_or_bigint(ctx, image.slide as i64)),
+    );
+    result.set_property(
+        ctx,
+        "size",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, image.size as u64)),
+    );
     result.raw()
 }
 
@@ -601,8 +881,16 @@ unsafe fn image_dyld_info_to_js(ctx: *mut ffi::JSContext, dyld_info: &native_api
     );
     result.set_property(ctx, "command", JSValue(ffi::qjs_new_uint32(ctx, dyld_info.command)));
     result.set_property(ctx, "commandName", JSValue::string(ctx, &dyld_info.command_name));
-    result.set_property(ctx, "rebaseOff", JSValue(ffi::qjs_new_uint32(ctx, dyld_info.rebase_off)));
-    result.set_property(ctx, "rebaseSize", JSValue(ffi::qjs_new_uint32(ctx, dyld_info.rebase_size)));
+    result.set_property(
+        ctx,
+        "rebaseOff",
+        JSValue(ffi::qjs_new_uint32(ctx, dyld_info.rebase_off)),
+    );
+    result.set_property(
+        ctx,
+        "rebaseSize",
+        JSValue(ffi::qjs_new_uint32(ctx, dyld_info.rebase_size)),
+    );
     result.set_property(ctx, "bindOff", JSValue(ffi::qjs_new_uint32(ctx, dyld_info.bind_off)));
     result.set_property(ctx, "bindSize", JSValue(ffi::qjs_new_uint32(ctx, dyld_info.bind_size)));
     result.set_property(
@@ -625,8 +913,16 @@ unsafe fn image_dyld_info_to_js(ctx: *mut ffi::JSContext, dyld_info: &native_api
         "lazyBindSize",
         JSValue(ffi::qjs_new_uint32(ctx, dyld_info.lazy_bind_size)),
     );
-    result.set_property(ctx, "exportOff", JSValue(ffi::qjs_new_uint32(ctx, dyld_info.export_off)));
-    result.set_property(ctx, "exportSize", JSValue(ffi::qjs_new_uint32(ctx, dyld_info.export_size)));
+    result.set_property(
+        ctx,
+        "exportOff",
+        JSValue(ffi::qjs_new_uint32(ctx, dyld_info.export_off)),
+    );
+    result.set_property(
+        ctx,
+        "exportSize",
+        JSValue(ffi::qjs_new_uint32(ctx, dyld_info.export_size)),
+    );
     result.raw()
 }
 
@@ -780,11 +1076,7 @@ unsafe fn image_function_starts_to_js(
     function_starts: &native_api::ImageFunctionStarts,
 ) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
-    result.set_property(
-        ctx,
-        "moduleName",
-        JSValue::string(ctx, &function_starts.module_name),
-    );
+    result.set_property(ctx, "moduleName", JSValue::string(ctx, &function_starts.module_name));
     result.set_property(
         ctx,
         "moduleBase",
@@ -823,11 +1115,7 @@ unsafe fn image_code_signature_to_js(
     code_signature: &native_api::ImageCodeSignature,
 ) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
-    result.set_property(
-        ctx,
-        "moduleName",
-        JSValue::string(ctx, &code_signature.module_name),
-    );
+    result.set_property(ctx, "moduleName", JSValue::string(ctx, &code_signature.module_name));
     result.set_property(
         ctx,
         "moduleBase",
@@ -897,7 +1185,11 @@ unsafe fn image_data_in_code_to_js(
         create_native_pointer(ctx, data_in_code.module_base as u64),
     );
     result.set_property(ctx, "dataoff", JSValue(ffi::qjs_new_uint32(ctx, data_in_code.dataoff)));
-    result.set_property(ctx, "datasize", JSValue(ffi::qjs_new_uint32(ctx, data_in_code.datasize)));
+    result.set_property(
+        ctx,
+        "datasize",
+        JSValue(ffi::qjs_new_uint32(ctx, data_in_code.datasize)),
+    );
     result.set_property(
         ctx,
         "linkeditBase",
@@ -940,17 +1232,9 @@ unsafe fn image_exports_trie_entry_to_js(
         Some(value) => result.set_property(ctx, "importName", JSValue::string(ctx, value)),
         None => result.set_property(ctx, "importName", JSValue::null()),
     };
-    result.set_property(
-        ctx,
-        "isWeakDefinition",
-        JSValue::bool(entry.is_weak_definition),
-    );
+    result.set_property(ctx, "isWeakDefinition", JSValue::bool(entry.is_weak_definition));
     result.set_property(ctx, "isReexport", JSValue::bool(entry.is_reexport));
-    result.set_property(
-        ctx,
-        "isStubAndResolver",
-        JSValue::bool(entry.is_stub_and_resolver),
-    );
+    result.set_property(ctx, "isStubAndResolver", JSValue::bool(entry.is_stub_and_resolver));
     result.raw()
 }
 
@@ -959,21 +1243,13 @@ unsafe fn image_exports_trie_to_js(
     exports_trie: &native_api::ImageExportsTrie,
 ) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
-    result.set_property(
-        ctx,
-        "moduleName",
-        JSValue::string(ctx, &exports_trie.module_name),
-    );
+    result.set_property(ctx, "moduleName", JSValue::string(ctx, &exports_trie.module_name));
     result.set_property(
         ctx,
         "moduleBase",
         create_native_pointer(ctx, exports_trie.module_base as u64),
     );
-    result.set_property(
-        ctx,
-        "dataoff",
-        JSValue(ffi::qjs_new_uint32(ctx, exports_trie.dataoff)),
-    );
+    result.set_property(ctx, "dataoff", JSValue(ffi::qjs_new_uint32(ctx, exports_trie.dataoff)));
     result.set_property(
         ctx,
         "datasize",
@@ -1008,11 +1284,7 @@ unsafe fn image_chained_fixups_page_to_js(
         Some(value) => result.set_property(ctx, "pageStart", JSValue::int(value as i32)),
         None => result.set_property(ctx, "pageStart", JSValue::null()),
     };
-    result.set_property(
-        ctx,
-        "usesMultipleStarts",
-        JSValue::bool(page.uses_multiple_starts),
-    );
+    result.set_property(ctx, "usesMultipleStarts", JSValue::bool(page.uses_multiple_starts));
     let chain_starts = ffi::JS_NewArray(ctx);
     for (index, item) in page.chain_starts.iter().enumerate() {
         ffi::JS_SetPropertyUint32(ctx, chain_starts, index as u32, JSValue::int(*item as i32).raw());
@@ -1051,16 +1323,8 @@ unsafe fn image_chained_fixups_segment_to_js(
         JSValue(ffi::qjs_new_uint32(ctx, segment.max_valid_pointer)),
     );
     result.set_property(ctx, "pageCount", JSValue::int(segment.page_count as i32));
-    result.set_property(
-        ctx,
-        "fixupPageCount",
-        JSValue::int(segment.fixup_page_count as i32),
-    );
-    result.set_property(
-        ctx,
-        "multiPageCount",
-        JSValue::int(segment.multi_page_count as i32),
-    );
+    result.set_property(ctx, "fixupPageCount", JSValue::int(segment.fixup_page_count as i32));
+    result.set_property(ctx, "multiPageCount", JSValue::int(segment.multi_page_count as i32));
     let pages = ffi::JS_NewArray(ctx);
     for (index, item) in segment.pages.iter().enumerate() {
         ffi::JS_SetPropertyUint32(ctx, pages, index as u32, image_chained_fixups_page_to_js(ctx, item));
@@ -1082,11 +1346,7 @@ unsafe fn image_chained_fixups_import_to_js(
     );
     result.set_property(ctx, "libOrdinal", JSValue::int(import.lib_ordinal as i32));
     result.set_property(ctx, "weakImport", JSValue::bool(import.weak_import));
-    result.set_property(
-        ctx,
-        "nameOffset",
-        JSValue(ffi::qjs_new_uint32(ctx, import.name_offset)),
-    );
+    result.set_property(ctx, "nameOffset", JSValue(ffi::qjs_new_uint32(ctx, import.name_offset)));
     match &import.name {
         Some(value) => result.set_property(ctx, "name", JSValue::string(ctx, value)),
         None => result.set_property(ctx, "name", JSValue::null()),
@@ -1103,11 +1363,7 @@ unsafe fn image_chained_fixups_to_js(
     chained_fixups: &native_api::ImageChainedFixups,
 ) -> ffi::JSValue {
     let result = JSValue(ffi::JS_NewObject(ctx));
-    result.set_property(
-        ctx,
-        "moduleName",
-        JSValue::string(ctx, &chained_fixups.module_name),
-    );
+    result.set_property(ctx, "moduleName", JSValue::string(ctx, &chained_fixups.module_name));
     result.set_property(
         ctx,
         "moduleBase",
@@ -1180,7 +1436,12 @@ unsafe fn image_chained_fixups_to_js(
     );
     let segments = ffi::JS_NewArray(ctx);
     for (index, item) in chained_fixups.segments.iter().enumerate() {
-        ffi::JS_SetPropertyUint32(ctx, segments, index as u32, image_chained_fixups_segment_to_js(ctx, item));
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            segments,
+            index as u32,
+            image_chained_fixups_segment_to_js(ctx, item),
+        );
     }
     result.set_property(ctx, "segments", JSValue(segments));
     let imports = ffi::JS_NewArray(ctx);
@@ -1370,24 +1631,23 @@ unsafe extern "C" fn js_native_symbol_info(
         }
     };
 
-    let module_name = if argc >= 2 {
-        let value = JSValue(*argv.add(1));
-        if value.is_null() || value.is_undefined() {
-            None
-        } else {
-            match value.to_string(ctx) {
-                Some(module_name) => Some(module_name),
-                None => {
-                    return crate::util::js_throw_type_error(
+    let module_name =
+        if argc >= 2 {
+            let value = JSValue(*argv.add(1));
+            if value.is_null() || value.is_undefined() {
+                None
+            } else {
+                match value.to_string(ctx) {
+                    Some(module_name) => Some(module_name),
+                    None => return crate::util::js_throw_type_error(
                         ctx,
                         "Native.symbolInfo(symbolName[, moduleName]) expected moduleName to be a string when provided",
-                    )
+                    ),
                 }
             }
-        }
-    } else {
-        None
-    };
+        } else {
+            None
+        };
 
     let normalized_symbol_name = symbol_name.strip_prefix('_').unwrap_or(&symbol_name);
     let symbols = match find_native_symbols(module_name.as_deref(), &symbol_name) {
@@ -1462,7 +1722,11 @@ unsafe extern "C" fn js_native_symbol(
         return crate::util::js_throw_type_error(ctx, "Native.symbol(address) requires 1 address argument");
     }
 
-    let address = match pointer_arg_to_u64(ctx, JSValue(*argv), "Native.symbol(address) expected a pointer-like value") {
+    let address = match pointer_arg_to_u64(
+        ctx,
+        JSValue(*argv),
+        "Native.symbol(address) expected a pointer-like value",
+    ) {
         Ok(value) => value,
         Err(err) => return err,
     };
@@ -1487,27 +1751,26 @@ unsafe extern "C" fn js_native_export(
         );
     }
 
-    let module_name = {
-        let value = JSValue(*argv);
-        if value.is_null() || value.is_undefined() {
-            None
-        } else if value.is_string() {
-            match value.to_string(ctx) {
-                Some(value) => Some(value),
-                None => {
-                    return crate::util::js_throw_type_error(
+    let module_name =
+        {
+            let value = JSValue(*argv);
+            if value.is_null() || value.is_undefined() {
+                None
+            } else if value.is_string() {
+                match value.to_string(ctx) {
+                    Some(value) => Some(value),
+                    None => return crate::util::js_throw_type_error(
                         ctx,
                         "Native.export(moduleNameOrNull, symbolName) expected moduleNameOrNull to be a string or null",
-                    )
+                    ),
                 }
+            } else {
+                return crate::util::js_throw_type_error(
+                    ctx,
+                    "Native.export(moduleNameOrNull, symbolName) expected moduleNameOrNull to be a string or null",
+                );
             }
-        } else {
-            return crate::util::js_throw_type_error(
-                ctx,
-                "Native.export(moduleNameOrNull, symbolName) expected moduleNameOrNull to be a string or null",
-            );
-        }
-    };
+        };
 
     let symbol_name = match JSValue(*argv.add(1)).to_string(ctx) {
         Some(value) if !value.trim().is_empty() => value,
@@ -1539,7 +1802,12 @@ unsafe extern "C" fn js_native_base(
 
     let module_name = match JSValue(*argv).to_string(ctx) {
         Some(value) if !value.trim().is_empty() => value,
-        _ => return crate::util::js_throw_type_error(ctx, "Native.base(moduleName) requires moduleName to be a non-empty string"),
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.base(moduleName) requires moduleName to be a non-empty string",
+            )
+        }
     };
 
     match find_image_by_name(&module_name) {
@@ -1577,7 +1845,11 @@ unsafe extern "C" fn js_native_image(
         return crate::util::js_throw_type_error(ctx, "Native.image(address) requires 1 address argument");
     }
 
-    let address = match pointer_arg_to_u64(ctx, JSValue(*argv), "Native.image(address) expected a pointer-like value") {
+    let address = match pointer_arg_to_u64(
+        ctx,
+        JSValue(*argv),
+        "Native.image(address) expected a pointer-like value",
+    ) {
         Ok(value) => value,
         Err(err) => return err,
     };
@@ -1601,7 +1873,12 @@ unsafe extern "C" fn js_native_image_info(
 
     let module_name = match JSValue(*argv).to_string(ctx) {
         Some(value) if !value.trim().is_empty() => value,
-        _ => return crate::util::js_throw_type_error(ctx, "Native.imageInfo(moduleName) requires moduleName to be a non-empty string"),
+        _ => {
+            return crate::util::js_throw_type_error(
+                ctx,
+                "Native.imageInfo(moduleName) requires moduleName to be a non-empty string",
+            )
+        }
     };
 
     match find_image_by_name(&module_name) {
@@ -2186,10 +2463,7 @@ unsafe extern "C" fn js_native_find_data_in_code(
     argv: *mut ffi::JSValue,
 ) -> ffi::JSValue {
     if argc < 1 {
-        return crate::util::js_throw_type_error(
-            ctx,
-            "Native.findDataInCode(moduleName) requires 1 string argument",
-        );
+        return crate::util::js_throw_type_error(ctx, "Native.findDataInCode(moduleName) requires 1 string argument");
     }
 
     let module_name = match JSValue(*argv).to_string(ctx) {
@@ -2217,10 +2491,7 @@ unsafe extern "C" fn js_native_find_exports_trie(
     argv: *mut ffi::JSValue,
 ) -> ffi::JSValue {
     if argc < 1 {
-        return crate::util::js_throw_type_error(
-            ctx,
-            "Native.findExportsTrie(moduleName) requires 1 string argument",
-        );
+        return crate::util::js_throw_type_error(ctx, "Native.findExportsTrie(moduleName) requires 1 string argument");
     }
 
     let module_name = match JSValue(*argv).to_string(ctx) {
@@ -2364,10 +2635,7 @@ unsafe extern "C" fn js_native_rpath_info(
     argv: *mut ffi::JSValue,
 ) -> ffi::JSValue {
     if argc < 2 {
-        return crate::util::js_throw_type_error(
-            ctx,
-            "Native.rpathInfo(moduleName, path) requires 2 string arguments",
-        );
+        return crate::util::js_throw_type_error(ctx, "Native.rpathInfo(moduleName, path) requires 2 string arguments");
     }
 
     let module_name = match JSValue(*argv).to_string(ctx) {
@@ -2617,34 +2885,29 @@ unsafe extern "C" fn js_native_section_info(
         );
     }
 
-    let module_name = match JSValue(*argv).to_string(ctx) {
-        Some(value) if !value.trim().is_empty() => value,
-        _ => {
-            return crate::util::js_throw_type_error(
+    let module_name =
+        match JSValue(*argv).to_string(ctx) {
+            Some(value) if !value.trim().is_empty() => value,
+            _ => return crate::util::js_throw_type_error(
                 ctx,
                 "Native.sectionInfo(moduleName, segmentName, sectionName) requires moduleName to be a non-empty string",
-            )
-        }
-    };
+            ),
+        };
 
     let segment_name = match JSValue(*argv.add(1)).to_string(ctx) {
         Some(value) if !value.trim().is_empty() => value,
-        _ => {
-            return crate::util::js_throw_type_error(
-                ctx,
-                "Native.sectionInfo(moduleName, segmentName, sectionName) requires segmentName to be a non-empty string",
-            )
-        }
+        _ => return crate::util::js_throw_type_error(
+            ctx,
+            "Native.sectionInfo(moduleName, segmentName, sectionName) requires segmentName to be a non-empty string",
+        ),
     };
 
     let section_name = match JSValue(*argv.add(2)).to_string(ctx) {
         Some(value) if !value.trim().is_empty() => value,
-        _ => {
-            return crate::util::js_throw_type_error(
-                ctx,
-                "Native.sectionInfo(moduleName, segmentName, sectionName) requires sectionName to be a non-empty string",
-            )
-        }
+        _ => return crate::util::js_throw_type_error(
+            ctx,
+            "Native.sectionInfo(moduleName, segmentName, sectionName) requires sectionName to be a non-empty string",
+        ),
     };
 
     let sections = match find_image_sections(&module_name) {
@@ -2894,9 +3157,27 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_dependencies,
             2,
         );
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dependencies", js_native_find_dependencies, 2);
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dependencyInfo", js_native_dependency_info, 2);
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findDependencyInfo", js_native_dependency_info, 2);
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "dependencies",
+            js_native_find_dependencies,
+            2,
+        );
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "dependencyInfo",
+            js_native_dependency_info,
+            2,
+        );
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "findDependencyInfo",
+            js_native_dependency_info,
+            2,
+        );
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2904,14 +3185,14 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_encryption_info,
             1,
         );
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "encryptionInfo", js_native_find_encryption_info, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
-            "findDyldInfo",
-            js_native_find_dyld_info,
+            "encryptionInfo",
+            js_native_find_encryption_info,
             1,
         );
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findDyldInfo", js_native_find_dyld_info, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dyldInfo", js_native_find_dyld_info, 1);
         add_cfunction_to_object(
             ctx.as_ptr(),
@@ -2928,7 +3209,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_source_version,
             1,
         );
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "sourceVersion", js_native_find_source_version, 1);
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "sourceVersion",
+            js_native_find_source_version,
+            1,
+        );
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2936,7 +3223,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_build_version,
             1,
         );
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "buildVersion", js_native_find_build_version, 1);
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "buildVersion",
+            js_native_find_build_version,
+            1,
+        );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findDylinker", js_native_find_dylinker, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "dylinker", js_native_find_dylinker, 1);
         add_cfunction_to_object(
@@ -2946,7 +3239,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_install_name,
             1,
         );
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "installName", js_native_find_install_name, 1);
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "installName",
+            js_native_find_install_name,
+            1,
+        );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findLinkedit", js_native_find_linkedit, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "linkedit", js_native_find_linkedit, 1);
         add_cfunction_to_object(
@@ -2956,7 +3255,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_function_starts,
             1,
         );
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "functionStarts", js_native_find_function_starts, 1);
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "functionStarts",
+            js_native_find_function_starts,
+            1,
+        );
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2964,7 +3269,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_code_signature,
             1,
         );
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "codeSignature", js_native_find_code_signature, 1);
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "codeSignature",
+            js_native_find_code_signature,
+            1,
+        );
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2980,7 +3291,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_exports_trie,
             1,
         );
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "exportsTrie", js_native_find_exports_trie, 1);
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "exportsTrie",
+            js_native_find_exports_trie,
+            1,
+        );
         add_cfunction_to_object(
             ctx.as_ptr(),
             native.raw(),
@@ -2988,7 +3305,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_chained_fixups,
             1,
         );
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "chainedFixups", js_native_find_chained_fixups, 1);
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "chainedFixups",
+            js_native_find_chained_fixups,
+            1,
+        );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findUuid", js_native_find_uuid, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "uuid", js_native_find_uuid, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findRpaths", js_native_find_rpaths, 2);
@@ -3028,7 +3351,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             js_native_find_load_commands,
             1,
         );
-        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "loadCommands", js_native_find_load_commands, 1);
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "loadCommands",
+            js_native_find_load_commands,
+            1,
+        );
     }
 
     global.set_property(ctx.as_ptr(), "Native", native);

@@ -2342,6 +2342,11 @@ function formatHookEnvironmentReport(report) {
     for (const command of nextActionTemplates) {
         lines.push('next_action_template ' + String(command));
     }
+    const nextActionCommandJsonTemplates = Array.isArray(report.nextActionCommandJsonTemplates) ? report.nextActionCommandJsonTemplates : [];
+    lines.push(
+        'next_action_command_json_template_count=' +
+            String(Number(report.nextActionCommandJsonTemplateCount || nextActionCommandJsonTemplates.length || 0))
+    );
     if (report.reason !== null && report.reason !== undefined) {
         lines.push('reason=' + String(report.reason));
     }
