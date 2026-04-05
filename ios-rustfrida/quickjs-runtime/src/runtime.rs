@@ -2218,6 +2218,33 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
+                            const nextStepOk =
+                                (report.nextStep === null &&
+                                    report.nextStepReason === null &&
+                                    report.nextStepPreferredPath === null) ||
+                                (typeof report.nextStep === 'object' &&
+                                    report.nextStep !== null &&
+                                    report.nextStepReason === report.nextStep.reason &&
+                                    report.nextStepPreferredPath === report.nextStep.preferredPath);
+                            const activeStepOk =
+                                (report.activeStep === null &&
+                                    report.activeStepReason === null &&
+                                    report.activeStepPreferredPath === null) ||
+                                (typeof report.activeStep === 'object' &&
+                                    report.activeStep !== null &&
+                                    report.activeStepReason === report.activeStep.reason &&
+                                    report.activeStepPreferredPath === report.activeStep.preferredPath);
+                            return nextStepOk && activeStepOk;
+                        })()"#,
+                    )
+                    .expect("native hook env step reason aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSymbols('malloc'))")
                     .expect("native find symbols"),
                 "true"

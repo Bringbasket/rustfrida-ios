@@ -617,6 +617,17 @@ unsafe fn hook_command_json_template_to_js(ctx: *mut ffi::JSContext, template: &
     result.raw()
 }
 
+fn hook_action_preferred_path(action_key: &str) -> &'static str {
+    match action_key {
+        "hook.query" => "query",
+        "hook.bootstrap" => "bootstrap",
+        "hook.install" => "install",
+        "hook.status" => "status",
+        "hook.stop" => "stop",
+        _ => "unknown",
+    }
+}
+
 unsafe fn hook_step_from_command_json_template_to_js(
     ctx: *mut ffi::JSContext,
     source: &str,
@@ -639,6 +650,15 @@ unsafe fn hook_step_from_command_json_template_to_js(
     item.set_property(ctx, "allowed", JSValue::bool(action.allowed));
     item.set_property(ctx, "blockedBy", JSValue::string(ctx, hook_action_blocked_by(action)));
     item.set_property(ctx, "branch", JSValue::string(ctx, hook_action_branch(action)));
+    match &action.reason {
+        Some(reason) => item.set_property(ctx, "reason", JSValue::string(ctx, reason)),
+        None => item.set_property(ctx, "reason", JSValue::null()),
+    };
+    item.set_property(
+        ctx,
+        "preferredPath",
+        JSValue::string(ctx, hook_action_preferred_path(&action.action_key)),
+    );
     item.set_property(ctx, "command", template_value.get_property(ctx, "command"));
     item.set_property(ctx, "phase", template_value.get_property(ctx, "phase"));
     item.set_property(ctx, "readyToRun", JSValue::bool(ready_to_run));
@@ -705,6 +725,8 @@ unsafe fn hook_fallback_step_from_command_json_template_to_js(
     item.set_property(ctx, "allowed", JSValue::null());
     item.set_property(ctx, "blockedBy", JSValue::null());
     item.set_property(ctx, "branch", JSValue::null());
+    item.set_property(ctx, "reason", JSValue::null());
+    item.set_property(ctx, "preferredPath", template_value.get_property(ctx, "phase"));
     item.set_property(ctx, "command", template_value.get_property(ctx, "command"));
     item.set_property(ctx, "phase", template_value.get_property(ctx, "phase"));
     item.set_property(ctx, "readyToRun", JSValue::bool(true));
@@ -1253,6 +1275,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     result.set_property(ctx, "nextStepAllowed", step.get_property(ctx, "allowed"));
                     result.set_property(ctx, "nextStepBlockedBy", step.get_property(ctx, "blockedBy"));
                     result.set_property(ctx, "nextStepBranch", step.get_property(ctx, "branch"));
+                    result.set_property(ctx, "nextStepReason", step.get_property(ctx, "reason"));
+                    result.set_property(ctx, "nextStepPreferredPath", step.get_property(ctx, "preferredPath"));
                     result.set_property(ctx, "nextStepCommand", step.get_property(ctx, "command"));
                     result.set_property(ctx, "nextStepPhase", step.get_property(ctx, "phase"));
                     result.set_property(
@@ -1316,6 +1340,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     result.set_property(ctx, "activeStepAllowed", step.get_property(ctx, "allowed"));
                     result.set_property(ctx, "activeStepBlockedBy", step.get_property(ctx, "blockedBy"));
                     result.set_property(ctx, "activeStepBranch", step.get_property(ctx, "branch"));
+                    result.set_property(ctx, "activeStepReason", step.get_property(ctx, "reason"));
+                    result.set_property(ctx, "activeStepPreferredPath", step.get_property(ctx, "preferredPath"));
                     result.set_property(ctx, "activeStepActionKey", step.get_property(ctx, "actionKey"));
                     result.set_property(ctx, "activeStepCommandGroup", step.get_property(ctx, "commandGroup"));
                     result.set_property(ctx, "activeStepId", step.get_property(ctx, "id"));
@@ -1387,6 +1413,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     result.set_property(ctx, "nextStepAllowed", JSValue::null());
                     result.set_property(ctx, "nextStepBlockedBy", JSValue::null());
                     result.set_property(ctx, "nextStepBranch", JSValue::null());
+                    result.set_property(ctx, "nextStepReason", JSValue::null());
+                    result.set_property(ctx, "nextStepPreferredPath", JSValue::null());
                     result.set_property(ctx, "nextStepCommand", JSValue::null());
                     result.set_property(ctx, "nextStepPhase", JSValue::null());
                     result.set_property(ctx, "nextStepCommandJsonEligible", JSValue::null());
@@ -1412,6 +1440,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     result.set_property(ctx, "activeStepAllowed", JSValue::null());
                     result.set_property(ctx, "activeStepBlockedBy", JSValue::null());
                     result.set_property(ctx, "activeStepBranch", JSValue::null());
+                    result.set_property(ctx, "activeStepReason", JSValue::null());
+                    result.set_property(ctx, "activeStepPreferredPath", JSValue::null());
                     result.set_property(ctx, "activeStepActionKey", JSValue::null());
                     result.set_property(ctx, "activeStepCommandGroup", JSValue::null());
                     result.set_property(ctx, "activeStepId", JSValue::null());
@@ -1476,6 +1506,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             result.set_property(ctx, "nextStepAllowed", JSValue::null());
             result.set_property(ctx, "nextStepBlockedBy", JSValue::null());
             result.set_property(ctx, "nextStepBranch", JSValue::null());
+            result.set_property(ctx, "nextStepReason", JSValue::null());
+            result.set_property(ctx, "nextStepPreferredPath", JSValue::null());
             result.set_property(ctx, "nextStepCommand", JSValue::null());
             result.set_property(ctx, "nextStepPhase", JSValue::null());
             result.set_property(ctx, "nextStepCommandJsonEligible", JSValue::null());
@@ -1507,6 +1539,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             result.set_property(ctx, "activeStepAllowed", JSValue::null());
             result.set_property(ctx, "activeStepBlockedBy", JSValue::null());
             result.set_property(ctx, "activeStepBranch", JSValue::null());
+            result.set_property(ctx, "activeStepReason", JSValue::null());
+            result.set_property(ctx, "activeStepPreferredPath", JSValue::null());
             result.set_property(ctx, "activeStepActionKey", JSValue::null());
             result.set_property(ctx, "activeStepCommandGroup", JSValue::null());
             result.set_property(ctx, "activeStepId", JSValue::null());
@@ -3981,6 +4015,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 fallback_plan.set_property(ctx, "nextStepAllowed", step.get_property(ctx, "allowed"));
                 fallback_plan.set_property(ctx, "nextStepBlockedBy", step.get_property(ctx, "blockedBy"));
                 fallback_plan.set_property(ctx, "nextStepBranch", step.get_property(ctx, "branch"));
+                fallback_plan.set_property(ctx, "nextStepReason", step.get_property(ctx, "reason"));
+                fallback_plan.set_property(ctx, "nextStepPreferredPath", step.get_property(ctx, "preferredPath"));
                 fallback_plan.set_property(ctx, "nextStepCommand", step.get_property(ctx, "command"));
                 fallback_plan.set_property(ctx, "nextStepPhase", step.get_property(ctx, "phase"));
                 fallback_plan.set_property(
@@ -4043,6 +4079,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 fallback_plan.set_property(ctx, "activeStepAllowed", step.get_property(ctx, "allowed"));
                 fallback_plan.set_property(ctx, "activeStepBlockedBy", step.get_property(ctx, "blockedBy"));
                 fallback_plan.set_property(ctx, "activeStepBranch", step.get_property(ctx, "branch"));
+                fallback_plan.set_property(ctx, "activeStepReason", step.get_property(ctx, "reason"));
+                fallback_plan.set_property(ctx, "activeStepPreferredPath", step.get_property(ctx, "preferredPath"));
                 fallback_plan.set_property(ctx, "activeStepActionKey", step.get_property(ctx, "actionKey"));
                 fallback_plan.set_property(ctx, "activeStepCommandGroup", step.get_property(ctx, "commandGroup"));
                 fallback_plan.set_property(ctx, "activeStepId", step.get_property(ctx, "id"));
@@ -4114,6 +4152,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 fallback_plan.set_property(ctx, "nextStepAllowed", JSValue::null());
                 fallback_plan.set_property(ctx, "nextStepBlockedBy", JSValue::null());
                 fallback_plan.set_property(ctx, "nextStepBranch", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepReason", JSValue::null());
+                fallback_plan.set_property(ctx, "nextStepPreferredPath", JSValue::null());
                 fallback_plan.set_property(ctx, "nextStepCommand", JSValue::null());
                 fallback_plan.set_property(ctx, "nextStepPhase", JSValue::null());
                 fallback_plan.set_property(ctx, "nextStepCommandJsonEligible", JSValue::null());
@@ -4143,6 +4183,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 fallback_plan.set_property(ctx, "activeStepAllowed", JSValue::null());
                 fallback_plan.set_property(ctx, "activeStepBlockedBy", JSValue::null());
                 fallback_plan.set_property(ctx, "activeStepBranch", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepReason", JSValue::null());
+                fallback_plan.set_property(ctx, "activeStepPreferredPath", JSValue::null());
                 fallback_plan.set_property(ctx, "activeStepActionKey", JSValue::null());
                 fallback_plan.set_property(ctx, "activeStepCommandGroup", JSValue::null());
                 fallback_plan.set_property(ctx, "activeStepId", JSValue::null());
@@ -4193,6 +4235,12 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             ctx,
             "nextStepBlockedBy",
             fallback_plan.get_property(ctx, "nextStepBlockedBy"),
+        );
+        result.set_property(ctx, "nextStepReason", fallback_plan.get_property(ctx, "nextStepReason"));
+        result.set_property(
+            ctx,
+            "nextStepPreferredPath",
+            fallback_plan.get_property(ctx, "nextStepPreferredPath"),
         );
         result.set_property(ctx, "nextStepBranch", fallback_plan.get_property(ctx, "nextStepBranch"));
         result.set_property(
@@ -4319,6 +4367,16 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             ctx,
             "activeStepBlockedBy",
             fallback_plan.get_property(ctx, "activeStepBlockedBy"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepReason",
+            fallback_plan.get_property(ctx, "activeStepReason"),
+        );
+        result.set_property(
+            ctx,
+            "activeStepPreferredPath",
+            fallback_plan.get_property(ctx, "activeStepPreferredPath"),
         );
         result.set_property(
             ctx,
