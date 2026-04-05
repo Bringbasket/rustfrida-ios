@@ -3170,6 +3170,32 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .cloned()
                 .unwrap_or(Value::Null)
         },
+        "nextStepCommandJsonTemplate": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_next_step
+                .get("commandJsonTemplate")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "nextStepCommandJsonTemplateCommand": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_next_step
+                .get("commandJsonTemplate")
+                .and_then(|value| value.get("command"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "nextStepCommandJsonTemplateKind": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_next_step
+                .get("commandJsonTemplate")
+                .and_then(|value| value.get("kind"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
         "nextStepRetryable": if backend_adaptation_step_chain_source == "none" {
             Value::Null
         } else {
@@ -3358,6 +3384,32 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             backend_adaptation_active_step
                 .get("commandJsonEligible")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepCommandJsonTemplate": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("commandJsonTemplate")
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepCommandJsonTemplateCommand": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("commandJsonTemplate")
+                .and_then(|value| value.get("command"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        },
+        "activeStepCommandJsonTemplateKind": if backend_adaptation_step_chain_source == "none" {
+            Value::Null
+        } else {
+            backend_adaptation_active_step
+                .get("commandJsonTemplate")
+                .and_then(|value| value.get("kind"))
                 .cloned()
                 .unwrap_or(Value::Null)
         },
@@ -19789,6 +19841,14 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["nextStepPhase"], "query");
         assert_eq!(coexistence["backendAdaptation"]["nextStepCommand"], "objc.classes <filter>");
         assert_eq!(coexistence["backendAdaptation"]["nextStepCommandJsonEligible"], true);
+        assert_eq!(
+            coexistence["backendAdaptation"]["nextStepCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["nextStepCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(coexistence["backendAdaptation"]["stepChainCount"], 2);
         assert_eq!(coexistence["backendAdaptation"]["activeStepAllowed"], true);
         assert_eq!(coexistence["backendAdaptation"]["activeStepBlockedBy"], "none");
@@ -19800,6 +19860,14 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["activeStepCommandGroup"], "conflict-resolution");
         assert_eq!(coexistence["backendAdaptation"]["activeStepCommand"], "objc.classes <filter>");
         assert_eq!(coexistence["backendAdaptation"]["activeStepCommandJsonEligible"], true);
+        assert_eq!(
+            coexistence["backendAdaptation"]["activeStepCommandJsonTemplateCommand"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["activeStepCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(coexistence["backendAdaptation"]["installTemplateCount"], 0);
         assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "ellekit");
@@ -20067,11 +20135,27 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["nextStepBranch"], "run");
         assert_eq!(automation["backendAdaptation"]["nextStepPreferredPath"], "query");
         assert_eq!(automation["backendAdaptation"]["nextStepErrorCode"], "hook-fallback-query-failed");
+        assert_eq!(
+            automation["backendAdaptation"]["nextStepCommandJsonTemplate"]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["nextStepCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(automation["backendAdaptation"]["stepChainCount"], 2);
         assert_eq!(automation["backendAdaptation"]["activeStepAllowed"], true);
         assert_eq!(automation["backendAdaptation"]["activeStepPreferredPath"], "query");
         assert_eq!(automation["backendAdaptation"]["activeStepCommandGroup"], "conflict-resolution");
         assert_eq!(automation["backendAdaptation"]["activeStepPhase"], "query");
+        assert_eq!(
+            automation["backendAdaptation"]["activeStepCommandJsonTemplate"]["command"],
+            "objc.classes <filter>"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["activeStepCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "ellekit");
         assert_eq!(automation["backendAdaptation"]["conflictBackendPairCount"], 1);
@@ -20331,12 +20415,28 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["nextStepPhase"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["nextStepCommand"], "native.hookenv");
         assert_eq!(coexistence["backendAdaptation"]["nextStepCommandJsonEligible"], true);
+        assert_eq!(
+            coexistence["backendAdaptation"]["nextStepCommandJsonTemplateCommand"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["nextStepCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(coexistence["backendAdaptation"]["stepChainCount"], 2);
         assert_eq!(coexistence["backendAdaptation"]["activeStepAllowed"], true);
         assert_eq!(coexistence["backendAdaptation"]["activeStepPreferredPath"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["activeStepCommandGroup"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["activeStepCommand"], "native.hookenv");
         assert_eq!(coexistence["backendAdaptation"]["activeStepCommandJsonEligible"], true);
+        assert_eq!(
+            coexistence["backendAdaptation"]["activeStepCommandJsonTemplateCommand"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["activeStepCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "filesystem-only");
@@ -20390,12 +20490,28 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["nextStepPhase"], "preflight");
         assert_eq!(automation["backendAdaptation"]["nextStepCommand"], "native.hookenv");
         assert_eq!(automation["backendAdaptation"]["nextStepCommandJsonEligible"], true);
+        assert_eq!(
+            automation["backendAdaptation"]["nextStepCommandJsonTemplate"]["command"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["nextStepCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(automation["backendAdaptation"]["stepChainCount"], 2);
         assert_eq!(automation["backendAdaptation"]["activeStepAllowed"], true);
         assert_eq!(automation["backendAdaptation"]["activeStepPreferredPath"], "preflight");
         assert_eq!(automation["backendAdaptation"]["activeStepCommandGroup"], "preflight");
         assert_eq!(automation["backendAdaptation"]["activeStepCommand"], "native.hookenv");
         assert_eq!(automation["backendAdaptation"]["activeStepCommandJsonEligible"], true);
+        assert_eq!(
+            automation["backendAdaptation"]["activeStepCommandJsonTemplate"]["command"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["activeStepCommandJsonTemplateKind"],
+            "runtime-command"
+        );
         assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(automation["backendAdaptation"]["requiresPreflight"], true);
