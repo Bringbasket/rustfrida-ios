@@ -2433,6 +2433,12 @@ undefined;
                                     adaptation.preferredBackendId === null &&
                                     adaptation.preferredBackendDisplayName === null &&
                                     adaptation.preferredBackendScope === null &&
+                                    adaptation.preferredBackendState === null &&
+                                    adaptation.preferredBackendLoadedBy === null &&
+                                    adaptation.preferredBackendVisibleInController === null &&
+                                    adaptation.preferredBackendVisibleInTarget === null &&
+                                    adaptation.preferredBackendSuggestedGroupKey === null &&
+                                    adaptation.preferredBackendSuggestedPhase === null &&
                                     adaptation.preferredBackendReason === null &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplate === null &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateCommand === null &&
@@ -2444,6 +2450,12 @@ undefined;
                                     adaptation.preferredBackendId === adaptation.preferredBackendRecommendation.backendId &&
                                     adaptation.preferredBackendDisplayName === adaptation.preferredBackendRecommendation.displayName &&
                                     adaptation.preferredBackendScope === adaptation.preferredBackendRecommendation.scope &&
+                                    adaptation.preferredBackendState === adaptation.preferredBackendRecommendation.state &&
+                                    adaptation.preferredBackendLoadedBy === adaptation.preferredBackendRecommendation.loadedBy &&
+                                    adaptation.preferredBackendVisibleInController === adaptation.preferredBackendRecommendation.visibleInController &&
+                                    adaptation.preferredBackendVisibleInTarget === adaptation.preferredBackendRecommendation.visibleInTarget &&
+                                    adaptation.preferredBackendSuggestedGroupKey === adaptation.preferredBackendRecommendation.suggestedGroupKey &&
+                                    adaptation.preferredBackendSuggestedPhase === adaptation.preferredBackendRecommendation.suggestedPhase &&
                                     adaptation.preferredBackendReason === adaptation.preferredBackendRecommendation.reason &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateCommand === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateCommand &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateKind === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateKind &&

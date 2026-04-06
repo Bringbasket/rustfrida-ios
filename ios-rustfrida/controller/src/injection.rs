@@ -3639,6 +3639,30 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .as_ref()
             .and_then(|item| item.get("scope"))
             .cloned(),
+        "preferredBackendState": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("state"))
+            .cloned(),
+        "preferredBackendLoadedBy": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("loadedBy"))
+            .cloned(),
+        "preferredBackendVisibleInController": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("visibleInController"))
+            .cloned(),
+        "preferredBackendVisibleInTarget": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("visibleInTarget"))
+            .cloned(),
+        "preferredBackendSuggestedGroupKey": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("suggestedGroupKey"))
+            .cloned(),
+        "preferredBackendSuggestedPhase": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("suggestedPhase"))
+            .cloned(),
         "preferredBackendReason": preferred_backend_recommendation
             .as_ref()
             .and_then(|item| item.get("reason"))
@@ -21908,6 +21932,12 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "ellekit");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "controller");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendState"], "loaded-runtime");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendLoadedBy"], "controller");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendVisibleInController"], true);
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendVisibleInTarget"], true);
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedGroupKey"], "query");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedPhase"], "query");
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
             "objc.classes <filter>"
@@ -24178,6 +24208,12 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "filesystem-only");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendState"], "filesystem-artifact");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendLoadedBy"], "none");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendVisibleInController"], true);
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendVisibleInTarget"], true);
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedGroupKey"], "preflight");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedPhase"], "preflight");
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
             "native.hookenv"

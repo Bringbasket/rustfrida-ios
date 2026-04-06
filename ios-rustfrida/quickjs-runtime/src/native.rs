@@ -3834,6 +3834,32 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 item.get_property(ctx, "displayName"),
             );
             backend_adaptation.set_property(ctx, "preferredBackendScope", item.get_property(ctx, "scope"));
+            backend_adaptation.set_property(ctx, "preferredBackendState", item.get_property(ctx, "state"));
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendLoadedBy",
+                item.get_property(ctx, "loadedBy"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendVisibleInController",
+                item.get_property(ctx, "visibleInController"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendVisibleInTarget",
+                item.get_property(ctx, "visibleInTarget"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendSuggestedGroupKey",
+                item.get_property(ctx, "suggestedGroupKey"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendSuggestedPhase",
+                item.get_property(ctx, "suggestedPhase"),
+            );
             backend_adaptation.set_property(ctx, "preferredBackendReason", item.get_property(ctx, "reason"));
             backend_adaptation.set_property(
                 ctx,
@@ -3861,6 +3887,12 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredBackendId",
                 "preferredBackendDisplayName",
                 "preferredBackendScope",
+                "preferredBackendState",
+                "preferredBackendLoadedBy",
+                "preferredBackendVisibleInController",
+                "preferredBackendVisibleInTarget",
+                "preferredBackendSuggestedGroupKey",
+                "preferredBackendSuggestedPhase",
                 "preferredBackendReason",
                 "preferredBackendPrimaryCommandJsonTemplate",
                 "preferredBackendPrimaryCommandJsonTemplateCommand",
