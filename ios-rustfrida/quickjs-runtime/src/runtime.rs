@@ -2593,16 +2593,42 @@ undefined;
                                 ((adaptation.conflictBackendPairCount === 0 &&
                                     adaptation.preferredConflictResolutionResolve === null &&
                                     adaptation.preferredConflictResolutionResolveDefault === null &&
+                                    adaptation.preferredConflictResolutionResolveDefaultEffective === null &&
+                                    adaptation.preferredConflictResolutionResolveDefaultReason === null &&
+                                    adaptation.preferredConflictResolutionResolveDefaultMatched === null &&
+                                    adaptation.preferredConflictResolutionResolveDefaultUsedDefault === null &&
+                                    adaptation.preferredConflictResolutionResolveDefaultEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionResolveDefaultEffectiveEscalationKey === null &&
                                     adaptation.preferredConflictResolutionResolveExampleQueryOnlyResult === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyResultEffective === null &&
                                     adaptation.preferredConflictResolutionResolveExampleKnownMatched === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownErrorCode === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownResult === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownResultEffective === null &&
                                     adaptation.preferredConflictResolutionResolveExampleMissingMatched === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingReason === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingResult === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingResultEffective === null &&
                                     adaptation.preferredConflictResolutionResolveKnownResult === null &&
                                     adaptation.preferredConflictResolutionResolveMissingResult === null &&
                                     adaptation.preferredConflictResolutionPhaseResolve === null &&
                                     adaptation.preferredConflictResolutionPhaseResolveDefault === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultEffective === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultReason === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultMatched === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultUsedDefault === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey === null &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResult === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffective === null &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleKnownMatched === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownPhase === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownReason === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownResult === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownResultEffective === null &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleMissingMatched === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingResult === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingResultEffective === null &&
                                     adaptation.preferredConflictResolutionPhaseResolveKnownResult === null &&
                                     adaptation.preferredConflictResolutionPhaseResolveMissingResult === null &&
                                     adaptation.preferredConflictResolutionSuggestedEscalationKey === null &&
@@ -2610,7 +2636,99 @@ undefined;
                                     adaptation.preferredConflictResolutionPhaseFirst === null &&
                                     adaptation.preferredConflictResolutionPhaseFirstName === null &&
                                     adaptation.preferredConflictResolutionResolveExampleQueryOnlyErrorCode === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownResultEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingResultEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyBlockedBy === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyIsBlocked === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyAvailable === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyMatched === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyUsedDefault === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyReason === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyInstallFailure === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyErrorCode === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlySourceErrorCode === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyBlockedBy === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyBlockedBySource === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyIsBlocked === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhase === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyAvailable === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyMatched === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyUsedDefault === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyReason === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyWouldUsePath === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyWouldUsePhase === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResult === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultEffective === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultMatched === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultUsedDefault === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultReason === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveBlockedBy === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveBlockedBySource === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveIsBlocked === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveAvailable === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveMatched === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveUsedDefault === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveReason === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveWouldUsePath === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResult === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultEffective === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultMatched === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultUsedDefault === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultReason === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey === null &&
                                     adaptation.preferredConflictResolutionQueryOnlyPhaseResolvePhase === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveAvailable === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveMatched === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveReason === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResult === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultEffective === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultMatched === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultUsedDefault === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultReason === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingResultEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyInstallFailure === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyReason === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey === null &&
                                     adaptation.preferredConflictResolutionDefaultTemplates === null &&
                                     adaptation.preferredConflictResolutionDefaultCommandJsonTemplates === null &&
                                     adaptation.preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount === null &&
@@ -2662,16 +2780,33 @@ undefined;
                                 (adaptation.conflictBackendPairCount > 0 &&
                                     adaptation.preferredConflictResolutionResolve === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolve &&
                                     adaptation.preferredConflictResolutionResolveDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefault &&
+                                    adaptation.preferredConflictResolutionResolveDefaultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefaultEffective &&
+                                    adaptation.preferredConflictResolutionResolveDefaultReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefaultReason &&
+                                    adaptation.preferredConflictResolutionResolveDefaultMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefaultMatched &&
+                                    adaptation.preferredConflictResolutionResolveDefaultUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefaultUsedDefault &&
+                                    adaptation.preferredConflictResolutionResolveDefaultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefaultEffectivePhase &&
+                                    adaptation.preferredConflictResolutionResolveDefaultEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefaultEffectiveEscalationKey &&
                                     adaptation.preferredConflictResolutionResolveExampleQueryOnlyResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyResult &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyResultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyResultEffective &&
                                     adaptation.preferredConflictResolutionResolveExampleKnownMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownMatched &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownErrorCode === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownErrorCode &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownResult &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownResultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownResultEffective &&
                                     adaptation.preferredConflictResolutionResolveExampleKnownUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownUsedDefault &&
                                     adaptation.preferredConflictResolutionResolveExampleKnownReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownReason &&
                                     adaptation.preferredConflictResolutionResolveExampleKnownEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownEffectivePhase &&
                                     adaptation.preferredConflictResolutionResolveExampleKnownEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownResultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownResultEffectivePhase &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownResultEffectiveEscalationKey &&
                                     adaptation.preferredConflictResolutionResolveExampleMissingMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingMatched &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingReason &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingResult &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingResultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingResultEffective &&
                                     adaptation.preferredConflictResolutionResolveExampleMissingUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingUsedDefault &&
                                     adaptation.preferredConflictResolutionResolveExampleMissingEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingEffectivePhase &&
                                     adaptation.preferredConflictResolutionResolveExampleMissingEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingResultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingResultEffectivePhase &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingResultEffectiveEscalationKey &&
                                     adaptation.preferredConflictResolutionResolveKnownResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveKnownResult &&
                                     adaptation.preferredConflictResolutionResolveKnownResultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveKnownResultEffective &&
                                     adaptation.preferredConflictResolutionResolveKnownEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveKnownEffective &&
@@ -2690,16 +2825,33 @@ undefined;
                                     adaptation.preferredConflictResolutionResolveMissingEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveMissingEffectiveEscalationKey &&
                                     adaptation.preferredConflictResolutionPhaseResolve === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolve &&
                                     adaptation.preferredConflictResolutionPhaseResolveDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveDefault &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveDefaultEffective &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveDefaultReason &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveDefaultMatched &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveDefaultUsedDefault &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveDefaultEffectivePhase &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveDefaultEffectiveEscalationKey &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyResult &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyResultEffective &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleKnownMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownMatched &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownPhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownPhase &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownReason &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownResult &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownResultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownResultEffective &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleKnownUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownUsedDefault &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownResultEffectivePhase &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleKnownEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownEffectivePhase &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleKnownEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownResultEffectiveEscalationKey &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleMissingMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingMatched &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingResult &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingResultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingResultEffective &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleMissingUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingUsedDefault &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleMissingReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingReason &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleMissingEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingEffectivePhase &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleMissingEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingResultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingResultEffectivePhase &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingResultEffectiveEscalationKey &&
                                     adaptation.preferredConflictResolutionPhaseResolveKnownResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveKnownResult &&
                                     adaptation.preferredConflictResolutionPhaseResolveKnownResultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveKnownResultEffective &&
                                     adaptation.preferredConflictResolutionPhaseResolveKnownEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveKnownEffective &&
@@ -2721,7 +2873,91 @@ undefined;
                                     adaptation.preferredConflictResolutionPhaseFirst === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseFirst &&
                                     adaptation.preferredConflictResolutionPhaseFirstName === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseFirst.phase &&
                                     adaptation.preferredConflictResolutionResolveExampleQueryOnlyErrorCode === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyErrorCode &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyBlockedBy === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyBlockedBy &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyBlockedBySource &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyIsBlocked === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyIsBlocked &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyAvailable === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyAvailable &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyMatched &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyUsedDefault &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyReason &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyEffectivePhase &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyWouldUsePath &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyInstallFailure === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyInstallFailure &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyResultEffectivePhase &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyResultEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionQueryOnlyErrorCode === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyErrorCode &&
+                                    adaptation.preferredConflictResolutionQueryOnlySourceErrorCode === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlySourceErrorCode &&
+                                    adaptation.preferredConflictResolutionQueryOnlyBlockedBy === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyBlockedBy &&
+                                    adaptation.preferredConflictResolutionQueryOnlyBlockedBySource === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyBlockedBySource &&
+                                    adaptation.preferredConflictResolutionQueryOnlyIsBlocked === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyIsBlocked &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhase &&
+                                    adaptation.preferredConflictResolutionQueryOnlyAvailable === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyAvailable &&
+                                    adaptation.preferredConflictResolutionQueryOnlyMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyMatched &&
+                                    adaptation.preferredConflictResolutionQueryOnlyUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyUsedDefault &&
+                                    adaptation.preferredConflictResolutionQueryOnlyReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyReason &&
+                                    adaptation.preferredConflictResolutionQueryOnlyEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyEffectivePhase &&
+                                    adaptation.preferredConflictResolutionQueryOnlyEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionQueryOnlyWouldUsePath === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyWouldUsePath &&
+                                    adaptation.preferredConflictResolutionQueryOnlyWouldUsePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyWouldUsePhase &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResult &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResultEffective &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResultMatched &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResultUsedDefault &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResultReason &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResultEffectivePhase &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResultEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResultEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveBlockedBy === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveBlockedBy &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveBlockedBySource === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveBlockedBySource &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveIsBlocked === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveIsBlocked &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveAvailable === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveAvailable &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveMatched &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveUsedDefault &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveReason &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveEffectivePhase &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveWouldUsePath === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveWouldUsePath &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveResult &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveResultEffective &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveResultMatched &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveResultUsedDefault &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveResultReason &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveResultEffectivePhase &&
+                                    adaptation.preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyResolveResultEffectiveEscalationKey &&
                                     adaptation.preferredConflictResolutionQueryOnlyPhaseResolvePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolvePhase &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveSourceErrorCode &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveBlockedBy &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveBlockedBySource &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveIsBlocked &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveAvailable === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveAvailable &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveMatched &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveUsedDefault &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveReason &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveEffectivePhase &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveWouldUsePhase &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveResult &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveResultEffective &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveResultMatched &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveResultUsedDefault &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveResultReason &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveResultEffectivePhase &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolveResultEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlySourceErrorCode &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyInstallFailure === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyInstallFailure &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyPhase &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyBlockedBy &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyBlockedBySource &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyIsBlocked &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyAvailable &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyMatched &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyUsedDefault &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyReason &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyEffectivePhase &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyWouldUsePhase &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyResultEffectivePhase &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyResultEffectiveEscalationKey &&
                                     adaptation.preferredConflictResolutionDefaultTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.defaultTemplateCount &&
                                     adaptation.preferredConflictResolutionDefaultTemplates.length === adaptation.preferredConflictResolutionRouting.routingDecision.ready.defaultTemplates.length &&
                                     adaptation.preferredConflictResolutionDefaultCommandJsonTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.defaultCommandJsonTemplateCount &&
