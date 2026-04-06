@@ -2680,7 +2680,38 @@ undefined;
                                 adaptation.controllerLoadedOnlyBackendIds.length === 0 &&
                                 adaptation.targetLoadedOnlyBackendIds.length === 0 &&
                                 adaptation.filesystemOnlyBackendIds.length === report.filesystemOnlyBackendCount;
-                            return preferredConflictExecutionOk && nextStepOk && backendIdAliasesOk;
+                            const templateGroupAliasesOk =
+                                ['query', 'preflight', 'cleanup', 'install', 'preferred'].every((group) => {
+                                    const templatesKey = `${group}Templates`;
+                                    const templateCountKey = `${group}TemplateCount`;
+                                    const commandJsonTemplatesKey = `${group}CommandJsonTemplates`;
+                                    const commandJsonTemplateCountKey = `${group}CommandJsonTemplateCount`;
+                                    const groupKey = `${group}Group`;
+                                    return Array.isArray(adaptation[templatesKey]) &&
+                                        typeof adaptation[templateCountKey] === 'number' &&
+                                        adaptation[templateCountKey] === adaptation[templatesKey].length &&
+                                        Array.isArray(adaptation[commandJsonTemplatesKey]) &&
+                                        typeof adaptation[commandJsonTemplateCountKey] === 'number' &&
+                                        adaptation[commandJsonTemplateCountKey] === adaptation[commandJsonTemplatesKey].length &&
+                                        typeof adaptation[groupKey] === 'object' &&
+                                        adaptation[groupKey] !== null &&
+                                        Array.isArray(adaptation[groupKey].templates) &&
+                                        adaptation[templatesKey].length === adaptation[groupKey].templates.length &&
+                                        adaptation[templatesKey].every((entry, index) =>
+                                            entry === adaptation[groupKey].templates[index]) &&
+                                        adaptation[templateCountKey] === adaptation[groupKey].templateCount &&
+                                        Array.isArray(adaptation[groupKey].commandJsonTemplates) &&
+                                        adaptation[commandJsonTemplatesKey].length === adaptation[groupKey].commandJsonTemplates.length &&
+                                        adaptation[commandJsonTemplatesKey].every((entry, index) => {
+                                            const candidate = adaptation[groupKey].commandJsonTemplates[index];
+                                            return typeof candidate === 'object' &&
+                                                candidate !== null &&
+                                                entry.command === candidate.command &&
+                                                entry.kind === candidate.kind;
+                                        }) &&
+                                        adaptation[commandJsonTemplateCountKey] === adaptation[groupKey].commandJsonTemplateCount;
+                                });
+                            return preferredConflictExecutionOk && nextStepOk && backendIdAliasesOk && templateGroupAliasesOk;
                         })()"#,
                     )
                     .expect("native hook env backend adaptation execution aliases"),
