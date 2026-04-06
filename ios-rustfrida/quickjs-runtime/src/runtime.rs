@@ -2598,6 +2598,14 @@ undefined;
                                     adaptation.preferredConflictResolutionResolveExampleQueryOnlyErrorCode === null &&
                                     adaptation.preferredConflictResolutionQueryOnlyPhaseResolvePhase === null &&
                                     adaptation.preferredConflictResolutionPhaseQuery === null &&
+                                    adaptation.preferredConflictResolutionPhaseQueryTemplates === null &&
+                                    adaptation.preferredConflictResolutionPhaseQueryTemplate === null &&
+                                    adaptation.preferredConflictResolutionPhaseQueryCommandJsonTemplates === null &&
+                                    adaptation.preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount === null &&
+                                    adaptation.preferredConflictResolutionPhasePreflightTemplates === null &&
+                                    adaptation.preferredConflictResolutionPhasePreflightTemplate === null &&
+                                    adaptation.preferredConflictResolutionPhasePreflightCommandJsonTemplates === null &&
+                                    adaptation.preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount === null &&
                                     adaptation.preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible === null) ||
                                 (adaptation.conflictBackendPairCount > 0 &&
                                     adaptation.preferredConflictResolutionSuggestedEscalationKey === adaptation.preferredConflictResolutionRouting.suggestedEscalationKey &&
@@ -2607,6 +2615,18 @@ undefined;
                                     adaptation.preferredConflictResolutionResolveExampleQueryOnlyErrorCode === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyErrorCode &&
                                     adaptation.preferredConflictResolutionQueryOnlyPhaseResolvePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolvePhase &&
                                     adaptation.preferredConflictResolutionPhaseQuery === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery &&
+                                    adaptation.preferredConflictResolutionPhaseQueryTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery.templateCount &&
+                                    adaptation.preferredConflictResolutionPhaseQueryTemplates.length === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery.templates.length &&
+                                    adaptation.preferredConflictResolutionPhaseQueryTemplate === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery.templates[0] &&
+                                    adaptation.preferredConflictResolutionPhaseQueryCommandJsonTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery.commandJsonTemplateCount &&
+                                    adaptation.preferredConflictResolutionPhaseQueryCommandJsonTemplates.length === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery.commandJsonTemplates.length &&
+                                    adaptation.preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery.commandJsonEligibleTemplateCount &&
+                                    adaptation.preferredConflictResolutionPhasePreflightTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflight.templateCount &&
+                                    adaptation.preferredConflictResolutionPhasePreflightTemplates.length === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflight.templates.length &&
+                                    adaptation.preferredConflictResolutionPhasePreflightTemplate === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflight.templates[0] &&
+                                    adaptation.preferredConflictResolutionPhasePreflightCommandJsonTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflight.commandJsonTemplateCount &&
+                                    adaptation.preferredConflictResolutionPhasePreflightCommandJsonTemplates.length === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflight.commandJsonTemplates.length &&
+                                    adaptation.preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phasePreflight.commandJsonEligibleTemplateCount &&
                                     ((adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQueryCommandJsonTemplate === null &&
                                         adaptation.preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible === null) ||
                                         (adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQueryCommandJsonTemplate !== null &&

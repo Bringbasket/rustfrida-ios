@@ -75,6 +75,8 @@ unsafe fn set_phase_ready_aliases(
     let templates_field = format!("{prefix}Templates");
     let template_field = format!("{prefix}Template");
     let command_json_template_count_field = format!("{prefix}CommandJsonTemplateCount");
+    let command_json_eligible_template_count_field =
+        format!("{prefix}CommandJsonEligibleTemplateCount");
     let command_json_templates_field = format!("{prefix}CommandJsonTemplates");
     let command_json_template_field = format!("{prefix}CommandJsonTemplate");
     let command_json_template_command_field = format!("{prefix}CommandJsonTemplateCommand");
@@ -115,6 +117,11 @@ unsafe fn set_phase_ready_aliases(
             ctx,
             &command_json_template_count_field,
             phase_entry.get_property(ctx, "commandJsonTemplateCount"),
+        );
+        ready_value.set_property(
+            ctx,
+            &command_json_eligible_template_count_field,
+            phase_entry.get_property(ctx, "commandJsonEligibleTemplateCount"),
         );
         let command_json_templates = phase_entry.get_property(ctx, "commandJsonTemplates");
         let command_json_template = js_array_first(command_json_templates.dup(ctx), ctx);
@@ -212,6 +219,11 @@ unsafe fn set_phase_ready_aliases(
         ready_value.set_property(ctx, &templates_field, empty_strings.dup(ctx));
         ready_value.set_property(ctx, &template_field, JSValue::null());
         ready_value.set_property(ctx, &command_json_template_count_field, JSValue::null());
+        ready_value.set_property(
+            ctx,
+            &command_json_eligible_template_count_field,
+            JSValue::null(),
+        );
         ready_value.set_property(ctx, &command_json_templates_field, JSValue(ffi::JS_NewArray(ctx)));
         ready_value.set_property(ctx, &command_json_template_field, JSValue::null());
         ready_value.set_property(ctx, &command_json_template_command_field, JSValue::null());
@@ -2381,7 +2393,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     let mut known_phases = Vec::<String>::new();
     for (entry_index, (phase, summary)) in phase_summaries.iter().enumerate() {
         let phase_entry = JSValue(ffi::JS_NewObject(ctx));
-        let (phase_command_json_templates, _) =
+        let (phase_command_json_templates, phase_command_json_eligible_template_count) =
             hook_command_json_template_array_to_js(ctx, &summary.templates);
         phase_entry.set_property(ctx, "phase", JSValue::string(ctx, phase));
         phase_entry.set_property(
@@ -2414,6 +2426,11 @@ unsafe fn hook_conflict_resolution_routing_to_js(
             ctx,
             "commandJsonTemplateCount",
             JSValue::int(summary.templates.len() as i32),
+        );
+        phase_entry.set_property(
+            ctx,
+            "commandJsonEligibleTemplateCount",
+            JSValue::int(phase_command_json_eligible_template_count as i32),
         );
         phase_entry.set_property(
             ctx,
@@ -5848,9 +5865,19 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredConflictResolutionPhaseQueryTemplateCount",
                 "phaseQueryTemplateCount",
             ),
+            ("preferredConflictResolutionPhaseQueryTemplates", "phaseQueryTemplates"),
+            ("preferredConflictResolutionPhaseQueryTemplate", "phaseQueryTemplate"),
             (
                 "preferredConflictResolutionPhaseQueryCommandJsonTemplateCount",
                 "phaseQueryCommandJsonTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount",
+                "phaseQueryCommandJsonEligibleTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseQueryCommandJsonTemplates",
+                "phaseQueryCommandJsonTemplates",
             ),
             (
                 "preferredConflictResolutionPhaseQueryCommandJsonTemplate",
@@ -5882,8 +5909,21 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "phasePreflightTemplateCount",
             ),
             (
+                "preferredConflictResolutionPhasePreflightTemplates",
+                "phasePreflightTemplates",
+            ),
+            ("preferredConflictResolutionPhasePreflightTemplate", "phasePreflightTemplate"),
+            (
                 "preferredConflictResolutionPhasePreflightCommandJsonTemplateCount",
                 "phasePreflightCommandJsonTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount",
+                "phasePreflightCommandJsonEligibleTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionPhasePreflightCommandJsonTemplates",
+                "phasePreflightCommandJsonTemplates",
             ),
             (
                 "preferredConflictResolutionPhasePreflightCommandJsonTemplate",
