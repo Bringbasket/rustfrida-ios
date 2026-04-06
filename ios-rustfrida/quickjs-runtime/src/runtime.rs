@@ -1981,6 +1981,8 @@ undefined;
                                 typeof report.backendMatrix.topology === 'object' &&
                                 report.backendMatrix.topology !== null &&
                                 typeof report.backendMatrix.topology.kind === 'string' &&
+                                typeof report.backendMatrix.topology.sharedLoadedRuntime === 'boolean' &&
+                                typeof report.backendMatrix.topology.filesystemOnlyArtifacts === 'boolean' &&
                                 typeof report.bootstrapInjectionAllowed === 'boolean' &&
                                 typeof report.queryCommandsAllowed === 'boolean' &&
                                 typeof report.hookInstallCommandsAllowed === 'boolean' &&
@@ -3204,18 +3206,87 @@ undefined;
                             const nextStepOk = !hasExecutionPath ? (
                                 adaptation.nextStep === null &&
                                 adaptation.nextStepId === null &&
+                                adaptation.nextStepSource === null &&
+                                adaptation.nextStepActionKey === null &&
+                                adaptation.nextStepCommandGroup === null &&
+                                adaptation.nextStepAllowed === null &&
+                                adaptation.nextStepBlockedBy === null &&
+                                adaptation.nextStepBranch === null &&
+                                adaptation.nextStepKind === null &&
+                                adaptation.nextStepCommandJsonEligible === null &&
+                                adaptation.nextStepErrorCode === null &&
+                                adaptation.nextStepRetryable === null &&
+                                adaptation.nextStepMaxSuggestedRetries === null &&
+                                adaptation.nextStepRetryDelayHintMs === null &&
+                                adaptation.nextStepTimeoutHintMs === null &&
+                                adaptation.nextStepTimeoutAction === null &&
+                                adaptation.nextStepTimeoutErrorCode === null &&
+                                adaptation.nextStepRisk === null &&
+                                adaptation.nextStepPlaceholderCount === null &&
+                                adaptation.nextStepPlaceholders === null &&
+                                adaptation.nextStepCliArgs === null &&
+                                adaptation.stepChainSource === null &&
                                 adaptation.stepChain === null &&
                                 adaptation.activeStep === null &&
+                                adaptation.activeStepSource === null &&
+                                adaptation.activeStepActionKey === null &&
+                                adaptation.activeStepAllowed === null &&
+                                adaptation.activeStepBlockedBy === null &&
+                                adaptation.activeStepBranch === null &&
+                                adaptation.activeStepCommandGroup === null &&
+                                adaptation.activeStepCommandJsonEligible === null &&
+                                adaptation.activeStepErrorCode === null &&
+                                adaptation.activeStepKind === null &&
+                                adaptation.activeStepMaxSuggestedRetries === null &&
+                                adaptation.activeStepPlaceholderCount === null &&
+                                adaptation.activeStepPlaceholders === null &&
+                                adaptation.activeStepCliArgs === null &&
+                                adaptation.activeStepRetryDelayHintMs === null &&
+                                adaptation.activeStepRetryable === null &&
+                                adaptation.activeStepRisk === null &&
+                                adaptation.activeStepTimeoutAction === null &&
+                                adaptation.activeStepTimeoutErrorCode === null &&
+                                adaptation.activeStepTimeoutHintMs === null &&
                                 adaptation.executionSummary === null &&
                                 adaptation.executionSource === null &&
                                 adaptation.executionMode === null &&
                                 adaptation.executionAlignment === null &&
                                 adaptation.executionPreferredGroupKey === null &&
+                                adaptation.executionSelectedSource === null &&
+                                adaptation.executionSelectedActionKey === null &&
+                                adaptation.executionSelectedAllowed === null &&
+                                adaptation.executionSelectedBlockedBy === null &&
+                                adaptation.executionSelectedBranch === null &&
+                                adaptation.executionSelectedPhase === null &&
+                                adaptation.executionSelectedReason === null &&
+                                adaptation.executionSelectedCommandGroup === null &&
+                                adaptation.executionSelectedRetryable === null &&
+                                adaptation.executionSelectedErrorCode === null &&
+                                adaptation.executionSelectedTimeoutErrorCode === null &&
+                                adaptation.executionSelectedTimeoutAction === null &&
+                                adaptation.executionSelectedReadyToRun === null &&
+                                adaptation.executionSelectedRequiresFallback === null &&
+                                adaptation.executionSelectedCommandJsonEligible === null &&
+                                adaptation.executionSelectedKind === null &&
+                                adaptation.executionSelectedMaxSuggestedRetries === null &&
+                                adaptation.executionSelectedRetryDelayHintMs === null &&
+                                adaptation.executionSelectedTimeoutHintMs === null &&
+                                adaptation.executionSelectedRisk === null &&
+                                adaptation.executionSelectedPlaceholderCount === null &&
+                                Array.isArray(adaptation.executionSelectedPlaceholders) &&
+                                adaptation.executionSelectedPlaceholders.length === 0 &&
+                                Array.isArray(adaptation.executionSelectedCliArgs) &&
+                                adaptation.executionSelectedCliArgs.length === 0 &&
                                 adaptation.executionChainCount === null &&
                                 Array.isArray(adaptation.executionPhaseOrder) &&
                                 adaptation.executionPhaseOrder.length === 0 &&
                                 adaptation.executionRetryableStepCount === null &&
-                                adaptation.executionHasConflictPair === null
+                                adaptation.executionHasConflictPair === null &&
+                                adaptation.executionRequiresQueryPhase === null &&
+                                adaptation.executionRequiresPreflight === null &&
+                                adaptation.executionRequiresCleanupPhase === null &&
+                                adaptation.executionInlineInstallReadyNow === null &&
+                                adaptation.executionRetryBudget === null
                             ) : (
                                 Array.isArray(adaptation.stepChain) &&
                                 adaptation.stepChain.length === adaptation.stepChainCount &&
@@ -3225,13 +3296,50 @@ undefined;
                                 adaptation.nextStep !== null &&
                                 adaptation.nextStepId === adaptation.nextStep.id &&
                                 adaptation.nextStepSource === adaptation.nextStep.source &&
+                                adaptation.nextStepActionKey === adaptation.nextStep.actionKey &&
                                 adaptation.nextStepCommandGroup === adaptation.nextStep.commandGroup &&
+                                adaptation.nextStepAllowed === adaptation.nextStep.allowed &&
+                                adaptation.nextStepBlockedBy === adaptation.nextStep.blockedBy &&
+                                adaptation.nextStepBranch === adaptation.nextStep.branch &&
                                 adaptation.nextStepPreferredPath === adaptation.nextStep.preferredPath &&
+                                adaptation.nextStepKind === adaptation.nextStep.kind &&
+                                adaptation.nextStepCommandJsonEligible === adaptation.nextStep.commandJsonEligible &&
                                 adaptation.nextStepCommandJsonTemplateCommand === adaptation.nextStep.commandJsonTemplateCommand &&
+                                adaptation.nextStepErrorCode === adaptation.nextStep.errorCode &&
+                                adaptation.nextStepRetryable === adaptation.nextStep.retryable &&
+                                adaptation.nextStepMaxSuggestedRetries === adaptation.nextStep.maxSuggestedRetries &&
+                                adaptation.nextStepRetryDelayHintMs === adaptation.nextStep.retryDelayHintMs &&
+                                adaptation.nextStepTimeoutHintMs === adaptation.nextStep.timeoutHintMs &&
+                                adaptation.nextStepTimeoutAction === adaptation.nextStep.timeoutAction &&
+                                adaptation.nextStepTimeoutErrorCode === adaptation.nextStep.timeoutErrorCode &&
+                                adaptation.nextStepRisk === adaptation.nextStep.risk &&
+                                adaptation.nextStepPlaceholderCount === adaptation.nextStep.placeholderCount &&
+                                adaptation.nextStepPlaceholders === adaptation.nextStep.placeholders &&
+                                adaptation.nextStepCliArgs === adaptation.nextStep.cliArgs &&
+                                adaptation.stepChainSource === adaptation.executionSummary.source &&
                                 typeof adaptation.activeStep === 'object' &&
                                 adaptation.activeStep !== null &&
+                                adaptation.activeStepSource === adaptation.activeStep.source &&
+                                adaptation.activeStepActionKey === adaptation.activeStep.actionKey &&
+                                adaptation.activeStepAllowed === adaptation.activeStep.allowed &&
+                                adaptation.activeStepBlockedBy === adaptation.activeStep.blockedBy &&
+                                adaptation.activeStepBranch === adaptation.activeStep.branch &&
+                                adaptation.activeStepCommandGroup === adaptation.activeStep.commandGroup &&
                                 adaptation.activeStepId === adaptation.activeStep.id &&
                                 adaptation.activeStepCommand === adaptation.activeStep.command &&
+                                adaptation.activeStepCommandJsonEligible === adaptation.activeStep.commandJsonEligible &&
+                                adaptation.activeStepErrorCode === adaptation.activeStep.errorCode &&
+                                adaptation.activeStepKind === adaptation.activeStep.kind &&
+                                adaptation.activeStepMaxSuggestedRetries === adaptation.activeStep.maxSuggestedRetries &&
+                                adaptation.activeStepPlaceholderCount === adaptation.activeStep.placeholderCount &&
+                                adaptation.activeStepPlaceholders === adaptation.activeStep.placeholders &&
+                                adaptation.activeStepCliArgs === adaptation.activeStep.cliArgs &&
+                                adaptation.activeStepRetryDelayHintMs === adaptation.activeStep.retryDelayHintMs &&
+                                adaptation.activeStepRetryable === adaptation.activeStep.retryable &&
+                                adaptation.activeStepRisk === adaptation.activeStep.risk &&
+                                adaptation.activeStepTimeoutAction === adaptation.activeStep.timeoutAction &&
+                                adaptation.activeStepTimeoutErrorCode === adaptation.activeStep.timeoutErrorCode &&
+                                adaptation.activeStepTimeoutHintMs === adaptation.activeStep.timeoutHintMs &&
                                 typeof adaptation.executionSummary === 'object' &&
                                 adaptation.executionSummary !== null &&
                                 adaptation.executionKind === adaptation.executionSummary.kind &&
@@ -3240,13 +3348,42 @@ undefined;
                                 adaptation.executionAlignment === adaptation.executionSummary.alignment &&
                                 adaptation.executionPreferredGroupKey === adaptation.executionSummary.preferredGroupKey &&
                                 adaptation.executionSelectedId === adaptation.executionSummary.selectedId &&
+                                adaptation.executionSelectedSource === adaptation.executionSummary.selectedSource &&
+                                adaptation.executionSelectedActionKey === adaptation.executionSummary.selectedActionKey &&
+                                adaptation.executionSelectedAllowed === adaptation.executionSummary.selectedAllowed &&
+                                adaptation.executionSelectedBlockedBy === adaptation.executionSummary.selectedBlockedBy &&
+                                adaptation.executionSelectedBranch === adaptation.executionSummary.selectedBranch &&
+                                adaptation.executionSelectedPhase === adaptation.executionSummary.selectedPhase &&
                                 adaptation.executionSelectedCommand === adaptation.executionSummary.selectedCommand &&
+                                adaptation.executionSelectedReason === adaptation.executionSummary.selectedReason &&
                                 adaptation.executionSelectedCommandJsonTemplateCommand === adaptation.executionSummary.selectedCommandJsonTemplateCommand &&
                                 adaptation.executionSelectedPreferredPath === adaptation.executionSummary.selectedPreferredPath &&
+                                adaptation.executionSelectedCommandGroup === adaptation.executionSummary.selectedCommandGroup &&
+                                adaptation.executionSelectedRetryable === adaptation.executionSummary.selectedRetryable &&
+                                adaptation.executionSelectedErrorCode === adaptation.executionSummary.selectedErrorCode &&
+                                adaptation.executionSelectedTimeoutErrorCode === adaptation.executionSummary.selectedTimeoutErrorCode &&
+                                adaptation.executionSelectedTimeoutAction === adaptation.executionSummary.selectedTimeoutAction &&
+                                adaptation.executionSelectedReadyToRun === adaptation.executionSummary.selectedReadyToRun &&
+                                adaptation.executionSelectedRequiresFallback === adaptation.executionSummary.selectedRequiresFallback &&
+                                adaptation.executionSelectedCommandJsonEligible === adaptation.executionSummary.selectedCommandJsonEligible &&
+                                adaptation.executionSelectedCommandJsonTemplate === adaptation.executionSummary.selectedCommandJsonTemplate &&
+                                adaptation.executionSelectedKind === adaptation.executionSummary.selectedKind &&
+                                adaptation.executionSelectedMaxSuggestedRetries === adaptation.executionSummary.selectedMaxSuggestedRetries &&
+                                adaptation.executionSelectedRetryDelayHintMs === adaptation.executionSummary.selectedRetryDelayHintMs &&
+                                adaptation.executionSelectedTimeoutHintMs === adaptation.executionSummary.selectedTimeoutHintMs &&
+                                adaptation.executionSelectedRisk === adaptation.executionSummary.selectedRisk &&
+                                adaptation.executionSelectedPlaceholderCount === adaptation.executionSummary.selectedPlaceholderCount &&
+                                adaptation.executionSelectedPlaceholders === adaptation.executionSummary.selectedPlaceholders &&
+                                adaptation.executionSelectedCliArgs === adaptation.executionSummary.selectedCliArgs &&
                                 adaptation.executionChainCount === adaptation.executionSummary.chainCount &&
                                 adaptation.executionPhaseOrder === adaptation.executionSummary.phaseOrder &&
                                 adaptation.executionRetryableStepCount === adaptation.executionSummary.retryableStepCount &&
                                 adaptation.executionHasConflictPair === adaptation.executionSummary.hasConflictPair &&
+                                adaptation.executionRequiresQueryPhase === adaptation.executionSummary.requiresQueryPhase &&
+                                adaptation.executionRequiresPreflight === adaptation.executionSummary.requiresPreflight &&
+                                adaptation.executionRequiresCleanupPhase === adaptation.executionSummary.requiresCleanupPhase &&
+                                adaptation.executionInlineInstallReadyNow === adaptation.executionSummary.inlineInstallReadyNow &&
+                                adaptation.executionRetryBudget === adaptation.executionSummary.retryBudget &&
                                 (!hasConflictExecutionPath ||
                                     (adaptation.nextStepSource === 'preferred-conflict-resolution-chain' &&
                                      adaptation.nextStepCommandGroup === 'conflict-resolution' &&
