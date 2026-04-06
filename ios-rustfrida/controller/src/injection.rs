@@ -6859,7 +6859,7 @@ fn command_template_phase(command: &str) -> &'static str {
     {
         "cleanup"
     } else if command.starts_with("objc.")
-        || command.starts_with("native.images")
+        || command.starts_with("native.")
         || command.starts_with("swift.")
         || command.starts_with("pac.")
     {
@@ -27551,6 +27551,34 @@ mod tests {
         assert_eq!(entries[2]["cliArgs"][0], "--inject-json");
         assert_eq!(entries[2]["cliArgs"][1], "--pid");
         assert_eq!(entries[2]["cliArgs"][2], "<pid>");
+    }
+
+    #[test]
+    fn native_runtime_query_templates_use_query_phase_metadata() {
+        let entry = command_json_template_entry("native.base <module>");
+        assert_eq!(entry["command"], "native.base <module>");
+        assert_eq!(entry["kind"], "runtime-command");
+        assert_eq!(entry["commandJsonEligible"], true);
+        assert_eq!(entry["phase"], "query");
+        assert_eq!(entry["retryable"], true);
+        assert_eq!(entry["maxSuggestedRetries"], 1);
+        assert_eq!(entry["retryDelayHintMs"], 250);
+        assert_eq!(entry["timeoutHintMs"], 5000);
+        assert_eq!(entry["timeoutAction"], "narrow-query-filter-and-retry");
+        assert_eq!(entry["errorCode"], "hook-fallback-query-failed");
+        assert_eq!(entry["timeoutErrorCode"], "hook-fallback-query-timeout");
+        assert_eq!(entry["placeholderCount"], 1);
+        assert_eq!(entry["placeholders"][0], "<module>");
+        assert_eq!(entry["cliArgs"][2], "--command");
+        assert_eq!(entry["cliArgs"][3], "native.base <module>");
+        assert_eq!(entry["cliArgs"][4], "--command-json");
+
+        let info_entry = command_json_template_entry("native.symbolInfo <symbol>");
+        assert_eq!(info_entry["phase"], "query");
+        assert_eq!(info_entry["retryable"], true);
+        assert_eq!(info_entry["timeoutHintMs"], 5000);
+        assert_eq!(info_entry["errorCode"], "hook-fallback-query-failed");
+        assert_eq!(info_entry["timeoutErrorCode"], "hook-fallback-query-timeout");
     }
 
     #[test]
