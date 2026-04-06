@@ -2486,6 +2486,9 @@ undefined;
                                     adaptation.preferredConflictResolutionReason === null &&
                                     adaptation.preferredConflictResolutionTemplates === null &&
                                     adaptation.preferredConflictResolutionTemplateCount === null &&
+                                    adaptation.preferredConflictResolutionCommandJsonTemplates === null &&
+                                    adaptation.preferredConflictResolutionCommandJsonTemplateCount === null &&
+                                    adaptation.preferredConflictResolutionCommandJsonEligibleTemplateCount === null &&
                                     adaptation.preferredConflictResolutionChain === null &&
                                     adaptation.preferredConflictResolutionChainCount === null &&
                                     adaptation.preferredConflictResolutionPhaseOrder === null &&
@@ -2513,6 +2516,10 @@ undefined;
                                     Array.isArray(adaptation.preferredConflictResolutionTemplates) &&
                                     adaptation.preferredConflictResolutionTemplateCount === adaptation.preferredConflictBackendPair.templateCount &&
                                     adaptation.preferredConflictResolutionTemplateCount === adaptation.preferredConflictResolutionTemplates.length &&
+                                    Array.isArray(adaptation.preferredConflictResolutionCommandJsonTemplates) &&
+                                    adaptation.preferredConflictResolutionCommandJsonTemplateCount === adaptation.preferredConflictBackendPair.commandJsonTemplateCount &&
+                                    adaptation.preferredConflictResolutionCommandJsonTemplateCount === adaptation.preferredConflictResolutionCommandJsonTemplates.length &&
+                                    adaptation.preferredConflictResolutionCommandJsonEligibleTemplateCount === adaptation.preferredConflictBackendPair.commandJsonEligibleTemplateCount &&
                                     Array.isArray(adaptation.preferredConflictResolutionChain) &&
                                     adaptation.preferredConflictResolutionChainCount === adaptation.preferredConflictBackendPair.resolutionChainCount &&
                                     adaptation.preferredConflictResolutionChainCount === adaptation.preferredConflictResolutionChain.length &&

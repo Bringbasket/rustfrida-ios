@@ -4070,6 +4070,21 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             );
             backend_adaptation.set_property(
                 ctx,
+                "preferredConflictResolutionCommandJsonTemplates",
+                item.get_property(ctx, "commandJsonTemplates"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredConflictResolutionCommandJsonTemplateCount",
+                item.get_property(ctx, "commandJsonTemplateCount"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredConflictResolutionCommandJsonEligibleTemplateCount",
+                item.get_property(ctx, "commandJsonEligibleTemplateCount"),
+            );
+            backend_adaptation.set_property(
+                ctx,
                 "preferredConflictResolutionChain",
                 item.get_property(ctx, "resolutionChain"),
             );
@@ -4204,6 +4219,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredConflictResolutionReason",
                 "preferredConflictResolutionTemplates",
                 "preferredConflictResolutionTemplateCount",
+                "preferredConflictResolutionCommandJsonTemplates",
+                "preferredConflictResolutionCommandJsonTemplateCount",
+                "preferredConflictResolutionCommandJsonEligibleTemplateCount",
                 "preferredConflictResolutionChain",
                 "preferredConflictResolutionChainCount",
                 "preferredConflictResolutionPhaseOrder",

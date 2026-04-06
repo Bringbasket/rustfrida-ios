@@ -2784,6 +2784,10 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                     "templateCount": conflict_resolution_template_count.clone(),
                     "commandJsonTemplates": conflict_resolution_command_json_templates.clone(),
                     "commandJsonTemplateCount": conflict_resolution_command_json_template_count.clone(),
+                    "commandJsonEligibleTemplateCount": conflict_resolution_command_json_templates
+                        .as_array()
+                        .map(|items| command_json_eligible_count(items))
+                        .unwrap_or(0),
                     "primaryCommandJsonTemplate": conflict_primary_command_json_template.clone(),
                     "primaryCommandJsonTemplateCommand": conflict_primary_command_json_template
                         .get("command")
@@ -3762,6 +3766,18 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         "preferredConflictResolutionTemplateCount": preferred_conflict_backend_pair
             .as_ref()
             .and_then(|item| item.get("templateCount"))
+            .cloned(),
+        "preferredConflictResolutionCommandJsonTemplates": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("commandJsonTemplates"))
+            .cloned(),
+        "preferredConflictResolutionCommandJsonTemplateCount": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("commandJsonTemplateCount"))
+            .cloned(),
+        "preferredConflictResolutionCommandJsonEligibleTemplateCount": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("commandJsonEligibleTemplateCount"))
             .cloned(),
         "preferredConflictResolutionChain": preferred_conflict_backend_pair
             .as_ref()
@@ -22059,6 +22075,14 @@ mod tests {
             3
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["commandJsonTemplateCount"],
+            3
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["commandJsonEligibleTemplateCount"],
+            3
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["primaryCommandJsonTemplateCommand"],
             "objc.classes <filter>"
         );
@@ -22108,6 +22132,18 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionTemplateCount"],
+            3
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"],
+            3
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"],
+            coexistence["backendAdaptation"]["preferredConflictBackendPair"]["commandJsonTemplates"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"],
             3
         );
         assert_eq!(
@@ -24300,6 +24336,9 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairReason"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendIds"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendDisplayNames"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStep"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStepCommandJsonTemplate"].is_null());
@@ -24576,6 +24615,9 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionStepChain"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionActiveStep"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionActiveStepCommandJsonTemplate"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionSuggestedEscalationKey"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultEscalationKey"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultEffectiveEscalationKey"].is_null());
