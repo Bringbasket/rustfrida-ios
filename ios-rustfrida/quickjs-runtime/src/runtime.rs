@@ -2588,7 +2588,16 @@ undefined;
                                 adaptation.nextStepId === null &&
                                 adaptation.stepChain === null &&
                                 adaptation.activeStep === null &&
-                                adaptation.executionSummary === null
+                                adaptation.executionSummary === null &&
+                                adaptation.executionSource === null &&
+                                adaptation.executionMode === null &&
+                                adaptation.executionAlignment === null &&
+                                adaptation.executionPreferredGroupKey === null &&
+                                adaptation.executionChainCount === null &&
+                                Array.isArray(adaptation.executionPhaseOrder) &&
+                                adaptation.executionPhaseOrder.length === 0 &&
+                                adaptation.executionRetryableStepCount === null &&
+                                adaptation.executionHasConflictPair === null
                             ) : (
                                 Array.isArray(adaptation.stepChain) &&
                                 adaptation.stepChain.length === adaptation.stepChainCount &&
@@ -2608,10 +2617,18 @@ undefined;
                                 typeof adaptation.executionSummary === 'object' &&
                                 adaptation.executionSummary !== null &&
                                 adaptation.executionKind === adaptation.executionSummary.kind &&
+                                adaptation.executionSource === adaptation.executionSummary.source &&
+                                adaptation.executionMode === adaptation.executionSummary.mode &&
+                                adaptation.executionAlignment === adaptation.executionSummary.alignment &&
+                                adaptation.executionPreferredGroupKey === adaptation.executionSummary.preferredGroupKey &&
                                 adaptation.executionSelectedId === adaptation.executionSummary.selectedId &&
                                 adaptation.executionSelectedCommand === adaptation.executionSummary.selectedCommand &&
                                 adaptation.executionSelectedCommandJsonTemplateCommand === adaptation.executionSummary.selectedCommandJsonTemplateCommand &&
                                 adaptation.executionSelectedPreferredPath === adaptation.executionSummary.selectedPreferredPath &&
+                                adaptation.executionChainCount === adaptation.executionSummary.chainCount &&
+                                adaptation.executionPhaseOrder === adaptation.executionSummary.phaseOrder &&
+                                adaptation.executionRetryableStepCount === adaptation.executionSummary.retryableStepCount &&
+                                adaptation.executionHasConflictPair === adaptation.executionSummary.hasConflictPair &&
                                 (!hasConflictExecutionPath ||
                                     (adaptation.nextStepSource === 'preferred-conflict-resolution-chain' &&
                                      adaptation.nextStepCommandGroup === 'conflict-resolution' &&

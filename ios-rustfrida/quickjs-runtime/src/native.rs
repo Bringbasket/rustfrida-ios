@@ -4129,6 +4129,14 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     match &backend_adaptation_execution_summary {
         Some(summary) => {
             backend_adaptation.set_property(ctx, "executionKind", summary.get_property(ctx, "kind"));
+            backend_adaptation.set_property(ctx, "executionSource", summary.get_property(ctx, "source"));
+            backend_adaptation.set_property(ctx, "executionMode", summary.get_property(ctx, "mode"));
+            backend_adaptation.set_property(ctx, "executionAlignment", summary.get_property(ctx, "alignment"));
+            backend_adaptation.set_property(
+                ctx,
+                "executionPreferredGroupKey",
+                summary.get_property(ctx, "preferredGroupKey"),
+            );
             backend_adaptation.set_property(ctx, "executionSelectedId", summary.get_property(ctx, "selectedId"));
             backend_adaptation.set_property(
                 ctx,
@@ -4262,6 +4270,18 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "executionSelectedCliArgs",
                 summary.get_property(ctx, "selectedCliArgs"),
             );
+            backend_adaptation.set_property(ctx, "executionChainCount", summary.get_property(ctx, "chainCount"));
+            backend_adaptation.set_property(ctx, "executionPhaseOrder", summary.get_property(ctx, "phaseOrder"));
+            backend_adaptation.set_property(
+                ctx,
+                "executionRetryableStepCount",
+                summary.get_property(ctx, "retryableStepCount"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "executionHasConflictPair",
+                summary.get_property(ctx, "hasConflictPair"),
+            );
             backend_adaptation.set_property(
                 ctx,
                 "executionRequiresQueryPhase",
@@ -4287,6 +4307,10 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         None => {
             for key in [
                 "executionKind",
+                "executionSource",
+                "executionMode",
+                "executionAlignment",
+                "executionPreferredGroupKey",
                 "executionSelectedId",
                 "executionSelectedSource",
                 "executionSelectedActionKey",
@@ -4316,6 +4340,9 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "executionSelectedPlaceholderCount",
                 "executionSelectedPlaceholders",
                 "executionSelectedCliArgs",
+                "executionChainCount",
+                "executionRetryableStepCount",
+                "executionHasConflictPair",
                 "executionRequiresQueryPhase",
                 "executionRequiresPreflight",
                 "executionRequiresCleanupPhase",
@@ -4324,6 +4351,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             ] {
                 backend_adaptation.set_property(ctx, key, JSValue::null());
             }
+            backend_adaptation.set_property(ctx, "executionPhaseOrder", JSValue(ffi::JS_NewArray(ctx)));
         }
     }
     if let Some(summary) = &backend_adaptation_execution_summary {
