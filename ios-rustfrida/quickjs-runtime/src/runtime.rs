@@ -2334,6 +2334,108 @@ undefined;
                     .eval(
                         r#"(function() {
                             const report = Native.detectHookEnvironment();
+                            if (!report.hasFallbackPlan || report.fallbackPlan === null) {
+                                return true;
+                            }
+                            const plan = report.fallbackPlan;
+                            const keys = Object.keys(plan.errorCodeRouting);
+                            const resolvedKeys = Object.keys(plan.errorCodeRoutingResolved);
+                            const entriesOk =
+                                Array.isArray(plan.errorCodeRoutingEntries) &&
+                                plan.errorCodeRoutingEntries.every((entry) => {
+                                    const resolved = plan.errorCodeRoutingResolved[entry.errorCode];
+                                    return typeof entry === 'object' &&
+                                        entry !== null &&
+                                        typeof entry.errorCode === 'string' &&
+                                        typeof entry.candidateCount === 'number' &&
+                                        Array.isArray(entry.candidateEscalationKeys) &&
+                                        entry.candidateCount === entry.candidateEscalationKeys.length &&
+                                        typeof entry.recommendedEscalationKey === 'string' &&
+                                        typeof entry.effectiveEscalationKey === 'string' &&
+                                        typeof entry.matchConfidence === 'string' &&
+                                        typeof entry.resolvedFrom === 'string' &&
+                                        typeof entry.recommendedPhase === 'string' &&
+                                        typeof entry.effectivePhase === 'string' &&
+                                        typeof entry.templateCount === 'number' &&
+                                        typeof entry.commandJsonTemplateCount === 'number' &&
+                                        plan.errorCodeRouting[entry.errorCode] === entry.recommendedEscalationKey &&
+                                        typeof resolved === 'object' &&
+                                        resolved !== null &&
+                                        resolved.effectiveEscalationKey === entry.effectiveEscalationKey &&
+                                        resolved.effectivePhase === entry.effectivePhase &&
+                                        resolved.templateCount === entry.templateCount &&
+                                        resolved.commandJsonTemplateCount === entry.commandJsonTemplateCount &&
+                                        Array.isArray(resolved.templates) &&
+                                        Array.isArray(resolved.commandJsonTemplates) &&
+                                        resolved.templates.length === resolved.templateCount &&
+                                        resolved.commandJsonTemplates.length === resolved.commandJsonTemplateCount;
+                                });
+                            const routingDecisionOk =
+                                typeof plan.routingDecision === 'object' &&
+                                plan.routingDecision !== null &&
+                                plan.routingDecision.entries === plan.errorCodeRoutingEntries &&
+                                plan.routingDecision.entryCount === plan.errorCodeRoutingCount &&
+                                keys.length === plan.errorCodeRoutingCount &&
+                                resolvedKeys.length === plan.errorCodeRoutingResolvedCount &&
+                                typeof plan.routingDecision.ready === 'object' &&
+                                plan.routingDecision.ready !== null &&
+                                plan.routingDecision.ready.index === plan.errorCodeRoutingResolved &&
+                                plan.routingDecision.ready.resolveIndexEntries === plan.routingDecision.ready.resolveIndex &&
+                                ((plan.routingDecision.default === null &&
+                                    plan.routingDecision.defaultRecommendedEscalationKey === null &&
+                                    plan.routingDecision.defaultRecommendedPhase === null &&
+                                    plan.routingDecision.ready.default === null &&
+                                    plan.routingDecision.ready.defaultPhase === null) ||
+                                    (plan.routingDecision.default !== null &&
+                                        plan.routingDecision.defaultRecommendedEscalationKey === plan.routingDecision.default.escalationKey &&
+                                        plan.routingDecision.defaultRecommendedPhase === plan.routingDecision.default.phase &&
+                                        plan.routingDecision.defaultEffectiveEscalationKey === plan.routingDecision.default.effectiveEscalationKey &&
+                                        plan.routingDecision.defaultEffectivePhase === plan.routingDecision.default.effectivePhase &&
+                                        plan.routingDecision.defaultRecommendedTemplateCount === plan.routingDecision.default.templateCount &&
+                                        plan.routingDecision.defaultRecommendedTemplates.length === plan.routingDecision.default.templates.length &&
+                                        plan.routingDecision.defaultRecommendedCommandJsonTemplateCount === plan.routingDecision.default.commandJsonTemplateCount &&
+                                        plan.routingDecision.defaultRecommendedCommandJsonTemplates.length === plan.routingDecision.default.commandJsonTemplates.length &&
+                                        plan.routingDecision.ready.default === plan.routingDecision.default &&
+                                        plan.routingDecision.ready.defaultEscalationKey === plan.routingDecision.default.escalationKey &&
+                                        plan.routingDecision.ready.defaultPhase === plan.routingDecision.default.phase &&
+                                        plan.routingDecision.ready.defaultTemplateCount === plan.routingDecision.default.templateCount &&
+                                        plan.routingDecision.ready.defaultTemplates.length === plan.routingDecision.default.templates.length &&
+                                        plan.routingDecision.ready.defaultCommandJsonTemplateCount === plan.routingDecision.default.commandJsonTemplateCount &&
+                                        plan.routingDecision.ready.defaultCommandJsonTemplates.length === plan.routingDecision.default.commandJsonTemplates.length));
+                            const escalationOk =
+                                Array.isArray(plan.escalationRecommendations) &&
+                                plan.escalationRecommendations.every((entry) =>
+                                    typeof entry === 'object' &&
+                                    entry !== null &&
+                                    typeof entry.key === 'string' &&
+                                    typeof entry.condition === 'string' &&
+                                    typeof entry.phase === 'string' &&
+                                    typeof entry.reason === 'string' &&
+                                    (entry.note === null || typeof entry.note === 'string') &&
+                                    typeof entry.onErrorCodeCount === 'number' &&
+                                    Array.isArray(entry.onErrorCodes) &&
+                                    entry.onErrorCodeCount === entry.onErrorCodes.length &&
+                                    typeof entry.templateCount === 'number' &&
+                                    Array.isArray(entry.templates) &&
+                                    entry.templateCount === entry.templates.length &&
+                                    typeof entry.commandJsonTemplateCount === 'number' &&
+                                    Array.isArray(entry.commandJsonTemplates) &&
+                                    entry.commandJsonTemplateCount === entry.commandJsonTemplates.length &&
+                                    typeof entry.commandJsonEligibleTemplateCount === 'number' &&
+                                    entry.commandJsonEligibleTemplateCount <= entry.commandJsonTemplateCount) &&
+                                (plan.suggestedEscalationKey === null ||
+                                    plan.escalationRecommendations.some((entry) => entry.key === plan.suggestedEscalationKey));
+                            return entriesOk && routingDecisionOk && escalationOk;
+                        })()"#,
+                    )
+                    .expect("native hook env fallback routing aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
                             if (!report.hasFallbackPlan || report.fallbackPlan === null || report.fallbackPlan.routingDecision === null || report.fallbackPlan.routingDecision.ready === null) {
                                 return true;
                             }
