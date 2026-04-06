@@ -2026,6 +2026,165 @@ undefined;
                     .eval(
                         r#"(function() {
                             const report = Native.detectHookEnvironment();
+                            if (!report.hasFallbackPlan || report.fallbackPlan === null) {
+                                return true;
+                            }
+                            const plan = report.fallbackPlan;
+                            const hasNextStep = typeof plan.nextStep === 'object' && plan.nextStep !== null;
+                            const nextStepOk = !hasNextStep ? (
+                                plan.nextStep === null &&
+                                plan.nextStepId === null &&
+                                plan.nextStepSource === null &&
+                                plan.nextStepActionKey === null &&
+                                plan.nextStepCommandGroup === null &&
+                                plan.nextStepAllowed === null &&
+                                plan.nextStepBlockedBy === null &&
+                                plan.nextStepBranch === null &&
+                                plan.nextStepReason === null &&
+                                plan.nextStepPreferredPath === null &&
+                                plan.nextStepCommand === null &&
+                                plan.nextStepPhase === null &&
+                                plan.nextStepCommandJsonEligible === null &&
+                                plan.nextStepCommandJsonTemplateEligible === null &&
+                                plan.nextStepCommandJsonTemplate === null &&
+                                plan.nextStepCommandJsonTemplateCommand === null &&
+                                plan.nextStepCommandJsonTemplateKind === null &&
+                                plan.nextStepKind === null &&
+                                plan.nextStepRetryable === null &&
+                                plan.nextStepMaxSuggestedRetries === null &&
+                                plan.nextStepRetryDelayHintMs === null &&
+                                plan.nextStepTimeoutHintMs === null &&
+                                plan.nextStepTimeoutAction === null &&
+                                plan.nextStepErrorCode === null &&
+                                plan.nextStepTimeoutErrorCode === null &&
+                                plan.nextStepRisk === null &&
+                                plan.nextStepPlaceholderCount === null &&
+                                plan.nextStepPlaceholders === null &&
+                                plan.nextStepCliArgs === null &&
+                                plan.nextStepChainSource === null &&
+                                plan.nextStepChainLimit === 0 &&
+                                plan.nextStepChainCount === 0 &&
+                                plan.nextStepChainTruncated === false &&
+                                Array.isArray(plan.nextStepChain) &&
+                                plan.nextStepChain.length === 0
+                            ) : (
+                                plan.nextStepId === plan.nextStep.id &&
+                                plan.nextStepSource === plan.nextStep.source &&
+                                plan.nextStepActionKey === plan.nextStep.actionKey &&
+                                plan.nextStepCommandGroup === plan.nextStep.commandGroup &&
+                                plan.nextStepAllowed === plan.nextStep.allowed &&
+                                plan.nextStepBlockedBy === plan.nextStep.blockedBy &&
+                                plan.nextStepBranch === plan.nextStep.branch &&
+                                plan.nextStepReason === plan.nextStep.reason &&
+                                plan.nextStepPreferredPath === plan.nextStep.preferredPath &&
+                                plan.nextStepCommand === plan.nextStep.command &&
+                                plan.nextStepPhase === plan.nextStep.phase &&
+                                plan.nextStepCommandJsonEligible === plan.nextStep.commandJsonEligible &&
+                                plan.nextStepCommandJsonTemplateEligible === plan.nextStep.commandJsonTemplateEligible &&
+                                plan.nextStepCommandJsonTemplate === plan.nextStep.commandJsonTemplate &&
+                                plan.nextStepCommandJsonTemplateCommand === plan.nextStep.commandJsonTemplate.command &&
+                                plan.nextStepCommandJsonTemplateKind === plan.nextStep.commandJsonTemplate.kind &&
+                                plan.nextStepKind === plan.nextStep.kind &&
+                                plan.nextStepRetryable === plan.nextStep.retryable &&
+                                plan.nextStepMaxSuggestedRetries === plan.nextStep.maxSuggestedRetries &&
+                                plan.nextStepRetryDelayHintMs === plan.nextStep.retryDelayHintMs &&
+                                plan.nextStepTimeoutHintMs === plan.nextStep.timeoutHintMs &&
+                                plan.nextStepTimeoutAction === plan.nextStep.timeoutAction &&
+                                plan.nextStepErrorCode === plan.nextStep.errorCode &&
+                                plan.nextStepTimeoutErrorCode === plan.nextStep.timeoutErrorCode &&
+                                plan.nextStepRisk === plan.nextStep.risk &&
+                                plan.nextStepPlaceholderCount === plan.nextStep.placeholderCount &&
+                                plan.nextStepPlaceholders === plan.nextStep.placeholders &&
+                                plan.nextStepCliArgs === plan.nextStep.cliArgs &&
+                                plan.nextStepChainSource === 'fallback-plan' &&
+                                typeof plan.nextStepChainLimit === 'number' &&
+                                typeof plan.nextStepChainCount === 'number' &&
+                                plan.nextStepChainCount === plan.nextStepChain.length &&
+                                plan.nextStepChainLimit >= plan.nextStepChainCount &&
+                                typeof plan.nextStepChainTruncated === 'boolean' &&
+                                Array.isArray(plan.nextStepChain) &&
+                                (plan.nextStepChain.length === 0 ||
+                                    (typeof plan.nextStepChain[0] === 'object' &&
+                                        plan.nextStepChain[0] !== null &&
+                                        plan.nextStepChain[0].id === plan.nextStep.id))
+                            );
+                            const activeStepOk = !hasNextStep ? (
+                                plan.activeStep === null &&
+                                plan.activeStepSource === null &&
+                                plan.activeStepAllowed === null &&
+                                plan.activeStepBlockedBy === null &&
+                                plan.activeStepBranch === null &&
+                                plan.activeStepReason === null &&
+                                plan.activeStepPreferredPath === null &&
+                                plan.activeStepActionKey === null &&
+                                plan.activeStepCommandGroup === null &&
+                                plan.activeStepId === null &&
+                                plan.activeStepCommand === null &&
+                                plan.activeStepPhase === null &&
+                                plan.activeStepReadyToRun === null &&
+                                plan.activeStepRequiresFallback === null &&
+                                plan.activeStepKind === null &&
+                                plan.activeStepCommandJsonEligible === null &&
+                                plan.activeStepCommandJsonTemplateEligible === null &&
+                                plan.activeStepCommandJsonTemplate === null &&
+                                plan.activeStepCommandJsonTemplateCommand === null &&
+                                plan.activeStepCommandJsonTemplateKind === null &&
+                                plan.activeStepRetryable === null &&
+                                plan.activeStepMaxSuggestedRetries === null &&
+                                plan.activeStepRetryDelayHintMs === null &&
+                                plan.activeStepTimeoutHintMs === null &&
+                                plan.activeStepTimeoutAction === null &&
+                                plan.activeStepErrorCode === null &&
+                                plan.activeStepTimeoutErrorCode === null &&
+                                plan.activeStepRisk === null &&
+                                plan.activeStepPlaceholderCount === null &&
+                                plan.activeStepPlaceholders === null &&
+                                plan.activeStepCliArgs === null
+                            ) : (
+                                typeof plan.activeStep === 'object' &&
+                                plan.activeStep !== null &&
+                                plan.activeStepSource === plan.activeStep.source &&
+                                plan.activeStepAllowed === plan.activeStep.allowed &&
+                                plan.activeStepBlockedBy === plan.activeStep.blockedBy &&
+                                plan.activeStepBranch === plan.activeStep.branch &&
+                                plan.activeStepReason === plan.activeStep.reason &&
+                                plan.activeStepPreferredPath === plan.activeStep.preferredPath &&
+                                plan.activeStepActionKey === plan.activeStep.actionKey &&
+                                plan.activeStepCommandGroup === plan.activeStep.commandGroup &&
+                                plan.activeStepId === plan.activeStep.id &&
+                                plan.activeStepCommand === plan.activeStep.command &&
+                                plan.activeStepPhase === plan.activeStep.phase &&
+                                plan.activeStepReadyToRun === plan.activeStep.readyToRun &&
+                                plan.activeStepRequiresFallback === plan.activeStep.requiresFallback &&
+                                plan.activeStepKind === plan.activeStep.kind &&
+                                plan.activeStepCommandJsonEligible === plan.activeStep.commandJsonEligible &&
+                                plan.activeStepCommandJsonTemplateEligible === plan.activeStep.commandJsonTemplateEligible &&
+                                plan.activeStepCommandJsonTemplate === plan.activeStep.commandJsonTemplate &&
+                                plan.activeStepCommandJsonTemplateCommand === plan.activeStep.commandJsonTemplate.command &&
+                                plan.activeStepCommandJsonTemplateKind === plan.activeStep.commandJsonTemplate.kind &&
+                                plan.activeStepRetryable === plan.activeStep.retryable &&
+                                plan.activeStepMaxSuggestedRetries === plan.activeStep.maxSuggestedRetries &&
+                                plan.activeStepRetryDelayHintMs === plan.activeStep.retryDelayHintMs &&
+                                plan.activeStepTimeoutHintMs === plan.activeStep.timeoutHintMs &&
+                                plan.activeStepTimeoutAction === plan.activeStep.timeoutAction &&
+                                plan.activeStepErrorCode === plan.activeStep.errorCode &&
+                                plan.activeStepTimeoutErrorCode === plan.activeStep.timeoutErrorCode &&
+                                plan.activeStepRisk === plan.activeStep.risk &&
+                                plan.activeStepPlaceholderCount === plan.activeStep.placeholderCount &&
+                                plan.activeStepPlaceholders === plan.activeStep.placeholders &&
+                                plan.activeStepCliArgs === plan.activeStep.cliArgs
+                            );
+                            return nextStepOk && activeStepOk;
+                        })()"#,
+                    )
+                    .expect("native hook env fallback plan step aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
                             if (!report.hasFallbackPlan || report.fallbackPlan === null || report.fallbackPlan.routingDecision === null || report.fallbackPlan.routingDecision.ready === null) {
                                 return true;
                             }
