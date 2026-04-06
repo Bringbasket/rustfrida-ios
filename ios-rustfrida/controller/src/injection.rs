@@ -10099,6 +10099,47 @@ fn hook_environment_to_json(
     let coexistence_layer = hook_coexistence_layer_status(report, strategy);
     let loaded_backend_count = report.loaded_backend_count();
     let filesystem_only_backend_count = report.filesystem_only_backend_count();
+    let active_backend_display_name = report.active_backend.as_ref().and_then(|active_backend| {
+        report
+            .backends
+            .iter()
+            .find(|backend| backend.id == *active_backend)
+            .map(|backend| backend.display_name.clone())
+    });
+    let backend_ids = report
+        .backends
+        .iter()
+        .map(|backend| backend.id.clone())
+        .collect::<Vec<_>>();
+    let backend_display_names = report
+        .backends
+        .iter()
+        .map(|backend| backend.display_name.clone())
+        .collect::<Vec<_>>();
+    let loaded_backend_ids = report
+        .backends
+        .iter()
+        .filter(|backend| !backend.loaded_images.is_empty())
+        .map(|backend| backend.id.clone())
+        .collect::<Vec<_>>();
+    let loaded_backend_display_names = report
+        .backends
+        .iter()
+        .filter(|backend| !backend.loaded_images.is_empty())
+        .map(|backend| backend.display_name.clone())
+        .collect::<Vec<_>>();
+    let filesystem_only_backend_ids = report
+        .backends
+        .iter()
+        .filter(|backend| backend.loaded_images.is_empty() && !backend.filesystem_paths.is_empty())
+        .map(|backend| backend.id.clone())
+        .collect::<Vec<_>>();
+    let filesystem_only_backend_display_names = report
+        .backends
+        .iter()
+        .filter(|backend| backend.loaded_images.is_empty() && !backend.filesystem_paths.is_empty())
+        .map(|backend| backend.display_name.clone())
+        .collect::<Vec<_>>();
     let risk_level = if let Some(strategy) = strategy {
         match strategy.command_mode() {
             "blocked" => "blocked",
@@ -10118,6 +10159,7 @@ fn hook_environment_to_json(
 
     json!({
         "activeBackend": report.active_backend,
+        "activeBackendDisplayName": active_backend_display_name,
         "conflictState": report.conflict_state(),
         "riskLevel": risk_level,
         "commandMode": command_mode,
@@ -10129,8 +10171,15 @@ fn hook_environment_to_json(
         "singleExternalBackendLoaded": loaded_backend_count == 1,
         "multipleExternalBackendsLoaded": loaded_backend_count > 1,
         "filesystemOnlyBackendDetected": filesystem_only_backend_count > 0,
+        "backendCount": backend_ids.len(),
         "loadedBackendCount": loaded_backend_count,
         "filesystemOnlyBackendCount": filesystem_only_backend_count,
+        "backendIds": backend_ids,
+        "backendDisplayNames": backend_display_names,
+        "loadedBackendIds": loaded_backend_ids,
+        "loadedBackendDisplayNames": loaded_backend_display_names,
+        "filesystemOnlyBackendIds": filesystem_only_backend_ids,
+        "filesystemOnlyBackendDisplayNames": filesystem_only_backend_display_names,
         "loadedImageCount": report.loaded_image_count(),
         "filesystemPathCount": report.filesystem_path_count(),
         "recommendedActions": hook_environment_recommended_actions(report, strategy)
@@ -14362,6 +14411,7 @@ mod tests {
         command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_automation_to_json,
         hook_action_command_templates, hook_backend_matrix_to_json, hook_effective_actions,
         hook_effective_actions_to_json, hook_effective_to_json, hook_environment_requires_notice,
+        hook_environment_to_json,
         parse_hfl_command, parse_jhook_command, parse_shook_command, parse_stalker_command,
         parse_trace_command, print_injection_preflight, quote_js_string, render_bootstrap_summary,
         render_command_error_json, render_command_error_json_with_context, render_command_outcome_json,
@@ -26532,6 +26582,46 @@ mod tests {
             .iter()
             .any(|line| line.contains("hook warning: multiple hook ecosystems are loaded")));
         assert!(lines.iter().any(|line| line.contains("hook advice:")));
+    }
+
+    #[test]
+    fn hook_environment_json_contains_backend_summary_arrays() {
+        let rendered = hook_environment_to_json(
+            &HookEnvironmentReport {
+                active_backend: Some("ellekit".into()),
+                backends: vec![
+                    HookBackendInfo {
+                        id: "ellekit".into(),
+                        display_name: "ElleKit".into(),
+                        loaded_images: vec!["/usr/lib/libellekit.dylib".into()],
+                        filesystem_paths: vec!["/usr/lib/libellekit.dylib".into()],
+                    },
+                    HookBackendInfo {
+                        id: "substitute".into(),
+                        display_name: "Substitute".into(),
+                        loaded_images: vec![],
+                        filesystem_paths: vec!["/var/jb/usr/lib/libsubstitute.dylib".into()],
+                    },
+                ],
+                warnings: vec![],
+            },
+            None,
+        );
+
+        assert_eq!(rendered["activeBackend"], "ellekit");
+        assert_eq!(rendered["activeBackendDisplayName"], "ElleKit");
+        assert_eq!(rendered["backendCount"], 2);
+        assert_eq!(rendered["loadedBackendCount"], 1);
+        assert_eq!(rendered["filesystemOnlyBackendCount"], 1);
+        assert_eq!(rendered["backendIds"], json!(["ellekit", "substitute"]));
+        assert_eq!(rendered["backendDisplayNames"], json!(["ElleKit", "Substitute"]));
+        assert_eq!(rendered["loadedBackendIds"], json!(["ellekit"]));
+        assert_eq!(rendered["loadedBackendDisplayNames"], json!(["ElleKit"]));
+        assert_eq!(rendered["filesystemOnlyBackendIds"], json!(["substitute"]));
+        assert_eq!(
+            rendered["filesystemOnlyBackendDisplayNames"],
+            json!(["Substitute"])
+        );
     }
 
     #[test]
