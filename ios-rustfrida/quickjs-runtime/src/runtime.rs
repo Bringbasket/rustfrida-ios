@@ -2436,6 +2436,103 @@ undefined;
                     .eval(
                         r#"(function() {
                             const report = Native.detectHookEnvironment();
+                            if (!report.hasFallbackPlan || report.fallbackPlan === null || report.fallbackPlan.routingDecision === null) {
+                                return true;
+                            }
+                            const ready = report.fallbackPlan.routingDecision.ready;
+                            if (ready === null || ready.resolve === null || ready.phaseResolve === null) {
+                                return true;
+                            }
+                            const resolveKnownOk =
+                                ((ready.resolveExamples.knownResult === null &&
+                                    ready.resolveKnownErrorCode === null &&
+                                    ready.resolveKnownResult === null &&
+                                    ready.resolveKnownResultEffective === null &&
+                                    ready.resolveKnownEffective === null &&
+                                    ready.resolveKnownMatched === null &&
+                                    ready.resolveKnownUsedDefault === null &&
+                                    ready.resolveKnownReason === null &&
+                                    ready.resolveKnownEffectivePhase === null &&
+                                    ready.resolveKnownEffectiveEscalationKey === null) ||
+                                    (ready.resolveKnownErrorCode === ready.resolveExamples.knownErrorCode &&
+                                        ready.resolveKnownResult === ready.resolveExamples.knownResult &&
+                                        ready.resolveKnownResultEffective === ready.resolveKnownResult.effective &&
+                                        ready.resolveKnownEffective === ready.resolveKnownResult.effective &&
+                                        ready.resolveKnownMatched === ready.resolveKnownResult.matched &&
+                                        ready.resolveKnownUsedDefault === ready.resolveKnownResult.usedDefault &&
+                                        ready.resolveKnownReason === ready.resolveKnownResult.reason &&
+                                        ready.resolveKnownEffectivePhase === ready.resolveExamples.knownEffectivePhase &&
+                                        ready.resolveKnownEffectiveEscalationKey === ready.resolveExamples.knownEffectiveEscalationKey));
+                            const resolveMissingOk =
+                                ready.resolveMissingErrorCode === ready.resolveExamples.missingErrorCode &&
+                                ready.resolveMissingResult === ready.resolveExamples.missingResult &&
+                                ready.resolveMissingResultEffective === ready.resolveMissingResult.effective &&
+                                ready.resolveMissingMatched === ready.resolveMissingResult.matched &&
+                                ready.resolveMissingUsedDefault === ready.resolveMissingResult.usedDefault &&
+                                ready.resolveMissingReason === ready.resolveMissingResult.reason &&
+                                ready.resolveMissingEffectivePhase === ready.resolveExamples.missingEffectivePhase &&
+                                ready.resolveMissingEffectiveEscalationKey === ready.resolveExamples.missingEffectiveEscalationKey &&
+                                ready.resolveDefault === ready.resolve.default &&
+                                ready.resolveDefaultMatched === ready.resolveDefault.matched &&
+                                ready.resolveDefaultUsedDefault === ready.resolveDefault.usedDefault &&
+                                ready.resolveDefaultReason === ready.resolveDefault.reason &&
+                                ready.resolveDefaultEffective === ready.resolveDefault.effective &&
+                                ready.resolveDefaultEffectivePhase === ready.resolveDefault.effectivePhase &&
+                                ready.resolveDefaultEffectiveEscalationKey === ready.resolveDefault.effectiveEscalationKey;
+                            const phaseResolveKnownOk =
+                                ((ready.phaseResolveExamples.knownResult === null &&
+                                    ready.phaseResolveExampleKnownPhase === null &&
+                                    ready.phaseResolveKnownResult === null &&
+                                    ready.phaseResolveKnownResultEffective === null &&
+                                    ready.phaseResolveKnownEffective === null &&
+                                    ready.phaseResolveKnownMatched === null &&
+                                    ready.phaseResolveKnownUsedDefault === null &&
+                                    ready.phaseResolveKnownReason === null &&
+                                    ready.phaseResolveKnownEffectivePhase === null &&
+                                    ready.phaseResolveKnownEffectiveEscalationKey === null) ||
+                                    (ready.phaseResolveExampleKnownPhase === ready.phaseResolveExamples.knownPhase &&
+                                        ready.phaseResolveKnownResult === ready.phaseResolveExamples.knownResult &&
+                                        ready.phaseResolveKnownResultEffective === ready.phaseResolveKnownResult.effective &&
+                                        ready.phaseResolveKnownEffective === ready.phaseResolveKnownResult.effective &&
+                                        ready.phaseResolveKnownMatched === ready.phaseResolveKnownResult.matched &&
+                                        ready.phaseResolveKnownUsedDefault === ready.phaseResolveKnownResult.usedDefault &&
+                                        ready.phaseResolveKnownReason === ready.phaseResolveKnownResult.reason &&
+                                        ready.phaseResolveKnownEffectivePhase === ready.phaseResolveExamples.knownEffectivePhase &&
+                                        ready.phaseResolveKnownEffectiveEscalationKey === ready.phaseResolveExamples.knownEffectiveEscalationKey));
+                            const phaseResolveMissingOk =
+                                ready.phaseResolveExampleMissingPhase === ready.phaseResolveExamples.missingPhase &&
+                                ready.phaseResolveMissingResult === ready.phaseResolveExamples.missingResult &&
+                                ready.phaseResolveMissingResultEffective === ready.phaseResolveMissingResult.effective &&
+                                ready.phaseResolveMissingMatched === ready.phaseResolveMissingResult.matched &&
+                                ready.phaseResolveMissingUsedDefault === ready.phaseResolveMissingResult.usedDefault &&
+                                ready.phaseResolveMissingReason === ready.phaseResolveMissingResult.reason &&
+                                ready.phaseResolveMissingEffectivePhase === ready.phaseResolveExamples.missingEffectivePhase &&
+                                ready.phaseResolveMissingEffectiveEscalationKey === ready.phaseResolveExamples.missingEffectiveEscalationKey &&
+                                ready.phaseResolveDefault === ready.phaseResolve.default &&
+                                ready.phaseResolveDefaultMatched === ready.phaseResolveDefault.matched &&
+                                ready.phaseResolveDefaultUsedDefault === ready.phaseResolveDefault.usedDefault &&
+                                ready.phaseResolveDefaultReason === ready.phaseResolveDefault.reason &&
+                                ready.phaseResolveDefaultEffective === ready.phaseResolveDefault.effective &&
+                                ready.phaseResolveDefaultEffectivePhase === ready.phaseResolveDefault.effectivePhase &&
+                                ready.phaseResolveDefaultEffectiveEscalationKey === ready.phaseResolveDefault.effectiveEscalationKey;
+                            return ready.resolveIndexEntries === ready.resolveIndex &&
+                                ready.resolveExamples === ready.resolve.examples &&
+                                ready.phaseResolveIndexEntries === ready.phaseResolveIndex &&
+                                ready.phaseResolveExamples === ready.phaseResolve.examples &&
+                                resolveKnownOk &&
+                                resolveMissingOk &&
+                                phaseResolveKnownOk &&
+                                phaseResolveMissingOk;
+                        })()"#,
+                    )
+                    .expect("native hook env ready resolve aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
                             if (!report.hasFallbackPlan || report.fallbackPlan === null || report.fallbackPlan.routingDecision === null || report.fallbackPlan.routingDecision.ready === null) {
                                 return true;
                             }
