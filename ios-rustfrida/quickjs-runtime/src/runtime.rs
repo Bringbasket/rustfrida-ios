@@ -2440,6 +2440,11 @@ undefined;
                                     adaptation.preferredBackendSuggestedGroupKey === null &&
                                     adaptation.preferredBackendSuggestedPhase === null &&
                                     adaptation.preferredBackendReason === null &&
+                                    adaptation.preferredBackendTemplates === null &&
+                                    adaptation.preferredBackendTemplateCount === null &&
+                                    adaptation.preferredBackendCommandJsonTemplates === null &&
+                                    adaptation.preferredBackendCommandJsonTemplateCount === null &&
+                                    adaptation.preferredBackendCommandJsonEligibleTemplateCount === null &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplate === null &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateCommand === null &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateKind === null &&
@@ -2457,6 +2462,11 @@ undefined;
                                     adaptation.preferredBackendSuggestedGroupKey === adaptation.preferredBackendRecommendation.suggestedGroupKey &&
                                     adaptation.preferredBackendSuggestedPhase === adaptation.preferredBackendRecommendation.suggestedPhase &&
                                     adaptation.preferredBackendReason === adaptation.preferredBackendRecommendation.reason &&
+                                    adaptation.preferredBackendTemplates.length === adaptation.preferredBackendRecommendation.templates.length &&
+                                    adaptation.preferredBackendTemplateCount === adaptation.preferredBackendRecommendation.templateCount &&
+                                    adaptation.preferredBackendCommandJsonTemplates.length === adaptation.preferredBackendRecommendation.commandJsonTemplates.length &&
+                                    adaptation.preferredBackendCommandJsonTemplateCount === adaptation.preferredBackendRecommendation.commandJsonTemplateCount &&
+                                    adaptation.preferredBackendCommandJsonEligibleTemplateCount === adaptation.preferredBackendRecommendation.commandJsonEligibleTemplateCount &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateCommand === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateCommand &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateKind === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateKind &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateEligible === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateEligible));

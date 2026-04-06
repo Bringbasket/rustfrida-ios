@@ -2373,6 +2373,10 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("commandJsonTemplateCount")
                 .cloned()
                 .unwrap_or(Value::Null);
+            let suggested_command_json_eligible_template_count = suggested_group
+                .get("commandJsonEligibleTemplateCount")
+                .cloned()
+                .unwrap_or(Value::Null);
             let primary_command_json_template = suggested_command_json_templates
                 .as_array()
                 .and_then(|items| items.first())
@@ -2394,6 +2398,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 "templateCount": suggested_template_count,
                 "commandJsonTemplates": suggested_command_json_templates,
                 "commandJsonTemplateCount": suggested_command_json_template_count,
+                "commandJsonEligibleTemplateCount": suggested_command_json_eligible_template_count,
                 "primaryCommandJsonTemplate": primary_command_json_template.clone(),
                 "primaryCommandJsonTemplateCommand": primary_command_json_template
                     .get("command")
@@ -3666,6 +3671,26 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         "preferredBackendReason": preferred_backend_recommendation
             .as_ref()
             .and_then(|item| item.get("reason"))
+            .cloned(),
+        "preferredBackendTemplates": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("templates"))
+            .cloned(),
+        "preferredBackendTemplateCount": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("templateCount"))
+            .cloned(),
+        "preferredBackendCommandJsonTemplates": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("commandJsonTemplates"))
+            .cloned(),
+        "preferredBackendCommandJsonTemplateCount": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("commandJsonTemplateCount"))
+            .cloned(),
+        "preferredBackendCommandJsonEligibleTemplateCount": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("commandJsonEligibleTemplateCount"))
             .cloned(),
         "preferredBackendPrimaryCommandJsonTemplate": preferred_backend_recommendation
             .as_ref()
@@ -16168,6 +16193,11 @@ mod tests {
             0
         );
         assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendRecommendation"].is_null());
+        assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendTemplates"].is_null());
+        assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendTemplateCount"].is_null());
+        assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendCommandJsonTemplates"].is_null());
+        assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendCommandJsonTemplateCount"].is_null());
+        assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendCommandJsonEligibleTemplateCount"].is_null());
         assert_eq!(
             rendered["hook"]["coexistence"]["backendAdaptation"]["preferredTemplateCount"],
             5
@@ -21938,6 +21968,23 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendVisibleInTarget"], true);
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedGroupKey"], "query");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedPhase"], "query");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendTemplateCount"], 3);
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendTemplates"],
+            coexistence["backendAdaptation"]["preferredBackendRecommendation"]["templates"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendCommandJsonTemplateCount"],
+            3
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendCommandJsonTemplates"],
+            coexistence["backendAdaptation"]["preferredBackendRecommendation"]["commandJsonTemplates"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendCommandJsonEligibleTemplateCount"],
+            3
+        );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
             "objc.classes <filter>"
@@ -24214,6 +24261,23 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendVisibleInTarget"], true);
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedGroupKey"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedPhase"], "preflight");
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendTemplateCount"], 2);
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendTemplates"],
+            coexistence["backendAdaptation"]["preferredBackendRecommendation"]["templates"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendCommandJsonTemplateCount"],
+            2
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendCommandJsonTemplates"],
+            coexistence["backendAdaptation"]["preferredBackendRecommendation"]["commandJsonTemplates"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendCommandJsonEligibleTemplateCount"],
+            1
+        );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
             "native.hookenv"
@@ -24488,6 +24552,15 @@ mod tests {
         );
         assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "libhooker");
+        assert_eq!(automation["backendAdaptation"]["preferredBackendTemplateCount"], 2);
+        assert_eq!(
+            automation["backendAdaptation"]["preferredBackendCommandJsonTemplateCount"],
+            2
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredBackendCommandJsonEligibleTemplateCount"],
+            1
+        );
         assert_eq!(
             automation["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
             "native.hookenv"

@@ -3863,6 +3863,31 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             backend_adaptation.set_property(ctx, "preferredBackendReason", item.get_property(ctx, "reason"));
             backend_adaptation.set_property(
                 ctx,
+                "preferredBackendTemplates",
+                item.get_property(ctx, "templates"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendTemplateCount",
+                item.get_property(ctx, "templateCount"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendCommandJsonTemplates",
+                item.get_property(ctx, "commandJsonTemplates"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendCommandJsonTemplateCount",
+                item.get_property(ctx, "commandJsonTemplateCount"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredBackendCommandJsonEligibleTemplateCount",
+                item.get_property(ctx, "commandJsonEligibleTemplateCount"),
+            );
+            backend_adaptation.set_property(
+                ctx,
                 "preferredBackendPrimaryCommandJsonTemplate",
                 item.get_property(ctx, "primaryCommandJsonTemplate"),
             );
@@ -3894,6 +3919,11 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredBackendSuggestedGroupKey",
                 "preferredBackendSuggestedPhase",
                 "preferredBackendReason",
+                "preferredBackendTemplates",
+                "preferredBackendTemplateCount",
+                "preferredBackendCommandJsonTemplates",
+                "preferredBackendCommandJsonTemplateCount",
+                "preferredBackendCommandJsonEligibleTemplateCount",
                 "preferredBackendPrimaryCommandJsonTemplate",
                 "preferredBackendPrimaryCommandJsonTemplateCommand",
                 "preferredBackendPrimaryCommandJsonTemplateKind",
