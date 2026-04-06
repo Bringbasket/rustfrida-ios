@@ -1900,6 +1900,8 @@ undefined;
                                 typeof report.commandMode === 'string' &&
                                 typeof report.coexistenceMode === 'string' &&
                                 typeof report.coexistenceRecommendation === 'string' &&
+                                (report.activeBackendDisplayName === null ||
+                                    typeof report.activeBackendDisplayName === 'string') &&
                                 (report.backendPressure === 'none' ||
                                     report.backendPressure === 'filesystem-only' ||
                                     report.backendPressure === 'controller') &&
@@ -1930,10 +1932,16 @@ undefined;
                                 typeof report.filesystemOnlyBackendCount === 'number' &&
                                 Array.isArray(report.backendIds) &&
                                 report.backendIds.length === report.backendCount &&
+                                Array.isArray(report.backendDisplayNames) &&
+                                report.backendDisplayNames.length === report.backendCount &&
                                 Array.isArray(report.loadedBackendIds) &&
                                 report.loadedBackendIds.length === report.loadedBackendCount &&
+                                Array.isArray(report.loadedBackendDisplayNames) &&
+                                report.loadedBackendDisplayNames.length === report.loadedBackendCount &&
                                 Array.isArray(report.filesystemOnlyBackendIds) &&
                                 report.filesystemOnlyBackendIds.length === report.filesystemOnlyBackendCount &&
+                                Array.isArray(report.filesystemOnlyBackendDisplayNames) &&
+                                report.filesystemOnlyBackendDisplayNames.length === report.filesystemOnlyBackendCount &&
                                 typeof report.loadedImageCount === 'number' &&
                                 typeof report.filesystemPathCount === 'number' &&
                                 typeof report.backendMatrix === 'object' &&

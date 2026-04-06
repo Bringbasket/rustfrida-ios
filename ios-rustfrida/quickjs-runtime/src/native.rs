@@ -3598,10 +3598,21 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         .filter(|backend| !backend.loaded_images.is_empty())
         .map(|backend| backend.id.clone())
         .collect::<Vec<_>>();
+    let shared_loaded_backend_display_names = report
+        .backends
+        .iter()
+        .filter(|backend| !backend.loaded_images.is_empty())
+        .map(|backend| backend.display_name.clone())
+        .collect::<Vec<_>>();
     let backend_ids = report
         .backends
         .iter()
         .map(|backend| backend.id.clone())
+        .collect::<Vec<_>>();
+    let backend_display_names = report
+        .backends
+        .iter()
+        .map(|backend| backend.display_name.clone())
         .collect::<Vec<_>>();
     let filesystem_only_backend_ids = report
         .backends
@@ -3609,6 +3620,19 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         .filter(|backend| backend.loaded_images.is_empty() && !backend.filesystem_paths.is_empty())
         .map(|backend| backend.id.clone())
         .collect::<Vec<_>>();
+    let filesystem_only_backend_display_names = report
+        .backends
+        .iter()
+        .filter(|backend| backend.loaded_images.is_empty() && !backend.filesystem_paths.is_empty())
+        .map(|backend| backend.display_name.clone())
+        .collect::<Vec<_>>();
+    let active_backend_display_name = report.active_backend.as_ref().and_then(|active_backend| {
+        report
+            .backends
+            .iter()
+            .find(|backend| backend.id == *active_backend)
+            .map(|backend| backend.display_name.clone())
+    });
     let empty_backend_ids: Vec<String> = Vec::new();
     let backend_specific_recommendations = ffi::JS_NewArray(ctx);
     let mut backend_specific_recommendation_count = 0usize;
@@ -5837,6 +5861,14 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         Some(active) => result.set_property(ctx, "activeBackend", JSValue::string(ctx, active)),
         None => result.set_property(ctx, "activeBackend", JSValue::null()),
     };
+    match &active_backend_display_name {
+        Some(display_name) => result.set_property(
+            ctx,
+            "activeBackendDisplayName",
+            JSValue::string(ctx, display_name),
+        ),
+        None => result.set_property(ctx, "activeBackendDisplayName", JSValue::null()),
+    };
     result.set_property(ctx, "conflictState", JSValue::string(ctx, conflict_state));
     result.set_property(ctx, "riskLevel", JSValue::string(ctx, risk_level));
     result.set_property(ctx, "baseCommandMode", JSValue::string(ctx, command_mode));
@@ -5913,12 +5945,30 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         JSValue::int(filesystem_only_backend_count as i32),
     );
     set_string_array_property(ctx, result.raw(), "backendIds", &backend_ids);
+    set_string_array_property(
+        ctx,
+        result.raw(),
+        "backendDisplayNames",
+        &backend_display_names,
+    );
     set_string_array_property(ctx, result.raw(), "loadedBackendIds", &shared_loaded_backend_ids);
+    set_string_array_property(
+        ctx,
+        result.raw(),
+        "loadedBackendDisplayNames",
+        &shared_loaded_backend_display_names,
+    );
     set_string_array_property(
         ctx,
         result.raw(),
         "filesystemOnlyBackendIds",
         &filesystem_only_backend_ids,
+    );
+    set_string_array_property(
+        ctx,
+        result.raw(),
+        "filesystemOnlyBackendDisplayNames",
+        &filesystem_only_backend_display_names,
     );
     result.set_property(ctx, "loadedImageCount", JSValue::int(loaded_image_count as i32));
     result.set_property(ctx, "filesystemPathCount", JSValue::int(filesystem_path_count as i32));
