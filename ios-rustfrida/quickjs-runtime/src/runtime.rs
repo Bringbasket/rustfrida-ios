@@ -1924,8 +1924,12 @@ undefined;
                                 typeof report.singleExternalBackendLoaded === 'boolean' &&
                                 typeof report.multipleExternalBackendsLoaded === 'boolean' &&
                                 typeof report.filesystemOnlyBackendDetected === 'boolean' &&
+                                typeof report.backendCount === 'number' &&
+                                report.backendCount === report.backends.length &&
                                 typeof report.loadedBackendCount === 'number' &&
                                 typeof report.filesystemOnlyBackendCount === 'number' &&
+                                Array.isArray(report.backendIds) &&
+                                report.backendIds.length === report.backendCount &&
                                 Array.isArray(report.loadedBackendIds) &&
                                 report.loadedBackendIds.length === report.loadedBackendCount &&
                                 Array.isArray(report.filesystemOnlyBackendIds) &&

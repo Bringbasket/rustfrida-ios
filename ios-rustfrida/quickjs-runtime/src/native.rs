@@ -3598,6 +3598,11 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         .filter(|backend| !backend.loaded_images.is_empty())
         .map(|backend| backend.id.clone())
         .collect::<Vec<_>>();
+    let backend_ids = report
+        .backends
+        .iter()
+        .map(|backend| backend.id.clone())
+        .collect::<Vec<_>>();
     let filesystem_only_backend_ids = report
         .backends
         .iter()
@@ -5895,6 +5900,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "filesystemOnlyBackendDetected",
         JSValue::bool(filesystem_only_backend_count > 0),
     );
+    result.set_property(ctx, "backendCount", JSValue::int(backend_ids.len() as i32));
     result.set_property(ctx, "loadedBackendCount", JSValue::int(loaded_backend_count as i32));
     result.set_property(
         ctx,
@@ -5906,6 +5912,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "filesystemOnlyBackendCount",
         JSValue::int(filesystem_only_backend_count as i32),
     );
+    set_string_array_property(ctx, result.raw(), "backendIds", &backend_ids);
     set_string_array_property(ctx, result.raw(), "loadedBackendIds", &shared_loaded_backend_ids);
     set_string_array_property(
         ctx,
