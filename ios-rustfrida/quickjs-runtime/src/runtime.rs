@@ -1900,6 +1900,9 @@ undefined;
                                 typeof report.commandMode === 'string' &&
                                 typeof report.coexistenceMode === 'string' &&
                                 typeof report.coexistenceRecommendation === 'string' &&
+                                (report.backendPressure === 'none' ||
+                                    report.backendPressure === 'filesystem-only' ||
+                                    report.backendPressure === 'controller') &&
                                 actionsOk &&
                                 sequenceOk &&
                                 nextActionOk &&

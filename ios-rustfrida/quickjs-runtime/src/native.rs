@@ -3352,6 +3352,13 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     let single_external_backend_loaded = loaded_backend_count == 1;
     let multiple_external_backends_loaded = loaded_backend_count > 1;
     let conflict_state = report.conflict_state();
+    let backend_pressure = if loaded_backend_count > 0 {
+        "controller"
+    } else if filesystem_only_backend_count > 0 {
+        "filesystem-only"
+    } else {
+        "none"
+    };
     let topology_kind = hook_backend_adaptation_topology_kind(loaded_backend_count, filesystem_only_backend_count);
     let risk_level = match command_mode {
         "blocked" => "blocked",
@@ -5708,6 +5715,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "coexistenceLayerStatus",
         JSValue::string(ctx, coexistence_layer.status),
     );
+    result.set_property(ctx, "backendPressure", JSValue::string(ctx, backend_pressure));
     result.set_property(ctx, "externalBackendLoaded", JSValue::bool(loaded_backend_count > 0));
     result.set_property(
         ctx,
