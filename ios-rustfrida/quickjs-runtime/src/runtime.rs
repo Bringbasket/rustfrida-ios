@@ -1694,7 +1694,17 @@ undefined;
                                         typeof report.nextActionPlan.commandGroup === 'string' &&
                                         typeof report.nextActionPlan.allowed === 'boolean' &&
                                         typeof report.nextActionPlan.blockedBy === 'string' &&
+                                        typeof report.nextActionPlan.status === 'string' &&
+                                        typeof report.nextActionPlan.priority === 'number' &&
+                                        typeof report.nextActionPlan.recommendation === 'string' &&
+                                        typeof report.nextActionPlan.branch === 'string' &&
                                         typeof report.nextActionPlan.readyToRun === 'boolean' &&
+                                        typeof report.nextActionPlan.prerequisiteCount === 'number' &&
+                                        Array.isArray(report.nextActionPlan.prerequisiteActionKeys) &&
+                                        report.nextActionPlan.prerequisiteCount === report.nextActionPlan.prerequisiteActionKeys.length &&
+                                        typeof report.nextActionPlan.blockedPrerequisiteCount === 'number' &&
+                                        Array.isArray(report.nextActionPlan.blockedPrerequisiteActionKeys) &&
+                                        report.nextActionPlan.blockedPrerequisiteCount === report.nextActionPlan.blockedPrerequisiteActionKeys.length &&
                                         typeof report.nextActionPlan.templateCount === 'number' &&
                                         Array.isArray(report.nextActionPlan.templates) &&
                                         report.nextActionPlan.templateCount === report.nextActionPlan.templates.length &&
@@ -1703,8 +1713,26 @@ undefined;
                                         report.nextActionPlan.commandJsonTemplateCount === report.nextActionPlan.commandJsonTemplates.length &&
                                         typeof report.nextActionPlan.commandJsonEligibleTemplateCount === 'number' &&
                                         report.nextActionPlan.commandJsonEligibleTemplateCount <= report.nextActionPlan.commandJsonTemplateCount &&
+                                        (report.nextActionPlan.reason === null ||
+                                            typeof report.nextActionPlan.reason === 'string') &&
                                         report.nextActionPlan.actionKey === report.nextActionKey &&
-                                        report.nextActionPlan.commandGroup === report.nextActionCommandGroup));
+                                        report.nextActionPlan.commandGroup === report.nextActionCommandGroup &&
+                                        report.nextActionPlan.allowed === report.nextActionAllowed &&
+                                        report.nextActionPlan.blockedBy === report.nextActionBlockedBy &&
+                                        report.nextActionPlan.status === report.nextActionStatus &&
+                                        report.nextActionPlan.recommendation === report.nextActionRecommendation &&
+                                        report.nextActionPlan.readyToRun === report.nextActionReadyToRun &&
+                                        report.nextActionPlan.reason === report.nextActionReason &&
+                                        report.nextActionPlan.templateCount === report.nextActionTemplateCount &&
+                                        report.nextActionPlan.templates.length === report.nextActionTemplates.length &&
+                                        report.nextActionPlan.templates.every((entry, index) =>
+                                            entry === report.nextActionTemplates[index]) &&
+                                        report.nextActionPlan.commandJsonTemplateCount === report.nextActionCommandJsonTemplateCount &&
+                                        report.nextActionPlan.commandJsonEligibleTemplateCount === report.nextActionCommandJsonEligibleTemplateCount &&
+                                        report.nextActionPlan.commandJsonTemplates.length === report.nextActionCommandJsonTemplates.length &&
+                                        report.nextActionPlan.commandJsonTemplates.every((entry, index) =>
+                                            entry.command === report.nextActionCommandJsonTemplates[index].command &&
+                                            entry.kind === report.nextActionCommandJsonTemplates[index].kind)));
                             const actionBranchesOk =
                                 Array.isArray(report.actionBranches) &&
                                 typeof report.readyBranchCount === 'number' &&
@@ -1723,6 +1751,12 @@ undefined;
                                         typeof report.actionBranches[0].executionIndex === 'number' &&
                                         typeof report.actionBranches[0].selectedAsNext === 'boolean' &&
                                         typeof report.actionBranches[0].readyToRun === 'boolean' &&
+                                        typeof report.actionBranches[0].prerequisiteCount === 'number' &&
+                                        Array.isArray(report.actionBranches[0].prerequisiteActionKeys) &&
+                                        report.actionBranches[0].prerequisiteCount === report.actionBranches[0].prerequisiteActionKeys.length &&
+                                        typeof report.actionBranches[0].blockedPrerequisiteCount === 'number' &&
+                                        Array.isArray(report.actionBranches[0].blockedPrerequisiteActionKeys) &&
+                                        report.actionBranches[0].blockedPrerequisiteCount === report.actionBranches[0].blockedPrerequisiteActionKeys.length &&
                                         typeof report.actionBranches[0].templateCount === 'number' &&
                                         Array.isArray(report.actionBranches[0].templates) &&
                                         report.actionBranches[0].templateCount === report.actionBranches[0].templates.length &&
@@ -1730,7 +1764,8 @@ undefined;
                                         Array.isArray(report.actionBranches[0].commandJsonTemplates) &&
                                         report.actionBranches[0].commandJsonTemplateCount === report.actionBranches[0].commandJsonTemplates.length &&
                                         typeof report.actionBranches[0].commandJsonEligibleTemplateCount === 'number' &&
-                                        report.actionBranches[0].commandJsonEligibleTemplateCount <= report.actionBranches[0].commandJsonTemplateCount));
+                                        report.actionBranches[0].commandJsonEligibleTemplateCount <= report.actionBranches[0].commandJsonTemplateCount &&
+                                        report.branchExecutionOrder[0] === report.actionBranches[0].actionKey));
                             const nextStepChainOk =
                                 Array.isArray(report.nextStepChain) &&
                                 typeof report.nextStepChainLimit === 'number' &&
