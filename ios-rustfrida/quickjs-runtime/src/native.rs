@@ -4030,6 +4030,31 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             );
             backend_adaptation.set_property(
                 ctx,
+                "preferredConflictBackendPairTemplates",
+                item.get_property(ctx, "templates"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredConflictBackendPairTemplateCount",
+                item.get_property(ctx, "templateCount"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredConflictBackendPairCommandJsonTemplates",
+                item.get_property(ctx, "commandJsonTemplates"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredConflictBackendPairCommandJsonTemplateCount",
+                item.get_property(ctx, "commandJsonTemplateCount"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredConflictBackendPairCommandJsonEligibleTemplateCount",
+                item.get_property(ctx, "commandJsonEligibleTemplateCount"),
+            );
+            backend_adaptation.set_property(
+                ctx,
                 "preferredConflictBackendPairPrimaryCommandJsonTemplate",
                 item.get_property(ctx, "primaryCommandJsonTemplate"),
             );
@@ -4211,6 +4236,11 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredConflictBackendPairReason",
                 "preferredConflictBackendIds",
                 "preferredConflictBackendDisplayNames",
+                "preferredConflictBackendPairTemplates",
+                "preferredConflictBackendPairTemplateCount",
+                "preferredConflictBackendPairCommandJsonTemplates",
+                "preferredConflictBackendPairCommandJsonTemplateCount",
+                "preferredConflictBackendPairCommandJsonEligibleTemplateCount",
                 "preferredConflictBackendPairPrimaryCommandJsonTemplate",
                 "preferredConflictBackendPairPrimaryCommandJsonTemplateCommand",
                 "preferredConflictBackendPairPrimaryCommandJsonTemplateKind",

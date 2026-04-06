@@ -2478,6 +2478,11 @@ undefined;
                                     adaptation.preferredConflictBackendPairReason === null &&
                                     adaptation.preferredConflictBackendIds === null &&
                                     adaptation.preferredConflictBackendDisplayNames === null &&
+                                    adaptation.preferredConflictBackendPairTemplates === null &&
+                                    adaptation.preferredConflictBackendPairTemplateCount === null &&
+                                    adaptation.preferredConflictBackendPairCommandJsonTemplates === null &&
+                                    adaptation.preferredConflictBackendPairCommandJsonTemplateCount === null &&
+                                    adaptation.preferredConflictBackendPairCommandJsonEligibleTemplateCount === null &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplate === null &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateCommand === null &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateKind === null &&
@@ -2508,6 +2513,13 @@ undefined;
                                     Array.isArray(adaptation.preferredConflictBackendDisplayNames) &&
                                     adaptation.preferredConflictBackendDisplayNames.length === 2 &&
                                     adaptation.preferredConflictBackendDisplayNames.length === adaptation.preferredConflictBackendPair.backendDisplayNames.length &&
+                                    Array.isArray(adaptation.preferredConflictBackendPairTemplates) &&
+                                    adaptation.preferredConflictBackendPairTemplateCount === adaptation.preferredConflictBackendPair.templateCount &&
+                                    adaptation.preferredConflictBackendPairTemplateCount === adaptation.preferredConflictBackendPairTemplates.length &&
+                                    Array.isArray(adaptation.preferredConflictBackendPairCommandJsonTemplates) &&
+                                    adaptation.preferredConflictBackendPairCommandJsonTemplateCount === adaptation.preferredConflictBackendPair.commandJsonTemplateCount &&
+                                    adaptation.preferredConflictBackendPairCommandJsonTemplateCount === adaptation.preferredConflictBackendPairCommandJsonTemplates.length &&
+                                    adaptation.preferredConflictBackendPairCommandJsonEligibleTemplateCount === adaptation.preferredConflictBackendPair.commandJsonEligibleTemplateCount &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateCommand === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateCommand &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateKind === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateKind &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateEligible === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateEligible &&

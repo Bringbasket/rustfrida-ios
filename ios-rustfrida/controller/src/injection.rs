@@ -3735,6 +3735,26 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .as_ref()
             .and_then(|item| item.get("backendDisplayNames"))
             .cloned(),
+        "preferredConflictBackendPairTemplates": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("templates"))
+            .cloned(),
+        "preferredConflictBackendPairTemplateCount": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("templateCount"))
+            .cloned(),
+        "preferredConflictBackendPairCommandJsonTemplates": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("commandJsonTemplates"))
+            .cloned(),
+        "preferredConflictBackendPairCommandJsonTemplateCount": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("commandJsonTemplateCount"))
+            .cloned(),
+        "preferredConflictBackendPairCommandJsonEligibleTemplateCount": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("commandJsonEligibleTemplateCount"))
+            .cloned(),
         "preferredConflictBackendPairPrimaryCommandJsonTemplate": preferred_conflict_backend_pair
             .as_ref()
             .and_then(|item| item.get("primaryCommandJsonTemplate"))
@@ -22115,6 +22135,26 @@ mod tests {
             json!(["ElleKit", "Cydia Substrate"])
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairTemplateCount"],
+            3
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairTemplates"],
+            coexistence["backendAdaptation"]["preferredConflictBackendPair"]["templates"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplateCount"],
+            3
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplates"],
+            coexistence["backendAdaptation"]["preferredConflictBackendPair"]["commandJsonTemplates"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"],
+            3
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairPrimaryCommandJsonTemplateCommand"],
             "objc.classes <filter>"
         );
@@ -24336,6 +24376,11 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairReason"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendIds"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendDisplayNames"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairTemplates"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairTemplateCount"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplates"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplateCount"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"].is_null());
@@ -24615,6 +24660,11 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionStepChain"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionActiveStep"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionActiveStepCommandJsonTemplate"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictBackendPairTemplates"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictBackendPairTemplateCount"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplates"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplateCount"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"].is_null());
