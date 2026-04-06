@@ -2664,10 +2664,18 @@ undefined;
                                      adaptation.executionKind === 'preferred-group'))
                             );
                             const backendIdAliasesOk =
+                                typeof adaptation.sharedLoadedBackendCount === 'number' &&
+                                typeof adaptation.controllerLoadedOnlyBackendCount === 'number' &&
+                                typeof adaptation.targetLoadedOnlyBackendCount === 'number' &&
+                                typeof adaptation.filesystemOnlyBackendCount === 'number' &&
                                 Array.isArray(adaptation.sharedLoadedBackendIds) &&
                                 Array.isArray(adaptation.controllerLoadedOnlyBackendIds) &&
                                 Array.isArray(adaptation.targetLoadedOnlyBackendIds) &&
                                 Array.isArray(adaptation.filesystemOnlyBackendIds) &&
+                                adaptation.sharedLoadedBackendCount === adaptation.sharedLoadedBackendIds.length &&
+                                adaptation.controllerLoadedOnlyBackendCount === adaptation.controllerLoadedOnlyBackendIds.length &&
+                                adaptation.targetLoadedOnlyBackendCount === adaptation.targetLoadedOnlyBackendIds.length &&
+                                adaptation.filesystemOnlyBackendCount === adaptation.filesystemOnlyBackendIds.length &&
                                 adaptation.sharedLoadedBackendIds.length === report.loadedBackendCount &&
                                 adaptation.controllerLoadedOnlyBackendIds.length === 0 &&
                                 adaptation.targetLoadedOnlyBackendIds.length === 0 &&

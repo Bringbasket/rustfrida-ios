@@ -3626,6 +3626,18 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     backend_adaptation.set_property(ctx, "requiresCleanupPhase", JSValue::bool(requires_cleanup_phase));
     backend_adaptation.set_property(ctx, "inlineInstallReadyNow", JSValue::bool(inline_install_ready_now));
     backend_adaptation.set_property(ctx, "preferredGroupKey", JSValue::string(ctx, preferred_group_key));
+    backend_adaptation.set_property(
+        ctx,
+        "sharedLoadedBackendCount",
+        JSValue::int(shared_loaded_backend_ids.len() as i32),
+    );
+    backend_adaptation.set_property(ctx, "controllerLoadedOnlyBackendCount", JSValue::int(0));
+    backend_adaptation.set_property(ctx, "targetLoadedOnlyBackendCount", JSValue::int(0));
+    backend_adaptation.set_property(
+        ctx,
+        "filesystemOnlyBackendCount",
+        JSValue::int(filesystem_only_backend_ids.len() as i32),
+    );
     set_string_array_property(
         ctx,
         backend_adaptation.raw(),
