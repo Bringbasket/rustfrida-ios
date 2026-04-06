@@ -10099,6 +10099,7 @@ fn hook_environment_to_json(
     let coexistence_layer = hook_coexistence_layer_status(report, strategy);
     let loaded_backend_count = report.loaded_backend_count();
     let filesystem_only_backend_count = report.filesystem_only_backend_count();
+    let recommendations = hook_environment_recommendations(report, strategy);
     let active_backend_display_name = report.active_backend.as_ref().and_then(|active_backend| {
         report
             .backends
@@ -10173,6 +10174,7 @@ fn hook_environment_to_json(
         "filesystemOnlyBackendDetected": filesystem_only_backend_count > 0,
         "backendCount": backend_ids.len(),
         "loadedBackendCount": loaded_backend_count,
+        "loadedExternalBackendCount": loaded_backend_count,
         "filesystemOnlyBackendCount": filesystem_only_backend_count,
         "backendIds": backend_ids,
         "backendDisplayNames": backend_display_names,
@@ -10182,6 +10184,7 @@ fn hook_environment_to_json(
         "filesystemOnlyBackendDisplayNames": filesystem_only_backend_display_names,
         "loadedImageCount": report.loaded_image_count(),
         "filesystemPathCount": report.filesystem_path_count(),
+        "recommendations": recommendations,
         "recommendedActions": hook_environment_recommended_actions(report, strategy)
             .iter()
             .map(hook_recommended_action_to_json)
@@ -26612,12 +26615,14 @@ mod tests {
         assert_eq!(rendered["activeBackendDisplayName"], "ElleKit");
         assert_eq!(rendered["backendCount"], 2);
         assert_eq!(rendered["loadedBackendCount"], 1);
+        assert_eq!(rendered["loadedExternalBackendCount"], 1);
         assert_eq!(rendered["filesystemOnlyBackendCount"], 1);
         assert_eq!(rendered["backendIds"], json!(["ellekit", "substitute"]));
         assert_eq!(rendered["backendDisplayNames"], json!(["ElleKit", "Substitute"]));
         assert_eq!(rendered["loadedBackendIds"], json!(["ellekit"]));
         assert_eq!(rendered["loadedBackendDisplayNames"], json!(["ElleKit"]));
         assert_eq!(rendered["filesystemOnlyBackendIds"], json!(["substitute"]));
+        assert!(rendered["recommendations"].is_array());
         assert_eq!(
             rendered["filesystemOnlyBackendDisplayNames"],
             json!(["Substitute"])
