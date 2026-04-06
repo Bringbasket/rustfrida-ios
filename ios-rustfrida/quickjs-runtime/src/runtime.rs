@@ -2480,6 +2480,28 @@ undefined;
                                         (typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup === 'object' &&
                                             adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup !== null &&
                                             adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanupTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup.templates.length))));
+                            const preferredConflictRoutingAliasesOk =
+                                ((adaptation.conflictBackendPairCount === 0 &&
+                                    adaptation.preferredConflictResolutionSuggestedEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionDefaultEscalationKey === null &&
+                                    adaptation.preferredConflictResolutionPhaseFirst === null &&
+                                    adaptation.preferredConflictResolutionPhaseFirstName === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyErrorCode === null &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolvePhase === null &&
+                                    adaptation.preferredConflictResolutionPhaseQuery === null &&
+                                    adaptation.preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible === null) ||
+                                (adaptation.conflictBackendPairCount > 0 &&
+                                    adaptation.preferredConflictResolutionSuggestedEscalationKey === adaptation.preferredConflictResolutionRouting.suggestedEscalationKey &&
+                                    adaptation.preferredConflictResolutionDefaultEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.defaultEscalationKey &&
+                                    adaptation.preferredConflictResolutionPhaseFirst === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseFirst &&
+                                    adaptation.preferredConflictResolutionPhaseFirstName === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseFirst.phase &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyErrorCode === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyErrorCode &&
+                                    adaptation.preferredConflictResolutionQueryOnlyPhaseResolvePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.queryOnlyPhaseResolvePhase &&
+                                    adaptation.preferredConflictResolutionPhaseQuery === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQuery &&
+                                    ((adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQueryCommandJsonTemplate === null &&
+                                        adaptation.preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible === null) ||
+                                        (adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQueryCommandJsonTemplate !== null &&
+                                            adaptation.preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseQueryCommandJsonTemplate.commandJsonEligible))));
                             return typeof adaptation === 'object' &&
                                 adaptation !== null &&
                                 report.backendAdaptationMode === adaptation.mode &&
@@ -2498,7 +2520,8 @@ undefined;
                                 nestedGroupsOk &&
                                 primaryTemplateOk &&
                                 backendSpecificOk &&
-                                conflictPairOk;
+                                conflictPairOk &&
+                                preferredConflictRoutingAliasesOk;
                         })()"#,
                     )
                     .expect("native hook env backend adaptation summary"),

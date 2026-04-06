@@ -270,6 +270,66 @@ unsafe fn set_phase_ready_aliases(
     }
 }
 
+unsafe fn get_property_or_null(
+    ctx: *mut ffi::JSContext,
+    source: &JSValue,
+    name: &str,
+) -> JSValue {
+    if source.is_null() || source.is_undefined() || source.is_exception() {
+        return JSValue::null();
+    }
+
+    let value = source.get_property(ctx, name);
+    if value.is_exception() {
+        value.free(ctx);
+        JSValue::null()
+    } else {
+        value
+    }
+}
+
+unsafe fn set_property_aliases(
+    ctx: *mut ffi::JSContext,
+    target: &JSValue,
+    source: &JSValue,
+    aliases: &[(&str, &str)],
+) {
+    if source.is_null() || source.is_undefined() || source.is_exception() {
+        for (target_key, _) in aliases {
+            target.set_property(ctx, target_key, JSValue::null());
+        }
+        return;
+    }
+
+    for (target_key, source_key) in aliases {
+        target.set_property(ctx, target_key, get_property_or_null(ctx, source, source_key));
+    }
+}
+
+unsafe fn set_nested_property_aliases(
+    ctx: *mut ffi::JSContext,
+    target: &JSValue,
+    source: &JSValue,
+    aliases: &[(&str, &str, &str)],
+) {
+    if source.is_null() || source.is_undefined() || source.is_exception() {
+        for (target_key, _, _) in aliases {
+            target.set_property(ctx, target_key, JSValue::null());
+        }
+        return;
+    }
+
+    for (target_key, container_key, nested_key) in aliases {
+        let container = get_property_or_null(ctx, source, container_key);
+        if container.is_null() || container.is_undefined() || container.is_exception() {
+            target.set_property(ctx, target_key, JSValue::null());
+        } else {
+            target.set_property(ctx, target_key, get_property_or_null(ctx, &container, nested_key));
+        }
+        container.free(ctx);
+    }
+}
+
 unsafe fn hook_recommended_action_to_js(
     ctx: *mut ffi::JSContext,
     action: &native_api::HookRecommendedAction,
@@ -1786,6 +1846,41 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         "defaultCommandJsonTemplates",
         JSValue(ready_default_command_json_templates),
     );
+    let default_templates_alias = ready_value.get_property(ctx, "defaultTemplates");
+    ready_value.set_property(ctx, "defaultTemplate", js_array_first(default_templates_alias, ctx));
+    let default_command_json_templates_alias = ready_value.get_property(ctx, "defaultCommandJsonTemplates");
+    let default_command_json_template = js_array_first(default_command_json_templates_alias, ctx);
+    ready_value.set_property(
+        ctx,
+        "defaultCommandJsonTemplate",
+        default_command_json_template.dup(ctx),
+    );
+    ready_value.set_property(
+        ctx,
+        "defaultCommandJsonTemplateCommand",
+        default_command_json_template.get_property(ctx, "command"),
+    );
+    ready_value.set_property(
+        ctx,
+        "defaultCommandJsonTemplateKind",
+        default_command_json_template.get_property(ctx, "kind"),
+    );
+    ready_value.set_property(
+        ctx,
+        "defaultCommandJsonTemplatePhase",
+        default_command_json_template.get_property(ctx, "phase"),
+    );
+    ready_value.set_property(
+        ctx,
+        "defaultCommandJsonTemplateErrorCode",
+        default_command_json_template.get_property(ctx, "errorCode"),
+    );
+    ready_value.set_property(
+        ctx,
+        "defaultCommandJsonTemplateEligible",
+        default_command_json_template.get_property(ctx, "commandJsonEligible"),
+    );
+    default_command_json_template.free(ctx);
 
     let resolve_index = JSValue(ffi::JS_NewObject(ctx));
     let known_error_codes = error_code_routing_candidates
@@ -2013,6 +2108,11 @@ unsafe fn hook_conflict_resolution_routing_to_js(
             resolve_missing_result.get_property(ctx, "effectiveEscalationKey"),
         );
     }
+    ready_value.set_property(
+        ctx,
+        "resolveExampleMissingReason",
+        resolve_missing_result.get_property(ctx, "reason"),
+    );
     resolve_missing_result.free(ctx);
     ready_value.set_property(
         ctx,
@@ -2453,6 +2553,11 @@ unsafe fn hook_conflict_resolution_routing_to_js(
             phase_resolve_known_result.get_property(ctx, "effectiveEscalationKey"),
         );
     }
+    ready_value.set_property(
+        ctx,
+        "phaseResolveExampleKnownReason",
+        phase_resolve_known_result.get_property(ctx, "reason"),
+    );
     phase_resolve_known_result.free(ctx);
     ready_value.set_property(
         ctx,
@@ -4843,6 +4948,650 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             backend_adaptation.set_property(ctx, key, JSValue::null());
         }
     }
+
+    let preferred_conflict_resolution_routing =
+        get_property_or_null(ctx, &backend_adaptation, "preferredConflictResolutionRouting");
+    let preferred_conflict_resolution_routing_decision =
+        get_property_or_null(ctx, &preferred_conflict_resolution_routing, "routingDecision");
+    let preferred_conflict_resolution_ready =
+        get_property_or_null(ctx, &preferred_conflict_resolution_routing_decision, "ready");
+    set_property_aliases(
+        ctx,
+        &backend_adaptation,
+        &preferred_conflict_resolution_routing,
+        &[(
+            "preferredConflictResolutionSuggestedEscalationKey",
+            "suggestedEscalationKey",
+        )],
+    );
+    set_property_aliases(
+        ctx,
+        &backend_adaptation,
+        &preferred_conflict_resolution_ready,
+        &[
+            ("preferredConflictResolutionDefaultEscalationKey", "defaultEscalationKey"),
+            (
+                "preferredConflictResolutionDefaultEffectiveEscalationKey",
+                "defaultEffectiveEscalationKey",
+            ),
+            ("preferredConflictResolutionDefaultPhase", "defaultPhase"),
+            (
+                "preferredConflictResolutionDefaultEffectivePhase",
+                "defaultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionDefaultTemplateCount",
+                "defaultTemplateCount",
+            ),
+            ("preferredConflictResolutionDefaultTemplate", "defaultTemplate"),
+            (
+                "preferredConflictResolutionDefaultCommandJsonTemplateCount",
+                "defaultCommandJsonTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionDefaultCommandJsonTemplate",
+                "defaultCommandJsonTemplate",
+            ),
+            (
+                "preferredConflictResolutionDefaultCommandJsonTemplateCommand",
+                "defaultCommandJsonTemplateCommand",
+            ),
+            (
+                "preferredConflictResolutionDefaultCommandJsonTemplateKind",
+                "defaultCommandJsonTemplateKind",
+            ),
+            (
+                "preferredConflictResolutionDefaultCommandJsonTemplatePhase",
+                "defaultCommandJsonTemplatePhase",
+            ),
+            (
+                "preferredConflictResolutionDefaultCommandJsonTemplateErrorCode",
+                "defaultCommandJsonTemplateErrorCode",
+            ),
+            (
+                "preferredConflictResolutionDefaultCommandJsonTemplateEligible",
+                "defaultCommandJsonTemplateEligible",
+            ),
+            ("preferredConflictResolutionPhaseCount", "phaseCount"),
+            ("preferredConflictResolutionPhaseFirst", "phaseFirst"),
+            ("preferredConflictResolutionPhaseLast", "phaseLast"),
+            ("preferredConflictResolutionResolveKnownCount", "resolveKnownCount"),
+            ("preferredConflictResolutionResolveIndexCount", "resolveIndexCount"),
+            (
+                "preferredConflictResolutionResolveDefaultReason",
+                "resolveDefaultReason",
+            ),
+            (
+                "preferredConflictResolutionResolveDefaultMatched",
+                "resolveDefaultMatched",
+            ),
+            (
+                "preferredConflictResolutionResolveDefaultUsedDefault",
+                "resolveDefaultUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionResolveDefaultEffectivePhase",
+                "resolveDefaultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionResolveDefaultEffectiveEscalationKey",
+                "resolveDefaultEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleKnownErrorCode",
+                "resolveExampleKnownErrorCode",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleKnownResultEffectivePhase",
+                "resolveExampleKnownResultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey",
+                "resolveExampleKnownResultEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleMissingResultEffectivePhase",
+                "resolveExampleMissingResultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleMissingReason",
+                "resolveExampleMissingReason",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey",
+                "resolveExampleMissingResultEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyErrorCode",
+                "resolveExampleQueryOnlyErrorCode",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyBlockedBy",
+                "resolveExampleQueryOnlyBlockedBy",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource",
+                "resolveExampleQueryOnlyBlockedBySource",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyIsBlocked",
+                "resolveExampleQueryOnlyIsBlocked",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyAvailable",
+                "resolveExampleQueryOnlyAvailable",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyMatched",
+                "resolveExampleQueryOnlyMatched",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyUsedDefault",
+                "resolveExampleQueryOnlyUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyReason",
+                "resolveExampleQueryOnlyReason",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase",
+                "resolveExampleQueryOnlyEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyEffectiveEscalationKey",
+                "resolveExampleQueryOnlyEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath",
+                "resolveExampleQueryOnlyWouldUsePath",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase",
+                "resolveExampleQueryOnlyResultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey",
+                "resolveExampleQueryOnlyResultEffectiveEscalationKey",
+            ),
+            ("preferredConflictResolutionQueryOnlyErrorCode", "queryOnlyErrorCode"),
+            (
+                "preferredConflictResolutionQueryOnlySourceErrorCode",
+                "queryOnlySourceErrorCode",
+            ),
+            ("preferredConflictResolutionQueryOnlyBlockedBy", "queryOnlyBlockedBy"),
+            (
+                "preferredConflictResolutionQueryOnlyBlockedBySource",
+                "queryOnlyBlockedBySource",
+            ),
+            ("preferredConflictResolutionQueryOnlyIsBlocked", "queryOnlyIsBlocked"),
+            ("preferredConflictResolutionQueryOnlyPhase", "queryOnlyPhase"),
+            ("preferredConflictResolutionQueryOnlyAvailable", "queryOnlyAvailable"),
+            ("preferredConflictResolutionQueryOnlyMatched", "queryOnlyMatched"),
+            (
+                "preferredConflictResolutionQueryOnlyUsedDefault",
+                "queryOnlyUsedDefault",
+            ),
+            ("preferredConflictResolutionQueryOnlyReason", "queryOnlyReason"),
+            (
+                "preferredConflictResolutionQueryOnlyEffectivePhase",
+                "queryOnlyEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyEffectiveEscalationKey",
+                "queryOnlyEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyWouldUsePath",
+                "queryOnlyWouldUsePath",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyWouldUsePhase",
+                "queryOnlyWouldUsePhase",
+            ),
+            ("preferredConflictResolutionQueryOnlyResult", "queryOnlyResult"),
+            (
+                "preferredConflictResolutionQueryOnlyResultEffective",
+                "queryOnlyResultEffective",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResultMatched",
+                "queryOnlyResultMatched",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResultUsedDefault",
+                "queryOnlyResultUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResultReason",
+                "queryOnlyResultReason",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResultEffectivePhase",
+                "queryOnlyResultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResultEffectiveEscalationKey",
+                "queryOnlyResultEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveBlockedBy",
+                "queryOnlyResolveBlockedBy",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveBlockedBySource",
+                "queryOnlyResolveBlockedBySource",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveIsBlocked",
+                "queryOnlyResolveIsBlocked",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveAvailable",
+                "queryOnlyResolveAvailable",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveMatched",
+                "queryOnlyResolveMatched",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveUsedDefault",
+                "queryOnlyResolveUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveReason",
+                "queryOnlyResolveReason",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveEffectivePhase",
+                "queryOnlyResolveEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey",
+                "queryOnlyResolveEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveWouldUsePath",
+                "queryOnlyResolveWouldUsePath",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveResult",
+                "queryOnlyResolveResult",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveResultEffective",
+                "queryOnlyResolveResultEffective",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveResultMatched",
+                "queryOnlyResolveResultMatched",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveResultUsedDefault",
+                "queryOnlyResolveResultUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveResultReason",
+                "queryOnlyResolveResultReason",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveResultEffectivePhase",
+                "queryOnlyResolveResultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey",
+                "queryOnlyResolveResultEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveKnownCount",
+                "phaseResolveKnownCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveIndexCount",
+                "phaseResolveIndexCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveDefaultReason",
+                "phaseResolveDefaultReason",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveDefaultMatched",
+                "phaseResolveDefaultMatched",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveDefaultUsedDefault",
+                "phaseResolveDefaultUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveDefaultEffectivePhase",
+                "phaseResolveDefaultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey",
+                "phaseResolveDefaultEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleKnownPhase",
+                "phaseResolveExampleKnownPhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase",
+                "phaseResolveExampleKnownResultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveEscalationKey",
+                "phaseResolveExampleKnownResultEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleKnownReason",
+                "phaseResolveExampleKnownReason",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleMissingResultEffectivePhase",
+                "phaseResolveExampleMissingResultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey",
+                "phaseResolveExampleMissingResultEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode",
+                "phaseResolveExampleQueryOnlySourceErrorCode",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase",
+                "phaseResolveExampleQueryOnlyPhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy",
+                "phaseResolveExampleQueryOnlyBlockedBy",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource",
+                "phaseResolveExampleQueryOnlyBlockedBySource",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked",
+                "phaseResolveExampleQueryOnlyIsBlocked",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable",
+                "phaseResolveExampleQueryOnlyAvailable",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched",
+                "phaseResolveExampleQueryOnlyMatched",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault",
+                "phaseResolveExampleQueryOnlyUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyReason",
+                "phaseResolveExampleQueryOnlyReason",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase",
+                "phaseResolveExampleQueryOnlyEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveEscalationKey",
+                "phaseResolveExampleQueryOnlyEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase",
+                "phaseResolveExampleQueryOnlyWouldUsePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase",
+                "phaseResolveExampleQueryOnlyResultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey",
+                "phaseResolveExampleQueryOnlyResultEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode",
+                "queryOnlyPhaseResolveSourceErrorCode",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolvePhase",
+                "queryOnlyPhaseResolvePhase",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy",
+                "queryOnlyPhaseResolveBlockedBy",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource",
+                "queryOnlyPhaseResolveBlockedBySource",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked",
+                "queryOnlyPhaseResolveIsBlocked",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveAvailable",
+                "queryOnlyPhaseResolveAvailable",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveMatched",
+                "queryOnlyPhaseResolveMatched",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault",
+                "queryOnlyPhaseResolveUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveReason",
+                "queryOnlyPhaseResolveReason",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase",
+                "queryOnlyPhaseResolveEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey",
+                "queryOnlyPhaseResolveEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase",
+                "queryOnlyPhaseResolveWouldUsePhase",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveResult",
+                "queryOnlyPhaseResolveResult",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveResultEffective",
+                "queryOnlyPhaseResolveResultEffective",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveResultMatched",
+                "queryOnlyPhaseResolveResultMatched",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveResultUsedDefault",
+                "queryOnlyPhaseResolveResultUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveResultReason",
+                "queryOnlyPhaseResolveResultReason",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase",
+                "queryOnlyPhaseResolveResultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey",
+                "queryOnlyPhaseResolveResultEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionPhaseQueryCommandJsonTemplateCommand",
+                "phaseQueryCommandJsonTemplateCommand",
+            ),
+            ("preferredConflictResolutionPhaseQuery", "phaseQuery"),
+            (
+                "preferredConflictResolutionPhaseQueryErrorCodeCount",
+                "phaseQueryErrorCodeCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseQueryEscalationKeyCount",
+                "phaseQueryEscalationKeyCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseQueryEscalationKeys",
+                "phaseQueryEscalationKeys",
+            ),
+            (
+                "preferredConflictResolutionPhaseQueryPrimaryEscalationKey",
+                "phaseQueryPrimaryEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionPhaseQueryTemplateCount",
+                "phaseQueryTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseQueryCommandJsonTemplateCount",
+                "phaseQueryCommandJsonTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseQueryCommandJsonTemplate",
+                "phaseQueryCommandJsonTemplate",
+            ),
+            (
+                "preferredConflictResolutionPhasePreflightCommandJsonTemplateCommand",
+                "phasePreflightCommandJsonTemplateCommand",
+            ),
+            ("preferredConflictResolutionPhasePreflight", "phasePreflight"),
+            (
+                "preferredConflictResolutionPhasePreflightErrorCodeCount",
+                "phasePreflightErrorCodeCount",
+            ),
+            (
+                "preferredConflictResolutionPhasePreflightEscalationKeyCount",
+                "phasePreflightEscalationKeyCount",
+            ),
+            (
+                "preferredConflictResolutionPhasePreflightEscalationKeys",
+                "phasePreflightEscalationKeys",
+            ),
+            (
+                "preferredConflictResolutionPhasePreflightPrimaryEscalationKey",
+                "phasePreflightPrimaryEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionPhasePreflightTemplateCount",
+                "phasePreflightTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionPhasePreflightCommandJsonTemplateCount",
+                "phasePreflightCommandJsonTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionPhasePreflightCommandJsonTemplate",
+                "phasePreflightCommandJsonTemplate",
+            ),
+            ("preferredConflictResolutionPhaseCleanup", "phaseCleanup"),
+            (
+                "preferredConflictResolutionPhaseCleanupErrorCodeCount",
+                "phaseCleanupErrorCodeCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupErrorCodes",
+                "phaseCleanupErrorCodes",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupEscalationKeyCount",
+                "phaseCleanupEscalationKeyCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupEscalationKeys",
+                "phaseCleanupEscalationKeys",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupPrimaryEscalationKey",
+                "phaseCleanupPrimaryEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupTemplateCount",
+                "phaseCleanupTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupTemplates",
+                "phaseCleanupTemplates",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupTemplate",
+                "phaseCleanupTemplate",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount",
+                "phaseCleanupCommandJsonTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupCommandJsonTemplates",
+                "phaseCleanupCommandJsonTemplates",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupCommandJsonTemplate",
+                "phaseCleanupCommandJsonTemplate",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupCommandJsonTemplateCommand",
+                "phaseCleanupCommandJsonTemplateCommand",
+            ),
+        ],
+    );
+    set_nested_property_aliases(
+        ctx,
+        &backend_adaptation,
+        &preferred_conflict_resolution_ready,
+        &[
+            (
+                "preferredConflictResolutionPhaseFirstName",
+                "phaseFirst",
+                "phase",
+            ),
+            (
+                "preferredConflictResolutionPhaseLastName",
+                "phaseLast",
+                "phase",
+            ),
+            (
+                "preferredConflictResolutionPhaseQueryCommandJsonTemplateKind",
+                "phaseQueryCommandJsonTemplate",
+                "kind",
+            ),
+            (
+                "preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible",
+                "phaseQueryCommandJsonTemplate",
+                "commandJsonEligible",
+            ),
+            (
+                "preferredConflictResolutionPhasePreflightCommandJsonTemplateKind",
+                "phasePreflightCommandJsonTemplate",
+                "kind",
+            ),
+            (
+                "preferredConflictResolutionPhasePreflightCommandJsonTemplateEligible",
+                "phasePreflightCommandJsonTemplate",
+                "commandJsonEligible",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupCommandJsonTemplateKind",
+                "phaseCleanupCommandJsonTemplate",
+                "kind",
+            ),
+            (
+                "preferredConflictResolutionPhaseCleanupCommandJsonTemplateEligible",
+                "phaseCleanupCommandJsonTemplate",
+                "commandJsonEligible",
+            ),
+        ],
+    );
+    preferred_conflict_resolution_ready.free(ctx);
+    preferred_conflict_resolution_routing_decision.free(ctx);
+    preferred_conflict_resolution_routing.free(ctx);
 
     match &report.active_backend {
         Some(active) => result.set_property(ctx, "activeBackend", JSValue::string(ctx, active)),
