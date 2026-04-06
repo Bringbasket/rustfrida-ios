@@ -2452,6 +2452,8 @@ undefined;
                                 ((adaptation.conflictBackendPairCount === 0 &&
                                     adaptation.preferredConflictBackendPair === null &&
                                     adaptation.preferredConflictBackendPairKey === null &&
+                                    adaptation.preferredConflictBackendIds === null &&
+                                    adaptation.preferredConflictBackendDisplayNames === null &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplate === null &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateCommand === null &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateKind === null &&
@@ -2471,6 +2473,12 @@ undefined;
                                     typeof adaptation.preferredConflictBackendPair === 'object' &&
                                     adaptation.preferredConflictBackendPair !== null &&
                                     adaptation.preferredConflictBackendPairKey === adaptation.preferredConflictBackendPair.pairKey &&
+                                    Array.isArray(adaptation.preferredConflictBackendIds) &&
+                                    adaptation.preferredConflictBackendIds.length === 2 &&
+                                    adaptation.preferredConflictBackendIds.length === adaptation.preferredConflictBackendPair.backendIds.length &&
+                                    Array.isArray(adaptation.preferredConflictBackendDisplayNames) &&
+                                    adaptation.preferredConflictBackendDisplayNames.length === 2 &&
+                                    adaptation.preferredConflictBackendDisplayNames.length === adaptation.preferredConflictBackendPair.backendDisplayNames.length &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateCommand === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateCommand &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateKind === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateKind &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateEligible === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateEligible &&

@@ -3948,6 +3948,16 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             );
             backend_adaptation.set_property(
                 ctx,
+                "preferredConflictBackendIds",
+                item.get_property(ctx, "backendIds"),
+            );
+            backend_adaptation.set_property(
+                ctx,
+                "preferredConflictBackendDisplayNames",
+                item.get_property(ctx, "backendDisplayNames"),
+            );
+            backend_adaptation.set_property(
+                ctx,
                 "preferredConflictBackendPairPrimaryCommandJsonTemplate",
                 item.get_property(ctx, "primaryCommandJsonTemplate"),
             );
@@ -4110,6 +4120,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         None => {
             for key in [
                 "preferredConflictBackendPairKey",
+                "preferredConflictBackendIds",
+                "preferredConflictBackendDisplayNames",
                 "preferredConflictBackendPairPrimaryCommandJsonTemplate",
                 "preferredConflictBackendPairPrimaryCommandJsonTemplateCommand",
                 "preferredConflictBackendPairPrimaryCommandJsonTemplateKind",

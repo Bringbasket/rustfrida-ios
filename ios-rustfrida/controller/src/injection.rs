@@ -2152,6 +2152,19 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         .and_then(|value| value.get("kind"))
         .and_then(Value::as_str)
         .unwrap_or("unknown");
+    let backend_display_name_by_id = backend_matrix
+        .get("entries")
+        .and_then(Value::as_array)
+        .map(|items| {
+            items.iter()
+                .filter_map(|item| {
+                    let backend_id = item.get("id").and_then(Value::as_str)?;
+                    let display_name = item.get("displayName").and_then(Value::as_str)?;
+                    Some((backend_id.to_string(), display_name.to_string()))
+                })
+                .collect::<BTreeMap<_, _>>()
+        })
+        .unwrap_or_default();
     let shared_loaded_backend_ids = json_string_array_field(backend_matrix, "loadedInBothBackendIds");
     let controller_loaded_only_backend_ids =
         json_string_array_field(backend_matrix, "loadedOnlyInControllerBackendIds");
@@ -2720,9 +2733,33 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .and_then(|items| items.first())
                 .cloned()
                 .unwrap_or(Value::Null);
+            let backend_display_name_by_id = backend_display_name_by_id.clone();
             target_loaded_only_backend_ids.iter().map(move |target_backend_id| {
+                let controller_display_name = backend_display_name_by_id
+                    .get(controller_backend_id)
+                    .cloned()
+                    .unwrap_or_else(|| controller_backend_id.clone());
+                let target_display_name = backend_display_name_by_id
+                    .get(target_backend_id)
+                    .cloned()
+                    .unwrap_or_else(|| target_backend_id.clone());
                 json!({
                     "pairKey": format!("{controller_backend_id}->{target_backend_id}"),
+                    "firstBackendId": controller_backend_id,
+                    "firstBackendDisplayName": controller_display_name,
+                    "secondBackendId": target_backend_id,
+                    "secondBackendDisplayName": target_display_name,
+                    "backendIds": [controller_backend_id, target_backend_id],
+                    "backendDisplayNames": [
+                        backend_display_name_by_id
+                            .get(controller_backend_id)
+                            .cloned()
+                            .unwrap_or_else(|| controller_backend_id.clone()),
+                        backend_display_name_by_id
+                            .get(target_backend_id)
+                            .cloned()
+                            .unwrap_or_else(|| target_backend_id.clone()),
+                    ],
                     "controllerBackendId": controller_backend_id,
                     "targetBackendId": target_backend_id,
                     "reason": "controller and target are loaded with different backend runtimes",
@@ -3619,6 +3656,14 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         "preferredConflictBackendPairKey": preferred_conflict_backend_pair
             .as_ref()
             .and_then(|item| item.get("pairKey"))
+            .cloned(),
+        "preferredConflictBackendIds": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("backendIds"))
+            .cloned(),
+        "preferredConflictBackendDisplayNames": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("backendDisplayNames"))
             .cloned(),
         "preferredConflictBackendPairPrimaryCommandJsonTemplate": preferred_conflict_backend_pair
             .as_ref()
@@ -21876,6 +21921,30 @@ mod tests {
             "ellekit->substrate"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["firstBackendId"],
+            "ellekit"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["firstBackendDisplayName"],
+            "ElleKit"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["secondBackendId"],
+            "substrate"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["secondBackendDisplayName"],
+            "Cydia Substrate"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["backendIds"],
+            json!(["ellekit", "substrate"])
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["backendDisplayNames"],
+            json!(["ElleKit", "Cydia Substrate"])
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["suggestedGroupKey"],
             "query"
         );
@@ -21898,6 +21967,14 @@ mod tests {
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairKey"],
             "ellekit->substrate"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendIds"],
+            json!(["ellekit", "substrate"])
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendDisplayNames"],
+            json!(["ElleKit", "Cydia Substrate"])
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairPrimaryCommandJsonTemplateCommand"],
@@ -24082,6 +24159,8 @@ mod tests {
         );
         assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 0);
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPair"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictBackendIds"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictBackendDisplayNames"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStep"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStepCommandJsonTemplate"].is_null());
