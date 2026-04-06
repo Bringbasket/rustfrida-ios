@@ -1928,6 +1928,29 @@ undefined;
                                 typeof report.filesystemOnlyBackendCount === 'number' &&
                                 typeof report.loadedImageCount === 'number' &&
                                 typeof report.filesystemPathCount === 'number' &&
+                                typeof report.backendMatrix === 'object' &&
+                                report.backendMatrix !== null &&
+                                report.backendMatrix.entryCount === report.backends.length &&
+                                report.backendMatrix.loadedInControllerCount === report.loadedBackendCount &&
+                                report.backendMatrix.loadedInTargetCount === 0 &&
+                                report.backendMatrix.loadedInBothCount === 0 &&
+                                report.backendMatrix.filesystemOnlyInEitherCount === report.filesystemOnlyBackendCount &&
+                                Array.isArray(report.backendMatrix.sharedBackendIds) &&
+                                report.backendMatrix.sharedBackendIds.length === 0 &&
+                                Array.isArray(report.backendMatrix.controllerOnlyBackendIds) &&
+                                Array.isArray(report.backendMatrix.targetOnlyBackendIds) &&
+                                report.backendMatrix.targetOnlyBackendIds.length === 0 &&
+                                Array.isArray(report.backendMatrix.loadedInBothBackendIds) &&
+                                report.backendMatrix.loadedInBothBackendIds.length === 0 &&
+                                Array.isArray(report.backendMatrix.loadedOnlyInControllerBackendIds) &&
+                                report.backendMatrix.loadedOnlyInControllerBackendIds.length === report.loadedBackendCount &&
+                                Array.isArray(report.backendMatrix.loadedOnlyInTargetBackendIds) &&
+                                report.backendMatrix.loadedOnlyInTargetBackendIds.length === 0 &&
+                                Array.isArray(report.backendMatrix.filesystemOnlyBackendIds) &&
+                                report.backendMatrix.filesystemOnlyBackendIds.length === report.filesystemOnlyBackendCount &&
+                                typeof report.backendMatrix.topology === 'object' &&
+                                report.backendMatrix.topology !== null &&
+                                typeof report.backendMatrix.topology.kind === 'string' &&
                                 typeof report.bootstrapInjectionAllowed === 'boolean' &&
                                 typeof report.queryCommandsAllowed === 'boolean' &&
                                 typeof report.hookInstallCommandsAllowed === 'boolean' &&

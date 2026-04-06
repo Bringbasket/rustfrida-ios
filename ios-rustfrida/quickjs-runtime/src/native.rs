@@ -1160,6 +1160,157 @@ fn hook_backend_adaptation_summary(recommended_action_bias: &str, topology_kind:
     }
 }
 
+unsafe fn hook_single_process_backend_matrix_entry_to_js(
+    ctx: *mut ffi::JSContext,
+    backend: &native_api::HookBackendInfo,
+) -> ffi::JSValue {
+    let item = JSValue(ffi::JS_NewObject(ctx));
+    let controller_loaded = !backend.loaded_images.is_empty();
+    let controller_present_on_filesystem = !backend.filesystem_paths.is_empty();
+    let visible_in_controller = controller_loaded || controller_present_on_filesystem;
+    let filesystem_only_in_either = !controller_loaded && controller_present_on_filesystem;
+    let visibility = if visible_in_controller { "controller" } else { "none" };
+    let loaded_by = if controller_loaded { "controller" } else { "none" };
+
+    item.set_property(ctx, "id", JSValue::string(ctx, &backend.id));
+    item.set_property(ctx, "displayName", JSValue::string(ctx, &backend.display_name));
+    item.set_property(ctx, "visibility", JSValue::string(ctx, visibility));
+    item.set_property(ctx, "loadedBy", JSValue::string(ctx, loaded_by));
+    item.set_property(ctx, "visibleInController", JSValue::bool(visible_in_controller));
+    item.set_property(ctx, "visibleInTarget", JSValue::bool(false));
+    item.set_property(ctx, "controllerLoaded", JSValue::bool(controller_loaded));
+    item.set_property(ctx, "targetLoaded", JSValue::bool(false));
+    item.set_property(
+        ctx,
+        "controllerPresentOnFilesystem",
+        JSValue::bool(controller_present_on_filesystem),
+    );
+    item.set_property(ctx, "targetPresentOnFilesystem", JSValue::bool(false));
+    item.set_property(
+        ctx,
+        "controllerLoadedImageCount",
+        JSValue::int(backend.loaded_images.len() as i32),
+    );
+    item.set_property(ctx, "targetLoadedImageCount", JSValue::int(0));
+    item.set_property(
+        ctx,
+        "controllerFilesystemPathCount",
+        JSValue::int(backend.filesystem_paths.len() as i32),
+    );
+    item.set_property(ctx, "targetFilesystemPathCount", JSValue::int(0));
+    item.set_property(
+        ctx,
+        "filesystemOnlyInEither",
+        JSValue::bool(filesystem_only_in_either),
+    );
+
+    item.raw()
+}
+
+unsafe fn hook_single_process_backend_matrix_to_js(
+    ctx: *mut ffi::JSContext,
+    report: &native_api::HookEnvironmentReport,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    let entries = ffi::JS_NewArray(ctx);
+    let mut visible_backend_ids = Vec::new();
+    let mut loaded_only_in_controller_backend_ids = Vec::new();
+    let mut filesystem_only_backend_ids = Vec::new();
+    let mut loaded_in_controller_count = 0usize;
+    let mut filesystem_only_in_either_count = 0usize;
+    let empty_ids: Vec<String> = Vec::new();
+
+    for (index, backend) in report.backends.iter().enumerate() {
+        let controller_loaded = !backend.loaded_images.is_empty();
+        let controller_present_on_filesystem = !backend.filesystem_paths.is_empty();
+        let visible_in_controller = controller_loaded || controller_present_on_filesystem;
+        let filesystem_only_in_either = !controller_loaded && controller_present_on_filesystem;
+
+        if visible_in_controller {
+            visible_backend_ids.push(backend.id.clone());
+        }
+        if controller_loaded {
+            loaded_in_controller_count += 1;
+            loaded_only_in_controller_backend_ids.push(backend.id.clone());
+        }
+        if filesystem_only_in_either {
+            filesystem_only_in_either_count += 1;
+            filesystem_only_backend_ids.push(backend.id.clone());
+        }
+
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            entries,
+            index as u32,
+            hook_single_process_backend_matrix_entry_to_js(ctx, backend),
+        );
+    }
+
+    let topology = JSValue(ffi::JS_NewObject(ctx));
+    let topology_kind = if loaded_in_controller_count > 0 {
+        "controller-loaded-only"
+    } else if filesystem_only_in_either_count > 0 {
+        "filesystem-only"
+    } else {
+        "clean"
+    };
+    topology.set_property(ctx, "kind", JSValue::string(ctx, topology_kind));
+    topology.set_property(ctx, "sharedVisibility", JSValue::bool(false));
+    topology.set_property(
+        ctx,
+        "controllerOnlyVisibility",
+        JSValue::bool(!visible_backend_ids.is_empty()),
+    );
+    topology.set_property(ctx, "targetOnlyVisibility", JSValue::bool(false));
+    topology.set_property(ctx, "sharedLoadedRuntime", JSValue::bool(false));
+    topology.set_property(
+        ctx,
+        "controllerOnlyLoadedRuntime",
+        JSValue::bool(!loaded_only_in_controller_backend_ids.is_empty()),
+    );
+    topology.set_property(ctx, "targetOnlyLoadedRuntime", JSValue::bool(false));
+    topology.set_property(
+        ctx,
+        "filesystemOnlyArtifacts",
+        JSValue::bool(!filesystem_only_backend_ids.is_empty()),
+    );
+
+    result.set_property(ctx, "entryCount", JSValue::int(report.backends.len() as i32));
+    result.set_property(ctx, "entries", JSValue(entries));
+    result.set_property(
+        ctx,
+        "loadedInControllerCount",
+        JSValue::int(loaded_in_controller_count as i32),
+    );
+    result.set_property(ctx, "loadedInTargetCount", JSValue::int(0));
+    result.set_property(ctx, "loadedInBothCount", JSValue::int(0));
+    result.set_property(
+        ctx,
+        "filesystemOnlyInEitherCount",
+        JSValue::int(filesystem_only_in_either_count as i32),
+    );
+    set_string_array_property(ctx, result.raw(), "sharedBackendIds", &empty_ids);
+    set_string_array_property(ctx, result.raw(), "controllerOnlyBackendIds", &visible_backend_ids);
+    set_string_array_property(ctx, result.raw(), "targetOnlyBackendIds", &empty_ids);
+    set_string_array_property(ctx, result.raw(), "loadedInBothBackendIds", &empty_ids);
+    set_string_array_property(
+        ctx,
+        result.raw(),
+        "loadedOnlyInControllerBackendIds",
+        &loaded_only_in_controller_backend_ids,
+    );
+    set_string_array_property(ctx, result.raw(), "loadedOnlyInTargetBackendIds", &empty_ids);
+    set_string_array_property(
+        ctx,
+        result.raw(),
+        "filesystemOnlyBackendIds",
+        &filesystem_only_backend_ids,
+    );
+    result.set_property(ctx, "topology", topology);
+
+    result.raw()
+}
+
 unsafe fn hook_set_command_template_group_properties(
     ctx: *mut ffi::JSContext,
     target: &JSValue,
@@ -9441,6 +9592,11 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         ffi::JS_SetPropertyUint32(ctx, backends, index as u32, item.raw());
     }
     result.set_property(ctx, "backends", JSValue(backends));
+    result.set_property(
+        ctx,
+        "backendMatrix",
+        JSValue(hook_single_process_backend_matrix_to_js(ctx, report)),
+    );
 
     result.raw()
 }
