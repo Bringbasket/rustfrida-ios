@@ -2338,6 +2338,167 @@ undefined;
                     .eval(
                         r#"(function() {
                             const report = Native.detectHookEnvironment();
+                            const hasNextAction = typeof report.nextAction === 'object' && report.nextAction !== null;
+                            const nextStepOk = !hasNextAction ? (
+                                report.nextStep === null &&
+                                report.nextStepSource === null &&
+                                report.nextStepId === null &&
+                                report.nextStepActionKey === null &&
+                                report.nextStepCommandGroup === null &&
+                                report.nextStepAllowed === null &&
+                                report.nextStepBlockedBy === null &&
+                                report.nextStepBranch === null &&
+                                report.nextStepReason === null &&
+                                report.nextStepPreferredPath === null &&
+                                report.nextStepCommand === null &&
+                                report.nextStepPhase === null &&
+                                report.nextStepCommandJsonEligible === null &&
+                                report.nextStepCommandJsonTemplateEligible === null &&
+                                report.nextStepCommandJsonTemplate === null &&
+                                report.nextStepCommandJsonTemplateCommand === null &&
+                                report.nextStepCommandJsonTemplateKind === null &&
+                                report.nextStepKind === null &&
+                                report.nextStepRetryable === null &&
+                                report.nextStepMaxSuggestedRetries === null &&
+                                report.nextStepRetryDelayHintMs === null &&
+                                report.nextStepTimeoutHintMs === null &&
+                                report.nextStepTimeoutAction === null &&
+                                report.nextStepErrorCode === null &&
+                                report.nextStepTimeoutErrorCode === null &&
+                                report.nextStepRisk === null &&
+                                report.nextStepPlaceholderCount === null &&
+                                report.nextStepPlaceholders === null &&
+                                report.nextStepCliArgs === null &&
+                                report.nextStepReadyToRun === null &&
+                                report.nextStepRequiresFallback === null &&
+                                report.nextStepChainSource === null &&
+                                report.nextStepChainLimit === 0 &&
+                                report.nextStepChainCount === 0 &&
+                                report.nextStepChainTruncated === false &&
+                                Array.isArray(report.nextStepChain) &&
+                                report.nextStepChain.length === 0
+                            ) : (
+                                typeof report.nextStep === 'object' &&
+                                report.nextStep !== null &&
+                                report.nextStepSource === 'next-action' &&
+                                report.nextStepId === report.nextStep.id &&
+                                report.nextStepActionKey === report.nextStep.actionKey &&
+                                report.nextStepCommandGroup === report.nextStep.commandGroup &&
+                                report.nextStepAllowed === report.nextStep.allowed &&
+                                report.nextStepBlockedBy === report.nextStep.blockedBy &&
+                                report.nextStepBranch === report.nextStep.branch &&
+                                report.nextStepReason === report.nextStep.reason &&
+                                report.nextStepPreferredPath === report.nextStep.preferredPath &&
+                                report.nextStepCommand === report.nextStep.command &&
+                                report.nextStepPhase === report.nextStep.phase &&
+                                report.nextStepCommandJsonEligible === report.nextStep.commandJsonEligible &&
+                                report.nextStepCommandJsonTemplateEligible === report.nextStep.commandJsonTemplateEligible &&
+                                report.nextStepCommandJsonTemplate === report.nextStep.commandJsonTemplate &&
+                                report.nextStepCommandJsonTemplateCommand === report.nextStep.commandJsonTemplate.command &&
+                                report.nextStepCommandJsonTemplateKind === report.nextStep.commandJsonTemplate.kind &&
+                                report.nextStepKind === report.nextStep.kind &&
+                                report.nextStepRetryable === report.nextStep.retryable &&
+                                report.nextStepMaxSuggestedRetries === report.nextStep.maxSuggestedRetries &&
+                                report.nextStepRetryDelayHintMs === report.nextStep.retryDelayHintMs &&
+                                report.nextStepTimeoutHintMs === report.nextStep.timeoutHintMs &&
+                                report.nextStepTimeoutAction === report.nextStep.timeoutAction &&
+                                report.nextStepErrorCode === report.nextStep.errorCode &&
+                                report.nextStepTimeoutErrorCode === report.nextStep.timeoutErrorCode &&
+                                report.nextStepRisk === report.nextStep.risk &&
+                                report.nextStepPlaceholderCount === report.nextStep.placeholderCount &&
+                                report.nextStepPlaceholders === report.nextStep.placeholders &&
+                                report.nextStepCliArgs === report.nextStep.cliArgs &&
+                                report.nextStepReadyToRun === report.nextStep.readyToRun &&
+                                report.nextStepRequiresFallback === report.nextStep.requiresFallback &&
+                                report.nextStepChainSource === 'next-action' &&
+                                typeof report.nextStepChainLimit === 'number' &&
+                                typeof report.nextStepChainCount === 'number' &&
+                                report.nextStepChainCount === report.nextStepChain.length &&
+                                report.nextStepChainLimit >= report.nextStepChainCount &&
+                                typeof report.nextStepChainTruncated === 'boolean' &&
+                                Array.isArray(report.nextStepChain) &&
+                                (report.nextStepChain.length === 0 ||
+                                    (typeof report.nextStepChain[0] === 'object' &&
+                                        report.nextStepChain[0] !== null &&
+                                        report.nextStepChain[0].id === report.nextStep.id))
+                            );
+                            const activeStepOk = !hasNextAction ? (
+                                report.activeStep === null &&
+                                report.activeStepSource === null &&
+                                report.activeStepAllowed === null &&
+                                report.activeStepBlockedBy === null &&
+                                report.activeStepBranch === null &&
+                                report.activeStepReason === null &&
+                                report.activeStepPreferredPath === null &&
+                                report.activeStepActionKey === null &&
+                                report.activeStepCommandGroup === null &&
+                                report.activeStepId === null &&
+                                report.activeStepCommand === null &&
+                                report.activeStepPhase === null &&
+                                report.activeStepReadyToRun === null &&
+                                report.activeStepRequiresFallback === null &&
+                                report.activeStepKind === null &&
+                                report.activeStepCommandJsonEligible === null &&
+                                report.activeStepCommandJsonTemplateEligible === null &&
+                                report.activeStepCommandJsonTemplate === null &&
+                                report.activeStepCommandJsonTemplateCommand === null &&
+                                report.activeStepCommandJsonTemplateKind === null &&
+                                report.activeStepRetryable === null &&
+                                report.activeStepMaxSuggestedRetries === null &&
+                                report.activeStepRetryDelayHintMs === null &&
+                                report.activeStepTimeoutHintMs === null &&
+                                report.activeStepTimeoutAction === null &&
+                                report.activeStepErrorCode === null &&
+                                report.activeStepTimeoutErrorCode === null &&
+                                report.activeStepRisk === null &&
+                                report.activeStepPlaceholderCount === null &&
+                                report.activeStepPlaceholders === null &&
+                                report.activeStepCliArgs === null
+                            ) : (
+                                typeof report.activeStep === 'object' &&
+                                report.activeStep !== null &&
+                                report.activeStepSource === 'next-action' &&
+                                report.activeStepAllowed === report.activeStep.allowed &&
+                                report.activeStepBlockedBy === report.activeStep.blockedBy &&
+                                report.activeStepBranch === report.activeStep.branch &&
+                                report.activeStepReason === report.activeStep.reason &&
+                                report.activeStepPreferredPath === report.activeStep.preferredPath &&
+                                report.activeStepActionKey === report.activeStep.actionKey &&
+                                report.activeStepCommandGroup === report.activeStep.commandGroup &&
+                                report.activeStepId === report.activeStep.id &&
+                                report.activeStepCommand === report.activeStep.command &&
+                                report.activeStepPhase === report.activeStep.phase &&
+                                report.activeStepReadyToRun === report.activeStep.readyToRun &&
+                                report.activeStepRequiresFallback === report.activeStep.requiresFallback &&
+                                report.activeStepKind === report.activeStep.kind &&
+                                report.activeStepCommandJsonEligible === report.activeStep.commandJsonEligible &&
+                                report.activeStepCommandJsonTemplateEligible === report.activeStep.commandJsonTemplateEligible &&
+                                report.activeStepCommandJsonTemplate === report.activeStep.commandJsonTemplate &&
+                                report.activeStepCommandJsonTemplateCommand === report.activeStep.commandJsonTemplate.command &&
+                                report.activeStepCommandJsonTemplateKind === report.activeStep.commandJsonTemplate.kind &&
+                                report.activeStepRetryable === report.activeStep.retryable &&
+                                report.activeStepMaxSuggestedRetries === report.activeStep.maxSuggestedRetries &&
+                                report.activeStepRetryDelayHintMs === report.activeStep.retryDelayHintMs &&
+                                report.activeStepTimeoutHintMs === report.activeStep.timeoutHintMs &&
+                                report.activeStepTimeoutAction === report.activeStep.timeoutAction &&
+                                report.activeStepErrorCode === report.activeStep.errorCode &&
+                                report.activeStepTimeoutErrorCode === report.activeStep.timeoutErrorCode &&
+                                report.activeStepRisk === report.activeStep.risk &&
+                                report.activeStepPlaceholderCount === report.activeStep.placeholderCount &&
+                                report.activeStepPlaceholders === report.activeStep.placeholders &&
+                                report.activeStepCliArgs === report.activeStep.cliArgs
+                            );
+                            return nextStepOk && activeStepOk;
+                        })()"#,
+                    )
+                    .expect("native hook env step execution aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
                             return (report.nextAction === null &&
                                     report.nextActionBlockedBy === null &&
                                     report.nextActionBranch === null) ||
