@@ -2637,7 +2637,16 @@ undefined;
                                     (adaptation.nextStepSource === 'backend-adaptation-preferred-group' &&
                                      adaptation.executionKind === 'preferred-group'))
                             );
-                            return preferredConflictExecutionOk && nextStepOk;
+                            const backendIdAliasesOk =
+                                Array.isArray(adaptation.sharedLoadedBackendIds) &&
+                                Array.isArray(adaptation.controllerLoadedOnlyBackendIds) &&
+                                Array.isArray(adaptation.targetLoadedOnlyBackendIds) &&
+                                Array.isArray(adaptation.filesystemOnlyBackendIds) &&
+                                adaptation.sharedLoadedBackendIds.length === report.loadedBackendCount &&
+                                adaptation.controllerLoadedOnlyBackendIds.length === 0 &&
+                                adaptation.targetLoadedOnlyBackendIds.length === 0 &&
+                                adaptation.filesystemOnlyBackendIds.length === report.filesystemOnlyBackendCount;
+                            return preferredConflictExecutionOk && nextStepOk && backendIdAliasesOk;
                         })()"#,
                     )
                     .expect("native hook env backend adaptation execution aliases"),

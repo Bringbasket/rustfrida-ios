@@ -3434,6 +3434,19 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "install" => install_templates.clone(),
         _ => Vec::new(),
     };
+    let shared_loaded_backend_ids = report
+        .backends
+        .iter()
+        .filter(|backend| !backend.loaded_images.is_empty())
+        .map(|backend| backend.id.clone())
+        .collect::<Vec<_>>();
+    let filesystem_only_backend_ids = report
+        .backends
+        .iter()
+        .filter(|backend| backend.loaded_images.is_empty() && !backend.filesystem_paths.is_empty())
+        .map(|backend| backend.id.clone())
+        .collect::<Vec<_>>();
+    let empty_backend_ids: Vec<String> = Vec::new();
     let backend_specific_recommendations = ffi::JS_NewArray(ctx);
     let mut backend_specific_recommendation_count = 0usize;
     let mut preferred_backend_recommendation: Option<JSValue> = None;
@@ -3455,6 +3468,30 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     backend_adaptation.set_property(ctx, "requiresCleanupPhase", JSValue::bool(requires_cleanup_phase));
     backend_adaptation.set_property(ctx, "inlineInstallReadyNow", JSValue::bool(inline_install_ready_now));
     backend_adaptation.set_property(ctx, "preferredGroupKey", JSValue::string(ctx, preferred_group_key));
+    set_string_array_property(
+        ctx,
+        backend_adaptation.raw(),
+        "sharedLoadedBackendIds",
+        &shared_loaded_backend_ids,
+    );
+    set_string_array_property(
+        ctx,
+        backend_adaptation.raw(),
+        "controllerLoadedOnlyBackendIds",
+        &empty_backend_ids,
+    );
+    set_string_array_property(
+        ctx,
+        backend_adaptation.raw(),
+        "targetLoadedOnlyBackendIds",
+        &empty_backend_ids,
+    );
+    set_string_array_property(
+        ctx,
+        backend_adaptation.raw(),
+        "filesystemOnlyBackendIds",
+        &filesystem_only_backend_ids,
+    );
     hook_set_command_template_group_properties(ctx, &backend_adaptation, "query", &query_templates);
     hook_set_command_template_group_properties(ctx, &backend_adaptation, "preflight", &preflight_templates);
     hook_set_command_template_group_properties(ctx, &backend_adaptation, "cleanup", &cleanup_templates);
