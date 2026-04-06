@@ -75,8 +75,7 @@ unsafe fn set_phase_ready_aliases(
     let templates_field = format!("{prefix}Templates");
     let template_field = format!("{prefix}Template");
     let command_json_template_count_field = format!("{prefix}CommandJsonTemplateCount");
-    let command_json_eligible_template_count_field =
-        format!("{prefix}CommandJsonEligibleTemplateCount");
+    let command_json_eligible_template_count_field = format!("{prefix}CommandJsonEligibleTemplateCount");
     let command_json_templates_field = format!("{prefix}CommandJsonTemplates");
     let command_json_template_field = format!("{prefix}CommandJsonTemplate");
     let command_json_template_command_field = format!("{prefix}CommandJsonTemplateCommand");
@@ -219,11 +218,7 @@ unsafe fn set_phase_ready_aliases(
         ready_value.set_property(ctx, &templates_field, empty_strings.dup(ctx));
         ready_value.set_property(ctx, &template_field, JSValue::null());
         ready_value.set_property(ctx, &command_json_template_count_field, JSValue::null());
-        ready_value.set_property(
-            ctx,
-            &command_json_eligible_template_count_field,
-            JSValue::null(),
-        );
+        ready_value.set_property(ctx, &command_json_eligible_template_count_field, JSValue::null());
         ready_value.set_property(ctx, &command_json_templates_field, JSValue(ffi::JS_NewArray(ctx)));
         ready_value.set_property(ctx, &command_json_template_field, JSValue::null());
         ready_value.set_property(ctx, &command_json_template_command_field, JSValue::null());
@@ -282,11 +277,7 @@ unsafe fn set_phase_ready_aliases(
     }
 }
 
-unsafe fn get_property_or_null(
-    ctx: *mut ffi::JSContext,
-    source: &JSValue,
-    name: &str,
-) -> JSValue {
+unsafe fn get_property_or_null(ctx: *mut ffi::JSContext, source: &JSValue, name: &str) -> JSValue {
     if source.is_null() || source.is_undefined() || source.is_exception() {
         return JSValue::null();
     }
@@ -300,12 +291,7 @@ unsafe fn get_property_or_null(
     }
 }
 
-unsafe fn set_property_aliases(
-    ctx: *mut ffi::JSContext,
-    target: &JSValue,
-    source: &JSValue,
-    aliases: &[(&str, &str)],
-) {
+unsafe fn set_property_aliases(ctx: *mut ffi::JSContext, target: &JSValue, source: &JSValue, aliases: &[(&str, &str)]) {
     if source.is_null() || source.is_undefined() || source.is_exception() {
         for (target_key, _) in aliases {
             target.set_property(ctx, target_key, JSValue::null());
@@ -1210,11 +1196,7 @@ unsafe fn hook_single_process_backend_matrix_entry_to_js(
         JSValue::int(backend.filesystem_paths.len() as i32),
     );
     item.set_property(ctx, "targetFilesystemPathCount", JSValue::int(0));
-    item.set_property(
-        ctx,
-        "filesystemOnlyInEither",
-        JSValue::bool(filesystem_only_in_either),
-    );
+    item.set_property(ctx, "filesystemOnlyInEither", JSValue::bool(filesystem_only_in_either));
 
     item.raw()
 }
@@ -1447,11 +1429,7 @@ unsafe fn hook_backend_specific_recommendation_to_js(
     item.set_property(ctx, "visibleInController", JSValue::null());
     item.set_property(ctx, "visibleInTarget", JSValue::null());
     item.set_property(ctx, "loadedBy", JSValue::string(ctx, loaded_by));
-    item.set_property(
-        ctx,
-        "suggestedGroupKey",
-        JSValue::string(ctx, suggested_group_key),
-    );
+    item.set_property(ctx, "suggestedGroupKey", JSValue::string(ctx, suggested_group_key));
     item.set_property(ctx, "suggestedPhase", JSValue::string(ctx, suggested_phase));
     item.set_property(ctx, "reason", JSValue::string(ctx, reason));
     item.set_property(ctx, "priority", JSValue::int(priority as i32));
@@ -1472,11 +1450,7 @@ unsafe fn hook_backend_specific_recommendation_to_js(
                 "primaryCommandJsonTemplateCommand",
                 primary.get_property(ctx, "command"),
             );
-            item.set_property(
-                ctx,
-                "primaryCommandJsonTemplateKind",
-                primary.get_property(ctx, "kind"),
-            );
+            item.set_property(ctx, "primaryCommandJsonTemplateKind", primary.get_property(ctx, "kind"));
             item.set_property(
                 ctx,
                 "primaryCommandJsonTemplateEligible",
@@ -1531,9 +1505,7 @@ fn hook_conflict_resolution_phase_timeout_error_code(phase: &str) -> &'static st
     }
 }
 
-fn hook_conflict_resolution_steps_for_group(
-    group_key: &str,
-) -> Vec<(&'static str, &'static str, &'static str)> {
+fn hook_conflict_resolution_steps_for_group(group_key: &str) -> Vec<(&'static str, &'static str, &'static str)> {
     match group_key {
         "query" => vec![
             (
@@ -1593,8 +1565,7 @@ unsafe fn hook_backend_conflict_resolution_chain_entry_to_js(
     let item = JSValue(ffi::JS_NewObject(ctx));
     let (command_json_templates, command_json_eligible_template_count) =
         hook_command_json_template_array_to_js(ctx, templates);
-    let (retryable, max_suggested_retries, retry_delay_hint_ms) =
-        hook_conflict_resolution_phase_retry_policy(phase);
+    let (retryable, max_suggested_retries, retry_delay_hint_ms) = hook_conflict_resolution_phase_retry_policy(phase);
     let (timeout_hint_ms, timeout_action) = hook_conflict_resolution_phase_timeout_policy(phase);
 
     item.set_property(
@@ -1607,11 +1578,7 @@ unsafe fn hook_backend_conflict_resolution_chain_entry_to_js(
     item.set_property(ctx, "phase", JSValue::string(ctx, phase));
     item.set_property(ctx, "reason", JSValue::string(ctx, reason));
     item.set_property(ctx, "retryable", JSValue::bool(retryable));
-    item.set_property(
-        ctx,
-        "maxSuggestedRetries",
-        JSValue::int(max_suggested_retries as i32),
-    );
+    item.set_property(ctx, "maxSuggestedRetries", JSValue::int(max_suggested_retries as i32));
     item.set_property(
         ctx,
         "retryDelayHintMs",
@@ -1675,12 +1642,8 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     let mut phase_summaries = BTreeMap::<String, PhaseRoutingSummary>::new();
 
     for (index, (group_key, phase, reason)) in steps.iter().enumerate() {
-        let templates = hook_backend_templates_for_group(
-            group_key,
-            query_templates,
-            preflight_templates,
-            cleanup_templates,
-        );
+        let templates =
+            hook_backend_templates_for_group(group_key, query_templates, preflight_templates, cleanup_templates);
         let (retryable, max_suggested_retries, retry_delay_hint_ms) =
             hook_conflict_resolution_phase_retry_policy(phase);
         let (timeout_hint_ms, timeout_action) = hook_conflict_resolution_phase_timeout_policy(phase);
@@ -1700,11 +1663,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
                 phase_summary.error_codes.push(code.clone());
             }
         }
-        if !phase_summary
-            .escalation_keys
-            .iter()
-            .any(|item| item == &escalation_key)
-        {
+        if !phase_summary.escalation_keys.iter().any(|item| item == &escalation_key) {
             phase_summary.escalation_keys.push(escalation_key.clone());
         }
         for template in templates {
@@ -1716,11 +1675,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         let retry_policy = JSValue(ffi::JS_NewObject(ctx));
         retry_policy.set_property(ctx, "phase", JSValue::string(ctx, phase));
         retry_policy.set_property(ctx, "retryable", JSValue::bool(retryable));
-        retry_policy.set_property(
-            ctx,
-            "maxSuggestedRetries",
-            JSValue::int(max_suggested_retries as i32),
-        );
+        retry_policy.set_property(ctx, "maxSuggestedRetries", JSValue::int(max_suggested_retries as i32));
         retry_policy.set_property(
             ctx,
             "retryDelayHintMs",
@@ -1733,11 +1688,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         );
         retry_policy.set_property(ctx, "timeoutAction", JSValue::string(ctx, timeout_action));
         retry_policy.set_property(ctx, "errorCode", JSValue::string(ctx, &error_code));
-        retry_policy.set_property(
-            ctx,
-            "timeoutErrorCode",
-            JSValue::string(ctx, &timeout_error_code),
-        );
+        retry_policy.set_property(ctx, "timeoutErrorCode", JSValue::string(ctx, &timeout_error_code));
         ffi::JS_SetPropertyUint32(ctx, phase_retry_policies, index as u32, retry_policy.raw());
 
         let timeout_policy = JSValue(ffi::JS_NewObject(ctx));
@@ -1749,21 +1700,13 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         );
         timeout_policy.set_property(ctx, "timeoutAction", JSValue::string(ctx, timeout_action));
         timeout_policy.set_property(ctx, "errorCode", JSValue::string(ctx, &error_code));
-        timeout_policy.set_property(
-            ctx,
-            "timeoutErrorCode",
-            JSValue::string(ctx, &timeout_error_code),
-        );
+        timeout_policy.set_property(ctx, "timeoutErrorCode", JSValue::string(ctx, &timeout_error_code));
         ffi::JS_SetPropertyUint32(ctx, phase_timeout_policies, index as u32, timeout_policy.raw());
 
         let error_codes = JSValue(ffi::JS_NewObject(ctx));
         error_codes.set_property(ctx, "phase", JSValue::string(ctx, phase));
         error_codes.set_property(ctx, "errorCode", JSValue::string(ctx, &error_code));
-        error_codes.set_property(
-            ctx,
-            "timeoutErrorCode",
-            JSValue::string(ctx, &timeout_error_code),
-        );
+        error_codes.set_property(ctx, "timeoutErrorCode", JSValue::string(ctx, &timeout_error_code));
         ffi::JS_SetPropertyUint32(ctx, phase_error_codes, index as u32, error_codes.raw());
 
         let recommendation = JSValue(hook_escalation_recommendation_to_js(
@@ -1794,20 +1737,12 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         let (command_json_templates, _) = hook_command_json_template_array_to_js(ctx, templates);
         let resolved = JSValue(ffi::JS_NewObject(ctx));
         resolved.set_property(ctx, "escalationKey", JSValue::string(ctx, escalation_key));
-        resolved.set_property(
-            ctx,
-            "effectiveEscalationKey",
-            JSValue::string(ctx, escalation_key),
-        );
+        resolved.set_property(ctx, "effectiveEscalationKey", JSValue::string(ctx, escalation_key));
         resolved.set_property(ctx, "phase", JSValue::string(ctx, phase));
         resolved.set_property(ctx, "effectivePhase", JSValue::string(ctx, phase));
         resolved.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
         set_string_array_property(ctx, resolved.raw(), "templates", templates);
-        resolved.set_property(
-            ctx,
-            "commandJsonTemplateCount",
-            JSValue::int(templates.len() as i32),
-        );
+        resolved.set_property(ctx, "commandJsonTemplateCount", JSValue::int(templates.len() as i32));
         resolved.set_property(ctx, "commandJsonTemplates", JSValue(command_json_templates));
 
         error_code_routing.set_property(ctx, error_code, JSValue::string(ctx, escalation_key));
@@ -1821,26 +1756,14 @@ unsafe fn hook_conflict_resolution_routing_to_js(
             "candidateEscalationKeys",
             JSValue(string_vec_to_js_array(ctx, &[escalation_key.clone()])),
         );
-        entry.set_property(
-            ctx,
-            "recommendedEscalationKey",
-            JSValue::string(ctx, escalation_key),
-        );
-        entry.set_property(
-            ctx,
-            "effectiveEscalationKey",
-            JSValue::string(ctx, escalation_key),
-        );
+        entry.set_property(ctx, "recommendedEscalationKey", JSValue::string(ctx, escalation_key));
+        entry.set_property(ctx, "effectiveEscalationKey", JSValue::string(ctx, escalation_key));
         entry.set_property(ctx, "matchConfidence", JSValue::string(ctx, "exact"));
         entry.set_property(ctx, "resolvedFrom", JSValue::string(ctx, "errorCodeRouting"));
         entry.set_property(ctx, "recommendedPhase", JSValue::string(ctx, phase));
         entry.set_property(ctx, "effectivePhase", JSValue::string(ctx, phase));
         entry.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
-        entry.set_property(
-            ctx,
-            "commandJsonTemplateCount",
-            JSValue::int(templates.len() as i32),
-        );
+        entry.set_property(ctx, "commandJsonTemplateCount", JSValue::int(templates.len() as i32));
         ffi::JS_SetPropertyUint32(ctx, error_code_routing_entries, entry_index as u32, entry.raw());
         resolved.free(ctx);
     }
@@ -1856,63 +1779,36 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     let (default_command_json_templates, _) = hook_command_json_template_array_to_js(ctx, default_templates);
 
     let default_value = JSValue(ffi::JS_NewObject(ctx));
-    default_value.set_property(
-        ctx,
-        "matchConfidence",
-        JSValue::string(ctx, "default"),
-    );
+    default_value.set_property(ctx, "matchConfidence", JSValue::string(ctx, "default"));
     default_value.set_property(
         ctx,
         "resolvedFrom",
         JSValue::string(ctx, "defaultRecommendedEscalationKey"),
     );
-    default_value.set_property(
-        ctx,
-        "escalationKey",
-        JSValue::string(ctx, &default_escalation_key),
-    );
+    default_value.set_property(ctx, "escalationKey", JSValue::string(ctx, &default_escalation_key));
     default_value.set_property(
         ctx,
         "effectiveEscalationKey",
         JSValue::string(ctx, &default_escalation_key),
     );
     default_value.set_property(ctx, "phase", JSValue::string(ctx, default_phase));
-    default_value.set_property(
-        ctx,
-        "effectivePhase",
-        JSValue::string(ctx, default_phase),
-    );
-    default_value.set_property(
-        ctx,
-        "templateCount",
-        JSValue::int(default_templates.len() as i32),
-    );
+    default_value.set_property(ctx, "effectivePhase", JSValue::string(ctx, default_phase));
+    default_value.set_property(ctx, "templateCount", JSValue::int(default_templates.len() as i32));
     set_string_array_property(ctx, default_value.raw(), "templates", default_templates);
     default_value.set_property(
         ctx,
         "commandJsonTemplateCount",
         JSValue::int(default_templates.len() as i32),
     );
-    default_value.set_property(
-        ctx,
-        "commandJsonTemplates",
-        JSValue(default_command_json_templates),
-    );
+    default_value.set_property(ctx, "commandJsonTemplates", JSValue(default_command_json_templates));
 
     let routing_decision = JSValue(ffi::JS_NewObject(ctx));
     routing_decision.set_property(ctx, "lookupKey", JSValue::string(ctx, "errorCode"));
-    routing_decision.set_property(
-        ctx,
-        "policy",
-        JSValue::string(ctx, "index-then-default"),
-    );
+    routing_decision.set_property(ctx, "policy", JSValue::string(ctx, "index-then-default"));
     routing_decision.set_property(
         ctx,
         "outputShape",
-        JSValue::string(
-            ctx,
-            "{ escalationKey, effectiveEscalationKey, phase, effectivePhase }",
-        ),
+        JSValue::string(ctx, "{ escalationKey, effectiveEscalationKey, phase, effectivePhase }"),
     );
     routing_decision.set_property(
         ctx,
@@ -1925,21 +1821,13 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         "defaultRecommendedEscalationKey",
         JSValue::string(ctx, &default_escalation_key),
     );
-    routing_decision.set_property(
-        ctx,
-        "defaultRecommendedPhase",
-        JSValue::string(ctx, default_phase),
-    );
+    routing_decision.set_property(ctx, "defaultRecommendedPhase", JSValue::string(ctx, default_phase));
     routing_decision.set_property(
         ctx,
         "defaultEffectiveEscalationKey",
         JSValue::string(ctx, &default_escalation_key),
     );
-    routing_decision.set_property(
-        ctx,
-        "defaultEffectivePhase",
-        JSValue::string(ctx, default_phase),
-    );
+    routing_decision.set_property(ctx, "defaultEffectivePhase", JSValue::string(ctx, default_phase));
     routing_decision.set_property(
         ctx,
         "defaultRecommendedTemplateCount",
@@ -1964,11 +1852,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     routing_decision.set_property(ctx, "default", default_value.dup(ctx));
 
     let ready_value = JSValue(ffi::JS_NewObject(ctx));
-    ready_value.set_property(
-        ctx,
-        "lookupRule",
-        JSValue::string(ctx, "index[errorCode] || default"),
-    );
+    ready_value.set_property(ctx, "lookupRule", JSValue::string(ctx, "index[errorCode] || default"));
     ready_value.set_property(
         ctx,
         "entryCount",
@@ -1987,11 +1871,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         JSValue::string(ctx, &default_escalation_key),
     );
     ready_value.set_property(ctx, "defaultPhase", JSValue::string(ctx, default_phase));
-    ready_value.set_property(
-        ctx,
-        "defaultEffectivePhase",
-        JSValue::string(ctx, default_phase),
-    );
+    ready_value.set_property(ctx, "defaultEffectivePhase", JSValue::string(ctx, default_phase));
     ready_value.set_property(
         ctx,
         "defaultTemplateCount",
@@ -2046,10 +1926,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     default_command_json_template.free(ctx);
 
     let resolve_index = JSValue(ffi::JS_NewObject(ctx));
-    let known_error_codes = error_code_routing_candidates
-        .keys()
-        .cloned()
-        .collect::<Vec<_>>();
+    let known_error_codes = error_code_routing_candidates.keys().cloned().collect::<Vec<_>>();
     for error_code in &known_error_codes {
         let Some((escalation_key, phase, _)) = error_code_routing_candidates.get(error_code) else {
             continue;
@@ -2060,11 +1937,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         resolved.set_property(ctx, "usedDefault", JSValue::bool(false));
         resolved.set_property(ctx, "reason", JSValue::string(ctx, "matched-error-code"));
         resolved.set_property(ctx, "effectivePhase", JSValue::string(ctx, phase));
-        resolved.set_property(
-            ctx,
-            "effectiveEscalationKey",
-            JSValue::string(ctx, escalation_key),
-        );
+        resolved.set_property(ctx, "effectiveEscalationKey", JSValue::string(ctx, escalation_key));
         resolved.set_property(ctx, "effective", effective);
         resolve_index.set_property(ctx, error_code, resolved);
     }
@@ -2101,21 +1974,13 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     let query_only_example = JSValue(ffi::JS_NewObject(ctx));
     query_only_example.set_property(ctx, "errorCode", JSValue::string(ctx, query_only_error_code));
     query_only_example.set_property(ctx, "blockedBy", JSValue::string(ctx, query_only_blocked_by));
-    query_only_example.set_property(
-        ctx,
-        "blockedBySource",
-        JSValue::string(ctx, query_only_blocked_by),
-    );
+    query_only_example.set_property(ctx, "blockedBySource", JSValue::string(ctx, query_only_blocked_by));
     query_only_example.set_property(ctx, "isBlocked", JSValue::bool(true));
     query_only_example.set_property(ctx, "available", JSValue::bool(query_only_result_available));
     if query_only_result_available {
         let effective_key = query_only_result.get_property(ctx, "effectiveEscalationKey");
         query_only_example.set_property(ctx, "matched", query_only_result.get_property(ctx, "matched"));
-        query_only_example.set_property(
-            ctx,
-            "usedDefault",
-            query_only_result.get_property(ctx, "usedDefault"),
-        );
+        query_only_example.set_property(ctx, "usedDefault", query_only_result.get_property(ctx, "usedDefault"));
         query_only_example.set_property(ctx, "reason", query_only_result.get_property(ctx, "reason"));
         query_only_example.set_property(
             ctx,
@@ -2143,11 +2008,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
 
     let resolve_value = JSValue(ffi::JS_NewObject(ctx));
     resolve_value.set_property(ctx, "lookupKey", JSValue::string(ctx, "errorCode"));
-    resolve_value.set_property(
-        ctx,
-        "policy",
-        JSValue::string(ctx, "index[errorCode] || default"),
-    );
+    resolve_value.set_property(ctx, "policy", JSValue::string(ctx, "index[errorCode] || default"));
     resolve_value.set_property(ctx, "outputShape", JSValue::string(ctx, "effective"));
     resolve_value.set_property(ctx, "index", resolve_index);
     resolve_value.set_property(ctx, "default", resolve_default);
@@ -2176,7 +2037,11 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         "resolveKnownErrorCodes",
         JSValue(string_vec_to_js_array(ctx, &known_error_codes)),
     );
-    ready_value.set_property(ctx, "resolveDefaultMatched", resolve_default.get_property(ctx, "matched"));
+    ready_value.set_property(
+        ctx,
+        "resolveDefaultMatched",
+        resolve_default.get_property(ctx, "matched"),
+    );
     ready_value.set_property(
         ctx,
         "resolveDefaultUsedDefault",
@@ -2204,19 +2069,11 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         resolve_examples.get_property(ctx, "knownErrorCode"),
     );
     let resolve_known_result = resolve_examples.get_property(ctx, "knownResult");
-    ready_value.set_property(
-        ctx,
-        "resolveExampleKnownResult",
-        resolve_known_result.dup(ctx),
-    );
+    ready_value.set_property(ctx, "resolveExampleKnownResult", resolve_known_result.dup(ctx));
     if resolve_known_result.is_null() || resolve_known_result.is_undefined() {
         ready_value.set_property(ctx, "resolveExampleKnownResultEffective", JSValue::null());
         ready_value.set_property(ctx, "resolveExampleKnownResultEffectivePhase", JSValue::null());
-        ready_value.set_property(
-            ctx,
-            "resolveExampleKnownResultEffectiveEscalationKey",
-            JSValue::null(),
-        );
+        ready_value.set_property(ctx, "resolveExampleKnownResultEffectiveEscalationKey", JSValue::null());
     } else {
         ready_value.set_property(
             ctx,
@@ -2241,11 +2098,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         resolve_examples.get_property(ctx, "missingErrorCode"),
     );
     let resolve_missing_result = resolve_examples.get_property(ctx, "missingResult");
-    ready_value.set_property(
-        ctx,
-        "resolveExampleMissingResult",
-        resolve_missing_result.dup(ctx),
-    );
+    ready_value.set_property(ctx, "resolveExampleMissingResult", resolve_missing_result.dup(ctx));
     if resolve_missing_result.is_null() || resolve_missing_result.is_undefined() {
         ready_value.set_property(ctx, "resolveExampleMissingResultEffective", JSValue::null());
         ready_value.set_property(ctx, "resolveExampleMissingResultEffectivePhase", JSValue::null());
@@ -2338,11 +2191,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         query_only_example.get_property(ctx, "wouldUseQueryOnlyPath"),
     );
     let query_only_example_result = query_only_example.get_property(ctx, "result");
-    ready_value.set_property(
-        ctx,
-        "resolveExampleQueryOnlyResult",
-        query_only_example_result.dup(ctx),
-    );
+    ready_value.set_property(ctx, "resolveExampleQueryOnlyResult", query_only_example_result.dup(ctx));
     if query_only_example_result.is_null() || query_only_example_result.is_undefined() {
         ready_value.set_property(ctx, "resolveExampleQueryOnlyResultEffective", JSValue::null());
         ready_value.set_property(ctx, "resolveExampleQueryOnlyResultMatched", JSValue::null());
@@ -2396,11 +2245,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         let (phase_command_json_templates, phase_command_json_eligible_template_count) =
             hook_command_json_template_array_to_js(ctx, &summary.templates);
         phase_entry.set_property(ctx, "phase", JSValue::string(ctx, phase));
-        phase_entry.set_property(
-            ctx,
-            "errorCodeCount",
-            JSValue::int(summary.error_codes.len() as i32),
-        );
+        phase_entry.set_property(ctx, "errorCodeCount", JSValue::int(summary.error_codes.len() as i32));
         phase_entry.set_property(
             ctx,
             "errorCodes",
@@ -2416,11 +2261,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
             "escalationKeys",
             JSValue(string_vec_to_js_array(ctx, &summary.escalation_keys)),
         );
-        phase_entry.set_property(
-            ctx,
-            "templateCount",
-            JSValue::int(summary.templates.len() as i32),
-        );
+        phase_entry.set_property(ctx, "templateCount", JSValue::int(summary.templates.len() as i32));
         set_string_array_property(ctx, phase_entry.raw(), "templates", &summary.templates);
         phase_entry.set_property(
             ctx,
@@ -2432,11 +2273,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
             "commandJsonEligibleTemplateCount",
             JSValue::int(phase_command_json_eligible_template_count as i32),
         );
-        phase_entry.set_property(
-            ctx,
-            "commandJsonTemplates",
-            JSValue(phase_command_json_templates),
-        );
+        phase_entry.set_property(ctx, "commandJsonTemplates", JSValue(phase_command_json_templates));
         ffi::JS_SetPropertyUint32(ctx, phase_entries, entry_index as u32, phase_entry.dup(ctx).raw());
         phase_index.set_property(ctx, phase, phase_entry);
         known_phases.push(phase.clone());
@@ -2519,11 +2356,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     match known_phases.first() {
         Some(phase) => {
             phase_resolve_examples.set_property(ctx, "knownPhase", JSValue::string(ctx, phase));
-            phase_resolve_examples.set_property(
-                ctx,
-                "knownResult",
-                phase_resolve_index.get_property(ctx, phase),
-            );
+            phase_resolve_examples.set_property(ctx, "knownResult", phase_resolve_index.get_property(ctx, phase));
         }
         None => {
             phase_resolve_examples.set_property(ctx, "knownPhase", JSValue::null());
@@ -2534,40 +2367,23 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     phase_resolve_examples.set_property(ctx, "missingResult", phase_resolve_default.dup(ctx));
     let query_only_phase = "query";
     let query_only_phase_result = phase_resolve_index.get_property(ctx, query_only_phase);
-    let query_only_phase_available =
-        !(query_only_phase_result.is_null() || query_only_phase_result.is_undefined());
+    let query_only_phase_available = !(query_only_phase_result.is_null() || query_only_phase_result.is_undefined());
     let query_only_phase_example = JSValue(ffi::JS_NewObject(ctx));
-    query_only_phase_example.set_property(
-        ctx,
-        "sourceErrorCode",
-        JSValue::string(ctx, query_only_error_code),
-    );
+    query_only_phase_example.set_property(ctx, "sourceErrorCode", JSValue::string(ctx, query_only_error_code));
     query_only_phase_example.set_property(ctx, "phase", JSValue::string(ctx, query_only_phase));
     query_only_phase_example.set_property(ctx, "blockedBy", JSValue::string(ctx, query_only_blocked_by));
-    query_only_phase_example.set_property(
-        ctx,
-        "blockedBySource",
-        JSValue::string(ctx, query_only_blocked_by),
-    );
+    query_only_phase_example.set_property(ctx, "blockedBySource", JSValue::string(ctx, query_only_blocked_by));
     query_only_phase_example.set_property(ctx, "isBlocked", JSValue::bool(true));
     query_only_phase_example.set_property(ctx, "available", JSValue::bool(query_only_phase_available));
     if query_only_phase_available {
         let effective_phase = query_only_phase_result.get_property(ctx, "effectivePhase");
-        query_only_phase_example.set_property(
-            ctx,
-            "matched",
-            query_only_phase_result.get_property(ctx, "matched"),
-        );
+        query_only_phase_example.set_property(ctx, "matched", query_only_phase_result.get_property(ctx, "matched"));
         query_only_phase_example.set_property(
             ctx,
             "usedDefault",
             query_only_phase_result.get_property(ctx, "usedDefault"),
         );
-        query_only_phase_example.set_property(
-            ctx,
-            "reason",
-            query_only_phase_result.get_property(ctx, "reason"),
-        );
+        query_only_phase_example.set_property(ctx, "reason", query_only_phase_result.get_property(ctx, "reason"));
         query_only_phase_example.set_property(ctx, "effectivePhase", effective_phase.dup(ctx));
         query_only_phase_example.set_property(
             ctx,
@@ -2590,19 +2406,11 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         query_only_phase_example.set_property(ctx, "result", JSValue::null());
         query_only_phase_example.set_property(ctx, "wouldUseQueryPhase", JSValue::bool(false));
     }
-    phase_resolve_examples.set_property(
-        ctx,
-        "queryOnlyInstallFailure",
-        query_only_phase_example.dup(ctx),
-    );
+    phase_resolve_examples.set_property(ctx, "queryOnlyInstallFailure", query_only_phase_example.dup(ctx));
 
     let phase_resolve_value = JSValue(ffi::JS_NewObject(ctx));
     phase_resolve_value.set_property(ctx, "lookupKey", JSValue::string(ctx, "phase"));
-    phase_resolve_value.set_property(
-        ctx,
-        "policy",
-        JSValue::string(ctx, "phaseIndex[phase] || default"),
-    );
+    phase_resolve_value.set_property(ctx, "policy", JSValue::string(ctx, "phaseIndex[phase] || default"));
     phase_resolve_value.set_property(ctx, "outputShape", JSValue::string(ctx, "effective"));
     phase_resolve_value.set_property(ctx, "index", phase_resolve_index);
     phase_resolve_value.set_property(ctx, "default", phase_resolve_default);
@@ -2631,21 +2439,9 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         "phaseResolveExamples",
         phase_resolve_value.get_property(ctx, "examples"),
     );
-    ready_value.set_property(
-        ctx,
-        "phaseResolvePhaseCount",
-        JSValue::int(known_phases.len() as i32),
-    );
-    ready_value.set_property(
-        ctx,
-        "phaseResolveIndexCount",
-        JSValue::int(known_phases.len() as i32),
-    );
-    ready_value.set_property(
-        ctx,
-        "phaseResolveKnownCount",
-        JSValue::int(known_phases.len() as i32),
-    );
+    ready_value.set_property(ctx, "phaseResolvePhaseCount", JSValue::int(known_phases.len() as i32));
+    ready_value.set_property(ctx, "phaseResolveIndexCount", JSValue::int(known_phases.len() as i32));
+    ready_value.set_property(ctx, "phaseResolveKnownCount", JSValue::int(known_phases.len() as i32));
     ready_value.set_property(
         ctx,
         "phaseResolveKnownPhases",
@@ -2694,11 +2490,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     );
     if phase_resolve_known_result.is_null() || phase_resolve_known_result.is_undefined() {
         ready_value.set_property(ctx, "phaseResolveExampleKnownResultEffective", JSValue::null());
-        ready_value.set_property(
-            ctx,
-            "phaseResolveExampleKnownResultEffectivePhase",
-            JSValue::null(),
-        );
+        ready_value.set_property(ctx, "phaseResolveExampleKnownResultEffectivePhase", JSValue::null());
         ready_value.set_property(
             ctx,
             "phaseResolveExampleKnownResultEffectiveEscalationKey",
@@ -2740,11 +2532,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     );
     if phase_resolve_missing_result.is_null() || phase_resolve_missing_result.is_undefined() {
         ready_value.set_property(ctx, "phaseResolveExampleMissingResultEffective", JSValue::null());
-        ready_value.set_property(
-            ctx,
-            "phaseResolveExampleMissingResultEffectivePhase",
-            JSValue::null(),
-        );
+        ready_value.set_property(ctx, "phaseResolveExampleMissingResultEffectivePhase", JSValue::null());
         ready_value.set_property(
             ctx,
             "phaseResolveExampleMissingResultEffectiveEscalationKey",
@@ -2842,17 +2630,9 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     if query_only_phase_example_result.is_null() || query_only_phase_example_result.is_undefined() {
         ready_value.set_property(ctx, "phaseResolveExampleQueryOnlyResultEffective", JSValue::null());
         ready_value.set_property(ctx, "phaseResolveExampleQueryOnlyResultMatched", JSValue::null());
-        ready_value.set_property(
-            ctx,
-            "phaseResolveExampleQueryOnlyResultUsedDefault",
-            JSValue::null(),
-        );
+        ready_value.set_property(ctx, "phaseResolveExampleQueryOnlyResultUsedDefault", JSValue::null());
         ready_value.set_property(ctx, "phaseResolveExampleQueryOnlyResultReason", JSValue::null());
-        ready_value.set_property(
-            ctx,
-            "phaseResolveExampleQueryOnlyResultEffectivePhase",
-            JSValue::null(),
-        );
+        ready_value.set_property(ctx, "phaseResolveExampleQueryOnlyResultEffectivePhase", JSValue::null());
         ready_value.set_property(
             ctx,
             "phaseResolveExampleQueryOnlyResultEffectiveEscalationKey",
@@ -2976,11 +2756,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         "queryOnlyResolveAvailable",
         query_only_example.get_property(ctx, "available"),
     );
-    ready_value.set_property(
-        ctx,
-        "queryOnlyMatched",
-        query_only_example.get_property(ctx, "matched"),
-    );
+    ready_value.set_property(ctx, "queryOnlyMatched", query_only_example.get_property(ctx, "matched"));
     ready_value.set_property(
         ctx,
         "queryOnlyResolveMatched",
@@ -3006,11 +2782,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
         "queryOnlyPhaseResolveUsedDefault",
         query_only_phase_example.get_property(ctx, "usedDefault"),
     );
-    ready_value.set_property(
-        ctx,
-        "queryOnlyReason",
-        query_only_example.get_property(ctx, "reason"),
-    );
+    ready_value.set_property(ctx, "queryOnlyReason", query_only_example.get_property(ctx, "reason"));
     ready_value.set_property(
         ctx,
         "queryOnlyResolveReason",
@@ -3206,14 +2978,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     let phase_preflight_alias = phase_index.get_property(ctx, "preflight");
     let phase_cleanup_alias = phase_index.get_property(ctx, "cleanup");
     set_phase_ready_aliases(ctx, &ready_value, "phaseQuery", &phase_query_alias, false, false);
-    set_phase_ready_aliases(
-        ctx,
-        &ready_value,
-        "phasePreflight",
-        &phase_preflight_alias,
-        true,
-        true,
-    );
+    set_phase_ready_aliases(ctx, &ready_value, "phasePreflight", &phase_preflight_alias, true, true);
     set_phase_ready_aliases(ctx, &ready_value, "phaseCleanup", &phase_cleanup_alias, false, false);
     routing_decision.set_property(ctx, "ready", ready_value);
     resolve_value.free(ctx);
@@ -3227,11 +2992,7 @@ unsafe fn hook_conflict_resolution_routing_to_js(
     routing.set_property(ctx, "phaseTimeoutPolicies", JSValue(phase_timeout_policies));
     routing.set_property(ctx, "phaseErrorCodeCount", JSValue::int(steps.len() as i32));
     routing.set_property(ctx, "phaseErrorCodes", JSValue(phase_error_codes));
-    routing.set_property(
-        ctx,
-        "escalationRecommendationCount",
-        JSValue::int(steps.len() as i32),
-    );
+    routing.set_property(ctx, "escalationRecommendationCount", JSValue::int(steps.len() as i32));
     routing.set_property(ctx, "escalationRecommendations", JSValue(escalation_recommendations));
     routing.set_property(
         ctx,
@@ -3280,14 +3041,15 @@ unsafe fn hook_backend_conflict_pair_to_js(
     let resolution_chain = ffi::JS_NewArray(ctx);
     let resolution_steps = hook_conflict_resolution_steps_for_group(suggested_group_key);
     for (index, (group_key, phase, reason)) in resolution_steps.iter().enumerate() {
-        let step_templates = hook_backend_templates_for_group(
-            group_key,
-            query_templates,
-            preflight_templates,
-            cleanup_templates,
-        );
+        let step_templates =
+            hook_backend_templates_for_group(group_key, query_templates, preflight_templates, cleanup_templates);
         let entry = JSValue(hook_backend_conflict_resolution_chain_entry_to_js(
-            ctx, index, group_key, phase, reason, step_templates,
+            ctx,
+            index,
+            group_key,
+            phase,
+            reason,
+            step_templates,
         ));
         ffi::JS_SetPropertyUint32(ctx, resolution_chain, index as u32, entry.raw());
     }
@@ -3297,10 +3059,7 @@ unsafe fn hook_backend_conflict_pair_to_js(
     item.set_property(
         ctx,
         "reason",
-        JSValue::string(
-            ctx,
-            "multiple external backend runtimes are loaded in this process",
-        ),
+        JSValue::string(ctx, "multiple external backend runtimes are loaded in this process"),
     );
     item.set_property(ctx, "firstBackendId", JSValue::string(ctx, &left_backend.id));
     item.set_property(
@@ -3327,17 +3086,10 @@ unsafe fn hook_backend_conflict_pair_to_js(
         "backendDisplayNames",
         JSValue(string_vec_to_js_array(
             ctx,
-            &[
-                left_backend.display_name.clone(),
-                right_backend.display_name.clone(),
-            ],
+            &[left_backend.display_name.clone(), right_backend.display_name.clone()],
         )),
     );
-    item.set_property(
-        ctx,
-        "suggestedGroupKey",
-        JSValue::string(ctx, suggested_group_key),
-    );
+    item.set_property(ctx, "suggestedGroupKey", JSValue::string(ctx, suggested_group_key));
     item.set_property(ctx, "suggestedPhase", JSValue::string(ctx, suggested_phase));
     item.set_property(ctx, "resolutionReason", JSValue::string(ctx, resolution_reason));
     item.set_property(ctx, "templateCount", JSValue::int(templates.len() as i32));
@@ -3357,11 +3109,7 @@ unsafe fn hook_backend_conflict_pair_to_js(
                 "primaryCommandJsonTemplateCommand",
                 primary.get_property(ctx, "command"),
             );
-            item.set_property(
-                ctx,
-                "primaryCommandJsonTemplateKind",
-                primary.get_property(ctx, "kind"),
-            );
+            item.set_property(ctx, "primaryCommandJsonTemplateKind", primary.get_property(ctx, "kind"));
             item.set_property(
                 ctx,
                 "primaryCommandJsonTemplateEligible",
@@ -3376,11 +3124,7 @@ unsafe fn hook_backend_conflict_pair_to_js(
             item.set_property(ctx, "primaryCommandJsonTemplateEligible", JSValue::null());
         }
     }
-    item.set_property(
-        ctx,
-        "resolutionChainCount",
-        JSValue::int(resolution_steps.len() as i32),
-    );
+    item.set_property(ctx, "resolutionChainCount", JSValue::int(resolution_steps.len() as i32));
     item.set_property(ctx, "resolutionChain", JSValue(resolution_chain));
 
     item.raw()
@@ -3399,8 +3143,7 @@ unsafe fn hook_backend_conflict_resolution_step_to_js(
     let allowed = group_key != "none";
     let blocked_by = if allowed { "none" } else { "both" };
     let branch = if allowed { "run" } else { "blocked" };
-    let (retryable, max_suggested_retries, retry_delay_hint_ms) =
-        hook_conflict_resolution_phase_retry_policy(phase);
+    let (retryable, max_suggested_retries, retry_delay_hint_ms) = hook_conflict_resolution_phase_retry_policy(phase);
     let (timeout_hint_ms, timeout_action) = hook_conflict_resolution_phase_timeout_policy(phase);
     let command_json_template = match templates.first() {
         Some(template) => JSValue(hook_command_json_template_to_js(ctx, template)),
@@ -3479,11 +3222,7 @@ unsafe fn hook_backend_conflict_resolution_step_to_js(
     }
     item.set_property(ctx, "phase", JSValue::string(ctx, phase));
     item.set_property(ctx, "retryable", JSValue::bool(retryable));
-    item.set_property(
-        ctx,
-        "maxSuggestedRetries",
-        JSValue::int(max_suggested_retries as i32),
-    );
+    item.set_property(ctx, "maxSuggestedRetries", JSValue::int(max_suggested_retries as i32));
     item.set_property(
         ctx,
         "retryDelayHintMs",
@@ -3817,9 +3556,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             ))
         })
         .collect::<Vec<_>>();
-    backend_recommendation_entries.sort_by(|left, right| {
-        (!left.0, left.1, left.2.as_str()).cmp(&(!right.0, right.1, right.2.as_str()))
-    });
+    backend_recommendation_entries
+        .sort_by(|left, right| (!left.0, left.1, left.2.as_str()).cmp(&(!right.0, right.1, right.2.as_str())));
     for (index, (_, _, _, item)) in backend_recommendation_entries.iter().enumerate() {
         let item_value = JSValue(*item);
         if index == 0 {
@@ -3852,11 +3590,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             );
             backend_adaptation.set_property(ctx, "preferredBackendScope", item.get_property(ctx, "scope"));
             backend_adaptation.set_property(ctx, "preferredBackendState", item.get_property(ctx, "state"));
-            backend_adaptation.set_property(
-                ctx,
-                "preferredBackendLoadedBy",
-                item.get_property(ctx, "loadedBy"),
-            );
+            backend_adaptation.set_property(ctx, "preferredBackendLoadedBy", item.get_property(ctx, "loadedBy"));
             backend_adaptation.set_property(
                 ctx,
                 "preferredBackendVisibleInController",
@@ -3878,11 +3612,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 item.get_property(ctx, "suggestedPhase"),
             );
             backend_adaptation.set_property(ctx, "preferredBackendReason", item.get_property(ctx, "reason"));
-            backend_adaptation.set_property(
-                ctx,
-                "preferredBackendTemplates",
-                item.get_property(ctx, "templates"),
-            );
+            backend_adaptation.set_property(ctx, "preferredBackendTemplates", item.get_property(ctx, "templates"));
             backend_adaptation.set_property(
                 ctx,
                 "preferredBackendTemplateCount",
@@ -3966,9 +3696,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         _ => "blocked",
     };
     let conflict_resolution_reason = match conflict_resolution_group_key {
-        "preflight" => {
-            "refresh diagnostics before attempting to realign backend runtimes in this process"
-        }
+        "preflight" => "refresh diagnostics before attempting to realign backend runtimes in this process",
         "cleanup" => "clean up active hook state before attempting to realign backend runtimes",
         "query" => "keep the flow query-first until backend runtimes in this process are aligned",
         _ => "no compatible conflict resolution path is currently available",
@@ -4035,11 +3763,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredConflictBackendPairReason",
                 item.get_property(ctx, "reason"),
             );
-            backend_adaptation.set_property(
-                ctx,
-                "preferredConflictBackendIds",
-                item.get_property(ctx, "backendIds"),
-            );
+            backend_adaptation.set_property(ctx, "preferredConflictBackendIds", item.get_property(ctx, "backendIds"));
             backend_adaptation.set_property(
                 ctx,
                 "preferredConflictBackendDisplayNames",
@@ -4142,46 +3866,30 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     .collect::<Vec<_>>();
                 let retryable_step_count = conflict_resolution_steps
                     .iter()
-                    .filter(|(_, phase, _)| {
-                        hook_conflict_resolution_phase_retry_policy(phase).0
-                    })
+                    .filter(|(_, phase, _)| hook_conflict_resolution_phase_retry_policy(phase).0)
                     .count();
                 let total_retry_budget = conflict_resolution_steps
                     .iter()
                     .map(|(_, phase, _)| hook_conflict_resolution_phase_retry_policy(phase).1 as u64)
                     .sum::<u64>();
                 let termination_policy = JSValue(ffi::JS_NewObject(ctx));
-                termination_policy.set_property(
-                    ctx,
-                    "mode",
-                    JSValue::string(ctx, "phase-retry-budget"),
-                );
+                termination_policy.set_property(ctx, "mode", JSValue::string(ctx, "phase-retry-budget"));
                 termination_policy.set_property(
                     ctx,
                     "terminateWhen",
-                    JSValue::string(
-                        ctx,
-                        "all-retryable-conflict-resolution-steps-exhausted",
-                    ),
+                    JSValue::string(ctx, "all-retryable-conflict-resolution-steps-exhausted"),
                 );
                 termination_policy.set_property(
                     ctx,
                     "escalateWhen",
-                    JSValue::string(
-                        ctx,
-                        "non-retryable-conflict-step-failed-or-budget-exhausted",
-                    ),
+                    JSValue::string(ctx, "non-retryable-conflict-step-failed-or-budget-exhausted"),
                 );
                 termination_policy.set_property(
                     ctx,
                     "timeoutEscalateWhen",
                     JSValue::string(ctx, "phase-timeout-exceeded"),
                 );
-                termination_policy.set_property(
-                    ctx,
-                    "retryableStepCount",
-                    JSValue::int(retryable_step_count as i32),
-                );
+                termination_policy.set_property(ctx, "retryableStepCount", JSValue::int(retryable_step_count as i32));
                 termination_policy.set_property(
                     ctx,
                     "totalRetryBudget",
@@ -4202,48 +3910,28 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                     "preferredConflictResolutionTotalRetryBudget",
                     JSValue(js_u64_to_js_number_or_bigint(ctx, total_retry_budget)),
                 );
-            backend_adaptation.set_property(
-                ctx,
-                "preferredConflictResolutionTerminationPolicy",
-                termination_policy,
-            );
-            backend_adaptation.set_property(
-                ctx,
-                "preferredConflictResolutionRouting",
-                JSValue(hook_conflict_resolution_routing_to_js(
-                    ctx,
-                    &conflict_resolution_steps,
-                    &query_templates,
-                    &preflight_templates,
-                    &cleanup_templates,
-                )),
-            );
-        } else {
-            backend_adaptation.set_property(
-                ctx,
-                    "preferredConflictResolutionPhaseOrder",
-                    JSValue::null(),
-                );
-                backend_adaptation.set_property(
-                    ctx,
-                    "preferredConflictResolutionRetryableStepCount",
-                    JSValue::null(),
-                );
-                backend_adaptation.set_property(
-                    ctx,
-                    "preferredConflictResolutionTotalRetryBudget",
-                    JSValue::null(),
-                );
                 backend_adaptation.set_property(
                     ctx,
                     "preferredConflictResolutionTerminationPolicy",
-                    JSValue::null(),
+                    termination_policy,
                 );
                 backend_adaptation.set_property(
                     ctx,
                     "preferredConflictResolutionRouting",
-                    JSValue::null(),
+                    JSValue(hook_conflict_resolution_routing_to_js(
+                        ctx,
+                        &conflict_resolution_steps,
+                        &query_templates,
+                        &preflight_templates,
+                        &cleanup_templates,
+                    )),
                 );
+            } else {
+                backend_adaptation.set_property(ctx, "preferredConflictResolutionPhaseOrder", JSValue::null());
+                backend_adaptation.set_property(ctx, "preferredConflictResolutionRetryableStepCount", JSValue::null());
+                backend_adaptation.set_property(ctx, "preferredConflictResolutionTotalRetryBudget", JSValue::null());
+                backend_adaptation.set_property(ctx, "preferredConflictResolutionTerminationPolicy", JSValue::null());
+                backend_adaptation.set_property(ctx, "preferredConflictResolutionRouting", JSValue::null());
             }
         }
         None => {
@@ -4296,12 +3984,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         && !conflict_resolution_steps.is_empty()
     {
         for (index, (group_key, phase, reason)) in conflict_resolution_steps.iter().enumerate() {
-            let templates = hook_backend_templates_for_group(
-                group_key,
-                &query_templates,
-                &preflight_templates,
-                &cleanup_templates,
-            );
+            let templates =
+                hook_backend_templates_for_group(group_key, &query_templates, &preflight_templates, &cleanup_templates);
             let step = JSValue(hook_backend_conflict_resolution_step_to_js(
                 ctx,
                 conflict_resolution_group_key,
@@ -4316,11 +4000,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 .to_i64(ctx)
                 .unwrap_or(0)
                 .max(0) as u64;
-            if step
-                .get_property(ctx, "retryable")
-                .to_bool()
-                .unwrap_or(false)
-            {
+            if step.get_property(ctx, "retryable").to_bool().unwrap_or(false) {
                 backend_adaptation_retryable_step_count += 1;
             }
             backend_adaptation_phase_order.push((*phase).to_string());
@@ -4344,11 +4024,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 .to_i64(ctx)
                 .unwrap_or(0)
                 .max(0) as u64;
-            if step
-                .get_property(ctx, "retryable")
-                .to_bool()
-                .unwrap_or(false)
-            {
+            if step.get_property(ctx, "retryable").to_bool().unwrap_or(false) {
                 backend_adaptation_retryable_step_count += 1;
             }
             if preferred_group_key != "none" {
@@ -4375,11 +4051,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     let backend_adaptation_execution_summary = if let Some(source) = backend_adaptation_step_chain_source {
         let summary = JSValue(ffi::JS_NewObject(ctx));
         let selected_step = JSValue(ffi::JS_GetPropertyUint32(ctx, backend_adaptation_step_chain, 0));
-        summary.set_property(
-            ctx,
-            "kind",
-            JSValue::string(ctx, backend_adaptation_execution_kind),
-        );
+        summary.set_property(ctx, "kind", JSValue::string(ctx, backend_adaptation_execution_kind));
         summary.set_property(ctx, "source", JSValue::string(ctx, source));
         summary.set_property(ctx, "mode", JSValue::string(ctx, backend_adaptation_mode));
         summary.set_property(ctx, "alignment", JSValue::string(ctx, backend_adaptation_alignment));
@@ -4484,11 +4156,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             "retryableStepCount",
             JSValue::int(backend_adaptation_retryable_step_count as i32),
         );
-        summary.set_property(
-            ctx,
-            "hasConflictPair",
-            JSValue::bool(conflict_backend_pair_count > 0),
-        );
+        summary.set_property(ctx, "hasConflictPair", JSValue::bool(conflict_backend_pair_count > 0));
         summary.set_property(ctx, "requiresQueryPhase", JSValue::bool(requires_query_phase));
         summary.set_property(ctx, "requiresPreflight", JSValue::bool(requires_preflight));
         summary.set_property(ctx, "requiresCleanupPhase", JSValue::bool(requires_cleanup_phase));
@@ -5384,7 +5052,10 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         &backend_adaptation,
         &preferred_conflict_resolution_ready,
         &[
-            ("preferredConflictResolutionDefaultEscalationKey", "defaultEscalationKey"),
+            (
+                "preferredConflictResolutionDefaultEscalationKey",
+                "defaultEscalationKey",
+            ),
             (
                 "preferredConflictResolutionDefaultEffectiveEscalationKey",
                 "defaultEffectiveEscalationKey",
@@ -5439,6 +5110,15 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             ("preferredConflictResolutionPhaseCount", "phaseCount"),
             ("preferredConflictResolutionPhaseFirst", "phaseFirst"),
             ("preferredConflictResolutionPhaseLast", "phaseLast"),
+            ("preferredConflictResolutionResolve", "resolve"),
+            ("preferredConflictResolutionResolveIndex", "resolveIndex"),
+            ("preferredConflictResolutionResolveIndexEntries", "resolveIndexEntries"),
+            ("preferredConflictResolutionResolveDefault", "resolveDefault"),
+            (
+                "preferredConflictResolutionResolveDefaultEffective",
+                "resolveDefaultEffective",
+            ),
+            ("preferredConflictResolutionResolveExamples", "resolveExamples"),
             ("preferredConflictResolutionResolveKnownCount", "resolveKnownCount"),
             ("preferredConflictResolutionResolveIndexCount", "resolveIndexCount"),
             (
@@ -5466,6 +5146,14 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "resolveExampleKnownErrorCode",
             ),
             (
+                "preferredConflictResolutionResolveExampleKnownResult",
+                "resolveExampleKnownResult",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleKnownResultEffective",
+                "resolveExampleKnownResultEffective",
+            ),
+            (
                 "preferredConflictResolutionResolveExampleKnownResultEffectivePhase",
                 "resolveExampleKnownResultEffectivePhase",
             ),
@@ -5478,6 +5166,14 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "resolveExampleMissingResultEffectivePhase",
             ),
             (
+                "preferredConflictResolutionResolveExampleMissingResult",
+                "resolveExampleMissingResult",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleMissingResultEffective",
+                "resolveExampleMissingResultEffective",
+            ),
+            (
                 "preferredConflictResolutionResolveExampleMissingReason",
                 "resolveExampleMissingReason",
             ),
@@ -5488,6 +5184,10 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             (
                 "preferredConflictResolutionResolveExampleQueryOnlyErrorCode",
                 "resolveExampleQueryOnlyErrorCode",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyInstallFailure",
+                "resolveExampleQueryOnlyInstallFailure",
             ),
             (
                 "preferredConflictResolutionResolveExampleQueryOnlyBlockedBy",
@@ -5528,6 +5228,14 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             (
                 "preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath",
                 "resolveExampleQueryOnlyWouldUsePath",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyResult",
+                "resolveExampleQueryOnlyResult",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleQueryOnlyResultEffective",
+                "resolveExampleQueryOnlyResultEffective",
             ),
             (
                 "preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase",
@@ -5669,6 +5377,21 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredConflictResolutionPhaseResolveKnownCount",
                 "phaseResolveKnownCount",
             ),
+            ("preferredConflictResolutionPhaseResolve", "phaseResolve"),
+            ("preferredConflictResolutionPhaseResolveIndex", "phaseResolveIndex"),
+            (
+                "preferredConflictResolutionPhaseResolveIndexEntries",
+                "phaseResolveIndexEntries",
+            ),
+            ("preferredConflictResolutionPhaseResolveDefault", "phaseResolveDefault"),
+            (
+                "preferredConflictResolutionPhaseResolveDefaultEffective",
+                "phaseResolveDefaultEffective",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExamples",
+                "phaseResolveExamples",
+            ),
             (
                 "preferredConflictResolutionPhaseResolveIndexCount",
                 "phaseResolveIndexCount",
@@ -5698,6 +5421,14 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "phaseResolveExampleKnownPhase",
             ),
             (
+                "preferredConflictResolutionPhaseResolveExampleKnownResult",
+                "phaseResolveExampleKnownResult",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleKnownResultEffective",
+                "phaseResolveExampleKnownResultEffective",
+            ),
+            (
                 "preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase",
                 "phaseResolveExampleKnownResultEffectivePhase",
             ),
@@ -5714,12 +5445,24 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "phaseResolveExampleMissingResultEffectivePhase",
             ),
             (
+                "preferredConflictResolutionPhaseResolveExampleMissingResult",
+                "phaseResolveExampleMissingResult",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleMissingResultEffective",
+                "phaseResolveExampleMissingResultEffective",
+            ),
+            (
                 "preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey",
                 "phaseResolveExampleMissingResultEffectiveEscalationKey",
             ),
             (
                 "preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode",
                 "phaseResolveExampleQueryOnlySourceErrorCode",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyInstallFailure",
+                "phaseResolveExampleQueryOnlyInstallFailure",
             ),
             (
                 "preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase",
@@ -5764,6 +5507,14 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             (
                 "preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase",
                 "phaseResolveExampleQueryOnlyWouldUsePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyResult",
+                "phaseResolveExampleQueryOnlyResult",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffective",
+                "phaseResolveExampleQueryOnlyResultEffective",
             ),
             (
                 "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase",
@@ -5921,7 +5672,10 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredConflictResolutionPhasePreflightTemplates",
                 "phasePreflightTemplates",
             ),
-            ("preferredConflictResolutionPhasePreflightTemplate", "phasePreflightTemplate"),
+            (
+                "preferredConflictResolutionPhasePreflightTemplate",
+                "phasePreflightTemplate",
+            ),
             (
                 "preferredConflictResolutionPhasePreflightCommandJsonTemplateCount",
                 "phasePreflightCommandJsonTemplateCount",
@@ -5994,16 +5748,8 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         &backend_adaptation,
         &preferred_conflict_resolution_ready,
         &[
-            (
-                "preferredConflictResolutionPhaseFirstName",
-                "phaseFirst",
-                "phase",
-            ),
-            (
-                "preferredConflictResolutionPhaseLastName",
-                "phaseLast",
-                "phase",
-            ),
+            ("preferredConflictResolutionPhaseFirstName", "phaseFirst", "phase"),
+            ("preferredConflictResolutionPhaseLastName", "phaseLast", "phase"),
             (
                 "preferredConflictResolutionPhaseQueryCommandJsonTemplateKind",
                 "phaseQueryCommandJsonTemplate",
@@ -6045,11 +5791,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         None => result.set_property(ctx, "activeBackend", JSValue::null()),
     };
     match &active_backend_display_name {
-        Some(display_name) => result.set_property(
-            ctx,
-            "activeBackendDisplayName",
-            JSValue::string(ctx, display_name),
-        ),
+        Some(display_name) => result.set_property(ctx, "activeBackendDisplayName", JSValue::string(ctx, display_name)),
         None => result.set_property(ctx, "activeBackendDisplayName", JSValue::null()),
     };
     result.set_property(ctx, "conflictState", JSValue::string(ctx, conflict_state));
@@ -6128,12 +5870,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         JSValue::int(filesystem_only_backend_count as i32),
     );
     set_string_array_property(ctx, result.raw(), "backendIds", &backend_ids);
-    set_string_array_property(
-        ctx,
-        result.raw(),
-        "backendDisplayNames",
-        &backend_display_names,
-    );
+    set_string_array_property(ctx, result.raw(), "backendDisplayNames", &backend_display_names);
     set_string_array_property(ctx, result.raw(), "loadedBackendIds", &shared_loaded_backend_ids);
     set_string_array_property(
         ctx,

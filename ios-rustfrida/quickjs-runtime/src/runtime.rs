@@ -2591,6 +2591,12 @@ undefined;
                                             adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanupTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup.templates.length))));
                             const preferredConflictRoutingAliasesOk =
                                 ((adaptation.conflictBackendPairCount === 0 &&
+                                    adaptation.preferredConflictResolutionResolve === null &&
+                                    adaptation.preferredConflictResolutionResolveDefault === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyResult === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolve === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefault === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResult === null &&
                                     adaptation.preferredConflictResolutionSuggestedEscalationKey === null &&
                                     adaptation.preferredConflictResolutionDefaultEscalationKey === null &&
                                     adaptation.preferredConflictResolutionPhaseFirst === null &&
@@ -2611,6 +2617,12 @@ undefined;
                                     adaptation.preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount === null &&
                                     adaptation.preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible === null) ||
                                 (adaptation.conflictBackendPairCount > 0 &&
+                                    adaptation.preferredConflictResolutionResolve === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolve &&
+                                    adaptation.preferredConflictResolutionResolveDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefault &&
+                                    adaptation.preferredConflictResolutionResolveExampleQueryOnlyResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyResult &&
+                                    adaptation.preferredConflictResolutionPhaseResolve === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolve &&
+                                    adaptation.preferredConflictResolutionPhaseResolveDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveDefault &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyResult &&
                                     adaptation.preferredConflictResolutionSuggestedEscalationKey === adaptation.preferredConflictResolutionRouting.suggestedEscalationKey &&
                                     adaptation.preferredConflictResolutionDefaultEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.defaultEscalationKey &&
                                     adaptation.preferredConflictResolutionPhaseFirst === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseFirst &&

@@ -14,10 +14,9 @@ use common::{
 };
 use native_api::{
     enumerate_images, hook_coexistence_layer_status, hook_coexistence_layer_status_for_mode,
-    hook_environment_recommendations, hook_environment_recommended_actions,
-    probe_injection_environment, BootstrapStatus,
-    InjectionEnvironmentReport, InjectionPlan, InjectionTarget, InjectionTargetPreflightReport, InjectionTrace,
-    LoaderSymbolRole, MachInjector, ResolvedLoaderSymbol,
+    hook_environment_recommendations, hook_environment_recommended_actions, probe_injection_environment,
+    BootstrapStatus, InjectionEnvironmentReport, InjectionPlan, InjectionTarget, InjectionTargetPreflightReport,
+    InjectionTrace, LoaderSymbolRole, MachInjector, ResolvedLoaderSymbol,
 };
 use serde_json::{json, Map, Value};
 
@@ -421,8 +420,9 @@ fn hook_effective_action(
         "target" => target_action
             .map(|item| item.recommendation.clone())
             .unwrap_or_else(|| "blocked by target hook policy".into()),
-        "both" => "blocked by both controller and target hook policies; inspect each side recommendation for details"
-            .into(),
+        "both" => {
+            "blocked by both controller and target hook policies; inspect each side recommendation for details".into()
+        }
         _ => controller_action
             .or(target_action)
             .map(|item| item.recommendation.clone())
@@ -540,9 +540,7 @@ fn hook_command_mode_with_backend_pressure(
 
 #[cfg(unix)]
 fn hook_effective_to_json(actions: &[HookEffectiveAction]) -> Value {
-    let allowed_for = |action_key: &str| {
-        hook_effective_allowed_for(actions, action_key)
-    };
+    let allowed_for = |action_key: &str| hook_effective_allowed_for(actions, action_key);
     let bootstrap_injection_allowed = allowed_for("hook.bootstrap");
     let query_commands_allowed = allowed_for("hook.query");
     let hook_install_commands_allowed = allowed_for("hook.install");
@@ -591,15 +589,13 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
     let loaded_in_both_count = json_u64_field(backend_matrix, "loadedInBothCount");
     let filesystem_only_in_either_count = json_u64_field(backend_matrix, "filesystemOnlyInEitherCount");
     let shared_backend_count = json_array_len(backend_matrix, "sharedBackendIds");
-    let total_loaded_backend_count =
-        loaded_in_controller_count + loaded_in_target_count - loaded_in_both_count;
-    let (command_mode, auto_downgraded_to_query_only, auto_downgrade_reason) =
-        hook_command_mode_with_backend_pressure(
-            base_command_mode,
-            loaded_in_controller_count,
-            loaded_in_target_count,
-            loaded_in_both_count,
-        );
+    let total_loaded_backend_count = loaded_in_controller_count + loaded_in_target_count - loaded_in_both_count;
+    let (command_mode, auto_downgraded_to_query_only, auto_downgrade_reason) = hook_command_mode_with_backend_pressure(
+        base_command_mode,
+        loaded_in_controller_count,
+        loaded_in_target_count,
+        loaded_in_both_count,
+    );
 
     let backend_pressure = if loaded_in_controller_count > 0 && loaded_in_target_count > 0 {
         "both"
@@ -684,14 +680,21 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
     let recommended_action = actions
         .iter()
         .filter(|item| item.allowed)
-        .min_by_key(|item| (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key)))
+        .min_by_key(|item| {
+            (
+                mode_rank(item.action_key),
+                item.priority,
+                hook_effective_action_order(item.action_key),
+            )
+        })
         .or_else(|| {
-            actions
-                .iter()
-                .filter(|item| !item.allowed)
-                .min_by_key(|item| {
-                    (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key))
-                })
+            actions.iter().filter(|item| !item.allowed).min_by_key(|item| {
+                (
+                    mode_rank(item.action_key),
+                    item.priority,
+                    hook_effective_action_order(item.action_key),
+                )
+            })
         });
 
     let preferred_path = mode;
@@ -1095,7 +1098,8 @@ fn json_array_len(value: &Value, key: &str) -> usize {
 
 #[cfg(unix)]
 fn json_string_array_field(value: &Value, key: &str) -> Vec<String> {
-    value.get(key)
+    value
+        .get(key)
         .and_then(Value::as_array)
         .map(|items| {
             items
@@ -1124,13 +1128,7 @@ fn command_template_group_to_json(group_key: &str, templates: Vec<String>) -> Va
 }
 
 #[cfg(unix)]
-fn conflict_resolution_chain_entry(
-    index: usize,
-    group_key: &str,
-    phase: &str,
-    reason: &str,
-    group: &Value,
-) -> Value {
+fn conflict_resolution_chain_entry(index: usize, group_key: &str, phase: &str, reason: &str, group: &Value) -> Value {
     let (retryable, max_suggested_retries, retry_delay_hint_ms) = phase_retry_policy(phase);
     let (timeout_hint_ms, timeout_action) = phase_timeout_policy(phase);
     let error_code = phase_failure_code(phase);
@@ -1277,14 +1275,15 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             }
         }
     }
-    let error_code_routing = error_code_routing_candidates
-        .iter()
-        .fold(Map::<String, Value>::new(), |mut map, (error_code, candidates)| {
-            if let Some(first) = candidates.first() {
-                map.insert(error_code.clone(), Value::String(first.clone()));
-            }
-            map
-        });
+    let error_code_routing =
+        error_code_routing_candidates
+            .iter()
+            .fold(Map::<String, Value>::new(), |mut map, (error_code, candidates)| {
+                if let Some(first) = candidates.first() {
+                    map.insert(error_code.clone(), Value::String(first.clone()));
+                }
+                map
+            });
     let error_code_routing_entries = error_code_routing_candidates
         .iter()
         .map(|(error_code, candidates)| {
@@ -1469,25 +1468,26 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .cloned()
             .unwrap_or(Value::Null),
     });
-    let routing_decision_ready_resolve_index = routing_decision_ready_index
-        .iter()
-        .fold(Map::<String, Value>::new(), |mut map, (error_code, decision)| {
-            map.insert(
-                error_code.clone(),
-                json!({
-                    "matched": true,
-                    "usedDefault": false,
-                    "reason": "matched-error-code",
-                    "effectivePhase": decision.get("effectivePhase").cloned().unwrap_or(Value::Null),
-                    "effectiveEscalationKey": decision
-                        .get("effectiveEscalationKey")
-                        .cloned()
-                        .unwrap_or(Value::Null),
-                    "effective": decision,
-                }),
-            );
-            map
-        });
+    let routing_decision_ready_resolve_index =
+        routing_decision_ready_index
+            .iter()
+            .fold(Map::<String, Value>::new(), |mut map, (error_code, decision)| {
+                map.insert(
+                    error_code.clone(),
+                    json!({
+                        "matched": true,
+                        "usedDefault": false,
+                        "reason": "matched-error-code",
+                        "effectivePhase": decision.get("effectivePhase").cloned().unwrap_or(Value::Null),
+                        "effectiveEscalationKey": decision
+                            .get("effectiveEscalationKey")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effective": decision,
+                    }),
+                );
+                map
+            });
     let routing_decision_ready_resolve_default = json!({
         "matched": false,
         "usedDefault": true,
@@ -1506,8 +1506,7 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         .keys()
         .map(ToOwned::to_owned)
         .collect::<Vec<_>>();
-    let routing_decision_ready_example_known_error_code =
-        routing_decision_ready_known_error_codes.first().cloned();
+    let routing_decision_ready_example_known_error_code = routing_decision_ready_known_error_codes.first().cloned();
     let routing_decision_ready_example_known_result = routing_decision_ready_example_known_error_code
         .as_ref()
         .and_then(|error_code| routing_decision_ready_resolve_index.get(error_code))
@@ -1592,7 +1591,8 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
     let routing_decision_ready_phase_index = routing_decision_ready_phase_entries
         .iter()
         .filter_map(|entry| {
-            entry.get("phase")
+            entry
+                .get("phase")
                 .and_then(Value::as_str)
                 .map(|phase| (phase.to_string(), entry.clone()))
         })
@@ -1612,27 +1612,28 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         .get("cleanup")
         .cloned()
         .unwrap_or(Value::Null);
-    let routing_decision_ready_phase_resolve_index = routing_decision_ready_phase_index
-        .iter()
-        .fold(Map::<String, Value>::new(), |mut map, (phase, entry)| {
-            map.insert(
-                phase.clone(),
-                json!({
-                    "matched": true,
-                    "usedDefault": false,
-                    "reason": "matched-phase",
-                    "effectivePhase": entry.get("phase").cloned().unwrap_or(Value::Null),
-                    "effectiveEscalationKey": entry
-                        .get("escalationKeys")
-                        .and_then(Value::as_array)
-                        .and_then(|items| items.first())
-                        .cloned()
-                        .unwrap_or(Value::Null),
-                    "effective": entry,
-                }),
-            );
-            map
-        });
+    let routing_decision_ready_phase_resolve_index =
+        routing_decision_ready_phase_index
+            .iter()
+            .fold(Map::<String, Value>::new(), |mut map, (phase, entry)| {
+                map.insert(
+                    phase.clone(),
+                    json!({
+                        "matched": true,
+                        "usedDefault": false,
+                        "reason": "matched-phase",
+                        "effectivePhase": entry.get("phase").cloned().unwrap_or(Value::Null),
+                        "effectiveEscalationKey": entry
+                            .get("escalationKeys")
+                            .and_then(Value::as_array)
+                            .and_then(|items| items.first())
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effective": entry,
+                    }),
+                );
+                map
+            });
     let routing_decision_ready_default_phase = routing_decision_ready_default
         .get("effectivePhase")
         .and_then(Value::as_str)
@@ -2174,7 +2175,8 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         .get("entries")
         .and_then(Value::as_array)
         .map(|items| {
-            items.iter()
+            items
+                .iter()
                 .filter_map(|item| {
                     let backend_id = item.get("id").and_then(Value::as_str)?;
                     let display_name = item.get("displayName").and_then(Value::as_str)?;
@@ -2203,9 +2205,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         "filesystem-only" => "preflight-before-inline",
         "shared-loaded" => "shared-runtime-query-first",
         "controller-loaded-only" | "target-loaded-only" => "side-specific-runtime-query-first",
-        "shared-plus-controller-loaded" | "shared-plus-target-loaded" => {
-            "shared-runtime-with-sidecar-query-first"
-        }
+        "shared-plus-controller-loaded" | "shared-plus-target-loaded" => "shared-runtime-with-sidecar-query-first",
         "split-loaded" | "shared-and-split-loaded" => "runtime-alignment-required",
         _ => "unknown",
     };
@@ -2443,7 +2443,8 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             left.get("backendId").and_then(Value::as_str).unwrap_or(""),
         );
         let right_key = (
-            right.get("suggestedGroupKey")
+            right
+                .get("suggestedGroupKey")
                 .and_then(Value::as_str)
                 .map(|value| value != preferred_group_key)
                 .unwrap_or(true),
@@ -2629,19 +2630,18 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         .iter()
         .map(|entry| entry.get("maxSuggestedRetries").and_then(Value::as_u64).unwrap_or(0))
         .sum::<u64>();
-    let preferred_conflict_resolution_termination_policy =
-        if preferred_conflict_resolution_chain.is_empty() {
-            Value::Null
-        } else {
-            json!({
-                "mode": "phase-retry-budget",
-                "terminateWhen": "all-retryable-conflict-resolution-steps-exhausted",
-                "escalateWhen": "non-retryable-conflict-step-failed-or-budget-exhausted",
-                "timeoutEscalateWhen": "phase-timeout-exceeded",
-                "retryableStepCount": preferred_conflict_resolution_retryable_step_count,
-                "totalRetryBudget": preferred_conflict_resolution_total_retry_budget,
-            })
-        };
+    let preferred_conflict_resolution_termination_policy = if preferred_conflict_resolution_chain.is_empty() {
+        Value::Null
+    } else {
+        json!({
+            "mode": "phase-retry-budget",
+            "terminateWhen": "all-retryable-conflict-resolution-steps-exhausted",
+            "escalateWhen": "non-retryable-conflict-step-failed-or-budget-exhausted",
+            "timeoutEscalateWhen": "phase-timeout-exceeded",
+            "retryableStepCount": preferred_conflict_resolution_retryable_step_count,
+            "totalRetryBudget": preferred_conflict_resolution_total_retry_budget,
+        })
+    };
     let preferred_conflict_resolution_routing =
         conflict_resolution_routing_to_json(&preferred_conflict_resolution_chain);
     let preferred_conflict_resolution_step_chain = preferred_conflict_resolution_chain
@@ -2658,7 +2658,8 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("command")
                 .cloned()
                 .or_else(|| {
-                    entry.get("templates")
+                    entry
+                        .get("templates")
                         .and_then(Value::as_array)
                         .and_then(|items| items.first())
                         .cloned()
@@ -2735,8 +2736,10 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             })
         })
         .collect::<Vec<_>>();
-    let preferred_conflict_resolution_next_step =
-        preferred_conflict_resolution_step_chain.first().cloned().unwrap_or(Value::Null);
+    let preferred_conflict_resolution_next_step = preferred_conflict_resolution_step_chain
+        .first()
+        .cloned()
+        .unwrap_or(Value::Null);
     let preferred_conflict_resolution_active_step = preferred_conflict_resolution_step_chain
         .first()
         .cloned()
@@ -2746,8 +2749,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         .flat_map(|controller_backend_id| {
             let conflict_resolution_templates = conflict_resolution_templates.clone();
             let conflict_resolution_template_count = conflict_resolution_template_count.clone();
-            let conflict_resolution_command_json_templates =
-                conflict_resolution_command_json_templates.clone();
+            let conflict_resolution_command_json_templates = conflict_resolution_command_json_templates.clone();
             let conflict_resolution_command_json_template_count =
                 conflict_resolution_command_json_template_count.clone();
             let preferred_conflict_resolution_chain = preferred_conflict_resolution_chain.clone();
@@ -2839,14 +2841,8 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
     } else {
         "backend-adaptation-preferred-group"
     };
-    let backend_adaptation_next_step = backend_adaptation_step_chain
-        .first()
-        .cloned()
-        .unwrap_or(Value::Null);
-    let backend_adaptation_active_step = backend_adaptation_step_chain
-        .first()
-        .cloned()
-        .unwrap_or(Value::Null);
+    let backend_adaptation_next_step = backend_adaptation_step_chain.first().cloned().unwrap_or(Value::Null);
+    let backend_adaptation_active_step = backend_adaptation_step_chain.first().cloned().unwrap_or(Value::Null);
     let backend_adaptation_execution_kind = if has_preferred_conflict_backend_pair {
         "conflict-resolution"
     } else if preferred_group_key == "none" || backend_adaptation_step_chain.is_empty() {
@@ -4080,6 +4076,66 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
+        "preferredConflictResolutionResolve": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolve"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionResolveIndex": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveIndex"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionResolveIndexEntries": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveIndexEntries"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionResolveDefault": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveDefault"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionResolveDefaultEffective": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveDefaultEffective"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionResolveExamples": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveExamples"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
         "preferredConflictResolutionResolveKnownCount": if has_preferred_conflict_backend_pair {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
@@ -4160,6 +4216,26 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
+        "preferredConflictResolutionResolveExampleKnownResult": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveExampleKnownResult"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionResolveExampleKnownResultEffective": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveExampleKnownResultEffective"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
         "preferredConflictResolutionResolveExampleKnownResultEffectivePhase": if has_preferred_conflict_backend_pair {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
@@ -4185,6 +4261,26 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
                 .and_then(|value| value.get("resolveExampleMissingResultEffectivePhase"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionResolveExampleMissingResult": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveExampleMissingResult"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionResolveExampleMissingResultEffective": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveExampleMissingResultEffective"))
                 .cloned()
                 .unwrap_or(Value::Null)
         } else {
@@ -4216,6 +4312,16 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
                 .and_then(|value| value.get("resolveExampleQueryOnlyErrorCode"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionResolveExampleQueryOnlyInstallFailure": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveExampleQueryOnlyInstallFailure"))
                 .cloned()
                 .unwrap_or(Value::Null)
         } else {
@@ -4316,6 +4422,26 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
                 .and_then(|value| value.get("resolveExampleQueryOnlyWouldUsePath"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionResolveExampleQueryOnlyResult": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveExampleQueryOnlyResult"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionResolveExampleQueryOnlyResultEffective": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("resolveExampleQueryOnlyResultEffective"))
                 .cloned()
                 .unwrap_or(Value::Null)
         } else {
@@ -4737,6 +4863,66 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
+        "preferredConflictResolutionPhaseResolve": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolve"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseResolveIndex": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveIndex"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseResolveIndexEntries": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveIndexEntries"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseResolveDefault": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveDefault"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseResolveDefaultEffective": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveDefaultEffective"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseResolveExamples": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveExamples"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
         "preferredConflictResolutionPhaseResolveIndexCount": if has_preferred_conflict_backend_pair {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
@@ -4807,6 +4993,26 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
+        "preferredConflictResolutionPhaseResolveExampleKnownResult": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveExampleKnownResult"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseResolveExampleKnownResultEffective": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveExampleKnownResultEffective"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
         "preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase": if has_preferred_conflict_backend_pair {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
@@ -4848,6 +5054,26 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
+        "preferredConflictResolutionPhaseResolveExampleMissingResult": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveExampleMissingResult"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseResolveExampleMissingResultEffective": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveExampleMissingResultEffective"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
         "preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
@@ -4863,6 +5089,16 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
                 .and_then(|value| value.get("phaseResolveExampleQueryOnlySourceErrorCode"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyInstallFailure": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveExampleQueryOnlyInstallFailure"))
                 .cloned()
                 .unwrap_or(Value::Null)
         } else {
@@ -4973,6 +5209,26 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
                 .and_then(|value| value.get("phaseResolveExampleQueryOnlyWouldUsePhase"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyResult": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveExampleQueryOnlyResult"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffective": if has_preferred_conflict_backend_pair {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseResolveExampleQueryOnlyResultEffective"))
                 .cloned()
                 .unwrap_or(Value::Null)
         } else {
@@ -6030,13 +6286,7 @@ fn hook_action_command_templates(action_key: &str, preferred_path: &str) -> Vec<
             "shook status",
             "hfl status",
         ],
-        "hook.stop" => &[
-            "trace stop",
-            "stalker stop",
-            "jhook stop",
-            "shook stop",
-            "hfl stop",
-        ],
+        "hook.stop" => &["trace stop", "stalker stop", "jhook stop", "shook stop", "hfl stop"],
         _ => &[],
     };
 
@@ -6269,17 +6519,15 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let loaded_in_both_count = json_u64_field(backend_matrix, "loadedInBothCount");
     let filesystem_only_in_either_count = json_u64_field(backend_matrix, "filesystemOnlyInEitherCount");
     let shared_backend_count = json_array_len(backend_matrix, "sharedBackendIds");
-    let total_loaded_backend_count =
-        loaded_in_controller_count + loaded_in_target_count - loaded_in_both_count;
+    let total_loaded_backend_count = loaded_in_controller_count + loaded_in_target_count - loaded_in_both_count;
     let single_external_backend_loaded = total_loaded_backend_count == 1;
     let multiple_external_backends_loaded = total_loaded_backend_count > 1;
-    let (command_mode, auto_downgraded_to_query_only, auto_downgrade_reason) =
-        hook_command_mode_with_backend_pressure(
-            base_command_mode,
-            loaded_in_controller_count,
-            loaded_in_target_count,
-            loaded_in_both_count,
-        );
+    let (command_mode, auto_downgraded_to_query_only, auto_downgrade_reason) = hook_command_mode_with_backend_pressure(
+        base_command_mode,
+        loaded_in_controller_count,
+        loaded_in_target_count,
+        loaded_in_both_count,
+    );
 
     let backend_pressure = if loaded_in_controller_count > 0 && loaded_in_target_count > 0 {
         "both"
@@ -6338,14 +6586,20 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         }
     };
 
-    let next_action = actions
-        .iter()
-        .filter(|item| item.allowed)
-        .min_by_key(|item| (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key)));
-    let blocked_action = actions
-        .iter()
-        .filter(|item| !item.allowed)
-        .min_by_key(|item| (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key)));
+    let next_action = actions.iter().filter(|item| item.allowed).min_by_key(|item| {
+        (
+            mode_rank(item.action_key),
+            item.priority,
+            hook_effective_action_order(item.action_key),
+        )
+    });
+    let blocked_action = actions.iter().filter(|item| !item.allowed).min_by_key(|item| {
+        (
+            mode_rank(item.action_key),
+            item.priority,
+            hook_effective_action_order(item.action_key),
+        )
+    });
 
     let selected_action = next_action.or(blocked_action);
     let is_action_allowed = |action_key: &str| -> bool {
@@ -6356,7 +6610,13 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .unwrap_or(true)
     };
     let mut ordered_actions = actions.iter().collect::<Vec<_>>();
-    ordered_actions.sort_by_key(|item| (mode_rank(item.action_key), item.priority, hook_effective_action_order(item.action_key)));
+    ordered_actions.sort_by_key(|item| {
+        (
+            mode_rank(item.action_key),
+            item.priority,
+            hook_effective_action_order(item.action_key),
+        )
+    });
 
     let next_action_key = selected_action.map(|item| item.action_key).map(ToOwned::to_owned);
     let next_runnable_action_key = next_action.map(|item| item.action_key).map(ToOwned::to_owned);
@@ -6713,8 +6973,9 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .iter()
         .filter(|policy| policy.get("retryable").and_then(Value::as_bool).unwrap_or(false))
         .count();
-    let fallback_non_retryable_phase_count =
-        fallback_phase_retry_policies.len().saturating_sub(fallback_retryable_phase_count);
+    let fallback_non_retryable_phase_count = fallback_phase_retry_policies
+        .len()
+        .saturating_sub(fallback_retryable_phase_count);
     let fallback_termination_policy = json!({
         "mode": "phase-retry-budget",
         "terminateWhen": "all-retryable-steps-exhausted",
@@ -6797,10 +7058,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .iter()
             .map(|template| command_json_template_entry(template))
             .collect::<Vec<_>>();
-        let escalation_policy_error_codes = vec![
-            "hook-fallback-diagnose-failed",
-            "hook-fallback-diagnose-timeout",
-        ];
+        let escalation_policy_error_codes = vec!["hook-fallback-diagnose-failed", "hook-fallback-diagnose-timeout"];
         escalation_recommendations.push(json!({
             "key": "policy-review",
             "condition": "selected-next-action-blocked",
@@ -6840,14 +7098,15 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             }
         }
     }
-    let error_code_routing = error_code_routing_candidates
-        .iter()
-        .fold(Map::<String, Value>::new(), |mut map, (error_code, candidates)| {
-            if let Some(first) = candidates.first() {
-                map.insert(error_code.clone(), Value::String(first.clone()));
-            }
-            map
-        });
+    let error_code_routing =
+        error_code_routing_candidates
+            .iter()
+            .fold(Map::<String, Value>::new(), |mut map, (error_code, candidates)| {
+                if let Some(first) = candidates.first() {
+                    map.insert(error_code.clone(), Value::String(first.clone()));
+                }
+                map
+            });
     let escalation_recommendation_by_key = escalation_recommendations
         .iter()
         .filter_map(|recommendation| {
@@ -6902,56 +7161,53 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let error_code_routing_resolved = error_code_routing_entries
         .iter()
         .filter_map(|entry| {
-            entry
-                .get("errorCode")
-                .and_then(Value::as_str)
-                .map(|error_code| {
-                    (
-                        error_code.to_string(),
-                        json!({
-                            "escalationKey": entry
-                                .get("recommendedEscalationKey")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "phase": entry
-                                .get("recommendedPhase")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "effectiveEscalationKey": entry
-                                .get("effectiveEscalationKey")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "effectivePhase": entry
-                                .get("effectivePhase")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "matchConfidence": entry
-                                .get("matchConfidence")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "resolvedFrom": entry
-                                .get("resolvedFrom")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "templateCount": entry
-                                .get("recommendedTemplateCount")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "templates": entry
-                                .get("recommendedTemplates")
-                                .cloned()
-                                .unwrap_or(json!([])),
-                            "commandJsonTemplateCount": entry
-                                .get("recommendedCommandJsonTemplateCount")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "commandJsonTemplates": entry
-                                .get("recommendedCommandJsonTemplates")
-                                .cloned()
-                                .unwrap_or(json!([])),
-                        }),
-                    )
-                })
+            entry.get("errorCode").and_then(Value::as_str).map(|error_code| {
+                (
+                    error_code.to_string(),
+                    json!({
+                        "escalationKey": entry
+                            .get("recommendedEscalationKey")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "phase": entry
+                            .get("recommendedPhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effectiveEscalationKey": entry
+                            .get("effectiveEscalationKey")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effectivePhase": entry
+                            .get("effectivePhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "matchConfidence": entry
+                            .get("matchConfidence")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "resolvedFrom": entry
+                            .get("resolvedFrom")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "templateCount": entry
+                            .get("recommendedTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "templates": entry
+                            .get("recommendedTemplates")
+                            .cloned()
+                            .unwrap_or(json!([])),
+                        "commandJsonTemplateCount": entry
+                            .get("recommendedCommandJsonTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonTemplates": entry
+                            .get("recommendedCommandJsonTemplates")
+                            .cloned()
+                            .unwrap_or(json!([])),
+                    }),
+                )
+            })
         })
         .fold(Map::<String, Value>::new(), |mut map, (error_code, value)| {
             map.insert(error_code, value);
@@ -6960,56 +7216,53 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
     let routing_decision_index = error_code_routing_entries
         .iter()
         .filter_map(|entry| {
-            entry
-                .get("errorCode")
-                .and_then(Value::as_str)
-                .map(|error_code| {
-                    (
-                        error_code.to_string(),
-                        json!({
-                            "recommendedEscalationKey": entry
-                                .get("recommendedEscalationKey")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "effectiveEscalationKey": entry
-                                .get("effectiveEscalationKey")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "matchConfidence": entry
-                                .get("matchConfidence")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "resolvedFrom": entry
-                                .get("resolvedFrom")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "recommendedPhase": entry
-                                .get("recommendedPhase")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "effectivePhase": entry
-                                .get("effectivePhase")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "recommendedTemplateCount": entry
-                                .get("recommendedTemplateCount")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "recommendedTemplates": entry
-                                .get("recommendedTemplates")
-                                .cloned()
-                                .unwrap_or(json!([])),
-                            "recommendedCommandJsonTemplateCount": entry
-                                .get("recommendedCommandJsonTemplateCount")
-                                .cloned()
-                                .unwrap_or(Value::Null),
-                            "recommendedCommandJsonTemplates": entry
-                                .get("recommendedCommandJsonTemplates")
-                                .cloned()
-                                .unwrap_or(json!([])),
-                        }),
-                    )
-                })
+            entry.get("errorCode").and_then(Value::as_str).map(|error_code| {
+                (
+                    error_code.to_string(),
+                    json!({
+                        "recommendedEscalationKey": entry
+                            .get("recommendedEscalationKey")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effectiveEscalationKey": entry
+                            .get("effectiveEscalationKey")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "matchConfidence": entry
+                            .get("matchConfidence")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "resolvedFrom": entry
+                            .get("resolvedFrom")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "recommendedPhase": entry
+                            .get("recommendedPhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effectivePhase": entry
+                            .get("effectivePhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "recommendedTemplateCount": entry
+                            .get("recommendedTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "recommendedTemplates": entry
+                            .get("recommendedTemplates")
+                            .cloned()
+                            .unwrap_or(json!([])),
+                        "recommendedCommandJsonTemplateCount": entry
+                            .get("recommendedCommandJsonTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "recommendedCommandJsonTemplates": entry
+                            .get("recommendedCommandJsonTemplates")
+                            .cloned()
+                            .unwrap_or(json!([])),
+                    }),
+                )
+            })
         })
         .fold(Map::<String, Value>::new(), |mut map, (error_code, value)| {
             map.insert(error_code, value);
@@ -7044,52 +7297,47 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             })
         })
         .unwrap_or(Value::Null);
-    let routing_decision_ready_index = routing_decision_index
-        .iter()
-        .fold(Map::<String, Value>::new(), |mut map, (error_code, decision)| {
-            let escalation_key = decision
-                .get("recommendedEscalationKey")
-                .cloned()
-                .unwrap_or(Value::Null);
-            let phase = decision
-                .get("recommendedPhase")
-                .cloned()
-                .unwrap_or(Value::Null);
-            map.insert(
-                error_code.clone(),
-                json!({
-                    "escalationKey": escalation_key.clone(),
-                    "phase": phase.clone(),
-                    "effectiveEscalationKey": escalation_key,
-                    "effectivePhase": phase,
-                    "templateCount": decision
-                        .get("recommendedTemplateCount")
-                        .cloned()
-                        .unwrap_or(Value::Null),
-                    "templates": decision
-                        .get("recommendedTemplates")
-                        .cloned()
-                        .unwrap_or(json!([])),
-                    "commandJsonTemplateCount": decision
-                        .get("recommendedCommandJsonTemplateCount")
-                        .cloned()
-                        .unwrap_or(Value::Null),
-                    "commandJsonTemplates": decision
-                        .get("recommendedCommandJsonTemplates")
-                        .cloned()
-                        .unwrap_or(json!([])),
-                    "matchConfidence": decision
-                        .get("matchConfidence")
-                        .cloned()
-                        .unwrap_or(Value::Null),
-                    "resolvedFrom": decision
-                        .get("resolvedFrom")
-                        .cloned()
-                        .unwrap_or(Value::Null),
-                }),
-            );
-            map
-        });
+    let routing_decision_ready_index =
+        routing_decision_index
+            .iter()
+            .fold(Map::<String, Value>::new(), |mut map, (error_code, decision)| {
+                let escalation_key = decision.get("recommendedEscalationKey").cloned().unwrap_or(Value::Null);
+                let phase = decision.get("recommendedPhase").cloned().unwrap_or(Value::Null);
+                map.insert(
+                    error_code.clone(),
+                    json!({
+                        "escalationKey": escalation_key.clone(),
+                        "phase": phase.clone(),
+                        "effectiveEscalationKey": escalation_key,
+                        "effectivePhase": phase,
+                        "templateCount": decision
+                            .get("recommendedTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "templates": decision
+                            .get("recommendedTemplates")
+                            .cloned()
+                            .unwrap_or(json!([])),
+                        "commandJsonTemplateCount": decision
+                            .get("recommendedCommandJsonTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonTemplates": decision
+                            .get("recommendedCommandJsonTemplates")
+                            .cloned()
+                            .unwrap_or(json!([])),
+                        "matchConfidence": decision
+                            .get("matchConfidence")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "resolvedFrom": decision
+                            .get("resolvedFrom")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                    }),
+                );
+                map
+            });
     let routing_decision_ready_default = json!({
         "escalationKey": routing_decision_default
             .get("recommendedEscalationKey")
@@ -7147,38 +7395,36 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
             .cloned()
             .unwrap_or(Value::Null),
     });
-    let routing_decision_ready_resolve_index = routing_decision_ready_index
-        .iter()
-        .fold(Map::<String, Value>::new(), |mut map, (error_code, decision)| {
-            let effective_phase = decision
-                .get("phase")
-                .and_then(Value::as_str)
-                .map(ToOwned::to_owned);
-            let effective_escalation_key = decision
-                .get("escalationKey")
-                .and_then(Value::as_str)
-                .map(ToOwned::to_owned)
-                .or_else(|| {
-                    decision
-                        .get("escalationKeys")
-                        .and_then(Value::as_array)
-                        .and_then(|keys| keys.first())
-                        .and_then(Value::as_str)
-                        .map(ToOwned::to_owned)
-                });
-            map.insert(
-                error_code.clone(),
-                json!({
-                    "matched": true,
-                    "usedDefault": false,
-                    "reason": "matched-error-code",
-                    "effectivePhase": effective_phase,
-                    "effectiveEscalationKey": effective_escalation_key,
-                    "effective": decision,
-                }),
-            );
-            map
-        });
+    let routing_decision_ready_resolve_index =
+        routing_decision_ready_index
+            .iter()
+            .fold(Map::<String, Value>::new(), |mut map, (error_code, decision)| {
+                let effective_phase = decision.get("phase").and_then(Value::as_str).map(ToOwned::to_owned);
+                let effective_escalation_key = decision
+                    .get("escalationKey")
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned)
+                    .or_else(|| {
+                        decision
+                            .get("escalationKeys")
+                            .and_then(Value::as_array)
+                            .and_then(|keys| keys.first())
+                            .and_then(Value::as_str)
+                            .map(ToOwned::to_owned)
+                    });
+                map.insert(
+                    error_code.clone(),
+                    json!({
+                        "matched": true,
+                        "usedDefault": false,
+                        "reason": "matched-error-code",
+                        "effectivePhase": effective_phase,
+                        "effectiveEscalationKey": effective_escalation_key,
+                        "effective": decision,
+                    }),
+                );
+                map
+            });
     let routing_decision_ready_resolve_default_effective_phase = routing_decision_ready_default
         .get("phase")
         .and_then(Value::as_str)
@@ -7215,16 +7461,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .get("reason")
         .cloned()
         .unwrap_or(Value::Null);
-    let routing_decision_ready_resolve_default_effective_phase_alias =
-        routing_decision_ready_resolve_default
-            .get("effectivePhase")
-            .cloned()
-            .unwrap_or(Value::Null);
-    let routing_decision_ready_resolve_default_effective_escalation_key_alias =
-        routing_decision_ready_resolve_default
-            .get("effectiveEscalationKey")
-            .cloned()
-            .unwrap_or(Value::Null);
+    let routing_decision_ready_resolve_default_effective_phase_alias = routing_decision_ready_resolve_default
+        .get("effectivePhase")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_resolve_default_effective_escalation_key_alias = routing_decision_ready_resolve_default
+        .get("effectiveEscalationKey")
+        .cloned()
+        .unwrap_or(Value::Null);
     let routing_decision_ready_known_error_codes = routing_decision_ready_index
         .keys()
         .map(ToOwned::to_owned)
@@ -7240,20 +7484,21 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .and_then(|entry| entry.get("phase"))
         .and_then(Value::as_str)
         .map(ToOwned::to_owned);
-    let routing_decision_ready_example_known_effective_escalation_key = routing_decision_ready_example_known_error_result
-        .get("effective")
-        .and_then(|entry| entry.get("escalationKey"))
-        .and_then(Value::as_str)
-        .map(ToOwned::to_owned)
-        .or_else(|| {
-            routing_decision_ready_example_known_error_result
-                .get("effective")
-                .and_then(|entry| entry.get("escalationKeys"))
-                .and_then(Value::as_array)
-                .and_then(|keys| keys.first())
-                .and_then(Value::as_str)
-                .map(ToOwned::to_owned)
-        });
+    let routing_decision_ready_example_known_effective_escalation_key =
+        routing_decision_ready_example_known_error_result
+            .get("effective")
+            .and_then(|entry| entry.get("escalationKey"))
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+            .or_else(|| {
+                routing_decision_ready_example_known_error_result
+                    .get("effective")
+                    .and_then(|entry| entry.get("escalationKeys"))
+                    .and_then(Value::as_array)
+                    .and_then(|keys| keys.first())
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned)
+            });
     let routing_decision_ready_example_missing_error_code = "hook-fallback-unknown";
     let routing_decision_ready_example_missing_effective_phase = routing_decision_ready_resolve_default
         .get("effective")
@@ -7282,12 +7527,14 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .iter()
         .find(|item| item.action_key == "hook.install")
         .map(|item| item.blocked_by.to_string());
-    let routing_decision_ready_example_query_only_blocked_by_source = routing_decision_ready_example_query_only_blocked_by
-        .clone()
-        .unwrap_or_else(|| "none".to_string());
+    let routing_decision_ready_example_query_only_blocked_by_source =
+        routing_decision_ready_example_query_only_blocked_by
+            .clone()
+            .unwrap_or_else(|| "none".to_string());
     let routing_decision_ready_example_query_only_is_blocked =
         routing_decision_ready_example_query_only_blocked_by_source != "none";
-    let routing_decision_ready_example_query_only_available = routing_decision_ready_example_query_only_result.is_some();
+    let routing_decision_ready_example_query_only_available =
+        routing_decision_ready_example_query_only_result.is_some();
     let routing_decision_ready_example_query_only_matched = routing_decision_ready_example_query_only_result
         .as_ref()
         .and_then(|entry| entry.get("matched"))
@@ -7303,37 +7550,37 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .and_then(|entry| entry.get("reason"))
         .and_then(Value::as_str)
         .map(ToOwned::to_owned)
-        .or_else(|| {
-            (!routing_decision_ready_example_query_only_available).then(|| "missing-error-code".to_string())
-        });
+        .or_else(|| (!routing_decision_ready_example_query_only_available).then(|| "missing-error-code".to_string()));
     let routing_decision_ready_example_query_only_phase = routing_decision_ready_example_query_only_result
         .as_ref()
         .and_then(|entry| entry.get("effective"))
         .and_then(|entry| entry.get("phase"))
         .and_then(Value::as_str)
         .map(ToOwned::to_owned);
-    let routing_decision_ready_example_query_only_effective_escalation_key = routing_decision_ready_example_query_only_result
-        .as_ref()
-        .and_then(|entry| entry.get("effective"))
-        .and_then(|entry| entry.get("escalationKey"))
-        .and_then(Value::as_str)
-        .map(ToOwned::to_owned)
-        .or_else(|| {
-            routing_decision_ready_example_query_only_result
-                .as_ref()
-                .and_then(|entry| entry.get("effective"))
-                .and_then(|entry| entry.get("escalationKeys"))
-                .and_then(Value::as_array)
-                .and_then(|keys| keys.first())
-                .and_then(Value::as_str)
-                .map(ToOwned::to_owned)
-        });
-    let routing_decision_ready_example_query_only_would_use_query_path = routing_decision_ready_example_query_only_result
-        .as_ref()
-        .and_then(|entry| entry.get("effective"))
-        .and_then(|entry| entry.get("escalationKey"))
-        .and_then(Value::as_str)
-        .is_some_and(|key| key == "query-only-path");
+    let routing_decision_ready_example_query_only_effective_escalation_key =
+        routing_decision_ready_example_query_only_result
+            .as_ref()
+            .and_then(|entry| entry.get("effective"))
+            .and_then(|entry| entry.get("escalationKey"))
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+            .or_else(|| {
+                routing_decision_ready_example_query_only_result
+                    .as_ref()
+                    .and_then(|entry| entry.get("effective"))
+                    .and_then(|entry| entry.get("escalationKeys"))
+                    .and_then(Value::as_array)
+                    .and_then(|keys| keys.first())
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned)
+            });
+    let routing_decision_ready_example_query_only_would_use_query_path =
+        routing_decision_ready_example_query_only_result
+            .as_ref()
+            .and_then(|entry| entry.get("effective"))
+            .and_then(|entry| entry.get("escalationKey"))
+            .and_then(Value::as_str)
+            .is_some_and(|key| key == "query-only-path");
     let routing_decision_ready_resolve_examples = json!({
         "knownErrorCode": routing_decision_ready_example_known_error_code,
         "knownResult": routing_decision_ready_example_known_error_result,
@@ -7362,9 +7609,9 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .get("queryOnlyInstallFailure")
         .cloned()
         .unwrap_or(Value::Null);
-    let routing_decision_ready_phase_groups = routing_decision_ready_index
-        .iter()
-        .fold(BTreeMap::<String, Vec<String>>::new(), |mut groups, (error_code, decision)| {
+    let routing_decision_ready_phase_groups = routing_decision_ready_index.iter().fold(
+        BTreeMap::<String, Vec<String>>::new(),
+        |mut groups, (error_code, decision)| {
             let phase = decision
                 .get("phase")
                 .and_then(Value::as_str)
@@ -7373,7 +7620,8 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
                 .to_string();
             groups.entry(phase).or_default().push(error_code.clone());
             groups
-        });
+        },
+    );
     let routing_decision_ready_phase_entries = routing_decision_ready_phase_groups
         .iter()
         .map(|(phase, error_codes)| {
@@ -7459,38 +7707,36 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .get("diagnose")
         .cloned()
         .unwrap_or(Value::Null);
-    let routing_decision_ready_phase_resolve_index = routing_decision_ready_phase_index
-        .iter()
-        .fold(Map::<String, Value>::new(), |mut map, (phase, entry)| {
-            let effective_phase = entry
-                .get("phase")
-                .and_then(Value::as_str)
-                .map(ToOwned::to_owned);
-            let effective_escalation_key = entry
-                .get("escalationKey")
-                .and_then(Value::as_str)
-                .map(ToOwned::to_owned)
-                .or_else(|| {
-                    entry
-                        .get("escalationKeys")
-                        .and_then(Value::as_array)
-                        .and_then(|keys| keys.first())
-                        .and_then(Value::as_str)
-                        .map(ToOwned::to_owned)
-                });
-            map.insert(
-                phase.clone(),
-                json!({
-                    "matched": true,
-                    "usedDefault": false,
-                    "reason": "matched-phase",
-                    "effectivePhase": effective_phase,
-                    "effectiveEscalationKey": effective_escalation_key,
-                    "effective": entry,
-                }),
-            );
-            map
-        });
+    let routing_decision_ready_phase_resolve_index =
+        routing_decision_ready_phase_index
+            .iter()
+            .fold(Map::<String, Value>::new(), |mut map, (phase, entry)| {
+                let effective_phase = entry.get("phase").and_then(Value::as_str).map(ToOwned::to_owned);
+                let effective_escalation_key = entry
+                    .get("escalationKey")
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned)
+                    .or_else(|| {
+                        entry
+                            .get("escalationKeys")
+                            .and_then(Value::as_array)
+                            .and_then(|keys| keys.first())
+                            .and_then(Value::as_str)
+                            .map(ToOwned::to_owned)
+                    });
+                map.insert(
+                    phase.clone(),
+                    json!({
+                        "matched": true,
+                        "usedDefault": false,
+                        "reason": "matched-phase",
+                        "effectivePhase": effective_phase,
+                        "effectiveEscalationKey": effective_escalation_key,
+                        "effective": entry,
+                    }),
+                );
+                map
+            });
     let routing_decision_ready_known_phases = routing_decision_ready_phase_index
         .keys()
         .map(ToOwned::to_owned)
@@ -7550,30 +7796,31 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .cloned();
     let routing_decision_ready_example_query_only_phase_available =
         routing_decision_ready_example_query_only_phase_result.is_some();
-    let routing_decision_ready_example_query_only_phase_matched = routing_decision_ready_example_query_only_phase_result
-        .as_ref()
-        .and_then(|entry| entry.get("matched"))
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-    let routing_decision_ready_example_query_only_phase_used_default = routing_decision_ready_example_query_only_phase_result
-        .as_ref()
-        .and_then(|entry| entry.get("usedDefault"))
-        .and_then(Value::as_bool)
-        .unwrap_or(!routing_decision_ready_example_query_only_phase_available);
+    let routing_decision_ready_example_query_only_phase_matched =
+        routing_decision_ready_example_query_only_phase_result
+            .as_ref()
+            .and_then(|entry| entry.get("matched"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+    let routing_decision_ready_example_query_only_phase_used_default =
+        routing_decision_ready_example_query_only_phase_result
+            .as_ref()
+            .and_then(|entry| entry.get("usedDefault"))
+            .and_then(Value::as_bool)
+            .unwrap_or(!routing_decision_ready_example_query_only_phase_available);
     let routing_decision_ready_example_query_only_phase_reason = routing_decision_ready_example_query_only_phase_result
         .as_ref()
         .and_then(|entry| entry.get("reason"))
         .and_then(Value::as_str)
         .map(ToOwned::to_owned)
-        .or_else(|| {
-            (!routing_decision_ready_example_query_only_phase_available).then(|| "missing-phase".to_string())
-        });
-    let routing_decision_ready_example_query_only_would_use_query_phase = routing_decision_ready_example_query_only_phase_result
-        .as_ref()
-        .and_then(|entry| entry.get("effective"))
-        .and_then(|entry| entry.get("phase"))
-        .and_then(Value::as_str)
-        .is_some_and(|phase| phase == "query");
+        .or_else(|| (!routing_decision_ready_example_query_only_phase_available).then(|| "missing-phase".to_string()));
+    let routing_decision_ready_example_query_only_would_use_query_phase =
+        routing_decision_ready_example_query_only_phase_result
+            .as_ref()
+            .and_then(|entry| entry.get("effective"))
+            .and_then(|entry| entry.get("phase"))
+            .and_then(Value::as_str)
+            .is_some_and(|phase| phase == "query");
     let routing_decision_ready_example_known_phase_result = routing_decision_ready_example_known_phase
         .as_ref()
         .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
@@ -7584,40 +7831,42 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         .and_then(|entry| entry.get("phase"))
         .and_then(Value::as_str)
         .map(ToOwned::to_owned);
-    let routing_decision_ready_example_known_phase_effective_escalation_key = routing_decision_ready_example_known_phase_result
-        .get("effective")
-        .and_then(|entry| entry.get("escalationKey"))
-        .and_then(Value::as_str)
-        .map(ToOwned::to_owned)
-        .or_else(|| {
-            routing_decision_ready_example_known_phase_result
-                .get("effective")
-                .and_then(|entry| entry.get("escalationKeys"))
-                .and_then(Value::as_array)
-                .and_then(|keys| keys.first())
-                .and_then(Value::as_str)
-                .map(ToOwned::to_owned)
-        });
+    let routing_decision_ready_example_known_phase_effective_escalation_key =
+        routing_decision_ready_example_known_phase_result
+            .get("effective")
+            .and_then(|entry| entry.get("escalationKey"))
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+            .or_else(|| {
+                routing_decision_ready_example_known_phase_result
+                    .get("effective")
+                    .and_then(|entry| entry.get("escalationKeys"))
+                    .and_then(Value::as_array)
+                    .and_then(|keys| keys.first())
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned)
+            });
     let routing_decision_ready_example_missing_phase = "unknown";
     let routing_decision_ready_example_missing_phase_effective_phase = routing_decision_ready_phase_resolve_default
         .get("effective")
         .and_then(|entry| entry.get("phase"))
         .and_then(Value::as_str)
         .map(ToOwned::to_owned);
-    let routing_decision_ready_example_missing_phase_effective_escalation_key = routing_decision_ready_phase_resolve_default
-        .get("effective")
-        .and_then(|entry| entry.get("escalationKey"))
-        .and_then(Value::as_str)
-        .map(ToOwned::to_owned)
-        .or_else(|| {
-            routing_decision_ready_phase_resolve_default
-                .get("effective")
-                .and_then(|entry| entry.get("escalationKeys"))
-                .and_then(Value::as_array)
-                .and_then(|keys| keys.first())
-                .and_then(Value::as_str)
-                .map(ToOwned::to_owned)
-        });
+    let routing_decision_ready_example_missing_phase_effective_escalation_key =
+        routing_decision_ready_phase_resolve_default
+            .get("effective")
+            .and_then(|entry| entry.get("escalationKey"))
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+            .or_else(|| {
+                routing_decision_ready_phase_resolve_default
+                    .get("effective")
+                    .and_then(|entry| entry.get("escalationKeys"))
+                    .and_then(Value::as_array)
+                    .and_then(|keys| keys.first())
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned)
+            });
     let routing_decision_ready_phase_resolve_examples = json!({
         "knownPhase": routing_decision_ready_example_known_phase,
         "knownResult": routing_decision_ready_example_known_phase_result,
@@ -10155,11 +10404,15 @@ fn hook_shortcuts_to_json(
         &injection_environment.hook_environment,
         Some(&injection_environment.hook_strategy),
     );
-    let target_actions =
-        hook_environment_recommended_actions(&preflight.target_hook_environment, Some(&preflight.target_hook_strategy));
+    let target_actions = hook_environment_recommended_actions(
+        &preflight.target_hook_environment,
+        Some(&preflight.target_hook_strategy),
+    );
     let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
-    let backend_matrix =
-        hook_backend_matrix_to_json(&injection_environment.hook_environment, &preflight.target_hook_environment);
+    let backend_matrix = hook_backend_matrix_to_json(
+        &injection_environment.hook_environment,
+        &preflight.target_hook_environment,
+    );
 
     json!({
         "controller": hook_shortcut_entry_to_json(
@@ -10387,7 +10640,9 @@ fn hook_environment_to_json(
     let coexistence_recommendation = match coexistence_mode {
         "inline-safe" => "inline hooks are allowed and no external backend is loaded",
         "inline-cautious" => "filesystem-only backend artifacts were detected; preflight before hook-install",
-        "inline-risky" => "external backend already loaded; prefer query/status first, then inline install only if necessary",
+        "inline-risky" => {
+            "external backend already loaded; prefer query/status first, then inline install only if necessary"
+        }
         "query-only" => "current policy blocks hook-install; stay on query commands",
         "cleanup-only" => "only status/stop commands are allowed under current policy",
         "blocked" => "no hook command group is currently allowed",
@@ -11233,11 +11488,8 @@ fn compute_hook_fallback_available(
 fn parse_hook_effective_blocked_details(message: &str) -> ParsedHookEffectiveBlockedDetails {
     let fallback_action_key = parse_error_field(message, "fallbackActionKey");
     let fallback_step_id = parse_error_field(message, "fallbackStepId");
-    let fallback_command = parse_error_field_with_boundaries(
-        message,
-        "fallbackCommand",
-        &["fallbackPhase", "recommendation"],
-    );
+    let fallback_command =
+        parse_error_field_with_boundaries(message, "fallbackCommand", &["fallbackPhase", "recommendation"]);
     let fallback_phase = parse_error_field(message, "fallbackPhase");
 
     ParsedHookEffectiveBlockedDetails {
@@ -11289,9 +11541,7 @@ fn parse_bool_token(value: Option<String>) -> Option<bool> {
 #[cfg(unix)]
 fn normalize_hook_auto_downgrade_reason(value: Option<String>) -> Option<String> {
     match value.as_deref() {
-        Some(
-            HOOK_MODE_AUTO_DOWNGRADE_REASON_SPLIT_BACKEND_LOADED | "<none>" | "unknown",
-        ) => value,
+        Some(HOOK_MODE_AUTO_DOWNGRADE_REASON_SPLIT_BACKEND_LOADED | "<none>" | "unknown") => value,
         Some(_) => Some("unknown".into()),
         None => None,
     }
@@ -11320,9 +11570,7 @@ fn normalize_hook_command_group(value: Option<String>) -> Option<String> {
 #[cfg(unix)]
 fn normalize_hook_coexistence_mode(value: Option<String>) -> Option<String> {
     match value.as_deref() {
-        Some(
-            "inline-safe" | "inline-risky" | "query-only" | "cleanup-only" | "blocked" | "unknown",
-        ) => value,
+        Some("inline-safe" | "inline-risky" | "query-only" | "cleanup-only" | "blocked" | "unknown") => value,
         Some(_) => Some("unknown".into()),
         None => None,
     }
@@ -11539,24 +11787,19 @@ fn failure_diagnostics_to_json(
             phase = "hook-policy".into();
             code = "both-hook-policies-blocked".into();
             hook_blocked_by = Some("both".into());
-            hook_recommendation = parse_message_suffix_after_prefix(
-                &message,
-                "both hook strategies blocked injection:",
-            );
+            hook_recommendation =
+                parse_message_suffix_after_prefix(&message, "both hook strategies blocked injection:");
         } else if message.contains("target hook strategy blocked injection") {
             phase = "hook-policy".into();
             code = "target-hook-policy-blocked".into();
             hook_blocked_by = Some("target".into());
-            hook_recommendation = parse_message_suffix_after_prefix(
-                &message,
-                "target hook strategy blocked injection:",
-            );
+            hook_recommendation =
+                parse_message_suffix_after_prefix(&message, "target hook strategy blocked injection:");
         } else if message.contains("hook strategy blocked injection") {
             phase = "hook-policy".into();
             code = "controller-hook-policy-blocked".into();
             hook_blocked_by = Some("controller".into());
-            hook_recommendation =
-                parse_message_suffix_after_prefix(&message, "hook strategy blocked injection:");
+            hook_recommendation = parse_message_suffix_after_prefix(&message, "hook strategy blocked injection:");
         } else if message.contains("hook-effective-blocked") {
             phase = "hook-policy".into();
             let parsed = parse_hook_effective_blocked_details(&message);
@@ -13379,8 +13622,10 @@ fn ensure_inline_hooks_allowed_for_command(
         &injection_environment.hook_environment,
         Some(&injection_environment.hook_strategy),
     );
-    let target_actions =
-        hook_environment_recommended_actions(&preflight.target_hook_environment, Some(&preflight.target_hook_strategy));
+    let target_actions = hook_environment_recommended_actions(
+        &preflight.target_hook_environment,
+        Some(&preflight.target_hook_strategy),
+    );
     let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
     let action_key = capability.action_key();
     let effective_action = effective_actions
@@ -13433,7 +13678,10 @@ fn ensure_inline_hooks_allowed_for_command(
     let mut blocked_details = Vec::new();
     if !effective_action.controller_allowed {
         let controller_reason = effective_action.controller_reason.clone().unwrap_or_else(|| {
-            format!("controller hook strategy disables `{}` commands", capability.display_name())
+            format!(
+                "controller hook strategy disables `{}` commands",
+                capability.display_name()
+            )
         });
         blocked_details.push(format!(
             "controller policy={} strategy={}: {}",
@@ -13456,8 +13704,10 @@ fn ensure_inline_hooks_allowed_for_command(
     }
 
     let base_command_mode = hook_effective_command_mode(&effective_actions);
-    let backend_matrix =
-        hook_backend_matrix_to_json(&injection_environment.hook_environment, &preflight.target_hook_environment);
+    let backend_matrix = hook_backend_matrix_to_json(
+        &injection_environment.hook_environment,
+        &preflight.target_hook_environment,
+    );
     let loaded_in_controller_count = json_u64_field(&backend_matrix, "loadedInControllerCount");
     let loaded_in_target_count = json_u64_field(&backend_matrix, "loadedInTargetCount");
     let loaded_in_both_count = json_u64_field(&backend_matrix, "loadedInBothCount");
@@ -13470,10 +13720,7 @@ fn ensure_inline_hooks_allowed_for_command(
         );
     let command_mode = effective_command_mode;
     let coexistence = hook_coexistence_to_json(&effective_actions, &backend_matrix);
-    let coexistence_mode = coexistence
-        .get("mode")
-        .and_then(Value::as_str)
-        .unwrap_or("unknown");
+    let coexistence_mode = coexistence.get("mode").and_then(Value::as_str).unwrap_or("unknown");
     let backend_pressure = coexistence
         .get("backendPressure")
         .and_then(Value::as_str)
@@ -14710,17 +14957,16 @@ mod tests {
     use super::{
         analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
         build_trace_spec, command_json_template_entry, command_requests_inline_hook_install,
-        command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_automation_to_json,
-        hook_action_command_templates, hook_backend_matrix_to_json, hook_effective_actions,
-        hook_effective_actions_to_json, hook_effective_to_json, hook_environment_requires_notice,
-        hook_environment_to_json,
-        parse_hfl_command, parse_jhook_command, parse_shook_command, parse_stalker_command,
-        parse_trace_command, print_injection_preflight, quote_js_string, render_bootstrap_summary,
-        render_command_error_json, render_command_error_json_with_context, render_command_outcome_json,
-        render_image_list_json, render_injection_environment, render_injection_result_json, render_loader_symbol,
-        render_preflight_json, CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand,
-        HookEffectiveAction, NativeHookTarget, NativeLogArgument, NativeLogReturn, NativeLogTemplate,
-        NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
+        command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_action_command_templates,
+        hook_automation_to_json, hook_backend_matrix_to_json, hook_effective_actions, hook_effective_actions_to_json,
+        hook_effective_to_json, hook_environment_requires_notice, hook_environment_to_json, parse_hfl_command,
+        parse_jhook_command, parse_shook_command, parse_stalker_command, parse_trace_command,
+        print_injection_preflight, quote_js_string, render_bootstrap_summary, render_command_error_json,
+        render_command_error_json_with_context, render_command_outcome_json, render_image_list_json,
+        render_injection_environment, render_injection_result_json, render_loader_symbol, render_preflight_json,
+        CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, HookEffectiveAction, NativeHookTarget,
+        NativeLogArgument, NativeLogReturn, NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand,
+        SwiftHookCommand, TraceCommand,
     };
     use common::{
         AgentCommand, ControllerConfig, Error, Hello, InjectionMode, DEFAULT_AGENT_PATH, DEFAULT_AGENT_PATH_ROOTFUL,
@@ -15556,7 +15802,9 @@ mod tests {
             "objc.findProtocolMethodInfo NSObject description optional class"
         ));
         assert!(!command_requires_inline_hooks("objc.protocolProperties NSObject"));
-        assert!(!command_requires_inline_hooks("objc.protocolProperties NSObject description"));
+        assert!(!command_requires_inline_hooks(
+            "objc.protocolProperties NSObject description"
+        ));
         assert!(!command_requires_inline_hooks(
             "objc.findProtocolProperties NSObject description"
         ));
@@ -15580,7 +15828,9 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.methodInfo UIView viewDidLoad"));
         assert!(!command_requires_inline_hooks("objc.findMethodInfo UIView viewDidLoad"));
         assert!(!command_requires_inline_hooks("objc.findClassImage UIView"));
-        assert!(!command_requires_inline_hooks("objc.findMethodImage UIView viewDidLoad"));
+        assert!(!command_requires_inline_hooks(
+            "objc.findMethodImage UIView viewDidLoad"
+        ));
         assert!(!command_requires_inline_hooks("objc.findSelectorName 0x1234"));
         assert!(!command_requires_inline_hooks("objc.findObjectClassName 0x1234"));
         assert!(!command_requires_inline_hooks("native.imageInfo UIKit"));
@@ -15621,7 +15871,9 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.uuid UIKit"));
         assert!(!command_requires_inline_hooks("native.rpaths UIKit"));
         assert!(!command_requires_inline_hooks("native.rpathInfo UIKit -- @loader_path"));
-        assert!(!command_requires_inline_hooks("native.findRpathInfo UIKit -- @loader_path"));
+        assert!(!command_requires_inline_hooks(
+            "native.findRpathInfo UIKit -- @loader_path"
+        ));
         assert!(!command_requires_inline_hooks("native.imports UIKit"));
         assert!(!command_requires_inline_hooks("native.importInfo UIKit -- malloc"));
         assert!(!command_requires_inline_hooks("native.findImportInfo UIKit -- malloc"));
@@ -15680,7 +15932,9 @@ mod tests {
         ));
         assert!(!command_requires_inline_hooks("swift.typeLayout ViewController"));
         assert!(!command_requires_inline_hooks("swift.typeLayoutInfo ViewController"));
-        assert!(!command_requires_inline_hooks("swift.findTypeLayoutInfo ViewController"));
+        assert!(!command_requires_inline_hooks(
+            "swift.findTypeLayoutInfo ViewController"
+        ));
         assert!(!command_requires_inline_hooks("swift.types ViewController"));
         assert!(!command_requires_inline_hooks("swift.findTypes ViewController"));
         assert!(!command_requires_inline_hooks(
@@ -15838,12 +16092,8 @@ mod tests {
         assert!(query_err.to_string().contains("commandMode=cleanup-only"));
         assert!(query_err.to_string().contains("baseCommandMode=cleanup-only"));
         assert!(query_err.to_string().contains("effectiveCommandMode=cleanup-only"));
-        assert!(query_err
-            .to_string()
-            .contains("autoDowngradedToQueryOnly=false"));
-        assert!(query_err
-            .to_string()
-            .contains("autoDowngradeReason=<none>"));
+        assert!(query_err.to_string().contains("autoDowngradedToQueryOnly=false"));
+        assert!(query_err.to_string().contains("autoDowngradeReason=<none>"));
         assert!(query_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(query_err.to_string().contains("backendPressure=both"));
         assert!(query_err.to_string().contains("fallbackActionKey=hook.status"));
@@ -15858,18 +16108,10 @@ mod tests {
         assert!(install_err.to_string().contains("forbids hook-install commands"));
         assert!(install_err.to_string().contains("blockedBy=both"));
         assert!(install_err.to_string().contains("commandMode=cleanup-only"));
-        assert!(install_err
-            .to_string()
-            .contains("baseCommandMode=cleanup-only"));
-        assert!(install_err
-            .to_string()
-            .contains("effectiveCommandMode=cleanup-only"));
-        assert!(install_err
-            .to_string()
-            .contains("autoDowngradedToQueryOnly=false"));
-        assert!(install_err
-            .to_string()
-            .contains("autoDowngradeReason=<none>"));
+        assert!(install_err.to_string().contains("baseCommandMode=cleanup-only"));
+        assert!(install_err.to_string().contains("effectiveCommandMode=cleanup-only"));
+        assert!(install_err.to_string().contains("autoDowngradedToQueryOnly=false"));
+        assert!(install_err.to_string().contains("autoDowngradeReason=<none>"));
         assert!(install_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(install_err.to_string().contains("backendPressure=both"));
         assert!(install_err.to_string().contains("fallbackActionKey=hook.status"));
@@ -16147,7 +16389,10 @@ mod tests {
         assert_eq!(rendered["environment"]["hookPolicy"], "warn");
         assert_eq!(rendered["environment"]["hookStrategy"]["commandMode"], "allowed");
         assert!(rendered["environment"]["hookEnvironment"]["recommendedActions"].is_array());
-        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceMode"], "inline-risky");
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceMode"],
+            "inline-risky"
+        );
         assert_eq!(
             rendered["environment"]["hookEnvironment"]["coexistenceRecommendation"],
             "external backend already loaded; prefer query/status first, then inline install only if necessary"
@@ -16156,9 +16401,18 @@ mod tests {
             rendered["environment"]["hookEnvironment"]["coexistenceLayerStatus"],
             "missing-inline-risky"
         );
-        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceLayerAvailable"], false);
-        assert_eq!(rendered["environment"]["hookEnvironment"]["externalBackendLoaded"], true);
-        assert_eq!(rendered["environment"]["hookEnvironment"]["singleExternalBackendLoaded"], true);
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceLayerAvailable"],
+            false
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["externalBackendLoaded"],
+            true
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["singleExternalBackendLoaded"],
+            true
+        );
         assert_eq!(
             rendered["environment"]["hookEnvironment"]["multipleExternalBackendsLoaded"],
             false
@@ -16341,8 +16595,14 @@ mod tests {
         assert!(rendered["hook"]["controller"]["recommendedActions"].is_array());
         assert!(rendered["hook"]["target"]["recommendedActions"].is_array());
         assert!(rendered["hook"]["effectiveActions"].is_array());
-        assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["commandGroup"], "query");
-        assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["actionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["controller"]["recommendedActions"][0]["commandGroup"],
+            "query"
+        );
+        assert_eq!(
+            rendered["hook"]["controller"]["recommendedActions"][0]["actionKey"],
+            "hook.query"
+        );
         assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["priority"], 1);
         assert_eq!(rendered["hook"]["effectiveActions"][0]["actionKey"], "hook.query");
         assert_eq!(rendered["hook"]["effectiveActions"][0]["blockedBy"], "none");
@@ -16357,13 +16617,13 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["externalBackendLoaded"], false);
         assert_eq!(rendered["hook"]["coexistence"]["singleExternalBackendLoaded"], false);
-        assert_eq!(
-            rendered["hook"]["coexistence"]["multipleExternalBackendsLoaded"],
-            false
-        );
+        assert_eq!(rendered["hook"]["coexistence"]["multipleExternalBackendsLoaded"], false);
         assert_eq!(rendered["hook"]["coexistence"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
-        assert_eq!(rendered["hook"]["coexistence"]["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["backendAdaptationMode"],
+            "no-adaptation-needed"
+        );
         assert_eq!(rendered["hook"]["coexistence"]["backendAdaptationAlignment"], "clean");
         assert_eq!(rendered["hook"]["coexistence"]["backendAdaptationBias"], "install");
         assert_eq!(
@@ -16382,8 +16642,12 @@ mod tests {
         assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendTemplates"].is_null());
         assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendTemplateCount"].is_null());
         assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendCommandJsonTemplates"].is_null());
-        assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendCommandJsonTemplateCount"].is_null());
-        assert!(rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendCommandJsonEligibleTemplateCount"].is_null());
+        assert!(
+            rendered["hook"]["coexistence"]["backendAdaptation"]["preferredBackendCommandJsonTemplateCount"].is_null()
+        );
+        assert!(rendered["hook"]["coexistence"]["backendAdaptation"]
+            ["preferredBackendCommandJsonEligibleTemplateCount"]
+            .is_null());
         assert_eq!(
             rendered["hook"]["coexistence"]["backendAdaptation"]["preferredTemplateCount"],
             5
@@ -16412,22 +16676,25 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["readyToRun"], true);
-        assert_eq!(
-            rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"],
-            3
-        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"], 3);
         assert_eq!(
             rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonTemplateCount"],
             3
         );
-        assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepId"],
+            "next-action:hook.query:0"
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepSource"], "next-action");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandGroup"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepBlockedBy"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepBranch"], "run");
-        assert_eq!(rendered["hook"]["coexistence"]["nextStepCommand"], "objc.classes <filter>");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepCommand"],
+            "objc.classes <filter>"
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandJsonEligible"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepReadyToRun"], true);
@@ -16530,10 +16797,7 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["coexistence"]["activeStepPhase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["activeStepReadyToRun"], true);
-        assert_eq!(
-            rendered["hook"]["coexistence"]["activeStepRequiresFallback"],
-            false
-        );
+        assert_eq!(rendered["hook"]["coexistence"]["activeStepRequiresFallback"], false);
         assert_eq!(
             rendered["hook"]["coexistence"]["activeStepKind"],
             rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["kind"]
@@ -16674,13 +16938,13 @@ mod tests {
             rendered["hook"]["coexistence"]["nextStepChain"][2]["command"],
             "swift.types <filter>"
         );
-        assert_eq!(
-            rendered["hook"]["coexistence"]["nextStepChainTruncated"],
-            false
-        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainTruncated"], false);
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
-        assert_eq!(rendered["hook"]["automation"]["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(
+            rendered["hook"]["automation"]["backendAdaptationMode"],
+            "no-adaptation-needed"
+        );
         assert_eq!(rendered["hook"]["automation"]["backendAdaptationAlignment"], "clean");
         assert_eq!(rendered["hook"]["automation"]["backendAdaptationBias"], "install");
         assert_eq!(
@@ -16716,7 +16980,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepAllowed"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextStepBranch"], "run");
-        assert_eq!(rendered["hook"]["automation"]["nextStepCommand"], "objc.classes <filter>");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepCommand"],
+            "objc.classes <filter>"
+        );
         assert_eq!(rendered["hook"]["automation"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandJsonEligible"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
@@ -16750,14 +17017,17 @@ mod tests {
             rendered["hook"]["automation"]["activeStep"]["command"],
             rendered["hook"]["automation"]["nextStepChain"][0]["command"]
         );
-        assert_eq!(rendered["hook"]["automation"]["activeStepId"], "next-action:hook.query:0");
-        assert_eq!(rendered["hook"]["automation"]["activeStepCommand"], "objc.classes <filter>");
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepId"],
+            "next-action:hook.query:0"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepCommand"],
+            "objc.classes <filter>"
+        );
         assert_eq!(rendered["hook"]["automation"]["activeStepPhase"], "query");
         assert_eq!(rendered["hook"]["automation"]["activeStepReadyToRun"], true);
-        assert_eq!(
-            rendered["hook"]["automation"]["activeStepRequiresFallback"],
-            false
-        );
+        assert_eq!(rendered["hook"]["automation"]["activeStepRequiresFallback"], false);
         assert_eq!(rendered["hook"]["automation"]["activeStepCommandJsonEligible"], true);
         assert_eq!(
             rendered["hook"]["automation"]["activeStepRetryable"],
@@ -16814,10 +17084,7 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["automation"]["nextStep"]["phase"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStep"]["readyToRun"], true);
-        assert_eq!(
-            rendered["hook"]["automation"]["nextStep"]["requiresFallback"],
-            false
-        );
+        assert_eq!(rendered["hook"]["automation"]["nextStep"]["requiresFallback"], false);
         assert_eq!(
             rendered["hook"]["automation"]["nextStepKind"],
             rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["kind"]
@@ -16869,7 +17136,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextStepChainCount"], 1);
-        assert_eq!(rendered["hook"]["automation"]["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChain"][0]["source"],
+            "next-action"
+        );
         assert_eq!(
             rendered["hook"]["automation"]["nextStepChain"][0]["id"],
             "next-action:hook.query:0"
@@ -16891,16 +17161,16 @@ mod tests {
             rendered["hook"]["automation"]["nextStepChain"][0]["requiresFallback"],
             false
         );
-        assert_eq!(
-            rendered["hook"]["automation"]["nextStepChainTruncated"],
-            false
-        );
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainTruncated"], false);
         assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
         assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert!(rendered["hook"]["automation"]["commandTemplates"].is_array());
-        assert_eq!(rendered["hook"]["automation"]["commandTemplates"][0]["actionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["actionKey"],
+            "hook.query"
+        );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionPlan"]["actionKey"],
             "hook.query"
@@ -16908,12 +17178,12 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["readyToRun"], true);
-        assert_eq!(
-            rendered["hook"]["automation"]["nextActionPlan"]["prerequisiteCount"],
-            0
-        );
+        assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["prerequisiteCount"], 0);
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 3);
-        assert_eq!(rendered["hook"]["automation"]["nextActionTemplates"][0], "objc.classes <filter>");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionTemplates"][0],
+            "objc.classes <filter>"
+        );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplateCount"],
             3
@@ -16984,10 +17254,7 @@ mod tests {
             rendered["hook"]["automation"]["actionBranches"][0]["selectedAsNext"],
             true
         );
-        assert_eq!(
-            rendered["hook"]["automation"]["actionBranches"][0]["templateCount"],
-            3
-        );
+        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["templateCount"], 3);
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
             3
@@ -17018,7 +17285,10 @@ mod tests {
         );
         assert_eq!(rendered["environment"]["hookStrategy"]["commandMode"], "allowed");
         assert!(rendered["environment"]["hookEnvironment"]["recommendedActions"].is_array());
-        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceMode"], "inline-safe");
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceMode"],
+            "inline-safe"
+        );
         assert_eq!(
             rendered["environment"]["hookEnvironment"]["coexistenceRecommendation"],
             "inline hooks are allowed and no external backend is loaded"
@@ -17027,19 +17297,37 @@ mod tests {
             rendered["environment"]["hookEnvironment"]["coexistenceLayerStatus"],
             "not-required"
         );
-        assert_eq!(rendered["environment"]["hookEnvironment"]["coexistenceLayerAvailable"], true);
-        assert_eq!(rendered["environment"]["hookEnvironment"]["externalBackendLoaded"], false);
-        assert_eq!(rendered["environment"]["hookEnvironment"]["singleExternalBackendLoaded"], false);
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceLayerAvailable"],
+            true
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["externalBackendLoaded"],
+            false
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["singleExternalBackendLoaded"],
+            false
+        );
         assert_eq!(
             rendered["environment"]["hookEnvironment"]["multipleExternalBackendsLoaded"],
             false
         );
-        assert_eq!(rendered["environment"]["hookStrategy"]["bootstrapInjectionAllowed"], true);
+        assert_eq!(
+            rendered["environment"]["hookStrategy"]["bootstrapInjectionAllowed"],
+            true
+        );
         assert_eq!(rendered["environment"]["hookStrategy"]["queryCommandsAllowed"], true);
-        assert_eq!(rendered["environment"]["hookStrategy"]["hookInstallCommandsAllowed"], true);
+        assert_eq!(
+            rendered["environment"]["hookStrategy"]["hookInstallCommandsAllowed"],
+            true
+        );
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["conflictState"], "none");
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["riskLevel"], "normal");
-        assert_eq!(rendered["preflight"]["targetHookEnvironment"]["coexistenceMode"], "inline-safe");
+        assert_eq!(
+            rendered["preflight"]["targetHookEnvironment"]["coexistenceMode"],
+            "inline-safe"
+        );
         assert_eq!(
             rendered["preflight"]["targetHookEnvironment"]["coexistenceRecommendation"],
             "inline hooks are allowed and no external backend is loaded"
@@ -17048,7 +17336,10 @@ mod tests {
             rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerStatus"],
             "not-required"
         );
-        assert_eq!(rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerAvailable"], true);
+        assert_eq!(
+            rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerAvailable"],
+            true
+        );
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["loadedBackendCount"], 0);
         assert_eq!(
             rendered["preflight"]["targetHookEnvironment"]["singleExternalBackendLoaded"],
@@ -17087,10 +17378,19 @@ mod tests {
                 loadjs_result: None,
             },
         );
-        assert_eq!(hook_blocked_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
-        assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["actionKey"], "hook.install");
+        assert_eq!(
+            hook_blocked_rendered["diagnostics"]["code"],
+            "target-hook-policy-blocked"
+        );
+        assert_eq!(
+            hook_blocked_rendered["diagnostics"]["hook"]["actionKey"],
+            "hook.install"
+        );
         assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["blockedBy"], "target");
-        assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["baseCommandMode"], "query-only");
+        assert_eq!(
+            hook_blocked_rendered["diagnostics"]["hook"]["baseCommandMode"],
+            "query-only"
+        );
         assert_eq!(
             hook_blocked_rendered["diagnostics"]["hook"]["effectiveCommandMode"],
             "query-only"
@@ -17107,7 +17407,10 @@ mod tests {
             hook_blocked_rendered["diagnostics"]["hook"]["fallbackStepId"],
             "next-action:hook.status:0"
         );
-        assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["fallbackCommand"], "trace status");
+        assert_eq!(
+            hook_blocked_rendered["diagnostics"]["hook"]["fallbackCommand"],
+            "trace status"
+        );
         assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["fallbackAvailable"], true);
     }
 
@@ -17265,8 +17568,14 @@ mod tests {
         assert!(rendered["hook"]["controller"]["recommendedActions"].is_array());
         assert!(rendered["hook"]["target"]["recommendedActions"].is_array());
         assert!(rendered["hook"]["effectiveActions"].is_array());
-        assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["commandGroup"], "query");
-        assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["actionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["controller"]["recommendedActions"][0]["commandGroup"],
+            "query"
+        );
+        assert_eq!(
+            rendered["hook"]["controller"]["recommendedActions"][0]["actionKey"],
+            "hook.query"
+        );
         assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["priority"], 1);
         assert_eq!(rendered["hook"]["effectiveActions"][0]["actionKey"], "hook.query");
         assert_eq!(rendered["hook"]["effectiveActions"][0]["blockedBy"], "none");
@@ -17281,10 +17590,7 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["externalBackendLoaded"], false);
         assert_eq!(rendered["hook"]["coexistence"]["singleExternalBackendLoaded"], false);
-        assert_eq!(
-            rendered["hook"]["coexistence"]["multipleExternalBackendsLoaded"],
-            false
-        );
+        assert_eq!(rendered["hook"]["coexistence"]["multipleExternalBackendsLoaded"], false);
         assert_eq!(rendered["hook"]["coexistence"]["loadedExternalBackendCount"], 0);
         assert_eq!(rendered["hook"]["coexistence"]["hookInstallAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
@@ -17299,22 +17605,25 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["readyToRun"], true);
-        assert_eq!(
-            rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"],
-            3
-        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"], 3);
         assert_eq!(
             rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonTemplateCount"],
             3
         );
-        assert_eq!(rendered["hook"]["coexistence"]["nextStepId"], "next-action:hook.query:0");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepId"],
+            "next-action:hook.query:0"
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepSource"], "next-action");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandGroup"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepBlockedBy"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepBranch"], "run");
-        assert_eq!(rendered["hook"]["coexistence"]["nextStepCommand"], "objc.classes <filter>");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepCommand"],
+            "objc.classes <filter>"
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandJsonEligible"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepReadyToRun"], true);
@@ -17417,10 +17726,7 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["coexistence"]["activeStepPhase"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["activeStepReadyToRun"], true);
-        assert_eq!(
-            rendered["hook"]["coexistence"]["activeStepRequiresFallback"],
-            false
-        );
+        assert_eq!(rendered["hook"]["coexistence"]["activeStepRequiresFallback"], false);
         assert_eq!(
             rendered["hook"]["coexistence"]["activeStepKind"],
             rendered["hook"]["coexistence"]["nextStep"]["commandJsonTemplate"]["kind"]
@@ -17561,10 +17867,7 @@ mod tests {
             rendered["hook"]["coexistence"]["nextStepChain"][2]["command"],
             "swift.types <filter>"
         );
-        assert_eq!(
-            rendered["hook"]["coexistence"]["nextStepChainTruncated"],
-            false
-        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainTruncated"], false);
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "inline-safe");
         assert_eq!(rendered["hook"]["automation"]["backendPressure"], "none");
         assert_eq!(rendered["hook"]["automation"]["loadedExternalBackendCount"], 0);
@@ -17588,7 +17891,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepAllowed"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextStepBranch"], "run");
-        assert_eq!(rendered["hook"]["automation"]["nextStepCommand"], "objc.classes <filter>");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepCommand"],
+            "objc.classes <filter>"
+        );
         assert_eq!(rendered["hook"]["automation"]["nextStepPhase"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandJsonEligible"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepReadyToRun"], true);
@@ -17622,14 +17928,17 @@ mod tests {
             rendered["hook"]["automation"]["activeStep"]["command"],
             rendered["hook"]["automation"]["nextStepChain"][0]["command"]
         );
-        assert_eq!(rendered["hook"]["automation"]["activeStepId"], "next-action:hook.query:0");
-        assert_eq!(rendered["hook"]["automation"]["activeStepCommand"], "objc.classes <filter>");
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepId"],
+            "next-action:hook.query:0"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepCommand"],
+            "objc.classes <filter>"
+        );
         assert_eq!(rendered["hook"]["automation"]["activeStepPhase"], "query");
         assert_eq!(rendered["hook"]["automation"]["activeStepReadyToRun"], true);
-        assert_eq!(
-            rendered["hook"]["automation"]["activeStepRequiresFallback"],
-            false
-        );
+        assert_eq!(rendered["hook"]["automation"]["activeStepRequiresFallback"], false);
         assert_eq!(rendered["hook"]["automation"]["activeStepCommandJsonEligible"], true);
         assert_eq!(
             rendered["hook"]["automation"]["activeStepRetryable"],
@@ -17686,10 +17995,7 @@ mod tests {
         );
         assert_eq!(rendered["hook"]["automation"]["nextStep"]["phase"], "query");
         assert_eq!(rendered["hook"]["automation"]["nextStep"]["readyToRun"], true);
-        assert_eq!(
-            rendered["hook"]["automation"]["nextStep"]["requiresFallback"],
-            false
-        );
+        assert_eq!(rendered["hook"]["automation"]["nextStep"]["requiresFallback"], false);
         assert_eq!(
             rendered["hook"]["automation"]["nextStepKind"],
             rendered["hook"]["automation"]["nextStep"]["commandJsonTemplate"]["kind"]
@@ -17741,7 +18047,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["nextStepChainLimit"], 3);
         assert_eq!(rendered["hook"]["automation"]["nextStepChainCount"], 1);
-        assert_eq!(rendered["hook"]["automation"]["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepChain"][0]["source"],
+            "next-action"
+        );
         assert_eq!(
             rendered["hook"]["automation"]["nextStepChain"][0]["id"],
             "next-action:hook.query:0"
@@ -17763,16 +18072,16 @@ mod tests {
             rendered["hook"]["automation"]["nextStepChain"][0]["requiresFallback"],
             false
         );
-        assert_eq!(
-            rendered["hook"]["automation"]["nextStepChainTruncated"],
-            false
-        );
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainTruncated"], false);
         assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
         assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
         assert_eq!(rendered["hook"]["automation"]["hasSuggestedSequence"], true);
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert!(rendered["hook"]["automation"]["commandTemplates"].is_array());
-        assert_eq!(rendered["hook"]["automation"]["commandTemplates"][0]["actionKey"], "hook.query");
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["actionKey"],
+            "hook.query"
+        );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionPlan"]["actionKey"],
             "hook.query"
@@ -17780,12 +18089,12 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["readyToRun"], true);
-        assert_eq!(
-            rendered["hook"]["automation"]["nextActionPlan"]["prerequisiteCount"],
-            0
-        );
+        assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["prerequisiteCount"], 0);
         assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 3);
-        assert_eq!(rendered["hook"]["automation"]["nextActionTemplates"][0], "objc.classes <filter>");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionTemplates"][0],
+            "objc.classes <filter>"
+        );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplateCount"],
             3
@@ -17856,10 +18165,7 @@ mod tests {
             rendered["hook"]["automation"]["actionBranches"][0]["selectedAsNext"],
             true
         );
-        assert_eq!(
-            rendered["hook"]["automation"]["actionBranches"][0]["templateCount"],
-            3
-        );
+        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["templateCount"], 3);
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
             3
@@ -18019,18 +18325,12 @@ mod tests {
         assert_eq!(automation["activeStepAllowed"], true);
         assert_eq!(automation["activeStepBlockedBy"], "none");
         assert_eq!(automation["activeStepBranch"], "run");
-        assert_eq!(
-            automation["activeStepActionKey"],
-            automation["activeStep"]["actionKey"]
-        );
+        assert_eq!(automation["activeStepActionKey"], automation["activeStep"]["actionKey"]);
         assert_eq!(
             automation["activeStepCommandGroup"],
             automation["activeStep"]["commandGroup"]
         );
-        assert_eq!(
-            automation["activeStep"]["id"],
-            automation["nextStepChain"][0]["id"]
-        );
+        assert_eq!(automation["activeStep"]["id"], automation["nextStepChain"][0]["id"]);
         assert_eq!(
             automation["activeStep"]["command"],
             automation["nextStepChain"][0]["command"]
@@ -18121,7 +18421,9 @@ mod tests {
             automation["nextActionCommandJsonTemplates"][0]["command"],
             "trace status"
         );
-        let branches = automation["actionBranches"].as_array().expect("automation action branches");
+        let branches = automation["actionBranches"]
+            .as_array()
+            .expect("automation action branches");
         let query_branch = branches
             .iter()
             .find(|item| item["actionKey"] == "hook.query")
@@ -18298,22 +18600,13 @@ mod tests {
             automation["activeStepBlockedBy"],
             automation["nextStepChain"][0]["blockedBy"]
         );
-        assert_eq!(
-            automation["activeStepBranch"],
-            automation["nextStepChain"][0]["branch"]
-        );
-        assert_eq!(
-            automation["activeStepActionKey"],
-            automation["activeStep"]["actionKey"]
-        );
+        assert_eq!(automation["activeStepBranch"], automation["nextStepChain"][0]["branch"]);
+        assert_eq!(automation["activeStepActionKey"], automation["activeStep"]["actionKey"]);
         assert_eq!(
             automation["activeStepCommandGroup"],
             automation["activeStep"]["commandGroup"]
         );
-        assert_eq!(
-            automation["activeStep"]["id"],
-            automation["nextStepChain"][0]["id"]
-        );
+        assert_eq!(automation["activeStep"]["id"], automation["nextStepChain"][0]["id"]);
         assert_eq!(
             automation["activeStep"]["command"],
             automation["nextStepChain"][0]["command"]
@@ -18394,7 +18687,10 @@ mod tests {
         assert!(automation["nextStepChain"][1]["allowed"].is_null());
         assert!(automation["nextStepChain"][1]["blockedBy"].is_null());
         assert!(automation["nextStepChain"][1]["branch"].is_null());
-        assert_eq!(automation["nextStepChain"][1]["command"], "controller --preflight-only --preflight-json");
+        assert_eq!(
+            automation["nextStepChain"][1]["command"],
+            "controller --preflight-only --preflight-json"
+        );
         assert_eq!(automation["nextStepChain"][1]["phase"], "preflight");
         assert_eq!(automation["nextStepChain"][1]["readyToRun"], true);
         assert_eq!(automation["nextStepChain"][1]["requiresFallback"], true);
@@ -18421,12 +18717,18 @@ mod tests {
         assert!(automation["fallbackPlan"]["steps"][1]["actionKey"].is_null());
         assert!(automation["fallbackPlan"]["steps"][1]["commandGroup"].is_null());
         assert_eq!(automation["fallbackPlan"]["phaseCount"], 2);
-        assert_eq!(automation["fallbackPlan"]["phaseOrder"], json!(["diagnose", "preflight"]));
+        assert_eq!(
+            automation["fallbackPlan"]["phaseOrder"],
+            json!(["diagnose", "preflight"])
+        );
         assert_eq!(automation["fallbackPlan"]["nextStepChainSource"], "fallback-plan");
         assert_eq!(automation["fallbackPlan"]["nextStepChainLimit"], 3);
         assert_eq!(automation["fallbackPlan"]["nextStepChainCount"], 2);
         assert_eq!(automation["fallbackPlan"]["nextStepChain"][0]["id"], "fallback-plan:0");
-        assert_eq!(automation["fallbackPlan"]["nextStepChain"][0]["command"], "native.hookenv");
+        assert_eq!(
+            automation["fallbackPlan"]["nextStepChain"][0]["command"],
+            "native.hookenv"
+        );
         assert_eq!(automation["fallbackPlan"]["nextStepChain"][1]["id"], "fallback-plan:1");
         assert_eq!(
             automation["fallbackPlan"]["nextStepChain"][1]["command"],
@@ -18584,7 +18886,10 @@ mod tests {
             automation["fallbackPlan"]["nextStepKind"],
             automation["fallbackPlan"]["steps"][0]["kind"]
         );
-        assert_eq!(automation["fallbackPlan"]["nextStepErrorCode"], "hook-fallback-diagnose-failed");
+        assert_eq!(
+            automation["fallbackPlan"]["nextStepErrorCode"],
+            "hook-fallback-diagnose-failed"
+        );
         assert_eq!(
             automation["fallbackPlan"]["nextStepTimeoutErrorCode"],
             "hook-fallback-diagnose-timeout"
@@ -18608,41 +18913,80 @@ mod tests {
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicyCount"], 2);
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["phase"], "diagnose");
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["retryable"], true);
-        assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["maxSuggestedRetries"], 1);
-        assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["retryDelayHintMs"], 250);
-        assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["phase"], "preflight");
+        assert_eq!(
+            automation["fallbackPlan"]["phaseRetryPolicies"][0]["maxSuggestedRetries"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["phaseRetryPolicies"][0]["retryDelayHintMs"],
+            250
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["phaseRetryPolicies"][1]["phase"],
+            "preflight"
+        );
         assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["retryable"], true);
-        assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["maxSuggestedRetries"], 2);
-        assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["retryDelayHintMs"], 500);
-        assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["timeoutHintMs"], 4000);
+        assert_eq!(
+            automation["fallbackPlan"]["phaseRetryPolicies"][1]["maxSuggestedRetries"],
+            2
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["phaseRetryPolicies"][1]["retryDelayHintMs"],
+            500
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["phaseRetryPolicies"][0]["timeoutHintMs"],
+            4000
+        );
         assert_eq!(
             automation["fallbackPlan"]["phaseRetryPolicies"][0]["timeoutAction"],
             "refresh-hook-environment-and-retry"
         );
-        assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["timeoutHintMs"], 8000);
+        assert_eq!(
+            automation["fallbackPlan"]["phaseRetryPolicies"][1]["timeoutHintMs"],
+            8000
+        );
         assert_eq!(
             automation["fallbackPlan"]["phaseRetryPolicies"][1]["timeoutAction"],
             "re-run-preflight-or-switch-to-query-only"
         );
         assert_eq!(automation["fallbackPlan"]["phaseTimeoutPolicyCount"], 2);
-        assert_eq!(automation["fallbackPlan"]["phaseTimeoutPolicies"][0]["phase"], "diagnose");
-        assert_eq!(automation["fallbackPlan"]["phaseTimeoutPolicies"][0]["timeoutHintMs"], 4000);
+        assert_eq!(
+            automation["fallbackPlan"]["phaseTimeoutPolicies"][0]["phase"],
+            "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["phaseTimeoutPolicies"][0]["timeoutHintMs"],
+            4000
+        );
         assert_eq!(
             automation["fallbackPlan"]["phaseTimeoutPolicies"][0]["timeoutAction"],
             "refresh-hook-environment-and-retry"
         );
-        assert_eq!(automation["fallbackPlan"]["phaseTimeoutPolicies"][1]["phase"], "preflight");
-        assert_eq!(automation["fallbackPlan"]["phaseTimeoutPolicies"][1]["timeoutHintMs"], 8000);
+        assert_eq!(
+            automation["fallbackPlan"]["phaseTimeoutPolicies"][1]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["phaseTimeoutPolicies"][1]["timeoutHintMs"],
+            8000
+        );
         assert_eq!(
             automation["fallbackPlan"]["phaseTimeoutPolicies"][1]["timeoutAction"],
             "re-run-preflight-or-switch-to-query-only"
         );
-        assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][0]["errorCode"], "hook-fallback-diagnose-failed");
+        assert_eq!(
+            automation["fallbackPlan"]["phaseRetryPolicies"][0]["errorCode"],
+            "hook-fallback-diagnose-failed"
+        );
         assert_eq!(
             automation["fallbackPlan"]["phaseRetryPolicies"][0]["timeoutErrorCode"],
             "hook-fallback-diagnose-timeout"
         );
-        assert_eq!(automation["fallbackPlan"]["phaseRetryPolicies"][1]["errorCode"], "hook-fallback-preflight-failed");
+        assert_eq!(
+            automation["fallbackPlan"]["phaseRetryPolicies"][1]["errorCode"],
+            "hook-fallback-preflight-failed"
+        );
         assert_eq!(
             automation["fallbackPlan"]["phaseRetryPolicies"][1]["timeoutErrorCode"],
             "hook-fallback-preflight-timeout"
@@ -18667,7 +19011,10 @@ mod tests {
             automation["fallbackPlan"]["phaseErrorCodes"][1]["timeoutErrorCode"],
             "hook-fallback-preflight-timeout"
         );
-        assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["mode"], "phase-retry-budget");
+        assert_eq!(
+            automation["fallbackPlan"]["terminationPolicy"]["mode"],
+            "phase-retry-budget"
+        );
         assert_eq!(
             automation["fallbackPlan"]["terminationPolicy"]["terminateWhen"],
             "all-retryable-steps-exhausted"
@@ -18680,8 +19027,14 @@ mod tests {
             automation["fallbackPlan"]["terminationPolicy"]["timeoutEscalateWhen"],
             "phase-timeout-exceeded"
         );
-        assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["retryablePhaseCount"], 2);
-        assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["nonRetryablePhaseCount"], 0);
+        assert_eq!(
+            automation["fallbackPlan"]["terminationPolicy"]["retryablePhaseCount"],
+            2
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["terminationPolicy"]["nonRetryablePhaseCount"],
+            0
+        );
         assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["retryableStepCount"], 2);
         assert_eq!(automation["fallbackPlan"]["terminationPolicy"]["totalRetryBudget"], 3);
         assert_eq!(automation["fallbackPlan"]["stepCount"], 2);
@@ -18729,7 +19082,10 @@ mod tests {
             "hook-fallback-preflight-timeout"
         );
         assert_eq!(automation["fallbackPlan"]["escalationRecommendationCount"], 2);
-        assert_eq!(automation["fallbackPlan"]["suggestedEscalationKey"], "preflight-refresh");
+        assert_eq!(
+            automation["fallbackPlan"]["suggestedEscalationKey"],
+            "preflight-refresh"
+        );
         assert_eq!(automation["fallbackPlan"]["errorCodeRoutingCount"], 6);
         assert_eq!(
             automation["fallbackPlan"]["errorCodeRouting"]["hook-fallback-preflight-failed"],
@@ -18753,7 +19109,8 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["effectiveEscalationKey"],
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]
+                ["effectiveEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
@@ -18765,7 +19122,8 @@ mod tests {
             1
         );
         assert_eq!(
-            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["commandJsonTemplateCount"],
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]
+                ["commandJsonTemplateCount"],
             1
         );
         assert_eq!(
@@ -18784,10 +19142,7 @@ mod tests {
             automation["fallbackPlan"]["errorCodeRoutingEntries"][0]["effectivePhase"],
             "diagnose"
         );
-        assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["lookupKey"],
-            "errorCode"
-        );
+        assert_eq!(automation["fallbackPlan"]["routingDecision"]["lookupKey"], "errorCode");
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["policy"],
             "first-candidate-by-escalation-order"
@@ -18882,7 +19237,8 @@ mod tests {
             "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveIndex"]["hook-fallback-preflight-failed"]["reason"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveIndex"]["hook-fallback-preflight-failed"]
+                ["reason"],
             "matched-error-code"
         );
         assert_eq!(
@@ -18907,12 +19263,10 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResultEffective"],
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResult"]
-                ["effective"]
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResult"]["effective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResultEffective"]
-                ["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResultEffective"]["phase"],
             "diagnose"
         );
         assert_eq!(
@@ -18921,13 +19275,11 @@ mod tests {
             "policy-review"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleKnownResultEffectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResultEffectivePhase"],
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleKnownResultEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResultEffectiveEscalationKey"],
             "policy-review"
         );
         assert_eq!(
@@ -18960,12 +19312,10 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResultEffective"],
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResult"]
-                ["effective"]
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResult"]["effective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResultEffective"]
-                ["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResultEffective"]["phase"],
             "preflight"
         );
         assert_eq!(
@@ -18974,13 +19324,11 @@ mod tests {
             "preflight-refresh"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleMissingResultEffectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResultEffectivePhase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleMissingResultEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResultEffectiveEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
@@ -19136,8 +19484,7 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveDefaultEffective"]
-                ["escalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveDefaultEffective"]["escalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
@@ -19169,8 +19516,7 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownResultEffective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownResultEffective"]
-                ["escalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveKnownResultEffective"]["escalationKey"],
             "policy-review"
         );
         assert_eq!(
@@ -19206,8 +19552,7 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingResult"]["effective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingResultEffective"]
-                ["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingResultEffective"]["phase"],
             "preflight"
         );
         assert_eq!(
@@ -19215,8 +19560,7 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingResultEffective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingResultEffective"]
-                ["escalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveMissingResultEffective"]["escalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
@@ -19277,22 +19621,19 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownResultEffective"],
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownResult"]
-                ["effective"]
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownResult"]["effective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleKnownResultEffective"]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownResultEffective"]["phase"],
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleKnownResultEffective"]["escalationKeys"][0],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownResultEffective"]
+                ["escalationKeys"][0],
             "policy-review"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleKnownResultEffectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownResultEffectivePhase"],
             "diagnose"
         );
         assert_eq!(
@@ -19330,22 +19671,20 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingResultEffective"],
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingResult"]
-                ["effective"]
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingResult"]["effective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleMissingResultEffective"]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingResultEffective"]
+                ["phase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleMissingResultEffective"]["escalationKeys"][0],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingResultEffective"]
+                ["escalationKeys"][0],
             "preflight-refresh"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleMissingResultEffectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingResultEffectivePhase"],
             "preflight"
         );
         assert_eq!(
@@ -19506,13 +19845,11 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefault"]["effective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefaultEffective"]
-                ["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefaultEffective"]["phase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefaultEffective"]
-                ["escalationKeys"][0],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveDefaultEffective"]["escalationKeys"][0],
             "preflight-refresh"
         );
         assert_eq!(
@@ -19536,8 +19873,7 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownResult"]["effective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownResultEffective"]
-                ["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveKnownResultEffective"]["phase"],
             "diagnose"
         );
         assert_eq!(
@@ -19579,12 +19915,10 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingResultEffective"],
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingResult"]
-                ["effective"]
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingResult"]["effective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveMissingResultEffective"]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingResultEffective"]["phase"],
             "preflight"
         );
         assert_eq!(
@@ -19592,8 +19926,8 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingResultEffective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveMissingResultEffective"]["escalationKeys"][0],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveMissingResultEffective"]
+                ["escalationKeys"][0],
             "preflight-refresh"
         );
         assert_eq!(
@@ -19729,15 +20063,10 @@ mod tests {
             "missing-error-code"
         );
         assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyEffectivePhase"].is_null());
-        assert!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveEffectivePhase"]
-                .is_null()
-        );
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveEffectivePhase"].is_null());
         assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyEffectiveEscalationKey"].is_null());
         assert!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["queryOnlyResolveEffectiveEscalationKey"]
-                .is_null()
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveEffectiveEscalationKey"].is_null()
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyWouldUsePath"],
@@ -19780,8 +20109,7 @@ mod tests {
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["queryOnlyResolveResultEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffectiveEscalationKey"],
             json!(null)
         );
         assert_eq!(
@@ -19809,18 +20137,11 @@ mod tests {
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["queryOnlyPhaseResolveResultEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffectiveEscalationKey"],
             json!(null)
         );
-        assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["entryCount"],
-            6
-        );
-        assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseCount"],
-            2
-        );
+        assert_eq!(automation["fallbackPlan"]["routingDecision"]["ready"]["entryCount"], 6);
+        assert_eq!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseCount"], 2);
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseFirst"],
             "diagnose"
@@ -19886,8 +20207,7 @@ mod tests {
             "normal"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["defaultCommandJsonTemplatePlaceholderCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplatePlaceholderCount"],
             1
         );
         assert_eq!(
@@ -19911,8 +20231,7 @@ mod tests {
             "hook-fallback-preflight-failed"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["defaultCommandJsonTemplateTimeoutErrorCode"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateTimeoutErrorCode"],
             "hook-fallback-preflight-timeout"
         );
         assert_eq!(
@@ -19920,28 +20239,23 @@ mod tests {
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["defaultCommandJsonTemplateMaxSuggestedRetries"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateMaxSuggestedRetries"],
             2
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["defaultCommandJsonTemplateRetryDelayHintMs"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateRetryDelayHintMs"],
             500
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["defaultCommandJsonTemplateTimeoutHintMs"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateTimeoutHintMs"],
             8000
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["defaultCommandJsonTemplateTimeoutAction"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateTimeoutAction"],
             "re-run-preflight-or-switch-to-query-only"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["defaultCommandJsonTemplateCommandJsonEligible"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonTemplateCommandJsonEligible"],
             false
         );
         assert_eq!(
@@ -20141,7 +20455,10 @@ mod tests {
             "missing-error-code"
         );
         assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyEffectivePhase"].is_null());
-        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyEffectiveEscalationKey"].is_null());
+        assert!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyEffectiveEscalationKey"]
+                .is_null()
+        );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyWouldUsePath"],
             false
@@ -20167,7 +20484,8 @@ mod tests {
             "matched-error-code"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownResult"]["effective"]["escalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownResult"]["effective"]
+                ["escalationKey"],
             "policy-review"
         );
         assert_eq!(
@@ -20175,7 +20493,8 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]
+                ["knownEffectiveEscalationKey"],
             "policy-review"
         );
         assert_eq!(
@@ -20191,49 +20510,68 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["missingEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]
+                ["missingEffectiveEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["errorCode"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["errorCode"],
             "hook-fallback-hook-install-failed"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["blockedBy"],
             "both"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["blockedBySource"],
             "both"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["isBlocked"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["available"],
             false
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["matched"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["matched"],
             false
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["usedDefault"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["usedDefault"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["reason"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["reason"],
             "missing-error-code"
         );
-        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"].is_null());
-        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"].is_null());
+        assert!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["effectivePhase"]
+                .is_null()
+        );
+        assert!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["effectiveEscalationKey"]
+                .is_null()
+        );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["result"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["result"],
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryOnlyPath"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["wouldUseQueryOnlyPath"],
             false
         );
         assert_eq!(
@@ -20273,8 +20611,7 @@ mod tests {
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleQueryOnlyEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyEffectiveEscalationKey"],
             json!(null)
         );
         assert_eq!(
@@ -20286,8 +20623,7 @@ mod tests {
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleQueryOnlyResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResultEffective"],
             json!(null)
         );
         assert_eq!(
@@ -20483,8 +20819,12 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyReason"],
             "missing-phase"
         );
-        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyEffectivePhase"].is_null());
-        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyEffectiveEscalationKey"].is_null());
+        assert!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyEffectivePhase"].is_null()
+        );
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]
+            ["queryOnlyEffectiveEscalationKey"]
+            .is_null());
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyWouldUsePhase"],
             false
@@ -20498,11 +20838,13 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownResult"]["matched"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownResult"]
+                ["matched"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownResult"]["usedDefault"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownResult"]
+                ["usedDefault"],
             false
         );
         assert_eq!(
@@ -20510,7 +20852,8 @@ mod tests {
             "matched-phase"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownResult"]["effective"]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownResult"]
+                ["effective"]["phase"],
             "diagnose"
         );
         assert_eq!(
@@ -20518,7 +20861,8 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["knownEffectiveEscalationKey"],
             "policy-review"
         );
         assert_eq!(
@@ -20526,7 +20870,8 @@ mod tests {
             "unknown"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["missingResult"]["reason"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["missingResult"]
+                ["reason"],
             "missing-phase"
         );
         assert_eq!(
@@ -20534,53 +20879,73 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["missingEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["missingEffectiveEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["sourceErrorCode"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["sourceErrorCode"],
             "hook-fallback-hook-install-failed"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["blockedBy"],
             "both"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["blockedBySource"],
             "both"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["isBlocked"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["phase"],
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["available"],
             false
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["matched"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["matched"],
             false
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["usedDefault"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["usedDefault"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["reason"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["reason"],
             "missing-phase"
         );
-        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"].is_null());
-        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"].is_null());
+        assert!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectivePhase"]
+                .is_null()
+        );
+        assert!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectiveEscalationKey"]
+                .is_null()
+        );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["result"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["result"],
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
             false
         );
         assert_eq!(
@@ -20637,18 +21002,15 @@ mod tests {
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResultEffective"],
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyResultMatched"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResultMatched"],
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyResultUsedDefault"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResultUsedDefault"],
             json!(null)
         );
         assert_eq!(
@@ -20656,8 +21018,7 @@ mod tests {
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyResultEffectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResultEffectivePhase"],
             json!(null)
         );
         assert_eq!(
@@ -20666,7 +21027,8 @@ mod tests {
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyInstallFailure"]["reason"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyInstallFailure"]
+                ["reason"],
             "missing-phase"
         );
         assert_eq!(
@@ -20682,15 +21044,18 @@ mod tests {
             "matched-phase"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["effectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]
+                ["effectivePhase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["effectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]
+                ["effectiveEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["effective"]["errorCodeCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["index"]["preflight"]["effective"]
+                ["errorCodeCount"],
             4
         );
         assert_eq!(
@@ -20718,27 +21083,33 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["matched"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]
+                ["hook-fallback-preflight-failed"]["matched"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["usedDefault"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]
+                ["hook-fallback-preflight-failed"]["usedDefault"],
             false
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["reason"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]
+                ["hook-fallback-preflight-failed"]["reason"],
             "matched-error-code"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["effectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]
+                ["hook-fallback-preflight-failed"]["effectivePhase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["effectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]
+                ["hook-fallback-preflight-failed"]["effectiveEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-preflight-failed"]["effective"]["escalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["index"]
+                ["hook-fallback-preflight-failed"]["effective"]["escalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
@@ -20766,11 +21137,13 @@ mod tests {
             "preflight-refresh"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["escalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]
+                ["escalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["effectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]
+                ["effectiveEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
@@ -20778,23 +21151,28 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["effectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]
+                ["effectivePhase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["templateCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]
+                ["templateCount"],
             1
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["commandJsonTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]
+                ["commandJsonTemplateCount"],
             1
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["matchConfidence"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]
+                ["matchConfidence"],
             "exact"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]["resolvedFrom"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]
+                ["resolvedFrom"],
             "errorCodeRouting"
         );
         assert_eq!(
@@ -20818,7 +21196,8 @@ mod tests {
             "controller --preflight-only --preflight-json --pid <pid>"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseIndex"]["preflight"]["commandJsonTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseIndex"]["preflight"]
+                ["commandJsonTemplateCount"],
             1
         );
         assert_eq!(
@@ -20842,7 +21221,8 @@ mod tests {
             "native.hookenv"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseIndex"]["diagnose"]["commandJsonTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseIndex"]["diagnose"]
+                ["commandJsonTemplateCount"],
             1
         );
         assert_eq!(
@@ -20910,13 +21290,11 @@ mod tests {
             "normal"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phasePreflightCommandJsonTemplatePlaceholderCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplatePlaceholderCount"],
             1
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phasePreflightCommandJsonTemplatePlaceholders"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplatePlaceholders"],
             json!(["<pid>"])
         );
         assert_eq!(
@@ -20932,18 +21310,15 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phasePreflightCommandJsonTemplateErrorCode"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateErrorCode"],
             "hook-fallback-preflight-failed"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phasePreflightCommandJsonTemplateTimeoutErrorCode"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateTimeoutErrorCode"],
             "hook-fallback-preflight-timeout"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phasePreflightCommandJsonTemplateRetryable"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateRetryable"],
             true
         );
         assert_eq!(
@@ -20952,18 +21327,15 @@ mod tests {
             2
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phasePreflightCommandJsonTemplateRetryDelayHintMs"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateRetryDelayHintMs"],
             500
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phasePreflightCommandJsonTemplateTimeoutHintMs"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateTimeoutHintMs"],
             8000
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phasePreflightCommandJsonTemplateTimeoutAction"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateTimeoutAction"],
             "re-run-preflight-or-switch-to-query-only"
         );
         assert_eq!(
@@ -21036,13 +21408,11 @@ mod tests {
             "normal"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseDiagnoseCommandJsonTemplatePlaceholderCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplatePlaceholderCount"],
             0
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseDiagnoseCommandJsonTemplatePlaceholders"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplatePlaceholders"],
             json!([])
         );
         assert_eq!(
@@ -21058,18 +21428,15 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseDiagnoseCommandJsonTemplateErrorCode"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateErrorCode"],
             "hook-fallback-diagnose-failed"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseDiagnoseCommandJsonTemplateTimeoutErrorCode"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateTimeoutErrorCode"],
             "hook-fallback-diagnose-timeout"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseDiagnoseCommandJsonTemplateRetryable"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateRetryable"],
             true
         );
         assert_eq!(
@@ -21078,18 +21445,15 @@ mod tests {
             1
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseDiagnoseCommandJsonTemplateRetryDelayHintMs"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateRetryDelayHintMs"],
             250
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseDiagnoseCommandJsonTemplateTimeoutHintMs"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateTimeoutHintMs"],
             4000
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseDiagnoseCommandJsonTemplateTimeoutAction"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateTimeoutAction"],
             "refresh-hook-environment-and-retry"
         );
         assert_eq!(
@@ -21098,15 +21462,18 @@ mod tests {
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]
+                ["recommendedEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["effectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]
+                ["effectiveEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedPhase"],
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]
+                ["recommendedPhase"],
             "preflight"
         );
         assert_eq!(
@@ -21122,23 +21489,28 @@ mod tests {
             "errorCodeRouting"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]
+                ["recommendedTemplateCount"],
             1
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedTemplates"][0],
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]
+                ["recommendedTemplates"][0],
             "controller --preflight-only --preflight-json --pid <pid>"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedCommandJsonTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]
+                ["recommendedCommandJsonTemplateCount"],
             1
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]["recommendedCommandJsonTemplates"][0]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]
+                ["recommendedCommandJsonTemplates"][0]["phase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-diagnose-timeout"]["recommendedEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-diagnose-timeout"]
+                ["recommendedEscalationKey"],
             "policy-review"
         );
         assert_eq!(
@@ -21165,9 +21537,18 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["entries"][0]["recommendedTemplates"][0],
             "native.hookenv"
         );
-        assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][0]["key"], "preflight-refresh");
-        assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][0]["phase"], "preflight");
-        assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][0]["condition"], "always");
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["key"],
+            "preflight-refresh"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["phase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["condition"],
+            "always"
+        );
         assert_eq!(
             automation["fallbackPlan"]["escalationRecommendations"][0]["templates"][0],
             "controller --preflight-only --preflight-json --pid <pid>"
@@ -21185,7 +21566,8 @@ mod tests {
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonTemplates"][0]["maxSuggestedRetries"],
+            automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonTemplates"][0]
+                ["maxSuggestedRetries"],
             2
         );
         assert_eq!(
@@ -21212,8 +21594,14 @@ mod tests {
             automation["fallbackPlan"]["escalationRecommendations"][0]["onErrorCodes"][2],
             "hook-fallback-preflight-timeout"
         );
-        assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][1]["key"], "policy-review");
-        assert_eq!(automation["fallbackPlan"]["escalationRecommendations"][1]["phase"], "diagnose");
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][1]["key"],
+            "policy-review"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][1]["phase"],
+            "diagnose"
+        );
         assert_eq!(
             automation["fallbackPlan"]["escalationRecommendations"][1]["condition"],
             "selected-next-action-blocked"
@@ -21248,10 +21636,7 @@ mod tests {
             automation["fallbackPlan"]["commandJsonTemplates"][0]["phase"],
             "diagnose"
         );
-        assert_eq!(
-            automation["fallbackPlan"]["commandJsonTemplates"][0]["retryable"],
-            true
-        );
+        assert_eq!(automation["fallbackPlan"]["commandJsonTemplates"][0]["retryable"], true);
         assert_eq!(
             automation["fallbackPlan"]["commandJsonTemplates"][0]["maxSuggestedRetries"],
             1
@@ -21284,10 +21669,7 @@ mod tests {
             automation["fallbackPlan"]["commandJsonTemplates"][1]["phase"],
             "preflight"
         );
-        assert_eq!(
-            automation["fallbackPlan"]["commandJsonTemplates"][1]["retryable"],
-            true
-        );
+        assert_eq!(automation["fallbackPlan"]["commandJsonTemplates"][1]["retryable"], true);
         assert_eq!(
             automation["fallbackPlan"]["commandJsonTemplates"][1]["maxSuggestedRetries"],
             2
@@ -21390,43 +21772,53 @@ mod tests {
             "query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["available"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["matched"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["matched"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["usedDefault"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["usedDefault"],
             false
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["reason"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["reason"],
             "matched-error-code"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["effectivePhase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["effectiveEscalationKey"],
             "query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["blockedBy"],
             "both"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["blockedBySource"],
             "both"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["isBlocked"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryOnlyPath"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["wouldUseQueryOnlyPath"],
             true
         );
         assert_eq!(
@@ -21466,8 +21858,7 @@ mod tests {
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleQueryOnlyEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyEffectiveEscalationKey"],
             "query-only-path"
         );
         assert_eq!(
@@ -21475,14 +21866,13 @@ mod tests {
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResult"]["effective"]["escalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResult"]["effective"]
+                ["escalationKey"],
             "query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleQueryOnlyResultEffective"],
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResult"]
-                ["effective"]
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResult"]["effective"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResultMatched"],
@@ -21562,7 +21952,8 @@ mod tests {
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResult"]["effective"]["escalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResult"]["effective"]
+                ["escalationKey"],
             "query-only-path"
         );
         assert_eq!(
@@ -21586,8 +21977,7 @@ mod tests {
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["queryOnlyResolveResultEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffectiveEscalationKey"],
             "query-only-path"
         );
         assert_eq!(
@@ -21596,8 +21986,7 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffective"],
-            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResult"]
-                ["effective"]
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResult"]["effective"]
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultMatched"],
@@ -21616,8 +22005,7 @@ mod tests {
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["queryOnlyPhaseResolveResultEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffectiveEscalationKey"],
             "query-only-path"
         );
         assert_eq!(
@@ -21625,59 +22013,73 @@ mod tests {
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyResult"]["effective"]["escalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyResult"]["effective"]
+                ["escalationKey"],
             "query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["result"]["effective"]["escalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["result"]["effective"]["escalationKey"],
             "query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["sourceErrorCode"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["sourceErrorCode"],
             "hook-fallback-hook-install-failed"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["phase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["blockedBy"],
             "both"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["blockedBySource"],
             "both"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["isBlocked"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["available"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["matched"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["matched"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["usedDefault"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["usedDefault"],
             false
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["reason"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["reason"],
             "matched-phase"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectivePhase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectiveEscalationKey"],
             "query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
             true
         );
         assert_eq!(
@@ -21730,23 +22132,20 @@ mod tests {
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResult"]["effective"]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResult"]["effective"]
+                ["phase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyResultEffective"],
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResult"]
-                ["effective"]
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResultEffective"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResult"]["effective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyResultMatched"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResultMatched"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyResultUsedDefault"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResultUsedDefault"],
             false
         );
         assert_eq!(
@@ -21754,8 +22153,7 @@ mod tests {
             "matched-phase"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyResultEffectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResultEffectivePhase"],
             "query"
         );
         assert_eq!(
@@ -21764,7 +22162,8 @@ mod tests {
             "query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyInstallFailure"]["reason"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyInstallFailure"]
+                ["reason"],
             "matched-phase"
         );
         assert_eq!(
@@ -21772,11 +22171,13 @@ mod tests {
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyResult"]["effective"]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyResult"]["effective"]
+                ["phase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["result"]["effective"]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["result"]["effective"]["phase"],
             "query"
         );
     }
@@ -21794,7 +22195,8 @@ mod tests {
         let automation = hook_automation_to_json(&actions, &backend_matrix);
         assert_eq!(automation["hasFallbackPlan"], true);
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBy"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["blockedBy"],
             json!(null)
         );
         assert_eq!(
@@ -21802,39 +22204,48 @@ mod tests {
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["blockedBySource"],
             "none"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["isBlocked"],
             false
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["available"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["matched"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["matched"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["usedDefault"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["usedDefault"],
             false
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["reason"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["reason"],
             "matched-error-code"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["effectivePhase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["effectiveEscalationKey"],
             "query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryOnlyPath"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["wouldUseQueryOnlyPath"],
             true
         );
         assert_eq!(
@@ -21890,7 +22301,8 @@ mod tests {
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResult"]["effective"]["escalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResult"]["effective"]
+                ["escalationKey"],
             "query-only-path"
         );
         assert_eq!(
@@ -21903,51 +22315,61 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffective"],
-            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResult"]
-                ["effective"]
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResult"]["effective"]
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["phase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyResult"]["effective"]["phase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyResult"]["effective"]
+                ["phase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["blockedBySource"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["blockedBySource"],
             "none"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["isBlocked"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["isBlocked"],
             false
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["available"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["available"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["matched"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["matched"],
             true
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["usedDefault"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["usedDefault"],
             false
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["reason"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["reason"],
             "matched-phase"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectivePhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectivePhase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["effectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectiveEscalationKey"],
             "query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["wouldUseQueryPhase"],
             true
         );
     }
@@ -22075,10 +22497,7 @@ mod tests {
         );
         assert!(coexistence["backendAdaptation"]["executionSelectedActionKey"].is_null());
         assert_eq!(coexistence["backendAdaptation"]["executionSelectedAllowed"], true);
-        assert_eq!(
-            coexistence["backendAdaptation"]["executionSelectedBlockedBy"],
-            "none"
-        );
+        assert_eq!(coexistence["backendAdaptation"]["executionSelectedBlockedBy"], "none");
         assert_eq!(coexistence["backendAdaptation"]["executionSelectedBranch"], "run");
         assert_eq!(
             coexistence["backendAdaptation"]["executionSelectedCommand"],
@@ -22104,18 +22523,24 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["executionRetryableStepCount"], 2);
         assert_eq!(coexistence["backendAdaptation"]["executionHasConflictPair"], true);
         assert_eq!(coexistence["backendAdaptation"]["executionRetryBudget"], 3);
-        assert_eq!(coexistence["backendAdaptation"]["nextStepSource"], "preferred-conflict-resolution-chain");
+        assert_eq!(
+            coexistence["backendAdaptation"]["nextStepSource"],
+            "preferred-conflict-resolution-chain"
+        );
         assert!(coexistence["backendAdaptation"]["nextStepActionKey"].is_null());
-        assert_eq!(coexistence["backendAdaptation"]["nextStepCommandGroup"], "conflict-resolution");
+        assert_eq!(
+            coexistence["backendAdaptation"]["nextStepCommandGroup"],
+            "conflict-resolution"
+        );
         assert_eq!(coexistence["backendAdaptation"]["nextStepAllowed"], true);
         assert_eq!(coexistence["backendAdaptation"]["nextStepBlockedBy"], "none");
         assert_eq!(coexistence["backendAdaptation"]["nextStepBranch"], "run");
-        assert_eq!(
-            coexistence["backendAdaptation"]["nextStepPreferredPath"],
-            "query"
-        );
+        assert_eq!(coexistence["backendAdaptation"]["nextStepPreferredPath"], "query");
         assert_eq!(coexistence["backendAdaptation"]["nextStepPhase"], "query");
-        assert_eq!(coexistence["backendAdaptation"]["nextStepCommand"], "objc.classes <filter>");
+        assert_eq!(
+            coexistence["backendAdaptation"]["nextStepCommand"],
+            "objc.classes <filter>"
+        );
         assert_eq!(coexistence["backendAdaptation"]["nextStepCommandJsonEligible"], true);
         assert_eq!(
             coexistence["backendAdaptation"]["nextStepCommandJsonTemplateCommand"],
@@ -22133,8 +22558,14 @@ mod tests {
             coexistence["backendAdaptation"]["activeStepReason"],
             "use runtime queries first to inspect the mismatched backend states on both sides"
         );
-        assert_eq!(coexistence["backendAdaptation"]["activeStepCommandGroup"], "conflict-resolution");
-        assert_eq!(coexistence["backendAdaptation"]["activeStepCommand"], "objc.classes <filter>");
+        assert_eq!(
+            coexistence["backendAdaptation"]["activeStepCommandGroup"],
+            "conflict-resolution"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["activeStepCommand"],
+            "objc.classes <filter>"
+        );
         assert_eq!(coexistence["backendAdaptation"]["activeStepCommandJsonEligible"], true);
         assert_eq!(
             coexistence["backendAdaptation"]["activeStepCommandJsonTemplateCommand"],
@@ -22145,15 +22576,36 @@ mod tests {
             "runtime-command"
         );
         assert_eq!(coexistence["backendAdaptation"]["installTemplateCount"], 0);
-        assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
+        assert_eq!(
+            coexistence["backendAdaptation"]["backendSpecificRecommendationCount"],
+            3
+        );
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "ellekit");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "controller");
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendState"], "loaded-runtime");
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendLoadedBy"], "controller");
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendVisibleInController"], true);
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendVisibleInTarget"], true);
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedGroupKey"], "query");
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedPhase"], "query");
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendState"],
+            "loaded-runtime"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendLoadedBy"],
+            "controller"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendVisibleInController"],
+            true
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendVisibleInTarget"],
+            true
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendSuggestedGroupKey"],
+            "query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendSuggestedPhase"],
+            "query"
+        );
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendTemplateCount"], 3);
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendTemplates"],
@@ -22469,19 +22921,23 @@ mod tests {
             "conflict-query"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["errorCodeRouting"]["hook-fallback-query-failed"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["errorCodeRouting"]
+                ["hook-fallback-query-failed"],
             "conflict-query"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["index"]["hook-fallback-query-failed"]["effectiveEscalationKey"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["index"]
+                ["hook-fallback-query-failed"]["effectiveEscalationKey"],
             "conflict-query"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["lookupRule"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["lookupRule"],
             "index[errorCode] || default"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["defaultEscalationKey"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["defaultEscalationKey"],
             "conflict-query"
         );
         assert_eq!(
@@ -22506,7 +22962,8 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultTemplates"],
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["defaultTemplates"]
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["defaultTemplates"]
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultTemplate"],
@@ -22522,7 +22979,8 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"],
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["defaultCommandJsonTemplates"]
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["defaultCommandJsonTemplates"]
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplate"]["command"],
@@ -22569,19 +23027,24 @@ mod tests {
             "query"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolve"]["index"]["hook-fallback-query-failed"]["reason"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolve"]["index"]["hook-fallback-query-failed"]["reason"],
             "matched-error-code"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolve"]["default"]["reason"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolve"]["default"]["reason"],
             "missing-error-code"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveIndexEntries"],
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveIndex"]
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveIndexEntries"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveIndex"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveKnownCount"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveKnownCount"],
             4
         );
         assert_eq!(
@@ -22589,11 +23052,42 @@ mod tests {
             4
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolve"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolve"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveIndex"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveIndex"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveIndexEntries"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveIndexEntries"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefault"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveDefault"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffective"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveDefaultEffective"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExamples"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExamples"]
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionResolveIndexCount"],
             4
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveDefaultReason"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveDefaultReason"],
             "missing-error-code"
         );
         assert_eq!(
@@ -22621,19 +23115,32 @@ mod tests {
             "hook-fallback-preflight-failed"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResult"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleKnownResult"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffective"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleKnownResultEffective"]
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffectivePhase"],
             "preflight"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveExampleKnownResultEffectiveEscalationKey"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleKnownResultEffectiveEscalationKey"],
             "conflict-preflight"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey"],
             "conflict-preflight"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveExampleMissingResultEffectivePhase"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleMissingResultEffectivePhase"],
             "query"
         );
         assert_eq!(
@@ -22644,52 +23151,52 @@ mod tests {
             coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingReason"],
             "missing-error-code"
         );
-        let preferred_conflict_ready =
-            &coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]
-                ["ready"];
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyErrorCode"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResult"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleMissingResult"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffective"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleMissingResultEffective"]
+        );
+        let preferred_conflict_ready =
+            &coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"];
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyErrorCode"],
             preferred_conflict_ready["resolveExampleQueryOnlyErrorCode"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyBlockedBy"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBy"],
             preferred_conflict_ready["resolveExampleQueryOnlyBlockedBy"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource"],
             preferred_conflict_ready["resolveExampleQueryOnlyBlockedBySource"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyIsBlocked"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyIsBlocked"],
             preferred_conflict_ready["resolveExampleQueryOnlyIsBlocked"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyAvailable"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyAvailable"],
             preferred_conflict_ready["resolveExampleQueryOnlyAvailable"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyMatched"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyMatched"],
             preferred_conflict_ready["resolveExampleQueryOnlyMatched"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyUsedDefault"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyUsedDefault"],
             preferred_conflict_ready["resolveExampleQueryOnlyUsedDefault"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyReason"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyReason"],
             preferred_conflict_ready["resolveExampleQueryOnlyReason"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase"],
             preferred_conflict_ready["resolveExampleQueryOnlyEffectivePhase"]
         );
         assert_eq!(
@@ -22698,13 +23205,23 @@ mod tests {
             preferred_conflict_ready["resolveExampleQueryOnlyEffectiveEscalationKey"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath"],
             preferred_conflict_ready["resolveExampleQueryOnlyWouldUsePath"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyInstallFailure"],
+            preferred_conflict_ready["resolveExampleQueryOnlyInstallFailure"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResult"],
+            preferred_conflict_ready["resolveExampleQueryOnlyResult"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffective"],
+            preferred_conflict_ready["resolveExampleQueryOnlyResultEffective"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase"],
             preferred_conflict_ready["resolveExampleQueryOnlyResultEffectivePhase"]
         );
         assert_eq!(
@@ -22865,53 +23382,43 @@ mod tests {
             preferred_conflict_ready["queryOnlyResolveResultEffectiveEscalationKey"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlySourceErrorCode"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyPhase"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyBlockedBy"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyBlockedBySource"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyIsBlocked"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyAvailable"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyMatched"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyUsedDefault"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyReason"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyReason"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyReason"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyEffectivePhase"]
         );
         assert_eq!(
@@ -22920,9 +23427,20 @@ mod tests {
             preferred_conflict_ready["phaseResolveExampleQueryOnlyEffectiveEscalationKey"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyWouldUsePhase"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyInstallFailure"],
+            preferred_conflict_ready["phaseResolveExampleQueryOnlyInstallFailure"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResult"],
+            preferred_conflict_ready["phaseResolveExampleQueryOnlyResult"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffective"],
+            preferred_conflict_ready["phaseResolveExampleQueryOnlyResultEffective"]
         );
         assert_eq!(
             coexistence["backendAdaptation"]
@@ -22932,8 +23450,7 @@ mod tests {
         assert_eq!(
             coexistence["backendAdaptation"]
                 ["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey"],
-            preferred_conflict_ready
-                ["phaseResolveExampleQueryOnlyResultEffectiveEscalationKey"]
+            preferred_conflict_ready["phaseResolveExampleQueryOnlyResultEffectiveEscalationKey"]
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode"],
@@ -23008,23 +23525,29 @@ mod tests {
             preferred_conflict_ready["queryOnlyPhaseResolveResultEffectivePhase"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"],
             preferred_conflict_ready["queryOnlyPhaseResolveResultEffectiveEscalationKey"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolve"]["index"]["query"]["effective"]["phase"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolve"]["index"]["query"]["effective"]["phase"],
             "query"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolve"]["default"]["reason"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolve"]["default"]["reason"],
             "missing-phase"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveIndexEntries"],
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveIndex"]
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveIndexEntries"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveIndex"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveKnownCount"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveKnownCount"],
             2
         );
         assert_eq!(
@@ -23032,11 +23555,42 @@ mod tests {
             2
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolve"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolve"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndex"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveIndex"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndexEntries"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveIndexEntries"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefault"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveDefault"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffective"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveDefaultEffective"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExamples"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExamples"]
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndexCount"],
             2
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveDefaultReason"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveDefaultReason"],
             "missing-phase"
         );
         assert_eq!(
@@ -23064,15 +23618,27 @@ mod tests {
             "preflight"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResult"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExampleKnownResult"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffective"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExampleKnownResultEffective"]
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownReason"],
             "matched-phase"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseQuery"]["phase"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseQuery"]["phase"],
             "query"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseQueryTemplateCount"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseQueryTemplateCount"],
             3
         );
         assert_eq!(
@@ -23120,7 +23686,8 @@ mod tests {
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQuery"]["commandJsonTemplates"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseQueryCommandJsonTemplateCommand"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseQueryCommandJsonTemplateCommand"],
             "objc.classes <filter>"
         );
         assert_eq!(
@@ -23140,11 +23707,13 @@ mod tests {
             true
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phasePreflightPrimaryEscalationKey"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phasePreflightPrimaryEscalationKey"],
             "conflict-preflight"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phasePreflightTemplateCount"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phasePreflightTemplateCount"],
             2
         );
         assert_eq!(
@@ -23184,7 +23753,8 @@ mod tests {
             2
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"],
             1
         );
         assert_eq!(
@@ -23207,10 +23777,19 @@ mod tests {
             coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateEligible"],
             true
         );
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseCleanup"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseCleanupTemplateCount"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseCleanup"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseCleanupTemplateCount"]
+                .is_null()
+        );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveExampleKnownResultEffectivePhase"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExampleKnownResultEffectivePhase"],
             "preflight"
         );
         assert_eq!(
@@ -23218,11 +23797,23 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveExampleMissingResultEffectiveEscalationKey"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExampleMissingResultEffectiveEscalationKey"],
             "conflict-query"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResult"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExampleMissingResult"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffective"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExampleMissingResultEffective"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey"],
             "conflict-query"
         );
         assert_eq!(
@@ -23253,12 +23844,21 @@ mod tests {
         assert_eq!(automation["backendAdaptationBias"], "query");
         assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "query");
         assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 3);
-        assert_eq!(automation["backendAdaptation"]["executionSource"], "preferred-conflict-resolution-chain");
+        assert_eq!(
+            automation["backendAdaptation"]["executionSource"],
+            "preferred-conflict-resolution-chain"
+        );
         assert_eq!(automation["backendAdaptation"]["executionSelectedAllowed"], true);
         assert_eq!(automation["backendAdaptation"]["executionSelectedBlockedBy"], "none");
         assert_eq!(automation["backendAdaptation"]["executionSelectedBranch"], "run");
-        assert_eq!(automation["backendAdaptation"]["executionSelectedPreferredPath"], "query");
-        assert_eq!(automation["backendAdaptation"]["executionSelectedErrorCode"], "hook-fallback-query-failed");
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedPreferredPath"],
+            "query"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedErrorCode"],
+            "hook-fallback-query-failed"
+        );
         assert_eq!(
             automation["backendAdaptation"]["executionSelectedCommandJsonTemplate"]["command"],
             "objc.classes <filter>"
@@ -23267,16 +23867,34 @@ mod tests {
             automation["backendAdaptation"]["executionSelectedCommandJsonTemplateKind"],
             "runtime-command"
         );
-        assert_eq!(automation["backendAdaptation"]["executionSelectedRetryDelayHintMs"], 250);
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedRetryDelayHintMs"],
+            250
+        );
         assert_eq!(automation["backendAdaptation"]["executionSelectedTimeoutHintMs"], 5000);
-        assert_eq!(automation["backendAdaptation"]["executionSelectedRequiresFallback"], false);
-        assert_eq!(automation["backendAdaptation"]["executionPhaseOrder"], json!(["query", "preflight"]));
-        assert_eq!(automation["backendAdaptation"]["nextStepSource"], "preferred-conflict-resolution-chain");
-        assert_eq!(automation["backendAdaptation"]["nextStepCommandGroup"], "conflict-resolution");
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedRequiresFallback"],
+            false
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["executionPhaseOrder"],
+            json!(["query", "preflight"])
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["nextStepSource"],
+            "preferred-conflict-resolution-chain"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["nextStepCommandGroup"],
+            "conflict-resolution"
+        );
         assert_eq!(automation["backendAdaptation"]["nextStepAllowed"], true);
         assert_eq!(automation["backendAdaptation"]["nextStepBranch"], "run");
         assert_eq!(automation["backendAdaptation"]["nextStepPreferredPath"], "query");
-        assert_eq!(automation["backendAdaptation"]["nextStepErrorCode"], "hook-fallback-query-failed");
+        assert_eq!(
+            automation["backendAdaptation"]["nextStepErrorCode"],
+            "hook-fallback-query-failed"
+        );
         assert_eq!(
             automation["backendAdaptation"]["nextStepCommandJsonTemplate"]["command"],
             "objc.classes <filter>"
@@ -23288,7 +23906,10 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["stepChainCount"], 2);
         assert_eq!(automation["backendAdaptation"]["activeStepAllowed"], true);
         assert_eq!(automation["backendAdaptation"]["activeStepPreferredPath"], "query");
-        assert_eq!(automation["backendAdaptation"]["activeStepCommandGroup"], "conflict-resolution");
+        assert_eq!(
+            automation["backendAdaptation"]["activeStepCommandGroup"],
+            "conflict-resolution"
+        );
         assert_eq!(automation["backendAdaptation"]["activeStepPhase"], "query");
         assert_eq!(
             automation["backendAdaptation"]["activeStepCommandJsonTemplate"]["command"],
@@ -23419,7 +24040,8 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultTemplates"],
-            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["defaultTemplates"]
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["defaultTemplates"]
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultTemplate"],
@@ -23435,7 +24057,8 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"],
-            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["defaultCommandJsonTemplates"]
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["defaultCommandJsonTemplates"]
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplate"]["command"],
@@ -23498,7 +24121,8 @@ mod tests {
             "matched-phase"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveIndexCount"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveIndexCount"],
             4
         );
         assert_eq!(
@@ -23506,11 +24130,42 @@ mod tests {
             4
         );
         assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolve"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolve"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveIndex"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveIndex"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveIndexEntries"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveIndexEntries"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveDefault"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveDefault"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffective"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveDefaultEffective"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExamples"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExamples"]
+        );
+        assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionResolveIndexCount"],
             4
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveExampleKnownErrorCode"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleKnownErrorCode"],
             "hook-fallback-preflight-failed"
         );
         assert_eq!(
@@ -23518,15 +24173,38 @@ mod tests {
             "hook-fallback-preflight-failed"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["resolveExampleMissingResultEffectiveEscalationKey"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResult"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleKnownResult"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffective"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleKnownResultEffective"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleMissingResultEffectiveEscalationKey"],
             "conflict-query"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey"],
             "conflict-query"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveIndexCount"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResult"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleMissingResult"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffective"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["resolveExampleMissingResultEffective"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveIndexCount"],
             2
         );
         assert_eq!(
@@ -23538,7 +24216,38 @@ mod tests {
             2
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveExampleKnownPhase"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolve"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolve"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndex"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveIndex"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndexEntries"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveIndexEntries"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefault"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveDefault"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffective"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveDefaultEffective"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExamples"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExamples"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExampleKnownPhase"],
             "preflight"
         );
         assert_eq!(
@@ -23546,7 +24255,18 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseResolveDefaultEffectivePhase"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResult"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExampleKnownResult"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffective"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExampleKnownResultEffective"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveDefaultEffectivePhase"],
             "query"
         );
         assert_eq!(
@@ -23554,11 +24274,13 @@ mod tests {
             "missing-phase"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseQueryErrorCodeCount"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseQueryErrorCodeCount"],
             2
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseQueryEscalationKeys"][0],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseQueryEscalationKeys"][0],
             "conflict-query"
         );
         assert_eq!(
@@ -23622,7 +24344,8 @@ mod tests {
             true
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplateCommand"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonTemplateCommand"],
             "native.hookenv"
         );
         assert_eq!(
@@ -23662,7 +24385,8 @@ mod tests {
             2
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"],
             1
         );
         assert_eq!(
@@ -23710,70 +24434,70 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey"],
             "conflict-preflight"
         );
         let preferred_conflict_ready =
-            &automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]
-                ["ready"];
+            &automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"];
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyErrorCode"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyErrorCode"],
             preferred_conflict_ready["resolveExampleQueryOnlyErrorCode"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyBlockedBy"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBy"],
             preferred_conflict_ready["resolveExampleQueryOnlyBlockedBy"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource"],
             preferred_conflict_ready["resolveExampleQueryOnlyBlockedBySource"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyIsBlocked"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyIsBlocked"],
             preferred_conflict_ready["resolveExampleQueryOnlyIsBlocked"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyAvailable"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyAvailable"],
             preferred_conflict_ready["resolveExampleQueryOnlyAvailable"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyMatched"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyMatched"],
             preferred_conflict_ready["resolveExampleQueryOnlyMatched"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyUsedDefault"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyUsedDefault"],
             preferred_conflict_ready["resolveExampleQueryOnlyUsedDefault"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyReason"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyReason"],
             preferred_conflict_ready["resolveExampleQueryOnlyReason"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase"],
             preferred_conflict_ready["resolveExampleQueryOnlyEffectivePhase"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyEffectiveEscalationKey"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyEffectiveEscalationKey"],
             preferred_conflict_ready["resolveExampleQueryOnlyEffectiveEscalationKey"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath"],
             preferred_conflict_ready["resolveExampleQueryOnlyWouldUsePath"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase"],
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyInstallFailure"],
+            preferred_conflict_ready["resolveExampleQueryOnlyInstallFailure"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResult"],
+            preferred_conflict_ready["resolveExampleQueryOnlyResult"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffective"],
+            preferred_conflict_ready["resolveExampleQueryOnlyResultEffective"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase"],
             preferred_conflict_ready["resolveExampleQueryOnlyResultEffectivePhase"]
         );
         assert_eq!(
@@ -23934,53 +24658,43 @@ mod tests {
             preferred_conflict_ready["queryOnlyResolveResultEffectiveEscalationKey"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlySourceErrorCode"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyPhase"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyBlockedBy"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyBlockedBySource"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyIsBlocked"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyAvailable"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyMatched"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyUsedDefault"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyReason"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyReason"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyReason"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyEffectivePhase"]
         );
         assert_eq!(
@@ -23989,9 +24703,20 @@ mod tests {
             preferred_conflict_ready["phaseResolveExampleQueryOnlyEffectiveEscalationKey"]
         );
         assert_eq!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyWouldUsePhase"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyInstallFailure"],
+            preferred_conflict_ready["phaseResolveExampleQueryOnlyInstallFailure"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResult"],
+            preferred_conflict_ready["phaseResolveExampleQueryOnlyResult"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffective"],
+            preferred_conflict_ready["phaseResolveExampleQueryOnlyResultEffective"]
         );
         assert_eq!(
             automation["backendAdaptation"]
@@ -24001,8 +24726,7 @@ mod tests {
         assert_eq!(
             automation["backendAdaptation"]
                 ["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey"],
-            preferred_conflict_ready
-                ["phaseResolveExampleQueryOnlyResultEffectiveEscalationKey"]
+            preferred_conflict_ready["phaseResolveExampleQueryOnlyResultEffectiveEscalationKey"]
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode"],
@@ -24077,7 +24801,8 @@ mod tests {
             preferred_conflict_ready["queryOnlyPhaseResolveResultEffectivePhase"]
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"],
             preferred_conflict_ready["queryOnlyPhaseResolveResultEffectiveEscalationKey"]
         );
         assert_eq!(
@@ -24085,7 +24810,18 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResult"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExampleMissingResult"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffective"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseResolveExampleMissingResultEffective"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey"],
             "conflict-query"
         );
         assert_eq!(
@@ -24104,7 +24840,11 @@ mod tests {
             automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey"],
             "conflict-query"
         );
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["phaseCleanupCommandJsonTemplate"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["phaseCleanupCommandJsonTemplate"]
+                .is_null()
+        );
         assert_eq!(automation["backendAdaptation"]["requiresQueryPhase"], true);
         assert_eq!(automation["backendAdaptation"]["requiresCleanupPhase"], false);
         assert_eq!(automation["backendAdaptation"]["inlineInstallReadyNow"], false);
@@ -24210,10 +24950,8 @@ mod tests {
             inline_hooks_allowed: false,
             reason: Some("target cleanup-only".into()),
         };
-        let controller_actions =
-            hook_environment_recommended_actions(&controller_report, Some(&controller_strategy));
-        let target_actions =
-            hook_environment_recommended_actions(&target_report, Some(&target_strategy));
+        let controller_actions = hook_environment_recommended_actions(&controller_report, Some(&controller_strategy));
+        let target_actions = hook_environment_recommended_actions(&target_report, Some(&target_strategy));
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
@@ -24249,18 +24987,12 @@ mod tests {
             assert_eq!(adaptation["preferredConflictResolutionStepChainTruncated"], false);
             assert_eq!(adaptation["preferredConflictResolutionNextStep"], *step);
             assert_eq!(adaptation["preferredConflictResolutionNextStepId"], step["id"]);
-            assert_eq!(
-                adaptation["preferredConflictResolutionNextStepSource"],
-                step["source"]
-            );
+            assert_eq!(adaptation["preferredConflictResolutionNextStepSource"], step["source"]);
             assert_eq!(
                 adaptation["preferredConflictResolutionNextStepCommand"],
                 step["command"]
             );
-            assert_eq!(
-                adaptation["preferredConflictResolutionNextStepPhase"],
-                step["phase"]
-            );
+            assert_eq!(adaptation["preferredConflictResolutionNextStepPhase"], step["phase"]);
             assert_eq!(adaptation["preferredConflictResolutionNextStepKind"], step["kind"]);
             assert_eq!(
                 adaptation["preferredConflictResolutionNextStepCommandJsonEligible"],
@@ -24328,9 +25060,15 @@ mod tests {
                 step["requiresFallback"]
             );
             assert_eq!(adaptation["preferredConflictResolutionActiveStep"], *step);
-            assert_eq!(adaptation["preferredConflictResolutionActiveStepSource"], step["source"]);
+            assert_eq!(
+                adaptation["preferredConflictResolutionActiveStepSource"],
+                step["source"]
+            );
             assert_eq!(adaptation["preferredConflictResolutionActiveStepId"], step["id"]);
-            assert_eq!(adaptation["preferredConflictResolutionActiveStepCommand"], step["command"]);
+            assert_eq!(
+                adaptation["preferredConflictResolutionActiveStepCommand"],
+                step["command"]
+            );
             assert_eq!(adaptation["preferredConflictResolutionActiveStepPhase"], step["phase"]);
             assert_eq!(
                 adaptation["preferredConflictResolutionActiveStepCommandJsonEligible"],
@@ -24495,12 +25233,12 @@ mod tests {
             "backend-adaptation-preferred-group"
         );
         assert_eq!(coexistence["backendAdaptation"]["executionSelectedAllowed"], true);
-        assert_eq!(
-            coexistence["backendAdaptation"]["executionSelectedBlockedBy"],
-            "none"
-        );
+        assert_eq!(coexistence["backendAdaptation"]["executionSelectedBlockedBy"], "none");
         assert_eq!(coexistence["backendAdaptation"]["executionSelectedBranch"], "run");
-        assert_eq!(coexistence["backendAdaptation"]["executionSelectedCommand"], "native.hookenv");
+        assert_eq!(
+            coexistence["backendAdaptation"]["executionSelectedCommand"],
+            "native.hookenv"
+        );
         assert_eq!(
             coexistence["backendAdaptation"]["executionSelectedCommandJsonTemplateCommand"],
             "native.hookenv"
@@ -24520,7 +25258,10 @@ mod tests {
         );
         assert_eq!(coexistence["backendAdaptation"]["executionRetryableStepCount"], 2);
         assert_eq!(coexistence["backendAdaptation"]["executionHasConflictPair"], false);
-        assert_eq!(coexistence["backendAdaptation"]["nextStepSource"], "backend-adaptation-preferred-group");
+        assert_eq!(
+            coexistence["backendAdaptation"]["nextStepSource"],
+            "backend-adaptation-preferred-group"
+        );
         assert!(coexistence["backendAdaptation"]["nextStepActionKey"].is_null());
         assert_eq!(coexistence["backendAdaptation"]["nextStepCommandGroup"], "preflight");
         assert_eq!(coexistence["backendAdaptation"]["nextStepAllowed"], true);
@@ -24566,15 +25307,36 @@ mod tests {
             coexistence["backendAdaptation"]["activeStepCommandJsonTemplateKind"],
             "runtime-command"
         );
-        assert_eq!(coexistence["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
+        assert_eq!(
+            coexistence["backendAdaptation"]["backendSpecificRecommendationCount"],
+            1
+        );
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "libhooker");
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "filesystem-only");
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendState"], "filesystem-artifact");
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendScope"],
+            "filesystem-only"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendState"],
+            "filesystem-artifact"
+        );
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendLoadedBy"], "none");
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendVisibleInController"], true);
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendVisibleInTarget"], true);
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedGroupKey"], "preflight");
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendSuggestedPhase"], "preflight");
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendVisibleInController"],
+            true
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendVisibleInTarget"],
+            true
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendSuggestedGroupKey"],
+            "preflight"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendSuggestedPhase"],
+            "preflight"
+        );
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendTemplateCount"], 2);
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendTemplates"],
@@ -24618,10 +25380,14 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairTemplateCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplates"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplateCount"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStep"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStepCommandJsonTemplate"].is_null());
@@ -24638,46 +25404,125 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultTemplateCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultTemplates"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultTemplate"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCount"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCount"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"]
+                .is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplate"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCommand"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateKind"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplatePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateErrorCode"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateEligible"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCommand"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateKind"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplatePhase"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateErrorCode"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateEligible"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseFirst"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseFirstName"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseLast"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseLastName"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolve"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveIndex"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveIndexEntries"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefault"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffective"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExamples"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveKnownCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveIndexCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultReason"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultMatched"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultUsedDefault"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveEscalationKey"]
+                .is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownErrorCode"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffectivePhase"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResult"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffective"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffectivePhase"]
+                .is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResult"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffective"]
+                .is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleMissingResultEffectivePhase"]
+            .is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingReason"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyErrorCode"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBy"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyIsBlocked"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyAvailable"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyMatched"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyUsedDefault"].is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey"]
+            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyErrorCode"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyInstallFailure"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBy"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyIsBlocked"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyAvailable"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyMatched"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyUsedDefault"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyReason"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyEffectiveEscalationKey"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase"]
+                .is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleQueryOnlyEffectiveEscalationKey"]
+            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath"]
+                .is_null()
+        );
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResult"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffective"]
+                .is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey"]
+            .is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyErrorCode"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlySourceErrorCode"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyBlockedBy"].is_null());
@@ -24689,7 +25534,9 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyUsedDefault"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyReason"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyEffectiveEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyEffectiveEscalationKey"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyWouldUsePath"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyWouldUsePhase"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResult"].is_null());
@@ -24698,116 +25545,306 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultUsedDefault"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultReason"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveEscalationKey"]
+                .is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBy"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBySource"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBySource"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveIsBlocked"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveAvailable"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveMatched"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveUsedDefault"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveReason"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectivePhase"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey"]
+                .is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveWouldUsePath"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResult"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffective"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffective"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultMatched"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultUsedDefault"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultUsedDefault"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultReason"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectivePhase"]
+                .is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolve"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndex"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndexEntries"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefault"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffective"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExamples"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndexCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultReason"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultMatched"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultUsedDefault"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultUsedDefault"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectivePhase"].is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey"]
+            .is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownPhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveEscalationKey"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownReason"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyReason"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveEscalationKey"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResult"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffective"]
+                .is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveEscalationKey"]
+            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownReason"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResult"].is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleMissingResultEffective"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleMissingResultEffectivePhase"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyInstallFailure"]
+            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy"]
+                .is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource"]
+            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyReason"].is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveEscalationKey"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase"]
+            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResult"].is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffective"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey"]
+            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode"]
+                .is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolvePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveAvailable"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveAvailable"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveMatched"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveReason"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase"]
+                .is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey"]
+            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResult"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffective"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultMatched"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultUsedDefault"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultReason"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffective"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultMatched"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultUsedDefault"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultReason"].is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"]
+            .is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQuery"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryErrorCodeCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryEscalationKeyCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryEscalationKeys"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryPrimaryEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryPrimaryEscalationKey"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplateCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplates"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplate"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCount"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplates"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCount"].is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount"]
+            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplates"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplate"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCommand"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateKind"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCommand"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateKind"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible"]
+                .is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflight"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightErrorCodeCount"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightEscalationKeyCount"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightEscalationKeyCount"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightEscalationKeys"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightPrimaryEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightPrimaryEscalationKey"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightTemplateCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightTemplates"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightTemplate"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateCount"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplates"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplate"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateCommand"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateKind"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateEligible"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateCount"]
+                .is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"]
+            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplates"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplate"].is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhasePreflightCommandJsonTemplateCommand"]
+            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateKind"]
+                .is_null()
+        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhasePreflightCommandJsonTemplateEligible"]
+            .is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanup"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupErrorCodeCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupErrorCodes"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupEscalationKeyCount"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupEscalationKeyCount"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupEscalationKeys"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupPrimaryEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupPrimaryEscalationKey"].is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupTemplateCount"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupTemplates"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupTemplate"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplates"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplate"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCommand"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateKind"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateEligible"].is_null());
-        assert_eq!(coexistence["backendAdaptation"]["preflightTemplates"][1], "controller --preflight-only --preflight-json --pid <pid>");
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplates"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplate"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCommand"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateKind"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateEligible"]
+                .is_null()
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preflightTemplates"][1],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
         assert_eq!(coexistence["backendAdaptation"]["requiresPreflight"], true);
         assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
         assert_eq!(
@@ -24821,12 +25858,21 @@ mod tests {
         assert_eq!(automation["backendAdaptationBias"], "preflight");
         assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "preflight");
         assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 2);
-        assert_eq!(automation["backendAdaptation"]["executionSource"], "backend-adaptation-preferred-group");
+        assert_eq!(
+            automation["backendAdaptation"]["executionSource"],
+            "backend-adaptation-preferred-group"
+        );
         assert_eq!(automation["backendAdaptation"]["executionSelectedAllowed"], true);
         assert_eq!(automation["backendAdaptation"]["executionSelectedBlockedBy"], "none");
         assert_eq!(automation["backendAdaptation"]["executionSelectedBranch"], "run");
-        assert_eq!(automation["backendAdaptation"]["executionSelectedPreferredPath"], "preflight");
-        assert_eq!(automation["backendAdaptation"]["executionSelectedTimeoutErrorCode"], "hook-fallback-diagnose-timeout");
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedPreferredPath"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedTimeoutErrorCode"],
+            "hook-fallback-diagnose-timeout"
+        );
         assert_eq!(
             automation["backendAdaptation"]["executionSelectedCommandJsonTemplate"]["command"],
             "native.hookenv"
@@ -24835,14 +25881,23 @@ mod tests {
             automation["backendAdaptation"]["executionSelectedCommandJsonTemplateKind"],
             "runtime-command"
         );
-        assert_eq!(automation["backendAdaptation"]["executionSelectedRetryDelayHintMs"], 250);
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedRetryDelayHintMs"],
+            250
+        );
         assert_eq!(automation["backendAdaptation"]["executionSelectedTimeoutHintMs"], 4000);
-        assert_eq!(automation["backendAdaptation"]["executionSelectedRequiresFallback"], false);
+        assert_eq!(
+            automation["backendAdaptation"]["executionSelectedRequiresFallback"],
+            false
+        );
         assert_eq!(
             automation["backendAdaptation"]["executionPhaseOrder"],
             json!(["preflight", "preflight"])
         );
-        assert_eq!(automation["backendAdaptation"]["nextStepSource"], "backend-adaptation-preferred-group");
+        assert_eq!(
+            automation["backendAdaptation"]["nextStepSource"],
+            "backend-adaptation-preferred-group"
+        );
         assert_eq!(automation["backendAdaptation"]["nextStepCommandGroup"], "preflight");
         assert_eq!(automation["backendAdaptation"]["nextStepAllowed"], true);
         assert_eq!(automation["backendAdaptation"]["nextStepPreferredPath"], "preflight");
@@ -24913,10 +25968,14 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictBackendPairTemplateCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplateCount"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionSuggestedEscalationKey"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultEscalationKey"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultEffectiveEscalationKey"].is_null());
@@ -24925,46 +25984,119 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultTemplateCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultTemplate"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCount"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCount"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"]
+                .is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplate"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCommand"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCommand"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateKind"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplatePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateErrorCode"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateEligible"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplatePhase"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateErrorCode"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateEligible"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseFirst"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseFirstName"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseLast"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseLastName"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolve"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveIndex"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveIndexEntries"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefault"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffective"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExamples"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveKnownCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveIndexCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultReason"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultMatched"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultUsedDefault"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveEscalationKey"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveEscalationKey"]
+                .is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownErrorCode"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffectivePhase"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResult"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffective"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffectivePhase"]
+                .is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey"]
+            .is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResult"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffective"]
+                .is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleMissingResultEffectivePhase"]
+            .is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingReason"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyErrorCode"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBy"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyIsBlocked"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyAvailable"].is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey"]
+            .is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyErrorCode"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyInstallFailure"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBy"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyIsBlocked"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyAvailable"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyMatched"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyUsedDefault"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyUsedDefault"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyReason"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyEffectiveEscalationKey"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase"]
+                .is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleQueryOnlyEffectiveEscalationKey"]
+            .is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath"].is_null()
+        );
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResult"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffective"]
+                .is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey"]
+            .is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyErrorCode"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlySourceErrorCode"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyBlockedBy"].is_null());
@@ -24976,7 +26108,9 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyUsedDefault"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyReason"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyEffectiveEscalationKey"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyEffectiveEscalationKey"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyWouldUsePath"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyWouldUsePhase"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResult"].is_null());
@@ -24985,70 +26119,185 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultUsedDefault"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultReason"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveEscalationKey"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveEscalationKey"]
+                .is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBy"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBySource"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveBlockedBySource"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveIsBlocked"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveAvailable"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveMatched"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveUsedDefault"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveReason"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey"]
+                .is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveWouldUsePath"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResult"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffective"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffective"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultMatched"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultUsedDefault"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultUsedDefault"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultReason"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectivePhase"]
+                .is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey"]
+            .is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolve"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndex"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndexEntries"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefault"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffective"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExamples"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveIndexCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultReason"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultMatched"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultUsedDefault"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectivePhase"].is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey"]
+            .is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownPhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveEscalationKey"].is_null());
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResult"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffective"]
+                .is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveEscalationKey"]
+            .is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownReason"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyReason"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveEscalationKey"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResult"].is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleMissingResultEffective"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleMissingResultEffectivePhase"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyInstallFailure"]
+            .is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy"]
+                .is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource"]
+            .is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyReason"].is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveEscalationKey"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase"]
+            .is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyResult"].is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffective"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey"]
+            .is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode"]
+                .is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolvePhase"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource"]
+                .is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveAvailable"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveMatched"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveReason"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase"].is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey"]
+            .is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResult"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffective"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultMatched"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultUsedDefault"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultReason"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultEffective"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultMatched"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultUsedDefault"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyPhaseResolveResultReason"].is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey"]
+            .is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQuery"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryErrorCodeCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryEscalationKeyCount"].is_null());
@@ -25057,47 +26306,100 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplateCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplate"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCount"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCount"].is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount"]
+            .is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplate"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCommand"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateKind"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCommand"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateKind"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible"]
+                .is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflight"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightErrorCodeCount"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightEscalationKeyCount"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightEscalationKeyCount"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightEscalationKeys"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightPrimaryEscalationKey"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightPrimaryEscalationKey"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightTemplateCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightTemplate"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateCount"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplates"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplate"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateCommand"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateKind"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateEligible"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateCount"]
+                .is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"]
+            .is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplates"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplate"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateCommand"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplateKind"]
+                .is_null()
+        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhasePreflightCommandJsonTemplateEligible"]
+            .is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanup"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupErrorCodeCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupErrorCodes"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupEscalationKeyCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupEscalationKeys"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupPrimaryEscalationKey"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupPrimaryEscalationKey"].is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupTemplateCount"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupTemplate"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplates"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplate"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCommand"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateKind"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateEligible"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplates"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplate"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCommand"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateKind"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateEligible"]
+                .is_null()
+        );
         assert_eq!(automation["loadedExternalBackendCount"], 0);
         assert_eq!(automation["singleExternalBackendLoaded"], false);
         assert_eq!(automation["multipleExternalBackendsLoaded"], false);
-        assert_eq!(automation["suggestedSequence"][1], "controller --preflight-only --preflight-json --pid <pid>");
+        assert_eq!(
+            automation["suggestedSequence"][1],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
 
         let templates = automation["commandTemplates"].as_array().expect("command templates");
         let install_templates = templates
@@ -25715,10 +27017,7 @@ mod tests {
         assert_eq!(rendered["diagnostics"]["hook"]["commandMode"], "query-only");
         assert_eq!(rendered["diagnostics"]["hook"]["baseCommandMode"], "query-only");
         assert_eq!(rendered["diagnostics"]["hook"]["effectiveCommandMode"], "query-only");
-        assert_eq!(
-            rendered["diagnostics"]["hook"]["autoDowngradedToQueryOnly"],
-            false
-        );
+        assert_eq!(rendered["diagnostics"]["hook"]["autoDowngradedToQueryOnly"], false);
         assert_eq!(rendered["diagnostics"]["hook"]["autoDowngradeReason"], "<none>");
         assert_eq!(
             rendered["diagnostics"]["hook"]["recommendation"],
@@ -25836,7 +27135,9 @@ mod tests {
             None,
             None,
             &[],
-            Some(&Error::State("target hook strategy blocked injection: external backend already loaded in target".into())),
+            Some(&Error::State(
+                "target hook strategy blocked injection: external backend already loaded in target".into(),
+            )),
         );
         assert_eq!(legacy_rendered["diagnostics"]["phase"], "hook-policy");
         assert_eq!(legacy_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
@@ -25871,10 +27172,7 @@ mod tests {
             legacy_rendered["diagnostics"]["hook"]["autoDowngradedToQueryOnly"],
             false
         );
-        assert_eq!(
-            legacy_rendered["diagnostics"]["hook"]["autoDowngradeReason"],
-            "unknown"
-        );
+        assert_eq!(legacy_rendered["diagnostics"]["hook"]["autoDowngradeReason"], "unknown");
         assert_eq!(
             legacy_rendered["diagnostics"]["hook"]["recommendation"],
             "external backend already loaded in target"
@@ -25907,7 +27205,10 @@ mod tests {
             )),
         );
         assert_eq!(legacy_both_rendered["diagnostics"]["phase"], "hook-policy");
-        assert_eq!(legacy_both_rendered["diagnostics"]["code"], "both-hook-policies-blocked");
+        assert_eq!(
+            legacy_both_rendered["diagnostics"]["code"],
+            "both-hook-policies-blocked"
+        );
         assert_eq!(legacy_both_rendered["diagnostics"]["hookActionKey"], "unknown");
         assert_eq!(legacy_both_rendered["diagnostics"]["hookCommandGroup"], "unknown");
         assert_eq!(legacy_both_rendered["diagnostics"]["hookBlockedBy"], "both");
@@ -25929,9 +27230,18 @@ mod tests {
             legacy_both_rendered["diagnostics"]["hook"]["recommendation"],
             "both sides are in query-only mode"
         );
-        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["coexistenceMode"], "unknown");
-        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["backendPressure"], "unknown");
-        assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["fallbackActionKey"], "unknown");
+        assert_eq!(
+            legacy_both_rendered["diagnostics"]["hook"]["coexistenceMode"],
+            "unknown"
+        );
+        assert_eq!(
+            legacy_both_rendered["diagnostics"]["hook"]["backendPressure"],
+            "unknown"
+        );
+        assert_eq!(
+            legacy_both_rendered["diagnostics"]["hook"]["fallbackActionKey"],
+            "unknown"
+        );
         assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["fallbackPhase"], "unknown");
         assert_eq!(legacy_both_rendered["diagnostics"]["hook"]["fallbackAvailable"], false);
 
@@ -25962,10 +27272,7 @@ mod tests {
         );
         assert_eq!(legacy_controller_rendered["diagnostics"]["hookActionKey"], "unknown");
         assert_eq!(legacy_controller_rendered["diagnostics"]["hookCommandGroup"], "unknown");
-        assert_eq!(
-            legacy_controller_rendered["diagnostics"]["hookBlockedBy"],
-            "controller"
-        );
+        assert_eq!(legacy_controller_rendered["diagnostics"]["hookBlockedBy"], "controller");
         assert_eq!(legacy_controller_rendered["diagnostics"]["hookCommandMode"], "unknown");
         assert_eq!(
             legacy_controller_rendered["diagnostics"]["hookRecommendation"],
@@ -25982,7 +27289,10 @@ mod tests {
             legacy_controller_rendered["diagnostics"]["hookFallbackAvailable"],
             false
         );
-        assert_eq!(legacy_controller_rendered["diagnostics"]["hook"]["actionKey"], "unknown");
+        assert_eq!(
+            legacy_controller_rendered["diagnostics"]["hook"]["actionKey"],
+            "unknown"
+        );
         assert_eq!(
             legacy_controller_rendered["diagnostics"]["hook"]["commandGroup"],
             "unknown"
@@ -26040,9 +27350,15 @@ mod tests {
                 "hook-effective-blocked actionKey=hook.install commandGroup=hook-install commandMode=query-only; recommendation=missing blockedBy field".into(),
             )),
         );
-        assert_eq!(missing_blocked_by_rendered["diagnostics"]["code"], "hook-effective-blocked");
+        assert_eq!(
+            missing_blocked_by_rendered["diagnostics"]["code"],
+            "hook-effective-blocked"
+        );
         assert_eq!(missing_blocked_by_rendered["diagnostics"]["hookBlockedBy"], "unknown");
-        assert_eq!(missing_blocked_by_rendered["diagnostics"]["hook"]["blockedBy"], "unknown");
+        assert_eq!(
+            missing_blocked_by_rendered["diagnostics"]["hook"]["blockedBy"],
+            "unknown"
+        );
 
         let invalid_blocked_by_rendered = render_injection_result_json(
             &config,
@@ -26064,9 +27380,15 @@ mod tests {
                 "hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=garbage commandMode=query-only; recommendation=invalid blockedBy".into(),
             )),
         );
-        assert_eq!(invalid_blocked_by_rendered["diagnostics"]["code"], "hook-effective-blocked");
+        assert_eq!(
+            invalid_blocked_by_rendered["diagnostics"]["code"],
+            "hook-effective-blocked"
+        );
         assert_eq!(invalid_blocked_by_rendered["diagnostics"]["hookBlockedBy"], "unknown");
-        assert_eq!(invalid_blocked_by_rendered["diagnostics"]["hook"]["blockedBy"], "unknown");
+        assert_eq!(
+            invalid_blocked_by_rendered["diagnostics"]["hook"]["blockedBy"],
+            "unknown"
+        );
 
         let invalid_command_mode_rendered = render_injection_result_json(
             &config,
@@ -26088,19 +27410,52 @@ mod tests {
                 "hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=garbage coexistenceMode=weird backendPressure=strange fallbackActionKey=hook.status fallbackCommand=trace status fallbackPhase=oops; recommendation=invalid commandMode".into(),
             )),
         );
-        assert_eq!(invalid_command_mode_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
+        assert_eq!(
+            invalid_command_mode_rendered["diagnostics"]["code"],
+            "target-hook-policy-blocked"
+        );
         assert_eq!(invalid_command_mode_rendered["diagnostics"]["hookBlockedBy"], "target");
-        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hookCommandMode"], "unknown");
-        assert_eq!(invalid_command_mode_rendered["diagnostics"]["coexistenceMode"], "unknown");
-        assert_eq!(invalid_command_mode_rendered["diagnostics"]["backendPressure"], "unknown");
+        assert_eq!(
+            invalid_command_mode_rendered["diagnostics"]["hookCommandMode"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_command_mode_rendered["diagnostics"]["coexistenceMode"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_command_mode_rendered["diagnostics"]["backendPressure"],
+            "unknown"
+        );
         assert_eq!(invalid_command_mode_rendered["diagnostics"]["fallbackPhase"], "unknown");
-        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hookFallbackAvailable"], false);
-        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["blockedBy"], "target");
-        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["commandMode"], "unknown");
-        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["coexistenceMode"], "unknown");
-        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["backendPressure"], "unknown");
-        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["fallbackPhase"], "unknown");
-        assert_eq!(invalid_command_mode_rendered["diagnostics"]["hook"]["fallbackAvailable"], false);
+        assert_eq!(
+            invalid_command_mode_rendered["diagnostics"]["hookFallbackAvailable"],
+            false
+        );
+        assert_eq!(
+            invalid_command_mode_rendered["diagnostics"]["hook"]["blockedBy"],
+            "target"
+        );
+        assert_eq!(
+            invalid_command_mode_rendered["diagnostics"]["hook"]["commandMode"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_command_mode_rendered["diagnostics"]["hook"]["coexistenceMode"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_command_mode_rendered["diagnostics"]["hook"]["backendPressure"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_command_mode_rendered["diagnostics"]["hook"]["fallbackPhase"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_command_mode_rendered["diagnostics"]["hook"]["fallbackAvailable"],
+            false
+        );
 
         let invalid_action_fields_rendered = render_injection_result_json(
             &config,
@@ -26122,15 +27477,42 @@ mod tests {
                 "hook-effective-blocked actionKey=badkey commandGroup=weird blockedBy=target commandMode=query-only fallbackActionKey=oops fallbackCommand=trace status fallbackPhase=query; recommendation=invalid action metadata".into(),
             )),
         );
-        assert_eq!(invalid_action_fields_rendered["diagnostics"]["code"], "target-hook-policy-blocked");
-        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hookActionKey"], "unknown");
-        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hookCommandGroup"], "unknown");
-        assert_eq!(invalid_action_fields_rendered["diagnostics"]["fallbackActionKey"], "unknown");
-        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hookFallbackAvailable"], false);
-        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hook"]["actionKey"], "unknown");
-        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hook"]["commandGroup"], "unknown");
-        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hook"]["fallbackActionKey"], "unknown");
-        assert_eq!(invalid_action_fields_rendered["diagnostics"]["hook"]["fallbackAvailable"], false);
+        assert_eq!(
+            invalid_action_fields_rendered["diagnostics"]["code"],
+            "target-hook-policy-blocked"
+        );
+        assert_eq!(
+            invalid_action_fields_rendered["diagnostics"]["hookActionKey"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_action_fields_rendered["diagnostics"]["hookCommandGroup"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_action_fields_rendered["diagnostics"]["fallbackActionKey"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_action_fields_rendered["diagnostics"]["hookFallbackAvailable"],
+            false
+        );
+        assert_eq!(
+            invalid_action_fields_rendered["diagnostics"]["hook"]["actionKey"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_action_fields_rendered["diagnostics"]["hook"]["commandGroup"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_action_fields_rendered["diagnostics"]["hook"]["fallbackActionKey"],
+            "unknown"
+        );
+        assert_eq!(
+            invalid_action_fields_rendered["diagnostics"]["hook"]["fallbackAvailable"],
+            false
+        );
     }
 
     #[test]
@@ -27160,7 +28542,9 @@ mod tests {
         assert!(lines
             .iter()
             .any(|line| line.contains("hook strategy reason: external hook backend is already loaded")));
-        assert!(lines.iter().any(|line| line.contains("hook backends: active=ellekit conflict_state=external-loaded")));
+        assert!(lines
+            .iter()
+            .any(|line| line.contains("hook backends: active=ellekit conflict_state=external-loaded")));
         assert!(lines.iter().any(|line| line.contains("ElleKit")));
         assert!(lines
             .iter()
@@ -27210,10 +28594,7 @@ mod tests {
         assert_eq!(rendered["backends"][1]["displayName"], "Substitute");
         assert_eq!(rendered["backends"][1]["filesystemOnly"], true);
         assert!(rendered["recommendations"].is_array());
-        assert_eq!(
-            rendered["filesystemOnlyBackendDisplayNames"],
-            json!(["Substitute"])
-        );
+        assert_eq!(rendered["filesystemOnlyBackendDisplayNames"], json!(["Substitute"]));
     }
 
     #[test]
