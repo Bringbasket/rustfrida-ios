@@ -2594,9 +2594,13 @@ undefined;
                                     adaptation.preferredConflictResolutionResolve === null &&
                                     adaptation.preferredConflictResolutionResolveDefault === null &&
                                     adaptation.preferredConflictResolutionResolveExampleQueryOnlyResult === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownMatched === null &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingMatched === null &&
                                     adaptation.preferredConflictResolutionPhaseResolve === null &&
                                     adaptation.preferredConflictResolutionPhaseResolveDefault === null &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResult === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownMatched === null &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingMatched === null &&
                                     adaptation.preferredConflictResolutionSuggestedEscalationKey === null &&
                                     adaptation.preferredConflictResolutionDefaultEscalationKey === null &&
                                     adaptation.preferredConflictResolutionPhaseFirst === null &&
@@ -2620,9 +2624,27 @@ undefined;
                                     adaptation.preferredConflictResolutionResolve === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolve &&
                                     adaptation.preferredConflictResolutionResolveDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefault &&
                                     adaptation.preferredConflictResolutionResolveExampleQueryOnlyResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleQueryOnlyResult &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownMatched &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownUsedDefault &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownReason &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownEffectivePhase &&
+                                    adaptation.preferredConflictResolutionResolveExampleKnownEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleKnownEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingMatched &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingUsedDefault &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingEffectivePhase &&
+                                    adaptation.preferredConflictResolutionResolveExampleMissingEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveExampleMissingEffectiveEscalationKey &&
                                     adaptation.preferredConflictResolutionPhaseResolve === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolve &&
                                     adaptation.preferredConflictResolutionPhaseResolveDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveDefault &&
                                     adaptation.preferredConflictResolutionPhaseResolveExampleQueryOnlyResult === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleQueryOnlyResult &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownMatched &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownUsedDefault &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownEffectivePhase &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleKnownEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleKnownEffectiveEscalationKey &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingMatched === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingMatched &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingUsedDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingUsedDefault &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingReason === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingReason &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingEffectivePhase === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingEffectivePhase &&
+                                    adaptation.preferredConflictResolutionPhaseResolveExampleMissingEffectiveEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseResolveExampleMissingEffectiveEscalationKey &&
                                     adaptation.preferredConflictResolutionSuggestedEscalationKey === adaptation.preferredConflictResolutionRouting.suggestedEscalationKey &&
                                     adaptation.preferredConflictResolutionDefaultEscalationKey === adaptation.preferredConflictResolutionRouting.routingDecision.ready.defaultEscalationKey &&
                                     adaptation.preferredConflictResolutionPhaseFirst === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseFirst &&

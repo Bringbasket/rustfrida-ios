@@ -5154,6 +5154,26 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "resolveExampleKnownResultEffective",
             ),
             (
+                "preferredConflictResolutionResolveExampleKnownMatched",
+                "resolveExampleKnownMatched",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleKnownUsedDefault",
+                "resolveExampleKnownUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleKnownReason",
+                "resolveExampleKnownReason",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleKnownEffectivePhase",
+                "resolveExampleKnownEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleKnownEffectiveEscalationKey",
+                "resolveExampleKnownEffectiveEscalationKey",
+            ),
+            (
                 "preferredConflictResolutionResolveExampleKnownResultEffectivePhase",
                 "resolveExampleKnownResultEffectivePhase",
             ),
@@ -5174,8 +5194,24 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "resolveExampleMissingResultEffective",
             ),
             (
+                "preferredConflictResolutionResolveExampleMissingMatched",
+                "resolveExampleMissingMatched",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleMissingUsedDefault",
+                "resolveExampleMissingUsedDefault",
+            ),
+            (
                 "preferredConflictResolutionResolveExampleMissingReason",
                 "resolveExampleMissingReason",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleMissingEffectivePhase",
+                "resolveExampleMissingEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionResolveExampleMissingEffectiveEscalationKey",
+                "resolveExampleMissingEffectiveEscalationKey",
             ),
             (
                 "preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey",
@@ -5429,8 +5465,24 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "phaseResolveExampleKnownResultEffective",
             ),
             (
+                "preferredConflictResolutionPhaseResolveExampleKnownMatched",
+                "phaseResolveExampleKnownMatched",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleKnownUsedDefault",
+                "phaseResolveExampleKnownUsedDefault",
+            ),
+            (
                 "preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase",
                 "phaseResolveExampleKnownResultEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleKnownEffectivePhase",
+                "phaseResolveExampleKnownEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleKnownEffectiveEscalationKey",
+                "phaseResolveExampleKnownEffectiveEscalationKey",
             ),
             (
                 "preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveEscalationKey",
@@ -5451,6 +5503,26 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             (
                 "preferredConflictResolutionPhaseResolveExampleMissingResultEffective",
                 "phaseResolveExampleMissingResultEffective",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleMissingMatched",
+                "phaseResolveExampleMissingMatched",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleMissingUsedDefault",
+                "phaseResolveExampleMissingUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleMissingReason",
+                "phaseResolveExampleMissingReason",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleMissingEffectivePhase",
+                "phaseResolveExampleMissingEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveExampleMissingEffectiveEscalationKey",
+                "phaseResolveExampleMissingEffectiveEscalationKey",
             ),
             (
                 "preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey",
