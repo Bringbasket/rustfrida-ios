@@ -5398,10 +5398,19 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredConflictResolutionDefaultTemplateCount",
                 "defaultTemplateCount",
             ),
+            ("preferredConflictResolutionDefaultTemplates", "defaultTemplates"),
             ("preferredConflictResolutionDefaultTemplate", "defaultTemplate"),
             (
                 "preferredConflictResolutionDefaultCommandJsonTemplateCount",
                 "defaultCommandJsonTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount",
+                "defaultCommandJsonEligibleTemplateCount",
+            ),
+            (
+                "preferredConflictResolutionDefaultCommandJsonTemplates",
+                "defaultCommandJsonTemplates",
             ),
             (
                 "preferredConflictResolutionDefaultCommandJsonTemplate",
