@@ -2745,6 +2745,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                     .unwrap_or_else(|| target_backend_id.clone());
                 json!({
                     "pairKey": format!("{controller_backend_id}->{target_backend_id}"),
+                    "scope": "split-process",
                     "firstBackendId": controller_backend_id,
                     "firstBackendDisplayName": controller_display_name,
                     "secondBackendId": target_backend_id,
@@ -2761,7 +2762,15 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                             .unwrap_or_else(|| target_backend_id.clone()),
                     ],
                     "controllerBackendId": controller_backend_id,
+                    "controllerBackendDisplayName": backend_display_name_by_id
+                        .get(controller_backend_id)
+                        .cloned()
+                        .unwrap_or_else(|| controller_backend_id.clone()),
                     "targetBackendId": target_backend_id,
+                    "targetBackendDisplayName": backend_display_name_by_id
+                        .get(target_backend_id)
+                        .cloned()
+                        .unwrap_or_else(|| target_backend_id.clone()),
                     "reason": "controller and target are loaded with different backend runtimes",
                     "suggestedGroupKey": conflict_resolution_group_key,
                     "suggestedPhase": conflict_resolution_phase,
@@ -3656,6 +3665,14 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         "preferredConflictBackendPairKey": preferred_conflict_backend_pair
             .as_ref()
             .and_then(|item| item.get("pairKey"))
+            .cloned(),
+        "preferredConflictBackendPairScope": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("scope"))
+            .cloned(),
+        "preferredConflictBackendPairReason": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("reason"))
             .cloned(),
         "preferredConflictBackendIds": preferred_conflict_backend_pair
             .as_ref()
@@ -21921,6 +21938,10 @@ mod tests {
             "ellekit->substrate"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["scope"],
+            "split-process"
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["firstBackendId"],
             "ellekit"
         );
@@ -21934,6 +21955,14 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["secondBackendDisplayName"],
+            "Cydia Substrate"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["controllerBackendDisplayName"],
+            "ElleKit"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["targetBackendDisplayName"],
             "Cydia Substrate"
         );
         assert_eq!(
@@ -21967,6 +21996,14 @@ mod tests {
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairKey"],
             "ellekit->substrate"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairScope"],
+            "split-process"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairReason"],
+            "controller and target are loaded with different backend runtimes"
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendIds"],
@@ -24159,6 +24196,8 @@ mod tests {
         );
         assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 0);
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPair"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairScope"].is_null());
+        assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairReason"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendIds"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendDisplayNames"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());

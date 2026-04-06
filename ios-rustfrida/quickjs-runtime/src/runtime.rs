@@ -2452,6 +2452,8 @@ undefined;
                                 ((adaptation.conflictBackendPairCount === 0 &&
                                     adaptation.preferredConflictBackendPair === null &&
                                     adaptation.preferredConflictBackendPairKey === null &&
+                                    adaptation.preferredConflictBackendPairScope === null &&
+                                    adaptation.preferredConflictBackendPairReason === null &&
                                     adaptation.preferredConflictBackendIds === null &&
                                     adaptation.preferredConflictBackendDisplayNames === null &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplate === null &&
@@ -2473,6 +2475,8 @@ undefined;
                                     typeof adaptation.preferredConflictBackendPair === 'object' &&
                                     adaptation.preferredConflictBackendPair !== null &&
                                     adaptation.preferredConflictBackendPairKey === adaptation.preferredConflictBackendPair.pairKey &&
+                                    adaptation.preferredConflictBackendPairScope === adaptation.preferredConflictBackendPair.scope &&
+                                    adaptation.preferredConflictBackendPairReason === adaptation.preferredConflictBackendPair.reason &&
                                     Array.isArray(adaptation.preferredConflictBackendIds) &&
                                     adaptation.preferredConflictBackendIds.length === 2 &&
                                     adaptation.preferredConflictBackendIds.length === adaptation.preferredConflictBackendPair.backendIds.length &&
