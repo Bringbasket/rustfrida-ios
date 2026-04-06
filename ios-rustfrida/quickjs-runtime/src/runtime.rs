@@ -1630,6 +1630,19 @@ undefined;
                                 report.recommendedActions.length > 0 &&
                                 typeof report.recommendedActions[0].priority === 'number' &&
                                 typeof report.recommendedActions[0].actionKey === 'string';
+                            const backendsOk =
+                                Array.isArray(report.backends) &&
+                                (report.backends.length === 0 ||
+                                    (typeof report.backends[0].id === 'string' &&
+                                        typeof report.backends[0].name === 'string' &&
+                                        typeof report.backends[0].displayName === 'string' &&
+                                        typeof report.backends[0].loaded === 'boolean' &&
+                                        typeof report.backends[0].presentOnFilesystem === 'boolean' &&
+                                        typeof report.backends[0].filesystemOnly === 'boolean' &&
+                                        typeof report.backends[0].loadedImageCount === 'number' &&
+                                        typeof report.backends[0].filesystemPathCount === 'number' &&
+                                        Array.isArray(report.backends[0].loadedImages) &&
+                                        Array.isArray(report.backends[0].filesystemPaths)));
                             const sequenceOk =
                                 Array.isArray(report.suggestedSequence) &&
                                 report.suggestedSequence.length > 0 &&
@@ -1906,6 +1919,7 @@ undefined;
                                     report.backendPressure === 'filesystem-only' ||
                                     report.backendPressure === 'controller') &&
                                 actionsOk &&
+                                backendsOk &&
                                 sequenceOk &&
                                 nextActionOk &&
                                 nextActionTemplatesOk &&

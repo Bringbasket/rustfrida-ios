@@ -305,9 +305,11 @@ fn image_name_matches(module_name: &str, image_name: &str) -> bool {
 fn hook_backend_to_json(backend: &native_api::HookBackendInfo) -> Value {
     json!({
         "id": backend.id,
+        "name": backend.display_name,
         "displayName": backend.display_name,
         "loaded": !backend.loaded_images.is_empty(),
         "presentOnFilesystem": !backend.filesystem_paths.is_empty(),
+        "filesystemOnly": backend.loaded_images.is_empty() && !backend.filesystem_paths.is_empty(),
         "loadedImageCount": backend.loaded_images.len(),
         "filesystemPathCount": backend.filesystem_paths.len(),
         "loadedImages": backend.loaded_images,
@@ -26622,6 +26624,12 @@ mod tests {
         assert_eq!(rendered["loadedBackendIds"], json!(["ellekit"]));
         assert_eq!(rendered["loadedBackendDisplayNames"], json!(["ElleKit"]));
         assert_eq!(rendered["filesystemOnlyBackendIds"], json!(["substitute"]));
+        assert_eq!(rendered["backends"][0]["name"], "ElleKit");
+        assert_eq!(rendered["backends"][0]["displayName"], "ElleKit");
+        assert_eq!(rendered["backends"][0]["filesystemOnly"], false);
+        assert_eq!(rendered["backends"][1]["name"], "Substitute");
+        assert_eq!(rendered["backends"][1]["displayName"], "Substitute");
+        assert_eq!(rendered["backends"][1]["filesystemOnly"], true);
         assert!(rendered["recommendations"].is_array());
         assert_eq!(
             rendered["filesystemOnlyBackendDisplayNames"],

@@ -9647,6 +9647,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         let item = JSValue(ffi::JS_NewObject(ctx));
         item.set_property(ctx, "id", JSValue::string(ctx, &backend.id));
         item.set_property(ctx, "name", JSValue::string(ctx, &backend.display_name));
+        item.set_property(ctx, "displayName", JSValue::string(ctx, &backend.display_name));
         item.set_property(ctx, "loaded", JSValue::bool(!backend.loaded_images.is_empty()));
         item.set_property(
             ctx,
@@ -9657,6 +9658,11 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             ctx,
             "presentOnFilesystem",
             JSValue::bool(!backend.filesystem_paths.is_empty()),
+        );
+        item.set_property(
+            ctx,
+            "filesystemOnly",
+            JSValue::bool(backend.loaded_images.is_empty() && !backend.filesystem_paths.is_empty()),
         );
         item.set_property(
             ctx,
