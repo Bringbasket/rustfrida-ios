@@ -3067,8 +3067,19 @@ undefined;
                             const hasExecutionPath = hasConflictExecutionPath || hasPreferredGroupExecutionPath;
                             const preferredConflictExecutionOk = !hasConflictExecutionPath ? (
                                 adaptation.preferredConflictResolutionNextStep === null &&
+                                adaptation.preferredConflictResolutionNextStepCommandJsonTemplate === null &&
                                 adaptation.preferredConflictResolutionStepChain === null &&
-                                adaptation.preferredConflictResolutionActiveStep === null
+                                adaptation.preferredConflictResolutionStepChainLimit === null &&
+                                adaptation.preferredConflictResolutionActiveStep === null &&
+                                adaptation.preferredConflictResolutionActiveStepSource === null &&
+                                adaptation.preferredConflictResolutionActiveStepCommandJsonEligible === null &&
+                                adaptation.preferredConflictResolutionActiveStepCommandJsonTemplate === null &&
+                                adaptation.preferredConflictResolutionActiveStepCommandJsonTemplateCommand === null &&
+                                adaptation.preferredConflictResolutionActiveStepCommandJsonTemplateKind === null &&
+                                adaptation.preferredConflictResolutionActiveStepRetryable === null &&
+                                adaptation.preferredConflictResolutionActiveStepErrorCode === null &&
+                                adaptation.preferredConflictResolutionActiveStepPlaceholders === null &&
+                                adaptation.preferredConflictResolutionActiveStepCliArgs === null
                             ) : (
                                 typeof adaptation.preferredConflictResolutionNextStep === 'object' &&
                                 adaptation.preferredConflictResolutionNextStep !== null &&
@@ -3078,14 +3089,32 @@ undefined;
                                 adaptation.preferredConflictResolutionNextStepReason === adaptation.preferredConflictResolutionNextStep.reason &&
                                 adaptation.preferredConflictResolutionNextStepPreferredPath === adaptation.preferredConflictResolutionNextStep.preferredPath &&
                                 adaptation.preferredConflictResolutionNextStepPhase === adaptation.preferredConflictResolutionNextStep.phase &&
+                                adaptation.preferredConflictResolutionNextStepKind === adaptation.preferredConflictResolutionNextStep.kind &&
+                                adaptation.preferredConflictResolutionNextStepCommandJsonEligible === adaptation.preferredConflictResolutionNextStep.commandJsonEligible &&
+                                adaptation.preferredConflictResolutionNextStepCommandJsonTemplate === adaptation.preferredConflictResolutionNextStep.commandJsonTemplate &&
                                 adaptation.preferredConflictResolutionNextStepCommandJsonTemplateCommand === adaptation.preferredConflictResolutionNextStep.commandJsonTemplateCommand &&
                                 adaptation.preferredConflictResolutionNextStepCommandJsonTemplateKind === adaptation.preferredConflictResolutionNextStep.commandJsonTemplateKind &&
+                                adaptation.preferredConflictResolutionNextStepRetryable === adaptation.preferredConflictResolutionNextStep.retryable &&
+                                adaptation.preferredConflictResolutionNextStepMaxSuggestedRetries === adaptation.preferredConflictResolutionNextStep.maxSuggestedRetries &&
+                                adaptation.preferredConflictResolutionNextStepRetryDelayHintMs === adaptation.preferredConflictResolutionNextStep.retryDelayHintMs &&
+                                adaptation.preferredConflictResolutionNextStepTimeoutHintMs === adaptation.preferredConflictResolutionNextStep.timeoutHintMs &&
+                                adaptation.preferredConflictResolutionNextStepTimeoutAction === adaptation.preferredConflictResolutionNextStep.timeoutAction &&
+                                adaptation.preferredConflictResolutionNextStepErrorCode === adaptation.preferredConflictResolutionNextStep.errorCode &&
+                                adaptation.preferredConflictResolutionNextStepTimeoutErrorCode === adaptation.preferredConflictResolutionNextStep.timeoutErrorCode &&
+                                adaptation.preferredConflictResolutionNextStepRisk === adaptation.preferredConflictResolutionNextStep.risk &&
+                                adaptation.preferredConflictResolutionNextStepPlaceholderCount === adaptation.preferredConflictResolutionNextStep.placeholderCount &&
+                                adaptation.preferredConflictResolutionNextStepPlaceholders === adaptation.preferredConflictResolutionNextStep.placeholders &&
+                                adaptation.preferredConflictResolutionNextStepCliArgs === adaptation.preferredConflictResolutionNextStep.cliArgs &&
+                                adaptation.preferredConflictResolutionNextStepReadyToRun === adaptation.preferredConflictResolutionNextStep.readyToRun &&
+                                adaptation.preferredConflictResolutionNextStepRequiresFallback === adaptation.preferredConflictResolutionNextStep.requiresFallback &&
                                 Array.isArray(adaptation.preferredConflictResolutionStepChain) &&
+                                adaptation.preferredConflictResolutionStepChainLimit === adaptation.stepChainLimit &&
                                 adaptation.preferredConflictResolutionStepChainCount === adaptation.preferredConflictResolutionStepChain.length &&
                                 adaptation.preferredConflictResolutionStepChainSource === 'preferred-conflict-resolution-chain' &&
                                 adaptation.preferredConflictResolutionStepChainTruncated === false &&
                                 typeof adaptation.preferredConflictResolutionActiveStep === 'object' &&
                                 adaptation.preferredConflictResolutionActiveStep !== null &&
+                                adaptation.preferredConflictResolutionActiveStepSource === adaptation.preferredConflictResolutionActiveStep.source &&
                                 adaptation.preferredConflictResolutionActiveStepAllowed === adaptation.preferredConflictResolutionActiveStep.allowed &&
                                 adaptation.preferredConflictResolutionActiveStepBlockedBy === adaptation.preferredConflictResolutionActiveStep.blockedBy &&
                                 adaptation.preferredConflictResolutionActiveStepBranch === adaptation.preferredConflictResolutionActiveStep.branch &&
@@ -3096,16 +3125,24 @@ undefined;
                                 adaptation.preferredConflictResolutionActiveStepId === adaptation.preferredConflictResolutionActiveStep.id &&
                                 adaptation.preferredConflictResolutionActiveStepCommand === adaptation.preferredConflictResolutionActiveStep.command &&
                                 adaptation.preferredConflictResolutionActiveStepPhase === adaptation.preferredConflictResolutionActiveStep.phase
+                                && adaptation.preferredConflictResolutionActiveStepCommandJsonEligible === adaptation.preferredConflictResolutionActiveStep.commandJsonEligible
+                                && adaptation.preferredConflictResolutionActiveStepCommandJsonTemplate === adaptation.preferredConflictResolutionActiveStep.commandJsonTemplate
+                                && adaptation.preferredConflictResolutionActiveStepCommandJsonTemplateCommand === adaptation.preferredConflictResolutionActiveStep.commandJsonTemplateCommand
+                                && adaptation.preferredConflictResolutionActiveStepCommandJsonTemplateKind === adaptation.preferredConflictResolutionActiveStep.commandJsonTemplateKind
                                 && adaptation.preferredConflictResolutionActiveStepReadyToRun === adaptation.preferredConflictResolutionActiveStep.readyToRun
                                 && adaptation.preferredConflictResolutionActiveStepRequiresFallback === adaptation.preferredConflictResolutionActiveStep.requiresFallback
                                 && adaptation.preferredConflictResolutionActiveStepKind === adaptation.preferredConflictResolutionActiveStep.kind
+                                && adaptation.preferredConflictResolutionActiveStepRetryable === adaptation.preferredConflictResolutionActiveStep.retryable
                                 && adaptation.preferredConflictResolutionActiveStepMaxSuggestedRetries === adaptation.preferredConflictResolutionActiveStep.maxSuggestedRetries
                                 && adaptation.preferredConflictResolutionActiveStepRetryDelayHintMs === adaptation.preferredConflictResolutionActiveStep.retryDelayHintMs
                                 && adaptation.preferredConflictResolutionActiveStepTimeoutHintMs === adaptation.preferredConflictResolutionActiveStep.timeoutHintMs
                                 && adaptation.preferredConflictResolutionActiveStepTimeoutAction === adaptation.preferredConflictResolutionActiveStep.timeoutAction
+                                && adaptation.preferredConflictResolutionActiveStepErrorCode === adaptation.preferredConflictResolutionActiveStep.errorCode
                                 && adaptation.preferredConflictResolutionActiveStepTimeoutErrorCode === adaptation.preferredConflictResolutionActiveStep.timeoutErrorCode
                                 && adaptation.preferredConflictResolutionActiveStepRisk === adaptation.preferredConflictResolutionActiveStep.risk
                                 && adaptation.preferredConflictResolutionActiveStepPlaceholderCount === adaptation.preferredConflictResolutionActiveStep.placeholderCount
+                                && adaptation.preferredConflictResolutionActiveStepPlaceholders === adaptation.preferredConflictResolutionActiveStep.placeholders
+                                && adaptation.preferredConflictResolutionActiveStepCliArgs === adaptation.preferredConflictResolutionActiveStep.cliArgs
                             );
                             const nextStepOk = !hasExecutionPath ? (
                                 adaptation.nextStep === null &&
