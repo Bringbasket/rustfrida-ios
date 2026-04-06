@@ -1628,21 +1628,63 @@ undefined;
                             const actionsOk =
                                 Array.isArray(report.recommendedActions) &&
                                 report.recommendedActions.length > 0 &&
-                                typeof report.recommendedActions[0].priority === 'number' &&
-                                typeof report.recommendedActions[0].actionKey === 'string';
+                                report.recommendedActions.every((entry) =>
+                                    typeof entry === 'object' &&
+                                    entry !== null &&
+                                    typeof entry.commandGroup === 'string' &&
+                                    typeof entry.actionKey === 'string' &&
+                                    typeof entry.priority === 'number' &&
+                                    typeof entry.allowed === 'boolean' &&
+                                    typeof entry.blockedBy === 'string' &&
+                                    typeof entry.branch === 'string' &&
+                                    typeof entry.status === 'string' &&
+                                    typeof entry.recommendation === 'string' &&
+                                    (entry.reason === null || typeof entry.reason === 'string'));
                             const backendsOk =
                                 Array.isArray(report.backends) &&
-                                (report.backends.length === 0 ||
-                                    (typeof report.backends[0].id === 'string' &&
-                                        typeof report.backends[0].name === 'string' &&
-                                        typeof report.backends[0].displayName === 'string' &&
-                                        typeof report.backends[0].loaded === 'boolean' &&
-                                        typeof report.backends[0].presentOnFilesystem === 'boolean' &&
-                                        typeof report.backends[0].filesystemOnly === 'boolean' &&
-                                        typeof report.backends[0].loadedImageCount === 'number' &&
-                                        typeof report.backends[0].filesystemPathCount === 'number' &&
-                                        Array.isArray(report.backends[0].loadedImages) &&
-                                        Array.isArray(report.backends[0].filesystemPaths)));
+                                report.backends.length === report.backendCount &&
+                                report.backends.every((entry) =>
+                                    typeof entry === 'object' &&
+                                    entry !== null &&
+                                    typeof entry.id === 'string' &&
+                                    typeof entry.name === 'string' &&
+                                    typeof entry.displayName === 'string' &&
+                                    entry.name === entry.displayName &&
+                                    typeof entry.loaded === 'boolean' &&
+                                    typeof entry.presentOnFilesystem === 'boolean' &&
+                                    typeof entry.filesystemOnly === 'boolean' &&
+                                    typeof entry.loadedImageCount === 'number' &&
+                                    typeof entry.filesystemPathCount === 'number' &&
+                                    Array.isArray(entry.loadedImages) &&
+                                    Array.isArray(entry.filesystemPaths) &&
+                                    entry.loadedImageCount === entry.loadedImages.length &&
+                                    entry.filesystemPathCount === entry.filesystemPaths.length &&
+                                    entry.filesystemOnly === (!entry.loaded && entry.presentOnFilesystem));
+                            const commandTemplatesOk =
+                                Array.isArray(report.commandTemplates) &&
+                                report.commandTemplates.length === report.recommendedActions.length &&
+                                report.commandTemplates.every((entry, index) => {
+                                    const action = report.recommendedActions[index];
+                                    return typeof entry === 'object' &&
+                                        entry !== null &&
+                                        typeof entry.actionKey === 'string' &&
+                                        typeof entry.commandGroup === 'string' &&
+                                        typeof entry.templateCount === 'number' &&
+                                        Array.isArray(entry.templates) &&
+                                        entry.templateCount === entry.templates.length &&
+                                        typeof entry.commandJsonTemplateCount === 'number' &&
+                                        Array.isArray(entry.commandJsonTemplates) &&
+                                        entry.commandJsonTemplateCount === entry.commandJsonTemplates.length &&
+                                        entry.commandJsonTemplateCount === entry.templateCount &&
+                                        entry.actionKey === action.actionKey &&
+                                        entry.commandGroup === action.commandGroup &&
+                                        entry.commandJsonTemplates.every((template, templateIndex) =>
+                                            typeof template === 'object' &&
+                                            template !== null &&
+                                            typeof template.command === 'string' &&
+                                            typeof template.kind === 'string' &&
+                                            template.command === entry.templates[templateIndex]);
+                                });
                             const sequenceOk =
                                 Array.isArray(report.suggestedSequence) &&
                                 report.suggestedSequence.length > 0 &&
@@ -1741,31 +1783,33 @@ undefined;
                                 report.branchExecutionOrder.length === report.actionBranches.length &&
                                 report.readyBranchCount <= report.actionBranches.length &&
                                 report.blockedBranchCount <= report.actionBranches.length &&
-                                (report.actionBranches.length === 0 ||
-                                    (typeof report.actionBranches[0].actionKey === 'string' &&
-                                        typeof report.actionBranches[0].commandGroup === 'string' &&
-                                        typeof report.actionBranches[0].allowed === 'boolean' &&
-                                        typeof report.actionBranches[0].branch === 'string' &&
-                                        typeof report.actionBranches[0].blockedBy === 'string' &&
-                                        typeof report.actionBranches[0].executionRank === 'number' &&
-                                        typeof report.actionBranches[0].executionIndex === 'number' &&
-                                        typeof report.actionBranches[0].selectedAsNext === 'boolean' &&
-                                        typeof report.actionBranches[0].readyToRun === 'boolean' &&
-                                        typeof report.actionBranches[0].prerequisiteCount === 'number' &&
-                                        Array.isArray(report.actionBranches[0].prerequisiteActionKeys) &&
-                                        report.actionBranches[0].prerequisiteCount === report.actionBranches[0].prerequisiteActionKeys.length &&
-                                        typeof report.actionBranches[0].blockedPrerequisiteCount === 'number' &&
-                                        Array.isArray(report.actionBranches[0].blockedPrerequisiteActionKeys) &&
-                                        report.actionBranches[0].blockedPrerequisiteCount === report.actionBranches[0].blockedPrerequisiteActionKeys.length &&
-                                        typeof report.actionBranches[0].templateCount === 'number' &&
-                                        Array.isArray(report.actionBranches[0].templates) &&
-                                        report.actionBranches[0].templateCount === report.actionBranches[0].templates.length &&
-                                        typeof report.actionBranches[0].commandJsonTemplateCount === 'number' &&
-                                        Array.isArray(report.actionBranches[0].commandJsonTemplates) &&
-                                        report.actionBranches[0].commandJsonTemplateCount === report.actionBranches[0].commandJsonTemplates.length &&
-                                        typeof report.actionBranches[0].commandJsonEligibleTemplateCount === 'number' &&
-                                        report.actionBranches[0].commandJsonEligibleTemplateCount <= report.actionBranches[0].commandJsonTemplateCount &&
-                                        report.branchExecutionOrder[0] === report.actionBranches[0].actionKey));
+                                report.actionBranches.every((entry, index) =>
+                                    typeof entry === 'object' &&
+                                    entry !== null &&
+                                    typeof entry.actionKey === 'string' &&
+                                    typeof entry.commandGroup === 'string' &&
+                                    typeof entry.allowed === 'boolean' &&
+                                    typeof entry.branch === 'string' &&
+                                    typeof entry.blockedBy === 'string' &&
+                                    typeof entry.executionRank === 'number' &&
+                                    typeof entry.executionIndex === 'number' &&
+                                    typeof entry.selectedAsNext === 'boolean' &&
+                                    typeof entry.readyToRun === 'boolean' &&
+                                    typeof entry.prerequisiteCount === 'number' &&
+                                    Array.isArray(entry.prerequisiteActionKeys) &&
+                                    entry.prerequisiteCount === entry.prerequisiteActionKeys.length &&
+                                    typeof entry.blockedPrerequisiteCount === 'number' &&
+                                    Array.isArray(entry.blockedPrerequisiteActionKeys) &&
+                                    entry.blockedPrerequisiteCount === entry.blockedPrerequisiteActionKeys.length &&
+                                    typeof entry.templateCount === 'number' &&
+                                    Array.isArray(entry.templates) &&
+                                    entry.templateCount === entry.templates.length &&
+                                    typeof entry.commandJsonTemplateCount === 'number' &&
+                                    Array.isArray(entry.commandJsonTemplates) &&
+                                    entry.commandJsonTemplateCount === entry.commandJsonTemplates.length &&
+                                    typeof entry.commandJsonEligibleTemplateCount === 'number' &&
+                                    entry.commandJsonEligibleTemplateCount <= entry.commandJsonTemplateCount &&
+                                    report.branchExecutionOrder[index] === entry.actionKey);
                             const nextStepChainOk =
                                 Array.isArray(report.nextStepChain) &&
                                 typeof report.nextStepChainLimit === 'number' &&
@@ -1955,6 +1999,7 @@ undefined;
                                     report.backendPressure === 'controller') &&
                                 actionsOk &&
                                 backendsOk &&
+                                commandTemplatesOk &&
                                 sequenceOk &&
                                 nextActionOk &&
                                 nextActionTemplatesOk &&
