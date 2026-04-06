@@ -5281,6 +5281,61 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
                 "preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey",
                 "resolveExampleQueryOnlyResultEffectiveEscalationKey",
             ),
+            ("preferredConflictResolutionResolveKnownResult", "resolveKnownResult"),
+            (
+                "preferredConflictResolutionResolveKnownResultEffective",
+                "resolveKnownResultEffective",
+            ),
+            (
+                "preferredConflictResolutionResolveKnownEffective",
+                "resolveKnownEffective",
+            ),
+            ("preferredConflictResolutionResolveKnownMatched", "resolveKnownMatched"),
+            (
+                "preferredConflictResolutionResolveKnownUsedDefault",
+                "resolveKnownUsedDefault",
+            ),
+            ("preferredConflictResolutionResolveKnownReason", "resolveKnownReason"),
+            (
+                "preferredConflictResolutionResolveKnownEffectivePhase",
+                "resolveKnownEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionResolveKnownEffectiveEscalationKey",
+                "resolveKnownEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionResolveMissingResult",
+                "resolveMissingResult",
+            ),
+            (
+                "preferredConflictResolutionResolveMissingResultEffective",
+                "resolveMissingResultEffective",
+            ),
+            (
+                "preferredConflictResolutionResolveMissingEffective",
+                "resolveMissingEffective",
+            ),
+            (
+                "preferredConflictResolutionResolveMissingMatched",
+                "resolveMissingMatched",
+            ),
+            (
+                "preferredConflictResolutionResolveMissingUsedDefault",
+                "resolveMissingUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionResolveMissingReason",
+                "resolveMissingReason",
+            ),
+            (
+                "preferredConflictResolutionResolveMissingEffectivePhase",
+                "resolveMissingEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionResolveMissingEffectiveEscalationKey",
+                "resolveMissingEffectiveEscalationKey",
+            ),
             ("preferredConflictResolutionQueryOnlyErrorCode", "queryOnlyErrorCode"),
             (
                 "preferredConflictResolutionQueryOnlySourceErrorCode",
@@ -5595,6 +5650,70 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             (
                 "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey",
                 "phaseResolveExampleQueryOnlyResultEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveKnownResult",
+                "phaseResolveKnownResult",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveKnownResultEffective",
+                "phaseResolveKnownResultEffective",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveKnownEffective",
+                "phaseResolveKnownEffective",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveKnownMatched",
+                "phaseResolveKnownMatched",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveKnownUsedDefault",
+                "phaseResolveKnownUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveKnownReason",
+                "phaseResolveKnownReason",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveKnownEffectivePhase",
+                "phaseResolveKnownEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveKnownEffectiveEscalationKey",
+                "phaseResolveKnownEffectiveEscalationKey",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveMissingResult",
+                "phaseResolveMissingResult",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveMissingResultEffective",
+                "phaseResolveMissingResultEffective",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveMissingEffective",
+                "phaseResolveMissingEffective",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveMissingMatched",
+                "phaseResolveMissingMatched",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveMissingUsedDefault",
+                "phaseResolveMissingUsedDefault",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveMissingReason",
+                "phaseResolveMissingReason",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveMissingEffectivePhase",
+                "phaseResolveMissingEffectivePhase",
+            ),
+            (
+                "preferredConflictResolutionPhaseResolveMissingEffectiveEscalationKey",
+                "phaseResolveMissingEffectiveEscalationKey",
             ),
             (
                 "preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode",
