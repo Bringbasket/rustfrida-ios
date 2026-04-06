@@ -5906,6 +5906,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
         "filesystemOnlyBackendCount",
         JSValue::int(filesystem_only_backend_count as i32),
     );
+    set_string_array_property(ctx, result.raw(), "loadedBackendIds", &shared_loaded_backend_ids);
     set_string_array_property(
         ctx,
         result.raw(),
