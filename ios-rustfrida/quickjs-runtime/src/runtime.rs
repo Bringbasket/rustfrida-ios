@@ -1926,6 +1926,8 @@ undefined;
                                 typeof report.filesystemOnlyBackendDetected === 'boolean' &&
                                 typeof report.loadedBackendCount === 'number' &&
                                 typeof report.filesystemOnlyBackendCount === 'number' &&
+                                Array.isArray(report.filesystemOnlyBackendIds) &&
+                                report.filesystemOnlyBackendIds.length === report.filesystemOnlyBackendCount &&
                                 typeof report.loadedImageCount === 'number' &&
                                 typeof report.filesystemPathCount === 'number' &&
                                 typeof report.backendMatrix === 'object' &&
