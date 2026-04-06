@@ -2295,6 +2295,12 @@ function formatDebugSymbol(symbol, rawAddress) {
 function formatHookEnvironmentReport(report) {
     const lines = [];
     lines.push('active=' + (report.activeBackend === null || report.activeBackend === undefined ? '<none>' : report.activeBackend));
+    lines.push(
+        'active_backend_display_name=' +
+            (report.activeBackendDisplayName === null || report.activeBackendDisplayName === undefined
+                ? '<none>'
+                : String(report.activeBackendDisplayName))
+    );
     lines.push('conflict_state=' + String(report.conflictState));
     lines.push('risk_level=' + String(report.riskLevel));
     lines.push('policy=' + String(report.policy));
@@ -2315,6 +2321,7 @@ function formatHookEnvironmentReport(report) {
     lines.push('single_external_backend_loaded=' + String(!!report.singleExternalBackendLoaded));
     lines.push('multiple_external_backends_loaded=' + String(!!report.multipleExternalBackendsLoaded));
     lines.push('filesystem_only_backend_detected=' + String(!!report.filesystemOnlyBackendDetected));
+    lines.push('backend_count=' + String(Number(report.backendCount || 0)));
     lines.push('loaded_backend_count=' + String(Number(report.loadedBackendCount || 0)));
     lines.push('filesystem_only_backend_count=' + String(Number(report.filesystemOnlyBackendCount || 0)));
     lines.push('loaded_image_count=' + String(Number(report.loadedImageCount || 0)));
@@ -2322,6 +2329,36 @@ function formatHookEnvironmentReport(report) {
     lines.push('recommended_action_count=' + String(Number(report.recommendedActionCount || 0)));
     lines.push('allowed_action_count=' + String(Number(report.allowedActionCount || 0)));
     lines.push('blocked_action_count=' + String(Number(report.blockedActionCount || 0)));
+    const backendIds = Array.isArray(report.backendIds) ? report.backendIds : [];
+    for (const backendId of backendIds) {
+        lines.push('backend_id ' + String(backendId));
+    }
+    const backendDisplayNames = Array.isArray(report.backendDisplayNames) ? report.backendDisplayNames : [];
+    for (const backendDisplayName of backendDisplayNames) {
+        lines.push('backend_display_name ' + String(backendDisplayName));
+    }
+    const loadedBackendIds = Array.isArray(report.loadedBackendIds) ? report.loadedBackendIds : [];
+    for (const backendId of loadedBackendIds) {
+        lines.push('loaded_backend_id ' + String(backendId));
+    }
+    const loadedBackendDisplayNames = Array.isArray(report.loadedBackendDisplayNames)
+        ? report.loadedBackendDisplayNames
+        : [];
+    for (const backendDisplayName of loadedBackendDisplayNames) {
+        lines.push('loaded_backend_display_name ' + String(backendDisplayName));
+    }
+    const filesystemOnlyBackendIds = Array.isArray(report.filesystemOnlyBackendIds)
+        ? report.filesystemOnlyBackendIds
+        : [];
+    for (const backendId of filesystemOnlyBackendIds) {
+        lines.push('filesystem_only_backend_id ' + String(backendId));
+    }
+    const filesystemOnlyBackendDisplayNames = Array.isArray(report.filesystemOnlyBackendDisplayNames)
+        ? report.filesystemOnlyBackendDisplayNames
+        : [];
+    for (const backendDisplayName of filesystemOnlyBackendDisplayNames) {
+        lines.push('filesystem_only_backend_display_name ' + String(backendDisplayName));
+    }
     const suggestedSequence = Array.isArray(report.suggestedSequence) ? report.suggestedSequence : [];
     for (const command of suggestedSequence) {
         lines.push('suggested_sequence ' + String(command));
