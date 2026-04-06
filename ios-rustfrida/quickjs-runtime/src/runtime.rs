@@ -2185,6 +2185,75 @@ undefined;
                     .eval(
                         r#"(function() {
                             const report = Native.detectHookEnvironment();
+                            if (!report.hasFallbackPlan || report.fallbackPlan === null) {
+                                return true;
+                            }
+                            const plan = report.fallbackPlan;
+                            return typeof plan.reason === 'string' &&
+                                typeof plan.fromActionKey === 'string' &&
+                                plan.toActionKey === null &&
+                                plan.usesSuggestedSequence === true &&
+                                typeof plan.phaseCount === 'number' &&
+                                Array.isArray(plan.phaseOrder) &&
+                                plan.phaseCount === plan.phaseOrder.length &&
+                                typeof plan.phaseRetryPolicyCount === 'number' &&
+                                Array.isArray(plan.phaseRetryPolicies) &&
+                                plan.phaseRetryPolicyCount === plan.phaseRetryPolicies.length &&
+                                plan.phaseRetryPolicyCount === plan.phaseCount &&
+                                typeof plan.phaseTimeoutPolicyCount === 'number' &&
+                                Array.isArray(plan.phaseTimeoutPolicies) &&
+                                plan.phaseTimeoutPolicyCount === plan.phaseTimeoutPolicies.length &&
+                                plan.phaseTimeoutPolicyCount === plan.phaseCount &&
+                                typeof plan.phaseErrorCodeCount === 'number' &&
+                                Array.isArray(plan.phaseErrorCodes) &&
+                                plan.phaseErrorCodeCount === plan.phaseErrorCodes.length &&
+                                plan.phaseErrorCodeCount === plan.phaseCount &&
+                                typeof plan.retryableStepCount === 'number' &&
+                                plan.retryableStepCount <= plan.stepCount &&
+                                typeof plan.totalRetryBudget === 'number' &&
+                                typeof plan.commandJsonTemplateCount === 'number' &&
+                                Array.isArray(plan.commandJsonTemplates) &&
+                                plan.commandJsonTemplateCount === plan.commandJsonTemplates.length &&
+                                plan.commandJsonTemplateCount === plan.stepCount &&
+                                typeof plan.commandJsonEligibleTemplateCount === 'number' &&
+                                plan.commandJsonEligibleTemplateCount <= plan.commandJsonTemplateCount &&
+                                Array.isArray(plan.steps) &&
+                                plan.steps.length === plan.stepCount &&
+                                plan.commandJsonTemplates.length === plan.steps.length &&
+                                plan.commandJsonTemplates.every((entry, index) =>
+                                    typeof entry === 'object' &&
+                                    entry !== null &&
+                                    typeof entry.command === 'string' &&
+                                    typeof entry.kind === 'string' &&
+                                    entry.command === plan.steps[index].command &&
+                                    entry.kind === plan.steps[index].commandJsonTemplate.kind) &&
+                                (plan.suggestedEscalationKey === null ||
+                                    (plan.escalationRecommendationCount > 0 &&
+                                        plan.suggestedEscalationKey === plan.escalationRecommendations[0].key)) &&
+                                typeof plan.errorCodeRoutingCount === 'number' &&
+                                typeof plan.errorCodeRoutingResolvedCount === 'number' &&
+                                plan.errorCodeRoutingResolvedCount === plan.errorCodeRoutingCount &&
+                                typeof plan.terminationPolicy === 'object' &&
+                                plan.terminationPolicy !== null &&
+                                plan.terminationPolicy.mode === 'phase-retry-budget' &&
+                                plan.terminationPolicy.terminateWhen === 'all-retryable-steps-exhausted' &&
+                                plan.terminationPolicy.escalateWhen === 'non-retryable-step-failed-or-retry-budget-exhausted' &&
+                                plan.terminationPolicy.timeoutEscalateWhen === 'phase-timeout-exceeded' &&
+                                typeof plan.terminationPolicy.retryablePhaseCount === 'number' &&
+                                typeof plan.terminationPolicy.nonRetryablePhaseCount === 'number' &&
+                                plan.terminationPolicy.retryablePhaseCount + plan.terminationPolicy.nonRetryablePhaseCount === plan.phaseCount &&
+                                plan.terminationPolicy.retryableStepCount === plan.retryableStepCount &&
+                                plan.terminationPolicy.totalRetryBudget === plan.totalRetryBudget;
+                        })()"#,
+                    )
+                    .expect("native hook env fallback plan root aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const report = Native.detectHookEnvironment();
                             if (!report.hasFallbackPlan || report.fallbackPlan === null || report.fallbackPlan.routingDecision === null || report.fallbackPlan.routingDecision.ready === null) {
                                 return true;
                             }
