@@ -1961,6 +1961,30 @@ undefined;
                                 typeof report.backendMatrix === 'object' &&
                                 report.backendMatrix !== null &&
                                 report.backendMatrix.entryCount === report.backends.length &&
+                                Array.isArray(report.backendMatrix.entries) &&
+                                report.backendMatrix.entries.length === report.backendMatrix.entryCount &&
+                                report.backendMatrix.entries.every((entry) =>
+                                    typeof entry === 'object' &&
+                                    entry !== null &&
+                                    typeof entry.id === 'string' &&
+                                    typeof entry.displayName === 'string' &&
+                                    (entry.visibility === 'controller' || entry.visibility === 'none') &&
+                                    (entry.loadedBy === 'controller' || entry.loadedBy === 'none') &&
+                                    typeof entry.visibleInController === 'boolean' &&
+                                    entry.visibleInTarget === false &&
+                                    typeof entry.controllerLoaded === 'boolean' &&
+                                    entry.targetLoaded === false &&
+                                    typeof entry.controllerPresentOnFilesystem === 'boolean' &&
+                                    entry.targetPresentOnFilesystem === false &&
+                                    typeof entry.controllerLoadedImageCount === 'number' &&
+                                    entry.targetLoadedImageCount === 0 &&
+                                    typeof entry.controllerFilesystemPathCount === 'number' &&
+                                    entry.targetFilesystemPathCount === 0 &&
+                                    typeof entry.filesystemOnlyInEither === 'boolean' &&
+                                    entry.visibleInController === (entry.controllerLoaded || entry.controllerPresentOnFilesystem) &&
+                                    entry.filesystemOnlyInEither === (!entry.controllerLoaded && entry.controllerPresentOnFilesystem) &&
+                                    entry.loadedBy === (entry.controllerLoaded ? 'controller' : 'none') &&
+                                    entry.visibility === (entry.visibleInController ? 'controller' : 'none')) &&
                                 report.backendMatrix.loadedInControllerCount === report.loadedBackendCount &&
                                 report.backendMatrix.loadedInTargetCount === 0 &&
                                 report.backendMatrix.loadedInBothCount === 0 &&
@@ -1982,7 +2006,11 @@ undefined;
                                 report.backendMatrix.topology !== null &&
                                 typeof report.backendMatrix.topology.kind === 'string' &&
                                 typeof report.backendMatrix.topology.sharedLoadedRuntime === 'boolean' &&
+                                report.backendMatrix.topology.sharedLoadedRuntime ===
+                                    (report.backendMatrix.loadedInBothBackendIds.length > 0) &&
                                 typeof report.backendMatrix.topology.filesystemOnlyArtifacts === 'boolean' &&
+                                report.backendMatrix.topology.filesystemOnlyArtifacts ===
+                                    (report.backendMatrix.filesystemOnlyBackendIds.length > 0) &&
                                 typeof report.bootstrapInjectionAllowed === 'boolean' &&
                                 typeof report.queryCommandsAllowed === 'boolean' &&
                                 typeof report.hookInstallCommandsAllowed === 'boolean' &&
