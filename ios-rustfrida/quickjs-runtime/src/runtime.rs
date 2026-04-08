@@ -6239,7 +6239,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const cls = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true }); const proto = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_info', protocolName: 'NSObject' }); const ivar = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); const checkImageFields = (item) => item.imagePath === null ? item.imageName === null && item.imageDirectoryPath === null && item.imagePathKind === null : typeof item.imageName === 'string' && typeof item.imageDirectoryPath === 'string' && typeof item.imagePathKind === 'string'; const classOk = cls.classInfo === null || (cls.resolvedIsMetaClass === cls.classInfo.isMetaClass && cls.resolvedInstanceSize === cls.classInfo.instanceSize && cls.resolvedHasInstanceProperties === cls.classInfo.hasInstanceProperties && cls.resolvedHasClassProperties === cls.classInfo.hasClassProperties && cls.resolvedHasInstanceMethods === cls.classInfo.hasInstanceMethods && cls.resolvedHasClassMethods === cls.classInfo.hasClassMethods && cls.hasInstanceProperties === (cls.classInfo.hasInstanceProperties === true) && cls.hasClassProperties === (cls.classInfo.hasClassProperties === true) && cls.hasInstanceMethods === (cls.classInfo.hasInstanceMethods === true) && cls.hasClassMethods === (cls.classInfo.hasClassMethods === true) && checkImageFields(cls)); const protoOk = proto.protocolInfo === null || (Array.isArray(proto.adoptedProtocolNames) && JSON.stringify(proto.adoptedProtocolNames) === JSON.stringify(proto.protocolInfo.adoptedProtocols) && JSON.stringify(proto.resolvedAdoptedProtocolNames) === JSON.stringify(proto.protocolInfo.adoptedProtocols) && proto.firstAdoptedProtocol === (proto.protocolInfo.adoptedProtocolCount === 0 ? null : proto.protocolInfo.adoptedProtocols[0]) && proto.lastAdoptedProtocol === (proto.protocolInfo.adoptedProtocolCount === 0 ? null : proto.protocolInfo.adoptedProtocols[proto.protocolInfo.adoptedProtocolCount - 1]) && checkImageFields(proto)); const ivarOk = ivar.ivarInfo === null || (JSON.stringify(ivar.objectProtocols) === JSON.stringify(ivar.ivarInfo.objectProtocols) && JSON.stringify(ivar.qualifierNames) === JSON.stringify(ivar.ivarInfo.qualifierNames) && JSON.stringify(ivar.qualifierNameList) === JSON.stringify(ivar.ivarInfo.qualifierNameList) && ivar.pointeeTypeName === ivar.ivarInfo.pointeeTypeName && ivar.hasObjectProtocols === (ivar.ivarInfo.objectProtocolCount !== 0) && ivar.isObject === (ivar.ivarInfo.isObject === true) && ivar.isBlock === (ivar.ivarInfo.isBlock === true) && ivar.resolvedPointeeTypeName === ivar.ivarInfo.pointeeTypeName && checkImageFields(ivar)); return classOk && protoOk && ivarOk; })()"
+                        "(function() { const cls = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true }); const proto = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_info', protocolName: 'NSObject' }); const ivar = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); const checkImageFields = (item) => item.imagePath === null ? item.imageName === null && item.resolvedImageName === null && item.imageDirectoryPath === null && item.resolvedImageDirectoryPath === null && item.imagePathKind === null && item.resolvedImagePathKind === null : typeof item.imageName === 'string' && item.resolvedImageName === item.imageName && typeof item.imageDirectoryPath === 'string' && item.resolvedImageDirectoryPath === item.imageDirectoryPath && typeof item.imagePathKind === 'string' && item.resolvedImagePathKind === item.imagePathKind; const classOk = cls.classInfo === null || (cls.resolvedIsMetaClass === cls.classInfo.isMetaClass && cls.resolvedInstanceSize === cls.classInfo.instanceSize && cls.resolvedHasInstanceProperties === cls.classInfo.hasInstanceProperties && cls.resolvedHasClassProperties === cls.classInfo.hasClassProperties && cls.resolvedHasInstanceMethods === cls.classInfo.hasInstanceMethods && cls.resolvedHasClassMethods === cls.classInfo.hasClassMethods && cls.hasInstanceProperties === (cls.classInfo.hasInstanceProperties === true) && cls.hasClassProperties === (cls.classInfo.hasClassProperties === true) && cls.hasInstanceMethods === (cls.classInfo.hasInstanceMethods === true) && cls.hasClassMethods === (cls.classInfo.hasClassMethods === true) && checkImageFields(cls)); const protoOk = proto.protocolInfo === null || (Array.isArray(proto.adoptedProtocolNames) && JSON.stringify(proto.adoptedProtocolNames) === JSON.stringify(proto.protocolInfo.adoptedProtocols) && JSON.stringify(proto.resolvedAdoptedProtocolNames) === JSON.stringify(proto.protocolInfo.adoptedProtocols) && proto.firstAdoptedProtocol === (proto.protocolInfo.adoptedProtocolCount === 0 ? null : proto.protocolInfo.adoptedProtocols[0]) && proto.lastAdoptedProtocol === (proto.protocolInfo.adoptedProtocolCount === 0 ? null : proto.protocolInfo.adoptedProtocols[proto.protocolInfo.adoptedProtocolCount - 1]) && checkImageFields(proto)); const ivarOk = ivar.ivarInfo === null || (JSON.stringify(ivar.objectProtocols) === JSON.stringify(ivar.ivarInfo.objectProtocols) && JSON.stringify(ivar.qualifierNames) === JSON.stringify(ivar.ivarInfo.qualifierNames) && JSON.stringify(ivar.qualifierNameList) === JSON.stringify(ivar.ivarInfo.qualifierNameList) && ivar.pointeeTypeName === ivar.ivarInfo.pointeeTypeName && ivar.hasObjectProtocols === (ivar.ivarInfo.objectProtocolCount !== 0) && ivar.isObject === (ivar.ivarInfo.isObject === true) && ivar.isBlock === (ivar.ivarInfo.isBlock === true) && ivar.resolvedPointeeTypeName === ivar.ivarInfo.pointeeTypeName && checkImageFields(ivar)); return classOk && protoOk && ivarOk; })()"
                     )
                     .expect("agent objc metadata direct fields"),
                 "true"
@@ -6248,6 +6248,25 @@ undefined;
                 runtime
                     .eval(
                         r#"(function() {
+                            function checkImageSummary(result) {
+                                if (result.imagePath === null) {
+                                    return result.resolvedImagePath === null &&
+                                        result.imageName === null &&
+                                        result.resolvedImageName === null &&
+                                        result.imageDirectoryPath === null &&
+                                        result.resolvedImageDirectoryPath === null &&
+                                        result.imagePathKind === null &&
+                                        result.resolvedImagePathKind === null;
+                                }
+                                return result.resolvedImagePath === result.imagePath &&
+                                    typeof result.imageName === 'string' &&
+                                    result.resolvedImageName === result.imageName &&
+                                    typeof result.imageDirectoryPath === 'string' &&
+                                    result.resolvedImageDirectoryPath === result.imageDirectoryPath &&
+                                    typeof result.imagePathKind === 'string' &&
+                                    result.resolvedImagePathKind === result.imagePathKind;
+                            }
+
                             function checkClass(result) {
                                 const info = result.classInfo;
                                 if (info === null) {
@@ -6301,7 +6320,8 @@ undefined;
                                     result.classPropertyCount === info.classPropertyCount &&
                                     result.ivarCount === info.ivarCount &&
                                     result.instanceMethodCount === info.instanceMethodCount &&
-                                    result.classMethodCount === info.classMethodCount;
+                                    result.classMethodCount === info.classMethodCount &&
+                                    checkImageSummary(result);
                             }
 
                             function checkProtocol(result) {
@@ -6347,7 +6367,8 @@ undefined;
                                     result.requiredInstanceMethodCount === info.requiredInstanceMethodCount &&
                                     result.requiredClassMethodCount === info.requiredClassMethodCount &&
                                     result.optionalInstanceMethodCount === info.optionalInstanceMethodCount &&
-                                    result.optionalClassMethodCount === info.optionalClassMethodCount;
+                                    result.optionalClassMethodCount === info.optionalClassMethodCount &&
+                                    checkImageSummary(result);
                             }
 
                             function checkMethod(result) {
@@ -6405,7 +6426,8 @@ undefined;
                                     result.hiddenArgumentCount === info.hiddenArgumentCount &&
                                     result.selectorPartCount === info.selectorPartCount &&
                                     result.hasImagePath === (info.imagePath !== null) &&
-                                    result.hasHiddenArguments === (info.hasHiddenArguments === true);
+                                    result.hasHiddenArguments === (info.hasHiddenArguments === true) &&
+                                    checkImageSummary(result);
                             }
 
                             function checkProtocolMethod(result) {
@@ -6459,7 +6481,8 @@ undefined;
                                     result.hiddenArgumentCount === info.hiddenArgumentCount &&
                                     result.selectorPartCount === info.selectorPartCount &&
                                     result.hasImagePath === (info.imagePath !== null) &&
-                                    result.hasHiddenArguments === (info.hasHiddenArguments === true);
+                                    result.hasHiddenArguments === (info.hasHiddenArguments === true) &&
+                                    checkImageSummary(result);
                             }
 
                             function checkProperty(result) {
@@ -6523,7 +6546,8 @@ undefined;
                                     result.hasSetterName === (info.hasSetterName === true) &&
                                     result.hasBackingIvar === (info.hasBackingIvar === true) &&
                                     result.hasObjectClassName === (info.hasObjectClassName === true) &&
-                                    result.resolvedImagePath === info.imagePath;
+                                    result.resolvedImagePath === info.imagePath &&
+                                    checkImageSummary(result);
                             }
 
                             function checkProtocolProperty(result) {
@@ -6587,7 +6611,8 @@ undefined;
                                     result.hasSetterName === (info.hasSetterName === true) &&
                                     result.hasBackingIvar === (info.hasBackingIvar === true) &&
                                     result.hasObjectClassName === (info.hasObjectClassName === true) &&
-                                    result.resolvedImagePath === info.imagePath;
+                                    result.resolvedImagePath === info.imagePath &&
+                                    checkImageSummary(result);
                             }
 
                             function checkIvar(result) {
@@ -6642,13 +6667,39 @@ undefined;
                                     result.resolvedImagePath === info.imagePath;
                             }
 
+                            function checkClassImage(result) {
+                                if (result.imagePath === null) {
+                                    return result.resolvedClassName === null &&
+                                        result.resolvedImagePath === null &&
+                                        checkImageSummary(result);
+                                }
+                                return result.resolvedClassName === result.className &&
+                                    result.resolvedImagePath === result.imagePath &&
+                                    checkImageSummary(result);
+                            }
+
+                            function checkMethodImage(result) {
+                                if (result.imagePath === null) {
+                                    return result.resolvedClassName === null &&
+                                        result.resolvedSelectorName === null &&
+                                        result.resolvedImagePath === null &&
+                                        checkImageSummary(result);
+                                }
+                                return result.resolvedClassName === result.className &&
+                                    result.resolvedSelectorName === result.selectorName &&
+                                    result.resolvedImagePath === result.imagePath &&
+                                    checkImageSummary(result);
+                            }
+
                             return checkClass(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true })) &&
                                 checkProtocol(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_info', protocolName: 'NSObject' })) &&
                                 checkMethod(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_info', className: 'NSObject', selectorName: 'init', isClassMethod: false })) &&
                                 checkProtocolMethod(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_method_info', protocolName: 'NSObject', selectorName: 'description', isRequired: false, isInstanceMethod: false })) &&
                                 checkProperty(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.property_info', className: 'NSObject', propertyName: 'description', isClassProperty: false })) &&
                                 checkProtocolProperty(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_property_info', protocolName: 'NSObject', propertyName: 'description' })) &&
-                                checkIvar(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }));
+                                checkIvar(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' })) &&
+                                checkClassImage(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_image', className: 'NSObject' })) &&
+                                checkMethodImage(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_image', className: 'NSObject', selectorName: 'init', isClassMethod: false }));
                         })()"#
                     )
                     .expect("agent objc info summary fields"),

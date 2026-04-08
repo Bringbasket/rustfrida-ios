@@ -5983,6 +5983,7 @@ function handleSpecResult(spec) {
         const isInstanceMethod = spec.isInstanceMethod === undefined ? true : !!spec.isInstanceMethod;
         const methodInfo = ObjC.protocolMethodInfo(protocolName, selectorName, isRequired, isInstanceMethod);
         const normalized = methodInfo === null ? null : normalizeObjcProtocolMethodInfo(methodInfo);
+        const imageSummary = normalized === null ? null : normalizeImagePathSummary(normalized.imagePath);
         return {
             kind: 'objc.protocol_method_info',
             protocolName,
@@ -5999,6 +6000,12 @@ function handleSpecResult(spec) {
             resolvedSignature: normalized === null ? null : normalized.signature,
             imagePath: normalized === null ? null : normalized.imagePath,
             resolvedImagePath: normalized === null ? null : normalized.imagePath,
+            resolvedImageName: imageSummary === null ? null : imageSummary.name,
+            imageName: imageSummary === null ? null : imageSummary.name,
+            resolvedImageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            imageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            resolvedImagePathKind: imageSummary === null ? null : imageSummary.pathKind,
+            imagePathKind: imageSummary === null ? null : imageSummary.pathKind,
             resolvedArgumentCount: normalized === null ? 0 : normalized.argumentCount,
             argumentCount: normalized === null ? 0 : normalized.argumentCount,
             resolvedExplicitArgumentCount: normalized === null ? 0 : normalized.explicitArgumentCount,
@@ -6101,6 +6108,7 @@ function handleSpecResult(spec) {
         const propertyName = String(spec.propertyName || '');
         const propertyInfo = ObjC.protocolPropertyInfo(protocolName, propertyName);
         const normalized = propertyInfo === null ? null : normalizeObjcProtocolPropertyInfo(propertyInfo);
+        const imageSummary = normalized === null ? null : normalizeImagePathSummary(normalized.imagePath);
         return {
             kind: 'objc.protocol_property_info',
             protocolName,
@@ -6147,6 +6155,12 @@ function handleSpecResult(spec) {
             isBlock: normalized !== null && normalized.isBlock === true,
             imagePath: normalized === null ? null : normalized.imagePath,
             resolvedImagePath: normalized === null ? null : normalized.imagePath,
+            resolvedImageName: imageSummary === null ? null : imageSummary.name,
+            imageName: imageSummary === null ? null : imageSummary.name,
+            resolvedImageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            imageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            resolvedImagePathKind: imageSummary === null ? null : imageSummary.pathKind,
+            imagePathKind: imageSummary === null ? null : imageSummary.pathKind,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -6253,6 +6267,7 @@ function handleSpecResult(spec) {
         const isClassMethod = !!spec.isClassMethod;
         const methodInfo = ObjC.methodInfo(className, selectorName, isClassMethod);
         const normalized = methodInfo === null ? null : normalizeObjcMethodInfo(methodInfo);
+        const imageSummary = normalized === null ? null : normalizeImagePathSummary(normalized.imagePath);
         return {
             kind: 'objc.method_info',
             className,
@@ -6270,6 +6285,12 @@ function handleSpecResult(spec) {
             resolvedSignature: normalized === null ? null : normalized.signature,
             imagePath: normalized === null ? null : normalized.imagePath,
             resolvedImagePath: normalized === null ? null : normalized.imagePath,
+            resolvedImageName: imageSummary === null ? null : imageSummary.name,
+            imageName: imageSummary === null ? null : imageSummary.name,
+            resolvedImageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            imageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            resolvedImagePathKind: imageSummary === null ? null : imageSummary.pathKind,
+            imagePathKind: imageSummary === null ? null : imageSummary.pathKind,
             resolvedArgumentCount: normalized === null ? 0 : normalized.argumentCount,
             argumentCount: normalized === null ? 0 : normalized.argumentCount,
             resolvedExplicitArgumentCount: normalized === null ? 0 : normalized.explicitArgumentCount,
@@ -6303,6 +6324,7 @@ function handleSpecResult(spec) {
         const className = String(spec.className || '');
         const imagePath = ObjC.classImage(className);
         const normalized = imagePath === null ? null : String(imagePath);
+        const imageSummary = normalized === null ? null : normalizeImagePathSummary(normalized);
         return {
             kind: 'objc.class_image',
             className,
@@ -6311,6 +6333,12 @@ function handleSpecResult(spec) {
             resolved: normalized !== null,
             resolvedClassName: normalized === null ? null : className,
             resolvedImagePath: normalized,
+            resolvedImageName: imageSummary === null ? null : imageSummary.name,
+            imageName: imageSummary === null ? null : imageSummary.name,
+            resolvedImageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            imageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            resolvedImagePathKind: imageSummary === null ? null : imageSummary.pathKind,
+            imagePathKind: imageSummary === null ? null : imageSummary.pathKind,
             text: normalized === null ? '<null>' : normalized,
         };
     }
@@ -6320,6 +6348,7 @@ function handleSpecResult(spec) {
         const isClassMethod = !!spec.isClassMethod;
         const imagePath = ObjC.methodImage(className, selectorName, isClassMethod);
         const normalized = imagePath === null ? null : String(imagePath);
+        const imageSummary = normalized === null ? null : normalizeImagePathSummary(normalized);
         return {
             kind: 'objc.method_image',
             className,
@@ -6331,6 +6360,12 @@ function handleSpecResult(spec) {
             resolvedClassName: normalized === null ? null : className,
             resolvedSelectorName: normalized === null ? null : selectorName,
             resolvedImagePath: normalized,
+            resolvedImageName: imageSummary === null ? null : imageSummary.name,
+            imageName: imageSummary === null ? null : imageSummary.name,
+            resolvedImageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            imageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            resolvedImagePathKind: imageSummary === null ? null : imageSummary.pathKind,
+            imagePathKind: imageSummary === null ? null : imageSummary.pathKind,
             text: normalized === null ? '<null>' : normalized,
         };
     }
@@ -6510,6 +6545,7 @@ function handleSpecResult(spec) {
         const isClassProperty = !!spec.isClassProperty;
         const propertyInfo = ObjC.propertyInfo(className, propertyName, isClassProperty);
         const normalized = propertyInfo === null ? null : normalizeObjcPropertyInfo(propertyInfo);
+        const imageSummary = normalized === null ? null : normalizeImagePathSummary(normalized.imagePath);
         return {
             kind: 'objc.property_info',
             className,
@@ -6557,6 +6593,12 @@ function handleSpecResult(spec) {
             isBlock: normalized !== null && normalized.isBlock === true,
             imagePath: normalized === null ? null : normalized.imagePath,
             resolvedImagePath: normalized === null ? null : normalized.imagePath,
+            resolvedImageName: imageSummary === null ? null : imageSummary.name,
+            imageName: imageSummary === null ? null : imageSummary.name,
+            resolvedImageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            imageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            resolvedImagePathKind: imageSummary === null ? null : imageSummary.pathKind,
+            imagePathKind: imageSummary === null ? null : imageSummary.pathKind,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
