@@ -10395,6 +10395,173 @@ undefined;
                 runtime
                     .eval(
                         r#"(function() {
+                            const original = Native.dylinker;
+                            Native.dylinker = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    path: '@executable_path/usr/lib/dyld',
+                                    kind: 'weak'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.dylinker',
+                                    moduleName: 'Demo'
+                                });
+                                return result.dylinker !== null
+                                    && result.resolvedModuleName === result.dylinker.moduleName
+                                    && result.resolvedModuleBase === result.dylinker.moduleBase
+                                    && result.resolvedName === result.dylinker.name
+                                    && result.resolvedPath === result.dylinker.path
+                                    && result.resolvedPathKind === result.dylinker.pathKind
+                                    && result.resolvedKind === result.dylinker.kind
+                                    && result.resolvedHasName === result.dylinker.hasName
+                                    && result.resolvedHasPath === result.dylinker.hasPath
+                                    && result.resolvedIsTokenPath === result.dylinker.isTokenPath
+                                    && result.resolvedUsesLoaderPath === result.dylinker.usesLoaderPath
+                                    && result.resolvedUsesExecutablePath === result.dylinker.usesExecutablePath
+                                    && result.resolvedUsesRpathToken === result.dylinker.usesRpathToken
+                                    && result.resolvedPathDepth === result.dylinker.pathDepth
+                                    && result.resolvedIsWeakDylinker === result.dylinker.isWeakDylinker
+                                    && result.resolvedIsReexportDylinker === result.dylinker.isReexportDylinker
+                                    && result.resolvedIsUpwardDylinker === result.dylinker.isUpwardDylinker
+                                    && result.resolvedIsLoadDylinker === result.dylinker.isLoadDylinker
+                                    && result.name === 'dyld'
+                                    && result.path === '@executable_path/usr/lib/dyld'
+                                    && result.pathKind === 'executable_path'
+                                    && result.kind === 'weak'
+                                    && result.kindName === 'weak'
+                                    && result.hasName === true
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesLoaderPath === false
+                                    && result.usesExecutablePath === true
+                                    && result.usesRpathToken === false
+                                    && result.pathDepth === 4
+                                    && result.isWeakDylinker === true
+                                    && result.isReexportDylinker === false
+                                    && result.isUpwardDylinker === false
+                                    && result.isLoadDylinker === false;
+                            } finally {
+                                Native.dylinker = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native dylinker direct fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.installName;
+                            Native.installName = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    path: '@loader_path/Frameworks/DemoKit.framework/DemoKit',
+                                    currentVersion: 0x00010203,
+                                    compatibilityVersion: 0x00010000,
+                                    timestamp: 7
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.install_name',
+                                    moduleName: 'Demo'
+                                });
+                                return result.installName !== null
+                                    && result.resolvedModuleName === result.installName.moduleName
+                                    && result.resolvedModuleBase === result.installName.moduleBase
+                                    && result.resolvedName === result.installName.name
+                                    && result.resolvedPath === result.installName.path
+                                    && result.resolvedPathKind === result.installName.pathKind
+                                    && result.resolvedCurrentVersion === result.installName.currentVersion
+                                    && result.resolvedCompatibilityVersion === result.installName.compatibilityVersion
+                                    && result.resolvedTimestamp === result.installName.timestamp
+                                    && result.resolvedHasName === result.installName.hasName
+                                    && result.resolvedHasPath === result.installName.hasPath
+                                    && result.resolvedIsTokenPath === result.installName.isTokenPath
+                                    && result.resolvedUsesLoaderPath === result.installName.usesLoaderPath
+                                    && result.resolvedUsesExecutablePath === result.installName.usesExecutablePath
+                                    && result.resolvedUsesRpathToken === result.installName.usesRpathToken
+                                    && result.resolvedPathDepth === result.installName.pathDepth
+                                    && result.resolvedHasTimestamp === result.installName.hasTimestamp
+                                    && result.resolvedVersionMismatch === result.installName.versionMismatch
+                                    && result.name === 'DemoKit'
+                                    && result.path === '@loader_path/Frameworks/DemoKit.framework/DemoKit'
+                                    && result.pathKind === 'loader_path'
+                                    && result.currentVersion === '1.2.3'
+                                    && result.compatibilityVersion === '1.0.0'
+                                    && result.timestamp === 7
+                                    && result.hasName === true
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesLoaderPath === true
+                                    && result.usesExecutablePath === false
+                                    && result.usesRpathToken === false
+                                    && result.pathDepth === 4
+                                    && result.hasTimestamp === true
+                                    && result.versionMismatch === true;
+                            } finally {
+                                Native.installName = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native install name direct fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.rpathInfo;
+                            Native.rpathInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    path: '@rpath/Frameworks/DemoKit.framework'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.rpath_info',
+                                    moduleName: 'Demo',
+                                    path: '@rpath/Frameworks/DemoKit.framework'
+                                });
+                                return result.rpathInfo !== null
+                                    && result.resolvedPath === result.rpathInfo.path
+                                    && result.resolvedModuleName === result.rpathInfo.moduleName
+                                    && result.resolvedModuleBase === result.rpathInfo.moduleBase
+                                    && result.resolvedPathKind === result.rpathInfo.pathKind
+                                    && result.resolvedHasPath === result.rpathInfo.hasPath
+                                    && result.resolvedIsTokenPath === result.rpathInfo.isTokenPath
+                                    && result.resolvedUsesLoaderPath === result.rpathInfo.usesLoaderPath
+                                    && result.resolvedUsesExecutablePath === result.rpathInfo.usesExecutablePath
+                                    && result.resolvedUsesRpathToken === result.rpathInfo.usesRpathToken
+                                    && result.resolvedPathDepth === result.rpathInfo.pathDepth
+                                    && result.pathKind === 'rpath'
+                                    && result.moduleBase === result.rpathInfo.moduleBase
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesLoaderPath === false
+                                    && result.usesExecutablePath === false
+                                    && result.usesRpathToken === true
+                                    && result.pathDepth === 3
+                                    && result.text === result.rpathInfo.text;
+                            } finally {
+                                Native.rpathInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native rpathInfo direct fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
                             const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' });
                             if (main.image === null) {
                                 return true;
