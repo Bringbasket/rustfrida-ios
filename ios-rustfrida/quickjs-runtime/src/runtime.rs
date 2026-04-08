@@ -8513,6 +8513,44 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.encryptionInfo;
+                            Native.encryptionInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    cryptoff: 0x4000n,
+                                    cryptsize: 0x2000n,
+                                    cryptid: 1
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.encryption_info',
+                                    moduleName: 'Demo'
+                                });
+                                return result.encryptionInfo !== null
+                                    && result.resolvedModuleName === result.encryptionInfo.moduleName
+                                    && result.resolvedModuleBase === result.encryptionInfo.moduleBase
+                                    && result.resolvedCryptoffHex === result.encryptionInfo.cryptoffHex
+                                    && result.resolvedCryptsizeHex === result.encryptionInfo.cryptsizeHex
+                                    && result.cryptoffHex === '0x4000'
+                                    && result.cryptsizeHex === '0x2000'
+                                    && result.cryptid === 1
+                                    && result.hasEncryptionInfo === true
+                                    && result.resolved === true
+                                    && result.hasEncryptedRange === true;
+                            } finally {
+                                Native.encryptionInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native encryption info fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.source_version', moduleName: main.image.name }); return result.kind === 'native.source_version' && typeof result.hasSourceVersion === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasVersion === 'boolean' && ((result.sourceVersion === null && result.hasSourceVersion === false && result.resolved === false && result.resolvedModuleName === null && result.version === null && result.resolvedHasVersion === null && result.hasVersion === false && result.resolvedVersionPartCount === 0 && result.versionPartCount === 0 && result.resolvedMajorVersion === null && result.majorVersion === null && result.resolvedMinorVersion === null && result.minorVersion === null && result.resolvedPatchVersion === null && result.patchVersion === null && result.resolvedExtraVersionCount === 0 && result.extraVersionCount === 0 && result.text === '<null>') || (typeof result.sourceVersion.version === 'string' && result.hasSourceVersion === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.version === 'string' && typeof result.resolvedHasVersion === 'boolean' && typeof result.resolvedVersionPartCount === 'number' && typeof result.versionPartCount === 'number' && result.resolvedModuleName === result.sourceVersion.moduleName && result.version === result.sourceVersion.version && result.resolvedHasVersion === (result.sourceVersion.hasVersion === true) && result.hasVersion === (result.sourceVersion.hasVersion === true) && result.resolvedVersionPartCount === result.sourceVersion.versionPartCount && result.versionPartCount === result.sourceVersion.versionPartCount && result.resolvedMajorVersion === result.sourceVersion.majorVersion && result.majorVersion === result.sourceVersion.majorVersion && result.resolvedMinorVersion === result.sourceVersion.minorVersion && result.minorVersion === result.sourceVersion.minorVersion && result.resolvedPatchVersion === result.sourceVersion.patchVersion && result.patchVersion === result.sourceVersion.patchVersion && result.resolvedExtraVersionCount === result.sourceVersion.extraVersionCount && result.extraVersionCount === result.sourceVersion.extraVersionCount && result.text === result.sourceVersion.text)); })()"
                     )
                     .expect("agent native source version result"),
