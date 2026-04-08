@@ -8456,10 +8456,25 @@ undefined;
                                     && linkedit.nindirectsyms === null
                                     && linkedit.resolvedIndirectsymAddress === null
                                     && linkedit.indirectsymAddress === null
+                                    && linkedit.tableCount === 0
+                                    && linkedit.hasTables === false
+                                    && Array.isArray(linkedit.tableNames)
+                                    && linkedit.tableNames.length === 0
+                                    && Array.isArray(linkedit.tableNameList)
+                                    && linkedit.tableNameList.length === 0
+                                    && Array.isArray(linkedit.nonEmptyTableNames)
+                                    && linkedit.nonEmptyTableNames.length === 0
+                                    && Array.isArray(linkedit.nonEmptyTableNameList)
+                                    && linkedit.nonEmptyTableNameList.length === 0
                                     && linkedit.resolvedFirstTableName === null
                                     && linkedit.firstTableName === null
                                     && linkedit.resolvedLastTableName === null
                                     && linkedit.lastTableName === null
+                                    && Array.isArray(linkedit.tables)
+                                    && linkedit.tables.length === 0
+                                    && linkedit.hasSymtab === false
+                                    && linkedit.hasStrtab === false
+                                    && linkedit.hasIndirectSymbols === false
                                     && linkedit.totalTableCount === 0)) {
                                     return false;
                                 }
@@ -8500,10 +8515,30 @@ undefined;
                                 && linkedit.nindirectsyms === linkedit.linkedit.nindirectsyms
                                 && linkedit.resolvedIndirectsymAddress === linkedit.linkedit.indirectsymAddress
                                 && linkedit.indirectsymAddress === linkedit.linkedit.indirectsymAddress
+                                && linkedit.tableCount === linkedit.linkedit.tableCount
+                                && linkedit.hasTables === (linkedit.linkedit.hasTables === true)
+                                && Array.isArray(linkedit.tableNames)
+                                && linkedit.tableNames.length === linkedit.linkedit.tableNames.length
+                                && JSON.stringify(linkedit.tableNames) === JSON.stringify(linkedit.linkedit.tableNames)
+                                && Array.isArray(linkedit.tableNameList)
+                                && linkedit.tableNameList.length === linkedit.linkedit.tableNameList.length
+                                && JSON.stringify(linkedit.tableNameList) === JSON.stringify(linkedit.linkedit.tableNameList)
+                                && Array.isArray(linkedit.nonEmptyTableNames)
+                                && linkedit.nonEmptyTableNames.length === linkedit.linkedit.nonEmptyTableNames.length
+                                && JSON.stringify(linkedit.nonEmptyTableNames) === JSON.stringify(linkedit.linkedit.nonEmptyTableNames)
+                                && Array.isArray(linkedit.nonEmptyTableNameList)
+                                && linkedit.nonEmptyTableNameList.length === linkedit.linkedit.nonEmptyTableNameList.length
+                                && JSON.stringify(linkedit.nonEmptyTableNameList) === JSON.stringify(linkedit.linkedit.nonEmptyTableNameList)
                                 && linkedit.resolvedFirstTableName === linkedit.linkedit.firstTableName
                                 && linkedit.firstTableName === linkedit.linkedit.firstTableName
                                 && linkedit.resolvedLastTableName === linkedit.linkedit.lastTableName
                                 && linkedit.lastTableName === linkedit.linkedit.lastTableName
+                                && Array.isArray(linkedit.tables)
+                                && linkedit.tables.length === linkedit.linkedit.tables.length
+                                && JSON.stringify(linkedit.tables) === JSON.stringify(linkedit.linkedit.tables)
+                                && linkedit.hasSymtab === (linkedit.linkedit.hasSymtab === true)
+                                && linkedit.hasStrtab === (linkedit.linkedit.hasStrtab === true)
+                                && linkedit.hasIndirectSymbols === (linkedit.linkedit.hasIndirectSymbols === true)
                                 && linkedit.totalTableCount === linkedit.linkedit.totalTableCount)) {
                                 return false;
                             }
@@ -8549,6 +8584,10 @@ undefined;
                                     && starts.lastGapToOffsetHex === null
                                     && starts.resolvedTotalSpanHex === null
                                     && starts.totalSpanHex === null
+                                    && starts.startCount === 0
+                                    && starts.hasStarts === false
+                                    && starts.gapCount === 0
+                                    && starts.hasGaps === false
                                     && starts.resolvedLargestGapHex === null
                                     && starts.largestGapHex === null)) {
                                     return false;
@@ -8588,6 +8627,10 @@ undefined;
                                 && starts.lastGapToOffsetHex === starts.functionStarts.lastGapToOffsetHex
                                 && starts.resolvedTotalSpanHex === starts.functionStarts.totalSpanHex
                                 && starts.totalSpanHex === starts.functionStarts.totalSpanHex
+                                && starts.startCount === starts.functionStarts.count
+                                && starts.hasStarts === (starts.functionStarts.hasStarts === true)
+                                && starts.gapCount === starts.functionStarts.gapCount
+                                && starts.hasGaps === (starts.functionStarts.hasGaps === true)
                                 && starts.resolvedLargestGapHex === starts.functionStarts.largestGapHex
                                 && starts.largestGapHex === starts.functionStarts.largestGapHex)) {
                                 return false;
