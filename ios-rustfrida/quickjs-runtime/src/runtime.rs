@@ -13373,6 +13373,16 @@ undefined;
                                 if (!(symbolInfo.resolvedModuleBase === null
                                     && symbolInfo.resolvedAddress === null
                                     && symbolInfo.resolvedOffsetHex === null
+                                    && symbolInfo.name === null
+                                    && symbolInfo.moduleBase === null
+                                    && symbolInfo.demangledName === null
+                                    && symbolInfo.address === null
+                                    && symbolInfo.offsetHex === null
+                                    && symbolInfo.ownerTypeName === null
+                                    && symbolInfo.memberName === null
+                                    && symbolInfo.signature === null
+                                    && symbolInfo.resultTypeName === null
+                                    && symbolInfo.throwsKind === null
                                     && symbolInfo.resolvedHasName === null
                                     && symbolInfo.resolvedHasDemangledName === null
                                     && symbolInfo.resolvedHasOwnerTypeName === null
@@ -13398,12 +13408,43 @@ undefined;
                                     && symbolInfo.resolvedIsThrowing === null
                                     && symbolInfo.resolvedThrowsKind === null
                                     && symbolInfo.hasName === false
-                                    && symbolInfo.hasDemangledName === false)) {
+                                    && symbolInfo.hasDemangledName === false
+                                    && symbolInfo.hasOwnerTypeName === false
+                                    && symbolInfo.hasMemberName === false
+                                    && symbolInfo.hasSignature === false
+                                    && symbolInfo.hasResultTypeName === false
+                                    && symbolInfo.isMember === false
+                                    && symbolInfo.isAccessor === false
+                                    && symbolInfo.isGetter === false
+                                    && symbolInfo.isSetter === false
+                                    && symbolInfo.isModifyAccessor === false
+                                    && symbolInfo.isReadAccessor === false
+                                    && symbolInfo.isConstructor === false
+                                    && symbolInfo.isDestructor === false
+                                    && symbolInfo.isSubscript === false
+                                    && symbolInfo.isOperator === false
+                                    && symbolInfo.isClosure === false
+                                    && symbolInfo.isStaticMember === false
+                                    && symbolInfo.isClassMember === false
+                                    && symbolInfo.isMutating === false
+                                    && symbolInfo.isDispatchThunk === false
+                                    && symbolInfo.isAsync === false
+                                    && symbolInfo.isThrowing === false)) {
                                     return false;
                                 }
                             } else if (!(symbolInfo.resolvedModuleBase === symbolInfo.symbolInfo.moduleBase
                                 && symbolInfo.resolvedAddress === symbolInfo.symbolInfo.address
                                 && symbolInfo.resolvedOffsetHex === symbolInfo.symbolInfo.offsetHex
+                                && symbolInfo.name === symbolInfo.symbolInfo.name
+                                && symbolInfo.moduleBase === symbolInfo.symbolInfo.moduleBase
+                                && symbolInfo.demangledName === symbolInfo.symbolInfo.demangledName
+                                && symbolInfo.address === symbolInfo.symbolInfo.address
+                                && symbolInfo.offsetHex === symbolInfo.symbolInfo.offsetHex
+                                && symbolInfo.ownerTypeName === symbolInfo.symbolInfo.ownerTypeName
+                                && symbolInfo.memberName === symbolInfo.symbolInfo.memberName
+                                && symbolInfo.signature === symbolInfo.symbolInfo.signature
+                                && symbolInfo.resultTypeName === symbolInfo.symbolInfo.resultTypeName
+                                && symbolInfo.throwsKind === symbolInfo.symbolInfo.throwsKind
                                 && symbolInfo.resolvedHasName === symbolInfo.symbolInfo.hasName
                                 && symbolInfo.resolvedHasDemangledName === symbolInfo.symbolInfo.hasDemangledName
                                 && symbolInfo.resolvedHasOwnerTypeName === symbolInfo.symbolInfo.hasOwnerTypeName
@@ -13429,7 +13470,28 @@ undefined;
                                 && symbolInfo.resolvedIsThrowing === symbolInfo.symbolInfo.isThrowing
                                 && symbolInfo.resolvedThrowsKind === symbolInfo.symbolInfo.throwsKind
                                 && symbolInfo.hasName === (symbolInfo.symbolInfo.hasName === true)
-                                && symbolInfo.hasDemangledName === (symbolInfo.symbolInfo.hasDemangledName === true))) {
+                                && symbolInfo.hasDemangledName === (symbolInfo.symbolInfo.hasDemangledName === true)
+                                && symbolInfo.hasOwnerTypeName === (symbolInfo.symbolInfo.hasOwnerTypeName === true)
+                                && symbolInfo.hasMemberName === (symbolInfo.symbolInfo.hasMemberName === true)
+                                && symbolInfo.hasSignature === (symbolInfo.symbolInfo.hasSignature === true)
+                                && symbolInfo.hasResultTypeName === (symbolInfo.symbolInfo.hasResultTypeName === true)
+                                && symbolInfo.isMember === (symbolInfo.symbolInfo.isMember === true)
+                                && symbolInfo.isAccessor === (symbolInfo.symbolInfo.isAccessor === true)
+                                && symbolInfo.isGetter === (symbolInfo.symbolInfo.isGetter === true)
+                                && symbolInfo.isSetter === (symbolInfo.symbolInfo.isSetter === true)
+                                && symbolInfo.isModifyAccessor === (symbolInfo.symbolInfo.isModifyAccessor === true)
+                                && symbolInfo.isReadAccessor === (symbolInfo.symbolInfo.isReadAccessor === true)
+                                && symbolInfo.isConstructor === (symbolInfo.symbolInfo.isConstructor === true)
+                                && symbolInfo.isDestructor === (symbolInfo.symbolInfo.isDestructor === true)
+                                && symbolInfo.isSubscript === (symbolInfo.symbolInfo.isSubscript === true)
+                                && symbolInfo.isOperator === (symbolInfo.symbolInfo.isOperator === true)
+                                && symbolInfo.isClosure === (symbolInfo.symbolInfo.isClosure === true)
+                                && symbolInfo.isStaticMember === (symbolInfo.symbolInfo.isStaticMember === true)
+                                && symbolInfo.isClassMember === (symbolInfo.symbolInfo.isClassMember === true)
+                                && symbolInfo.isMutating === (symbolInfo.symbolInfo.isMutating === true)
+                                && symbolInfo.isDispatchThunk === (symbolInfo.symbolInfo.isDispatchThunk === true)
+                                && symbolInfo.isAsync === (symbolInfo.symbolInfo.isAsync === true)
+                                && symbolInfo.isThrowing === (symbolInfo.symbolInfo.isThrowing === true))) {
                                 return false;
                             }
 
@@ -13744,6 +13806,17 @@ undefined;
                                 if (!(methodInfo.resolvedModuleBase === null
                                     && methodInfo.resolvedAddress === null
                                     && methodInfo.resolvedOffsetHex === null
+                                    && methodInfo.name === null
+                                    && methodInfo.moduleBase === null
+                                    && methodInfo.demangledName === null
+                                    && methodInfo.address === null
+                                    && methodInfo.offsetHex === null
+                                    && methodInfo.ownerTypeName === null
+                                    && methodInfo.memberName === null
+                                    && methodInfo.memberKind === null
+                                    && methodInfo.signature === null
+                                    && methodInfo.resultTypeName === null
+                                    && methodInfo.throwsKind === null
                                     && methodInfo.resolvedHasName === null
                                     && methodInfo.resolvedHasDemangledName === null
                                     && methodInfo.resolvedHasOwnerTypeName === null
@@ -13769,12 +13842,44 @@ undefined;
                                     && methodInfo.resolvedIsThrowing === null
                                     && methodInfo.resolvedThrowsKind === null
                                     && methodInfo.hasName === false
-                                    && methodInfo.hasDemangledName === false)) {
+                                    && methodInfo.hasDemangledName === false
+                                    && methodInfo.hasOwnerTypeName === false
+                                    && methodInfo.hasMemberName === false
+                                    && methodInfo.hasSignature === false
+                                    && methodInfo.hasResultTypeName === false
+                                    && methodInfo.isMember === false
+                                    && methodInfo.isAccessor === false
+                                    && methodInfo.isGetter === false
+                                    && methodInfo.isSetter === false
+                                    && methodInfo.isModifyAccessor === false
+                                    && methodInfo.isReadAccessor === false
+                                    && methodInfo.isConstructor === false
+                                    && methodInfo.isDestructor === false
+                                    && methodInfo.isSubscript === false
+                                    && methodInfo.isOperator === false
+                                    && methodInfo.isClosure === false
+                                    && methodInfo.isStaticMember === false
+                                    && methodInfo.isClassMember === false
+                                    && methodInfo.isMutating === false
+                                    && methodInfo.isDispatchThunk === false
+                                    && methodInfo.isAsync === false
+                                    && methodInfo.isThrowing === false)) {
                                     return false;
                                 }
                             } else if (!(methodInfo.resolvedModuleBase === methodInfo.methodInfo.moduleBase
                                 && methodInfo.resolvedAddress === methodInfo.methodInfo.address
                                 && methodInfo.resolvedOffsetHex === methodInfo.methodInfo.offsetHex
+                                && methodInfo.name === methodInfo.methodInfo.name
+                                && methodInfo.moduleBase === methodInfo.methodInfo.moduleBase
+                                && methodInfo.demangledName === methodInfo.methodInfo.demangledName
+                                && methodInfo.address === methodInfo.methodInfo.address
+                                && methodInfo.offsetHex === methodInfo.methodInfo.offsetHex
+                                && methodInfo.ownerTypeName === methodInfo.methodInfo.ownerTypeName
+                                && methodInfo.memberName === methodInfo.methodInfo.memberName
+                                && methodInfo.memberKind === methodInfo.methodInfo.memberKind
+                                && methodInfo.signature === methodInfo.methodInfo.signature
+                                && methodInfo.resultTypeName === methodInfo.methodInfo.resultTypeName
+                                && methodInfo.throwsKind === methodInfo.methodInfo.throwsKind
                                 && methodInfo.resolvedHasName === methodInfo.methodInfo.hasName
                                 && methodInfo.resolvedHasDemangledName === methodInfo.methodInfo.hasDemangledName
                                 && methodInfo.resolvedHasOwnerTypeName === methodInfo.methodInfo.hasOwnerTypeName
@@ -13800,7 +13905,28 @@ undefined;
                                 && methodInfo.resolvedIsThrowing === methodInfo.methodInfo.isThrowing
                                 && methodInfo.resolvedThrowsKind === methodInfo.methodInfo.throwsKind
                                 && methodInfo.hasName === (methodInfo.methodInfo.hasName === true)
-                                && methodInfo.hasDemangledName === (methodInfo.methodInfo.hasDemangledName === true))) {
+                                && methodInfo.hasDemangledName === (methodInfo.methodInfo.hasDemangledName === true)
+                                && methodInfo.hasOwnerTypeName === (methodInfo.methodInfo.hasOwnerTypeName === true)
+                                && methodInfo.hasMemberName === (methodInfo.methodInfo.hasMemberName === true)
+                                && methodInfo.hasSignature === (methodInfo.methodInfo.hasSignature === true)
+                                && methodInfo.hasResultTypeName === (methodInfo.methodInfo.hasResultTypeName === true)
+                                && methodInfo.isMember === (methodInfo.methodInfo.isMember === true)
+                                && methodInfo.isAccessor === (methodInfo.methodInfo.isAccessor === true)
+                                && methodInfo.isGetter === (methodInfo.methodInfo.isGetter === true)
+                                && methodInfo.isSetter === (methodInfo.methodInfo.isSetter === true)
+                                && methodInfo.isModifyAccessor === (methodInfo.methodInfo.isModifyAccessor === true)
+                                && methodInfo.isReadAccessor === (methodInfo.methodInfo.isReadAccessor === true)
+                                && methodInfo.isConstructor === (methodInfo.methodInfo.isConstructor === true)
+                                && methodInfo.isDestructor === (methodInfo.methodInfo.isDestructor === true)
+                                && methodInfo.isSubscript === (methodInfo.methodInfo.isSubscript === true)
+                                && methodInfo.isOperator === (methodInfo.methodInfo.isOperator === true)
+                                && methodInfo.isClosure === (methodInfo.methodInfo.isClosure === true)
+                                && methodInfo.isStaticMember === (methodInfo.methodInfo.isStaticMember === true)
+                                && methodInfo.isClassMember === (methodInfo.methodInfo.isClassMember === true)
+                                && methodInfo.isMutating === (methodInfo.methodInfo.isMutating === true)
+                                && methodInfo.isDispatchThunk === (methodInfo.methodInfo.isDispatchThunk === true)
+                                && methodInfo.isAsync === (methodInfo.methodInfo.isAsync === true)
+                                && methodInfo.isThrowing === (methodInfo.methodInfo.isThrowing === true))) {
                                 return false;
                             }
 
@@ -13810,6 +13936,18 @@ undefined;
                                     && vtableInfo.resolvedAddress === null
                                     && vtableInfo.resolvedOffsetHex === null
                                     && vtableInfo.resolvedMemberKey === null
+                                    && vtableInfo.memberKey === null
+                                    && vtableInfo.name === null
+                                    && vtableInfo.moduleBase === null
+                                    && vtableInfo.demangledName === null
+                                    && vtableInfo.address === null
+                                    && vtableInfo.offsetHex === null
+                                    && vtableInfo.ownerTypeName === null
+                                    && vtableInfo.memberKind === null
+                                    && vtableInfo.signature === null
+                                    && vtableInfo.resultTypeName === null
+                                    && vtableInfo.sourceKind === null
+                                    && vtableInfo.throwsKind === null
                                     && vtableInfo.resolvedHasTypeName === null
                                     && vtableInfo.resolvedHasMemberName === null
                                     && vtableInfo.resolvedHasName === null
@@ -13839,13 +13977,46 @@ undefined;
                                     && vtableInfo.hasTypeName === false
                                     && vtableInfo.hasMemberName === false
                                     && vtableInfo.hasName === false
-                                    && vtableInfo.hasDemangledName === false)) {
+                                    && vtableInfo.hasSourceKind === false
+                                    && vtableInfo.hasDemangledName === false
+                                    && vtableInfo.hasOwnerTypeName === false
+                                    && vtableInfo.hasSignature === false
+                                    && vtableInfo.hasResultTypeName === false
+                                    && vtableInfo.isMember === false
+                                    && vtableInfo.isAccessor === false
+                                    && vtableInfo.isGetter === false
+                                    && vtableInfo.isSetter === false
+                                    && vtableInfo.isModifyAccessor === false
+                                    && vtableInfo.isReadAccessor === false
+                                    && vtableInfo.isConstructor === false
+                                    && vtableInfo.isDestructor === false
+                                    && vtableInfo.isSubscript === false
+                                    && vtableInfo.isOperator === false
+                                    && vtableInfo.isClosure === false
+                                    && vtableInfo.isStaticMember === false
+                                    && vtableInfo.isClassMember === false
+                                    && vtableInfo.isMutating === false
+                                    && vtableInfo.isDispatchThunk === false
+                                    && vtableInfo.isAsync === false
+                                    && vtableInfo.isThrowing === false)) {
                                     return false;
                                 }
                             } else if (!(vtableInfo.resolvedModuleBase === vtableInfo.vtableInfo.moduleBase
                                 && vtableInfo.resolvedAddress === vtableInfo.vtableInfo.address
                                 && vtableInfo.resolvedOffsetHex === vtableInfo.vtableInfo.offsetHex
                                 && vtableInfo.resolvedMemberKey === vtableInfo.vtableInfo.memberKey
+                                && vtableInfo.memberKey === vtableInfo.vtableInfo.memberKey
+                                && vtableInfo.name === vtableInfo.vtableInfo.name
+                                && vtableInfo.moduleBase === vtableInfo.vtableInfo.moduleBase
+                                && vtableInfo.demangledName === vtableInfo.vtableInfo.demangledName
+                                && vtableInfo.address === vtableInfo.vtableInfo.address
+                                && vtableInfo.offsetHex === vtableInfo.vtableInfo.offsetHex
+                                && vtableInfo.ownerTypeName === vtableInfo.vtableInfo.ownerTypeName
+                                && vtableInfo.memberKind === vtableInfo.vtableInfo.memberKind
+                                && vtableInfo.signature === vtableInfo.vtableInfo.signature
+                                && vtableInfo.resultTypeName === vtableInfo.vtableInfo.resultTypeName
+                                && vtableInfo.sourceKind === vtableInfo.vtableInfo.sourceKind
+                                && vtableInfo.throwsKind === vtableInfo.vtableInfo.throwsKind
                                 && vtableInfo.resolvedHasTypeName === vtableInfo.vtableInfo.hasTypeName
                                 && vtableInfo.resolvedHasMemberName === vtableInfo.vtableInfo.hasMemberName
                                 && vtableInfo.resolvedHasName === vtableInfo.vtableInfo.hasName
@@ -13875,7 +14046,28 @@ undefined;
                                 && vtableInfo.hasTypeName === (vtableInfo.vtableInfo.hasTypeName === true)
                                 && vtableInfo.hasMemberName === (vtableInfo.vtableInfo.hasMemberName === true)
                                 && vtableInfo.hasName === (vtableInfo.vtableInfo.hasName === true)
-                                && vtableInfo.hasDemangledName === (vtableInfo.vtableInfo.hasDemangledName === true))) {
+                                && vtableInfo.hasSourceKind === (vtableInfo.vtableInfo.hasSourceKind === true)
+                                && vtableInfo.hasDemangledName === (vtableInfo.vtableInfo.hasDemangledName === true)
+                                && vtableInfo.hasOwnerTypeName === (vtableInfo.vtableInfo.hasOwnerTypeName === true)
+                                && vtableInfo.hasSignature === (vtableInfo.vtableInfo.hasSignature === true)
+                                && vtableInfo.hasResultTypeName === (vtableInfo.vtableInfo.hasResultTypeName === true)
+                                && vtableInfo.isMember === (vtableInfo.vtableInfo.isMember === true)
+                                && vtableInfo.isAccessor === (vtableInfo.vtableInfo.isAccessor === true)
+                                && vtableInfo.isGetter === (vtableInfo.vtableInfo.isGetter === true)
+                                && vtableInfo.isSetter === (vtableInfo.vtableInfo.isSetter === true)
+                                && vtableInfo.isModifyAccessor === (vtableInfo.vtableInfo.isModifyAccessor === true)
+                                && vtableInfo.isReadAccessor === (vtableInfo.vtableInfo.isReadAccessor === true)
+                                && vtableInfo.isConstructor === (vtableInfo.vtableInfo.isConstructor === true)
+                                && vtableInfo.isDestructor === (vtableInfo.vtableInfo.isDestructor === true)
+                                && vtableInfo.isSubscript === (vtableInfo.vtableInfo.isSubscript === true)
+                                && vtableInfo.isOperator === (vtableInfo.vtableInfo.isOperator === true)
+                                && vtableInfo.isClosure === (vtableInfo.vtableInfo.isClosure === true)
+                                && vtableInfo.isStaticMember === (vtableInfo.vtableInfo.isStaticMember === true)
+                                && vtableInfo.isClassMember === (vtableInfo.vtableInfo.isClassMember === true)
+                                && vtableInfo.isMutating === (vtableInfo.vtableInfo.isMutating === true)
+                                && vtableInfo.isDispatchThunk === (vtableInfo.vtableInfo.isDispatchThunk === true)
+                                && vtableInfo.isAsync === (vtableInfo.vtableInfo.isAsync === true)
+                                && vtableInfo.isThrowing === (vtableInfo.vtableInfo.isThrowing === true))) {
                                 return false;
                             }
 
@@ -13885,6 +14077,18 @@ undefined;
                                     && witnessInfo.resolvedAddress === null
                                     && witnessInfo.resolvedOffsetHex === null
                                     && witnessInfo.resolvedWitnessKey === null
+                                    && witnessInfo.witnessKey === null
+                                    && witnessInfo.name === null
+                                    && witnessInfo.moduleBase === null
+                                    && witnessInfo.demangledName === null
+                                    && witnessInfo.address === null
+                                    && witnessInfo.offsetHex === null
+                                    && witnessInfo.signature === null
+                                    && witnessInfo.relation === null
+                                    && witnessInfo.contextModuleName === null
+                                    && witnessInfo.whereClause === null
+                                    && witnessInfo.detailKind === null
+                                    && witnessInfo.sourceKind === null
                                     && witnessInfo.resolvedHasTypeName === null
                                     && witnessInfo.resolvedHasProtocolName === null
                                     && witnessInfo.resolvedHasName === null
@@ -13908,6 +14112,7 @@ undefined;
                                     && witnessInfo.hasTypeName === false
                                     && witnessInfo.hasProtocolName === false
                                     && witnessInfo.hasName === false
+                                    && witnessInfo.hasSourceKind === false
                                     && witnessInfo.hasDemangledName === false
                                     && witnessInfo.hasSignature === false
                                     && witnessInfo.hasRelation === false
@@ -13917,13 +14122,26 @@ undefined;
                                     && witnessInfo.isDescriptor === false
                                     && witnessInfo.isWitnessTable === false
                                     && witnessInfo.isWitnessAccessor === false
-                                    && witnessInfo.isWitness === false)) {
+                                    && witnessInfo.isWitness === false
+                                    && witnessInfo.isAccessor === false)) {
                                     return false;
                                 }
                             } else if (!(witnessInfo.resolvedModuleBase === witnessInfo.witnessTableInfo.moduleBase
                                 && witnessInfo.resolvedAddress === witnessInfo.witnessTableInfo.address
                                 && witnessInfo.resolvedOffsetHex === witnessInfo.witnessTableInfo.offsetHex
                                 && witnessInfo.resolvedWitnessKey === witnessInfo.witnessTableInfo.witnessKey
+                                && witnessInfo.witnessKey === witnessInfo.witnessTableInfo.witnessKey
+                                && witnessInfo.name === witnessInfo.witnessTableInfo.name
+                                && witnessInfo.moduleBase === witnessInfo.witnessTableInfo.moduleBase
+                                && witnessInfo.demangledName === witnessInfo.witnessTableInfo.demangledName
+                                && witnessInfo.address === witnessInfo.witnessTableInfo.address
+                                && witnessInfo.offsetHex === witnessInfo.witnessTableInfo.offsetHex
+                                && witnessInfo.signature === witnessInfo.witnessTableInfo.signature
+                                && witnessInfo.relation === witnessInfo.witnessTableInfo.relation
+                                && witnessInfo.contextModuleName === witnessInfo.witnessTableInfo.contextModuleName
+                                && witnessInfo.whereClause === witnessInfo.witnessTableInfo.whereClause
+                                && witnessInfo.detailKind === witnessInfo.witnessTableInfo.detailKind
+                                && witnessInfo.sourceKind === witnessInfo.witnessTableInfo.sourceKind
                                 && witnessInfo.resolvedHasTypeName === witnessInfo.witnessTableInfo.hasTypeName
                                 && witnessInfo.resolvedHasProtocolName === witnessInfo.witnessTableInfo.hasProtocolName
                                 && witnessInfo.resolvedHasName === witnessInfo.witnessTableInfo.hasName
@@ -13947,6 +14165,7 @@ undefined;
                                 && witnessInfo.hasTypeName === (witnessInfo.witnessTableInfo.hasTypeName === true)
                                 && witnessInfo.hasProtocolName === (witnessInfo.witnessTableInfo.hasProtocolName === true)
                                 && witnessInfo.hasName === (witnessInfo.witnessTableInfo.hasName === true)
+                                && witnessInfo.hasSourceKind === (witnessInfo.witnessTableInfo.hasSourceKind === true)
                                 && witnessInfo.hasDemangledName === (witnessInfo.witnessTableInfo.hasDemangledName === true)
                                 && witnessInfo.hasSignature === (witnessInfo.witnessTableInfo.hasSignature === true)
                                 && witnessInfo.hasRelation === (witnessInfo.witnessTableInfo.hasRelation === true)
@@ -13956,7 +14175,8 @@ undefined;
                                 && witnessInfo.isDescriptor === (witnessInfo.witnessTableInfo.isDescriptor === true)
                                 && witnessInfo.isWitnessTable === (witnessInfo.witnessTableInfo.isWitnessTable === true)
                                 && witnessInfo.isWitnessAccessor === (witnessInfo.witnessTableInfo.isWitnessAccessor === true)
-                                && witnessInfo.isWitness === (witnessInfo.witnessTableInfo.isWitness === true))) {
+                                && witnessInfo.isWitness === (witnessInfo.witnessTableInfo.isWitness === true)
+                                && witnessInfo.isAccessor === (witnessInfo.witnessTableInfo.isAccessor === true))) {
                                 return false;
                             }
 
