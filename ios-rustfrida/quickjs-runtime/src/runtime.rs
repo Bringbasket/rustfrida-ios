@@ -10353,6 +10353,11 @@ undefined;
                             try {
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_info', moduleName: null, typeName: 'ViewController', methodName: 'shared' });
                                 return result.methodInfo !== null
+                                    && result.name === '$s4Demo14ViewControllerC6sharedACyYaKFZ'
+                                    && result.moduleBase === result.methodInfo.moduleBase
+                                    && result.demangledName === 'static Demo.ViewController.shared() async throws -> Demo.ViewController'
+                                    && result.address === result.methodInfo.address
+                                    && result.offsetHex === result.methodInfo.offsetHex
                                     && result.memberKind === 'method'
                                     && result.ownerTypeName === 'Demo.ViewController'
                                     && result.memberName === 'shared'
@@ -10397,6 +10402,12 @@ undefined;
                             try {
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewModel', memberName: 'title' });
                                 return result.vtableInfo !== null
+                                    && result.memberKey === 'Demo.ViewModel.title'
+                                    && result.name === '$s4Demo9ViewModelV5titleSSvg'
+                                    && result.moduleBase === result.vtableInfo.moduleBase
+                                    && result.demangledName === 'Demo.ViewModel.title.getter : Swift.String'
+                                    && result.address === result.vtableInfo.address
+                                    && result.offsetHex === result.vtableInfo.offsetHex
                                     && result.memberKind === 'getter'
                                     && result.ownerTypeName === 'Demo.ViewModel'
                                     && result.signature === 'Demo.ViewModel.title.getter : Swift.String'
@@ -10657,6 +10668,12 @@ undefined;
                                     && result.resolvedTypeName === 'Demo.ViewController'
                                     && result.resolvedProtocolName === 'Demo.Renderable'
                                     && result.resolvedWitnessKey === 'Demo.ViewController:Demo.Renderable'
+                                    && result.witnessKey === 'Demo.ViewController:Demo.Renderable'
+                                    && result.name === '$s4Demo14ViewControllerCAA10RenderableAAWP'
+                                    && result.moduleBase === result.witnessTableInfo.moduleBase
+                                    && result.demangledName === 'protocol witness table accessor for Demo.ViewController : Demo.Renderable where Demo.ViewController.Item == Swift.String in Demo'
+                                    && result.address === result.witnessTableInfo.address
+                                    && result.offsetHex === result.witnessTableInfo.offsetHex
                                     && result.signature === 'protocol witness table accessor for Demo.ViewController : Demo.Renderable where Demo.ViewController.Item == Swift.String in Demo'
                                     && result.relation === 'Demo.ViewController : Demo.Renderable'
                                     && result.contextModuleName === 'Demo'
@@ -11653,7 +11670,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewController', memberName: 'viewDidLoad' }); return result.kind === 'swift.vtable_info' && result.typeName === 'ViewController' && result.memberName === 'viewDidLoad' && typeof result.hasVtableInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasSourceKind === 'boolean' && typeof result.isDispatchThunk === 'boolean' && ((result.vtableInfo === null && result.hasVtableInfo === false && result.resolved === false && result.resolvedTypeName === null && result.resolvedMemberName === null && result.resolvedModuleName === null && result.resolvedName === null && result.resolvedDemangledName === null && result.sourceKind === null && result.isDispatchThunk === false && result.text === '<null>') || (result.hasVtableInfo === true && result.resolved === true && typeof result.resolvedTypeName === 'string' && typeof result.resolvedMemberName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.resolvedName === 'string' && typeof result.vtableInfo.moduleBase === 'string' && typeof result.vtableInfo.memberName === 'string' && typeof result.vtableInfo.offsetHex === 'string' && typeof result.vtableInfo.isDispatchThunk === 'boolean' && result.hasSourceKind === (result.vtableInfo.hasSourceKind === true) && result.sourceKind === result.vtableInfo.sourceKind && result.isDispatchThunk === (result.vtableInfo.isDispatchThunk === true) && result.resolvedTypeName === result.vtableInfo.typeName && result.resolvedMemberName === result.vtableInfo.memberName && result.resolvedModuleName === result.vtableInfo.moduleName && result.resolvedName === result.vtableInfo.name && result.resolvedDemangledName === result.vtableInfo.demangledName && result.text === result.vtableInfo.text)); })()")
+                    .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewController', memberName: 'viewDidLoad' }); return result.kind === 'swift.vtable_info' && result.typeName === 'ViewController' && result.memberName === 'viewDidLoad' && typeof result.hasVtableInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasSourceKind === 'boolean' && typeof result.isDispatchThunk === 'boolean' && ((result.vtableInfo === null && result.hasVtableInfo === false && result.resolved === false && result.resolvedTypeName === null && result.resolvedMemberName === null && result.resolvedModuleName === null && result.resolvedName === null && result.resolvedDemangledName === null && result.memberKey === null && result.name === null && result.moduleBase === null && result.demangledName === null && result.address === null && result.offsetHex === null && result.sourceKind === null && result.isDispatchThunk === false && result.text === '<null>') || (result.hasVtableInfo === true && result.resolved === true && typeof result.resolvedTypeName === 'string' && typeof result.resolvedMemberName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.resolvedName === 'string' && typeof result.vtableInfo.moduleBase === 'string' && typeof result.vtableInfo.memberName === 'string' && typeof result.vtableInfo.offsetHex === 'string' && typeof result.vtableInfo.isDispatchThunk === 'boolean' && result.memberKey === result.vtableInfo.memberKey && result.name === result.vtableInfo.name && result.moduleBase === result.vtableInfo.moduleBase && result.demangledName === result.vtableInfo.demangledName && result.address === result.vtableInfo.address && result.offsetHex === result.vtableInfo.offsetHex && result.hasSourceKind === (result.vtableInfo.hasSourceKind === true) && result.sourceKind === result.vtableInfo.sourceKind && result.isDispatchThunk === (result.vtableInfo.isDispatchThunk === true) && result.resolvedTypeName === result.vtableInfo.typeName && result.resolvedMemberName === result.vtableInfo.memberName && result.resolvedModuleName === result.vtableInfo.moduleName && result.resolvedName === result.vtableInfo.name && result.resolvedDemangledName === result.vtableInfo.demangledName && result.text === result.vtableInfo.text)); })()")
                     .expect("agent swift vtable info result"),
                 "true"
             );
@@ -11854,6 +11871,12 @@ undefined;
                                     result.resolvedModuleName === null &&
                                     result.resolvedName === null &&
                                     result.resolvedDemangledName === null &&
+                                    result.witnessKey === null &&
+                                    result.name === null &&
+                                    result.moduleBase === null &&
+                                    result.demangledName === null &&
+                                    result.address === null &&
+                                    result.offsetHex === null &&
                                     result.signature === null &&
                                     result.relation === null &&
                                     result.contextModuleName === null &&
@@ -11882,6 +11905,12 @@ undefined;
                                 typeof result.witnessTableInfo.protocolName === 'string' &&
                                 typeof result.witnessTableInfo.offsetHex === 'string' &&
                                 typeof result.witnessTableInfo.isAccessor === 'boolean' &&
+                                result.witnessKey === result.witnessTableInfo.witnessKey &&
+                                result.name === result.witnessTableInfo.name &&
+                                result.moduleBase === result.witnessTableInfo.moduleBase &&
+                                result.demangledName === result.witnessTableInfo.demangledName &&
+                                result.address === result.witnessTableInfo.address &&
+                                result.offsetHex === result.witnessTableInfo.offsetHex &&
                                 (result.signature === null || typeof result.signature === 'string') &&
                                 (result.relation === null || typeof result.relation === 'string') &&
                                 (result.contextModuleName === null || typeof result.contextModuleName === 'string') &&
@@ -11938,14 +11967,24 @@ undefined;
 
                             function checkMethodInfo(result) {
                                 if (result.methodInfo === null) {
-                                    return result.resolvedOwnerTypeName === null
+                                    return result.name === null
+                                        && result.moduleBase === null
+                                        && result.demangledName === null
+                                        && result.address === null
+                                        && result.offsetHex === null
+                                        && result.resolvedOwnerTypeName === null
                                         && result.resolvedMemberName === null
                                         && result.resolvedMemberKind === null
                                         && result.resolvedSignature === null
                                         && result.resolvedResultTypeName === null
                                         && result.resolvedThrowsKind === null;
                                 }
-                                return result.resolvedOwnerTypeName === result.methodInfo.ownerTypeName
+                                return result.name === result.methodInfo.name
+                                    && result.moduleBase === result.methodInfo.moduleBase
+                                    && result.demangledName === result.methodInfo.demangledName
+                                    && result.address === result.methodInfo.address
+                                    && result.offsetHex === result.methodInfo.offsetHex
+                                    && result.resolvedOwnerTypeName === result.methodInfo.ownerTypeName
                                     && result.resolvedMemberName === result.methodInfo.memberName
                                     && result.resolvedMemberKind === result.methodInfo.memberKind
                                     && result.resolvedSignature === result.methodInfo.signature
@@ -11955,13 +11994,21 @@ undefined;
 
                             function checkProtocolInfo(result) {
                                 if (result.protocolInfo === null) {
-                                    return result.resolvedQualifiedName === null
+                                    return result.sourceSymbolName === null
+                                        && result.sourceAddress === null
+                                        && result.sourceOffsetHex === null
+                                        && result.sourceDemangledName === null
+                                        && result.resolvedQualifiedName === null
                                         && result.resolvedSignature === null
                                         && result.resolvedContextModuleName === null
                                         && result.resolvedDetailKind === null
                                         && result.resolvedSourceKind === null;
                                 }
-                                return result.resolvedQualifiedName === result.protocolInfo.qualifiedName
+                                return result.sourceSymbolName === result.protocolInfo.sourceSymbolName
+                                    && result.sourceAddress === result.protocolInfo.sourceAddress
+                                    && result.sourceOffsetHex === result.protocolInfo.sourceOffsetHex
+                                    && result.sourceDemangledName === result.protocolInfo.sourceDemangledName
+                                    && result.resolvedQualifiedName === result.protocolInfo.qualifiedName
                                     && result.resolvedSignature === result.protocolInfo.signature
                                     && result.resolvedContextModuleName === result.protocolInfo.contextModuleName
                                     && result.resolvedDetailKind === result.protocolInfo.detailKind
@@ -11970,14 +12017,22 @@ undefined;
 
                             function checkConformanceInfo(result) {
                                 if (result.conformanceInfo === null) {
-                                    return result.resolvedSignature === null
+                                    return result.sourceSymbolName === null
+                                        && result.sourceAddress === null
+                                        && result.sourceOffsetHex === null
+                                        && result.sourceDemangledName === null
+                                        && result.resolvedSignature === null
                                         && result.resolvedRelation === null
                                         && result.resolvedContextModuleName === null
                                         && result.resolvedWhereClause === null
                                         && result.resolvedDetailKind === null
                                         && result.resolvedSourceKind === null;
                                 }
-                                return result.resolvedSignature === result.conformanceInfo.signature
+                                return result.sourceSymbolName === result.conformanceInfo.sourceSymbolName
+                                    && result.sourceAddress === result.conformanceInfo.sourceAddress
+                                    && result.sourceOffsetHex === result.conformanceInfo.sourceOffsetHex
+                                    && result.sourceDemangledName === result.conformanceInfo.sourceDemangledName
+                                    && result.resolvedSignature === result.conformanceInfo.signature
                                     && result.resolvedRelation === result.conformanceInfo.relation
                                     && result.resolvedContextModuleName === result.conformanceInfo.contextModuleName
                                     && result.resolvedWhereClause === result.conformanceInfo.whereClause
@@ -11987,13 +12042,21 @@ undefined;
 
                             function checkMetadataInfo(result) {
                                 if (result.metadataInfo === null) {
-                                    return result.resolvedQualifiedName === null
+                                    return result.sourceSymbolName === null
+                                        && result.sourceAddress === null
+                                        && result.sourceOffsetHex === null
+                                        && result.sourceDemangledName === null
+                                        && result.resolvedQualifiedName === null
                                         && result.resolvedSignature === null
                                         && result.resolvedContextModuleName === null
                                         && result.resolvedDetailKind === null
                                         && result.resolvedSourceKind === null;
                                 }
-                                return result.resolvedQualifiedName === result.metadataInfo.qualifiedName
+                                return result.sourceSymbolName === result.metadataInfo.sourceSymbolName
+                                    && result.sourceAddress === result.metadataInfo.sourceAddress
+                                    && result.sourceOffsetHex === result.metadataInfo.sourceOffsetHex
+                                    && result.sourceDemangledName === result.metadataInfo.sourceDemangledName
+                                    && result.resolvedQualifiedName === result.metadataInfo.qualifiedName
                                     && result.resolvedSignature === result.metadataInfo.signature
                                     && result.resolvedContextModuleName === result.metadataInfo.contextModuleName
                                     && result.resolvedDetailKind === result.metadataInfo.detailKind
@@ -12002,13 +12065,21 @@ undefined;
 
                             function checkTypeInfo(result) {
                                 if (result.typeInfo === null) {
-                                    return result.resolvedQualifiedName === null
+                                    return result.sourceSymbolName === null
+                                        && result.sourceAddress === null
+                                        && result.sourceOffsetHex === null
+                                        && result.sourceDemangledName === null
+                                        && result.resolvedQualifiedName === null
                                         && result.resolvedSignature === null
                                         && result.resolvedContextModuleName === null
                                         && result.resolvedDetailKind === null
                                         && result.resolvedSourceKind === null;
                                 }
-                                return result.resolvedQualifiedName === result.typeInfo.qualifiedName
+                                return result.sourceSymbolName === result.typeInfo.sourceSymbolName
+                                    && result.sourceAddress === result.typeInfo.sourceAddress
+                                    && result.sourceOffsetHex === result.typeInfo.sourceOffsetHex
+                                    && result.sourceDemangledName === result.typeInfo.sourceDemangledName
+                                    && result.resolvedQualifiedName === result.typeInfo.qualifiedName
                                     && result.resolvedSignature === result.typeInfo.signature
                                     && result.resolvedContextModuleName === result.typeInfo.contextModuleName
                                     && result.resolvedDetailKind === result.typeInfo.detailKind
@@ -12017,14 +12088,26 @@ undefined;
 
                             function checkVtableInfo(result) {
                                 if (result.vtableInfo === null) {
-                                    return result.resolvedSourceKind === null
+                                    return result.memberKey === null
+                                        && result.name === null
+                                        && result.moduleBase === null
+                                        && result.demangledName === null
+                                        && result.address === null
+                                        && result.offsetHex === null
+                                        && result.resolvedSourceKind === null
                                         && result.resolvedOwnerTypeName === null
                                         && result.resolvedMemberKind === null
                                         && result.resolvedSignature === null
                                         && result.resolvedResultTypeName === null
                                         && result.resolvedThrowsKind === null;
                                 }
-                                return result.resolvedSourceKind === result.vtableInfo.sourceKind
+                                return result.memberKey === result.vtableInfo.memberKey
+                                    && result.name === result.vtableInfo.name
+                                    && result.moduleBase === result.vtableInfo.moduleBase
+                                    && result.demangledName === result.vtableInfo.demangledName
+                                    && result.address === result.vtableInfo.address
+                                    && result.offsetHex === result.vtableInfo.offsetHex
+                                    && result.resolvedSourceKind === result.vtableInfo.sourceKind
                                     && result.resolvedOwnerTypeName === result.vtableInfo.ownerTypeName
                                     && result.resolvedMemberKind === result.vtableInfo.memberKind
                                     && result.resolvedSignature === result.vtableInfo.signature
@@ -12034,14 +12117,26 @@ undefined;
 
                             function checkWitnessTableInfo(result) {
                                 if (result.witnessTableInfo === null) {
-                                    return result.resolvedSourceKind === null
+                                    return result.witnessKey === null
+                                        && result.name === null
+                                        && result.moduleBase === null
+                                        && result.demangledName === null
+                                        && result.address === null
+                                        && result.offsetHex === null
+                                        && result.resolvedSourceKind === null
                                         && result.resolvedSignature === null
                                         && result.resolvedRelation === null
                                         && result.resolvedContextModuleName === null
                                         && result.resolvedWhereClause === null
                                         && result.resolvedDetailKind === null;
                                 }
-                                return result.resolvedSourceKind === result.witnessTableInfo.sourceKind
+                                return result.witnessKey === result.witnessTableInfo.witnessKey
+                                    && result.name === result.witnessTableInfo.name
+                                    && result.moduleBase === result.witnessTableInfo.moduleBase
+                                    && result.demangledName === result.witnessTableInfo.demangledName
+                                    && result.address === result.witnessTableInfo.address
+                                    && result.offsetHex === result.witnessTableInfo.offsetHex
+                                    && result.resolvedSourceKind === result.witnessTableInfo.sourceKind
                                     && result.resolvedSignature === result.witnessTableInfo.signature
                                     && result.resolvedRelation === result.witnessTableInfo.relation
                                     && result.resolvedContextModuleName === result.witnessTableInfo.contextModuleName
