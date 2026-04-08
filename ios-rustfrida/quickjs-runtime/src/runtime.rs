@@ -8629,6 +8629,90 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.linkedit;
+                            Native.linkedit = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    vmaddr: 0x180200000n,
+                                    vmsize: 0x1000n,
+                                    fileoff: 0x6000n,
+                                    filesize: 0x400n,
+                                    computedBase: 0x180300000n,
+                                    symoff: 0x20n,
+                                    nsyms: 7,
+                                    stroff: 0x100n,
+                                    strsize: 0x80n,
+                                    indirectsymoff: 0x200n,
+                                    nindirectsyms: 3
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.linkedit', moduleName: 'Demo' });
+                                return result.linkedit !== null
+                                    && result.resolvedModuleName === result.linkedit.moduleName
+                                    && result.resolvedModuleBase === result.linkedit.moduleBase
+                                    && result.resolvedVmaddr === result.linkedit.vmaddr
+                                    && result.resolvedVmEnd === result.linkedit.vmEnd
+                                    && result.resolvedVmsizeHex === result.linkedit.vmsizeHex
+                                    && result.resolvedFileoffHex === result.linkedit.fileoffHex
+                                    && result.resolvedFilesizeHex === result.linkedit.filesizeHex
+                                    && result.resolvedFileEndHex === result.linkedit.fileEndHex
+                                    && result.resolvedComputedBase === result.linkedit.computedBase
+                                    && result.resolvedComputedEnd === result.linkedit.computedEnd
+                                    && result.resolvedSymoffHex === result.linkedit.symoffHex
+                                    && result.resolvedNsyms === result.linkedit.nsyms
+                                    && result.resolvedSymtabAddress === result.linkedit.symtabAddress
+                                    && result.resolvedStroffHex === result.linkedit.stroffHex
+                                    && result.resolvedStrsizeHex === result.linkedit.strsizeHex
+                                    && result.resolvedStrtabAddress === result.linkedit.strtabAddress
+                                    && result.resolvedIndirectsymoffHex === result.linkedit.indirectsymoffHex
+                                    && result.resolvedNindirectsyms === result.linkedit.nindirectsyms
+                                    && result.resolvedIndirectsymAddress === result.linkedit.indirectsymAddress
+                                    && result.resolvedFirstTableName === result.linkedit.firstTableName
+                                    && result.resolvedLastTableName === result.linkedit.lastTableName
+                                    && result.vmsizeHex === '0x1000'
+                                    && result.fileoffHex === '0x6000'
+                                    && result.filesizeHex === '0x400'
+                                    && result.fileEndHex === '0x6400'
+                                    && result.computedEnd === '0x180300400'
+                                    && result.symoffHex === '0x20'
+                                    && result.nsyms === 7
+                                    && result.symtabAddress === '0x180300020'
+                                    && result.stroffHex === '0x100'
+                                    && result.strsizeHex === '0x80'
+                                    && result.strtabAddress === '0x180300100'
+                                    && result.indirectsymoffHex === '0x200'
+                                    && result.nindirectsyms === 3
+                                    && result.indirectsymAddress === '0x180300200'
+                                    && result.tableCount === 3
+                                    && result.hasTables === true
+                                    && Array.isArray(result.tableNames)
+                                    && result.tableNames.join('\n') === 'symtab\nstrtab\nindirectsym'
+                                    && Array.isArray(result.nonEmptyTableNames)
+                                    && result.nonEmptyTableNames.join('\n') === 'symtab\nstrtab\nindirectsym'
+                                    && result.firstTableName === 'symtab'
+                                    && result.lastTableName === 'indirectsym'
+                                    && result.hasSymtab === true
+                                    && result.hasStrtab === true
+                                    && result.hasIndirectSymbols === true
+                                    && Array.isArray(result.tables)
+                                    && result.tables.length === 3
+                                    && result.tables[0].name === 'symtab'
+                                    && result.tables[1].name === 'strtab'
+                                    && result.tables[2].name === 'indirectsym';
+                            } finally {
+                                Native.linkedit = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native linkedit fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.function_starts', moduleName: main.image.name }); return result.kind === 'native.function_starts' && typeof result.hasFunctionStarts === 'boolean' && typeof result.resolved === 'boolean' && typeof result.startCount === 'number' && typeof result.hasStarts === 'boolean' && typeof result.gapCount === 'number' && typeof result.hasGaps === 'boolean' && ((result.functionStarts === null && result.hasFunctionStarts === false && result.resolved === false && result.moduleBase === null && result.dataoffHex === null && result.datasizeHex === null && result.linkeditBase === null && result.dataAddress === null && result.dataEnd === null && result.startCount === 0 && result.hasStarts === false && result.gapCount === 0 && result.hasGaps === false && result.firstStartOffsetHex === null && result.firstStartAddress === null && result.lastStartOffsetHex === null && result.lastStartAddress === null && result.firstGapHex === null && result.lastGapHex === null && result.firstGapFromOffsetHex === null && result.firstGapToOffsetHex === null && result.lastGapFromOffsetHex === null && result.lastGapToOffsetHex === null && result.largestGapHex === null && result.text === '<null>') || (typeof result.moduleBase === 'string' && typeof result.dataoffHex === 'string' && typeof result.datasizeHex === 'string' && typeof result.linkeditBase === 'string' && typeof result.dataAddress === 'string' && typeof result.dataEnd === 'string' && typeof result.functionStarts.dataoffHex === 'string' && typeof result.functionStarts.dataEnd === 'string' && typeof result.functionStarts.count === 'number' && typeof result.functionStarts.hasStarts === 'boolean' && (result.functionStarts.firstStartOffsetHex === null || typeof result.functionStarts.firstStartOffsetHex === 'string') && (result.functionStarts.firstStartAddress === null || typeof result.functionStarts.firstStartAddress === 'string') && (result.functionStarts.lastStartOffsetHex === null || typeof result.functionStarts.lastStartOffsetHex === 'string') && (result.functionStarts.lastStartAddress === null || typeof result.functionStarts.lastStartAddress === 'string') && typeof result.functionStarts.totalSpanHex === 'string' && typeof result.functionStarts.gapCount === 'number' && typeof result.functionStarts.hasGaps === 'boolean' && result.hasFunctionStarts === true && result.resolved === true && result.moduleBase === result.functionStarts.moduleBase && result.dataoffHex === result.functionStarts.dataoffHex && result.datasizeHex === result.functionStarts.datasizeHex && result.linkeditBase === result.functionStarts.linkeditBase && result.dataAddress === result.functionStarts.dataAddress && result.dataEnd === result.functionStarts.dataEnd && result.startCount === result.functionStarts.count && result.hasStarts === (result.functionStarts.hasStarts === true) && result.gapCount === result.functionStarts.gapCount && result.hasGaps === (result.functionStarts.hasGaps === true) && result.firstStartOffsetHex === result.functionStarts.firstStartOffsetHex && result.firstStartAddress === result.functionStarts.firstStartAddress && result.lastStartOffsetHex === result.functionStarts.lastStartOffsetHex && result.lastStartAddress === result.functionStarts.lastStartAddress && result.firstGapHex === result.functionStarts.firstGapHex && result.lastGapHex === result.functionStarts.lastGapHex && result.firstGapFromOffsetHex === result.functionStarts.firstGapFromOffsetHex && result.firstGapToOffsetHex === result.functionStarts.firstGapToOffsetHex && result.lastGapFromOffsetHex === result.functionStarts.lastGapFromOffsetHex && result.lastGapToOffsetHex === result.functionStarts.lastGapToOffsetHex && (result.functionStarts.firstGapHex === null || typeof result.functionStarts.firstGapHex === 'string') && (result.functionStarts.lastGapHex === null || typeof result.functionStarts.lastGapHex === 'string') && (result.functionStarts.largestGapHex === null || typeof result.functionStarts.largestGapHex === 'string') && Array.isArray(result.functionStarts.starts) && result.text === result.functionStarts.text)); })()"
                     )
                     .expect("agent native function starts result"),
