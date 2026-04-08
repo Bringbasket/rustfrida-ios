@@ -8553,9 +8553,147 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.functionStarts;
+                            Native.functionStarts = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    dataoff: 0x2800n,
+                                    datasize: 0x40n,
+                                    linkeditBase: 0x180100000n,
+                                    dataAddress: 0x180102800n,
+                                    starts: [
+                                        { offset: 0x10n, address: 0x180000010n },
+                                        { offset: 0x30n, address: 0x180000030n },
+                                        { offset: 0x80n, address: 0x180000080n }
+                                    ]
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.function_starts', moduleName: 'Demo' });
+                                return result.functionStarts !== null
+                                    && result.resolvedModuleName === result.functionStarts.moduleName
+                                    && result.resolvedModuleBase === result.functionStarts.moduleBase
+                                    && result.resolvedDataoffHex === result.functionStarts.dataoffHex
+                                    && result.resolvedDatasizeHex === result.functionStarts.datasizeHex
+                                    && result.resolvedLinkeditBase === result.functionStarts.linkeditBase
+                                    && result.resolvedDataAddress === result.functionStarts.dataAddress
+                                    && result.resolvedDataEnd === result.functionStarts.dataEnd
+                                    && result.resolvedFirstStartOffsetHex === result.functionStarts.firstStartOffsetHex
+                                    && result.resolvedFirstStartAddress === result.functionStarts.firstStartAddress
+                                    && result.resolvedLastStartOffsetHex === result.functionStarts.lastStartOffsetHex
+                                    && result.resolvedLastStartAddress === result.functionStarts.lastStartAddress
+                                    && result.resolvedTotalSpanHex === result.functionStarts.totalSpanHex
+                                    && result.resolvedFirstGapHex === result.functionStarts.firstGapHex
+                                    && result.resolvedLastGapHex === result.functionStarts.lastGapHex
+                                    && result.resolvedFirstGapFromOffsetHex === result.functionStarts.firstGapFromOffsetHex
+                                    && result.resolvedFirstGapToOffsetHex === result.functionStarts.firstGapToOffsetHex
+                                    && result.resolvedLastGapFromOffsetHex === result.functionStarts.lastGapFromOffsetHex
+                                    && result.resolvedLastGapToOffsetHex === result.functionStarts.lastGapToOffsetHex
+                                    && result.resolvedLargestGapHex === result.functionStarts.largestGapHex
+                                    && result.dataoffHex === '0x2800'
+                                    && result.datasizeHex === '0x40'
+                                    && result.dataEnd === '0x180102840'
+                                    && result.startCount === 3
+                                    && result.hasStarts === true
+                                    && result.firstStartOffsetHex === '0x10'
+                                    && result.lastStartOffsetHex === '0x80'
+                                    && result.totalSpanHex === '0x70'
+                                    && result.gapCount === 2
+                                    && result.hasGaps === true
+                                    && result.firstGapHex === '0x20'
+                                    && result.lastGapHex === '0x50'
+                                    && result.firstGapFromOffsetHex === '0x10'
+                                    && result.firstGapToOffsetHex === '0x30'
+                                    && result.lastGapFromOffsetHex === '0x30'
+                                    && result.lastGapToOffsetHex === '0x80'
+                                    && result.largestGapHex === '0x50';
+                            } finally {
+                                Native.functionStarts = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native function starts fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.code_signature', moduleName: main.image.name }); return result.kind === 'native.code_signature' && typeof result.hasCodeSignature === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasData === 'boolean' && typeof result.hasMagic === 'boolean' && typeof result.hasCount === 'boolean' && typeof result.hasBlobLength === 'boolean' && typeof result.isSuperBlob === 'boolean' && typeof result.isDetachedSignature === 'boolean' && typeof result.isBlobWrapper === 'boolean' && typeof result.isCodeDirectory === 'boolean' && typeof result.isEntitlements === 'boolean' && ((result.codeSignature === null && result.hasCodeSignature === false && result.resolved === false && result.moduleBase === null && result.dataoffHex === null && result.datasizeHex === null && result.linkeditBase === null && result.dataAddress === null && result.dataEnd === null && result.blobKind === null && result.magicCategory === null && result.magicHex === null && result.magicName === null && result.lengthHex === null && result.count === null && result.hasData === false && result.hasMagic === false && result.hasCount === false && result.hasBlobLength === false && result.blobLengthMatchesDataSize === null && result.blobLengthRelation === null && result.isSuperBlob === false && result.isDetachedSignature === false && result.isBlobWrapper === false && result.isCodeDirectory === false && result.isEntitlements === false && result.text === '<null>') || (typeof result.moduleBase === 'string' && typeof result.dataoffHex === 'string' && typeof result.datasizeHex === 'string' && typeof result.linkeditBase === 'string' && typeof result.dataAddress === 'string' && typeof result.dataEnd === 'string' && typeof result.codeSignature.dataoffHex === 'string' && typeof result.codeSignature.datasizeHex === 'string' && typeof result.codeSignature.dataEnd === 'string' && typeof result.codeSignature.hasMagic === 'boolean' && typeof result.codeSignature.hasMagicName === 'boolean' && typeof result.codeSignature.knownMagic === 'boolean' && typeof result.codeSignature.magicCategory === 'string' && typeof result.codeSignature.blobKind === 'string' && (result.codeSignature.magicHex === null || typeof result.codeSignature.magicHex === 'string') && (result.codeSignature.lengthHex === null || typeof result.codeSignature.lengthHex === 'string') && typeof result.codeSignature.hasCount === 'boolean' && typeof result.codeSignature.hasData === 'boolean' && typeof result.codeSignature.hasBlobLength === 'boolean' && (result.codeSignature.blobLengthMatchesDataSize === null || typeof result.codeSignature.blobLengthMatchesDataSize === 'boolean') && typeof result.codeSignature.blobLengthRelation === 'string' && typeof result.codeSignature.isSuperBlob === 'boolean' && (result.codeSignature.countMatchesSuperBlob === null || typeof result.codeSignature.countMatchesSuperBlob === 'boolean') && typeof result.codeSignature.isDetachedSignature === 'boolean' && typeof result.codeSignature.isBlobWrapper === 'boolean' && typeof result.codeSignature.isCodeDirectory === 'boolean' && typeof result.codeSignature.isEntitlements === 'boolean' && result.hasCodeSignature === true && result.resolved === true && result.moduleBase === result.codeSignature.moduleBase && result.dataoffHex === result.codeSignature.dataoffHex && result.datasizeHex === result.codeSignature.datasizeHex && result.linkeditBase === result.codeSignature.linkeditBase && result.dataAddress === result.codeSignature.dataAddress && result.dataEnd === result.codeSignature.dataEnd && result.blobKind === result.codeSignature.blobKind && result.magicCategory === result.codeSignature.magicCategory && result.magicHex === result.codeSignature.magicHex && result.magicName === result.codeSignature.magicName && result.lengthHex === result.codeSignature.lengthHex && result.count === result.codeSignature.count && result.hasData === (result.codeSignature.hasData === true) && result.hasMagic === (result.codeSignature.hasMagic === true) && result.hasCount === (result.codeSignature.hasCount === true) && result.hasBlobLength === (result.codeSignature.hasBlobLength === true) && result.blobLengthMatchesDataSize === result.codeSignature.blobLengthMatchesDataSize && result.blobLengthRelation === result.codeSignature.blobLengthRelation && result.isSuperBlob === (result.codeSignature.isSuperBlob === true) && result.isDetachedSignature === (result.codeSignature.isDetachedSignature === true) && result.isBlobWrapper === (result.codeSignature.isBlobWrapper === true) && result.isCodeDirectory === (result.codeSignature.isCodeDirectory === true) && result.isEntitlements === (result.codeSignature.isEntitlements === true) && result.text === result.codeSignature.text)); })()"
                     )
                     .expect("agent native code signature result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.codeSignature;
+                            Native.codeSignature = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    dataoff: 0x2600n,
+                                    datasize: 0x40n,
+                                    linkeditBase: 0x180100000n,
+                                    dataAddress: 0x180102600n,
+                                    magic: 0xfade0cc0n,
+                                    magicName: 'CSMAGIC_EMBEDDED_SIGNATURE',
+                                    length: 0x40n,
+                                    count: 2
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.code_signature', moduleName: 'Demo' });
+                                return result.codeSignature !== null
+                                    && result.resolvedModuleName === result.codeSignature.moduleName
+                                    && result.resolvedModuleBase === result.codeSignature.moduleBase
+                                    && result.resolvedDataoffHex === result.codeSignature.dataoffHex
+                                    && result.resolvedDatasizeHex === result.codeSignature.datasizeHex
+                                    && result.resolvedLinkeditBase === result.codeSignature.linkeditBase
+                                    && result.resolvedDataAddress === result.codeSignature.dataAddress
+                                    && result.resolvedDataEnd === result.codeSignature.dataEnd
+                                    && result.resolvedBlobKind === result.codeSignature.blobKind
+                                    && result.resolvedMagicCategory === result.codeSignature.magicCategory
+                                    && result.resolvedMagicHex === result.codeSignature.magicHex
+                                    && result.resolvedMagicName === result.codeSignature.magicName
+                                    && result.resolvedLengthHex === result.codeSignature.lengthHex
+                                    && result.resolvedCount === result.codeSignature.count
+                                    && result.resolvedKnownMagic === result.codeSignature.knownMagic
+                                    && result.resolvedHasCount === result.codeSignature.hasCount
+                                    && result.resolvedHasBlobLength === result.codeSignature.hasBlobLength
+                                    && result.resolvedBlobLengthMatchesDataSize === result.codeSignature.blobLengthMatchesDataSize
+                                    && result.resolvedBlobLengthRelation === result.codeSignature.blobLengthRelation
+                                    && result.resolvedCountMatchesSuperBlob === result.codeSignature.countMatchesSuperBlob
+                                    && result.dataoffHex === '0x2600'
+                                    && result.datasizeHex === '0x40'
+                                    && result.dataEnd === '0x180102640'
+                                    && result.blobKind === 'embedded-signature'
+                                    && result.magicCategory === 'signature'
+                                    && result.magicHex === '0xfade0cc0'
+                                    && result.magicName === 'CSMAGIC_EMBEDDED_SIGNATURE'
+                                    && result.lengthHex === '0x40'
+                                    && result.count === 2
+                                    && result.hasData === true
+                                    && result.hasMagic === true
+                                    && result.knownMagic === true
+                                    && result.hasCount === true
+                                    && result.hasBlobLength === true
+                                    && result.blobLengthMatchesDataSize === true
+                                    && result.blobLengthRelation === 'equal'
+                                    && result.countMatchesSuperBlob === true
+                                    && result.isSuperBlob === true
+                                    && result.isDetachedSignature === false
+                                    && result.isBlobWrapper === false
+                                    && result.isCodeDirectory === false
+                                    && result.isEntitlements === false;
+                            } finally {
+                                Native.codeSignature = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native code signature fields"),
                 "true"
             );
             assert_eq!(
