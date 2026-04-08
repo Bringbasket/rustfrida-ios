@@ -9461,7 +9461,14 @@ undefined;
                                         && result.resolvedMajorVersion === null
                                         && result.resolvedMinorVersion === null
                                         && result.resolvedPatchVersion === null
-                                        && result.resolvedExtraVersionCount === 0;
+                                        && result.resolvedExtraVersionCount === 0
+                                        && result.version === null
+                                        && result.hasVersion === false
+                                        && result.versionPartCount === 0
+                                        && result.majorVersion === null
+                                        && result.minorVersion === null
+                                        && result.patchVersion === null
+                                        && result.extraVersionCount === 0;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedVersion === info.version
@@ -9470,7 +9477,14 @@ undefined;
                                     && result.resolvedMajorVersion === info.majorVersion
                                     && result.resolvedMinorVersion === info.minorVersion
                                     && result.resolvedPatchVersion === info.patchVersion
-                                    && result.resolvedExtraVersionCount === info.extraVersionCount;
+                                    && result.resolvedExtraVersionCount === info.extraVersionCount
+                                    && result.version === info.version
+                                    && result.hasVersion === (info.hasVersion === true)
+                                    && result.versionPartCount === info.versionPartCount
+                                    && result.majorVersion === info.majorVersion
+                                    && result.minorVersion === info.minorVersion
+                                    && result.patchVersion === info.patchVersion
+                                    && result.extraVersionCount === info.extraVersionCount;
                             }
 
                             function checkBuildVersion(result) {
@@ -9493,7 +9507,25 @@ undefined;
                                         && result.resolvedToolNames === null
                                         && result.resolvedToolNameList === null
                                         && result.resolvedTools === null
-                                        && result.resolvedUniqueToolCount === 0;
+                                        && result.resolvedUniqueToolCount === 0
+                                        && result.platform === null
+                                        && result.hasMinOs === false
+                                        && result.hasSdk === false
+                                        && result.minOsPartCount === 0
+                                        && result.sdkPartCount === 0
+                                        && result.hasTools === false
+                                        && result.firstTool === null
+                                        && result.lastTool === null
+                                        && result.firstToolVersion === null
+                                        && result.lastToolVersion === null
+                                        && result.toolCount === 0
+                                        && result.uniqueToolCount === 0
+                                        && Array.isArray(result.toolNames)
+                                        && result.toolNames.length === 0
+                                        && Array.isArray(result.toolNameList)
+                                        && result.toolNameList.length === 0
+                                        && Array.isArray(result.tools)
+                                        && result.tools.length === 0;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedPlatform === info.platform
@@ -9512,7 +9544,22 @@ undefined;
                                     && JSON.stringify(result.resolvedToolNames) === JSON.stringify(info.toolNames)
                                     && JSON.stringify(result.resolvedToolNameList) === JSON.stringify(info.toolNameList)
                                     && JSON.stringify(result.resolvedTools) === JSON.stringify(info.tools)
-                                    && result.resolvedUniqueToolCount === info.uniqueToolCount;
+                                    && result.resolvedUniqueToolCount === info.uniqueToolCount
+                                    && result.platform === info.platform
+                                    && result.hasMinOs === (info.hasMinOs === true)
+                                    && result.hasSdk === (info.hasSdk === true)
+                                    && result.minOsPartCount === info.minOsPartCount
+                                    && result.sdkPartCount === info.sdkPartCount
+                                    && result.hasTools === (info.hasTools === true)
+                                    && result.firstTool === info.firstTool
+                                    && result.lastTool === info.lastTool
+                                    && result.firstToolVersion === info.firstToolVersion
+                                    && result.lastToolVersion === info.lastToolVersion
+                                    && result.toolCount === info.tools.length
+                                    && result.uniqueToolCount === info.uniqueToolCount
+                                    && JSON.stringify(result.toolNames) === JSON.stringify(info.toolNames)
+                                    && JSON.stringify(result.toolNameList) === JSON.stringify(info.toolNameList)
+                                    && JSON.stringify(result.tools) === JSON.stringify(info.tools);
                             }
 
                             function checkDylinker(result) {
@@ -9531,7 +9578,22 @@ undefined;
                                         && result.resolvedIsReexportDylinker === null
                                         && result.resolvedIsUpwardDylinker === null
                                         && result.resolvedIsLoadDylinker === null
-                                        && result.hasName === false;
+                                        && result.name === null
+                                        && result.path === null
+                                        && result.pathKind === null
+                                        && result.kind === null
+                                        && result.kindName === null
+                                        && result.hasName === false
+                                        && result.hasPath === false
+                                        && result.isTokenPath === false
+                                        && result.usesLoaderPath === false
+                                        && result.usesExecutablePath === false
+                                        && result.usesRpathToken === false
+                                        && result.pathDepth === 0
+                                        && result.isWeakDylinker === false
+                                        && result.isReexportDylinker === false
+                                        && result.isUpwardDylinker === false
+                                        && result.isLoadDylinker === false;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedKind === info.kind
@@ -9546,7 +9608,22 @@ undefined;
                                     && result.resolvedIsReexportDylinker === info.isReexportDylinker
                                     && result.resolvedIsUpwardDylinker === info.isUpwardDylinker
                                     && result.resolvedIsLoadDylinker === info.isLoadDylinker
-                                    && result.hasName === (info.name.length !== 0);
+                                    && result.name === info.name
+                                    && result.path === info.path
+                                    && result.pathKind === info.pathKind
+                                    && result.kind === info.kind
+                                    && result.kindName === info.kind
+                                    && result.hasName === (info.hasName === true)
+                                    && result.hasPath === (info.hasPath === true)
+                                    && result.isTokenPath === (info.isTokenPath === true)
+                                    && result.usesLoaderPath === (info.usesLoaderPath === true)
+                                    && result.usesExecutablePath === (info.usesExecutablePath === true)
+                                    && result.usesRpathToken === (info.usesRpathToken === true)
+                                    && result.pathDepth === info.pathDepth
+                                    && result.isWeakDylinker === (info.isWeakDylinker === true)
+                                    && result.isReexportDylinker === (info.isReexportDylinker === true)
+                                    && result.isUpwardDylinker === (info.isUpwardDylinker === true)
+                                    && result.isLoadDylinker === (info.isLoadDylinker === true);
                             }
 
                             function checkInstallName(result) {
@@ -9564,7 +9641,22 @@ undefined;
                                         && result.resolvedUsesRpathToken === null
                                         && result.resolvedPathDepth === 0
                                         && result.resolvedHasTimestamp === null
-                                        && result.resolvedVersionMismatch === null;
+                                        && result.resolvedVersionMismatch === null
+                                        && result.name === null
+                                        && result.path === null
+                                        && result.pathKind === null
+                                        && result.currentVersion === null
+                                        && result.compatibilityVersion === null
+                                        && result.timestamp === null
+                                        && result.hasName === false
+                                        && result.hasPath === false
+                                        && result.isTokenPath === false
+                                        && result.usesLoaderPath === false
+                                        && result.usesExecutablePath === false
+                                        && result.usesRpathToken === false
+                                        && result.pathDepth === 0
+                                        && result.hasTimestamp === false
+                                        && result.versionMismatch === false;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedCurrentVersion === info.currentVersion
@@ -9578,7 +9670,22 @@ undefined;
                                     && result.resolvedUsesRpathToken === info.usesRpathToken
                                     && result.resolvedPathDepth === info.pathDepth
                                     && result.resolvedHasTimestamp === info.hasTimestamp
-                                    && result.resolvedVersionMismatch === info.versionMismatch;
+                                    && result.resolvedVersionMismatch === info.versionMismatch
+                                    && result.name === info.name
+                                    && result.path === info.path
+                                    && result.pathKind === info.pathKind
+                                    && result.currentVersion === info.currentVersion
+                                    && result.compatibilityVersion === info.compatibilityVersion
+                                    && result.timestamp === info.timestamp
+                                    && result.hasName === (info.hasName === true)
+                                    && result.hasPath === (info.hasPath === true)
+                                    && result.isTokenPath === (info.isTokenPath === true)
+                                    && result.usesLoaderPath === (info.usesLoaderPath === true)
+                                    && result.usesExecutablePath === (info.usesExecutablePath === true)
+                                    && result.usesRpathToken === (info.usesRpathToken === true)
+                                    && result.pathDepth === info.pathDepth
+                                    && result.hasTimestamp === (info.hasTimestamp === true)
+                                    && result.versionMismatch === (info.versionMismatch === true);
                             }
 
                             function checkUuid(result) {
@@ -9589,14 +9696,22 @@ undefined;
                                         && result.resolvedNormalizedUuid === null
                                         && result.resolvedHasUuid === null
                                         && result.resolvedUuidLength === 0
-                                        && result.resolvedUuidSegmentCount === 0;
+                                        && result.resolvedUuidSegmentCount === 0
+                                        && result.uuid === null
+                                        && result.normalizedUuid === null
+                                        && result.uuidLength === 0
+                                        && result.uuidSegmentCount === 0;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedUuid === info.uuid
                                     && result.resolvedNormalizedUuid === info.normalizedUuid
                                     && result.resolvedHasUuid === info.hasUuid
                                     && result.resolvedUuidLength === info.uuidLength
-                                    && result.resolvedUuidSegmentCount === info.uuidSegmentCount;
+                                    && result.resolvedUuidSegmentCount === info.uuidSegmentCount
+                                    && result.uuid === info.uuid
+                                    && result.normalizedUuid === info.normalizedUuid
+                                    && result.uuidLength === info.uuidLength
+                                    && result.uuidSegmentCount === info.uuidSegmentCount;
                             }
 
                             const encryptionInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName });
@@ -9864,6 +9979,9 @@ undefined;
                                         && result.resolvedUsesExecutablePath === null
                                         && result.resolvedUsesRpathToken === null
                                         && result.resolvedPathDepth === 0
+                                        && result.pathKind === null
+                                        && result.moduleBase === null
+                                        && result.hasPath === false
                                         && result.isTokenPath === false
                                         && result.usesLoaderPath === false
                                         && result.usesExecutablePath === false
@@ -9877,6 +9995,9 @@ undefined;
                                     && result.resolvedUsesExecutablePath === result.rpathInfo.usesExecutablePath
                                     && result.resolvedUsesRpathToken === result.rpathInfo.usesRpathToken
                                     && result.resolvedPathDepth === result.rpathInfo.pathDepth
+                                    && result.pathKind === result.rpathInfo.pathKind
+                                    && result.moduleBase === result.rpathInfo.moduleBase
+                                    && result.hasPath === (result.rpathInfo.hasPath === true)
                                     && result.isTokenPath === (result.rpathInfo.isTokenPath === true)
                                     && result.usesLoaderPath === (result.rpathInfo.usesLoaderPath === true)
                                     && result.usesExecutablePath === (result.rpathInfo.usesExecutablePath === true)
@@ -9893,7 +10014,20 @@ undefined;
                                         && result.resolvedIsMainExecutableImport === null
                                         && result.resolvedIsFlatLookupImport === null
                                         && result.resolvedIsSelfImport === null
-                                        && result.resolvedWeakImport === null;
+                                        && result.resolvedWeakImport === null
+                                        && result.name === null
+                                        && result.normalizedName === null
+                                        && result.moduleBase === null
+                                        && result.dylibOrdinal === null
+                                        && result.dylibName === null
+                                        && result.source === null
+                                        && result.sourceKind === null
+                                        && result.hasDylibName === false
+                                        && result.usesOrdinalOnly === false
+                                        && result.isMainExecutableImport === false
+                                        && result.isFlatLookupImport === false
+                                        && result.isSelfImport === false
+                                        && result.weakImport === false;
                                 }
                                 return result.resolvedSource === result.importInfo.source
                                     && result.resolvedSourceKind === result.importInfo.sourceKind
@@ -9902,7 +10036,20 @@ undefined;
                                     && result.resolvedIsMainExecutableImport === result.importInfo.isMainExecutableImport
                                     && result.resolvedIsFlatLookupImport === result.importInfo.isFlatLookupImport
                                     && result.resolvedIsSelfImport === result.importInfo.isSelfImport
-                                    && result.resolvedWeakImport === result.importInfo.weakImport;
+                                    && result.resolvedWeakImport === result.importInfo.weakImport
+                                    && result.name === result.importInfo.name
+                                    && result.normalizedName === result.importInfo.normalizedName
+                                    && result.moduleBase === result.importInfo.moduleBase
+                                    && result.dylibOrdinal === result.importInfo.dylibOrdinal
+                                    && result.dylibName === result.importInfo.dylibName
+                                    && result.source === result.importInfo.source
+                                    && result.sourceKind === result.importInfo.sourceKind
+                                    && result.hasDylibName === (result.importInfo.hasDylibName === true)
+                                    && result.usesOrdinalOnly === (result.importInfo.usesOrdinalOnly === true)
+                                    && result.isMainExecutableImport === (result.importInfo.isMainExecutableImport === true)
+                                    && result.isFlatLookupImport === (result.importInfo.isFlatLookupImport === true)
+                                    && result.isSelfImport === (result.importInfo.isSelfImport === true)
+                                    && result.weakImport === (result.importInfo.weakImport === true);
                             }
 
                             function checkSegmentInfo(result) {
