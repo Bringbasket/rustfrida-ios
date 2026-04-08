@@ -8569,9 +8569,172 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.dataInCode;
+                            Native.dataInCode = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    dataoff: 0x3000n,
+                                    datasize: 0x18n,
+                                    linkeditBase: 0x180100000n,
+                                    dataAddress: 0x180103000n,
+                                    entries: [
+                                        { offset: 0x10n, address: 0x180103010n, length: 4, kind: 1, kindName: 'DICE_KIND_DATA' },
+                                        { offset: 0x20n, address: 0x180103020n, length: 8, kind: 3, kindName: 'DICE_KIND_JUMP_TABLE16' },
+                                        { offset: 0x30n, address: 0x180103030n, length: 12, kind: 255, kindName: 'DICE_KIND_UNKNOWN' }
+                                    ]
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.data_in_code', moduleName: 'Demo' });
+                                return result.dataInCode !== null
+                                    && result.resolvedModuleName === result.dataInCode.moduleName
+                                    && result.resolvedModuleBase === result.dataInCode.moduleBase
+                                    && result.resolvedDataoffHex === result.dataInCode.dataoffHex
+                                    && result.resolvedDatasizeHex === result.dataInCode.datasizeHex
+                                    && result.resolvedLinkeditBase === result.dataInCode.linkeditBase
+                                    && result.resolvedDataAddress === result.dataInCode.dataAddress
+                                    && result.resolvedDataEnd === result.dataInCode.dataEnd
+                                    && result.resolvedTotalEntryLength === result.dataInCode.totalEntryLength
+                                    && result.resolvedFirstEntryOffsetHex === result.dataInCode.firstEntryOffsetHex
+                                    && result.resolvedFirstEntryAddress === result.dataInCode.firstEntryAddress
+                                    && result.resolvedFirstKindName === result.dataInCode.firstKindName
+                                    && result.resolvedLastEntryOffsetHex === result.dataInCode.lastEntryOffsetHex
+                                    && result.resolvedLastEntryAddress === result.dataInCode.lastEntryAddress
+                                    && result.resolvedLastKindName === result.dataInCode.lastKindName
+                                    && result.resolvedLargestEntryOffsetHex === result.dataInCode.largestEntryOffsetHex
+                                    && result.resolvedLargestEntryAddress === result.dataInCode.largestEntryAddress
+                                    && result.resolvedLargestEntryLength === result.dataInCode.largestEntryLength
+                                    && result.resolvedTotalSpanHex === result.dataInCode.totalSpanHex
+                                    && result.dataoffHex === '0x3000'
+                                    && result.datasizeHex === '0x18'
+                                    && result.dataEnd === '0x180103018'
+                                    && result.entryCount === 3
+                                    && result.hasEntries === true
+                                    && result.totalEntryLength === '0x18'
+                                    && result.firstEntryOffsetHex === '0x10'
+                                    && result.firstKindName === 'DICE_KIND_DATA'
+                                    && result.lastEntryOffsetHex === '0x30'
+                                    && result.lastKindName === 'DICE_KIND_UNKNOWN'
+                                    && result.largestEntryOffsetHex === '0x30'
+                                    && result.largestEntryLength === 12
+                                    && result.totalSpanHex === '0x2c'
+                                    && result.uniqueKindCount === 3
+                                    && result.hasMultipleKinds === true
+                                    && result.dataEntryCount === 1
+                                    && result.hasDataEntries === true
+                                    && result.jumpTableEntryCount === 1
+                                    && result.hasJumpTables === true
+                                    && result.unknownEntryCount === 1
+                                    && result.hasUnknownKinds === true
+                                    && Array.isArray(result.kinds)
+                                    && result.kinds.length === 3;
+                            } finally {
+                                Native.dataInCode = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native data in code fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.exports_trie', moduleName: main.image.name }); return result.kind === 'native.exports_trie' && typeof result.hasExportsTrie === 'boolean' && typeof result.resolved === 'boolean' && typeof result.entryCount === 'number' && typeof result.hasEntries === 'boolean' && typeof result.uniqueKindCount === 'number' && typeof result.hasMultipleKinds === 'boolean' && typeof result.addressEntryCount === 'number' && typeof result.hasAddressEntries === 'boolean' && typeof result.offsetEntryCount === 'number' && typeof result.hasOffsetEntries === 'boolean' && typeof result.importNameCount === 'number' && typeof result.hasImportNames === 'boolean' && typeof result.resolverCount === 'number' && typeof result.hasResolvers === 'boolean' && typeof result.reexportCount === 'number' && typeof result.hasReexports === 'boolean' && typeof result.stubAndResolverCount === 'number' && typeof result.hasStubAndResolvers === 'boolean' && typeof result.weakDefinitionCount === 'number' && typeof result.hasWeakDefinitions === 'boolean' && Array.isArray(result.kinds) && ((result.exportsTrie === null && result.hasExportsTrie === false && result.resolved === false && result.moduleBase === null && result.dataoffHex === null && result.datasizeHex === null && result.linkeditBase === null && result.dataAddress === null && result.dataEnd === null && result.entryCount === 0 && result.hasEntries === false && result.uniqueKindCount === 0 && result.hasMultipleKinds === false && result.addressEntryCount === 0 && result.hasAddressEntries === false && result.lowestAddress === null && result.highestAddress === null && result.hasOffsetEntries === false && result.offsetEntryCount === 0 && result.lowestOffsetHex === null && result.highestOffsetHex === null && result.hasImportNames === false && result.importNameCount === 0 && result.hasResolvers === false && result.resolverCount === 0 && result.hasReexports === false && result.reexportCount === 0 && result.hasStubAndResolvers === false && result.stubAndResolverCount === 0 && result.hasWeakDefinitions === false && result.weakDefinitionCount === 0 && result.kinds.length === 0 && result.text === '<null>') || (typeof result.moduleBase === 'string' && typeof result.dataoffHex === 'string' && typeof result.datasizeHex === 'string' && typeof result.linkeditBase === 'string' && typeof result.dataAddress === 'string' && typeof result.dataEnd === 'string' && typeof result.exportsTrie.dataoffHex === 'string' && typeof result.exportsTrie.dataEnd === 'string' && typeof result.exportsTrie.count === 'number' && typeof result.exportsTrie.hasEntries === 'boolean' && typeof result.exportsTrie.hasData === 'boolean' && (result.exportsTrie.firstExportName === null || typeof result.exportsTrie.firstExportName === 'string') && (result.exportsTrie.firstKind === null || typeof result.exportsTrie.firstKind === 'string') && (result.exportsTrie.lastExportName === null || typeof result.exportsTrie.lastExportName === 'string') && (result.exportsTrie.lastKind === null || typeof result.exportsTrie.lastKind === 'string') && (result.exportsTrie.longestExportName === null || typeof result.exportsTrie.longestExportName === 'string') && (result.exportsTrie.longestExportNameLength === null || typeof result.exportsTrie.longestExportNameLength === 'number') && typeof result.exportsTrie.uniqueKindCount === 'number' && typeof result.exportsTrie.hasMultipleKinds === 'boolean' && typeof result.exportsTrie.addressEntryCount === 'number' && typeof result.exportsTrie.hasAddressEntries === 'boolean' && (result.exportsTrie.lowestAddress === null || typeof result.exportsTrie.lowestAddress === 'string') && (result.exportsTrie.highestAddress === null || typeof result.exportsTrie.highestAddress === 'string') && typeof result.exportsTrie.addressSpanHex === 'string' && typeof result.exportsTrie.offsetEntryCount === 'number' && typeof result.exportsTrie.hasOffsetEntries === 'boolean' && (result.exportsTrie.lowestOffsetHex === null || typeof result.exportsTrie.lowestOffsetHex === 'string') && (result.exportsTrie.highestOffsetHex === null || typeof result.exportsTrie.highestOffsetHex === 'string') && typeof result.exportsTrie.offsetSpanHex === 'string' && typeof result.exportsTrie.importNameCount === 'number' && typeof result.exportsTrie.hasImportNames === 'boolean' && typeof result.exportsTrie.resolverCount === 'number' && typeof result.exportsTrie.hasResolvers === 'boolean' && typeof result.exportsTrie.reexportCount === 'number' && typeof result.exportsTrie.hasReexports === 'boolean' && typeof result.exportsTrie.stubAndResolverCount === 'number' && typeof result.exportsTrie.hasStubAndResolvers === 'boolean' && typeof result.exportsTrie.weakDefinitionCount === 'number' && typeof result.exportsTrie.hasWeakDefinitions === 'boolean' && result.hasExportsTrie === true && result.resolved === true && result.moduleBase === result.exportsTrie.moduleBase && result.dataoffHex === result.exportsTrie.dataoffHex && result.datasizeHex === result.exportsTrie.datasizeHex && result.linkeditBase === result.exportsTrie.linkeditBase && result.dataAddress === result.exportsTrie.dataAddress && result.dataEnd === result.exportsTrie.dataEnd && result.entryCount === result.exportsTrie.count && result.hasEntries === (result.exportsTrie.hasEntries === true) && result.uniqueKindCount === result.exportsTrie.uniqueKindCount && result.hasMultipleKinds === (result.exportsTrie.hasMultipleKinds === true) && result.addressEntryCount === result.exportsTrie.addressEntryCount && result.hasAddressEntries === (result.exportsTrie.hasAddressEntries === true) && result.lowestAddress === result.exportsTrie.lowestAddress && result.highestAddress === result.exportsTrie.highestAddress && result.hasOffsetEntries === (result.exportsTrie.hasOffsetEntries === true) && result.offsetEntryCount === result.exportsTrie.offsetEntryCount && result.lowestOffsetHex === result.exportsTrie.lowestOffsetHex && result.highestOffsetHex === result.exportsTrie.highestOffsetHex && result.hasImportNames === (result.exportsTrie.hasImportNames === true) && result.importNameCount === result.exportsTrie.importNameCount && result.hasResolvers === (result.exportsTrie.hasResolvers === true) && result.resolverCount === result.exportsTrie.resolverCount && result.hasReexports === (result.exportsTrie.hasReexports === true) && result.reexportCount === result.exportsTrie.reexportCount && result.hasStubAndResolvers === (result.exportsTrie.hasStubAndResolvers === true) && result.stubAndResolverCount === result.exportsTrie.stubAndResolverCount && result.hasWeakDefinitions === (result.exportsTrie.hasWeakDefinitions === true) && result.weakDefinitionCount === result.exportsTrie.weakDefinitionCount && Array.isArray(result.exportsTrie.kinds) && Array.isArray(result.exportsTrie.entries) && result.kinds.length === result.exportsTrie.kinds.length && (result.kinds.length === 0 || (typeof result.kinds[0].count === 'number' && typeof result.kinds[0].firstExportName === 'string' && typeof result.kinds[0].lastExportName === 'string' && typeof result.kinds[0].hasAddress === 'boolean' && typeof result.kinds[0].hasOffset === 'boolean' && typeof result.kinds[0].hasImportName === 'boolean')) && (result.exportsTrie.kinds.length === 0 || (typeof result.exportsTrie.kinds[0].count === 'number' && typeof result.exportsTrie.kinds[0].firstExportName === 'string' && typeof result.exportsTrie.kinds[0].lastExportName === 'string' && typeof result.exportsTrie.kinds[0].hasAddress === 'boolean' && typeof result.exportsTrie.kinds[0].hasOffset === 'boolean' && typeof result.exportsTrie.kinds[0].hasImportName === 'boolean')) && (result.exportsTrie.entries.length === 0 || (typeof result.exportsTrie.entries[0].nameLength === 'number' && typeof result.exportsTrie.entries[0].hasName === 'boolean' && typeof result.exportsTrie.entries[0].hasOther === 'boolean' && typeof result.exportsTrie.entries[0].otherRole === 'string' && typeof result.exportsTrie.entries[0].hasResolver === 'boolean')) && result.text === result.exportsTrie.text)); })()"
                     )
                     .expect("agent native exports trie result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.exportsTrie;
+                            Native.exportsTrie = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    dataoff: 0x4000n,
+                                    datasize: 0x80n,
+                                    linkeditBase: 0x180100000n,
+                                    dataAddress: 0x180104000n,
+                                    entries: [
+                                        { name: '_funcA', kind: 'regular', flags: 0n, address: 0x180001000n, offset: 0x100n, other: null, importName: null, isWeakDefinition: false, isReexport: false, isStubAndResolver: false },
+                                        { name: '_resolverThunk', kind: 'stub-and-resolver', flags: 0x10n, address: 0x180001100n, offset: 0x140n, other: 0x50n, importName: null, isWeakDefinition: false, isReexport: false, isStubAndResolver: true },
+                                        { name: '_libFoo', kind: 'reexport', flags: 0x8n, address: null, offset: 0x120n, other: 0x2n, importName: '_foo_impl', isWeakDefinition: false, isReexport: true, isStubAndResolver: false },
+                                        { name: '_weakData', kind: 'regular', flags: 0x4n, address: 0x180001200n, offset: 0x180n, other: null, importName: null, isWeakDefinition: true, isReexport: false, isStubAndResolver: false }
+                                    ]
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.exports_trie', moduleName: 'Demo' });
+                                return result.exportsTrie !== null
+                                    && result.resolvedModuleName === result.exportsTrie.moduleName
+                                    && result.resolvedModuleBase === result.exportsTrie.moduleBase
+                                    && result.resolvedDataoffHex === result.exportsTrie.dataoffHex
+                                    && result.resolvedDatasizeHex === result.exportsTrie.datasizeHex
+                                    && result.resolvedLinkeditBase === result.exportsTrie.linkeditBase
+                                    && result.resolvedDataAddress === result.exportsTrie.dataAddress
+                                    && result.resolvedDataEnd === result.exportsTrie.dataEnd
+                                    && result.resolvedFirstExportName === result.exportsTrie.firstExportName
+                                    && result.resolvedFirstKind === result.exportsTrie.firstKind
+                                    && result.resolvedLastExportName === result.exportsTrie.lastExportName
+                                    && result.resolvedLastKind === result.exportsTrie.lastKind
+                                    && result.resolvedLongestExportName === result.exportsTrie.longestExportName
+                                    && result.resolvedLongestExportNameLength === result.exportsTrie.longestExportNameLength
+                                    && result.resolvedAddressSpanHex === result.exportsTrie.addressSpanHex
+                                    && result.resolvedOffsetSpanHex === result.exportsTrie.offsetSpanHex
+                                    && result.resolvedAddressEntryCount === result.exportsTrie.addressEntryCount
+                                    && result.resolvedLowestAddress === result.exportsTrie.lowestAddress
+                                    && result.resolvedHighestAddress === result.exportsTrie.highestAddress
+                                    && result.resolvedOffsetEntryCount === result.exportsTrie.offsetEntryCount
+                                    && result.resolvedLowestOffsetHex === result.exportsTrie.lowestOffsetHex
+                                    && result.resolvedHighestOffsetHex === result.exportsTrie.highestOffsetHex
+                                    && result.resolvedImportNameCount === result.exportsTrie.importNameCount
+                                    && result.resolvedResolverCount === result.exportsTrie.resolverCount
+                                    && result.resolvedReexportCount === result.exportsTrie.reexportCount
+                                    && result.resolvedStubAndResolverCount === result.exportsTrie.stubAndResolverCount
+                                    && result.resolvedWeakDefinitionCount === result.exportsTrie.weakDefinitionCount
+                                    && result.dataoffHex === '0x4000'
+                                    && result.datasizeHex === '0x80'
+                                    && result.dataEnd === '0x180104080'
+                                    && result.entryCount === 4
+                                    && result.hasEntries === true
+                                    && result.firstExportName === '_funcA'
+                                    && result.firstKind === 'regular'
+                                    && result.lastExportName === '_weakData'
+                                    && result.lastKind === 'regular'
+                                    && result.longestExportName === '_resolverThunk'
+                                    && result.longestExportNameLength === 14
+                                    && result.addressSpanHex === '0x200'
+                                    && result.offsetSpanHex === '0x80'
+                                    && result.uniqueKindCount === 3
+                                    && result.hasMultipleKinds === true
+                                    && result.addressEntryCount === 3
+                                    && result.hasAddressEntries === true
+                                    && result.offsetEntryCount === 4
+                                    && result.hasOffsetEntries === true
+                                    && result.lowestOffsetHex === '0x100'
+                                    && result.highestOffsetHex === '0x180'
+                                    && result.importNameCount === 1
+                                    && result.hasImportNames === true
+                                    && result.resolverCount === 1
+                                    && result.hasResolvers === true
+                                    && result.reexportCount === 1
+                                    && result.hasReexports === true
+                                    && result.stubAndResolverCount === 1
+                                    && result.hasStubAndResolvers === true
+                                    && result.weakDefinitionCount === 1
+                                    && result.hasWeakDefinitions === true
+                                    && Array.isArray(result.kinds)
+                                    && result.kinds.length === 3;
+                            } finally {
+                                Native.exportsTrie = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native exports trie fields"),
                 "true"
             );
             assert_eq!(
@@ -8830,6 +8993,169 @@ undefined;
                         })()"#
                     )
                     .expect("agent native chained fixups result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.chainedFixups;
+                            Native.chainedFixups = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    dataoff: 0x5000n,
+                                    datasize: 0x200n,
+                                    linkeditBase: 0x180100000n,
+                                    dataAddress: 0x180105000n,
+                                    fixupsVersion: 1,
+                                    startsOffset: 0x40n,
+                                    importsOffset: 0x80n,
+                                    symbolsOffset: 0x120n,
+                                    importsCount: 3,
+                                    importsFormat: 1,
+                                    importsFormatName: 'DYLD_CHAINED_IMPORT',
+                                    symbolsFormat: 0,
+                                    symbolsFormatName: 'uncompressed',
+                                    segments: [
+                                        {
+                                            segmentIndex: 0,
+                                            offsetInStarts: 0x20n,
+                                            size: 0x4000n,
+                                            pageSize: 0x1000n,
+                                            pointerFormat: 1,
+                                            pointerFormatName: 'DYLD_CHAINED_PTR_64',
+                                            segmentOffset: 0x0n,
+                                            maxValidPointer: 0x180003fffn,
+                                            pageCount: 4,
+                                            fixupPageCount: 2,
+                                            multiPageCount: 1,
+                                            pages: [
+                                                { pageIndex: 0, hasFixups: true, pageStart: 0x10n, usesMultipleStarts: false, chainStarts: [] },
+                                                { pageIndex: 1, hasFixups: true, pageStart: null, usesMultipleStarts: true, chainStarts: [0x20n, 0x40n] },
+                                                { pageIndex: 2, hasFixups: false, pageStart: null, usesMultipleStarts: false, chainStarts: [] },
+                                                { pageIndex: 3, hasFixups: false, pageStart: null, usesMultipleStarts: false, chainStarts: [] }
+                                            ]
+                                        },
+                                        {
+                                            segmentIndex: 2,
+                                            offsetInStarts: 0x80n,
+                                            size: 0x8000n,
+                                            pageSize: 0x1000n,
+                                            pointerFormat: 2,
+                                            pointerFormatName: 'DYLD_CHAINED_PTR_ARM64E',
+                                            segmentOffset: 0x4000n,
+                                            maxValidPointer: 0x18000bfffn,
+                                            pageCount: 2,
+                                            fixupPageCount: 1,
+                                            multiPageCount: 0,
+                                            pages: [
+                                                { pageIndex: 0, hasFixups: true, pageStart: 0x8n, usesMultipleStarts: false, chainStarts: [] },
+                                                { pageIndex: 1, hasFixups: false, pageStart: null, usesMultipleStarts: false, chainStarts: [] }
+                                            ]
+                                        }
+                                    ],
+                                    imports: [
+                                        { index: 0, libOrdinalRaw: 0x1n, libOrdinal: 1, weakImport: false, nameOffset: 0x100n, name: '_printf', addend: 0n },
+                                        { index: 1, libOrdinalRaw: 0x2n, libOrdinal: 2, weakImport: true, nameOffset: 0x120n, name: '_objc_msgSend', addend: -4n },
+                                        { index: 2, libOrdinalRaw: 0x2n, libOrdinal: 2, weakImport: false, nameOffset: 0x140n, name: null, addend: null }
+                                    ]
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.chained_fixups', moduleName: 'Demo' });
+                                return result.chainedFixups !== null
+                                    && result.resolvedModuleName === result.chainedFixups.moduleName
+                                    && result.resolvedModuleBase === result.chainedFixups.moduleBase
+                                    && result.resolvedDataoffHex === result.chainedFixups.dataoffHex
+                                    && result.resolvedDatasizeHex === result.chainedFixups.datasizeHex
+                                    && result.resolvedLinkeditBase === result.chainedFixups.linkeditBase
+                                    && result.resolvedDataAddress === result.chainedFixups.dataAddress
+                                    && result.resolvedDataEnd === result.chainedFixups.dataEnd
+                                    && result.resolvedFixupsVersion === result.chainedFixups.fixupsVersion
+                                    && result.resolvedStartsOffsetHex === result.chainedFixups.startsOffsetHex
+                                    && result.resolvedImportsOffsetHex === result.chainedFixups.importsOffsetHex
+                                    && result.resolvedSymbolsOffsetHex === result.chainedFixups.symbolsOffsetHex
+                                    && result.resolvedStartsAddress === result.chainedFixups.startsAddress
+                                    && result.resolvedImportsAddress === result.chainedFixups.importsAddress
+                                    && result.resolvedSymbolsAddress === result.chainedFixups.symbolsAddress
+                                    && result.resolvedStartsToImportsDeltaHex === result.chainedFixups.startsToImportsDeltaHex
+                                    && result.resolvedImportsToSymbolsDeltaHex === result.chainedFixups.importsToSymbolsDeltaHex
+                                    && result.resolvedImportsCount === result.chainedFixups.importsCount
+                                    && result.resolvedImportsFormat === result.chainedFixups.importsFormat
+                                    && result.resolvedImportsFormatName === result.chainedFixups.importsFormatName
+                                    && result.resolvedSymbolsFormat === result.chainedFixups.symbolsFormat
+                                    && result.resolvedSymbolsFormatName === result.chainedFixups.symbolsFormatName
+                                    && result.resolvedFirstSegmentIndex === result.chainedFixups.firstSegmentIndex
+                                    && result.resolvedLastSegmentIndex === result.chainedFixups.lastSegmentIndex
+                                    && result.resolvedTotalMultiStartPageCount === result.chainedFixups.totalMultiStartPageCount
+                                    && result.resolvedLargestSegmentIndex === result.chainedFixups.largestSegmentIndex
+                                    && result.resolvedLargestSegmentSizeHex === result.chainedFixups.largestSegmentSizeHex
+                                    && result.resolvedDominantPointerFormatName === result.chainedFixups.dominantPointerFormatName
+                                    && result.resolvedFirstImportName === result.chainedFixups.firstImportName
+                                    && result.resolvedLastImportName === result.chainedFixups.lastImportName
+                                    && result.resolvedFirstLibOrdinal === result.chainedFixups.firstLibOrdinal
+                                    && result.resolvedLastLibOrdinal === result.chainedFixups.lastLibOrdinal
+                                    && result.dataoffHex === '0x5000'
+                                    && result.datasizeHex === '0x200'
+                                    && result.dataEnd === '0x180105200'
+                                    && result.hasData === true
+                                    && result.fixupsVersion === 1
+                                    && result.startsOffsetHex === '0x40'
+                                    && result.importsOffsetHex === '0x80'
+                                    && result.symbolsOffsetHex === '0x120'
+                                    && result.startsBeforeImports === true
+                                    && result.importsBeforeSymbols === true
+                                    && result.offsetsMonotonic === true
+                                    && result.startsToImportsDeltaHex === '0x40'
+                                    && result.importsToSymbolsDeltaHex === '0xa0'
+                                    && result.importsCount === 3
+                                    && result.importsFormat === 1
+                                    && result.importsFormatName === 'DYLD_CHAINED_IMPORT'
+                                    && result.symbolsFormat === 0
+                                    && result.symbolsFormatName === 'uncompressed'
+                                    && result.segmentCount === 2
+                                    && result.hasSegments === true
+                                    && result.firstSegmentIndex === 0
+                                    && result.lastSegmentIndex === 2
+                                    && result.segmentWithFixupsCount === 2
+                                    && result.hasSegmentsWithFixups === true
+                                    && result.totalPageCount === 6
+                                    && result.totalFixupPageCount === 3
+                                    && result.totalMultiStartPageCount === 1
+                                    && result.totalChainStartCount === 4
+                                    && result.largestSegmentIndex === 2
+                                    && result.largestSegmentSizeHex === '0x8000'
+                                    && result.pointerFormatCount === 2
+                                    && result.hasMultiplePointerFormats === true
+                                    && result.firstPointerFormatName === 'DYLD_CHAINED_PTR_64'
+                                    && result.lastPointerFormatName === 'DYLD_CHAINED_PTR_ARM64E'
+                                    && result.dominantPointerFormatName === 'DYLD_CHAINED_PTR_64'
+                                    && Array.isArray(result.pointerFormats)
+                                    && result.pointerFormats.length === 2
+                                    && result.importCount === 3
+                                    && result.hasImports === true
+                                    && result.firstImportName === '_printf'
+                                    && result.lastImportName === null
+                                    && result.namedImportCount === 2
+                                    && result.hasNamedImports === true
+                                    && result.weakImportCount === 1
+                                    && result.hasWeakImports === true
+                                    && result.addendImportCount === 2
+                                    && result.hasAddendImports === true
+                                    && result.negativeAddendImportCount === 1
+                                    && result.hasNegativeAddends === true
+                                    && result.uniqueLibOrdinalCount === 2
+                                    && result.firstLibOrdinal === 1
+                                    && result.lastLibOrdinal === 2
+                                    && Array.isArray(result.libOrdinals)
+                                    && result.libOrdinals.length === 2;
+                            } finally {
+                                Native.chainedFixups = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native chained fixups fields"),
                 "true"
             );
             assert_eq!(
