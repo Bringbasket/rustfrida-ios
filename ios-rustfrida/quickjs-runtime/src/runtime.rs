@@ -9615,15 +9615,22 @@ undefined;
                             function checkEntryPoint(result) {
                                 const info = result.entryPoint;
                                 if (info === null) {
-                                    return result.resolvedModuleBase === null;
+                                    return result.resolvedModuleName === null
+                                        && result.resolvedModuleBase === null
+                                        && result.entryoffHex === null
+                                        && result.stacksizeHex === null;
                                 }
-                                return result.resolvedModuleBase === info.moduleBase;
+                                return result.resolvedModuleName === info.moduleName
+                                    && result.resolvedModuleBase === info.moduleBase
+                                    && result.entryoffHex === info.entryoffHex
+                                    && result.stacksizeHex === info.stacksizeHex;
                             }
 
                             function checkSourceVersion(result) {
                                 const info = result.sourceVersion;
                                 if (info === null) {
-                                    return result.resolvedModuleBase === null
+                                    return result.resolvedModuleName === null
+                                        && result.resolvedModuleBase === null
                                         && result.resolvedVersion === null
                                         && result.resolvedHasVersion === null
                                         && result.resolvedVersionPartCount === 0
@@ -9639,7 +9646,8 @@ undefined;
                                         && result.patchVersion === null
                                         && result.extraVersionCount === 0;
                                 }
-                                return result.resolvedModuleBase === info.moduleBase
+                                return result.resolvedModuleName === info.moduleName
+                                    && result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedVersion === info.version
                                     && result.resolvedHasVersion === info.hasVersion
                                     && result.resolvedVersionPartCount === info.versionPartCount
@@ -9659,7 +9667,8 @@ undefined;
                             function checkBuildVersion(result) {
                                 const info = result.buildVersion;
                                 if (info === null) {
-                                    return result.resolvedModuleBase === null
+                                    return result.resolvedModuleName === null
+                                        && result.resolvedModuleBase === null
                                         && result.resolvedPlatform === null
                                         && result.resolvedMinOs === null
                                         && result.resolvedSdk === null
@@ -9696,7 +9705,8 @@ undefined;
                                         && Array.isArray(result.tools)
                                         && result.tools.length === 0;
                                 }
-                                return result.resolvedModuleBase === info.moduleBase
+                                return result.resolvedModuleName === info.moduleName
+                                    && result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedPlatform === info.platform
                                     && result.resolvedMinOs === info.minOs
                                     && result.resolvedSdk === info.sdk
@@ -9734,7 +9744,11 @@ undefined;
                             function checkDylinker(result) {
                                 const info = result.dylinker;
                                 if (info === null) {
-                                    return result.resolvedModuleBase === null
+                                    return result.resolvedModuleName === null
+                                        && result.resolvedModuleBase === null
+                                        && result.resolvedName === null
+                                        && result.resolvedPath === null
+                                        && result.resolvedPathKind === null
                                         && result.resolvedKind === null
                                         && result.resolvedHasName === null
                                         && result.resolvedHasPath === null
@@ -9764,7 +9778,11 @@ undefined;
                                         && result.isUpwardDylinker === false
                                         && result.isLoadDylinker === false;
                                 }
-                                return result.resolvedModuleBase === info.moduleBase
+                                return result.resolvedModuleName === info.moduleName
+                                    && result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedName === info.name
+                                    && result.resolvedPath === info.path
+                                    && result.resolvedPathKind === info.pathKind
                                     && result.resolvedKind === info.kind
                                     && result.resolvedHasName === info.hasName
                                     && result.resolvedHasPath === info.hasPath
@@ -9798,7 +9816,11 @@ undefined;
                             function checkInstallName(result) {
                                 const info = result.installName;
                                 if (info === null) {
-                                    return result.resolvedModuleBase === null
+                                    return result.resolvedModuleName === null
+                                        && result.resolvedModuleBase === null
+                                        && result.resolvedName === null
+                                        && result.resolvedPath === null
+                                        && result.resolvedPathKind === null
                                         && result.resolvedCurrentVersion === null
                                         && result.resolvedCompatibilityVersion === null
                                         && result.resolvedTimestamp === null
@@ -9827,7 +9849,11 @@ undefined;
                                         && result.hasTimestamp === false
                                         && result.versionMismatch === false;
                                 }
-                                return result.resolvedModuleBase === info.moduleBase
+                                return result.resolvedModuleName === info.moduleName
+                                    && result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedName === info.name
+                                    && result.resolvedPath === info.path
+                                    && result.resolvedPathKind === info.pathKind
                                     && result.resolvedCurrentVersion === info.currentVersion
                                     && result.resolvedCompatibilityVersion === info.compatibilityVersion
                                     && result.resolvedTimestamp === info.timestamp
@@ -9860,7 +9886,8 @@ undefined;
                             function checkUuid(result) {
                                 const info = result.imageUuid;
                                 if (info === null) {
-                                    return result.resolvedModuleBase === null
+                                    return result.resolvedModuleName === null
+                                        && result.resolvedModuleBase === null
                                         && result.resolvedUuid === null
                                         && result.resolvedNormalizedUuid === null
                                         && result.resolvedHasUuid === null
@@ -9871,7 +9898,8 @@ undefined;
                                         && result.uuidLength === 0
                                         && result.uuidSegmentCount === 0;
                                 }
-                                return result.resolvedModuleBase === info.moduleBase
+                                return result.resolvedModuleName === info.moduleName
+                                    && result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedUuid === info.uuid
                                     && result.resolvedNormalizedUuid === info.normalizedUuid
                                     && result.resolvedHasUuid === info.hasUuid
