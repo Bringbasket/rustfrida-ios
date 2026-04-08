@@ -8559,9 +8559,86 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.sourceVersion;
+                            Native.sourceVersion = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    version: '1.2.3.4'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.source_version',
+                                    moduleName: 'Demo'
+                                });
+                                return result.sourceVersion !== null
+                                    && result.resolvedModuleName === result.sourceVersion.moduleName
+                                    && result.resolvedModuleBase === result.sourceVersion.moduleBase
+                                    && result.resolvedVersion === result.sourceVersion.version
+                                    && result.resolvedHasVersion === result.sourceVersion.hasVersion
+                                    && result.resolvedVersionPartCount === result.sourceVersion.versionPartCount
+                                    && result.resolvedMajorVersion === result.sourceVersion.majorVersion
+                                    && result.resolvedMinorVersion === result.sourceVersion.minorVersion
+                                    && result.resolvedPatchVersion === result.sourceVersion.patchVersion
+                                    && result.resolvedExtraVersionCount === result.sourceVersion.extraVersionCount
+                                    && result.version === '1.2.3.4'
+                                    && result.hasVersion === true
+                                    && result.versionPartCount === 4
+                                    && result.majorVersion === '1'
+                                    && result.minorVersion === '2'
+                                    && result.patchVersion === '3'
+                                    && result.extraVersionCount === 1;
+                            } finally {
+                                Native.sourceVersion = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native source version fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.entry_point', moduleName: main.image.name }); return result.kind === 'native.entry_point' && typeof result.hasEntryPoint === 'boolean' && typeof result.resolved === 'boolean' && ((result.entryPoint === null && result.hasEntryPoint === false && result.resolved === false && result.resolvedModuleName === null && result.entryoffHex === null && result.stacksizeHex === null && result.text === '<null>') || (typeof result.entryPoint.entryoffHex === 'string' && typeof result.entryPoint.stacksizeHex === 'string' && result.hasEntryPoint === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.entryoffHex === 'string' && typeof result.stacksizeHex === 'string' && result.resolvedModuleName === result.entryPoint.moduleName && result.entryoffHex === result.entryPoint.entryoffHex && result.stacksizeHex === result.entryPoint.stacksizeHex && result.text === result.entryPoint.text)); })()"
                     )
                     .expect("agent native entry point result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.entryPoint;
+                            Native.entryPoint = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    entryoff: 0x1234n,
+                                    stacksize: 0x4000n
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.entry_point',
+                                    moduleName: 'Demo'
+                                });
+                                return result.entryPoint !== null
+                                    && result.resolvedModuleName === result.entryPoint.moduleName
+                                    && result.resolvedModuleBase === result.entryPoint.moduleBase
+                                    && result.entryoffHex === result.entryPoint.entryoffHex
+                                    && result.stacksizeHex === result.entryPoint.stacksizeHex
+                                    && result.entryoffHex === '0x1234'
+                                    && result.stacksizeHex === '0x4000'
+                                    && result.hasEntryPoint === true
+                                    && result.resolved === true;
+                            } finally {
+                                Native.entryPoint = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native entry point fields"),
                 "true"
             );
             assert_eq!(
@@ -11409,6 +11486,44 @@ undefined;
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.uuid', moduleName: main.image.name }); return result.kind === 'native.uuid' && typeof result.hasUuid === 'boolean' && typeof result.resolved === 'boolean' && typeof result.resolvedUuidLength === 'number' && typeof result.resolvedUuidSegmentCount === 'number' && typeof result.uuidLength === 'number' && typeof result.uuidSegmentCount === 'number' && ((result.imageUuid === null && result.hasUuid === false && result.resolved === false && result.resolvedModuleName === null && result.resolvedModuleBase === null && result.resolvedUuid === null && result.resolvedNormalizedUuid === null && result.resolvedHasUuid === null && result.resolvedUuidLength === 0 && result.resolvedUuidSegmentCount === 0 && result.uuid === null && result.normalizedUuid === null && result.uuidLength === 0 && result.uuidSegmentCount === 0 && result.text === '<null>') || (typeof result.imageUuid.uuid === 'string' && typeof result.imageUuid.normalizedUuid === 'string' && typeof result.imageUuid.hasUuid === 'boolean' && typeof result.imageUuid.uuidLength === 'number' && typeof result.imageUuid.uuidSegmentCount === 'number' && result.hasUuid === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.resolvedModuleBase === 'string' && typeof result.resolvedUuid === 'string' && typeof result.resolvedNormalizedUuid === 'string' && typeof result.resolvedHasUuid === 'boolean' && typeof result.uuid === 'string' && typeof result.normalizedUuid === 'string' && result.resolvedModuleName === result.imageUuid.moduleName && result.resolvedModuleBase === result.imageUuid.moduleBase && result.resolvedUuid === result.imageUuid.uuid && result.resolvedNormalizedUuid === result.imageUuid.normalizedUuid && result.resolvedHasUuid === (result.imageUuid.hasUuid === true) && result.resolvedUuidLength === result.imageUuid.uuidLength && result.resolvedUuidSegmentCount === result.imageUuid.uuidSegmentCount && result.uuid === result.imageUuid.uuid && result.normalizedUuid === result.imageUuid.normalizedUuid && result.uuidLength === result.imageUuid.uuidLength && result.uuidSegmentCount === result.imageUuid.uuidSegmentCount && result.text === result.imageUuid.text)); })()"
                     )
                     .expect("agent native uuid result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.uuid;
+                            Native.uuid = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    uuid: '12345678-9abc-def0-1234-56789abcdef0'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.uuid',
+                                    moduleName: 'Demo'
+                                });
+                                return result.imageUuid !== null
+                                    && result.resolvedModuleName === result.imageUuid.moduleName
+                                    && result.resolvedModuleBase === result.imageUuid.moduleBase
+                                    && result.resolvedUuid === result.imageUuid.uuid
+                                    && result.resolvedNormalizedUuid === result.imageUuid.normalizedUuid
+                                    && result.resolvedHasUuid === result.imageUuid.hasUuid
+                                    && result.resolvedUuidLength === result.imageUuid.uuidLength
+                                    && result.resolvedUuidSegmentCount === result.imageUuid.uuidSegmentCount
+                                    && result.uuid === '12345678-9abc-def0-1234-56789abcdef0'
+                                    && result.normalizedUuid === '12345678-9ABC-DEF0-1234-56789ABCDEF0'
+                                    && result.hasUuid === true
+                                    && result.uuidLength === 36
+                                    && result.uuidSegmentCount === 5;
+                            } finally {
+                                Native.uuid = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native uuid fields"),
                 "true"
             );
             assert_eq!(
