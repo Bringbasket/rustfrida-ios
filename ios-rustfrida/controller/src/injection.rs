@@ -6731,6 +6731,7 @@ fn hook_query_templates() -> Vec<String> {
         "native.chainedFixups <module>".to_string(),
         "native.loadcmds <module>".to_string(),
         "native.sections <module>".to_string(),
+        "native.sectionInfo <module> -- <segment> <section>".to_string(),
         "native.segments <module>".to_string(),
         "native.base <module>".to_string(),
         "native.image <address>".to_string(),
@@ -17221,7 +17222,7 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["backendAdaptation"]["queryTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["backendAdaptation"]["inlineInstallReadyNow"],
@@ -17239,10 +17240,10 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["readyToRun"], true);
-        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"], 62);
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"], 63);
         assert_eq!(
             rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStepId"],
@@ -17742,14 +17743,14 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["readyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["prerequisiteCount"], 0);
-        assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 62);
+        assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 63);
         assert_eq!(
             rendered["hook"]["automation"]["nextActionTemplates"][0],
             "objc.classes <filter>"
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["cliArgs"][4],
@@ -17803,7 +17804,7 @@ mod tests {
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["placeholders"][0],
             "<filter>"
         );
-        assert_eq!(rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"], 62);
+        assert_eq!(rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"], 63);
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonTemplates"][0]["cliArgs"][2],
             "--command"
@@ -17817,14 +17818,14 @@ mod tests {
             rendered["hook"]["automation"]["actionBranches"][0]["selectedAsNext"],
             true
         );
-        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["templateCount"], 62);
+        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["templateCount"], 63);
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonEligibleTemplateCount"],
-            62
+            63
         );
         assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionRank"], 0);
         assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionIndex"], 0);
@@ -18168,10 +18169,10 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["readyToRun"], true);
-        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"], 62);
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"], 63);
         assert_eq!(
             rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStepId"],
@@ -18653,14 +18654,14 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["readyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["prerequisiteCount"], 0);
-        assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 62);
+        assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 63);
         assert_eq!(
             rendered["hook"]["automation"]["nextActionTemplates"][0],
             "objc.classes <filter>"
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["cliArgs"][4],
@@ -18714,7 +18715,7 @@ mod tests {
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["placeholders"][0],
             "<filter>"
         );
-        assert_eq!(rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"], 62);
+        assert_eq!(rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"], 63);
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonTemplates"][0]["cliArgs"][2],
             "--command"
@@ -18728,14 +18729,14 @@ mod tests {
             rendered["hook"]["automation"]["actionBranches"][0]["selectedAsNext"],
             true
         );
-        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["templateCount"], 62);
+        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["templateCount"], 63);
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonEligibleTemplateCount"],
-            62
+            63
         );
         assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionRank"], 0);
         assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionIndex"], 0);
@@ -18994,9 +18995,9 @@ mod tests {
         assert_eq!(query_branch["branch"], "skip-target-policy");
         assert_eq!(query_branch["selectedAsNext"], false);
         assert_eq!(query_branch["readyToRun"], false);
-        assert_eq!(query_branch["templateCount"], 62);
-        assert_eq!(query_branch["commandJsonTemplateCount"], 62);
-        assert_eq!(query_branch["commandJsonEligibleTemplateCount"], 62);
+        assert_eq!(query_branch["templateCount"], 63);
+        assert_eq!(query_branch["commandJsonTemplateCount"], 63);
+        assert_eq!(query_branch["commandJsonEligibleTemplateCount"], 63);
         let status_branch = branches
             .iter()
             .find(|item| item["actionKey"] == "hook.status")
@@ -23048,7 +23049,7 @@ mod tests {
         assert_eq!(coexistence["backendAdaptationAlignment"], "split");
         assert_eq!(coexistence["backendAdaptationBias"], "query");
         assert_eq!(coexistence["backendAdaptation"]["preferredGroupKey"], "query");
-        assert_eq!(coexistence["backendAdaptation"]["preferredTemplateCount"], 62);
+        assert_eq!(coexistence["backendAdaptation"]["preferredTemplateCount"], 63);
         assert_eq!(coexistence["backendAdaptation"]["executionKind"], "conflict-resolution");
         assert_eq!(
             coexistence["backendAdaptation"]["executionSelectedId"],
@@ -23169,14 +23170,14 @@ mod tests {
             coexistence["backendAdaptation"]["preferredBackendSuggestedPhase"],
             "query"
         );
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendTemplateCount"], 62);
+        assert_eq!(coexistence["backendAdaptation"]["preferredBackendTemplateCount"], 63);
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendTemplates"],
             coexistence["backendAdaptation"]["preferredBackendRecommendation"]["templates"]
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendCommandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendCommandJsonTemplates"],
@@ -23184,7 +23185,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendCommandJsonEligibleTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
@@ -23257,15 +23258,15 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["templateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["commandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["commandJsonEligibleTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["primaryCommandJsonTemplateCommand"],
@@ -23301,7 +23302,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairTemplates"],
@@ -23309,7 +23310,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplates"],
@@ -23317,7 +23318,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairPrimaryCommandJsonTemplateCommand"],
@@ -23337,11 +23338,11 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"],
@@ -23349,7 +23350,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["resolutionChainCount"],
@@ -23521,7 +23522,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultTemplates"],
@@ -23534,11 +23535,11 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"],
@@ -24396,7 +24397,7 @@ mod tests {
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
                 ["phaseQueryTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQuery"]["phase"],
@@ -24420,7 +24421,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplates"],
@@ -24432,11 +24433,11 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplates"],
@@ -24610,7 +24611,7 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["requiresQueryPhase"], true);
         assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
         assert_eq!(coexistence["nextActionKey"], "hook.query");
-        assert_eq!(coexistence["nextActionTemplateCount"], 62);
+        assert_eq!(coexistence["nextActionTemplateCount"], 63);
         assert_eq!(coexistence["nextActionTemplates"][0], "objc.classes <filter>");
         assert_eq!(automation["baseCommandMode"], "allowed");
         assert_eq!(automation["effectiveCommandMode"], "query-only");
@@ -24626,7 +24627,7 @@ mod tests {
         assert_eq!(automation["backendAdaptationAlignment"], "split");
         assert_eq!(automation["backendAdaptationBias"], "query");
         assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "query");
-        assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 62);
+        assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 63);
         assert_eq!(
             automation["backendAdaptation"]["executionSource"],
             "preferred-conflict-resolution-chain"
@@ -24819,7 +24820,7 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultTemplates"],
@@ -24832,11 +24833,11 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"],
@@ -25109,7 +25110,7 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplates"],
@@ -25121,11 +25122,11 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount"],
-            62
+            63
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplates"],
@@ -25799,9 +25800,9 @@ mod tests {
         assert_eq!(automation["nextActionPlan"]["allowed"], true);
         assert_eq!(automation["nextActionPlan"]["branch"], "run");
         assert_eq!(automation["nextActionPlan"]["readyToRun"], true);
-        assert_eq!(automation["nextActionTemplateCount"], 62);
+        assert_eq!(automation["nextActionTemplateCount"], 63);
         assert_eq!(automation["nextActionTemplates"][0], "objc.classes <filter>");
-        assert_eq!(automation["nextActionCommandJsonTemplateCount"], 62);
+        assert_eq!(automation["nextActionCommandJsonTemplateCount"], 63);
         assert_eq!(
             automation["nextActionCommandJsonTemplates"][0]["command"],
             "objc.classes <filter>"
