@@ -12732,6 +12732,10 @@ undefined;
                                     && protocolInfo.resolvedSourceAddress === null
                                     && protocolInfo.resolvedSourceOffsetHex === null
                                     && protocolInfo.resolvedSourceDemangledName === null
+                                    && protocolInfo.sourceSymbolName === null
+                                    && protocolInfo.sourceAddress === null
+                                    && protocolInfo.sourceOffsetHex === null
+                                    && protocolInfo.sourceDemangledName === null
                                     && protocolInfo.resolvedHasName === null
                                     && protocolInfo.resolvedHasSourceKind === null
                                     && protocolInfo.resolvedHasSourceSymbolName === null
@@ -12760,6 +12764,10 @@ undefined;
                                 && protocolInfo.resolvedSourceAddress === protocolInfo.protocolInfo.sourceAddress
                                 && protocolInfo.resolvedSourceOffsetHex === protocolInfo.protocolInfo.sourceOffsetHex
                                 && protocolInfo.resolvedSourceDemangledName === protocolInfo.protocolInfo.sourceDemangledName
+                                && protocolInfo.sourceSymbolName === protocolInfo.protocolInfo.sourceSymbolName
+                                && protocolInfo.sourceAddress === protocolInfo.protocolInfo.sourceAddress
+                                && protocolInfo.sourceOffsetHex === protocolInfo.protocolInfo.sourceOffsetHex
+                                && protocolInfo.sourceDemangledName === protocolInfo.protocolInfo.sourceDemangledName
                                 && protocolInfo.resolvedHasName === protocolInfo.protocolInfo.hasName
                                 && protocolInfo.resolvedHasSourceKind === protocolInfo.protocolInfo.hasSourceKind
                                 && protocolInfo.resolvedHasSourceSymbolName === protocolInfo.protocolInfo.hasSourceSymbolName
@@ -12791,6 +12799,10 @@ undefined;
                                     && conformanceInfo.resolvedSourceAddress === null
                                     && conformanceInfo.resolvedSourceOffsetHex === null
                                     && conformanceInfo.resolvedSourceDemangledName === null
+                                    && conformanceInfo.sourceSymbolName === null
+                                    && conformanceInfo.sourceAddress === null
+                                    && conformanceInfo.sourceOffsetHex === null
+                                    && conformanceInfo.sourceDemangledName === null
                                     && conformanceInfo.resolvedHasTypeName === null
                                     && conformanceInfo.resolvedHasProtocolName === null
                                     && conformanceInfo.resolvedHasSourceKind === null
@@ -12830,6 +12842,10 @@ undefined;
                                 && conformanceInfo.resolvedSourceAddress === conformanceInfo.conformanceInfo.sourceAddress
                                 && conformanceInfo.resolvedSourceOffsetHex === conformanceInfo.conformanceInfo.sourceOffsetHex
                                 && conformanceInfo.resolvedSourceDemangledName === conformanceInfo.conformanceInfo.sourceDemangledName
+                                && conformanceInfo.sourceSymbolName === conformanceInfo.conformanceInfo.sourceSymbolName
+                                && conformanceInfo.sourceAddress === conformanceInfo.conformanceInfo.sourceAddress
+                                && conformanceInfo.sourceOffsetHex === conformanceInfo.conformanceInfo.sourceOffsetHex
+                                && conformanceInfo.sourceDemangledName === conformanceInfo.conformanceInfo.sourceDemangledName
                                 && conformanceInfo.resolvedHasTypeName === conformanceInfo.conformanceInfo.hasTypeName
                                 && conformanceInfo.resolvedHasProtocolName === conformanceInfo.conformanceInfo.hasProtocolName
                                 && conformanceInfo.resolvedHasSourceKind === conformanceInfo.conformanceInfo.hasSourceKind
@@ -12872,6 +12888,10 @@ undefined;
                                     && metadataInfo.resolvedSourceAddress === null
                                     && metadataInfo.resolvedSourceOffsetHex === null
                                     && metadataInfo.resolvedSourceDemangledName === null
+                                    && metadataInfo.sourceSymbolName === null
+                                    && metadataInfo.sourceAddress === null
+                                    && metadataInfo.sourceOffsetHex === null
+                                    && metadataInfo.sourceDemangledName === null
                                     && metadataInfo.resolvedHasName === null
                                     && metadataInfo.resolvedHasSourceKind === null
                                     && metadataInfo.resolvedHasSourceSymbolName === null
@@ -12904,6 +12924,10 @@ undefined;
                                 && metadataInfo.resolvedSourceAddress === metadataInfo.metadataInfo.sourceAddress
                                 && metadataInfo.resolvedSourceOffsetHex === metadataInfo.metadataInfo.sourceOffsetHex
                                 && metadataInfo.resolvedSourceDemangledName === metadataInfo.metadataInfo.sourceDemangledName
+                                && metadataInfo.sourceSymbolName === metadataInfo.metadataInfo.sourceSymbolName
+                                && metadataInfo.sourceAddress === metadataInfo.metadataInfo.sourceAddress
+                                && metadataInfo.sourceOffsetHex === metadataInfo.metadataInfo.sourceOffsetHex
+                                && metadataInfo.sourceDemangledName === metadataInfo.metadataInfo.sourceDemangledName
                                 && metadataInfo.resolvedHasName === metadataInfo.metadataInfo.hasName
                                 && metadataInfo.resolvedHasSourceKind === metadataInfo.metadataInfo.hasSourceKind
                                 && metadataInfo.resolvedHasSourceSymbolName === metadataInfo.metadataInfo.hasSourceSymbolName
@@ -12939,6 +12963,10 @@ undefined;
                                     && typeInfo.resolvedSourceAddress === null
                                     && typeInfo.resolvedSourceOffsetHex === null
                                     && typeInfo.resolvedSourceDemangledName === null
+                                    && typeInfo.sourceSymbolName === null
+                                    && typeInfo.sourceAddress === null
+                                    && typeInfo.sourceOffsetHex === null
+                                    && typeInfo.sourceDemangledName === null
                                     && typeInfo.resolvedHasName === null
                                     && typeInfo.resolvedHasSourceKind === null
                                     && typeInfo.resolvedHasSourceSymbolName === null
@@ -12971,6 +12999,10 @@ undefined;
                                 && typeInfo.resolvedSourceAddress === typeInfo.typeInfo.sourceAddress
                                 && typeInfo.resolvedSourceOffsetHex === typeInfo.typeInfo.sourceOffsetHex
                                 && typeInfo.resolvedSourceDemangledName === typeInfo.typeInfo.sourceDemangledName
+                                && typeInfo.sourceSymbolName === typeInfo.typeInfo.sourceSymbolName
+                                && typeInfo.sourceAddress === typeInfo.typeInfo.sourceAddress
+                                && typeInfo.sourceOffsetHex === typeInfo.typeInfo.sourceOffsetHex
+                                && typeInfo.sourceDemangledName === typeInfo.typeInfo.sourceDemangledName
                                 && typeInfo.resolvedHasName === typeInfo.typeInfo.hasName
                                 && typeInfo.resolvedHasSourceKind === typeInfo.typeInfo.hasSourceKind
                                 && typeInfo.resolvedHasSourceSymbolName === typeInfo.typeInfo.hasSourceSymbolName
