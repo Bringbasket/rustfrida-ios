@@ -8303,6 +8303,7 @@ undefined;
                                     && dyld.resolvedCommandHex === null
                                     && dyld.commandHex === null
                                     && dyld.resolvedCommandName === null
+                                    && dyld.commandName === null
                                     && dyld.commandRequiresDyld === false
                                     && dyld.resolvedRebaseOffHex === null
                                     && dyld.rebaseOffHex === null
@@ -8334,7 +8335,10 @@ undefined;
                                     && dyld.exportSizeHex === null
                                     && dyld.resolvedExportEndHex === null
                                     && dyld.exportEndHex === null
+                                    && dyld.totalRegionCount === 0
+                                    && dyld.regionCount === 0
                                     && dyld.nonEmptyRegionCount === 0
+                                    && dyld.hasRegions === false
                                     && Array.isArray(dyld.nonEmptyRegionNames)
                                     && Array.isArray(dyld.nonEmptyRegionList)
                                     && dyld.nonEmptyRegionNames.length === 0
@@ -8350,7 +8354,13 @@ undefined;
                                     && dyld.resolvedLargestRegionSizeHex === null
                                     && dyld.largestRegionSizeHex === null
                                     && dyld.resolvedTotalSizeHex === null
-                                    && dyld.totalSizeHex === null)) {
+                                    && dyld.totalSizeHex === null
+                                    && dyld.hasRebaseInfo === false
+                                    && dyld.hasBindInfo === false
+                                    && dyld.hasWeakBindInfo === false
+                                    && dyld.hasLazyBindInfo === false
+                                    && dyld.hasExportInfo === false
+                                    && dyld.hasAnyBindInfo === false)) {
                                     return false;
                                 }
                             } else if (!(dyld.resolvedModuleName === dyld.dyldInfo.moduleName
@@ -8359,6 +8369,7 @@ undefined;
                                 && dyld.resolvedCommandHex === dyld.dyldInfo.commandHex
                                 && dyld.commandHex === dyld.dyldInfo.commandHex
                                 && dyld.resolvedCommandName === dyld.dyldInfo.commandName
+                                && dyld.commandName === dyld.dyldInfo.commandName
                                 && dyld.commandRequiresDyld === (dyld.dyldInfo.commandRequiresDyld === true)
                                 && dyld.resolvedRebaseOffHex === dyld.dyldInfo.rebaseOffHex
                                 && dyld.rebaseOffHex === dyld.dyldInfo.rebaseOffHex
@@ -8390,7 +8401,10 @@ undefined;
                                 && dyld.exportSizeHex === dyld.dyldInfo.exportSizeHex
                                 && dyld.resolvedExportEndHex === dyld.dyldInfo.exportEndHex
                                 && dyld.exportEndHex === dyld.dyldInfo.exportEndHex
+                                && dyld.totalRegionCount === dyld.dyldInfo.totalRegionCount
+                                && dyld.regionCount === dyld.dyldInfo.regionCount
                                 && dyld.nonEmptyRegionCount === dyld.dyldInfo.nonEmptyRegionNames.length
+                                && dyld.hasRegions === (dyld.dyldInfo.hasRegions === true)
                                 && Array.isArray(dyld.nonEmptyRegionNames)
                                 && Array.isArray(dyld.nonEmptyRegionList)
                                 && dyld.nonEmptyRegionNames.length === dyld.dyldInfo.nonEmptyRegionNames.length
@@ -8409,7 +8423,13 @@ undefined;
                                 && dyld.resolvedLargestRegionSizeHex === dyld.dyldInfo.largestRegionSizeHex
                                 && dyld.largestRegionSizeHex === dyld.dyldInfo.largestRegionSizeHex
                                 && dyld.resolvedTotalSizeHex === dyld.dyldInfo.totalSizeHex
-                                && dyld.totalSizeHex === dyld.dyldInfo.totalSizeHex)) {
+                                && dyld.totalSizeHex === dyld.dyldInfo.totalSizeHex
+                                && dyld.hasRebaseInfo === (dyld.dyldInfo.hasRebaseInfo === true)
+                                && dyld.hasBindInfo === (dyld.dyldInfo.hasBindInfo === true)
+                                && dyld.hasWeakBindInfo === (dyld.dyldInfo.hasWeakBindInfo === true)
+                                && dyld.hasLazyBindInfo === (dyld.dyldInfo.hasLazyBindInfo === true)
+                                && dyld.hasExportInfo === (dyld.dyldInfo.hasExportInfo === true)
+                                && dyld.hasAnyBindInfo === (dyld.dyldInfo.hasAnyBindInfo === true))) {
                                 return false;
                             }
 
