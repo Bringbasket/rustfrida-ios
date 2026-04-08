@@ -6239,6 +6239,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const cls = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true }); const proto = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_info', protocolName: 'NSObject' }); const ivar = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivar_info', className: 'NSObject', ivarName: '_isa' }); const classOk = cls.classInfo === null || (cls.resolvedIsMetaClass === cls.classInfo.isMetaClass && cls.resolvedInstanceSize === cls.classInfo.instanceSize && cls.resolvedHasInstanceProperties === cls.classInfo.hasInstanceProperties && cls.resolvedHasClassProperties === cls.classInfo.hasClassProperties && cls.resolvedHasInstanceMethods === cls.classInfo.hasInstanceMethods && cls.resolvedHasClassMethods === cls.classInfo.hasClassMethods && cls.hasInstanceProperties === (cls.classInfo.hasInstanceProperties === true) && cls.hasClassProperties === (cls.classInfo.hasClassProperties === true) && cls.hasInstanceMethods === (cls.classInfo.hasInstanceMethods === true) && cls.hasClassMethods === (cls.classInfo.hasClassMethods === true)); const protoOk = proto.protocolInfo === null || (Array.isArray(proto.adoptedProtocolNames) && JSON.stringify(proto.adoptedProtocolNames) === JSON.stringify(proto.protocolInfo.adoptedProtocols) && JSON.stringify(proto.resolvedAdoptedProtocolNames) === JSON.stringify(proto.protocolInfo.adoptedProtocols) && proto.firstAdoptedProtocol === (proto.protocolInfo.adoptedProtocolCount === 0 ? null : proto.protocolInfo.adoptedProtocols[0]) && proto.lastAdoptedProtocol === (proto.protocolInfo.adoptedProtocolCount === 0 ? null : proto.protocolInfo.adoptedProtocols[proto.protocolInfo.adoptedProtocolCount - 1])); const ivarOk = ivar.ivarInfo === null || (JSON.stringify(ivar.objectProtocols) === JSON.stringify(ivar.ivarInfo.objectProtocols) && JSON.stringify(ivar.qualifierNames) === JSON.stringify(ivar.ivarInfo.qualifierNames) && JSON.stringify(ivar.qualifierNameList) === JSON.stringify(ivar.ivarInfo.qualifierNameList) && ivar.pointeeTypeName === ivar.ivarInfo.pointeeTypeName && ivar.hasObjectProtocols === (ivar.ivarInfo.objectProtocolCount !== 0) && ivar.isObject === (ivar.ivarInfo.isObject === true) && ivar.isBlock === (ivar.ivarInfo.isBlock === true) && ivar.resolvedPointeeTypeName === ivar.ivarInfo.pointeeTypeName); return classOk && protoOk && ivarOk; })()"
+                    )
+                    .expect("agent objc metadata direct fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         r#"(function() {
                             function checkClass(result) {
                                 const info = result.classInfo;
