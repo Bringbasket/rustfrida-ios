@@ -8231,6 +8231,106 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    index: 8,
+                                    name: 'LC_RPATH',
+                                    cmd: 0x8000001cn,
+                                    cmdsize: 32,
+                                    offset: 0x200n,
+                                    detail: 'path=@loader_path/Frameworks'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_RPATH'
+                                });
+                                return result.loadCommandInfo !== null
+                                    && result.resolvedPath === result.loadCommandInfo.path
+                                    && result.resolvedPathKind === result.loadCommandInfo.pathKind
+                                    && result.resolvedHasPath === result.loadCommandInfo.hasPath
+                                    && result.resolvedIsTokenPath === result.loadCommandInfo.isTokenPath
+                                    && result.resolvedUsesLoaderPath === result.loadCommandInfo.usesLoaderPath
+                                    && result.resolvedUsesExecutablePath === result.loadCommandInfo.usesExecutablePath
+                                    && result.resolvedUsesRpathToken === result.loadCommandInfo.usesRpathToken
+                                    && result.path === '@loader_path/Frameworks'
+                                    && result.pathKind === 'loader_path'
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesLoaderPath === true
+                                    && result.usesExecutablePath === false
+                                    && result.usesRpathToken === false
+                                    && result.commandFamily === 'rpath'
+                                    && result.resolvedCommandFamily === result.loadCommandInfo.commandFamily
+                                    && result.isReqDyld === true
+                                    && result.resolvedIsReqDyld === result.loadCommandInfo.isReqDyld;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo rpath fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    index: 9,
+                                    name: 'LC_LOAD_DYLINKER',
+                                    cmd: 0xen,
+                                    cmdsize: 40,
+                                    offset: 0x220n,
+                                    detail: 'name=@executable_path/usr/lib/dyld'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_LOAD_DYLINKER'
+                                });
+                                return result.loadCommandInfo !== null
+                                    && result.resolvedPath === result.loadCommandInfo.path
+                                    && result.resolvedPathKind === result.loadCommandInfo.pathKind
+                                    && result.resolvedHasPath === result.loadCommandInfo.hasPath
+                                    && result.resolvedIsTokenPath === result.loadCommandInfo.isTokenPath
+                                    && result.resolvedUsesLoaderPath === result.loadCommandInfo.usesLoaderPath
+                                    && result.resolvedUsesExecutablePath === result.loadCommandInfo.usesExecutablePath
+                                    && result.resolvedUsesRpathToken === result.loadCommandInfo.usesRpathToken
+                                    && result.path === '@executable_path/usr/lib/dyld'
+                                    && result.pathKind === 'executable_path'
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesLoaderPath === false
+                                    && result.usesExecutablePath === true
+                                    && result.usesRpathToken === false
+                                    && result.commandFamily === 'dylinker'
+                                    && result.resolvedCommandFamily === result.loadCommandInfo.commandFamily
+                                    && result.hasDetail === true
+                                    && result.hasPayload === true;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo dylinker fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName: main.image.name }); return result.kind === 'native.encryption_info' && typeof result.hasEncryptionInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasEncryptedRange === 'boolean' && ((result.encryptionInfo === null && result.hasEncryptionInfo === false && result.resolved === false && result.resolvedModuleName === null && result.cryptoffHex === null && result.cryptsizeHex === null && result.cryptid === null && result.hasEncryptedRange === false && result.text === '<null>') || (typeof result.encryptionInfo.cryptoffHex === 'string' && typeof result.encryptionInfo.cryptid === 'number' && result.hasEncryptionInfo === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.cryptoffHex === 'string' && typeof result.cryptsizeHex === 'string' && typeof result.cryptid === 'number' && result.resolvedModuleName === result.encryptionInfo.moduleName && result.cryptoffHex === result.encryptionInfo.cryptoffHex && result.cryptsizeHex === result.encryptionInfo.cryptsizeHex && result.cryptid === result.encryptionInfo.cryptid && result.hasEncryptedRange === (result.encryptionInfo.cryptid !== 0) && result.text === result.encryptionInfo.text)); })()"
                     )
                     .expect("agent native encryption info result"),
