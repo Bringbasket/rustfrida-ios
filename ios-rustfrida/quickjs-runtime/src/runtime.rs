@@ -7530,6 +7530,73 @@ undefined;
                 runtime
                     .eval(
                         r#"(function() {
+                            const original = Native.segmentInfo;
+                            Native.segmentInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: '__DATA',
+                                    vmaddr: 0x180004000n,
+                                    vmsize: 0x3000n,
+                                    fileoff: 0x4000n,
+                                    filesize: 0n,
+                                    maxprot: 3,
+                                    initprot: 3
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.segment_info',
+                                    moduleName: 'Demo',
+                                    segmentName: '__DATA'
+                                });
+                                return result.segmentInfo !== null
+                                    && result.resolvedName === result.segmentInfo.name
+                                    && result.resolvedModuleName === result.segmentInfo.moduleName
+                                    && result.resolvedModuleBase === result.segmentInfo.moduleBase
+                                    && result.resolvedVmaddr === result.segmentInfo.vmaddr
+                                    && result.resolvedVmEnd === result.segmentInfo.vmEnd
+                                    && result.resolvedVmsizeHex === result.segmentInfo.vmsizeHex
+                                    && result.resolvedFileoffHex === result.segmentInfo.fileoffHex
+                                    && result.resolvedFilesizeHex === result.segmentInfo.filesizeHex
+                                    && result.resolvedFileEndHex === result.segmentInfo.fileEndHex
+                                    && result.resolvedInitprotFlags === result.segmentInfo.initprotFlags
+                                    && result.resolvedMaxprotFlags === result.segmentInfo.maxprotFlags
+                                    && result.resolvedHasVmRange === result.segmentInfo.hasVmRange
+                                    && result.resolvedHasFileData === result.segmentInfo.hasFileData
+                                    && result.resolvedIsEmpty === result.segmentInfo.isEmpty
+                                    && result.resolvedIsZeroFillLike === result.segmentInfo.isZeroFillLike
+                                    && result.resolvedIsReadable === result.segmentInfo.isReadable
+                                    && result.resolvedIsWritable === result.segmentInfo.isWritable
+                                    && result.resolvedIsExecutable === result.segmentInfo.isExecutable
+                                    && result.name === '__DATA'
+                                    && result.vmaddr === '6442467328'
+                                    && result.vmEnd === '0x180007000'
+                                    && result.vmsizeHex === '0x3000'
+                                    && result.fileoffHex === '0x4000'
+                                    && result.filesizeHex === '0x0'
+                                    && result.fileEndHex === '0x4000'
+                                    && result.initprotFlags === 'rw-'
+                                    && result.maxprotFlags === 'rw-'
+                                    && result.hasVmRange === true
+                                    && result.hasFileData === false
+                                    && result.isEmpty === false
+                                    && result.isZeroFillLike === true
+                                    && result.isReadable === true
+                                    && result.isWritable === true
+                                    && result.isExecutable === false;
+                            } finally {
+                                Native.segmentInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native segmentInfo direct fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.sections', moduleName: 'libsystem_malloc.dylib' });
                             if (!(result.kind === 'native.sections'
                                 && result.moduleName === 'libsystem_malloc.dylib'
@@ -7660,6 +7727,113 @@ undefined;
                         "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); return result.kind === 'native.section_info' && result.moduleName === 'libsystem_malloc.dylib' && result.segmentName === '__TEXT' && result.sectionName === '__text' && typeof result.hasSectionInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasData === 'boolean' && typeof result.isZeroFillLike === 'boolean' && typeof result.isCStringLike === 'boolean' && typeof result.isSymbolPointers === 'boolean' && ((result.sectionInfo === null && result.hasSectionInfo === false && result.resolved === false && result.resolvedSegmentName === null && result.resolvedSectionName === null && result.resolvedFullName === null && result.resolvedModuleName === null && result.name === null && result.fullName === null && result.moduleBase === null && result.addr === null && result.endAddr === null && result.offsetHex === null && result.alignmentBytesHex === null && result.sectionType === null && result.sectionTypeName === null && result.hasData === false && result.isZeroFillLike === false && result.isCStringLike === false && result.isSymbolPointers === false && result.text === '<null>') || (typeof result.sectionInfo.moduleBase === 'string' && typeof result.sectionInfo.segmentName === 'string' && typeof result.sectionInfo.offsetHex === 'string' && result.hasSectionInfo === true && result.resolved === true && typeof result.resolvedSegmentName === 'string' && typeof result.resolvedSectionName === 'string' && typeof result.resolvedFullName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.name === 'string' && typeof result.fullName === 'string' && typeof result.moduleBase === 'string' && typeof result.addr === 'string' && typeof result.endAddr === 'string' && typeof result.offsetHex === 'string' && typeof result.alignmentBytesHex === 'string' && typeof result.sectionType === 'number' && typeof result.sectionTypeName === 'string' && result.resolvedSegmentName === result.sectionInfo.segmentName && result.resolvedSectionName === result.sectionInfo.name && result.resolvedFullName === result.sectionInfo.fullName && result.resolvedModuleName === result.sectionInfo.moduleName && result.name === result.sectionInfo.name && result.fullName === result.sectionInfo.fullName && result.moduleBase === result.sectionInfo.moduleBase && result.addr === result.sectionInfo.addr && result.endAddr === result.sectionInfo.endAddr && result.offsetHex === result.sectionInfo.offsetHex && result.alignmentBytesHex === result.sectionInfo.alignmentBytesHex && result.sectionType === result.sectionInfo.sectionType && result.sectionTypeName === result.sectionInfo.sectionTypeName && result.hasData === (result.sectionInfo.hasData === true) && result.isZeroFillLike === (result.sectionInfo.isZeroFillLike === true) && result.isCStringLike === (result.sectionInfo.isCStringLike === true) && result.isSymbolPointers === (result.sectionInfo.isSymbolPointers === true) && result.text === result.sectionInfo.text)); })()"
                     )
                     .expect("agent native sectionInfo result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.sectionInfo;
+                            Native.sectionInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    segmentName: '__DATA',
+                                    name: '__la_symbol_ptr',
+                                    addr: 0x180005000n,
+                                    size: 0x20n,
+                                    offset: 0x5000n,
+                                    align: 3,
+                                    flags: 0x6n
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.section_info',
+                                    moduleName: 'Demo',
+                                    segmentName: '__DATA',
+                                    sectionName: '__la_symbol_ptr'
+                                });
+                                return result.sectionInfo !== null
+                                    && result.resolvedSegmentName === result.sectionInfo.segmentName
+                                    && result.resolvedSectionName === result.sectionInfo.name
+                                    && result.resolvedFullName === result.sectionInfo.fullName
+                                    && result.resolvedModuleName === result.sectionInfo.moduleName
+                                    && result.resolvedModuleBase === result.sectionInfo.moduleBase
+                                    && result.resolvedAddr === result.sectionInfo.addr
+                                    && result.resolvedEndAddr === result.sectionInfo.endAddr
+                                    && result.resolvedOffsetHex === result.sectionInfo.offsetHex
+                                    && result.resolvedAlignmentBytesHex === result.sectionInfo.alignmentBytesHex
+                                    && result.resolvedSectionType === result.sectionInfo.sectionType
+                                    && result.resolvedSectionTypeName === result.sectionInfo.sectionTypeName
+                                    && result.resolvedHasData === result.sectionInfo.hasData
+                                    && result.resolvedIsZeroFillLike === result.sectionInfo.isZeroFillLike
+                                    && result.resolvedIsCStringLike === result.sectionInfo.isCStringLike
+                                    && result.resolvedIsSymbolPointers === result.sectionInfo.isSymbolPointers
+                                    && result.name === '__la_symbol_ptr'
+                                    && result.fullName === '__DATA,__la_symbol_ptr'
+                                    && result.addr === '6442471424'
+                                    && result.endAddr === '0x180005020'
+                                    && result.offsetHex === '0x5000'
+                                    && result.alignmentBytesHex === '0x8'
+                                    && result.sectionType === 6
+                                    && result.sectionTypeName === 'S_NON_LAZY_SYMBOL_POINTERS'
+                                    && result.hasData === true
+                                    && result.isZeroFillLike === false
+                                    && result.isCStringLike === false
+                                    && result.isSymbolPointers === true;
+                            } finally {
+                                Native.sectionInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native sectionInfo symbol pointer fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.sectionInfo;
+                            Native.sectionInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    segmentName: '__TEXT',
+                                    name: '__cstring',
+                                    addr: 0x180001000n,
+                                    size: 0x40n,
+                                    offset: 0x1000n,
+                                    align: 0,
+                                    flags: 0x2n
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.section_info',
+                                    moduleName: 'Demo',
+                                    segmentName: '__TEXT',
+                                    sectionName: '__cstring'
+                                });
+                                return result.sectionInfo !== null
+                                    && result.sectionType === 2
+                                    && result.sectionTypeName === 'S_CSTRING_LITERALS'
+                                    && result.hasData === true
+                                    && result.isZeroFillLike === false
+                                    && result.isCStringLike === true
+                                    && result.isSymbolPointers === false
+                                    && result.resolvedSectionType === result.sectionInfo.sectionType
+                                    && result.resolvedSectionTypeName === result.sectionInfo.sectionTypeName
+                                    && result.resolvedHasData === result.sectionInfo.hasData
+                                    && result.resolvedIsZeroFillLike === result.sectionInfo.isZeroFillLike
+                                    && result.resolvedIsCStringLike === result.sectionInfo.isCStringLike
+                                    && result.resolvedIsSymbolPointers === result.sectionInfo.isSymbolPointers;
+                            } finally {
+                                Native.sectionInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native sectionInfo cstring fields"),
                 "true"
             );
             assert_eq!(
