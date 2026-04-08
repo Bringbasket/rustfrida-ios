@@ -8667,17 +8667,25 @@ undefined;
                                     && codeSignature.lengthHex === null
                                     && codeSignature.resolvedCount === null
                                     && codeSignature.count === null
+                                    && codeSignature.hasData === false
+                                    && codeSignature.hasMagic === false
                                     && codeSignature.resolvedKnownMagic === null
                                     && codeSignature.knownMagic === false
                                     && codeSignature.resolvedHasCount === null
                                     && codeSignature.hasCount === false
                                     && codeSignature.resolvedHasBlobLength === null
+                                    && codeSignature.hasBlobLength === false
                                     && codeSignature.resolvedBlobLengthMatchesDataSize === null
                                     && codeSignature.blobLengthMatchesDataSize === null
                                     && codeSignature.resolvedBlobLengthRelation === null
                                     && codeSignature.blobLengthRelation === null
                                     && codeSignature.resolvedCountMatchesSuperBlob === null
-                                    && codeSignature.countMatchesSuperBlob === false)) {
+                                    && codeSignature.countMatchesSuperBlob === false
+                                    && codeSignature.isSuperBlob === false
+                                    && codeSignature.isDetachedSignature === false
+                                    && codeSignature.isBlobWrapper === false
+                                    && codeSignature.isCodeDirectory === false
+                                    && codeSignature.isEntitlements === false)) {
                                     return false;
                                 }
                             } else if (!(codeSignature.resolvedModuleName === codeSignature.codeSignature.moduleName
@@ -8705,17 +8713,25 @@ undefined;
                                 && codeSignature.lengthHex === codeSignature.codeSignature.lengthHex
                                 && codeSignature.resolvedCount === codeSignature.codeSignature.count
                                 && codeSignature.count === codeSignature.codeSignature.count
+                                && codeSignature.hasData === (codeSignature.codeSignature.hasData === true)
+                                && codeSignature.hasMagic === (codeSignature.codeSignature.hasMagic === true)
                                 && codeSignature.resolvedKnownMagic === codeSignature.codeSignature.knownMagic
                                 && codeSignature.knownMagic === (codeSignature.codeSignature.knownMagic === true)
                                 && codeSignature.resolvedHasCount === codeSignature.codeSignature.hasCount
                                 && codeSignature.hasCount === (codeSignature.codeSignature.hasCount === true)
                                 && codeSignature.resolvedHasBlobLength === codeSignature.codeSignature.hasBlobLength
+                                && codeSignature.hasBlobLength === (codeSignature.codeSignature.hasBlobLength === true)
                                 && codeSignature.resolvedBlobLengthMatchesDataSize === codeSignature.codeSignature.blobLengthMatchesDataSize
                                 && codeSignature.blobLengthMatchesDataSize === codeSignature.codeSignature.blobLengthMatchesDataSize
                                 && codeSignature.resolvedBlobLengthRelation === codeSignature.codeSignature.blobLengthRelation
                                 && codeSignature.blobLengthRelation === codeSignature.codeSignature.blobLengthRelation
                                 && codeSignature.resolvedCountMatchesSuperBlob === codeSignature.codeSignature.countMatchesSuperBlob
-                                && codeSignature.countMatchesSuperBlob === (codeSignature.codeSignature.countMatchesSuperBlob === true))) {
+                                && codeSignature.countMatchesSuperBlob === (codeSignature.codeSignature.countMatchesSuperBlob === true)
+                                && codeSignature.isSuperBlob === (codeSignature.codeSignature.isSuperBlob === true)
+                                && codeSignature.isDetachedSignature === (codeSignature.codeSignature.isDetachedSignature === true)
+                                && codeSignature.isBlobWrapper === (codeSignature.codeSignature.isBlobWrapper === true)
+                                && codeSignature.isCodeDirectory === (codeSignature.codeSignature.isCodeDirectory === true)
+                                && codeSignature.isEntitlements === (codeSignature.codeSignature.isEntitlements === true))) {
                                 return false;
                             }
 
@@ -8760,10 +8776,18 @@ undefined;
                                     && dataInCode.largestEntryLength === null
                                     && dataInCode.resolvedTotalSpanHex === null
                                     && dataInCode.totalSpanHex === null
+                                    && dataInCode.entryCount === 0
+                                    && dataInCode.hasEntries === false
+                                    && dataInCode.uniqueKindCount === 0
                                     && dataInCode.hasMultipleKinds === false
                                     && dataInCode.dataEntryCount === 0
+                                    && dataInCode.hasDataEntries === false
                                     && dataInCode.jumpTableEntryCount === 0
-                                    && dataInCode.unknownEntryCount === 0)) {
+                                    && dataInCode.hasJumpTables === false
+                                    && dataInCode.unknownEntryCount === 0
+                                    && dataInCode.hasUnknownKinds === false
+                                    && Array.isArray(dataInCode.kinds)
+                                    && dataInCode.kinds.length === 0)) {
                                     return false;
                                 }
                             } else if (!(dataInCode.resolvedModuleName === dataInCode.dataInCode.moduleName
@@ -8801,10 +8825,19 @@ undefined;
                                 && dataInCode.largestEntryLength === dataInCode.dataInCode.largestEntryLength
                                 && dataInCode.resolvedTotalSpanHex === dataInCode.dataInCode.totalSpanHex
                                 && dataInCode.totalSpanHex === dataInCode.dataInCode.totalSpanHex
+                                && dataInCode.entryCount === dataInCode.dataInCode.count
+                                && dataInCode.hasEntries === (dataInCode.dataInCode.hasEntries === true)
+                                && dataInCode.uniqueKindCount === dataInCode.dataInCode.uniqueKindCount
                                 && dataInCode.hasMultipleKinds === (dataInCode.dataInCode.hasMultipleKinds === true)
                                 && dataInCode.dataEntryCount === dataInCode.dataInCode.dataEntryCount
+                                && dataInCode.hasDataEntries === (dataInCode.dataInCode.hasDataEntries === true)
                                 && dataInCode.jumpTableEntryCount === dataInCode.dataInCode.jumpTableEntryCount
-                                && dataInCode.unknownEntryCount === dataInCode.dataInCode.unknownEntryCount)) {
+                                && dataInCode.hasJumpTables === (dataInCode.dataInCode.hasJumpTables === true)
+                                && dataInCode.unknownEntryCount === dataInCode.dataInCode.unknownEntryCount
+                                && dataInCode.hasUnknownKinds === (dataInCode.dataInCode.hasUnknownKinds === true)
+                                && Array.isArray(dataInCode.kinds)
+                                && dataInCode.kinds.length === dataInCode.dataInCode.kinds.length
+                                && JSON.stringify(dataInCode.kinds) === JSON.stringify(dataInCode.dataInCode.kinds))) {
                                 return false;
                             }
 
@@ -8843,29 +8876,41 @@ undefined;
                                     && exportsTrie.addressSpanHex === null
                                     && exportsTrie.resolvedOffsetSpanHex === null
                                     && exportsTrie.offsetSpanHex === null
+                                    && exportsTrie.entryCount === 0
+                                    && exportsTrie.hasEntries === false
+                                    && exportsTrie.uniqueKindCount === 0
                                     && exportsTrie.hasMultipleKinds === false
                                     && exportsTrie.resolvedAddressEntryCount === 0
                                     && exportsTrie.addressEntryCount === 0
+                                    && exportsTrie.hasAddressEntries === false
                                     && exportsTrie.resolvedLowestAddress === null
                                     && exportsTrie.lowestAddress === null
                                     && exportsTrie.resolvedHighestAddress === null
                                     && exportsTrie.highestAddress === null
                                     && exportsTrie.resolvedOffsetEntryCount === 0
                                     && exportsTrie.offsetEntryCount === 0
+                                    && exportsTrie.hasOffsetEntries === false
                                     && exportsTrie.resolvedLowestOffsetHex === null
                                     && exportsTrie.lowestOffsetHex === null
                                     && exportsTrie.resolvedHighestOffsetHex === null
                                     && exportsTrie.highestOffsetHex === null
                                     && exportsTrie.resolvedImportNameCount === 0
                                     && exportsTrie.importNameCount === 0
+                                    && exportsTrie.hasImportNames === false
                                     && exportsTrie.resolvedResolverCount === 0
                                     && exportsTrie.resolverCount === 0
+                                    && exportsTrie.hasResolvers === false
                                     && exportsTrie.resolvedReexportCount === 0
                                     && exportsTrie.reexportCount === 0
+                                    && exportsTrie.hasReexports === false
                                     && exportsTrie.resolvedStubAndResolverCount === 0
                                     && exportsTrie.stubAndResolverCount === 0
+                                    && exportsTrie.hasStubAndResolvers === false
                                     && exportsTrie.resolvedWeakDefinitionCount === 0
-                                    && exportsTrie.weakDefinitionCount === 0)) {
+                                    && exportsTrie.weakDefinitionCount === 0
+                                    && exportsTrie.hasWeakDefinitions === false
+                                    && Array.isArray(exportsTrie.kinds)
+                                    && exportsTrie.kinds.length === 0)) {
                                     return false;
                                 }
                             } else if (!(exportsTrie.resolvedModuleName === exportsTrie.exportsTrie.moduleName
@@ -8897,29 +8942,42 @@ undefined;
                                 && exportsTrie.addressSpanHex === exportsTrie.exportsTrie.addressSpanHex
                                 && exportsTrie.resolvedOffsetSpanHex === exportsTrie.exportsTrie.offsetSpanHex
                                 && exportsTrie.offsetSpanHex === exportsTrie.exportsTrie.offsetSpanHex
+                                && exportsTrie.entryCount === exportsTrie.exportsTrie.count
+                                && exportsTrie.hasEntries === (exportsTrie.exportsTrie.hasEntries === true)
+                                && exportsTrie.uniqueKindCount === exportsTrie.exportsTrie.uniqueKindCount
                                 && exportsTrie.hasMultipleKinds === (exportsTrie.exportsTrie.hasMultipleKinds === true)
                                 && exportsTrie.resolvedAddressEntryCount === exportsTrie.exportsTrie.addressEntryCount
                                 && exportsTrie.addressEntryCount === exportsTrie.exportsTrie.addressEntryCount
+                                && exportsTrie.hasAddressEntries === (exportsTrie.exportsTrie.hasAddressEntries === true)
                                 && exportsTrie.resolvedLowestAddress === exportsTrie.exportsTrie.lowestAddress
                                 && exportsTrie.lowestAddress === exportsTrie.exportsTrie.lowestAddress
                                 && exportsTrie.resolvedHighestAddress === exportsTrie.exportsTrie.highestAddress
                                 && exportsTrie.highestAddress === exportsTrie.exportsTrie.highestAddress
                                 && exportsTrie.resolvedOffsetEntryCount === exportsTrie.exportsTrie.offsetEntryCount
                                 && exportsTrie.offsetEntryCount === exportsTrie.exportsTrie.offsetEntryCount
+                                && exportsTrie.hasOffsetEntries === (exportsTrie.exportsTrie.hasOffsetEntries === true)
                                 && exportsTrie.resolvedLowestOffsetHex === exportsTrie.exportsTrie.lowestOffsetHex
                                 && exportsTrie.lowestOffsetHex === exportsTrie.exportsTrie.lowestOffsetHex
                                 && exportsTrie.resolvedHighestOffsetHex === exportsTrie.exportsTrie.highestOffsetHex
                                 && exportsTrie.highestOffsetHex === exportsTrie.exportsTrie.highestOffsetHex
                                 && exportsTrie.resolvedImportNameCount === exportsTrie.exportsTrie.importNameCount
                                 && exportsTrie.importNameCount === exportsTrie.exportsTrie.importNameCount
+                                && exportsTrie.hasImportNames === (exportsTrie.exportsTrie.hasImportNames === true)
                                 && exportsTrie.resolvedResolverCount === exportsTrie.exportsTrie.resolverCount
                                 && exportsTrie.resolverCount === exportsTrie.exportsTrie.resolverCount
+                                && exportsTrie.hasResolvers === (exportsTrie.exportsTrie.hasResolvers === true)
                                 && exportsTrie.resolvedReexportCount === exportsTrie.exportsTrie.reexportCount
                                 && exportsTrie.reexportCount === exportsTrie.exportsTrie.reexportCount
+                                && exportsTrie.hasReexports === (exportsTrie.exportsTrie.hasReexports === true)
                                 && exportsTrie.resolvedStubAndResolverCount === exportsTrie.exportsTrie.stubAndResolverCount
                                 && exportsTrie.stubAndResolverCount === exportsTrie.exportsTrie.stubAndResolverCount
+                                && exportsTrie.hasStubAndResolvers === (exportsTrie.exportsTrie.hasStubAndResolvers === true)
                                 && exportsTrie.resolvedWeakDefinitionCount === exportsTrie.exportsTrie.weakDefinitionCount
-                                && exportsTrie.weakDefinitionCount === exportsTrie.exportsTrie.weakDefinitionCount)) {
+                                && exportsTrie.weakDefinitionCount === exportsTrie.exportsTrie.weakDefinitionCount
+                                && exportsTrie.hasWeakDefinitions === (exportsTrie.exportsTrie.hasWeakDefinitions === true)
+                                && Array.isArray(exportsTrie.kinds)
+                                && exportsTrie.kinds.length === exportsTrie.exportsTrie.kinds.length
+                                && JSON.stringify(exportsTrie.kinds) === JSON.stringify(exportsTrie.exportsTrie.kinds))) {
                                 return false;
                             }
 
