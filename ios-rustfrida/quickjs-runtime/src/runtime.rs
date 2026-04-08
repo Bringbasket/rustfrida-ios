@@ -8059,6 +8059,178 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    index: 5,
+                                    name: 'LC_UUID',
+                                    cmd: 0x1bn,
+                                    cmdsize: 24,
+                                    offset: 0x1b8n,
+                                    detail: 'uuid=12345678-1234-1234-1234-1234567890ab'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_UUID'
+                                });
+                                return result.loadCommandInfo !== null
+                                    && result.resolvedUuid === result.loadCommandInfo.uuid
+                                    && result.resolvedHasUuid === result.loadCommandInfo.hasUuid
+                                    && result.resolvedUuidLength === result.loadCommandInfo.uuidLength
+                                    && result.uuid === '12345678-1234-1234-1234-1234567890ab'
+                                    && result.hasUuid === true
+                                    && result.uuidLength === 36
+                                    && result.commandFamily === 'uuid'
+                                    && result.resolvedCommandFamily === result.loadCommandInfo.commandFamily
+                                    && result.hasDetail === true
+                                    && result.hasPayload === true;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo uuid fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    index: 4,
+                                    name: 'LC_DYLD_EXPORTS_TRIE',
+                                    cmd: 0x33n,
+                                    cmdsize: 16,
+                                    offset: 0x1a8n,
+                                    detail: 'dataoff=0x2000 datasize=0x180'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_DYLD_EXPORTS_TRIE'
+                                });
+                                return result.loadCommandInfo !== null
+                                    && result.resolvedDataoffHex === result.loadCommandInfo.dataoffHex
+                                    && result.resolvedDatasizeHex === result.loadCommandInfo.datasizeHex
+                                    && result.resolvedDataEndHex === result.loadCommandInfo.dataEndHex
+                                    && result.resolvedHasDataRange === result.loadCommandInfo.hasDataRange
+                                    && result.dataoffHex === '0x2000'
+                                    && result.datasizeHex === '0x180'
+                                    && result.dataEndHex === '0x2180'
+                                    && result.hasDataRange === true
+                                    && result.commandFamily === 'linkedit-data'
+                                    && result.resolvedCommandFamily === result.loadCommandInfo.commandFamily
+                                    && result.hasDetail === true
+                                    && result.hasPayload === true;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo data range fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    index: 6,
+                                    name: 'LC_MAIN',
+                                    cmd: 0x80000028n,
+                                    cmdsize: 24,
+                                    offset: 0x1d0n,
+                                    detail: 'entryoff=0x1234 stacksize=0x4000'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_MAIN'
+                                });
+                                return result.loadCommandInfo !== null
+                                    && result.resolvedEntryoffHex === result.loadCommandInfo.entryoffHex
+                                    && result.resolvedStacksizeHex === result.loadCommandInfo.stacksizeHex
+                                    && result.resolvedHasEntryPoint === result.loadCommandInfo.hasEntryPoint
+                                    && result.entryoffHex === '0x1234'
+                                    && result.stacksizeHex === '0x4000'
+                                    && result.hasEntryPoint === true
+                                    && result.commandFamily === 'entry-point'
+                                    && result.resolvedCommandFamily === result.loadCommandInfo.commandFamily
+                                    && result.isReqDyld === true
+                                    && result.resolvedIsReqDyld === result.loadCommandInfo.isReqDyld;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo entry point fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    index: 7,
+                                    name: 'LC_ENCRYPTION_INFO_64',
+                                    cmd: 0x2cn,
+                                    cmdsize: 24,
+                                    offset: 0x1e8n,
+                                    detail: 'cryptoff=0x4000 cryptsize=0x2000 cryptid=1'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_ENCRYPTION_INFO_64'
+                                });
+                                return result.loadCommandInfo !== null
+                                    && result.resolvedCryptoffHex === result.loadCommandInfo.cryptoffHex
+                                    && result.resolvedCryptsizeHex === result.loadCommandInfo.cryptsizeHex
+                                    && result.resolvedCryptid === result.loadCommandInfo.cryptid
+                                    && result.resolvedHasEncryptedRange === result.loadCommandInfo.hasEncryptedRange
+                                    && result.cryptoffHex === '0x4000'
+                                    && result.cryptsizeHex === '0x2000'
+                                    && result.cryptid === 1
+                                    && result.hasEncryptedRange === true
+                                    && result.commandFamily === 'encryption'
+                                    && result.resolvedCommandFamily === result.loadCommandInfo.commandFamily
+                                    && result.hasDetail === true
+                                    && result.hasPayload === true;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo encryption fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName: main.image.name }); return result.kind === 'native.encryption_info' && typeof result.hasEncryptionInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasEncryptedRange === 'boolean' && ((result.encryptionInfo === null && result.hasEncryptionInfo === false && result.resolved === false && result.resolvedModuleName === null && result.cryptoffHex === null && result.cryptsizeHex === null && result.cryptid === null && result.hasEncryptedRange === false && result.text === '<null>') || (typeof result.encryptionInfo.cryptoffHex === 'string' && typeof result.encryptionInfo.cryptid === 'number' && result.hasEncryptionInfo === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.cryptoffHex === 'string' && typeof result.cryptsizeHex === 'string' && typeof result.cryptid === 'number' && result.resolvedModuleName === result.encryptionInfo.moduleName && result.cryptoffHex === result.encryptionInfo.cryptoffHex && result.cryptsizeHex === result.encryptionInfo.cryptsizeHex && result.cryptid === result.encryptionInfo.cryptid && result.hasEncryptedRange === (result.encryptionInfo.cryptid !== 0) && result.text === result.encryptionInfo.text)); })()"
                     )
                     .expect("agent native encryption info result"),
