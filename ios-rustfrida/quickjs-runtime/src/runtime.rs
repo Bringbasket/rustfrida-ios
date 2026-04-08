@@ -9281,7 +9281,10 @@ undefined;
                             function checkDependencyInfo(result) {
                                 const info = result.dependencyInfo;
                                 if (info === null) {
-                                    return result.resolvedModuleBase === null
+                                    return result.resolvedName === null
+                                        && result.resolvedPath === null
+                                        && result.resolvedModuleName === null
+                                        && result.resolvedModuleBase === null
                                         && result.resolvedOrdinal === null
                                         && result.resolvedCurrentVersion === null
                                         && result.resolvedCompatibilityVersion === null
@@ -9293,12 +9296,18 @@ undefined;
                                         && result.currentVersion === null
                                         && result.compatibilityVersion === null
                                         && result.timestamp === null
+                                        && result.kindName === null
+                                        && result.hasTimestamp === false
+                                        && result.versionMismatch === false
                                         && result.isWeakDependency === false
                                         && result.isReexportDependency === false
                                         && result.isUpwardDependency === false
                                         && result.isLoadDependency === false;
                                 }
-                                return result.resolvedModuleBase === info.moduleBase
+                                return result.resolvedName === info.name
+                                    && result.resolvedPath === info.path
+                                    && result.resolvedModuleName === info.moduleName
+                                    && result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedOrdinal === info.ordinal
                                     && result.resolvedCurrentVersion === info.currentVersion
                                     && result.resolvedCompatibilityVersion === info.compatibilityVersion
@@ -9310,6 +9319,9 @@ undefined;
                                     && result.currentVersion === info.currentVersion
                                     && result.compatibilityVersion === info.compatibilityVersion
                                     && result.timestamp === info.timestamp
+                                    && result.kindName === info.kind
+                                    && result.hasTimestamp === (info.hasTimestamp === true)
+                                    && result.versionMismatch === (info.versionMismatch === true)
                                     && result.isWeakDependency === (info.isWeakDependency === true)
                                     && result.isReexportDependency === (info.isReexportDependency === true)
                                     && result.isUpwardDependency === (info.isUpwardDependency === true)
@@ -9587,13 +9599,17 @@ undefined;
                                         && result.resolvedCryptoffHex === null
                                         && result.resolvedCryptsizeHex === null
                                         && result.cryptoffHex === null
-                                        && result.cryptsizeHex === null;
+                                        && result.cryptsizeHex === null
+                                        && result.cryptid === null
+                                        && result.hasEncryptedRange === false;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedCryptoffHex === info.cryptoffHex
                                     && result.resolvedCryptsizeHex === info.cryptsizeHex
                                     && result.cryptoffHex === info.cryptoffHex
-                                    && result.cryptsizeHex === info.cryptsizeHex;
+                                    && result.cryptsizeHex === info.cryptsizeHex
+                                    && result.cryptid === info.cryptid
+                                    && result.hasEncryptedRange === (info.cryptid !== 0);
                             }
 
                             function checkEntryPoint(result) {
