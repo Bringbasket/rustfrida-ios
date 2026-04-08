@@ -7926,6 +7926,139 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    index: 0,
+                                    name: 'LC_LOAD_DYLIB',
+                                    cmd: 0xcn,
+                                    cmdsize: 56,
+                                    offset: 0x100n,
+                                    detail: 'name=@rpath/DemoKit.framework/DemoKit current=1.2.3 compat=1.0.0 timestamp=7'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_LOAD_DYLIB'
+                                });
+                                return result.loadCommandInfo !== null
+                                    && result.resolvedName === result.loadCommandInfo.name
+                                    && result.resolvedIndex === result.loadCommandInfo.index
+                                    && result.resolvedModuleName === result.loadCommandInfo.moduleName
+                                    && result.resolvedModuleBase === result.loadCommandInfo.moduleBase
+                                    && result.resolvedCmdHex === result.loadCommandInfo.cmdHex
+                                    && result.resolvedCmdBaseHex === result.loadCommandInfo.cmdBaseHex
+                                    && result.resolvedOffsetHex === result.loadCommandInfo.offsetHex
+                                    && result.resolvedEndOffsetHex === result.loadCommandInfo.endOffsetHex
+                                    && result.resolvedDetail === result.loadCommandInfo.detail
+                                    && result.resolvedCommandFamily === result.loadCommandInfo.commandFamily
+                                    && result.resolvedPath === result.loadCommandInfo.path
+                                    && result.resolvedPathKind === result.loadCommandInfo.pathKind
+                                    && result.resolvedCurrentVersion === result.loadCommandInfo.currentVersion
+                                    && result.resolvedCompatibilityVersion === result.loadCommandInfo.compatibilityVersion
+                                    && result.resolvedTimestamp === result.loadCommandInfo.timestamp
+                                    && result.resolvedHasPath === result.loadCommandInfo.hasPath
+                                    && result.resolvedIsTokenPath === result.loadCommandInfo.isTokenPath
+                                    && result.resolvedUsesLoaderPath === result.loadCommandInfo.usesLoaderPath
+                                    && result.resolvedUsesExecutablePath === result.loadCommandInfo.usesExecutablePath
+                                    && result.resolvedUsesRpathToken === result.loadCommandInfo.usesRpathToken
+                                    && result.resolvedHasCurrentVersion === result.loadCommandInfo.hasCurrentVersion
+                                    && result.resolvedHasCompatibilityVersion === result.loadCommandInfo.hasCompatibilityVersion
+                                    && result.resolvedHasTimestamp === result.loadCommandInfo.hasTimestamp
+                                    && result.resolvedVersionMismatch === result.loadCommandInfo.versionMismatch
+                                    && result.path === '@rpath/DemoKit.framework/DemoKit'
+                                    && result.pathKind === 'rpath'
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesRpathToken === true
+                                    && result.currentVersion === '1.2.3'
+                                    && result.compatibilityVersion === '1.0.0'
+                                    && result.timestamp === 7
+                                    && result.hasCurrentVersion === true
+                                    && result.hasCompatibilityVersion === true
+                                    && result.hasTimestamp === true
+                                    && result.versionMismatch === true
+                                    && result.commandFamily === 'dylib';
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo dylib fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    index: 3,
+                                    name: 'LC_BUILD_VERSION',
+                                    cmd: 0x32n,
+                                    cmdsize: 32,
+                                    offset: 0x188n,
+                                    detail: 'platform=ios minos=15.0.0 sdk=17.0.0 tools=clang:15.0.0,swift:5.9.0'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_BUILD_VERSION'
+                                });
+                                return result.loadCommandInfo !== null
+                                    && result.resolvedVersion === result.loadCommandInfo.version
+                                    && result.resolvedMinOs === result.loadCommandInfo.minOs
+                                    && result.resolvedSdk === result.loadCommandInfo.sdk
+                                    && result.resolvedPlatform === result.loadCommandInfo.platform
+                                    && result.resolvedHasVersion === result.loadCommandInfo.hasVersion
+                                    && result.resolvedHasMinOs === result.loadCommandInfo.hasMinOs
+                                    && result.resolvedHasSdk === result.loadCommandInfo.hasSdk
+                                    && result.resolvedHasTools === result.loadCommandInfo.hasTools
+                                    && result.resolvedToolCount === result.loadCommandInfo.toolCount
+                                    && result.resolvedUniqueToolCount === result.loadCommandInfo.uniqueToolCount
+                                    && JSON.stringify(result.resolvedToolNames) === JSON.stringify(result.loadCommandInfo.toolNames)
+                                    && JSON.stringify(result.resolvedToolNameList) === JSON.stringify(result.loadCommandInfo.toolNameList)
+                                    && JSON.stringify(result.resolvedTools) === JSON.stringify(result.loadCommandInfo.tools)
+                                    && result.platform === 'ios'
+                                    && result.minOs === '15.0.0'
+                                    && result.sdk === '17.0.0'
+                                    && result.hasMinOs === true
+                                    && result.hasSdk === true
+                                    && result.hasTools === true
+                                    && result.toolCount === 2
+                                    && result.uniqueToolCount === 2
+                                    && Array.isArray(result.toolNames)
+                                    && result.toolNames.length === result.loadCommandInfo.toolNames.length
+                                    && JSON.stringify(result.toolNames) === JSON.stringify(result.loadCommandInfo.toolNames)
+                                    && Array.isArray(result.toolNameList)
+                                    && result.toolNameList.length === result.loadCommandInfo.toolNameList.length
+                                    && JSON.stringify(result.toolNameList) === JSON.stringify(result.loadCommandInfo.toolNameList)
+                                    && Array.isArray(result.tools)
+                                    && result.tools.length === 2
+                                    && JSON.stringify(result.tools) === JSON.stringify(result.loadCommandInfo.tools)
+                                    && result.commandFamily === 'version'
+                                    && result.hasDetail === true;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo build version fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName: main.image.name }); return result.kind === 'native.encryption_info' && typeof result.hasEncryptionInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasEncryptedRange === 'boolean' && ((result.encryptionInfo === null && result.hasEncryptionInfo === false && result.resolved === false && result.resolvedModuleName === null && result.cryptoffHex === null && result.cryptsizeHex === null && result.cryptid === null && result.hasEncryptedRange === false && result.text === '<null>') || (typeof result.encryptionInfo.cryptoffHex === 'string' && typeof result.encryptionInfo.cryptid === 'number' && result.hasEncryptionInfo === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.cryptoffHex === 'string' && typeof result.cryptsizeHex === 'string' && typeof result.cryptid === 'number' && result.resolvedModuleName === result.encryptionInfo.moduleName && result.cryptoffHex === result.encryptionInfo.cryptoffHex && result.cryptsizeHex === result.encryptionInfo.cryptsizeHex && result.cryptid === result.encryptionInfo.cryptid && result.hasEncryptedRange === (result.encryptionInfo.cryptid !== 0) && result.text === result.encryptionInfo.text)); })()"
                     )
                     .expect("agent native encryption info result"),
