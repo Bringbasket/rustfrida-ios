@@ -13827,9 +13827,33 @@ undefined;
                                     && typeLayoutInfo.lastWitnessProtocolName === null
                                     && typeLayoutInfo.parsedVtableMemberCount === 0
                                     && typeLayoutInfo.vtableAccessorCount === 0
+                                    && typeLayoutInfo.vtableGetterCount === 0
+                                    && typeLayoutInfo.vtableSetterCount === 0
+                                    && typeLayoutInfo.vtableModifyAccessorCount === 0
+                                    && typeLayoutInfo.vtableReadAccessorCount === 0
+                                    && typeLayoutInfo.vtableConstructorCount === 0
+                                    && typeLayoutInfo.vtableDestructorCount === 0
+                                    && typeLayoutInfo.vtableSubscriptCount === 0
+                                    && typeLayoutInfo.vtableOperatorCount === 0
+                                    && typeLayoutInfo.vtableClosureCount === 0
+                                    && typeLayoutInfo.vtableStaticMemberCount === 0
+                                    && typeLayoutInfo.vtableClassMemberCount === 0
+                                    && typeLayoutInfo.vtableMutatingMemberCount === 0
+                                    && typeLayoutInfo.vtableAsyncCount === 0
+                                    && typeLayoutInfo.vtableThrowingCount === 0
+                                    && typeLayoutInfo.vtableDispatchThunkCount === 0
+                                    && typeLayoutInfo.uniqueVtableOwnerTypeCount === 0
+                                    && typeLayoutInfo.uniqueVtableMemberKindCount === 0
+                                    && typeLayoutInfo.uniqueVtableResultTypeCount === 0
                                     && typeLayoutInfo.witnessAccessorCount === 0
+                                    && typeLayoutInfo.witnessDemangledCount === 0
+                                    && typeLayoutInfo.uniqueWitnessProtocolCount === 0
+                                    && typeLayoutInfo.uniqueWitnessSourceKindCount === 0
+                                    && typeLayoutInfo.vtableOwnerTypes.length === 0
                                     && typeLayoutInfo.vtableMemberKinds.length === 0
-                                    && typeLayoutInfo.witnessProtocols.length === 0;
+                                    && typeLayoutInfo.vtableResultTypes.length === 0
+                                    && typeLayoutInfo.witnessProtocols.length === 0
+                                    && typeLayoutInfo.witnessSourceKinds.length === 0;
                             }
                             return typeLayoutInfo.resolvedModuleBase === typeLayoutInfo.typeLayout.moduleBase
                                 && typeLayoutInfo.hasName === (typeLayoutInfo.typeLayout.hasName === true)
@@ -13851,15 +13875,31 @@ undefined;
                                 && typeLayoutInfo.vtableAccessorCount === typeLayoutInfo.typeLayout.vtableAccessorCount
                                 && typeLayoutInfo.vtableGetterCount === typeLayoutInfo.typeLayout.vtableGetterCount
                                 && typeLayoutInfo.vtableSetterCount === typeLayoutInfo.typeLayout.vtableSetterCount
+                                && typeLayoutInfo.vtableModifyAccessorCount === typeLayoutInfo.typeLayout.vtableModifyAccessorCount
+                                && typeLayoutInfo.vtableReadAccessorCount === typeLayoutInfo.typeLayout.vtableReadAccessorCount
                                 && typeLayoutInfo.vtableConstructorCount === typeLayoutInfo.typeLayout.vtableConstructorCount
                                 && typeLayoutInfo.vtableDestructorCount === typeLayoutInfo.typeLayout.vtableDestructorCount
+                                && typeLayoutInfo.vtableSubscriptCount === typeLayoutInfo.typeLayout.vtableSubscriptCount
+                                && typeLayoutInfo.vtableOperatorCount === typeLayoutInfo.typeLayout.vtableOperatorCount
+                                && typeLayoutInfo.vtableClosureCount === typeLayoutInfo.typeLayout.vtableClosureCount
+                                && typeLayoutInfo.vtableStaticMemberCount === typeLayoutInfo.typeLayout.vtableStaticMemberCount
+                                && typeLayoutInfo.vtableClassMemberCount === typeLayoutInfo.typeLayout.vtableClassMemberCount
+                                && typeLayoutInfo.vtableMutatingMemberCount === typeLayoutInfo.typeLayout.vtableMutatingMemberCount
                                 && typeLayoutInfo.vtableAsyncCount === typeLayoutInfo.typeLayout.vtableAsyncCount
                                 && typeLayoutInfo.vtableThrowingCount === typeLayoutInfo.typeLayout.vtableThrowingCount
+                                && typeLayoutInfo.vtableDispatchThunkCount === typeLayoutInfo.typeLayout.vtableDispatchThunkCount
+                                && typeLayoutInfo.uniqueVtableOwnerTypeCount === typeLayoutInfo.typeLayout.uniqueVtableOwnerTypeCount
                                 && typeLayoutInfo.uniqueVtableMemberKindCount === typeLayoutInfo.typeLayout.uniqueVtableMemberKindCount
+                                && typeLayoutInfo.uniqueVtableResultTypeCount === typeLayoutInfo.typeLayout.uniqueVtableResultTypeCount
                                 && typeLayoutInfo.witnessAccessorCount === typeLayoutInfo.typeLayout.witnessAccessorCount
+                                && typeLayoutInfo.witnessDemangledCount === typeLayoutInfo.typeLayout.witnessDemangledCount
                                 && typeLayoutInfo.uniqueWitnessProtocolCount === typeLayoutInfo.typeLayout.uniqueWitnessProtocolCount
-                                && typeLayoutInfo.vtableMemberKinds.length === typeLayoutInfo.typeLayout.vtableMemberKinds.length
-                                && typeLayoutInfo.witnessProtocols.length === typeLayoutInfo.typeLayout.witnessProtocols.length;
+                                && typeLayoutInfo.uniqueWitnessSourceKindCount === typeLayoutInfo.typeLayout.uniqueWitnessSourceKindCount
+                                && JSON.stringify(typeLayoutInfo.vtableOwnerTypes) === JSON.stringify(typeLayoutInfo.typeLayout.vtableOwnerTypes)
+                                && JSON.stringify(typeLayoutInfo.vtableMemberKinds) === JSON.stringify(typeLayoutInfo.typeLayout.vtableMemberKinds)
+                                && JSON.stringify(typeLayoutInfo.vtableResultTypes) === JSON.stringify(typeLayoutInfo.typeLayout.vtableResultTypes)
+                                && JSON.stringify(typeLayoutInfo.witnessProtocols) === JSON.stringify(typeLayoutInfo.typeLayout.witnessProtocols)
+                                && JSON.stringify(typeLayoutInfo.witnessSourceKinds) === JSON.stringify(typeLayoutInfo.typeLayout.witnessSourceKinds);
                         })()"#
                     )
                     .expect("agent swift info summary fields"),
