@@ -10339,6 +10339,51 @@ undefined;
                 runtime
                     .eval(
                         "(function() {
+                            const original = Swift.symbolInfo;
+                            Swift.symbolInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: '$s4Demo14ViewControllerC6sharedACyYaKFZ',
+                                    demangledName: 'static Demo.ViewController.shared() async throws -> Demo.ViewController',
+                                    address: 0x180001000n,
+                                    offset: 0x1000n,
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbol_info', moduleName: null, symbolName: 'shared' });
+                                return result.symbolInfo !== null
+                                    && result.name === result.symbolInfo.name
+                                    && result.moduleBase === result.symbolInfo.moduleBase
+                                    && result.demangledName === result.symbolInfo.demangledName
+                                    && result.address === result.symbolInfo.address
+                                    && result.offsetHex === result.symbolInfo.offsetHex
+                                    && result.memberKind === 'method'
+                                    && result.ownerTypeName === 'Demo.ViewController'
+                                    && result.memberName === 'shared'
+                                    && result.signature === 'static Demo.ViewController.shared() async throws -> Demo.ViewController'
+                                    && result.resultTypeName === 'Demo.ViewController'
+                                    && result.isStaticMember === true
+                                    && result.isAsync === true
+                                    && result.isThrowing === true
+                                    && result.throwsKind === 'throws'
+                                    && result.isAccessor === false
+                                    && result.symbolInfo.isStaticMember === true
+                                    && result.symbolInfo.isAsync === true
+                                    && result.symbolInfo.isThrowing === true
+                                    && result.symbolInfo.resultTypeName === 'Demo.ViewController';
+                            } finally {
+                                Swift.symbolInfo = original;
+                            }
+                        })()"
+                    )
+                    .expect("synthetic swift symbolInfo semantics"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
                             const original = Swift.methodInfo;
                             Swift.methodInfo = function() {
                                 return {
@@ -11950,14 +11995,24 @@ undefined;
                         r#"(function() {
                             function checkSymbolInfo(result) {
                                 if (result.symbolInfo === null) {
-                                    return result.resolvedOwnerTypeName === null
+                                    return result.name === null
+                                        && result.moduleBase === null
+                                        && result.demangledName === null
+                                        && result.address === null
+                                        && result.offsetHex === null
+                                        && result.resolvedOwnerTypeName === null
                                         && result.resolvedMemberName === null
                                         && result.resolvedMemberKind === null
                                         && result.resolvedSignature === null
                                         && result.resolvedResultTypeName === null
                                         && result.resolvedThrowsKind === null;
                                 }
-                                return result.resolvedOwnerTypeName === result.symbolInfo.ownerTypeName
+                                return result.name === result.symbolInfo.name
+                                    && result.moduleBase === result.symbolInfo.moduleBase
+                                    && result.demangledName === result.symbolInfo.demangledName
+                                    && result.address === result.symbolInfo.address
+                                    && result.offsetHex === result.symbolInfo.offsetHex
+                                    && result.resolvedOwnerTypeName === result.symbolInfo.ownerTypeName
                                     && result.resolvedMemberName === result.symbolInfo.memberName
                                     && result.resolvedMemberKind === result.symbolInfo.memberKind
                                     && result.resolvedSignature === result.symbolInfo.signature
