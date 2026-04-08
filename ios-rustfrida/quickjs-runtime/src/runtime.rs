@@ -8934,10 +8934,14 @@ undefined;
                                     && fixups.symbolsFormat === null
                                     && fixups.resolvedSymbolsFormatName === null
                                     && fixups.symbolsFormatName === null
+                                    && fixups.segmentCount === 0
+                                    && fixups.hasSegments === false
                                     && fixups.resolvedFirstSegmentIndex === null
                                     && fixups.firstSegmentIndex === null
                                     && fixups.resolvedLastSegmentIndex === null
                                     && fixups.lastSegmentIndex === null
+                                    && fixups.segmentWithFixupsCount === 0
+                                    && fixups.hasSegmentsWithFixups === false
                                     && fixups.totalPageCount === 0
                                     && fixups.totalFixupPageCount === 0
                                     && fixups.resolvedTotalMultiStartPageCount === 0
@@ -8947,16 +8951,28 @@ undefined;
                                     && fixups.largestSegmentIndex === null
                                     && fixups.resolvedLargestSegmentSizeHex === null
                                     && fixups.largestSegmentSizeHex === null
+                                    && fixups.pointerFormatCount === 0
+                                    && fixups.hasMultiplePointerFormats === false
                                     && Array.isArray(fixups.pointerFormats)
                                     && fixups.pointerFormats.length === 0
                                     && fixups.firstPointerFormatName === null
                                     && fixups.lastPointerFormatName === null
                                     && fixups.resolvedDominantPointerFormatName === null
                                     && fixups.dominantPointerFormatName === null
+                                    && fixups.importCount === 0
+                                    && fixups.hasImports === false
                                     && fixups.resolvedFirstImportName === null
                                     && fixups.firstImportName === null
                                     && fixups.resolvedLastImportName === null
                                     && fixups.lastImportName === null
+                                    && fixups.namedImportCount === 0
+                                    && fixups.hasNamedImports === false
+                                    && fixups.weakImportCount === 0
+                                    && fixups.hasWeakImports === false
+                                    && fixups.addendImportCount === 0
+                                    && fixups.hasAddendImports === false
+                                    && fixups.negativeAddendImportCount === 0
+                                    && fixups.hasNegativeAddends === false
                                     && Array.isArray(fixups.libOrdinals)
                                     && fixups.libOrdinals.length === 0
                                     && fixups.uniqueLibOrdinalCount === 0
@@ -9010,10 +9026,14 @@ undefined;
                                 && fixups.symbolsFormat === fixups.chainedFixups.symbolsFormat
                                 && fixups.resolvedSymbolsFormatName === fixups.chainedFixups.symbolsFormatName
                                 && fixups.symbolsFormatName === fixups.chainedFixups.symbolsFormatName
+                                && fixups.segmentCount === fixups.chainedFixups.segmentCount
+                                && fixups.hasSegments === (fixups.chainedFixups.hasSegments === true)
                                 && fixups.resolvedFirstSegmentIndex === fixups.chainedFixups.firstSegmentIndex
                                 && fixups.firstSegmentIndex === fixups.chainedFixups.firstSegmentIndex
                                 && fixups.resolvedLastSegmentIndex === fixups.chainedFixups.lastSegmentIndex
                                 && fixups.lastSegmentIndex === fixups.chainedFixups.lastSegmentIndex
+                                && fixups.segmentWithFixupsCount === fixups.chainedFixups.segmentWithFixupsCount
+                                && fixups.hasSegmentsWithFixups === (fixups.chainedFixups.hasSegmentsWithFixups === true)
                                 && fixups.totalPageCount === fixups.chainedFixups.totalPageCount
                                 && fixups.totalFixupPageCount === fixups.chainedFixups.totalFixupPageCount
                                 && fixups.resolvedTotalMultiStartPageCount === fixups.chainedFixups.totalMultiStartPageCount
@@ -9023,6 +9043,8 @@ undefined;
                                 && fixups.largestSegmentIndex === fixups.chainedFixups.largestSegmentIndex
                                 && fixups.resolvedLargestSegmentSizeHex === fixups.chainedFixups.largestSegmentSizeHex
                                 && fixups.largestSegmentSizeHex === fixups.chainedFixups.largestSegmentSizeHex
+                                && fixups.pointerFormatCount === fixups.chainedFixups.pointerFormatCount
+                                && fixups.hasMultiplePointerFormats === (fixups.chainedFixups.hasMultiplePointerFormats === true)
                                 && Array.isArray(fixups.pointerFormats)
                                 && fixups.pointerFormats.length === fixups.chainedFixups.pointerFormats.length
                                 && JSON.stringify(fixups.pointerFormats) === JSON.stringify(fixups.chainedFixups.pointerFormats)
@@ -9030,10 +9052,20 @@ undefined;
                                 && fixups.lastPointerFormatName === fixups.chainedFixups.lastPointerFormatName
                                 && fixups.resolvedDominantPointerFormatName === fixups.chainedFixups.dominantPointerFormatName
                                 && fixups.dominantPointerFormatName === fixups.chainedFixups.dominantPointerFormatName
+                                && fixups.importCount === fixups.chainedFixups.importCount
+                                && fixups.hasImports === (fixups.chainedFixups.hasImports === true)
                                 && fixups.resolvedFirstImportName === fixups.chainedFixups.firstImportName
                                 && fixups.firstImportName === fixups.chainedFixups.firstImportName
                                 && fixups.resolvedLastImportName === fixups.chainedFixups.lastImportName
                                 && fixups.lastImportName === fixups.chainedFixups.lastImportName
+                                && fixups.namedImportCount === fixups.chainedFixups.namedImportCount
+                                && fixups.hasNamedImports === (fixups.chainedFixups.hasNamedImports === true)
+                                && fixups.weakImportCount === fixups.chainedFixups.weakImportCount
+                                && fixups.hasWeakImports === (fixups.chainedFixups.hasWeakImports === true)
+                                && fixups.addendImportCount === fixups.chainedFixups.addendImportCount
+                                && fixups.hasAddendImports === (fixups.chainedFixups.hasAddendImports === true)
+                                && fixups.negativeAddendImportCount === fixups.chainedFixups.negativeAddendImportCount
+                                && fixups.hasNegativeAddends === (fixups.chainedFixups.hasNegativeAddends === true)
                                 && Array.isArray(fixups.libOrdinals)
                                 && fixups.libOrdinals.length === fixups.chainedFixups.libOrdinals.length
                                 && JSON.stringify(fixups.libOrdinals) === JSON.stringify(fixups.chainedFixups.libOrdinals)
