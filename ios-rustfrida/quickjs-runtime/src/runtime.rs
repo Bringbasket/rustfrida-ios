@@ -15372,6 +15372,140 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() {\n\
+                            const original = Swift.vtable;\n\
+                            Swift.vtable = function() {\n\
+                                return [\n\
+                                    {\n\
+                                        moduleName: 'Demo',\n\
+                                        moduleBase: 0x180000000n,\n\
+                                        typeName: 'Demo.ViewController',\n\
+                                        memberName: 'title',\n\
+                                        name: '$s4Demo14ViewControllerC5titleSSvg',\n\
+                                        demangledName: 'Demo.ViewController.title.getter : Swift.String',\n\
+                                        sourceKind: 'vtable',\n\
+                                        address: 0x180003000n,\n\
+                                        offset: 0x3000n,\n\
+                                        isDispatchThunk: false,\n\
+                                    },\n\
+                                    {\n\
+                                        moduleName: 'Demo',\n\
+                                        moduleBase: 0x180000000n,\n\
+                                        typeName: 'Demo.ViewController',\n\
+                                        memberName: 'shared',\n\
+                                        name: '$s4Demo14ViewControllerC6sharedACyYaKFZ',\n\
+                                        demangledName: 'dispatch thunk of static Demo.ViewController.shared() async throws -> Demo.ViewController',\n\
+                                        sourceKind: 'vtable',\n\
+                                        address: 0x180003100n,\n\
+                                        offset: 0x3100n,\n\
+                                        isDispatchThunk: true,\n\
+                                    },\n\
+                                    {\n\
+                                        moduleName: 'DemoUI',\n\
+                                        moduleBase: 0x190000000n,\n\
+                                        typeName: 'DemoUI.ViewController',\n\
+                                        memberName: 'viewDidLoad',\n\
+                                        name: '$s6DemoUI14ViewControllerC11viewDidLoadyyF',\n\
+                                        demangledName: 'DemoUI.ViewController.viewDidLoad() -> ()',\n\
+                                        sourceKind: 'override',\n\
+                                        address: 0x190003200n,\n\
+                                        offset: 0x3200n,\n\
+                                        isDispatchThunk: false,\n\
+                                    }\n\
+                                ];\n\
+                            };\n\
+                            try {\n\
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable', moduleName: null, query: 'ViewController' });\n\
+                                return result.count === 3\n\
+                                    && result.hasEntries === true\n\
+                                    && result.firstTypeName === 'Demo.ViewController'\n\
+                                    && result.lastTypeName === 'DemoUI.ViewController'\n\
+                                    && result.firstMemberName === 'title'\n\
+                                    && result.lastMemberName === 'viewDidLoad'\n\
+                                    && result.firstModuleName === 'Demo'\n\
+                                    && result.lastModuleName === 'DemoUI'\n\
+                                    && result.uniqueTypeCount === 2\n\
+                                    && result.uniqueMemberCount === 3\n\
+                                    && result.uniqueModuleCount === 2\n\
+                                    && result.uniqueSourceKindCount === 2\n\
+                                    && result.dispatchThunkCount === 1\n\
+                                    && result.hasDispatchThunks === true\n\
+                                    && result.demangledCount === 3\n\
+                                    && result.hasDemangledEntries === true\n\
+                                    && result.parsedMemberCount === 3\n\
+                                    && result.accessorCount === 1\n\
+                                    && result.getterCount === 1\n\
+                                    && result.setterCount === 0\n\
+                                    && result.constructorCount === 0\n\
+                                    && result.destructorCount === 0\n\
+                                    && result.subscriptCount === 0\n\
+                                    && result.operatorCount === 0\n\
+                                    && result.closureCount === 0\n\
+                                    && result.staticMemberCount === 1\n\
+                                    && result.classMemberCount === 0\n\
+                                    && result.mutatingMemberCount === 0\n\
+                                    && result.asyncCount === 1\n\
+                                    && result.throwingCount === 1\n\
+                                    && result.uniqueOwnerTypeCount === 2\n\
+                                    && result.uniqueMemberKindCount === 2\n\
+                                    && result.uniqueResultTypeCount === 3\n\
+                                    && Array.isArray(result.ownerTypeList)\n\
+                                    && result.ownerTypeList.length === result.ownerTypes.length\n\
+                                    && result.ownerTypeList.includes('Demo.ViewController')\n\
+                                    && result.ownerTypeList.includes('DemoUI.ViewController')\n\
+                                    && Array.isArray(result.memberKindList)\n\
+                                    && result.memberKindList.length === result.memberKinds.length\n\
+                                    && result.memberKindList.includes('getter')\n\
+                                    && result.memberKindList.includes('method')\n\
+                                    && Array.isArray(result.resultTypeList)\n\
+                                    && result.resultTypeList.length === result.resultTypes.length\n\
+                                    && result.resultTypeList.includes('Swift.String')\n\
+                                    && result.resultTypeList.includes('Demo.ViewController')\n\
+                                    && result.resultTypeList.includes('()')\n\
+                                    && Array.isArray(result.moduleNameList)\n\
+                                    && result.moduleNameList.length === result.moduleNames.length\n\
+                                    && result.moduleNameList.includes('Demo')\n\
+                                    && result.moduleNameList.includes('DemoUI')\n\
+                                    && Array.isArray(result.memberNameList)\n\
+                                    && result.memberNameList.length === result.memberNames.length\n\
+                                    && result.memberNameList.includes('title')\n\
+                                    && result.memberNameList.includes('shared')\n\
+                                    && result.memberNameList.includes('viewDidLoad')\n\
+                                    && Array.isArray(result.typeNameList)\n\
+                                    && result.typeNameList.length === result.types.length\n\
+                                    && result.typeNameList.includes('Demo.ViewController')\n\
+                                    && result.typeNameList.includes('DemoUI.ViewController')\n\
+                                    && Array.isArray(result.sourceKindList)\n\
+                                    && result.sourceKindList.length === result.sourceKinds.length\n\
+                                    && result.sourceKindList.includes('vtable')\n\
+                                    && result.sourceKindList.includes('override')\n\
+                                    && result.ownerTypes.some((entry) => entry.ownerTypeName === 'Demo.ViewController' && entry.count === 2)\n\
+                                    && result.ownerTypes.some((entry) => entry.ownerTypeName === 'DemoUI.ViewController' && entry.count === 1)\n\
+                                    && result.memberKinds.some((entry) => entry.memberKind === 'getter' && entry.count === 1)\n\
+                                    && result.memberKinds.some((entry) => entry.memberKind === 'method' && entry.count === 2 && entry.asyncCount === 1 && entry.throwingCount === 1)\n\
+                                    && result.resultTypes.some((entry) => entry.resultTypeName === 'Swift.String' && entry.count === 1)\n\
+                                    && result.resultTypes.some((entry) => entry.resultTypeName === 'Demo.ViewController' && entry.count === 1)\n\
+                                    && result.resultTypes.some((entry) => entry.resultTypeName === '()' && entry.count === 1)\n\
+                                    && result.moduleNames.some((entry) => entry.moduleName === 'Demo' && entry.count === 2 && entry.dispatchThunkCount === 1 && entry.demangledCount === 2)\n\
+                                    && result.moduleNames.some((entry) => entry.moduleName === 'DemoUI' && entry.count === 1 && entry.dispatchThunkCount === 0 && entry.demangledCount === 1)\n\
+                                    && result.memberNames.some((entry) => entry.memberName === 'title' && entry.count === 1 && entry.dispatchThunkCount === 0 && entry.demangledCount === 1)\n\
+                                    && result.memberNames.some((entry) => entry.memberName === 'shared' && entry.count === 1 && entry.dispatchThunkCount === 1 && entry.demangledCount === 1)\n\
+                                    && result.memberNames.some((entry) => entry.memberName === 'viewDidLoad' && entry.count === 1 && entry.dispatchThunkCount === 0 && entry.demangledCount === 1)\n\
+                                    && result.types.some((entry) => entry.typeName === 'Demo.ViewController' && entry.count === 2 && entry.dispatchThunkCount === 1)\n\
+                                    && result.types.some((entry) => entry.typeName === 'DemoUI.ViewController' && entry.count === 1 && entry.dispatchThunkCount === 0)\n\
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'vtable' && entry.count === 2 && entry.firstTypeName === 'Demo.ViewController' && entry.lastTypeName === 'Demo.ViewController')\n\
+                                    && result.sourceKinds.some((entry) => entry.sourceKind === 'override' && entry.count === 1 && entry.firstMemberName === 'viewDidLoad' && entry.lastMemberName === 'viewDidLoad');\n\
+                            } finally {\n\
+                                Swift.vtable = original;\n\
+                            }\n\
+                        })()"
+                    )
+                    .expect("synthetic swift vtable summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.vtable_info', moduleName: null, typeName: 'ViewController', memberName: 'viewDidLoad' }); return result.kind === 'swift.vtable_info' && result.typeName === 'ViewController' && result.memberName === 'viewDidLoad' && typeof result.hasVtableInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasSourceKind === 'boolean' && typeof result.isDispatchThunk === 'boolean' && ((result.vtableInfo === null && result.hasVtableInfo === false && result.resolved === false && result.resolvedTypeName === null && result.resolvedMemberName === null && result.resolvedModuleName === null && result.resolvedName === null && result.resolvedDemangledName === null && result.memberKey === null && result.name === null && result.moduleBase === null && result.demangledName === null && result.address === null && result.offsetHex === null && result.sourceKind === null && result.isDispatchThunk === false && result.text === '<null>') || (result.hasVtableInfo === true && result.resolved === true && typeof result.resolvedTypeName === 'string' && typeof result.resolvedMemberName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.resolvedName === 'string' && typeof result.vtableInfo.moduleBase === 'string' && typeof result.vtableInfo.memberName === 'string' && typeof result.vtableInfo.offsetHex === 'string' && typeof result.vtableInfo.isDispatchThunk === 'boolean' && result.memberKey === result.vtableInfo.memberKey && result.name === result.vtableInfo.name && result.moduleBase === result.vtableInfo.moduleBase && result.demangledName === result.vtableInfo.demangledName && result.address === result.vtableInfo.address && result.offsetHex === result.vtableInfo.offsetHex && result.hasSourceKind === (result.vtableInfo.hasSourceKind === true) && result.sourceKind === result.vtableInfo.sourceKind && result.isDispatchThunk === (result.vtableInfo.isDispatchThunk === true) && result.resolvedTypeName === result.vtableInfo.typeName && result.resolvedMemberName === result.vtableInfo.memberName && result.resolvedModuleName === result.vtableInfo.moduleName && result.resolvedName === result.vtableInfo.name && result.resolvedDemangledName === result.vtableInfo.demangledName && result.text === result.vtableInfo.text)); })()")
                     .expect("agent swift vtable info result"),
                 "true"
