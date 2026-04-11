@@ -10038,6 +10038,92 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.dyldInfo;
+                            Native.dyldInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    command: 0x80000022,
+                                    commandName: 'LC_DYLD_INFO_ONLY',
+                                    rebaseOff: 0x100n,
+                                    rebaseSize: 0x20n,
+                                    bindOff: 0x140n,
+                                    bindSize: 0x10n,
+                                    weakBindOff: 0x0n,
+                                    weakBindSize: 0x0n,
+                                    lazyBindOff: 0x200n,
+                                    lazyBindSize: 0x18n,
+                                    exportOff: 0x300n,
+                                    exportSize: 0x30n
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dyld_info', moduleName: 'Demo' });
+                                return result.totalRegionCount === 5
+                                    && result.regionCount === 4
+                                    && result.nonEmptyRegionCount === 4
+                                    && result.hasRegions === true
+                                    && result.commandRequiresDyld === true
+                                    && result.hasRebaseInfo === true
+                                    && result.hasBindInfo === true
+                                    && result.hasWeakBindInfo === false
+                                    && result.hasLazyBindInfo === true
+                                    && result.hasExportInfo === true
+                                    && result.hasAnyBindInfo === true
+                                    && result.firstRegionName === 'rebase'
+                                    && result.lastRegionName === 'export'
+                                    && result.largestRegionName === 'export'
+                                    && result.largestRegionSizeHex === '0x30'
+                                    && result.totalSizeHex === '0x78'
+                                    && Array.isArray(result.nonEmptyRegionNames)
+                                    && Array.isArray(result.nonEmptyRegionList)
+                                    && result.nonEmptyRegionNames.join('\n') === 'rebase\nbind\nlazyBind\nexport'
+                                    && result.nonEmptyRegionList.join('\n') === 'rebase\nbind\nlazyBind\nexport'
+                                    && Array.isArray(result.regions)
+                                    && result.regions.length === 5
+                                    && result.regions.map((entry) => entry.name).join('\n') === 'rebase\nbind\nweakBind\nlazyBind\nexport'
+                                    && result.regions[0].name === 'rebase'
+                                    && result.regions[0].offsetHex === '0x100'
+                                    && result.regions[0].sizeHex === '0x20'
+                                    && result.regions[0].endHex === '0x120'
+                                    && result.regions[0].hasData === true
+                                    && result.regions[0].isEmpty === false
+                                    && result.regions[1].name === 'bind'
+                                    && result.regions[1].offsetHex === '0x140'
+                                    && result.regions[1].sizeHex === '0x10'
+                                    && result.regions[1].endHex === '0x150'
+                                    && result.regions[1].hasData === true
+                                    && result.regions[1].isEmpty === false
+                                    && result.regions[2].name === 'weakBind'
+                                    && result.regions[2].offsetHex === '0x0'
+                                    && result.regions[2].sizeHex === '0x0'
+                                    && result.regions[2].endHex === '0x0'
+                                    && result.regions[2].hasData === false
+                                    && result.regions[2].isEmpty === true
+                                    && result.regions[3].name === 'lazyBind'
+                                    && result.regions[3].offsetHex === '0x200'
+                                    && result.regions[3].sizeHex === '0x18'
+                                    && result.regions[3].endHex === '0x218'
+                                    && result.regions[3].hasData === true
+                                    && result.regions[3].isEmpty === false
+                                    && result.regions[4].name === 'export'
+                                    && result.regions[4].offsetHex === '0x300'
+                                    && result.regions[4].sizeHex === '0x30'
+                                    && result.regions[4].endHex === '0x330'
+                                    && result.regions[4].hasData === true
+                                    && result.regions[4].isEmpty === false;
+                            } finally {
+                                Native.dyldInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native dyld info summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.linkedit', moduleName: main.image.name }); return result.kind === 'native.linkedit' && typeof result.hasLinkedit === 'boolean' && typeof result.resolved === 'boolean' && typeof result.tableCount === 'number' && typeof result.hasTables === 'boolean' && typeof result.hasSymtab === 'boolean' && typeof result.hasStrtab === 'boolean' && typeof result.hasIndirectSymbols === 'boolean' && ((result.linkedit === null && result.hasLinkedit === false && result.resolved === false && result.moduleBase === null && result.vmaddr === null && result.vmEnd === null && result.vmsizeHex === null && result.fileoffHex === null && result.filesizeHex === null && result.fileEndHex === null && result.computedBase === null && result.computedEnd === null && result.symoffHex === null && result.nsyms === null && result.symtabAddress === null && result.stroffHex === null && result.strsizeHex === null && result.strtabAddress === null && result.indirectsymoffHex === null && result.nindirectsyms === null && result.indirectsymAddress === null && result.tableCount === 0 && result.hasTables === false && Array.isArray(result.tableNames) && result.tableNames.length === 0 && Array.isArray(result.tableNameList) && result.tableNameList.length === 0 && Array.isArray(result.nonEmptyTableNames) && result.nonEmptyTableNames.length === 0 && Array.isArray(result.nonEmptyTableNameList) && result.nonEmptyTableNameList.length === 0 && result.firstTableName === null && result.lastTableName === null && Array.isArray(result.tables) && result.tables.length === 0 && result.hasSymtab === false && result.hasStrtab === false && result.hasIndirectSymbols === false && result.text === '<null>') || (typeof result.moduleBase === 'string' && typeof result.vmaddr === 'string' && typeof result.vmEnd === 'string' && typeof result.vmsizeHex === 'string' && typeof result.fileoffHex === 'string' && typeof result.filesizeHex === 'string' && typeof result.fileEndHex === 'string' && typeof result.computedBase === 'string' && typeof result.computedEnd === 'string' && (result.symoffHex === null || typeof result.symoffHex === 'string') && (result.nsyms === null || typeof result.nsyms === 'number') && (result.symtabAddress === null || typeof result.symtabAddress === 'string') && (result.stroffHex === null || typeof result.stroffHex === 'string') && (result.strsizeHex === null || typeof result.strsizeHex === 'string') && (result.strtabAddress === null || typeof result.strtabAddress === 'string') && (result.indirectsymoffHex === null || typeof result.indirectsymoffHex === 'string') && (result.nindirectsyms === null || typeof result.nindirectsyms === 'number') && (result.indirectsymAddress === null || typeof result.indirectsymAddress === 'string') && typeof result.linkedit.vmaddr === 'string' && typeof result.linkedit.vmsizeHex === 'string' && typeof result.linkedit.vmEnd === 'string' && typeof result.linkedit.fileoffHex === 'string' && typeof result.linkedit.filesizeHex === 'string' && typeof result.linkedit.fileEndHex === 'string' && typeof result.linkedit.computedBase === 'string' && typeof result.linkedit.computedEnd === 'string' && typeof result.linkedit.hasSymtab === 'boolean' && (result.linkedit.symtabAddress === null || typeof result.linkedit.symtabAddress === 'string') && typeof result.linkedit.hasStrtab === 'boolean' && (result.linkedit.strtabAddress === null || typeof result.linkedit.strtabAddress === 'string') && typeof result.linkedit.hasIndirectSymbols === 'boolean' && (result.linkedit.indirectsymAddress === null || typeof result.linkedit.indirectsymAddress === 'string') && typeof result.linkedit.totalTableCount === 'number' && typeof result.linkedit.tableCount === 'number' && typeof result.linkedit.hasTables === 'boolean' && result.hasLinkedit === true && result.resolved === true && result.moduleBase === result.linkedit.moduleBase && result.vmaddr === result.linkedit.vmaddr && result.vmEnd === result.linkedit.vmEnd && result.vmsizeHex === result.linkedit.vmsizeHex && result.fileoffHex === result.linkedit.fileoffHex && result.filesizeHex === result.linkedit.filesizeHex && result.fileEndHex === result.linkedit.fileEndHex && result.computedBase === result.linkedit.computedBase && result.computedEnd === result.linkedit.computedEnd && result.symoffHex === result.linkedit.symoffHex && result.nsyms === result.linkedit.nsyms && result.symtabAddress === result.linkedit.symtabAddress && result.stroffHex === result.linkedit.stroffHex && result.strsizeHex === result.linkedit.strsizeHex && result.strtabAddress === result.linkedit.strtabAddress && result.indirectsymoffHex === result.linkedit.indirectsymoffHex && result.nindirectsyms === result.linkedit.nindirectsyms && result.indirectsymAddress === result.linkedit.indirectsymAddress && result.tableCount === result.linkedit.tableCount && result.hasTables === (result.linkedit.hasTables === true) && Array.isArray(result.tableNames) && result.tableNames.length === result.linkedit.tableNames.length && result.tableNames.join('\\n') === result.linkedit.tableNames.join('\\n') && Array.isArray(result.tableNameList) && result.tableNameList.length === result.linkedit.tableNameList.length && result.tableNameList.join('\\n') === result.linkedit.tableNameList.join('\\n') && Array.isArray(result.nonEmptyTableNames) && result.nonEmptyTableNames.length === result.linkedit.nonEmptyTableNames.length && result.nonEmptyTableNames.join('\\n') === result.linkedit.nonEmptyTableNames.join('\\n') && Array.isArray(result.nonEmptyTableNameList) && result.nonEmptyTableNameList.length === result.linkedit.nonEmptyTableNameList.length && result.nonEmptyTableNameList.join('\\n') === result.linkedit.nonEmptyTableNameList.join('\\n') && result.firstTableName === result.linkedit.firstTableName && result.lastTableName === result.linkedit.lastTableName && Array.isArray(result.tables) && result.tables.length === result.linkedit.tables.length && JSON.stringify(result.tables) === JSON.stringify(result.linkedit.tables) && result.hasSymtab === (result.linkedit.hasSymtab === true) && result.hasStrtab === (result.linkedit.hasStrtab === true) && result.hasIndirectSymbols === (result.linkedit.hasIndirectSymbols === true) && Array.isArray(result.linkedit.tableNames) && Array.isArray(result.linkedit.tableNameList) && Array.isArray(result.linkedit.nonEmptyTableNames) && Array.isArray(result.linkedit.nonEmptyTableNameList) && (result.linkedit.firstTableName === null || typeof result.linkedit.firstTableName === 'string') && (result.linkedit.lastTableName === null || typeof result.linkedit.lastTableName === 'string') && Array.isArray(result.linkedit.tables) && result.linkedit.totalTableCount === result.linkedit.tables.length && (result.linkedit.tables.length === 0 || (typeof result.linkedit.tables[0].name === 'string' && (result.linkedit.tables[0].offsetHex === null || typeof result.linkedit.tables[0].offsetHex === 'string') && (result.linkedit.tables[0].address === null || typeof result.linkedit.tables[0].address === 'string') && (result.linkedit.tables[0].count === null || typeof result.linkedit.tables[0].count === 'number') && (result.linkedit.tables[0].sizeHex === null || typeof result.linkedit.tables[0].sizeHex === 'string') && typeof result.linkedit.tables[0].isPresent === 'boolean')) && result.text === result.linkedit.text)); })()"
                     )
                     .expect("agent native linkedit result"),
