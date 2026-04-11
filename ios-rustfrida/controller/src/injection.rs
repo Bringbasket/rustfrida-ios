@@ -2833,12 +2833,48 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         .collect::<Vec<_>>();
     let preferred_conflict_backend_pair = conflict_backend_pairs.first().cloned();
     let has_preferred_conflict_backend_pair = preferred_conflict_backend_pair.is_some();
-    let backend_adaptation_step_chain = if has_preferred_conflict_backend_pair {
+    let topology_requires_conflict_resolution = matches!(
+        topology_kind,
+        "controller-loaded-only"
+            | "target-loaded-only"
+            | "shared-plus-controller-loaded"
+            | "shared-plus-target-loaded"
+            | "split-loaded"
+            | "shared-and-split-loaded"
+    );
+    let preferred_conflict_resolution_plan = if topology_requires_conflict_resolution
+        && conflict_resolution_group_key != "none"
+        && !preferred_conflict_resolution_chain.is_empty()
+    {
+        Some(json!({
+            "suggestedGroupKey": conflict_resolution_group_key,
+            "resolutionReason": conflict_resolution_reason,
+            "templates": conflict_resolution_templates.clone(),
+            "templateCount": conflict_resolution_template_count.clone(),
+            "commandJsonTemplates": conflict_resolution_command_json_templates.clone(),
+            "commandJsonTemplateCount": conflict_resolution_command_json_template_count.clone(),
+            "commandJsonEligibleTemplateCount": conflict_resolution_command_json_templates
+                .as_array()
+                .map(|items| command_json_eligible_count(items))
+                .unwrap_or(0),
+            "resolutionChain": preferred_conflict_resolution_chain.clone(),
+            "resolutionChainCount": preferred_conflict_resolution_chain.len(),
+            "source": if has_preferred_conflict_backend_pair {
+                "conflict-backend-pair"
+            } else {
+                "topology"
+            },
+        }))
+    } else {
+        None
+    };
+    let has_preferred_conflict_resolution_plan = preferred_conflict_resolution_plan.is_some();
+    let backend_adaptation_step_chain = if has_preferred_conflict_resolution_plan {
         preferred_conflict_resolution_step_chain.clone()
     } else {
         preferred_group_step_chain.clone()
     };
-    let backend_adaptation_step_chain_source = if has_preferred_conflict_backend_pair {
+    let backend_adaptation_step_chain_source = if has_preferred_conflict_resolution_plan {
         "preferred-conflict-resolution-chain"
     } else if preferred_group_key == "none" || backend_adaptation_step_chain.is_empty() {
         "none"
@@ -2847,7 +2883,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
     };
     let backend_adaptation_next_step = backend_adaptation_step_chain.first().cloned().unwrap_or(Value::Null);
     let backend_adaptation_active_step = backend_adaptation_step_chain.first().cloned().unwrap_or(Value::Null);
-    let backend_adaptation_execution_kind = if has_preferred_conflict_backend_pair {
+    let backend_adaptation_execution_kind = if has_preferred_conflict_resolution_plan {
         "conflict-resolution"
     } else if preferred_group_key == "none" || backend_adaptation_step_chain.is_empty() {
         "none"
@@ -2983,7 +3019,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             "requiresPreflight": requires_preflight,
             "requiresCleanupPhase": requires_cleanup_phase,
             "inlineInstallReadyNow": inline_install_ready_now,
-            "retryBudget": if has_preferred_conflict_backend_pair {
+            "retryBudget": if has_preferred_conflict_resolution_plan {
                 json!(preferred_conflict_resolution_total_retry_budget)
             } else {
                 backend_adaptation_step_chain
@@ -3789,74 +3825,74 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .as_ref()
             .and_then(|item| item.get("primaryCommandJsonTemplateEligible"))
             .cloned(),
-        "preferredConflictResolutionGroupKey": preferred_conflict_backend_pair
+        "preferredConflictResolutionGroupKey": preferred_conflict_resolution_plan
             .as_ref()
             .and_then(|item| item.get("suggestedGroupKey"))
             .cloned(),
-        "preferredConflictResolutionReason": preferred_conflict_backend_pair
+        "preferredConflictResolutionReason": preferred_conflict_resolution_plan
             .as_ref()
             .and_then(|item| item.get("resolutionReason"))
             .cloned(),
-        "preferredConflictResolutionTemplates": preferred_conflict_backend_pair
+        "preferredConflictResolutionTemplates": preferred_conflict_resolution_plan
             .as_ref()
             .and_then(|item| item.get("templates"))
             .cloned(),
-        "preferredConflictResolutionTemplateCount": preferred_conflict_backend_pair
+        "preferredConflictResolutionTemplateCount": preferred_conflict_resolution_plan
             .as_ref()
             .and_then(|item| item.get("templateCount"))
             .cloned(),
-        "preferredConflictResolutionCommandJsonTemplates": preferred_conflict_backend_pair
+        "preferredConflictResolutionCommandJsonTemplates": preferred_conflict_resolution_plan
             .as_ref()
             .and_then(|item| item.get("commandJsonTemplates"))
             .cloned(),
-        "preferredConflictResolutionCommandJsonTemplateCount": preferred_conflict_backend_pair
+        "preferredConflictResolutionCommandJsonTemplateCount": preferred_conflict_resolution_plan
             .as_ref()
             .and_then(|item| item.get("commandJsonTemplateCount"))
             .cloned(),
-        "preferredConflictResolutionCommandJsonEligibleTemplateCount": preferred_conflict_backend_pair
+        "preferredConflictResolutionCommandJsonEligibleTemplateCount": preferred_conflict_resolution_plan
             .as_ref()
             .and_then(|item| item.get("commandJsonEligibleTemplateCount"))
             .cloned(),
-        "preferredConflictResolutionChain": preferred_conflict_backend_pair
+        "preferredConflictResolutionChain": preferred_conflict_resolution_plan
             .as_ref()
             .and_then(|item| item.get("resolutionChain"))
             .cloned(),
-        "preferredConflictResolutionChainCount": preferred_conflict_backend_pair
+        "preferredConflictResolutionChainCount": preferred_conflict_resolution_plan
             .as_ref()
             .and_then(|item| item.get("resolutionChainCount"))
             .cloned(),
-        "preferredConflictResolutionPhaseOrder": if !has_preferred_conflict_backend_pair
+        "preferredConflictResolutionPhaseOrder": if !has_preferred_conflict_resolution_plan
             || preferred_conflict_resolution_phase_order.is_empty()
         {
             Value::Null
         } else {
             json!(preferred_conflict_resolution_phase_order)
         },
-        "preferredConflictResolutionRetryableStepCount": if !has_preferred_conflict_backend_pair
+        "preferredConflictResolutionRetryableStepCount": if !has_preferred_conflict_resolution_plan
             || preferred_conflict_resolution_chain.is_empty()
         {
             Value::Null
         } else {
             json!(preferred_conflict_resolution_retryable_step_count)
         },
-        "preferredConflictResolutionTotalRetryBudget": if !has_preferred_conflict_backend_pair
+        "preferredConflictResolutionTotalRetryBudget": if !has_preferred_conflict_resolution_plan
             || preferred_conflict_resolution_chain.is_empty()
         {
             Value::Null
         } else {
             json!(preferred_conflict_resolution_total_retry_budget)
         },
-        "preferredConflictResolutionTerminationPolicy": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionTerminationPolicy": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_termination_policy
         } else {
             Value::Null
         },
-        "preferredConflictResolutionRouting": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionRouting": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing.clone()
         } else {
             Value::Null
         },
-        "preferredConflictResolutionSuggestedEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionSuggestedEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("suggestedEscalationKey")
                 .cloned()
@@ -3864,7 +3900,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3874,7 +3910,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3884,7 +3920,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultPhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultPhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3894,7 +3930,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3904,7 +3940,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultTemplateCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultTemplateCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3914,7 +3950,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultTemplates": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultTemplates": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3924,7 +3960,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultTemplate": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultTemplate": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3934,7 +3970,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultCommandJsonTemplateCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultCommandJsonTemplateCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3944,7 +3980,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3954,7 +3990,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultCommandJsonTemplates": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultCommandJsonTemplates": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3964,7 +4000,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultCommandJsonTemplate": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultCommandJsonTemplate": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3974,7 +4010,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultCommandJsonTemplateCommand": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultCommandJsonTemplateCommand": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3984,7 +4020,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultCommandJsonTemplateKind": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultCommandJsonTemplateKind": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -3995,7 +4031,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultCommandJsonTemplatePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultCommandJsonTemplatePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4006,7 +4042,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultCommandJsonTemplateErrorCode": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultCommandJsonTemplateErrorCode": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4017,7 +4053,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionDefaultCommandJsonTemplateEligible": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionDefaultCommandJsonTemplateEligible": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4028,7 +4064,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4038,7 +4074,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseFirst": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseFirst": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4048,7 +4084,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseFirstName": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseFirstName": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4059,7 +4095,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseLast": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseLast": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4069,7 +4105,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseLastName": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseLastName": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4080,7 +4116,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolve": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolve": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4090,7 +4126,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveIndex": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveIndex": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4100,7 +4136,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveIndexEntries": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveIndexEntries": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4110,7 +4146,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4120,7 +4156,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveDefaultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveDefaultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4130,7 +4166,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExamples": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExamples": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4140,7 +4176,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveKnownCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveKnownCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4150,7 +4186,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveIndexCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveIndexCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4160,7 +4196,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveDefaultReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveDefaultReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4170,7 +4206,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveDefaultMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveDefaultMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4180,7 +4216,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveDefaultUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveDefaultUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4190,7 +4226,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveDefaultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveDefaultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4200,7 +4236,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveDefaultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveDefaultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4210,7 +4246,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleKnownErrorCode": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleKnownErrorCode": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4220,7 +4256,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleKnownResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleKnownResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4230,7 +4266,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleKnownResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleKnownResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4240,7 +4276,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleKnownMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleKnownMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4250,7 +4286,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleKnownUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleKnownUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4260,7 +4296,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleKnownReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleKnownReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4270,7 +4306,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleKnownEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleKnownEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4280,7 +4316,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleKnownEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleKnownEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4290,7 +4326,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleKnownResultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleKnownResultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4300,7 +4336,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleKnownResultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4310,7 +4346,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleMissingResultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleMissingResultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4320,7 +4356,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleMissingResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleMissingResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4330,7 +4366,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleMissingResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleMissingResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4340,7 +4376,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleMissingMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleMissingMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4350,7 +4386,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleMissingUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleMissingUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4360,7 +4396,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleMissingReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleMissingReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4371,7 +4407,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleMissingEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleMissingEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4381,7 +4417,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleMissingEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleMissingEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4391,7 +4427,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleMissingResultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4401,7 +4437,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyErrorCode": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyErrorCode": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4411,7 +4447,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyInstallFailure": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyInstallFailure": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4421,7 +4457,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyBlockedBy": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyBlockedBy": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4431,7 +4467,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyBlockedBySource": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4441,7 +4477,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyIsBlocked": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyIsBlocked": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4451,7 +4487,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyAvailable": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyAvailable": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4461,7 +4497,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4471,7 +4507,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4481,7 +4517,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4491,7 +4527,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4501,7 +4537,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4511,7 +4547,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyWouldUsePath": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4521,7 +4557,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4531,7 +4567,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4541,7 +4577,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyResultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4551,7 +4587,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4561,7 +4597,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveKnownResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveKnownResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4571,7 +4607,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveKnownResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveKnownResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4581,7 +4617,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveKnownEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveKnownEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4591,7 +4627,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveKnownMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveKnownMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4601,7 +4637,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveKnownUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveKnownUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4611,7 +4647,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveKnownReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveKnownReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4621,7 +4657,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveKnownEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveKnownEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4631,7 +4667,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveKnownEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveKnownEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4641,7 +4677,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveMissingResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveMissingResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4651,7 +4687,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveMissingResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveMissingResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4661,7 +4697,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveMissingEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveMissingEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4671,7 +4707,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveMissingMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveMissingMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4681,7 +4717,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveMissingUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveMissingUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4691,7 +4727,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveMissingReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveMissingReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4701,7 +4737,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveMissingEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveMissingEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4711,7 +4747,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionResolveMissingEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionResolveMissingEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4721,7 +4757,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyErrorCode": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyErrorCode": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4731,7 +4767,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlySourceErrorCode": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlySourceErrorCode": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4741,7 +4777,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyBlockedBy": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyBlockedBy": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4751,7 +4787,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyBlockedBySource": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyBlockedBySource": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4761,7 +4797,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyIsBlocked": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyIsBlocked": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4771,7 +4807,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4781,7 +4817,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyAvailable": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyAvailable": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4791,7 +4827,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4801,7 +4837,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4811,7 +4847,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4821,7 +4857,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4831,7 +4867,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4841,7 +4877,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyWouldUsePath": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyWouldUsePath": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4851,7 +4887,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyWouldUsePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyWouldUsePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4861,7 +4897,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4871,7 +4907,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4882,7 +4918,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResultMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResultMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4893,7 +4929,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResultUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResultUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4904,7 +4940,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResultReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResultReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4915,7 +4951,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4926,7 +4962,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4937,7 +4973,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveBlockedBy": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveBlockedBy": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4947,7 +4983,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveBlockedBySource": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveBlockedBySource": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4957,7 +4993,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveIsBlocked": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveIsBlocked": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4967,7 +5003,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveAvailable": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveAvailable": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4977,7 +5013,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4987,7 +5023,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -4997,7 +5033,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5007,7 +5043,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5017,7 +5053,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5027,7 +5063,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveWouldUsePath": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveWouldUsePath": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5037,7 +5073,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5047,7 +5083,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5057,7 +5093,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveResultMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveResultMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5067,7 +5103,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveResultUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveResultUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5077,7 +5113,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveResultReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveResultReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5087,7 +5123,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveResultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveResultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5097,7 +5133,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5107,7 +5143,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveKnownCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveKnownCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5117,7 +5153,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolve": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolve": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5127,7 +5163,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveIndex": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveIndex": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5137,7 +5173,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveIndexEntries": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveIndexEntries": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5147,7 +5183,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5157,7 +5193,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveDefaultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveDefaultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5167,7 +5203,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExamples": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExamples": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5177,7 +5213,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveIndexCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveIndexCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5187,7 +5223,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveDefaultReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveDefaultReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5197,7 +5233,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveDefaultMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveDefaultMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5207,7 +5243,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveDefaultUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveDefaultUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5217,7 +5253,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveDefaultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveDefaultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5227,7 +5263,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5237,7 +5273,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleKnownPhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleKnownPhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5247,7 +5283,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleKnownResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleKnownResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5257,7 +5293,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleKnownResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleKnownResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5267,7 +5303,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleKnownMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleKnownMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5277,7 +5313,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleKnownUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleKnownUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5287,7 +5323,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleKnownResultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5297,7 +5333,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleKnownEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleKnownEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5307,7 +5343,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleKnownEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleKnownEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5317,7 +5353,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5327,7 +5363,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleKnownReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleKnownReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5338,7 +5374,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleMissingResultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleMissingResultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5348,7 +5384,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleMissingResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleMissingResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5358,7 +5394,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleMissingResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleMissingResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5368,7 +5404,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleMissingMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleMissingMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5378,7 +5414,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleMissingUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleMissingUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5388,7 +5424,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleMissingReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleMissingReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5398,7 +5434,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleMissingEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleMissingEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5408,7 +5444,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleMissingEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleMissingEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5418,7 +5454,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5428,7 +5464,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlySourceErrorCode": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5438,7 +5474,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyInstallFailure": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyInstallFailure": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5448,7 +5484,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyPhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5458,7 +5494,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBy": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5468,7 +5504,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyBlockedBySource": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5478,7 +5514,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyIsBlocked": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5488,7 +5524,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyAvailable": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5498,7 +5534,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5508,7 +5544,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5518,7 +5554,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5528,7 +5564,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5538,7 +5574,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5548,7 +5584,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyWouldUsePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5558,7 +5594,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5568,7 +5604,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5578,7 +5614,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5588,7 +5624,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveExampleQueryOnlyResultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5598,7 +5634,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveKnownResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveKnownResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5608,7 +5644,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveKnownResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveKnownResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5618,7 +5654,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveKnownEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveKnownEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5628,7 +5664,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveKnownMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveKnownMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5638,7 +5674,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveKnownUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveKnownUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5648,7 +5684,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveKnownReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveKnownReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5658,7 +5694,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveKnownEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveKnownEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5668,7 +5704,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveKnownEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveKnownEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5678,7 +5714,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveMissingResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveMissingResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5688,7 +5724,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveMissingResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveMissingResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5698,7 +5734,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveMissingEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveMissingEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5708,7 +5744,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveMissingMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveMissingMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5718,7 +5754,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveMissingUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveMissingUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5728,7 +5764,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveMissingReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveMissingReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5738,7 +5774,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveMissingEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveMissingEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5748,7 +5784,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseResolveMissingEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseResolveMissingEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5758,7 +5794,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveSourceErrorCode": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5768,7 +5804,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolvePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolvePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5778,7 +5814,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveBlockedBy": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5788,7 +5824,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveBlockedBySource": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5798,7 +5834,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveIsBlocked": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5808,7 +5844,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveAvailable": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveAvailable": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5818,7 +5854,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5828,7 +5864,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5838,7 +5874,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5848,7 +5884,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5858,7 +5894,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5868,7 +5904,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveWouldUsePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5878,7 +5914,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveResult": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveResult": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5888,7 +5924,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveResultEffective": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveResultEffective": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5898,7 +5934,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveResultMatched": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveResultMatched": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5908,7 +5944,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveResultUsedDefault": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveResultUsedDefault": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5918,7 +5954,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveResultReason": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveResultReason": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5928,7 +5964,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveResultEffectivePhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5938,7 +5974,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionQueryOnlyPhaseResolveResultEffectiveEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5948,7 +5984,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryCommandJsonTemplateCommand": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryCommandJsonTemplateCommand": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5958,7 +5994,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQuery": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQuery": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5968,7 +6004,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryErrorCodeCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryErrorCodeCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5979,7 +6015,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryEscalationKeyCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryEscalationKeyCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -5990,7 +6026,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryEscalationKeys": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryEscalationKeys": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6001,7 +6037,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryPrimaryEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryPrimaryEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6014,7 +6050,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryTemplateCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryTemplateCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6024,7 +6060,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryTemplates": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryTemplates": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6035,7 +6071,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryTemplate": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryTemplate": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6048,7 +6084,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryCommandJsonTemplateCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryCommandJsonTemplateCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6059,7 +6095,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6070,7 +6106,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryCommandJsonTemplates": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryCommandJsonTemplates": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6081,7 +6117,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryCommandJsonTemplate": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryCommandJsonTemplate": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6094,7 +6130,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightCommandJsonTemplateCommand": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightCommandJsonTemplateCommand": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6104,7 +6140,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryCommandJsonTemplateKind": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryCommandJsonTemplateKind": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6118,7 +6154,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6132,7 +6168,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflight": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflight": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6142,7 +6178,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightErrorCodeCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightErrorCodeCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6153,7 +6189,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightEscalationKeyCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightEscalationKeyCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6164,7 +6200,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightEscalationKeys": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightEscalationKeys": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6175,7 +6211,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightPrimaryEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightPrimaryEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6188,7 +6224,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightTemplateCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightTemplateCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6198,7 +6234,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightTemplates": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightTemplates": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6209,7 +6245,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightTemplate": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightTemplate": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6222,7 +6258,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightCommandJsonTemplateCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightCommandJsonTemplateCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6233,7 +6269,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6244,7 +6280,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightCommandJsonTemplates": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightCommandJsonTemplates": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6255,7 +6291,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightCommandJsonTemplate": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightCommandJsonTemplate": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6268,7 +6304,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightCommandJsonTemplateKind": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightCommandJsonTemplateKind": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6282,7 +6318,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhasePreflightCommandJsonTemplateEligible": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhasePreflightCommandJsonTemplateEligible": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6296,7 +6332,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanup": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanup": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6306,7 +6342,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupErrorCodeCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupErrorCodeCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6317,7 +6353,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupErrorCodes": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupErrorCodes": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6328,7 +6364,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupEscalationKeyCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupEscalationKeyCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6339,7 +6375,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupEscalationKeys": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupEscalationKeys": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6350,7 +6386,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupPrimaryEscalationKey": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupPrimaryEscalationKey": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6363,7 +6399,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupTemplateCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupTemplateCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6373,7 +6409,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupTemplates": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupTemplates": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6384,7 +6420,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupTemplate": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupTemplate": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6397,7 +6433,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6408,7 +6444,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupCommandJsonTemplates": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupCommandJsonTemplates": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6419,7 +6455,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupCommandJsonTemplate": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupCommandJsonTemplate": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6432,7 +6468,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupCommandJsonTemplateCommand": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupCommandJsonTemplateCommand": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6442,7 +6478,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupCommandJsonTemplateKind": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupCommandJsonTemplateKind": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6456,7 +6492,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionPhaseCleanupCommandJsonTemplateEligible": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionPhaseCleanupCommandJsonTemplateEligible": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
@@ -6470,37 +6506,37 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStep": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStep": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.clone()
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepId": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepId": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("id").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepSource": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepSource": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("source").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepCommand": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepCommand": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("command").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepPhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepPhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("phase").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepKind": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepKind": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("kind").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepCommandJsonEligible": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepCommandJsonEligible": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step
                 .get("commandJsonEligible")
                 .cloned()
@@ -6508,7 +6544,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepCommandJsonTemplate": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepCommandJsonTemplate": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step
                 .get("commandJsonTemplate")
                 .cloned()
@@ -6516,7 +6552,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepCommandJsonTemplateCommand": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepCommandJsonTemplateCommand": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step
                 .get("commandJsonTemplate")
                 .and_then(|value| value.get("command"))
@@ -6525,7 +6561,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepCommandJsonTemplateKind": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepCommandJsonTemplateKind": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step
                 .get("commandJsonTemplate")
                 .and_then(|value| value.get("kind"))
@@ -6534,122 +6570,122 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepRetryable": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepRetryable": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("retryable").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepMaxSuggestedRetries": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepMaxSuggestedRetries": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("maxSuggestedRetries").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepRetryDelayHintMs": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepRetryDelayHintMs": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("retryDelayHintMs").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepTimeoutHintMs": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepTimeoutHintMs": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("timeoutHintMs").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepTimeoutAction": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepTimeoutAction": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("timeoutAction").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepErrorCode": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepErrorCode": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("errorCode").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepTimeoutErrorCode": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepTimeoutErrorCode": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("timeoutErrorCode").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepRisk": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepRisk": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("risk").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepPlaceholderCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepPlaceholderCount": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("placeholderCount").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepPlaceholders": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepPlaceholders": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("placeholders").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepCliArgs": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepCliArgs": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("cliArgs").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepReadyToRun": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepReadyToRun": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("readyToRun").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionNextStepRequiresFallback": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionNextStepRequiresFallback": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_next_step.get("requiresFallback").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionStepChainSource": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionStepChainSource": if has_preferred_conflict_resolution_plan {
             json!("preferred-conflict-resolution-chain")
         } else {
             Value::Null
         },
-        "preferredConflictResolutionStepChainLimit": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionStepChainLimit": if has_preferred_conflict_resolution_plan {
             json!(preferred_conflict_resolution_step_chain.len())
         } else {
             Value::Null
         },
-        "preferredConflictResolutionStepChainCount": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionStepChainCount": if has_preferred_conflict_resolution_plan {
             json!(preferred_conflict_resolution_step_chain.len())
         } else {
             Value::Null
         },
-        "preferredConflictResolutionStepChain": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionStepChain": if has_preferred_conflict_resolution_plan {
             json!(preferred_conflict_resolution_step_chain)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionStepChainTruncated": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionStepChainTruncated": if has_preferred_conflict_resolution_plan {
             json!(false)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionActiveStep": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionActiveStep": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_active_step.clone()
         } else {
             Value::Null
         },
-        "preferredConflictResolutionActiveStepSource": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionActiveStepSource": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_active_step.get("source").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionActiveStepId": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionActiveStepId": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_active_step.get("id").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionActiveStepCommand": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionActiveStepCommand": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_active_step.get("command").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionActiveStepPhase": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionActiveStepPhase": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_active_step.get("phase").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionActiveStepCommandJsonEligible": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionActiveStepCommandJsonEligible": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_active_step
                 .get("commandJsonEligible")
                 .cloned()
@@ -6657,7 +6693,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionActiveStepCommandJsonTemplate": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionActiveStepCommandJsonTemplate": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_active_step
                 .get("commandJsonTemplate")
                 .cloned()
@@ -6665,7 +6701,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionActiveStepCommandJsonTemplateCommand": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionActiveStepCommandJsonTemplateCommand": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_active_step
                 .get("commandJsonTemplate")
                 .and_then(|value| value.get("command"))
@@ -6674,7 +6710,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionActiveStepCommandJsonTemplateKind": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionActiveStepCommandJsonTemplateKind": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_active_step
                 .get("commandJsonTemplate")
                 .and_then(|value| value.get("kind"))
@@ -6683,12 +6719,12 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
-        "preferredConflictResolutionActiveStepRetryable": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionActiveStepRetryable": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_active_step.get("retryable").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
         },
-        "preferredConflictResolutionActiveStepErrorCode": if has_preferred_conflict_backend_pair {
+        "preferredConflictResolutionActiveStepErrorCode": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_active_step.get("errorCode").cloned().unwrap_or(Value::Null)
         } else {
             Value::Null
@@ -12157,10 +12193,7 @@ fn parse_hook_effective_blocked_details(message: &str) -> ParsedHookEffectiveBlo
         coexistence_layer_required: parse_error_field(message, "coexistenceLayerRequired"),
         coexistence_layer_status: parse_error_field(message, "coexistenceLayerStatus"),
         coexistence_layer_preferred_phase: parse_error_field(message, "coexistenceLayerPreferredPhase"),
-        coexistence_layer_recommended_action_key: parse_error_field(
-            message,
-            "coexistenceLayerRecommendedActionKey",
-        ),
+        coexistence_layer_recommended_action_key: parse_error_field(message, "coexistenceLayerRecommendedActionKey"),
         coexistence_layer_summary,
         fallback_action_key,
         fallback_step_id,
@@ -12495,8 +12528,7 @@ fn failure_diagnostics_to_json(
             backend_pressure = normalize_hook_backend_pressure(parsed.backend_pressure);
             coexistence_layer_required = parse_bool_token(parsed.coexistence_layer_required);
             coexistence_layer_status = parsed.coexistence_layer_status;
-            coexistence_layer_preferred_phase =
-                normalize_hook_fallback_phase(parsed.coexistence_layer_preferred_phase);
+            coexistence_layer_preferred_phase = normalize_hook_fallback_phase(parsed.coexistence_layer_preferred_phase);
             coexistence_layer_recommended_action_key =
                 normalize_hook_action_key(parsed.coexistence_layer_recommended_action_key);
             coexistence_layer_summary = parsed.coexistence_layer_summary;
@@ -12647,9 +12679,7 @@ fn failure_diagnostics_to_json(
         if coexistence_layer_required == Some(true) {
             if let Some(status) = coexistence_layer_status.as_deref() {
                 let preferred_phase = coexistence_layer_preferred_phase.as_deref().unwrap_or("unknown");
-                let action_key = coexistence_layer_recommended_action_key
-                    .as_deref()
-                    .unwrap_or("unknown");
+                let action_key = coexistence_layer_recommended_action_key.as_deref().unwrap_or("unknown");
                 push_unique_hint(
                     &mut hints,
                     format!(
@@ -16857,15 +16887,11 @@ mod tests {
         assert!(query_err.to_string().contains("autoDowngradeReason=<none>"));
         assert!(query_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(query_err.to_string().contains("backendPressure=both"));
-        assert!(query_err
-            .to_string()
-            .contains("coexistenceLayerRequired=true"));
+        assert!(query_err.to_string().contains("coexistenceLayerRequired=true"));
         assert!(query_err
             .to_string()
             .contains("coexistenceLayerStatus=missing-cleanup-only"));
-        assert!(query_err
-            .to_string()
-            .contains("coexistenceLayerPreferredPhase=cleanup"));
+        assert!(query_err.to_string().contains("coexistenceLayerPreferredPhase=cleanup"));
         assert!(query_err
             .to_string()
             .contains("coexistenceLayerRecommendedActionKey=hook.status"));
@@ -16887,9 +16913,7 @@ mod tests {
         assert!(install_err.to_string().contains("autoDowngradeReason=<none>"));
         assert!(install_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(install_err.to_string().contains("backendPressure=both"));
-        assert!(install_err
-            .to_string()
-            .contains("coexistenceLayerRequired=true"));
+        assert!(install_err.to_string().contains("coexistenceLayerRequired=true"));
         assert!(install_err
             .to_string()
             .contains("coexistenceLayerStatus=missing-cleanup-only"));
@@ -17319,10 +17343,7 @@ mod tests {
             rendered["diagnostics"]["coexistenceLayerStatus"],
             "missing-cleanup-only"
         );
-        assert_eq!(
-            rendered["diagnostics"]["coexistenceLayerPreferredPhase"],
-            "cleanup"
-        );
+        assert_eq!(rendered["diagnostics"]["coexistenceLayerPreferredPhase"], "cleanup");
         assert_eq!(
             rendered["diagnostics"]["coexistenceLayerRecommendedActionKey"],
             "hook.status"
@@ -18083,7 +18104,10 @@ mod tests {
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["placeholders"][0],
             "<filter>"
         );
-        assert_eq!(rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"], 121);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"],
+            121
+        );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonTemplates"][0]["cliArgs"][2],
             "--command"
@@ -18097,7 +18121,10 @@ mod tests {
             rendered["hook"]["automation"]["actionBranches"][0]["selectedAsNext"],
             true
         );
-        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["templateCount"], 121);
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["templateCount"],
+            121
+        );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
             121
@@ -19012,7 +19039,10 @@ mod tests {
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["placeholders"][0],
             "<filter>"
         );
-        assert_eq!(rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"], 121);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"],
+            121
+        );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonTemplates"][0]["cliArgs"][2],
             "--command"
@@ -19026,7 +19056,10 @@ mod tests {
             rendered["hook"]["automation"]["actionBranches"][0]["selectedAsNext"],
             true
         );
-        assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["templateCount"], 121);
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["templateCount"],
+            121
+        );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
             121
@@ -26130,6 +26163,81 @@ mod tests {
     }
 
     #[test]
+    fn hook_backend_adaptation_uses_conflict_resolution_for_controller_loaded_only_topology() {
+        let controller_report = HookEnvironmentReport {
+            active_backend: Some("ellekit".into()),
+            backends: vec![HookBackendInfo {
+                id: "ellekit".into(),
+                display_name: "ElleKit".into(),
+                loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                filesystem_paths: vec![],
+            }],
+            warnings: vec![],
+        };
+        let target_report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+
+        let backend_matrix = hook_backend_matrix_to_json(&controller_report, &target_report);
+        assert_eq!(backend_matrix["topology"]["kind"], "controller-loaded-only");
+
+        let controller_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-risky".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let target_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-safe".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let controller_actions = hook_environment_recommended_actions(&controller_report, Some(&controller_strategy));
+        let target_actions = hook_environment_recommended_actions(&target_report, Some(&target_strategy));
+        let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
+        let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
+        let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+
+        for rendered in [&coexistence, &automation] {
+            let adaptation = &rendered["backendAdaptation"];
+            assert_eq!(adaptation["preferredGroupKey"], "query");
+            assert_eq!(adaptation["conflictBackendPairCount"], 0);
+            assert!(adaptation["preferredConflictBackendPair"].is_null());
+            assert_eq!(adaptation["preferredConflictResolutionGroupKey"], "query");
+            assert_eq!(
+                adaptation["preferredConflictResolutionReason"],
+                "keep the flow query-first until controller and target backend runtimes are aligned"
+            );
+            assert_eq!(adaptation["preferredConflictResolutionChainCount"], 2);
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseOrder"],
+                json!(["query", "preflight"])
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionRouting"]["suggestedEscalationKey"],
+                "conflict-query"
+            );
+            assert_eq!(adaptation["executionKind"], "conflict-resolution");
+            assert_eq!(adaptation["executionSource"], "preferred-conflict-resolution-chain");
+            assert_eq!(adaptation["executionHasConflictPair"], false);
+            assert_eq!(adaptation["nextStepSource"], "preferred-conflict-resolution-chain");
+            assert_eq!(adaptation["nextStepCommandGroup"], "conflict-resolution");
+            assert_eq!(adaptation["nextStepPhase"], "query");
+            assert_eq!(adaptation["preferredConflictResolutionNextStepPhase"], "query");
+            assert_eq!(
+                adaptation["preferredConflictResolutionStepChainSource"],
+                "preferred-conflict-resolution-chain"
+            );
+            assert_eq!(adaptation["preferredConflictResolutionStepChainCount"], 2);
+        }
+    }
+
+    #[test]
     fn hook_backend_matrix_split_loaded_cleanup_mode_exposes_cleanup_phase_aliases() {
         let controller_report = HookEnvironmentReport {
             active_backend: Some("ellekit".into()),
@@ -28475,10 +28583,7 @@ mod tests {
             rendered["diagnostics"]["coexistenceLayerStatus"],
             "missing-cleanup-only"
         );
-        assert_eq!(
-            rendered["diagnostics"]["coexistenceLayerPreferredPhase"],
-            "cleanup"
-        );
+        assert_eq!(rendered["diagnostics"]["coexistenceLayerPreferredPhase"], "cleanup");
         assert_eq!(
             rendered["diagnostics"]["coexistenceLayerRecommendedActionKey"],
             "hook.status"
