@@ -21336,8 +21336,20 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.exports', moduleName: 'libsystem_malloc.dylib', query: 'malloc' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.exports', moduleName: 'libsystem_malloc.dylib', query: 'malloc' }); return value === result.text; })()")
+                    .expect("agent spec native exports"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); return value === result.text; })()")
                     .expect("agent spec native sectionInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.load_commands', moduleName: 'libsystem_malloc.dylib' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: 'libsystem_malloc.dylib' }); return value === result.text; })()")
+                    .expect("agent spec native load commands"),
                 "true"
             );
             assert_eq!(
@@ -21488,6 +21500,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.class_chain', className: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_chain', className: 'NSObject' }); return value === result.text; })()")
                     .expect("agent spec objc classChain"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.method_owners', query: 'init', isClassMethod: false }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_owners', query: 'init', isClassMethod: false }); return value === result.text; })()")
+                    .expect("agent spec objc method owners"),
                 "true"
             );
             assert_eq!(
