@@ -13777,6 +13777,71 @@ undefined;
                 runtime
                     .eval(
                         r#"(function() {
+                            const original = Native.installName;
+                            Native.installName = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    path: '@loader_path/Frameworks/DemoKit.framework/DemoKit',
+                                    currentVersion: 0x00010203,
+                                    compatibilityVersion: 0x00010000,
+                                    timestamp: 7
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.install_name',
+                                    moduleName: 'Demo'
+                                });
+                                return result.hasInstallName === true
+                                    && result.resolved === true
+                                    && result.name === 'DemoKit'
+                                    && result.path === '@loader_path/Frameworks/DemoKit.framework/DemoKit'
+                                    && result.pathKind === 'loader_path'
+                                    && result.currentVersion === '1.2.3'
+                                    && result.compatibilityVersion === '1.0.0'
+                                    && result.timestamp === 7
+                                    && result.hasName === true
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesLoaderPath === true
+                                    && result.usesExecutablePath === false
+                                    && result.usesRpathToken === false
+                                    && result.pathDepth === 4
+                                    && result.hasTimestamp === true
+                                    && result.versionMismatch === true
+                                    && result.installName !== null
+                                    && result.installName.moduleName === 'Demo'
+                                    && result.installName.moduleBase === BigInt('0x180000000').toString()
+                                    && result.installName.name === 'DemoKit'
+                                    && result.installName.path === '@loader_path/Frameworks/DemoKit.framework/DemoKit'
+                                    && result.installName.pathKind === 'loader_path'
+                                    && result.installName.currentVersion === '1.2.3'
+                                    && result.installName.compatibilityVersion === '1.0.0'
+                                    && result.installName.timestamp === 7
+                                    && result.installName.hasName === true
+                                    && result.installName.hasPath === true
+                                    && result.installName.isTokenPath === true
+                                    && result.installName.usesLoaderPath === true
+                                    && result.installName.usesExecutablePath === false
+                                    && result.installName.usesRpathToken === false
+                                    && result.installName.pathDepth === 4
+                                    && result.installName.hasTimestamp === true
+                                    && result.installName.versionMismatch === true
+                                    && typeof result.installName.text === 'string'
+                                    && result.text === result.installName.text;
+                            } finally {
+                                Native.installName = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native install name summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
                             const original = Native.rpathInfo;
                             Native.rpathInfo = function() {
                                 return {
@@ -13817,6 +13882,56 @@ undefined;
                         })()"#
                     )
                     .expect("synthetic native rpathInfo direct fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.rpathInfo;
+                            Native.rpathInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    path: '@rpath/Frameworks/DemoKit.framework'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.rpath_info',
+                                    moduleName: 'Demo',
+                                    path: '@rpath/Frameworks/DemoKit.framework'
+                                });
+                                return result.hasRpathInfo === true
+                                    && result.resolved === true
+                                    && result.path === '@rpath/Frameworks/DemoKit.framework'
+                                    && result.pathKind === 'rpath'
+                                    && result.moduleBase === BigInt('0x180000000').toString()
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesLoaderPath === false
+                                    && result.usesExecutablePath === false
+                                    && result.usesRpathToken === true
+                                    && result.pathDepth === 3
+                                    && result.rpathInfo !== null
+                                    && result.rpathInfo.moduleName === 'Demo'
+                                    && result.rpathInfo.moduleBase === BigInt('0x180000000').toString()
+                                    && result.rpathInfo.path === '@rpath/Frameworks/DemoKit.framework'
+                                    && result.rpathInfo.pathKind === 'rpath'
+                                    && result.rpathInfo.hasPath === true
+                                    && result.rpathInfo.isTokenPath === true
+                                    && result.rpathInfo.usesLoaderPath === false
+                                    && result.rpathInfo.usesExecutablePath === false
+                                    && result.rpathInfo.usesRpathToken === true
+                                    && result.rpathInfo.pathDepth === 3
+                                    && typeof result.rpathInfo.text === 'string'
+                                    && result.text === result.rpathInfo.text;
+                            } finally {
+                                Native.rpathInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native rpathInfo summary"),
                 "true"
             );
             assert_eq!(
