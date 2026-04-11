@@ -21372,6 +21372,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.hook_environment' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.hook_environment' }); return value === result.text; })()")
+                    .expect("agent spec native hook environment"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.available' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.available' }); return value === result.text; })()")
                     .expect("agent spec swift available"),
                 "true"
