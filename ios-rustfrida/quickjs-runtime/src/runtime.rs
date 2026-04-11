@@ -20846,6 +20846,123 @@ undefined;
                 runtime
                     .eval(
                         r#"(function() {
+                            const original = Native.detectHookEnvironment;
+                            const report = {
+                                activeBackend: 'ellekit',
+                                activeBackendDisplayName: 'ElleKit',
+                                conflictState: 'filesystem-only',
+                                riskLevel: 'medium',
+                                policy: 'query-only',
+                                strategy: 'query-only',
+                                commandMode: 'query-only',
+                                allowed: true,
+                                inlineHooksAllowed: false,
+                                bootstrapInjectionAllowed: true,
+                                queryCommandsAllowed: true,
+                                hookInstallCommandsAllowed: false,
+                                hookStatusCommandsAllowed: true,
+                                hookStopCommandsAllowed: true,
+                                coexistenceMode: 'avoid-inline',
+                                coexistenceRecommendation: 'query-only',
+                                coexistenceLayerAvailable: false,
+                                coexistenceLayerStatus: 'unavailable',
+                                externalBackendLoaded: false,
+                                singleExternalBackendLoaded: false,
+                                multipleExternalBackendsLoaded: false,
+                                filesystemOnlyBackendDetected: true,
+                                backendCount: 1,
+                                loadedBackendCount: 0,
+                                filesystemOnlyBackendCount: 1,
+                                loadedImageCount: 0,
+                                filesystemPathCount: 1,
+                                recommendedActionCount: 1,
+                                allowedActionCount: 1,
+                                blockedActionCount: 0,
+                                backendIds: ['ellekit'],
+                                backendDisplayNames: ['ElleKit'],
+                                loadedBackendIds: [],
+                                loadedBackendDisplayNames: [],
+                                filesystemOnlyBackendIds: ['ellekit'],
+                                filesystemOnlyBackendDisplayNames: ['ElleKit'],
+                                suggestedSequence: ['native.images Demo'],
+                                nextAction: {
+                                    commandGroup: 'query',
+                                    actionKey: 'query.images',
+                                    priority: 10,
+                                    allowed: true,
+                                    status: 'allowed',
+                                    recommendation: 'enumerate first',
+                                },
+                                nextActionCommandGroup: 'query',
+                                nextActionKey: 'query.images',
+                                nextActionPriority: 10,
+                                nextActionAllowed: true,
+                                nextActionStatus: 'allowed',
+                                nextActionRecommendation: 'enumerate first',
+                                nextActionTemplateCount: 1,
+                                nextActionTemplates: ['native.images Demo'],
+                                nextActionCommandJsonTemplateCount: 1,
+                                nextActionCommandJsonTemplates: [
+                                    { command: 'native.images Demo', kind: 'native.images' },
+                                ],
+                                reason: 'filesystem-only backend detected',
+                                backends: [
+                                    {
+                                        id: 'ellekit',
+                                        name: 'ElleKit',
+                                        loadedImageCount: 0,
+                                        filesystemPathCount: 1,
+                                        loadedImages: [],
+                                        filesystemPaths: ['/var/jb/usr/lib/libellekit.dylib'],
+                                    },
+                                ],
+                                warnings: ['filesystem artifact present'],
+                                recommendations: ['prefer query-only mode'],
+                                recommendedActions: [
+                                    {
+                                        commandGroup: 'query',
+                                        actionKey: 'query.images',
+                                        priority: 10,
+                                        allowed: true,
+                                        status: 'allowed',
+                                        recommendation: 'enumerate first',
+                                    },
+                                ],
+                            };
+                            Native.detectHookEnvironment = function() {
+                                return report;
+                            };
+                            try {
+                                const value = __iosRustFridaAgentApi.handle('native.hookenv');
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.hook_environment' });
+                                return result.kind === 'native.hook_environment' &&
+                                    result.report === report &&
+                                    result.text === value &&
+                                    value.indexOf('active=ellekit') !== -1 &&
+                                    value.indexOf('active_backend_display_name=ElleKit') !== -1 &&
+                                    value.indexOf('backend_count=1') !== -1 &&
+                                    value.indexOf('filesystem_only_backend_count=1') !== -1 &&
+                                    value.indexOf('next_action query key=query.images priority=10 allowed=true status=allowed recommendation=enumerate first') !== -1 &&
+                                    value.indexOf('next_action_template_count=1') !== -1 &&
+                                    value.indexOf('next_action_template native.images Demo') !== -1 &&
+                                    value.indexOf('reason=filesystem-only backend detected') !== -1 &&
+                                    value.indexOf('backend ellekit ElleKit') !== -1 &&
+                                    value.indexOf('  fs /var/jb/usr/lib/libellekit.dylib') !== -1 &&
+                                    value.indexOf('warning filesystem artifact present') !== -1 &&
+                                    value.indexOf('advice prefer query-only mode') !== -1 &&
+                                    value.indexOf('recommended_action query key=query.images priority=10 allowed=true status=allowed recommendation=enumerate first') !== -1;
+                            } finally {
+                                Native.detectHookEnvironment = original;
+                            }
+                        })()"#,
+                    )
+                    .expect("synthetic native hook environment result"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
                             const value = __iosRustFridaAgentApi.handle('native.hookenv');
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.hook_environment' });
                             const report = result.report;
