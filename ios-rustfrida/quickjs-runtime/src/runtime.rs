@@ -17899,6 +17899,204 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() {\n\
+                            const original = Swift.typeMethods;\n\
+                            Swift.typeMethods = function() {\n\
+                                return [\n\
+                                    {\n\
+                                        moduleName: 'Demo',\n\
+                                        moduleBase: 0x180000000n,\n\
+                                        name: '$s4Demo14ViewControllerC5titleSSvg',\n\
+                                        demangledName: 'Demo.ViewController.title.getter : Swift.String',\n\
+                                        address: 0x180001000n,\n\
+                                        offset: 0x1000n,\n\
+                                    },\n\
+                                    {\n\
+                                        moduleName: 'Demo',\n\
+                                        moduleBase: 0x180000000n,\n\
+                                        name: '$s4Demo14ViewControllerC6sharedACyYaKFZ',\n\
+                                        demangledName: 'static Demo.ViewController.shared() async throws -> Demo.ViewController',\n\
+                                        address: 0x180001100n,\n\
+                                        offset: 0x1100n,\n\
+                                    },\n\
+                                    {\n\
+                                        moduleName: 'DemoKit',\n\
+                                        moduleBase: 0x190000000n,\n\
+                                        name: '$s7DemoKit14ViewControllerCACycfc',\n\
+                                        demangledName: 'DemoKit.ViewController.init() -> DemoKit.ViewController',\n\
+                                        address: 0x190001200n,\n\
+                                        offset: 0x1200n,\n\
+                                    }\n\
+                                ];\n\
+                            };\n\
+                            try {\n\
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_methods', moduleName: null, query: 'ViewController' });\n\
+                                return result.count === 3\n\
+                                    && result.uniqueModuleCount === 2\n\
+                                    && result.uniqueMethodCount === 3\n\
+                                    && result.demangledCount === 3\n\
+                                    && result.hasDemangledMethods === true\n\
+                                    && result.parsedMemberCount === 3\n\
+                                    && result.accessorCount === 1\n\
+                                    && result.getterCount === 1\n\
+                                    && result.setterCount === 0\n\
+                                    && result.constructorCount === 1\n\
+                                    && result.destructorCount === 0\n\
+                                    && result.subscriptCount === 0\n\
+                                    && result.operatorCount === 0\n\
+                                    && result.closureCount === 0\n\
+                                    && result.staticMemberCount === 1\n\
+                                    && result.classMemberCount === 0\n\
+                                    && result.mutatingMemberCount === 0\n\
+                                    && result.asyncCount === 1\n\
+                                    && result.throwingCount === 1\n\
+                                    && result.dispatchThunkCount === 0\n\
+                                    && result.uniqueOwnerTypeCount === 2\n\
+                                    && result.uniqueMemberKindCount === 3\n\
+                                    && result.uniqueResultTypeCount === 3\n\
+                                    && Array.isArray(result.ownerTypeList)\n\
+                                    && result.ownerTypeList.length === result.ownerTypes.length\n\
+                                    && result.ownerTypeList.includes('Demo.ViewController')\n\
+                                    && result.ownerTypeList.includes('DemoKit.ViewController')\n\
+                                    && Array.isArray(result.memberKindList)\n\
+                                    && result.memberKindList.length === result.memberKinds.length\n\
+                                    && result.memberKindList.includes('getter')\n\
+                                    && result.memberKindList.includes('method')\n\
+                                    && result.memberKindList.includes('constructor')\n\
+                                    && Array.isArray(result.resultTypeList)\n\
+                                    && result.resultTypeList.length === result.resultTypes.length\n\
+                                    && result.resultTypeList.includes('Swift.String')\n\
+                                    && result.resultTypeList.includes('Demo.ViewController')\n\
+                                    && result.resultTypeList.includes('DemoKit.ViewController')\n\
+                                    && Array.isArray(result.moduleNameList)\n\
+                                    && result.moduleNameList.length === result.moduleNames.length\n\
+                                    && result.moduleNameList.includes('Demo')\n\
+                                    && result.moduleNameList.includes('DemoKit')\n\
+                                    && Array.isArray(result.methodNameList)\n\
+                                    && result.methodNameList.length === result.methodNames.length\n\
+                                    && result.methodNameList.includes('$s4Demo14ViewControllerC5titleSSvg')\n\
+                                    && result.methodNameList.includes('$s4Demo14ViewControllerC6sharedACyYaKFZ')\n\
+                                    && result.methodNameList.includes('$s7DemoKit14ViewControllerCACycfc')\n\
+                                    && result.ownerTypes.some((entry) => entry.ownerTypeName === 'Demo.ViewController' && entry.count === 2)\n\
+                                    && result.ownerTypes.some((entry) => entry.ownerTypeName === 'DemoKit.ViewController' && entry.count === 1)\n\
+                                    && result.memberKinds.some((entry) => entry.memberKind === 'getter' && entry.count === 1)\n\
+                                    && result.memberKinds.some((entry) => entry.memberKind === 'method' && entry.count === 1 && entry.asyncCount === 1 && entry.throwingCount === 1)\n\
+                                    && result.memberKinds.some((entry) => entry.memberKind === 'constructor' && entry.count === 1)\n\
+                                    && result.resultTypes.some((entry) => entry.resultTypeName === 'Swift.String' && entry.count === 1)\n\
+                                    && result.resultTypes.some((entry) => entry.resultTypeName === 'Demo.ViewController' && entry.count === 1)\n\
+                                    && result.resultTypes.some((entry) => entry.resultTypeName === 'DemoKit.ViewController' && entry.count === 1)\n\
+                                    && result.moduleNames.some((entry) => entry.moduleName === 'Demo' && entry.count === 2 && entry.demangledCount === 2)\n\
+                                    && result.moduleNames.some((entry) => entry.moduleName === 'DemoKit' && entry.count === 1 && entry.demangledCount === 1)\n\
+                                    && result.methodNames.some((entry) => entry.methodName === '$s4Demo14ViewControllerC5titleSSvg' && entry.count === 1 && entry.hasDemangledName === true)\n\
+                                    && result.methodNames.some((entry) => entry.methodName === '$s4Demo14ViewControllerC6sharedACyYaKFZ' && entry.count === 1 && entry.hasDemangledName === true)\n\
+                                    && result.methodNames.some((entry) => entry.methodName === '$s7DemoKit14ViewControllerCACycfc' && entry.count === 1 && entry.hasDemangledName === true);\n\
+                            } finally {\n\
+                                Swift.typeMethods = original;\n\
+                            }\n\
+                        })()"
+                    )
+                    .expect("synthetic swift type methods summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {\n\
+                            const original = Swift.methods;\n\
+                            Swift.methods = function() {\n\
+                                return [\n\
+                                    {\n\
+                                        moduleName: 'Demo',\n\
+                                        moduleBase: 0x180000000n,\n\
+                                        name: '$s4Demo14ViewControllerC11viewDidLoadyyF',\n\
+                                        demangledName: 'Demo.ViewController.viewDidLoad() -> ()',\n\
+                                        address: 0x180002000n,\n\
+                                        offset: 0x2000n,\n\
+                                    },\n\
+                                    {\n\
+                                        moduleName: 'DemoUI',\n\
+                                        moduleBase: 0x190000000n,\n\
+                                        name: '$s6DemoUI14ViewControllerC11viewDidLoadyyF',\n\
+                                        demangledName: 'DemoUI.ViewController.viewDidLoad() -> ()',\n\
+                                        address: 0x190002000n,\n\
+                                        offset: 0x2000n,\n\
+                                    },\n\
+                                    {\n\
+                                        moduleName: 'Demo',\n\
+                                        moduleBase: 0x180000000n,\n\
+                                        name: '$s4Demo14ViewControllerC6sharedACyYaKFZ',\n\
+                                        demangledName: 'static Demo.ViewController.shared() async throws -> Demo.ViewController',\n\
+                                        address: 0x180002100n,\n\
+                                        offset: 0x2100n,\n\
+                                    }\n\
+                                ];\n\
+                            };\n\
+                            try {\n\
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.methods', moduleName: null, typeName: 'ViewController', methodQuery: 'viewDidLoad' });\n\
+                                return result.count === 3\n\
+                                    && result.uniqueModuleCount === 2\n\
+                                    && result.uniqueMethodCount === 3\n\
+                                    && result.demangledCount === 3\n\
+                                    && result.hasDemangledMethods === true\n\
+                                    && result.parsedMemberCount === 3\n\
+                                    && result.accessorCount === 0\n\
+                                    && result.getterCount === 0\n\
+                                    && result.setterCount === 0\n\
+                                    && result.constructorCount === 0\n\
+                                    && result.destructorCount === 0\n\
+                                    && result.subscriptCount === 0\n\
+                                    && result.operatorCount === 0\n\
+                                    && result.closureCount === 0\n\
+                                    && result.staticMemberCount === 1\n\
+                                    && result.classMemberCount === 0\n\
+                                    && result.mutatingMemberCount === 0\n\
+                                    && result.asyncCount === 1\n\
+                                    && result.throwingCount === 1\n\
+                                    && result.dispatchThunkCount === 0\n\
+                                    && result.uniqueOwnerTypeCount === 2\n\
+                                    && result.uniqueMemberKindCount === 1\n\
+                                    && result.uniqueResultTypeCount === 2\n\
+                                    && Array.isArray(result.ownerTypeList)\n\
+                                    && result.ownerTypeList.length === result.ownerTypes.length\n\
+                                    && result.ownerTypeList.includes('Demo.ViewController')\n\
+                                    && result.ownerTypeList.includes('DemoUI.ViewController')\n\
+                                    && Array.isArray(result.memberKindList)\n\
+                                    && result.memberKindList.length === result.memberKinds.length\n\
+                                    && result.memberKindList[0] === 'method'\n\
+                                    && Array.isArray(result.resultTypeList)\n\
+                                    && result.resultTypeList.length === result.resultTypes.length\n\
+                                    && result.resultTypeList.includes('()')\n\
+                                    && result.resultTypeList.includes('Demo.ViewController')\n\
+                                    && Array.isArray(result.moduleNameList)\n\
+                                    && result.moduleNameList.length === result.moduleNames.length\n\
+                                    && result.moduleNameList.includes('Demo')\n\
+                                    && result.moduleNameList.includes('DemoUI')\n\
+                                    && Array.isArray(result.methodNameList)\n\
+                                    && result.methodNameList.length === result.methodNames.length\n\
+                                    && result.methodNameList.includes('$s4Demo14ViewControllerC11viewDidLoadyyF')\n\
+                                    && result.methodNameList.includes('$s6DemoUI14ViewControllerC11viewDidLoadyyF')\n\
+                                    && result.methodNameList.includes('$s4Demo14ViewControllerC6sharedACyYaKFZ')\n\
+                                    && result.ownerTypes.some((entry) => entry.ownerTypeName === 'Demo.ViewController' && entry.count === 2)\n\
+                                    && result.ownerTypes.some((entry) => entry.ownerTypeName === 'DemoUI.ViewController' && entry.count === 1)\n\
+                                    && result.memberKinds.some((entry) => entry.memberKind === 'method' && entry.count === 3 && entry.asyncCount === 1 && entry.throwingCount === 1)\n\
+                                    && result.resultTypes.some((entry) => entry.resultTypeName === '()' && entry.count === 2)\n\
+                                    && result.resultTypes.some((entry) => entry.resultTypeName === 'Demo.ViewController' && entry.count === 1)\n\
+                                    && result.moduleNames.some((entry) => entry.moduleName === 'Demo' && entry.count === 2 && entry.demangledCount === 2)\n\
+                                    && result.moduleNames.some((entry) => entry.moduleName === 'DemoUI' && entry.count === 1 && entry.demangledCount === 1)\n\
+                                    && result.methodNames.some((entry) => entry.methodName === '$s4Demo14ViewControllerC11viewDidLoadyyF' && entry.count === 1)\n\
+                                    && result.methodNames.some((entry) => entry.methodName === '$s6DemoUI14ViewControllerC11viewDidLoadyyF' && entry.count === 1)\n\
+                                    && result.methodNames.some((entry) => entry.methodName === '$s4Demo14ViewControllerC6sharedACyYaKFZ' && entry.count === 1);\n\
+                            } finally {\n\
+                                Swift.methods = original;\n\
+                            }\n\
+                        })()"
+                    )
+                    .expect("synthetic swift methods summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_methods', moduleName: null, query: 'ViewController' });
                             if (result.kind !== 'swift.type_methods' || result.query !== 'ViewController' || result.hasQuery !== true) {
