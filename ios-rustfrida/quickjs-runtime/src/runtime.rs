@@ -17571,6 +17571,55 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() {\n\
+                            const original = Swift.typeKinds;\n\
+                            Swift.typeKinds = function() {\n\
+                                return [\n\
+                                    'metadata-accessor',\n\
+                                    'metadata',\n\
+                                    'nominal-type',\n\
+                                    'protocol-descriptor',\n\
+                                    'witness-table',\n\
+                                    'vtable-entry',\n\
+                                    'field-offset'\n\
+                                ];\n\
+                            };\n\
+                            try {\n\
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_kinds' });\n\
+                                return result.count === 7\n\
+                                    && result.hasKinds === true\n\
+                                    && result.firstKind === 'metadata-accessor'\n\
+                                    && result.lastKind === 'field-offset'\n\
+                                    && result.uniquePrefixCount === 6\n\
+                                    && result.metadataKindCount === 2\n\
+                                    && result.nominalKindCount === 1\n\
+                                    && result.protocolKindCount === 1\n\
+                                    && result.witnessKindCount === 1\n\
+                                    && result.accessorKindCount === 1\n\
+                                    && result.vtableKindCount === 1\n\
+                                    && Array.isArray(result.prefixList)\n\
+                                    && result.prefixList.length === result.prefixes.length\n\
+                                    && JSON.stringify(result.prefixList) === JSON.stringify(['metadata', 'nominal', 'protocol', 'witness', 'vtable', 'field'])\n\
+                                    && Array.isArray(result.prefixes)\n\
+                                    && result.prefixes.length === 6\n\
+                                    && result.prefixes[0].prefix === 'metadata'\n\
+                                    && result.prefixes[0].count === 2\n\
+                                    && result.prefixes[0].firstKind === 'metadata-accessor'\n\
+                                    && result.prefixes[0].lastKind === 'metadata'\n\
+                                    && result.prefixes.some((entry) => entry.prefix === 'field' && entry.count === 1 && entry.firstKind === 'field-offset' && entry.lastKind === 'field-offset')\n\
+                                    && JSON.stringify(result.kinds) === JSON.stringify(['metadata-accessor', 'metadata', 'nominal-type', 'protocol-descriptor', 'witness-table', 'vtable-entry', 'field-offset'])\n\
+                                    && result.text === 'metadata-accessor\\nmetadata\\nnominal-type\\nprotocol-descriptor\\nwitness-table\\nvtable-entry\\nfield-offset';\n\
+                            } finally {\n\
+                                Swift.typeKinds = original;\n\
+                            }\n\
+                        })()"
+                    )
+                    .expect("synthetic swift type kinds summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         r#"(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types_of_kind', moduleName: null, sourceKind: 'metadata-accessor', query: 'ViewController' });
                             if (result.kind !== 'swift.types_of_kind' || result.sourceKind !== 'metadata-accessor' || result.query !== 'ViewController' || result.hasQuery !== true) {
