@@ -12035,18 +12035,22 @@ fn parse_error_field_with_boundaries(message: &str, key: &str, next_keys: &[&str
     let start = message.find(&marker)? + marker.len();
     let tail = &message[start..];
     let mut end = tail.len();
+    let mut matched_boundary = false;
 
     for next_key in next_keys {
         let next_marker = format!(" {next_key}=");
         if let Some(index) = tail.find(&next_marker) {
             end = end.min(index);
+            matched_boundary = true;
         }
     }
-    if let Some(index) = tail.find(';') {
-        end = end.min(index);
-    }
-    if let Some(index) = tail.find(',') {
-        end = end.min(index);
+    if !matched_boundary {
+        if let Some(index) = tail.find(';') {
+            end = end.min(index);
+        }
+        if let Some(index) = tail.find(',') {
+            end = end.min(index);
+        }
     }
 
     let value = tail[..end].trim();
@@ -12087,6 +12091,11 @@ struct ParsedHookEffectiveBlockedDetails {
     recommendation: Option<String>,
     coexistence_mode: Option<String>,
     backend_pressure: Option<String>,
+    coexistence_layer_required: Option<String>,
+    coexistence_layer_status: Option<String>,
+    coexistence_layer_preferred_phase: Option<String>,
+    coexistence_layer_recommended_action_key: Option<String>,
+    coexistence_layer_summary: Option<String>,
     fallback_action_key: Option<String>,
     fallback_step_id: Option<String>,
     fallback_command: Option<String>,
@@ -12121,6 +12130,17 @@ fn parse_hook_effective_blocked_details(message: &str) -> ParsedHookEffectiveBlo
     let fallback_command =
         parse_error_field_with_boundaries(message, "fallbackCommand", &["fallbackPhase", "recommendation"]);
     let fallback_phase = parse_error_field(message, "fallbackPhase");
+    let coexistence_layer_summary = parse_error_field_with_boundaries(
+        message,
+        "coexistenceLayerSummary",
+        &[
+            "fallbackActionKey",
+            "fallbackStepId",
+            "fallbackCommand",
+            "fallbackPhase",
+            "recommendation",
+        ],
+    );
 
     ParsedHookEffectiveBlockedDetails {
         action_key: parse_error_field(message, "actionKey"),
@@ -12134,6 +12154,14 @@ fn parse_hook_effective_blocked_details(message: &str) -> ParsedHookEffectiveBlo
         recommendation: parse_error_field_with_boundaries(message, "recommendation", &[]),
         coexistence_mode: parse_error_field(message, "coexistenceMode"),
         backend_pressure: parse_error_field(message, "backendPressure"),
+        coexistence_layer_required: parse_error_field(message, "coexistenceLayerRequired"),
+        coexistence_layer_status: parse_error_field(message, "coexistenceLayerStatus"),
+        coexistence_layer_preferred_phase: parse_error_field(message, "coexistenceLayerPreferredPhase"),
+        coexistence_layer_recommended_action_key: parse_error_field(
+            message,
+            "coexistenceLayerRecommendedActionKey",
+        ),
+        coexistence_layer_summary,
         fallback_action_key,
         fallback_step_id,
         fallback_command,
@@ -12319,6 +12347,11 @@ fn failure_diagnostics_to_json(
     let mut hook_recommendation: Option<String> = None;
     let mut coexistence_mode: Option<String> = None;
     let mut backend_pressure: Option<String> = None;
+    let mut coexistence_layer_required: Option<bool> = None;
+    let mut coexistence_layer_status: Option<String> = None;
+    let mut coexistence_layer_preferred_phase: Option<String> = None;
+    let mut coexistence_layer_recommended_action_key: Option<String> = None;
+    let mut coexistence_layer_summary: Option<String> = None;
     let mut fallback_action_key: Option<String> = None;
     let mut fallback_step_id: Option<String> = None;
     let mut fallback_command: Option<String> = None;
@@ -12460,6 +12493,13 @@ fn failure_diagnostics_to_json(
             hook_recommendation = parsed.recommendation;
             coexistence_mode = normalize_hook_coexistence_mode(parsed.coexistence_mode);
             backend_pressure = normalize_hook_backend_pressure(parsed.backend_pressure);
+            coexistence_layer_required = parse_bool_token(parsed.coexistence_layer_required);
+            coexistence_layer_status = parsed.coexistence_layer_status;
+            coexistence_layer_preferred_phase =
+                normalize_hook_fallback_phase(parsed.coexistence_layer_preferred_phase);
+            coexistence_layer_recommended_action_key =
+                normalize_hook_action_key(parsed.coexistence_layer_recommended_action_key);
+            coexistence_layer_summary = parsed.coexistence_layer_summary;
             fallback_action_key = normalize_hook_action_key(parsed.fallback_action_key);
             fallback_step_id = normalize_hook_fallback_step_id(parsed.fallback_step_id);
             fallback_command = parsed.fallback_command;
@@ -12545,6 +12585,11 @@ fn failure_diagnostics_to_json(
         hook_auto_downgrade_reason.get_or_insert_with(|| "unknown".into());
         coexistence_mode.get_or_insert_with(|| "unknown".into());
         backend_pressure.get_or_insert_with(|| "unknown".into());
+        coexistence_layer_required.get_or_insert(false);
+        coexistence_layer_status.get_or_insert_with(|| "unknown".into());
+        coexistence_layer_preferred_phase.get_or_insert_with(|| "unknown".into());
+        coexistence_layer_recommended_action_key.get_or_insert_with(|| "unknown".into());
+        coexistence_layer_summary.get_or_insert_with(|| "<none>".into());
         fallback_action_key.get_or_insert_with(|| "unknown".into());
         fallback_step_id.get_or_insert_with(|| "unknown".into());
         fallback_phase.get_or_insert_with(|| "unknown".into());
@@ -12598,6 +12643,21 @@ fn failure_diagnostics_to_json(
                 }
             }
         }
+
+        if coexistence_layer_required == Some(true) {
+            if let Some(status) = coexistence_layer_status.as_deref() {
+                let preferred_phase = coexistence_layer_preferred_phase.as_deref().unwrap_or("unknown");
+                let action_key = coexistence_layer_recommended_action_key
+                    .as_deref()
+                    .unwrap_or("unknown");
+                push_unique_hint(
+                    &mut hints,
+                    format!(
+                        "coexistence layer is required but unavailable: status={status}, preferredPhase={preferred_phase}, recommendedActionKey={action_key}"
+                    ),
+                );
+            }
+        }
     }
 
     push_agent_path_hints(config, &mut hints);
@@ -12612,6 +12672,11 @@ fn failure_diagnostics_to_json(
         || hook_recommendation.is_some()
         || coexistence_mode.is_some()
         || backend_pressure.is_some()
+        || coexistence_layer_required.is_some()
+        || coexistence_layer_status.is_some()
+        || coexistence_layer_preferred_phase.is_some()
+        || coexistence_layer_recommended_action_key.is_some()
+        || coexistence_layer_summary.is_some()
         || fallback_action_key.is_some()
         || fallback_step_id.is_some()
         || fallback_command.is_some()
@@ -12630,6 +12695,11 @@ fn failure_diagnostics_to_json(
             "recommendation": hook_recommendation,
             "coexistenceMode": coexistence_mode,
             "backendPressure": backend_pressure,
+            "coexistenceLayerRequired": coexistence_layer_required,
+            "coexistenceLayerStatus": coexistence_layer_status,
+            "coexistenceLayerPreferredPhase": coexistence_layer_preferred_phase,
+            "coexistenceLayerRecommendedActionKey": coexistence_layer_recommended_action_key,
+            "coexistenceLayerSummary": coexistence_layer_summary,
             "fallbackActionKey": fallback_action_key,
             "fallbackStepId": fallback_step_id,
             "fallbackCommand": fallback_command,
@@ -12657,6 +12727,11 @@ fn failure_diagnostics_to_json(
         "hookRecommendation": hook_recommendation.clone(),
         "coexistenceMode": coexistence_mode.clone(),
         "backendPressure": backend_pressure.clone(),
+        "coexistenceLayerRequired": coexistence_layer_required,
+        "coexistenceLayerStatus": coexistence_layer_status.clone(),
+        "coexistenceLayerPreferredPhase": coexistence_layer_preferred_phase.clone(),
+        "coexistenceLayerRecommendedActionKey": coexistence_layer_recommended_action_key.clone(),
+        "coexistenceLayerSummary": coexistence_layer_summary.clone(),
         "fallbackActionKey": fallback_action_key.clone(),
         "fallbackStepId": fallback_step_id.clone(),
         "fallbackCommand": fallback_command.clone(),
@@ -14377,6 +14452,27 @@ fn ensure_inline_hooks_allowed_for_command(
         .and_then(|entry| entry.get("phase"))
         .and_then(Value::as_str)
         .unwrap_or("<none>");
+    let coexistence_layer_required = coexistence
+        .get("coexistenceLayerRequired")
+        .and_then(Value::as_bool)
+        .map(|value| if value { "true" } else { "false" })
+        .unwrap_or("unknown");
+    let coexistence_layer_status = coexistence
+        .get("coexistenceLayerStatus")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
+    let coexistence_layer_preferred_phase = coexistence
+        .get("coexistenceLayerPreferredPhase")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
+    let coexistence_layer_recommended_action_key = coexistence
+        .get("coexistenceLayerRecommendedActionKey")
+        .and_then(Value::as_str)
+        .unwrap_or("<none>");
+    let coexistence_layer_summary = coexistence
+        .get("coexistenceLayerSummary")
+        .and_then(Value::as_str)
+        .unwrap_or("<none>");
     let auto_downgrade_reason = auto_downgrade_reason.unwrap_or("<none>");
     let detail_text = if blocked_details.is_empty() {
         effective_action.recommendation.clone()
@@ -14384,7 +14480,7 @@ fn ensure_inline_hooks_allowed_for_command(
         blocked_details.join("; ")
     };
     Err(Error::State(format!(
-        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={} baseCommandMode={} effectiveCommandMode={} autoDowngradedToQueryOnly={} autoDowngradeReason={} coexistenceMode={} backendPressure={} fallbackActionKey={} fallbackStepId={} fallbackCommand={} fallbackPhase={}; recommendation={}; {}",
+        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={} baseCommandMode={} effectiveCommandMode={} autoDowngradedToQueryOnly={} autoDowngradeReason={} coexistenceMode={} backendPressure={} coexistenceLayerRequired={} coexistenceLayerStatus={} coexistenceLayerPreferredPhase={} coexistenceLayerRecommendedActionKey={} coexistenceLayerSummary={} fallbackActionKey={} fallbackStepId={} fallbackCommand={} fallbackPhase={}; recommendation={}; {}",
         effective_action.action_key,
         effective_action.command_group,
         effective_action.blocked_by,
@@ -14395,6 +14491,11 @@ fn ensure_inline_hooks_allowed_for_command(
         auto_downgrade_reason,
         coexistence_mode,
         backend_pressure,
+        coexistence_layer_required,
+        coexistence_layer_status,
+        coexistence_layer_preferred_phase,
+        coexistence_layer_recommended_action_key,
+        coexistence_layer_summary,
         fallback_action_key,
         fallback_step_id,
         fallback_command,
@@ -16726,6 +16827,18 @@ mod tests {
         assert!(query_err.to_string().contains("autoDowngradeReason=<none>"));
         assert!(query_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(query_err.to_string().contains("backendPressure=both"));
+        assert!(query_err
+            .to_string()
+            .contains("coexistenceLayerRequired=true"));
+        assert!(query_err
+            .to_string()
+            .contains("coexistenceLayerStatus=missing-cleanup-only"));
+        assert!(query_err
+            .to_string()
+            .contains("coexistenceLayerPreferredPhase=cleanup"));
+        assert!(query_err
+            .to_string()
+            .contains("coexistenceLayerRecommendedActionKey=hook.status"));
         assert!(query_err.to_string().contains("fallbackActionKey=hook.status"));
         assert!(query_err
             .to_string()
@@ -16744,6 +16857,18 @@ mod tests {
         assert!(install_err.to_string().contains("autoDowngradeReason=<none>"));
         assert!(install_err.to_string().contains("coexistenceMode=cleanup-only"));
         assert!(install_err.to_string().contains("backendPressure=both"));
+        assert!(install_err
+            .to_string()
+            .contains("coexistenceLayerRequired=true"));
+        assert!(install_err
+            .to_string()
+            .contains("coexistenceLayerStatus=missing-cleanup-only"));
+        assert!(install_err
+            .to_string()
+            .contains("coexistenceLayerPreferredPhase=cleanup"));
+        assert!(install_err
+            .to_string()
+            .contains("coexistenceLayerRecommendedActionKey=hook.status"));
         assert!(install_err.to_string().contains("fallbackActionKey=hook.status"));
         assert!(install_err
             .to_string()
@@ -16820,6 +16945,10 @@ mod tests {
         assert!(rendered.contains("autoDowngradeReason=<none>"));
         assert!(rendered.contains("coexistenceMode=query-only"));
         assert!(rendered.contains("backendPressure=both"));
+        assert!(rendered.contains("coexistenceLayerRequired=true"));
+        assert!(rendered.contains("coexistenceLayerStatus=missing-query-only"));
+        assert!(rendered.contains("coexistenceLayerPreferredPhase=query"));
+        assert!(rendered.contains("coexistenceLayerRecommendedActionKey=hook.query"));
         assert!(rendered.contains("fallbackActionKey=hook.query"));
         assert!(rendered.contains("fallbackStepId=next-action:hook.query:0"));
         assert!(rendered.contains("fallbackCommand=objc.classes <filter>"));
@@ -28249,7 +28378,7 @@ mod tests {
             None,
             &[],
             Some(&Error::State(
-                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackStepId=next-action:hook.status:0 fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
+                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both coexistenceLayerRequired=true coexistenceLayerStatus=missing-cleanup-only coexistenceLayerPreferredPhase=cleanup coexistenceLayerRecommendedActionKey=hook.status coexistenceLayerSummary=an external hook backend is loaded and current policy only allows cleanup commands; no coexistence layer is available, so use status/stop commands to recover state fallbackActionKey=hook.status fallbackStepId=next-action:hook.status:0 fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
             )),
         );
 
@@ -28269,6 +28398,23 @@ mod tests {
         );
         assert_eq!(rendered["diagnostics"]["coexistenceMode"], "cleanup-only");
         assert_eq!(rendered["diagnostics"]["backendPressure"], "both");
+        assert_eq!(rendered["diagnostics"]["coexistenceLayerRequired"], true);
+        assert_eq!(
+            rendered["diagnostics"]["coexistenceLayerStatus"],
+            "missing-cleanup-only"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["coexistenceLayerPreferredPhase"],
+            "cleanup"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["coexistenceLayerRecommendedActionKey"],
+            "hook.status"
+        );
+        assert!(rendered["diagnostics"]["coexistenceLayerSummary"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("no coexistence layer is available"));
         assert_eq!(rendered["diagnostics"]["fallbackActionKey"], "hook.status");
         assert_eq!(rendered["diagnostics"]["fallbackStepId"], "next-action:hook.status:0");
         assert_eq!(rendered["diagnostics"]["fallbackCommand"], "trace status");
@@ -28288,6 +28434,23 @@ mod tests {
         );
         assert_eq!(rendered["diagnostics"]["hook"]["coexistenceMode"], "cleanup-only");
         assert_eq!(rendered["diagnostics"]["hook"]["backendPressure"], "both");
+        assert_eq!(rendered["diagnostics"]["hook"]["coexistenceLayerRequired"], true);
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["coexistenceLayerStatus"],
+            "missing-cleanup-only"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["coexistenceLayerPreferredPhase"],
+            "cleanup"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["coexistenceLayerRecommendedActionKey"],
+            "hook.status"
+        );
+        assert!(rendered["diagnostics"]["hook"]["coexistenceLayerSummary"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("no coexistence layer is available"));
         assert_eq!(rendered["diagnostics"]["hook"]["fallbackActionKey"], "hook.status");
         assert_eq!(
             rendered["diagnostics"]["hook"]["fallbackStepId"],
@@ -28304,6 +28467,14 @@ mod tests {
                 .as_str()
                 .unwrap_or_default()
                 .contains("effective hook command mode during failure: query-only")));
+        assert!(rendered["diagnostics"]["hints"]
+            .as_array()
+            .expect("hints array")
+            .iter()
+            .any(|item| item
+                .as_str()
+                .unwrap_or_default()
+                .contains("coexistence layer is required but unavailable: status=missing-cleanup-only, preferredPhase=cleanup, recommendedActionKey=hook.status")));
         assert!(rendered["diagnostics"]["hints"]
             .as_array()
             .expect("hints array")
