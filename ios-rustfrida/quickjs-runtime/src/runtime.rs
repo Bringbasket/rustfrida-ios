@@ -6708,6 +6708,330 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const originals = {
+                                classInfo: ObjC.classInfo,
+                                protocolInfo: ObjC.protocolInfo,
+                                methodInfo: ObjC.methodInfo,
+                                protocolMethodInfo: ObjC.protocolMethodInfo,
+                                propertyInfo: ObjC.propertyInfo,
+                                protocolPropertyInfo: ObjC.protocolPropertyInfo,
+                            };
+                            ObjC.classInfo = function() {
+                                return {
+                                    className: 'DemoView',
+                                    classPointer: ptr('0x180001000'),
+                                    isMetaClass: true,
+                                    superclassName: 'NSObject',
+                                    superclassPointer: ptr('0x180001100'),
+                                    instanceSize: 48,
+                                    protocolCount: 2,
+                                    instancePropertyCount: 0,
+                                    classPropertyCount: 2,
+                                    ivarCount: 0,
+                                    instanceMethodCount: 0,
+                                    classMethodCount: 4,
+                                    imagePath: '/System/Library/Frameworks/UIKit.framework/UIKit',
+                                };
+                            };
+                            ObjC.protocolInfo = function() {
+                                return {
+                                    protocolName: 'DemoProtocol',
+                                    protocolPointer: ptr('0x180002000'),
+                                    adoptedProtocols: ['NSCopying', 'NSSecureCoding'],
+                                    requiredInstanceMethodCount: 1,
+                                    requiredClassMethodCount: 0,
+                                    optionalInstanceMethodCount: 0,
+                                    optionalClassMethodCount: 1,
+                                    propertyCount: 2,
+                                    imagePath: '/var/jb/usr/lib/libDemoProto.dylib',
+                                };
+                            };
+                            ObjC.methodInfo = function() {
+                                return {
+                                    className: 'DemoView',
+                                    selector: 'setTitle:',
+                                    isClassMethod: false,
+                                    methodPointer: ptr('0x180003000'),
+                                    imp: ptr('0x180004000'),
+                                    typeEncoding: 'v24@0:8@16',
+                                    imagePath: '/System/Library/Frameworks/UIKit.framework/UIKit',
+                                };
+                            };
+                            ObjC.protocolMethodInfo = function() {
+                                return {
+                                    protocolName: 'DemoProtocol',
+                                    selector: 'demoValue',
+                                    typeEncoding: '@16@0:8',
+                                    isRequired: false,
+                                    isInstanceMethod: true,
+                                    imagePath: '/usr/lib/libobjc.A.dylib',
+                                };
+                            };
+                            ObjC.propertyInfo = function() {
+                                return {
+                                    className: 'DemoView',
+                                    name: 'title',
+                                    attributes: 'T@\"NSString\",&,N,GcustomTitle,ScustomSetTitle:,V_title',
+                                    isClassProperty: false,
+                                    propertyPointer: ptr('0x180005000'),
+                                    imagePath: '/Applications/Demo.app/Demo',
+                                };
+                            };
+                            ObjC.protocolPropertyInfo = function() {
+                                return {
+                                    protocolName: 'DemoProtocol',
+                                    name: 'delegate',
+                                    attributes: 'T@\"NSObject\",W,Gdelegate,SDemoSetDelegate:',
+                                    propertyPointer: ptr('0x180006000'),
+                                    imagePath: '/var/containers/Bundle/Application/UUID/Demo.app/Demo',
+                                };
+                            };
+                            function checkImage(result, pathKind, imageName, directoryPath) {
+                                return result.imagePath !== null &&
+                                    result.resolvedImagePath === result.imagePath &&
+                                    result.imagePathKind === pathKind &&
+                                    result.resolvedImagePathKind === pathKind &&
+                                    result.imageName === imageName &&
+                                    result.resolvedImageName === imageName &&
+                                    result.imageDirectoryPath === directoryPath &&
+                                    result.resolvedImageDirectoryPath === directoryPath;
+                            }
+                            try {
+                                const cls = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'DemoView', isMetaClass: true });
+                                const proto = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_info', protocolName: 'DemoProtocol' });
+                                const method = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_info', className: 'DemoView', selectorName: 'setTitle:', isClassMethod: false });
+                                const protocolMethod = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_method_info', protocolName: 'DemoProtocol', selectorName: 'demoValue', isRequired: false, isInstanceMethod: true });
+                                const property = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.property_info', className: 'DemoView', propertyName: 'title', isClassProperty: false });
+                                const protocolProperty = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_property_info', protocolName: 'DemoProtocol', propertyName: 'delegate' });
+                                return cls.classInfo !== null
+                                    && cls.text === cls.classInfo.text
+                                    && cls.resolvedClassName === 'DemoView'
+                                    && cls.resolvedClassPointer === '0x180001000'
+                                    && cls.resolvedIsMetaClass === true
+                                    && cls.resolvedHasSuperclass === true
+                                    && cls.hasSuperclass === true
+                                    && cls.superclassName === 'NSObject'
+                                    && cls.resolvedSuperclassPointer === '0x180001100'
+                                    && cls.resolvedIsRootClass === false
+                                    && cls.isRootClass === false
+                                    && cls.resolvedHasProtocols === true
+                                    && cls.hasProtocols === true
+                                    && cls.resolvedHasInstanceProperties === false
+                                    && cls.hasInstanceProperties === false
+                                    && cls.resolvedHasClassProperties === true
+                                    && cls.hasClassProperties === true
+                                    && cls.resolvedHasProperties === true
+                                    && cls.hasProperties === true
+                                    && cls.resolvedHasIvars === false
+                                    && cls.hasIvars === false
+                                    && cls.resolvedHasInstanceMethods === false
+                                    && cls.hasInstanceMethods === false
+                                    && cls.resolvedHasClassMethods === true
+                                    && cls.hasClassMethods === true
+                                    && cls.resolvedHasMethods === true
+                                    && cls.hasMethods === true
+                                    && cls.resolvedHasImagePath === true
+                                    && cls.hasImagePath === true
+                                    && cls.instanceSize === 48
+                                    && cls.resolvedInstanceSize === 48
+                                    && cls.protocolCount === 2
+                                    && cls.resolvedProtocolCount === 2
+                                    && cls.instancePropertyCount === 0
+                                    && cls.classPropertyCount === 2
+                                    && cls.totalPropertyCount === 2
+                                    && cls.instanceMethodCount === 0
+                                    && cls.classMethodCount === 4
+                                    && cls.totalMethodCount === 4
+                                    && checkImage(cls, 'system', 'UIKit', '/System/Library/Frameworks/UIKit.framework')
+                                    && proto.protocolInfo !== null
+                                    && proto.text === proto.protocolInfo.text
+                                    && proto.resolvedProtocolName === 'DemoProtocol'
+                                    && proto.resolvedProtocolPointer === '0x180002000'
+                                    && JSON.stringify(proto.adoptedProtocolNames) === JSON.stringify(['NSCopying', 'NSSecureCoding'])
+                                    && JSON.stringify(proto.resolvedAdoptedProtocolNames) === JSON.stringify(['NSCopying', 'NSSecureCoding'])
+                                    && proto.firstAdoptedProtocol === 'NSCopying'
+                                    && proto.lastAdoptedProtocol === 'NSSecureCoding'
+                                    && proto.resolvedHasAdoptedProtocols === true
+                                    && proto.hasAdoptedProtocols === true
+                                    && proto.resolvedHasRequiredMethods === true
+                                    && proto.hasRequiredMethods === true
+                                    && proto.resolvedHasOptionalMethods === true
+                                    && proto.hasOptionalMethods === true
+                                    && proto.resolvedHasInstanceMethods === true
+                                    && proto.hasInstanceMethods === true
+                                    && proto.resolvedHasClassMethods === true
+                                    && proto.hasClassMethods === true
+                                    && proto.resolvedHasProperties === true
+                                    && proto.hasProperties === true
+                                    && proto.resolvedHasImagePath === true
+                                    && proto.hasImagePath === true
+                                    && proto.adoptedProtocolCount === 2
+                                    && proto.requiredInstanceMethodCount === 1
+                                    && proto.requiredClassMethodCount === 0
+                                    && proto.optionalInstanceMethodCount === 0
+                                    && proto.optionalClassMethodCount === 1
+                                    && proto.totalMethodCount === 2
+                                    && proto.propertyCount === 2
+                                    && checkImage(proto, 'jailbreak', 'libDemoProto.dylib', '/var/jb/usr/lib')
+                                    && method.methodInfo !== null
+                                    && method.text === method.methodInfo.text
+                                    && method.resolvedClassName === 'DemoView'
+                                    && method.resolvedSelector === 'setTitle:'
+                                    && method.resolvedMethodPointer === '0x180003000'
+                                    && method.resolvedImp === '0x180004000'
+                                    && method.resolvedTypeEncoding === 'v24@0:8@16'
+                                    && method.resolvedReturnTypeName === method.methodInfo.returnTypeName
+                                    && method.resolvedSignature === method.methodInfo.signature
+                                    && method.argumentCount === 3
+                                    && method.explicitArgumentCount === 1
+                                    && method.hiddenArgumentCount === 2
+                                    && method.selectorPartCount === 1
+                                    && method.resolvedHasImagePath === true
+                                    && method.hasImagePath === true
+                                    && method.resolvedHasSelectorArguments === true
+                                    && method.hasSelectorArguments === true
+                                    && method.resolvedIsUnarySelector === false
+                                    && method.isUnarySelector === false
+                                    && method.resolvedIsKeywordSelector === true
+                                    && method.isKeywordSelector === true
+                                    && method.resolvedHasExplicitArguments === true
+                                    && method.hasExplicitArguments === true
+                                    && method.resolvedHasHiddenArguments === true
+                                    && method.hasHiddenArguments === true
+                                    && method.resolvedReturnsVoid === true
+                                    && method.returnsVoid === true
+                                    && method.resolvedReturnsObject === false
+                                    && method.returnsObject === false
+                                    && method.resolvedReturnsBlock === false
+                                    && method.returnsBlock === false
+                                    && checkImage(method, 'system', 'UIKit', '/System/Library/Frameworks/UIKit.framework')
+                                    && protocolMethod.methodInfo !== null
+                                    && protocolMethod.text === protocolMethod.methodInfo.text
+                                    && protocolMethod.resolvedProtocolName === 'DemoProtocol'
+                                    && protocolMethod.resolvedSelector === 'demoValue'
+                                    && protocolMethod.resolvedTypeEncoding === '@16@0:8'
+                                    && protocolMethod.resolvedReturnTypeName === protocolMethod.methodInfo.returnTypeName
+                                    && protocolMethod.resolvedSignature === protocolMethod.methodInfo.signature
+                                    && protocolMethod.argumentCount === 2
+                                    && protocolMethod.explicitArgumentCount === 0
+                                    && protocolMethod.hiddenArgumentCount === 2
+                                    && protocolMethod.selectorPartCount === 0
+                                    && protocolMethod.resolvedHasImagePath === true
+                                    && protocolMethod.hasImagePath === true
+                                    && protocolMethod.resolvedHasSelectorArguments === false
+                                    && protocolMethod.hasSelectorArguments === false
+                                    && protocolMethod.resolvedIsUnarySelector === true
+                                    && protocolMethod.isUnarySelector === true
+                                    && protocolMethod.resolvedIsKeywordSelector === false
+                                    && protocolMethod.isKeywordSelector === false
+                                    && protocolMethod.resolvedHasExplicitArguments === false
+                                    && protocolMethod.hasExplicitArguments === false
+                                    && protocolMethod.resolvedHasHiddenArguments === true
+                                    && protocolMethod.hasHiddenArguments === true
+                                    && protocolMethod.resolvedReturnsVoid === false
+                                    && protocolMethod.returnsVoid === false
+                                    && protocolMethod.resolvedReturnsObject === true
+                                    && protocolMethod.returnsObject === true
+                                    && protocolMethod.resolvedReturnsBlock === false
+                                    && protocolMethod.returnsBlock === false
+                                    && checkImage(protocolMethod, 'system', 'libobjc.A.dylib', '/usr/lib')
+                                    && property.propertyInfo !== null
+                                    && property.text === property.propertyInfo.text
+                                    && property.resolvedClassName === 'DemoView'
+                                    && property.resolvedName === 'title'
+                                    && property.resolvedPropertyPointer === '0x180005000'
+                                    && property.resolvedTypeName === property.propertyInfo.typeName
+                                    && property.typeName === property.propertyInfo.typeName
+                                    && property.resolvedOwnership === 'strong'
+                                    && property.ownership === 'strong'
+                                    && property.resolvedObjectClassName === 'NSString'
+                                    && property.objectClassName === 'NSString'
+                                    && property.resolvedGetterName === 'customTitle'
+                                    && property.getterName === 'customTitle'
+                                    && property.resolvedSetterName === 'customSetTitle:'
+                                    && property.setterName === 'customSetTitle:'
+                                    && property.resolvedIvarName === '_title'
+                                    && property.ivarName === '_title'
+                                    && property.resolvedObjectProtocolCount === 0
+                                    && property.objectProtocolCount === 0
+                                    && property.resolvedParsedTokenCount === 6
+                                    && property.parsedTokenCount === 6
+                                    && property.resolvedHasAccessorCustomization === true
+                                    && property.hasAccessorCustomization === true
+                                    && property.resolvedHasGetterName === true
+                                    && property.hasGetterName === true
+                                    && property.resolvedHasSetterName === true
+                                    && property.hasSetterName === true
+                                    && property.resolvedHasBackingIvar === true
+                                    && property.hasBackingIvar === true
+                                    && property.resolvedHasObjectClassName === true
+                                    && property.hasObjectClassName === true
+                                    && property.resolvedHasObjectProtocols === false
+                                    && property.hasObjectProtocols === false
+                                    && property.resolvedHasTypeInfo === true
+                                    && property.hasTypeInfo === true
+                                    && property.resolvedIsObject === true
+                                    && property.isObject === true
+                                    && property.resolvedIsBlock === false
+                                    && property.isBlock === false
+                                    && checkImage(property, 'application', 'Demo', '/Applications/Demo.app')
+                                    && protocolProperty.propertyInfo !== null
+                                    && protocolProperty.text === protocolProperty.propertyInfo.text
+                                    && protocolProperty.resolvedProtocolName === 'DemoProtocol'
+                                    && protocolProperty.resolvedName === 'delegate'
+                                    && protocolProperty.resolvedPropertyPointer === '0x180006000'
+                                    && protocolProperty.resolvedTypeName === protocolProperty.propertyInfo.typeName
+                                    && protocolProperty.typeName === protocolProperty.propertyInfo.typeName
+                                    && protocolProperty.resolvedOwnership === 'weak'
+                                    && protocolProperty.ownership === 'weak'
+                                    && protocolProperty.resolvedObjectClassName === 'NSObject'
+                                    && protocolProperty.objectClassName === 'NSObject'
+                                    && protocolProperty.resolvedGetterName === 'delegate'
+                                    && protocolProperty.getterName === 'delegate'
+                                    && protocolProperty.resolvedSetterName === 'DemoSetDelegate:'
+                                    && protocolProperty.setterName === 'DemoSetDelegate:'
+                                    && protocolProperty.resolvedIvarName === null
+                                    && protocolProperty.ivarName === null
+                                    && protocolProperty.resolvedObjectProtocolCount === 0
+                                    && protocolProperty.objectProtocolCount === 0
+                                    && protocolProperty.resolvedParsedTokenCount === 4
+                                    && protocolProperty.parsedTokenCount === 4
+                                    && protocolProperty.resolvedHasAccessorCustomization === true
+                                    && protocolProperty.hasAccessorCustomization === true
+                                    && protocolProperty.resolvedHasGetterName === true
+                                    && protocolProperty.hasGetterName === true
+                                    && protocolProperty.resolvedHasSetterName === true
+                                    && protocolProperty.hasSetterName === true
+                                    && protocolProperty.resolvedHasBackingIvar === false
+                                    && protocolProperty.hasBackingIvar === false
+                                    && protocolProperty.resolvedHasObjectClassName === true
+                                    && protocolProperty.hasObjectClassName === true
+                                    && protocolProperty.resolvedHasObjectProtocols === false
+                                    && protocolProperty.hasObjectProtocols === false
+                                    && protocolProperty.resolvedHasTypeInfo === true
+                                    && protocolProperty.hasTypeInfo === true
+                                    && protocolProperty.resolvedIsObject === true
+                                    && protocolProperty.isObject === true
+                                    && protocolProperty.resolvedIsBlock === false
+                                    && protocolProperty.isBlock === false
+                                    && checkImage(protocolProperty, 'app', 'Demo', '/var/containers/Bundle/Application/UUID/Demo.app');
+                            } finally {
+                                ObjC.classInfo = originals.classInfo;
+                                ObjC.protocolInfo = originals.protocolInfo;
+                                ObjC.methodInfo = originals.methodInfo;
+                                ObjC.protocolMethodInfo = originals.protocolMethodInfo;
+                                ObjC.propertyInfo = originals.propertyInfo;
+                                ObjC.protocolPropertyInfo = originals.protocolPropertyInfo;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic objc info direct fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' });
                             if (result.kind !== 'objc.ivars' || result.className !== 'NSObject' || result.filter !== 'delegate' || result.hasFilter !== true) {
