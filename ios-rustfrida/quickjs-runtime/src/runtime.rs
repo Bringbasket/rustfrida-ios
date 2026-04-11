@@ -7379,6 +7379,317 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const originals = {
+                                classInfo: ObjC.classInfo,
+                                protocolInfo: ObjC.protocolInfo,
+                                classProtocols: ObjC.classProtocols,
+                                protocolProtocols: ObjC.protocolProtocols,
+                                protocolMethods: ObjC.protocolMethods,
+                                protocolProperties: ObjC.protocolProperties,
+                            };
+                            ObjC.classInfo = function() {
+                                return {
+                                    className: 'DemoView',
+                                    classPointer: ptr('0x180010000'),
+                                    isMetaClass: false,
+                                    superclassName: 'UIView',
+                                    superclassPointer: ptr('0x180010100'),
+                                    instanceSize: 64,
+                                    protocolCount: 2,
+                                    instancePropertyCount: 2,
+                                    classPropertyCount: 1,
+                                    ivarCount: 2,
+                                    instanceMethodCount: 2,
+                                    classMethodCount: 1,
+                                    imagePath: '/Applications/Demo.app/Demo',
+                                };
+                            };
+                            ObjC.protocolInfo = function(protocolName) {
+                                switch (protocolName) {
+                                case 'DemoProtocol':
+                                    return {
+                                        protocolName: 'DemoProtocol',
+                                        protocolPointer: ptr('0x180030000'),
+                                        adoptedProtocols: ['BaseProtocol'],
+                                        requiredInstanceMethodCount: 1,
+                                        requiredClassMethodCount: 0,
+                                        optionalInstanceMethodCount: 1,
+                                        optionalClassMethodCount: 0,
+                                        propertyCount: 2,
+                                        imagePath: '/Applications/Demo.app/Demo',
+                                    };
+                                case 'AnotherProtocol':
+                                    return {
+                                        protocolName: 'AnotherProtocol',
+                                        protocolPointer: ptr('0x180030100'),
+                                        adoptedProtocols: [],
+                                        requiredInstanceMethodCount: 0,
+                                        requiredClassMethodCount: 1,
+                                        optionalInstanceMethodCount: 0,
+                                        optionalClassMethodCount: 0,
+                                        propertyCount: 1,
+                                        imagePath: '/System/Library/Frameworks/Foundation.framework/Foundation',
+                                    };
+                                case 'BaseProtocol':
+                                    return {
+                                        protocolName: 'BaseProtocol',
+                                        protocolPointer: ptr('0x180030200'),
+                                        adoptedProtocols: [],
+                                        requiredInstanceMethodCount: 0,
+                                        requiredClassMethodCount: 0,
+                                        optionalInstanceMethodCount: 0,
+                                        optionalClassMethodCount: 0,
+                                        propertyCount: 0,
+                                        imagePath: '/usr/lib/libobjc.A.dylib',
+                                    };
+                                default:
+                                    return null;
+                                }
+                            };
+                            ObjC.classProtocols = function() {
+                                return ['DemoProtocol', 'AnotherProtocol'];
+                            };
+                            ObjC.protocolProtocols = function() {
+                                return ['BaseProtocol', 'AnotherProtocol'];
+                            };
+                            ObjC.protocolMethods = function() {
+                                return [
+                                    {
+                                        protocolName: 'DemoProtocol',
+                                        selector: 'sharedDemo',
+                                        typeEncoding: '@16@0:8',
+                                        isRequired: false,
+                                        isInstanceMethod: false,
+                                    },
+                                    {
+                                        protocolName: 'DemoProtocol',
+                                        selector: 'buildDemo:',
+                                        typeEncoding: 'v24@0:8@16',
+                                        isRequired: false,
+                                        isInstanceMethod: false,
+                                    }
+                                ];
+                            };
+                            ObjC.protocolProperties = function() {
+                                return [
+                                    {
+                                        protocolName: 'DemoProtocol',
+                                        name: 'delegate',
+                                        attributes: 'T@\"NSObject\",W',
+                                    },
+                                    {
+                                        protocolName: 'DemoProtocol',
+                                        name: 'title',
+                                        attributes: 'T@\"NSString\",&,N,GcustomTitle,ScustomSetTitle:,V_title',
+                                    }
+                                ];
+                            };
+                            try {
+                                const classProtocols = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_protocols', className: 'DemoView', filter: 'Demo' });
+                                const protocolProtocols = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_protocols', protocolName: 'DemoProtocol', filter: 'Base' });
+                                const protocolMethods = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_methods', protocolName: 'DemoProtocol', isRequired: false, isInstanceMethod: false, filter: 'Demo' });
+                                const protocolProperties = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_properties', protocolName: 'DemoProtocol', filter: 'title' });
+                                return classProtocols.classInfo !== null
+                                    && classProtocols.resolvedClassName === 'DemoView'
+                                    && classProtocols.resolvedClassPointer === '0x180010000'
+                                    && classProtocols.resolvedHasImagePath === true
+                                    && classProtocols.hasImagePath === true
+                                    && classProtocols.resolvedImagePath === '/Applications/Demo.app/Demo'
+                                    && classProtocols.imagePath === '/Applications/Demo.app/Demo'
+                                    && classProtocols.resolvedDeclaredProtocolCount === 2
+                                    && classProtocols.declaredProtocolCount === 2
+                                    && classProtocols.resolvedOwnerHasProtocols === true
+                                    && classProtocols.ownerHasProtocols === true
+                                    && classProtocols.resolvedOwnerHasProperties === true
+                                    && classProtocols.ownerHasProperties === true
+                                    && classProtocols.resolvedOwnerHasMethods === true
+                                    && classProtocols.ownerHasMethods === true
+                                    && classProtocols.resolvedOwnerTotalPropertyCount === 3
+                                    && classProtocols.ownerTotalPropertyCount === 3
+                                    && classProtocols.resolvedOwnerTotalMethodCount === 3
+                                    && classProtocols.ownerTotalMethodCount === 3
+                                    && classProtocols.filter === 'Demo'
+                                    && classProtocols.hasFilter === true
+                                    && classProtocols.count === 2
+                                    && classProtocols.hasProtocols === true
+                                    && classProtocols.firstProtocol === 'DemoProtocol'
+                                    && classProtocols.lastProtocol === 'AnotherProtocol'
+                                    && classProtocols.firstImagePath === '/Applications/Demo.app/Demo'
+                                    && classProtocols.lastImagePath === '/System/Library/Frameworks/Foundation.framework/Foundation'
+                                    && classProtocols.uniqueImagePathCount === 2
+                                    && classProtocols.protocolsWithImagePathCount === 2
+                                    && classProtocols.protocolsWithAdoptedProtocolsCount === 1
+                                    && classProtocols.protocolsWithRequiredMethodsCount === 2
+                                    && classProtocols.protocolsWithOptionalMethodsCount === 1
+                                    && classProtocols.protocolsWithInstanceMethodsCount === 1
+                                    && classProtocols.protocolsWithClassMethodsCount === 1
+                                    && classProtocols.protocolsWithPropertiesCount === 2
+                                    && classProtocols.totalAdoptedProtocolCount === 1
+                                    && classProtocols.totalRequiredMethodCount === 2
+                                    && classProtocols.totalOptionalMethodCount === 1
+                                    && classProtocols.totalPropertyCount === 3
+                                    && JSON.stringify(classProtocols.imagePathList) === JSON.stringify(['/Applications/Demo.app/Demo', '/System/Library/Frameworks/Foundation.framework/Foundation'])
+                                    && classProtocols.imagePaths.length === 2
+                                    && JSON.stringify(classProtocols.protocols) === JSON.stringify(['DemoProtocol', 'AnotherProtocol'])
+                                    && classProtocols.text === 'DemoProtocol\nAnotherProtocol'
+                                    && protocolProtocols.protocolInfo !== null
+                                    && protocolProtocols.resolvedProtocolName === 'DemoProtocol'
+                                    && protocolProtocols.resolvedProtocolPointer === '0x180030000'
+                                    && protocolProtocols.resolvedHasImagePath === true
+                                    && protocolProtocols.hasImagePath === true
+                                    && protocolProtocols.resolvedImagePath === '/Applications/Demo.app/Demo'
+                                    && protocolProtocols.imagePath === '/Applications/Demo.app/Demo'
+                                    && protocolProtocols.resolvedAdoptedProtocolCount === 1
+                                    && protocolProtocols.adoptedProtocolCount === 1
+                                    && protocolProtocols.resolvedProtocolTotalMethodCount === 2
+                                    && protocolProtocols.protocolTotalMethodCount === 2
+                                    && protocolProtocols.resolvedProtocolPropertyCount === 2
+                                    && protocolProtocols.protocolPropertyCount === 2
+                                    && protocolProtocols.resolvedOwnerHasAdoptedProtocols === true
+                                    && protocolProtocols.ownerHasAdoptedProtocols === true
+                                    && protocolProtocols.resolvedOwnerHasMethods === true
+                                    && protocolProtocols.ownerHasMethods === true
+                                    && protocolProtocols.resolvedOwnerHasProperties === true
+                                    && protocolProtocols.ownerHasProperties === true
+                                    && protocolProtocols.filter === 'Base'
+                                    && protocolProtocols.hasFilter === true
+                                    && protocolProtocols.count === 2
+                                    && protocolProtocols.hasProtocols === true
+                                    && protocolProtocols.firstProtocol === 'BaseProtocol'
+                                    && protocolProtocols.lastProtocol === 'AnotherProtocol'
+                                    && protocolProtocols.firstImagePath === '/usr/lib/libobjc.A.dylib'
+                                    && protocolProtocols.lastImagePath === '/System/Library/Frameworks/Foundation.framework/Foundation'
+                                    && protocolProtocols.uniqueImagePathCount === 2
+                                    && protocolProtocols.protocolsWithImagePathCount === 2
+                                    && protocolProtocols.protocolsWithAdoptedProtocolsCount === 0
+                                    && protocolProtocols.protocolsWithRequiredMethodsCount === 1
+                                    && protocolProtocols.protocolsWithOptionalMethodsCount === 0
+                                    && protocolProtocols.protocolsWithInstanceMethodsCount === 0
+                                    && protocolProtocols.protocolsWithClassMethodsCount === 1
+                                    && protocolProtocols.protocolsWithPropertiesCount === 1
+                                    && protocolProtocols.totalAdoptedProtocolCount === 0
+                                    && protocolProtocols.totalRequiredMethodCount === 1
+                                    && protocolProtocols.totalOptionalMethodCount === 0
+                                    && protocolProtocols.totalPropertyCount === 1
+                                    && JSON.stringify(protocolProtocols.imagePathList) === JSON.stringify(['/usr/lib/libobjc.A.dylib', '/System/Library/Frameworks/Foundation.framework/Foundation'])
+                                    && protocolProtocols.imagePaths.length === 2
+                                    && JSON.stringify(protocolProtocols.protocols) === JSON.stringify(['BaseProtocol', 'AnotherProtocol'])
+                                    && protocolProtocols.text === 'BaseProtocol\nAnotherProtocol'
+                                    && protocolMethods.protocolInfo !== null
+                                    && protocolMethods.resolvedProtocolName === 'DemoProtocol'
+                                    && protocolMethods.resolvedProtocolPointer === '0x180030000'
+                                    && protocolMethods.resolvedHasImagePath === true
+                                    && protocolMethods.hasImagePath === true
+                                    && protocolMethods.resolvedImagePath === '/Applications/Demo.app/Demo'
+                                    && protocolMethods.imagePath === '/Applications/Demo.app/Demo'
+                                    && protocolMethods.resolvedAdoptedProtocolCount === 1
+                                    && protocolMethods.adoptedProtocolCount === 1
+                                    && protocolMethods.resolvedProtocolTotalMethodCount === 2
+                                    && protocolMethods.protocolTotalMethodCount === 2
+                                    && protocolMethods.resolvedProtocolPropertyCount === 2
+                                    && protocolMethods.protocolPropertyCount === 2
+                                    && protocolMethods.resolvedOwnerHasAdoptedProtocols === true
+                                    && protocolMethods.ownerHasAdoptedProtocols === true
+                                    && protocolMethods.resolvedOwnerHasMethods === true
+                                    && protocolMethods.ownerHasMethods === true
+                                    && protocolMethods.resolvedOwnerHasProperties === true
+                                    && protocolMethods.ownerHasProperties === true
+                                    && protocolMethods.filter === 'Demo'
+                                    && protocolMethods.hasFilter === true
+                                    && protocolMethods.count === 2
+                                    && protocolMethods.hasMethods === true
+                                    && protocolMethods.firstSelector === 'sharedDemo'
+                                    && protocolMethods.lastSelector === 'buildDemo:'
+                                    && protocolMethods.uniqueSelectorCount === 2
+                                    && protocolMethods.uniqueReturnTypeCount === 2
+                                    && protocolMethods.keywordSelectorCount === 1
+                                    && protocolMethods.unarySelectorCount === 1
+                                    && protocolMethods.explicitArgumentMethodCount === 1
+                                    && protocolMethods.hiddenArgumentMethodCount === 2
+                                    && protocolMethods.returnsVoidCount === 1
+                                    && protocolMethods.returnsObjectCount === 1
+                                    && protocolMethods.returnsBlockCount === 0
+                                    && protocolMethods.totalExplicitArgumentCount === 1
+                                    && protocolMethods.totalHiddenArgumentCount === 4
+                                    && protocolMethods.maxSelectorPartCount === 1
+                                    && protocolMethods.maxExplicitArgumentCount === 1
+                                    && JSON.stringify(protocolMethods.selectorNameList) === JSON.stringify(['sharedDemo', 'buildDemo:'])
+                                    && JSON.stringify(protocolMethods.returnTypeNameList) === JSON.stringify(['id', 'void'])
+                                    && JSON.stringify(protocolMethods.selectorNames) === JSON.stringify(['sharedDemo', 'buildDemo:'])
+                                    && JSON.stringify(protocolMethods.returnTypeNames) === JSON.stringify(['id', 'void'])
+                                    && protocolMethods.selectors.length === 2
+                                    && protocolMethods.returnTypes.length === 2
+                                    && protocolMethods.text === protocolMethods.methods.map((method) => method.text).join('\n')
+                                    && protocolProperties.protocolInfo !== null
+                                    && protocolProperties.resolvedProtocolName === 'DemoProtocol'
+                                    && protocolProperties.resolvedProtocolPointer === '0x180030000'
+                                    && protocolProperties.resolvedHasImagePath === true
+                                    && protocolProperties.hasImagePath === true
+                                    && protocolProperties.resolvedImagePath === '/Applications/Demo.app/Demo'
+                                    && protocolProperties.imagePath === '/Applications/Demo.app/Demo'
+                                    && protocolProperties.resolvedAdoptedProtocolCount === 1
+                                    && protocolProperties.adoptedProtocolCount === 1
+                                    && protocolProperties.resolvedProtocolTotalMethodCount === 2
+                                    && protocolProperties.protocolTotalMethodCount === 2
+                                    && protocolProperties.resolvedProtocolPropertyCount === 2
+                                    && protocolProperties.protocolPropertyCount === 2
+                                    && protocolProperties.resolvedOwnerHasAdoptedProtocols === true
+                                    && protocolProperties.ownerHasAdoptedProtocols === true
+                                    && protocolProperties.resolvedOwnerHasMethods === true
+                                    && protocolProperties.ownerHasMethods === true
+                                    && protocolProperties.resolvedOwnerHasProperties === true
+                                    && protocolProperties.ownerHasProperties === true
+                                    && protocolProperties.filter === 'title'
+                                    && protocolProperties.hasFilter === true
+                                    && protocolProperties.count === 2
+                                    && protocolProperties.hasProperties === true
+                                    && protocolProperties.firstProperty === 'delegate'
+                                    && protocolProperties.lastProperty === 'title'
+                                    && protocolProperties.firstObjectClassName === 'NSObject'
+                                    && protocolProperties.lastObjectClassName === 'NSString'
+                                    && protocolProperties.uniqueOwnershipCount === 2
+                                    && protocolProperties.uniqueObjectClassCount === 2
+                                    && protocolProperties.readonlyPropertyCount === 0
+                                    && protocolProperties.readwritePropertyCount === 2
+                                    && protocolProperties.atomicPropertyCount === 1
+                                    && protocolProperties.nonatomicPropertyCount === 1
+                                    && protocolProperties.dynamicPropertyCount === 0
+                                    && protocolProperties.strongPropertyCount === 1
+                                    && protocolProperties.copyPropertyCount === 0
+                                    && protocolProperties.weakPropertyCount === 1
+                                    && protocolProperties.assignPropertyCount === 0
+                                    && protocolProperties.objectPropertyCount === 2
+                                    && protocolProperties.blockPropertyCount === 0
+                                    && protocolProperties.propertiesWithAccessorCustomizationCount === 1
+                                    && protocolProperties.propertiesWithBackingIvarCount === 1
+                                    && protocolProperties.propertiesWithObjectProtocolsCount === 0
+                                    && protocolProperties.propertiesWithTypeInfoCount === 2
+                                    && protocolProperties.propertiesWithParsedTokensCount === 2
+                                    && protocolProperties.totalObjectProtocolCount === 0
+                                    && JSON.stringify(protocolProperties.ownershipNameList) === JSON.stringify(['weak', 'strong'])
+                                    && JSON.stringify(protocolProperties.objectClassNameList) === JSON.stringify(['NSObject', 'NSString'])
+                                    && JSON.stringify(protocolProperties.ownershipNames) === JSON.stringify(['weak', 'strong'])
+                                    && JSON.stringify(protocolProperties.objectClassNames) === JSON.stringify(['NSObject', 'NSString'])
+                                    && protocolProperties.ownerships.length === 2
+                                    && protocolProperties.objectClasses.length === 2
+                                    && protocolProperties.text === protocolProperties.properties.map((property) => property.text).join('\n');
+                            } finally {
+                                ObjC.classInfo = originals.classInfo;
+                                ObjC.protocolInfo = originals.protocolInfo;
+                                ObjC.classProtocols = originals.classProtocols;
+                                ObjC.protocolProtocols = originals.protocolProtocols;
+                                ObjC.protocolMethods = originals.protocolMethods;
+                                ObjC.protocolProperties = originals.protocolProperties;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic objc protocol collection summaries"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' });
                             if (result.kind !== 'objc.ivars' || result.className !== 'NSObject' || result.filter !== 'delegate' || result.hasFilter !== true) {
