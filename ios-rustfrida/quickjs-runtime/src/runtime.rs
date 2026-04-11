@@ -7032,6 +7032,353 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const originals = {
+                                classInfo: ObjC.classInfo,
+                                methods: ObjC.methods,
+                                properties: ObjC.properties,
+                                ivars: ObjC.ivars,
+                                methodOwners: ObjC.methodOwners,
+                            };
+                            ObjC.classInfo = function(className) {
+                                if (className === 'DemoCell') {
+                                    return {
+                                        className: 'DemoCell',
+                                        classPointer: ptr('0x180011000'),
+                                        isMetaClass: false,
+                                        superclassName: 'UIView',
+                                        superclassPointer: ptr('0x180011100'),
+                                        instanceSize: 32,
+                                        protocolCount: 0,
+                                        instancePropertyCount: 1,
+                                        classPropertyCount: 0,
+                                        ivarCount: 1,
+                                        instanceMethodCount: 1,
+                                        classMethodCount: 0,
+                                        imagePath: '/Applications/Demo.app/Demo',
+                                    };
+                                }
+                                return {
+                                    className: 'DemoView',
+                                    classPointer: ptr('0x180010000'),
+                                    isMetaClass: false,
+                                    superclassName: 'UIView',
+                                    superclassPointer: ptr('0x180010100'),
+                                    instanceSize: 64,
+                                    protocolCount: 1,
+                                    instancePropertyCount: 2,
+                                    classPropertyCount: 1,
+                                    ivarCount: 2,
+                                    instanceMethodCount: 2,
+                                    classMethodCount: 1,
+                                    imagePath: '/Applications/Demo.app/Demo',
+                                };
+                            };
+                            ObjC.methods = function() {
+                                return [
+                                    {
+                                        className: 'DemoView',
+                                        selector: 'setTitle:',
+                                        isClassMethod: false,
+                                        imp: ptr('0x180020000'),
+                                        typeEncoding: 'v24@0:8@16',
+                                    },
+                                    {
+                                        className: 'DemoView',
+                                        selector: 'title',
+                                        isClassMethod: false,
+                                        imp: ptr('0x180020100'),
+                                        typeEncoding: '@16@0:8',
+                                    }
+                                ];
+                            };
+                            ObjC.properties = function() {
+                                return [
+                                    {
+                                        className: 'DemoView',
+                                        name: 'title',
+                                        attributes: 'T@\"NSString\",&,N,GcustomTitle,ScustomSetTitle:,V_title',
+                                        isClassProperty: false,
+                                    },
+                                    {
+                                        className: 'DemoView',
+                                        name: 'delegate',
+                                        attributes: 'T@\"NSObject\",W',
+                                        isClassProperty: false,
+                                    }
+                                ];
+                            };
+                            ObjC.ivars = function() {
+                                return [
+                                    {
+                                        className: 'DemoView',
+                                        name: '_title',
+                                        typeEncoding: '@\"NSString\"',
+                                        offset: 0x8n,
+                                    },
+                                    {
+                                        className: 'DemoView',
+                                        name: '_state',
+                                        typeEncoding: '^q',
+                                        offset: 0x10n,
+                                    }
+                                ];
+                            };
+                            ObjC.methodOwners = function() {
+                                return [
+                                    {
+                                        className: 'DemoView',
+                                        selector: 'setTitle:',
+                                        isClassMethod: false,
+                                        imp: ptr('0x180020000'),
+                                        typeEncoding: 'v24@0:8@16',
+                                    },
+                                    {
+                                        className: 'DemoCell',
+                                        selector: 'setTitle:',
+                                        isClassMethod: false,
+                                        imp: ptr('0x180021000'),
+                                        typeEncoding: 'v24@0:8@16',
+                                    },
+                                    {
+                                        className: 'DemoCell',
+                                        selector: 'title',
+                                        isClassMethod: false,
+                                        imp: ptr('0x180021100'),
+                                        typeEncoding: '@16@0:8',
+                                    }
+                                ];
+                            };
+                            try {
+                                const methods = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.methods', className: 'DemoView', isClassMethod: false, filter: 'title' });
+                                const properties = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.properties', className: 'DemoView', isClassProperty: false, filter: 'title' });
+                                const ivars = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'DemoView', filter: 'title' });
+                                const owners = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_owners', query: 'title', isClassMethod: false });
+                                return methods.classInfo !== null
+                                    && methods.resolvedClassName === 'DemoView'
+                                    && methods.resolvedClassPointer === '0x180010000'
+                                    && methods.resolvedHasImagePath === true
+                                    && methods.hasImagePath === true
+                                    && methods.resolvedImagePath === '/Applications/Demo.app/Demo'
+                                    && methods.imagePath === '/Applications/Demo.app/Demo'
+                                    && methods.resolvedDeclaredProtocolCount === 1
+                                    && methods.declaredProtocolCount === 1
+                                    && methods.resolvedOwnerHasProtocols === true
+                                    && methods.ownerHasProtocols === true
+                                    && methods.resolvedOwnerHasProperties === true
+                                    && methods.ownerHasProperties === true
+                                    && methods.resolvedOwnerHasIvars === true
+                                    && methods.ownerHasIvars === true
+                                    && methods.resolvedOwnerHasMethods === true
+                                    && methods.ownerHasMethods === true
+                                    && methods.resolvedOwnerIvarCount === 2
+                                    && methods.ownerIvarCount === 2
+                                    && methods.resolvedOwnerTotalPropertyCount === 3
+                                    && methods.ownerTotalPropertyCount === 3
+                                    && methods.resolvedOwnerTotalMethodCount === 3
+                                    && methods.ownerTotalMethodCount === 3
+                                    && methods.filter === 'title'
+                                    && methods.hasFilter === true
+                                    && methods.count === 2
+                                    && methods.hasMethods === true
+                                    && methods.firstSelector === 'setTitle:'
+                                    && methods.lastSelector === 'title'
+                                    && methods.uniqueSelectorCount === 2
+                                    && methods.uniqueReturnTypeCount === 2
+                                    && methods.keywordSelectorCount === 1
+                                    && methods.unarySelectorCount === 1
+                                    && methods.explicitArgumentMethodCount === 1
+                                    && methods.hiddenArgumentMethodCount === 2
+                                    && methods.returnsVoidCount === 1
+                                    && methods.returnsObjectCount === 1
+                                    && methods.returnsBlockCount === 0
+                                    && methods.totalExplicitArgumentCount === 1
+                                    && methods.totalHiddenArgumentCount === 4
+                                    && methods.maxSelectorPartCount === 1
+                                    && methods.maxExplicitArgumentCount === 1
+                                    && JSON.stringify(methods.selectorNameList) === JSON.stringify(['setTitle:', 'title'])
+                                    && JSON.stringify(methods.returnTypeNameList) === JSON.stringify(['void', 'id'])
+                                    && JSON.stringify(methods.selectorNames) === JSON.stringify(['setTitle:', 'title'])
+                                    && JSON.stringify(methods.returnTypeNames) === JSON.stringify(['void', 'id'])
+                                    && methods.selectors.length === 2
+                                    && methods.selectors[0].count === 1
+                                    && methods.returnTypes.length === 2
+                                    && methods.returnTypes[0].count === 1
+                                    && methods.text === methods.methods.map((method) => method.text).join('\n')
+                                    && properties.classInfo !== null
+                                    && properties.resolvedClassName === 'DemoView'
+                                    && properties.resolvedClassPointer === '0x180010000'
+                                    && properties.resolvedHasImagePath === true
+                                    && properties.hasImagePath === true
+                                    && properties.resolvedImagePath === '/Applications/Demo.app/Demo'
+                                    && properties.imagePath === '/Applications/Demo.app/Demo'
+                                    && properties.resolvedDeclaredProtocolCount === 1
+                                    && properties.declaredProtocolCount === 1
+                                    && properties.resolvedOwnerHasProtocols === true
+                                    && properties.ownerHasProtocols === true
+                                    && properties.resolvedOwnerHasProperties === true
+                                    && properties.ownerHasProperties === true
+                                    && properties.resolvedOwnerHasIvars === true
+                                    && properties.ownerHasIvars === true
+                                    && properties.resolvedOwnerHasMethods === true
+                                    && properties.ownerHasMethods === true
+                                    && properties.resolvedOwnerIvarCount === 2
+                                    && properties.ownerIvarCount === 2
+                                    && properties.resolvedOwnerTotalPropertyCount === 3
+                                    && properties.ownerTotalPropertyCount === 3
+                                    && properties.resolvedOwnerTotalMethodCount === 3
+                                    && properties.ownerTotalMethodCount === 3
+                                    && properties.filter === 'title'
+                                    && properties.hasFilter === true
+                                    && properties.count === 2
+                                    && properties.hasProperties === true
+                                    && properties.firstProperty === 'title'
+                                    && properties.lastProperty === 'delegate'
+                                    && properties.firstObjectClassName === 'NSString'
+                                    && properties.lastObjectClassName === 'NSObject'
+                                    && properties.uniqueOwnershipCount === 2
+                                    && properties.uniqueObjectClassCount === 2
+                                    && properties.readonlyPropertyCount === 0
+                                    && properties.readwritePropertyCount === 2
+                                    && properties.atomicPropertyCount === 1
+                                    && properties.nonatomicPropertyCount === 1
+                                    && properties.dynamicPropertyCount === 0
+                                    && properties.strongPropertyCount === 1
+                                    && properties.copyPropertyCount === 0
+                                    && properties.weakPropertyCount === 1
+                                    && properties.assignPropertyCount === 0
+                                    && properties.objectPropertyCount === 2
+                                    && properties.blockPropertyCount === 0
+                                    && properties.propertiesWithAccessorCustomizationCount === 1
+                                    && properties.propertiesWithBackingIvarCount === 1
+                                    && properties.propertiesWithObjectProtocolsCount === 0
+                                    && properties.propertiesWithTypeInfoCount === 2
+                                    && properties.propertiesWithParsedTokensCount === 2
+                                    && properties.totalObjectProtocolCount === 0
+                                    && JSON.stringify(properties.ownershipNameList) === JSON.stringify(['strong', 'weak'])
+                                    && JSON.stringify(properties.objectClassNameList) === JSON.stringify(['NSString', 'NSObject'])
+                                    && JSON.stringify(properties.ownershipNames) === JSON.stringify(['strong', 'weak'])
+                                    && JSON.stringify(properties.objectClassNames) === JSON.stringify(['NSString', 'NSObject'])
+                                    && properties.ownerships.length === 2
+                                    && properties.objectClasses.length === 2
+                                    && properties.text === properties.properties.map((property) => property.text).join('\n')
+                                    && ivars.classInfo !== null
+                                    && ivars.resolvedClassName === 'DemoView'
+                                    && ivars.resolvedClassPointer === '0x180010000'
+                                    && ivars.resolvedHasImagePath === true
+                                    && ivars.hasImagePath === true
+                                    && ivars.resolvedImagePath === '/Applications/Demo.app/Demo'
+                                    && ivars.imagePath === '/Applications/Demo.app/Demo'
+                                    && ivars.resolvedDeclaredProtocolCount === 1
+                                    && ivars.declaredProtocolCount === 1
+                                    && ivars.resolvedOwnerHasProtocols === true
+                                    && ivars.ownerHasProtocols === true
+                                    && ivars.resolvedOwnerHasProperties === true
+                                    && ivars.ownerHasProperties === true
+                                    && ivars.resolvedOwnerHasIvars === true
+                                    && ivars.ownerHasIvars === true
+                                    && ivars.resolvedOwnerHasMethods === true
+                                    && ivars.ownerHasMethods === true
+                                    && ivars.resolvedOwnerIvarCount === 2
+                                    && ivars.ownerIvarCount === 2
+                                    && ivars.resolvedOwnerTotalPropertyCount === 3
+                                    && ivars.ownerTotalPropertyCount === 3
+                                    && ivars.resolvedOwnerTotalMethodCount === 3
+                                    && ivars.ownerTotalMethodCount === 3
+                                    && ivars.filter === 'title'
+                                    && ivars.hasFilter === true
+                                    && ivars.count === 2
+                                    && ivars.hasIvars === true
+                                    && ivars.firstIvar === '_title'
+                                    && ivars.lastIvar === '_state'
+                                    && ivars.firstObjectClassName === 'NSString'
+                                    && ivars.lastObjectClassName === 'NSString'
+                                    && ivars.minOffsetHex === '0x8'
+                                    && ivars.maxOffsetHex === '0x10'
+                                    && ivars.uniqueKindCount === 2
+                                    && ivars.uniqueObjectClassCount === 1
+                                    && ivars.totalQualifierCount === 0
+                                    && ivars.totalObjectProtocolCount === 0
+                                    && ivars.pointerIvarCount === 1
+                                    && ivars.arrayIvarCount === 0
+                                    && ivars.objectIvarCount === 1
+                                    && ivars.blockIvarCount === 0
+                                    && ivars.ivarsWithQualifiersCount === 0
+                                    && ivars.ivarsWithObjectProtocolsCount === 0
+                                    && ivars.ivarsWithObjectClassCount === 1
+                                    && ivars.ivarsWithPointeeTypeCount === 1
+                                    && ivars.ivarsWithMemberNameCount === 0
+                                    && JSON.stringify(ivars.kindNameList) === JSON.stringify(['object', 'pointer'])
+                                    && JSON.stringify(ivars.objectClassNameList) === JSON.stringify(['NSString'])
+                                    && JSON.stringify(ivars.kindNames) === JSON.stringify(['object', 'pointer'])
+                                    && JSON.stringify(ivars.objectClassNames) === JSON.stringify(['NSString'])
+                                    && ivars.kinds.length === 2
+                                    && ivars.objectClasses.length === 1
+                                    && ivars.text === ivars.ivars.map((ivar) => ivar.text).join('\n')
+                                    && owners.query === 'title'
+                                    && owners.isClassMethod === false
+                                    && owners.hasQuery === true
+                                    && owners.count === 3
+                                    && owners.hasMethods === true
+                                    && owners.firstOwner === 'DemoView'
+                                    && owners.lastOwner === 'DemoCell'
+                                    && owners.firstSelector === 'setTitle:'
+                                    && owners.lastSelector === 'title'
+                                    && owners.uniqueOwnerCount === 2
+                                    && owners.uniqueSelectorCount === 2
+                                    && owners.keywordSelectorCount === 2
+                                    && owners.unarySelectorCount === 1
+                                    && owners.explicitArgumentMethodCount === 2
+                                    && owners.returnsVoidCount === 2
+                                    && owners.returnsObjectCount === 1
+                                    && owners.returnsBlockCount === 0
+                                    && owners.resolvedOwnerCount === 2
+                                    && owners.unresolvedOwnerCount === 0
+                                    && owners.hasResolvedOwners === true
+                                    && owners.firstImagePath === '/Applications/Demo.app/Demo'
+                                    && owners.lastImagePath === '/Applications/Demo.app/Demo'
+                                    && owners.uniqueImagePathCount === 1
+                                    && owners.ownersWithImagePathCount === 2
+                                    && owners.classesWithProtocolsCount === 1
+                                    && owners.classesWithPropertiesCount === 2
+                                    && owners.classesWithIvarsCount === 2
+                                    && owners.classesWithMethodsCount === 2
+                                    && owners.totalProtocolCount === 1
+                                    && owners.totalPropertyCount === 4
+                                    && owners.totalIvarCount === 3
+                                    && owners.totalMethodCount === 4
+                                    && owners.totalInstanceSize === 96
+                                    && Array.isArray(owners.imagePathList)
+                                    && owners.imagePathList.length === 1
+                                    && owners.imagePathList[0].imagePath === '/Applications/Demo.app/Demo'
+                                    && JSON.stringify(owners.ownerNameList) === JSON.stringify(['DemoView', 'DemoCell'])
+                                    && JSON.stringify(owners.selectorNameList) === JSON.stringify(['setTitle:', 'title'])
+                                    && Array.isArray(owners.imagePaths)
+                                    && owners.imagePaths.length === 1
+                                    && JSON.stringify(owners.ownerNames) === JSON.stringify(['DemoView', 'DemoCell'])
+                                    && JSON.stringify(owners.selectorNames) === JSON.stringify(['setTitle:', 'title'])
+                                    && owners.owners.length === 2
+                                    && owners.owners[0].count === 1
+                                    && owners.owners[1].count === 2
+                                    && owners.selectors.length === 2
+                                    && owners.selectors[0].count === 2
+                                    && owners.selectors[1].count === 1
+                                    && owners.text === owners.methods.map((method) => method.text).join('\n');
+                            } finally {
+                                ObjC.classInfo = originals.classInfo;
+                                ObjC.methods = originals.methods;
+                                ObjC.properties = originals.properties;
+                                ObjC.ivars = originals.ivars;
+                                ObjC.methodOwners = originals.methodOwners;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic objc collection summary fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' });
                             if (result.kind !== 'objc.ivars' || result.className !== 'NSObject' || result.filter !== 'delegate' || result.hasFilter !== true) {
