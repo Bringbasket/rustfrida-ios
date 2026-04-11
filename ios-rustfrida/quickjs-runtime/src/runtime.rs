@@ -7690,6 +7690,198 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const originals = {
+                                classes: ObjC.classes,
+                                protocols: ObjC.protocols,
+                                classChain: ObjC.classChain,
+                                classInfo: ObjC.classInfo,
+                                protocolInfo: ObjC.protocolInfo,
+                            };
+                            ObjC.classes = function() {
+                                return ['DemoView', 'UIView', 'NSObject'];
+                            };
+                            ObjC.protocols = function() {
+                                return ['DemoProtocol', 'BaseProtocol'];
+                            };
+                            ObjC.classChain = function() {
+                                return ['DemoView', 'UIView', 'NSObject'];
+                            };
+                            ObjC.classInfo = function(className) {
+                                switch (className) {
+                                case 'DemoView':
+                                    return {
+                                        className: 'DemoView',
+                                        classPointer: ptr('0x180040000'),
+                                        isMetaClass: false,
+                                        superclassName: 'UIView',
+                                        superclassPointer: ptr('0x180040100'),
+                                        instanceSize: 64,
+                                        protocolCount: 1,
+                                        instancePropertyCount: 2,
+                                        classPropertyCount: 1,
+                                        ivarCount: 2,
+                                        instanceMethodCount: 2,
+                                        classMethodCount: 1,
+                                        imagePath: '/Applications/Demo.app/Demo',
+                                    };
+                                case 'UIView':
+                                    return {
+                                        className: 'UIView',
+                                        classPointer: ptr('0x180041000'),
+                                        isMetaClass: false,
+                                        superclassName: 'NSObject',
+                                        superclassPointer: ptr('0x180041100'),
+                                        instanceSize: 48,
+                                        protocolCount: 1,
+                                        instancePropertyCount: 1,
+                                        classPropertyCount: 0,
+                                        ivarCount: 1,
+                                        instanceMethodCount: 2,
+                                        classMethodCount: 1,
+                                        imagePath: '/System/Library/Frameworks/UIKit.framework/UIKit',
+                                    };
+                                case 'NSObject':
+                                    return {
+                                        className: 'NSObject',
+                                        classPointer: ptr('0x180042000'),
+                                        isMetaClass: false,
+                                        superclassName: null,
+                                        superclassPointer: null,
+                                        instanceSize: 16,
+                                        protocolCount: 0,
+                                        instancePropertyCount: 0,
+                                        classPropertyCount: 0,
+                                        ivarCount: 1,
+                                        instanceMethodCount: 1,
+                                        classMethodCount: 0,
+                                        imagePath: '/usr/lib/libobjc.A.dylib',
+                                    };
+                                default:
+                                    return null;
+                                }
+                            };
+                            ObjC.protocolInfo = function(protocolName) {
+                                switch (protocolName) {
+                                case 'DemoProtocol':
+                                    return {
+                                        protocolName: 'DemoProtocol',
+                                        protocolPointer: ptr('0x180043000'),
+                                        adoptedProtocols: ['BaseProtocol'],
+                                        requiredInstanceMethodCount: 1,
+                                        requiredClassMethodCount: 0,
+                                        optionalInstanceMethodCount: 1,
+                                        optionalClassMethodCount: 0,
+                                        propertyCount: 1,
+                                        imagePath: '/Applications/Demo.app/Demo',
+                                    };
+                                case 'BaseProtocol':
+                                    return {
+                                        protocolName: 'BaseProtocol',
+                                        protocolPointer: ptr('0x180043100'),
+                                        adoptedProtocols: [],
+                                        requiredInstanceMethodCount: 1,
+                                        requiredClassMethodCount: 0,
+                                        optionalInstanceMethodCount: 0,
+                                        optionalClassMethodCount: 0,
+                                        propertyCount: 1,
+                                        imagePath: '/usr/lib/libobjc.A.dylib',
+                                    };
+                                default:
+                                    return null;
+                                }
+                            };
+                            try {
+                                const classes = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.classes', filter: 'View' });
+                                const protocols = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocols', filter: 'Proto' });
+                                const chain = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_chain', className: 'DemoView' });
+                                return classes.filter === 'View'
+                                    && classes.hasFilter === true
+                                    && classes.count === 3
+                                    && classes.hasClasses === true
+                                    && classes.firstClass === 'DemoView'
+                                    && classes.lastClass === 'NSObject'
+                                    && classes.firstImagePath === '/Applications/Demo.app/Demo'
+                                    && classes.lastImagePath === '/usr/lib/libobjc.A.dylib'
+                                    && classes.uniqueImagePathCount === 3
+                                    && classes.classesWithImagePathCount === 3
+                                    && classes.rootClassCount === 1
+                                    && classes.classesWithProtocolsCount === 2
+                                    && classes.classesWithPropertiesCount === 2
+                                    && classes.classesWithIvarsCount === 3
+                                    && classes.classesWithMethodsCount === 3
+                                    && JSON.stringify(classes.imagePathList) === JSON.stringify(['/Applications/Demo.app/Demo', '/System/Library/Frameworks/UIKit.framework/UIKit', '/usr/lib/libobjc.A.dylib'])
+                                    && classes.imagePaths.length === 3
+                                    && classes.imagePaths[0].firstClass === 'DemoView'
+                                    && classes.imagePaths[2].lastClass === 'NSObject'
+                                    && JSON.stringify(classes.classes) === JSON.stringify(['DemoView', 'UIView', 'NSObject'])
+                                    && classes.text === 'DemoView\nUIView\nNSObject'
+                                    && protocols.filter === 'Proto'
+                                    && protocols.hasFilter === true
+                                    && protocols.count === 2
+                                    && protocols.hasProtocols === true
+                                    && protocols.firstProtocol === 'DemoProtocol'
+                                    && protocols.lastProtocol === 'BaseProtocol'
+                                    && protocols.firstImagePath === '/Applications/Demo.app/Demo'
+                                    && protocols.lastImagePath === '/usr/lib/libobjc.A.dylib'
+                                    && protocols.uniqueImagePathCount === 2
+                                    && protocols.protocolsWithImagePathCount === 2
+                                    && protocols.protocolsWithAdoptedProtocolsCount === 1
+                                    && protocols.protocolsWithRequiredMethodsCount === 2
+                                    && protocols.protocolsWithOptionalMethodsCount === 1
+                                    && protocols.protocolsWithInstanceMethodsCount === 2
+                                    && protocols.protocolsWithClassMethodsCount === 0
+                                    && protocols.protocolsWithPropertiesCount === 2
+                                    && protocols.totalAdoptedProtocolCount === 1
+                                    && protocols.totalRequiredMethodCount === 2
+                                    && protocols.totalOptionalMethodCount === 1
+                                    && protocols.totalPropertyCount === 2
+                                    && JSON.stringify(protocols.imagePathList) === JSON.stringify(['/Applications/Demo.app/Demo', '/usr/lib/libobjc.A.dylib'])
+                                    && protocols.imagePaths.length === 2
+                                    && protocols.imagePaths[0].firstProtocol === 'DemoProtocol'
+                                    && protocols.imagePaths[1].lastProtocol === 'BaseProtocol'
+                                    && JSON.stringify(protocols.protocols) === JSON.stringify(['DemoProtocol', 'BaseProtocol'])
+                                    && protocols.text === 'DemoProtocol\nBaseProtocol'
+                                    && chain.className === 'DemoView'
+                                    && chain.count === 3
+                                    && chain.depth === 3
+                                    && chain.hasChain === true
+                                    && chain.includesSelf === true
+                                    && chain.rootClass === 'NSObject'
+                                    && chain.firstImagePath === '/Applications/Demo.app/Demo'
+                                    && chain.lastImagePath === '/usr/lib/libobjc.A.dylib'
+                                    && chain.uniqueImagePathCount === 3
+                                    && chain.classesWithImagePathCount === 3
+                                    && chain.rootClassCount === 1
+                                    && chain.classesWithProtocolsCount === 2
+                                    && chain.classesWithPropertiesCount === 2
+                                    && chain.classesWithIvarsCount === 3
+                                    && chain.classesWithMethodsCount === 3
+                                    && chain.totalProtocolCount === 2
+                                    && chain.totalPropertyCount === 4
+                                    && chain.totalIvarCount === 4
+                                    && chain.totalMethodCount === 7
+                                    && chain.totalInstanceSize === 128
+                                    && JSON.stringify(chain.imagePathList) === JSON.stringify(['/Applications/Demo.app/Demo', '/System/Library/Frameworks/UIKit.framework/UIKit', '/usr/lib/libobjc.A.dylib'])
+                                    && chain.imagePaths.length === 3
+                                    && chain.imagePaths[1].firstClass === 'UIView'
+                                    && JSON.stringify(chain.chain) === JSON.stringify(['DemoView', 'UIView', 'NSObject'])
+                                    && chain.text === 'DemoView\nUIView\nNSObject';
+                            } finally {
+                                ObjC.classes = originals.classes;
+                                ObjC.protocols = originals.protocols;
+                                ObjC.classChain = originals.classChain;
+                                ObjC.classInfo = originals.classInfo;
+                                ObjC.protocolInfo = originals.protocolInfo;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic objc class and protocol summaries"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.ivars', className: 'NSObject', filter: 'delegate' });
                             if (result.kind !== 'objc.ivars' || result.className !== 'NSObject' || result.filter !== 'delegate' || result.hasFilter !== true) {
