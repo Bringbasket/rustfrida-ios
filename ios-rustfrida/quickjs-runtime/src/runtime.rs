@@ -10238,63 +10238,77 @@ undefined;
                             try {
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.linkedit', moduleName: 'Demo' });
                                 return result.linkedit !== null
-                                    && result.resolvedModuleName === result.linkedit.moduleName
-                                    && result.resolvedModuleBase === result.linkedit.moduleBase
-                                    && result.resolvedVmaddr === result.linkedit.vmaddr
-                                    && result.resolvedVmEnd === result.linkedit.vmEnd
-                                    && result.resolvedVmsizeHex === result.linkedit.vmsizeHex
-                                    && result.resolvedFileoffHex === result.linkedit.fileoffHex
-                                    && result.resolvedFilesizeHex === result.linkedit.filesizeHex
-                                    && result.resolvedFileEndHex === result.linkedit.fileEndHex
-                                    && result.resolvedComputedBase === result.linkedit.computedBase
-                                    && result.resolvedComputedEnd === result.linkedit.computedEnd
-                                    && result.resolvedSymoffHex === result.linkedit.symoffHex
-                                    && result.resolvedNsyms === result.linkedit.nsyms
-                                    && result.resolvedSymtabAddress === result.linkedit.symtabAddress
-                                    && result.resolvedStroffHex === result.linkedit.stroffHex
-                                    && result.resolvedStrsizeHex === result.linkedit.strsizeHex
-                                    && result.resolvedStrtabAddress === result.linkedit.strtabAddress
-                                    && result.resolvedIndirectsymoffHex === result.linkedit.indirectsymoffHex
-                                    && result.resolvedNindirectsyms === result.linkedit.nindirectsyms
-                                    && result.resolvedIndirectsymAddress === result.linkedit.indirectsymAddress
-                                    && result.resolvedFirstTableName === result.linkedit.firstTableName
-                                    && result.resolvedLastTableName === result.linkedit.lastTableName
-                                    && result.vmsizeHex === '0x1000'
-                                    && result.fileoffHex === '0x6000'
-                                    && result.filesizeHex === '0x400'
-                                    && result.fileEndHex === '0x6400'
-                                    && result.computedEnd === '0x180300400'
-                                    && result.symoffHex === '0x20'
-                                    && result.nsyms === 7
-                                    && result.symtabAddress === '0x180300020'
-                                    && result.stroffHex === '0x100'
-                                    && result.strsizeHex === '0x80'
-                                    && result.strtabAddress === '0x180300100'
-                                    && result.indirectsymoffHex === '0x200'
-                                    && result.nindirectsyms === 3
-                                    && result.indirectsymAddress === '0x180300200'
                                     && result.tableCount === 3
                                     && result.hasTables === true
-                                    && Array.isArray(result.tableNames)
-                                    && result.tableNames.join('\n') === 'symtab\nstrtab\nindirectsym'
-                                    && Array.isArray(result.nonEmptyTableNames)
-                                    && result.nonEmptyTableNames.join('\n') === 'symtab\nstrtab\nindirectsym'
-                                    && result.firstTableName === 'symtab'
-                                    && result.lastTableName === 'indirectsym'
                                     && result.hasSymtab === true
                                     && result.hasStrtab === true
                                     && result.hasIndirectSymbols === true
+                                    && Array.isArray(result.tableNames)
+                                    && Array.isArray(result.tableNameList)
+                                    && result.tableNames.length === 3
+                                    && result.tableNameList.length === 3
+                                    && result.tableNames.join('\n') === 'symtab\nstrtab\nindirectsym'
+                                    && result.tableNameList.join('\n') === 'symtab\nstrtab\nindirectsym'
+                                    && Array.isArray(result.nonEmptyTableNames)
+                                    && Array.isArray(result.nonEmptyTableNameList)
+                                    && result.nonEmptyTableNames.length === 3
+                                    && result.nonEmptyTableNameList.length === 3
+                                    && result.nonEmptyTableNames.join('\n') === 'symtab\nstrtab\nindirectsym'
+                                    && result.nonEmptyTableNameList.join('\n') === 'symtab\nstrtab\nindirectsym'
+                                    && result.firstTableName === 'symtab'
+                                    && result.lastTableName === 'indirectsym'
                                     && Array.isArray(result.tables)
                                     && result.tables.length === 3
                                     && result.tables[0].name === 'symtab'
+                                    && result.tables[0].offsetHex === '0x20'
+                                    && result.tables[0].address === '0x180300020'
+                                    && result.tables[0].count === 7
+                                    && result.tables[0].sizeHex === null
+                                    && result.tables[0].hasOffset === true
+                                    && result.tables[0].hasAddress === true
+                                    && result.tables[0].hasCount === true
+                                    && result.tables[0].hasSize === false
+                                    && result.tables[0].isPresent === true
                                     && result.tables[1].name === 'strtab'
-                                    && result.tables[2].name === 'indirectsym';
+                                    && result.tables[1].offsetHex === '0x100'
+                                    && result.tables[1].address === '0x180300100'
+                                    && result.tables[1].count === null
+                                    && result.tables[1].sizeHex === '0x80'
+                                    && result.tables[1].hasOffset === true
+                                    && result.tables[1].hasAddress === true
+                                    && result.tables[1].hasCount === false
+                                    && result.tables[1].hasSize === true
+                                    && result.tables[1].isPresent === true
+                                    && result.tables[2].name === 'indirectsym'
+                                    && result.tables[2].offsetHex === '0x200'
+                                    && result.tables[2].address === '0x180300200'
+                                    && result.tables[2].count === 3
+                                    && result.tables[2].sizeHex === null
+                                    && result.tables[2].hasOffset === true
+                                    && result.tables[2].hasAddress === true
+                                    && result.tables[2].hasCount === true
+                                    && result.tables[2].hasSize === false
+                                    && result.tables[2].isPresent === true
+                                    && Array.isArray(result.linkedit.tables)
+                                    && result.linkedit.tables.length === 3
+                                    && JSON.stringify(result.tables) === JSON.stringify(result.linkedit.tables)
+                                    && result.linkedit.totalTableCount === 3
+                                    && result.linkedit.tableCount === 3
+                                    && result.linkedit.hasTables === true
+                                    && Array.isArray(result.linkedit.tableNames)
+                                    && Array.isArray(result.linkedit.tableNameList)
+                                    && Array.isArray(result.linkedit.nonEmptyTableNames)
+                                    && Array.isArray(result.linkedit.nonEmptyTableNameList)
+                                    && result.linkedit.tableNames.join('\n') === 'symtab\nstrtab\nindirectsym'
+                                    && result.linkedit.nonEmptyTableNames.join('\n') === 'symtab\nstrtab\nindirectsym'
+                                    && result.linkedit.firstTableName === 'symtab'
+                                    && result.linkedit.lastTableName === 'indirectsym';
                             } finally {
                                 Native.linkedit = original;
                             }
                         })()"#
                     )
-                    .expect("synthetic native linkedit fields"),
+                    .expect("synthetic native linkedit summary"),
                 "true"
             );
             assert_eq!(
