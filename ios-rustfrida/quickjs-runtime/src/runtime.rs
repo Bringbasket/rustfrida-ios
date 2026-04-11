@@ -9291,6 +9291,63 @@ undefined;
                                 return {
                                     moduleName: 'Demo',
                                     moduleBase: 0x180000000n,
+                                    segmentName: '__DATA',
+                                    name: '__la_symbol_ptr',
+                                    addr: 0x180005000n,
+                                    size: 0x20n,
+                                    offset: 0x5000n,
+                                    align: 3,
+                                    flags: 0x6n
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.section_info',
+                                    moduleName: 'Demo',
+                                    segmentName: '__DATA',
+                                    sectionName: '__la_symbol_ptr'
+                                });
+                                return result.hasSectionInfo === true
+                                    && result.resolved === true
+                                    && result.name === '__la_symbol_ptr'
+                                    && result.fullName === '__DATA,__la_symbol_ptr'
+                                    && result.addr === '6442471424'
+                                    && result.endAddr === '0x180005020'
+                                    && result.offsetHex === '0x5000'
+                                    && result.alignmentBytesHex === '0x8'
+                                    && result.sectionType === 6
+                                    && result.sectionTypeName === 'S_NON_LAZY_SYMBOL_POINTERS'
+                                    && result.hasData === true
+                                    && result.isZeroFillLike === false
+                                    && result.isCStringLike === false
+                                    && result.isSymbolPointers === true
+                                    && result.sectionInfo !== null
+                                    && result.sectionInfo.moduleBase === BigInt('0x180000000').toString()
+                                    && result.sectionInfo.sizeHex === '0x20'
+                                    && result.sectionInfo.alignPower === 3
+                                    && result.sectionInfo.flagsHex === '0x6'
+                                    && result.sectionInfo.sectionAttributesHex === '0x0'
+                                    && result.sectionInfo.isEmpty === false
+                                    && result.sectionInfo.isSymbolPointers === true
+                                    && typeof result.sectionInfo.text === 'string'
+                                    && result.text === result.sectionInfo.text;
+                            } finally {
+                                Native.sectionInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native sectionInfo symbol pointer summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.sectionInfo;
+                            Native.sectionInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
                                     segmentName: '__TEXT',
                                     name: '__cstring',
                                     addr: 0x180001000n,
