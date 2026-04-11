@@ -21336,13 +21336,25 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }); return value === result.text; })()")
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.dependencies', moduleName: main.image.name, query: null }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependencies', moduleName: main.image.name, query: null }); return value === result.text; })()")
+                    .expect("agent spec native dependencies"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'libsystem_malloc.dylib', commandOrIndex: 'LC_UUID' }); return value === result.text; })()")
                     .expect("agent spec native loadCommandInfo"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.segment_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.segment_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT' }); return value === result.text; })()")
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.segments', moduleName: 'libsystem_malloc.dylib' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.segments', moduleName: 'libsystem_malloc.dylib' }); return value === result.text; })()")
+                    .expect("agent spec native segments"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.segment_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.segment_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT' }); return value === result.text; })()")
                     .expect("agent spec native segmentInfo"),
                 "true"
             );
@@ -21354,14 +21366,122 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); return value === result.text; })()")
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.sections', moduleName: 'libsystem_malloc.dylib' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.sections', moduleName: 'libsystem_malloc.dylib' }); return value === result.text; })()")
+                    .expect("agent spec native sections"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.section_info', moduleName: 'libsystem_malloc.dylib', segmentName: '__TEXT', sectionName: '__text' }); return value === result.text; })()")
                     .expect("agent spec native sectionInfo"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.load_commands', moduleName: 'libsystem_malloc.dylib' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: 'libsystem_malloc.dylib' }); return value === result.text; })()")
+                .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.load_commands', moduleName: 'libsystem_malloc.dylib' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: 'libsystem_malloc.dylib' }); return value === result.text; })()")
                     .expect("agent spec native load commands"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.encryption_info', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native encryption info"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.source_version', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.source_version', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native source version"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.entry_point', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.entry_point', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native entry point"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.dyld_info', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dyld_info', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native dyld info"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.linkedit', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.linkedit', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native linkedit"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.function_starts', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.function_starts', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native function starts"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.code_signature', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.code_signature', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native code signature"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.data_in_code', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.data_in_code', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native data in code"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.exports_trie', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.exports_trie', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native exports trie"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.chained_fixups', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.chained_fixups', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native chained fixups"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.build_version', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.build_version', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native build version"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.dylinker', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dylinker', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native dylinker"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.install_name', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.install_name', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native install name"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.uuid', moduleName: main.image.name }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.uuid', moduleName: main.image.name }); return value === result.text; })()")
+                    .expect("agent spec native uuid"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.rpaths', moduleName: main.image.name, query: null }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.rpaths', moduleName: main.image.name, query: null }); return value === result.text; })()")
+                    .expect("agent spec native rpaths"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.rpath_info', moduleName: 'libsystem_malloc.dylib', path: '@loader_path' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.rpath_info', moduleName: 'libsystem_malloc.dylib', path: '@loader_path' }); return value === result.text; })()")
+                    .expect("agent spec native rpath info"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.imports', moduleName: main.image.name, query: null }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.imports', moduleName: main.image.name, query: null }); return value === result.text; })()")
+                    .expect("agent spec native imports"),
                 "true"
             );
             assert_eq!(
@@ -21372,14 +21492,38 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'pac.available' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.available' }); return value === result.text; })()")
+                    .expect("agent spec pac available"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'pac.arm64e' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.arm64e' }); return value === result.text; })()")
+                    .expect("agent spec pac arm64e"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("__iosRustFridaAgentApi.handleSpec({ kind: 'pac.strip', address: '0x1234' })")
                     .expect("agent spec pac strip"),
                 "0x1234"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'pac.image', moduleName: 'libsystem_malloc.dylib' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.image', moduleName: 'libsystem_malloc.dylib' }); return value === result.text; })()")
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'pac.stripdata', address: '0x1234' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.stripdata', address: '0x1234' }); return value === result.text; })()")
+                    .expect("agent spec pac stripdata"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'pac.image', moduleName: 'libsystem_malloc.dylib' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.image', moduleName: 'libsystem_malloc.dylib' }); return value === result.text; })()")
                     .expect("agent spec pac image"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'pac.images', filter: null }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'pac.images', filter: null }); return value === result.text; })()")
+                    .expect("agent spec pac images"),
                 "true"
             );
             assert_eq!(
@@ -21690,7 +21834,13 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.type_kinds' }); return value.indexOf('metadata-accessor') !== -1; })()")
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.symbols', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.symbols', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
+                    .expect("agent spec swift symbols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.type_kinds' }); return value.indexOf('metadata-accessor') !== -1; })()")
                     .expect("agent spec swift type kinds"),
                 "true"
             );
