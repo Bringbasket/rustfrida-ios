@@ -13653,6 +13653,69 @@ undefined;
                 runtime
                     .eval(
                         r#"(function() {
+                            const original = Native.dylinker;
+                            Native.dylinker = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    path: '@executable_path/usr/lib/dyld',
+                                    kind: 'weak'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.dylinker',
+                                    moduleName: 'Demo'
+                                });
+                                return result.hasDylinker === true
+                                    && result.resolved === true
+                                    && result.name === 'dyld'
+                                    && result.path === '@executable_path/usr/lib/dyld'
+                                    && result.pathKind === 'executable_path'
+                                    && result.kind === 'weak'
+                                    && result.kindName === 'weak'
+                                    && result.hasName === true
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesLoaderPath === false
+                                    && result.usesExecutablePath === true
+                                    && result.usesRpathToken === false
+                                    && result.pathDepth === 4
+                                    && result.isWeakDylinker === true
+                                    && result.isReexportDylinker === false
+                                    && result.isUpwardDylinker === false
+                                    && result.isLoadDylinker === false
+                                    && result.dylinker.moduleName === 'Demo'
+                                    && result.dylinker.moduleBase === BigInt('0x180000000').toString()
+                                    && result.dylinker.path === '@executable_path/usr/lib/dyld'
+                                    && result.dylinker.name === 'dyld'
+                                    && result.dylinker.hasName === true
+                                    && result.dylinker.hasPath === true
+                                    && result.dylinker.pathKind === 'executable_path'
+                                    && result.dylinker.isTokenPath === true
+                                    && result.dylinker.usesLoaderPath === false
+                                    && result.dylinker.usesExecutablePath === true
+                                    && result.dylinker.usesRpathToken === false
+                                    && result.dylinker.pathDepth === 4
+                                    && result.dylinker.kind === 'weak'
+                                    && result.dylinker.isWeakDylinker === true
+                                    && result.dylinker.isReexportDylinker === false
+                                    && result.dylinker.isUpwardDylinker === false
+                                    && result.dylinker.isLoadDylinker === false
+                                    && typeof result.dylinker.text === 'string'
+                                    && result.text === result.dylinker.text;
+                            } finally {
+                                Native.dylinker = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native dylinker summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
                             const original = Native.installName;
                             Native.installName = function() {
                                 return {
