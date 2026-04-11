@@ -9726,6 +9726,69 @@ undefined;
                                 return {
                                     moduleName: 'Demo',
                                     moduleBase: 0x180000000n,
+                                    index: 0,
+                                    name: 'LC_LOAD_DYLIB',
+                                    cmd: 0xcn,
+                                    cmdsize: 56,
+                                    offset: 0x100n,
+                                    detail: 'name=@rpath/DemoKit.framework/DemoKit current=1.2.3 compat=1.0.0 timestamp=7'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_LOAD_DYLIB'
+                                });
+                                return result.hasLoadCommandInfo === true
+                                    && result.resolved === true
+                                    && result.commandFamily === 'dylib'
+                                    && result.resolvedCommandFamily === 'dylib'
+                                    && result.hasDetail === true
+                                    && result.resolvedHasDetail === true
+                                    && result.hasPayload === true
+                                    && result.resolvedHasPayload === true
+                                    && result.path === '@rpath/DemoKit.framework/DemoKit'
+                                    && result.pathKind === 'rpath'
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesRpathToken === true
+                                    && result.currentVersion === '1.2.3'
+                                    && result.compatibilityVersion === '1.0.0'
+                                    && result.timestamp === 7
+                                    && result.hasCurrentVersion === true
+                                    && result.hasCompatibilityVersion === true
+                                    && result.hasTimestamp === true
+                                    && result.versionMismatch === true
+                                    && result.loadCommandInfo !== null
+                                    && result.loadCommandInfo.path === '@rpath/DemoKit.framework/DemoKit'
+                                    && result.loadCommandInfo.pathKind === 'rpath'
+                                    && result.loadCommandInfo.currentVersion === '1.2.3'
+                                    && result.loadCommandInfo.compatibilityVersion === '1.0.0'
+                                    && result.loadCommandInfo.timestamp === 7
+                                    && result.loadCommandInfo.hasCurrentVersion === true
+                                    && result.loadCommandInfo.hasCompatibilityVersion === true
+                                    && result.loadCommandInfo.hasTimestamp === true
+                                    && result.loadCommandInfo.versionMismatch === true
+                                    && typeof result.loadCommandInfo.text === 'string'
+                                    && result.text === result.loadCommandInfo.text;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo dylib summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
                                     index: 3,
                                     name: 'LC_BUILD_VERSION',
                                     cmd: 0x32n,
@@ -10279,6 +10342,59 @@ undefined;
                                 return {
                                     moduleName: 'Demo',
                                     moduleBase: 0x180000000n,
+                                    index: 8,
+                                    name: 'LC_RPATH',
+                                    cmd: 0x8000001cn,
+                                    cmdsize: 32,
+                                    offset: 0x200n,
+                                    detail: 'path=@loader_path/Frameworks'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_RPATH'
+                                });
+                                return result.hasLoadCommandInfo === true
+                                    && result.resolved === true
+                                    && result.commandFamily === 'rpath'
+                                    && result.resolvedCommandFamily === 'rpath'
+                                    && result.hasDetail === true
+                                    && result.resolvedHasDetail === true
+                                    && result.hasPayload === true
+                                    && result.resolvedHasPayload === true
+                                    && result.path === '@loader_path/Frameworks'
+                                    && result.pathKind === 'loader_path'
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesLoaderPath === true
+                                    && result.usesExecutablePath === false
+                                    && result.usesRpathToken === false
+                                    && result.isReqDyld === true
+                                    && result.loadCommandInfo !== null
+                                    && result.loadCommandInfo.path === '@loader_path/Frameworks'
+                                    && result.loadCommandInfo.pathKind === 'loader_path'
+                                    && result.loadCommandInfo.hasPath === true
+                                    && typeof result.loadCommandInfo.text === 'string'
+                                    && result.text === result.loadCommandInfo.text;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo rpath summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
                                     index: 9,
                                     name: 'LC_LOAD_DYLINKER',
                                     cmd: 0xen,
@@ -10318,6 +10434,58 @@ undefined;
                         })()"#
                     )
                     .expect("synthetic native loadCommandInfo dylinker fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    index: 9,
+                                    name: 'LC_LOAD_DYLINKER',
+                                    cmd: 0xen,
+                                    cmdsize: 40,
+                                    offset: 0x220n,
+                                    detail: 'name=@executable_path/usr/lib/dyld'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_LOAD_DYLINKER'
+                                });
+                                return result.hasLoadCommandInfo === true
+                                    && result.resolved === true
+                                    && result.commandFamily === 'dylinker'
+                                    && result.resolvedCommandFamily === 'dylinker'
+                                    && result.hasDetail === true
+                                    && result.resolvedHasDetail === true
+                                    && result.hasPayload === true
+                                    && result.resolvedHasPayload === true
+                                    && result.path === '@executable_path/usr/lib/dyld'
+                                    && result.pathKind === 'executable_path'
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.usesLoaderPath === false
+                                    && result.usesExecutablePath === true
+                                    && result.usesRpathToken === false
+                                    && result.loadCommandInfo !== null
+                                    && result.loadCommandInfo.path === '@executable_path/usr/lib/dyld'
+                                    && result.loadCommandInfo.pathKind === 'executable_path'
+                                    && result.loadCommandInfo.hasPath === true
+                                    && typeof result.loadCommandInfo.text === 'string'
+                                    && result.text === result.loadCommandInfo.text;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo dylinker summary"),
                 "true"
             );
             assert_eq!(
