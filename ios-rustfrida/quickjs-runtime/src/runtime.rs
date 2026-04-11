@@ -9332,6 +9332,65 @@ undefined;
                 runtime
                     .eval(
                         r#"(function() {
+                            const original = Native.sectionInfo;
+                            Native.sectionInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    segmentName: '__TEXT',
+                                    name: '__cstring',
+                                    addr: 0x180001000n,
+                                    size: 0x40n,
+                                    offset: 0x1000n,
+                                    align: 0,
+                                    flags: 0x2n
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.section_info',
+                                    moduleName: 'Demo',
+                                    segmentName: '__TEXT',
+                                    sectionName: '__cstring'
+                                });
+                                return result.hasSectionInfo === true
+                                    && result.resolved === true
+                                    && result.name === '__cstring'
+                                    && result.fullName === '__TEXT,__cstring'
+                                    && result.moduleBase === BigInt('0x180000000').toString()
+                                    && result.addr === '6442455040'
+                                    && result.endAddr === '0x180001040'
+                                    && result.offsetHex === '0x1000'
+                                    && result.alignmentBytesHex === '0x1'
+                                    && result.sectionType === 2
+                                    && result.sectionTypeName === 'S_CSTRING_LITERALS'
+                                    && result.hasData === true
+                                    && result.isZeroFillLike === false
+                                    && result.isCStringLike === true
+                                    && result.isSymbolPointers === false
+                                    && result.sectionInfo !== null
+                                    && result.sectionInfo.moduleBase === BigInt('0x180000000').toString()
+                                    && result.sectionInfo.sizeHex === '0x40'
+                                    && result.sectionInfo.alignPower === 0
+                                    && result.sectionInfo.flagsHex === '0x2'
+                                    && result.sectionInfo.sectionAttributesHex === '0x0'
+                                    && result.sectionInfo.isEmpty === false
+                                    && result.sectionInfo.isCStringLike === true
+                                    && result.sectionInfo.isSymbolPointers === false
+                                    && typeof result.sectionInfo.text === 'string'
+                                    && result.text === result.sectionInfo.text;
+                            } finally {
+                                Native.sectionInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native sectionInfo cstring summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
                             const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: 'libsystem_malloc.dylib' });
                             if (result.kind !== 'native.load_commands' || result.moduleName !== 'libsystem_malloc.dylib') {
                                 return false;
