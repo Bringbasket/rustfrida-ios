@@ -21372,6 +21372,18 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.images', filter: null }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.images', filter: null }); return value === result.text; })()")
+                    .expect("agent spec native images"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.symbols', moduleName: null, query: 'malloc' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbols', moduleName: null, query: 'malloc' }); return value === result.text; })()")
+                    .expect("agent spec native symbols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.hook_environment' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.hook_environment' }); return value === result.text; })()")
                     .expect("agent spec native hook environment"),
                 "true"
@@ -21476,6 +21488,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.class_chain', className: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_chain', className: 'NSObject' }); return value === result.text; })()")
                     .expect("agent spec objc classChain"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.methods', className: 'NSObject', isClassMethod: false, filter: 'init' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.methods', className: 'NSObject', isClassMethod: false, filter: 'init' }); return value === result.text; })()")
+                    .expect("agent spec objc methods"),
                 "true"
             );
             assert_eq!(
@@ -21594,8 +21612,38 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
+                    .expect("agent spec swift types"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.type_kinds' }); return value.indexOf('metadata-accessor') !== -1; })()")
                     .expect("agent spec swift type kinds"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.types_of_kind', moduleName: null, sourceKind: 'metadata-accessor', query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.types_of_kind', moduleName: null, sourceKind: 'metadata-accessor', query: 'ViewController' }); return value === result.text; })()")
+                    .expect("agent spec swift types of kind"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.method_owners', moduleName: null, methodName: 'viewDidLoad' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_owners', moduleName: null, methodName: 'viewDidLoad' }); return value === result.text; })()")
+                    .expect("agent spec swift method owners"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.type_methods', moduleName: null, query: 'ViewController' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_methods', moduleName: null, query: 'ViewController' }); return value === result.text; })()")
+                    .expect("agent spec swift type methods"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.methods', moduleName: null, typeName: 'ViewController', methodQuery: 'viewDidLoad' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.methods', moduleName: null, typeName: 'ViewController', methodQuery: 'viewDidLoad' }); return value === result.text; })()")
+                    .expect("agent spec swift methods"),
                 "true"
             );
         }
