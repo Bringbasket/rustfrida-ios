@@ -13536,6 +13536,46 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.uuid;
+                            Native.uuid = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    uuid: '12345678-9abc-def0-1234-56789abcdef0'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.uuid',
+                                    moduleName: 'Demo'
+                                });
+                                return result.hasUuid === true
+                                    && result.resolved === true
+                                    && result.uuid === '12345678-9abc-def0-1234-56789abcdef0'
+                                    && result.normalizedUuid === '12345678-9ABC-DEF0-1234-56789ABCDEF0'
+                                    && result.uuidLength === 36
+                                    && result.uuidSegmentCount === 5
+                                    && result.imageUuid.moduleName === 'Demo'
+                                    && result.imageUuid.moduleBase === BigInt('0x180000000').toString()
+                                    && result.imageUuid.uuid === '12345678-9abc-def0-1234-56789abcdef0'
+                                    && result.imageUuid.normalizedUuid === '12345678-9ABC-DEF0-1234-56789ABCDEF0'
+                                    && result.imageUuid.hasUuid === true
+                                    && result.imageUuid.uuidLength === 36
+                                    && result.imageUuid.uuidSegmentCount === 5
+                                    && typeof result.imageUuid.text === 'string'
+                                    && result.text === result.imageUuid.text;
+                            } finally {
+                                Native.uuid = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native uuid summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.rpaths', moduleName: main.image.name, query: null }); if (!(result.kind === 'native.rpaths' && result.hasQuery === false && result.count === result.rpaths.length && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasRpaths === 'boolean' && typeof result.uniqueRpathCount === 'number' && typeof result.uniquePathKindCount === 'number' && typeof result.tokenPathCount === 'number' && typeof result.loaderPathCount === 'number' && typeof result.executablePathCount === 'number' && typeof result.rpathTokenCount === 'number' && typeof result.hasTokenPaths === 'boolean' && typeof result.hasLoaderPaths === 'boolean' && typeof result.hasExecutablePaths === 'boolean' && typeof result.hasRpathTokens === 'boolean' && Array.isArray(result.pathKindNames) && Array.isArray(result.pathKindList) && Array.isArray(result.rpathPathList) && Array.isArray(result.rpathPaths) && Array.isArray(result.pathKinds))) { return false; } if (result.pathKindNames.length !== result.pathKindList.length || result.pathKindList.length !== result.pathKinds.length || result.rpathPathList.length !== result.rpathPaths.length) { return false; } if (result.image === null) { if (!(result.hasImage === false && result.resolved === false && result.imageName === null && result.imagePath === null && result.resolvedImageName === null && result.resolvedImagePath === null && result.directoryPath === null && result.resolvedDirectoryPath === null && result.pathKind === null && result.resolvedPathKind === null && result.resolvedBase === null && result.slide === null && result.resolvedSlide === null && result.sizeHex === null && result.resolvedSizeHex === null && result.hasDirectoryPath === false && result.isSystemPath === false && result.isAppPath === false && result.isJailbreakPath === false)) { return false; } } else if (!(result.hasImage === true && result.resolved === true && result.imageName === result.image.name && result.imagePath === result.image.path && result.resolvedImageName === result.image.name && result.resolvedImagePath === result.image.path && result.directoryPath === result.image.directoryPath && result.resolvedDirectoryPath === result.image.directoryPath && result.pathKind === result.image.pathKind && result.resolvedPathKind === result.image.pathKind && result.resolvedBase === result.image.base && result.slide === result.image.slide && result.resolvedSlide === result.image.slide && result.sizeHex === result.image.sizeHex && result.resolvedSizeHex === result.image.sizeHex && result.hasDirectoryPath === (result.image.hasDirectoryPath === true) && result.isSystemPath === (result.image.isSystemPath === true) && result.isAppPath === (result.image.isAppPath === true) && result.isJailbreakPath === (result.image.isJailbreakPath === true))) { return false; } if (result.rpaths.length === 0) { return result.hasRpaths === false && result.firstRpath === null && result.lastRpath === null && result.firstPathKind === null && result.lastPathKind === null; } const rpath = result.rpaths[0]; const rpathPath = result.rpathPaths.length === 0 ? null : result.rpathPaths[0]; const pathKind = result.pathKinds.length === 0 ? null : result.pathKinds[0]; return result.hasRpaths === true && typeof result.firstRpath === 'string' && typeof result.lastRpath === 'string' && typeof result.firstPathKind === 'string' && typeof result.lastPathKind === 'string' && (result.longestRpath === null || typeof result.longestRpath === 'string') && (result.longestRpathLength === null || typeof result.longestRpathLength === 'number') && typeof rpath.path === 'string' && typeof rpath.hasPath === 'boolean' && typeof rpath.pathKind === 'string' && typeof rpath.isTokenPath === 'boolean' && typeof rpath.usesLoaderPath === 'boolean' && typeof rpath.usesExecutablePath === 'boolean' && typeof rpath.usesRpathToken === 'boolean' && typeof rpath.pathDepth === 'number' && (rpathPath === null || (result.rpathPathList[0] === rpathPath.path && typeof rpathPath.path === 'string' && typeof rpathPath.count === 'number' && typeof rpathPath.firstPathKind === 'string' && typeof rpathPath.lastPathKind === 'string' && typeof rpathPath.tokenPathCount === 'number' && typeof rpathPath.loaderPathCount === 'number' && typeof rpathPath.executablePathCount === 'number' && typeof rpathPath.rpathTokenCount === 'number')) && (pathKind === null || (result.pathKindNames[0] === pathKind.pathKind && result.pathKindList[0] === pathKind.pathKind && typeof pathKind.pathKind === 'string' && typeof pathKind.count === 'number' && typeof pathKind.firstPath === 'string' && typeof pathKind.lastPath === 'string' && typeof pathKind.tokenPathCount === 'number')); })()"
                     )
                     .expect("agent native rpaths result"),
