@@ -9790,6 +9790,75 @@ undefined;
                                 return {
                                     moduleName: 'Demo',
                                     moduleBase: 0x180000000n,
+                                    index: 3,
+                                    name: 'LC_BUILD_VERSION',
+                                    cmd: 0x32n,
+                                    cmdsize: 32,
+                                    offset: 0x188n,
+                                    detail: 'platform=ios minos=15.0.0 sdk=17.0.0 tools=clang:15.0.0,swift:5.9.0'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_BUILD_VERSION'
+                                });
+                                return result.hasLoadCommandInfo === true
+                                    && result.resolved === true
+                                    && result.commandFamily === 'version'
+                                    && result.resolvedCommandFamily === 'version'
+                                    && result.hasDetail === true
+                                    && result.resolvedHasDetail === true
+                                    && result.hasPayload === true
+                                    && result.resolvedHasPayload === true
+                                    && result.platform === 'ios'
+                                    && result.minOs === '15.0.0'
+                                    && result.sdk === '17.0.0'
+                                    && result.hasVersion === false
+                                    && result.hasMinOs === true
+                                    && result.hasSdk === true
+                                    && result.hasTools === true
+                                    && result.toolCount === 2
+                                    && result.uniqueToolCount === 2
+                                    && Array.isArray(result.toolNames)
+                                    && Array.isArray(result.toolNameList)
+                                    && Array.isArray(result.tools)
+                                    && result.toolNames.length === 2
+                                    && result.toolNameList.length === 2
+                                    && result.tools.length === 2
+                                    && result.loadCommandInfo !== null
+                                    && result.loadCommandInfo.platform === 'ios'
+                                    && result.loadCommandInfo.minOs === '15.0.0'
+                                    && result.loadCommandInfo.sdk === '17.0.0'
+                                    && result.loadCommandInfo.hasVersion === false
+                                    && result.loadCommandInfo.hasMinOs === true
+                                    && result.loadCommandInfo.hasSdk === true
+                                    && result.loadCommandInfo.hasTools === true
+                                    && result.loadCommandInfo.toolCount === 2
+                                    && result.loadCommandInfo.uniqueToolCount === 2
+                                    && result.loadCommandInfo.toolNames.length === 2
+                                    && result.loadCommandInfo.toolNameList.length === 2
+                                    && result.loadCommandInfo.tools.length === 2
+                                    && typeof result.loadCommandInfo.text === 'string'
+                                    && result.text === result.loadCommandInfo.text;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo build version summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
                                     index: 5,
                                     name: 'LC_UUID',
                                     cmd: 0x1bn,
