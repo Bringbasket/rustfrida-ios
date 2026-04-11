@@ -8608,6 +8608,47 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.exportInfo;
+                            Native.exportInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: ptr('0x180000000'),
+                                    name: 'demo_export',
+                                    address: ptr('0x180001230'),
+                                    offset: 0x1230n
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.export_info',
+                                    moduleName: 'Demo',
+                                    symbolName: 'demo_export'
+                                });
+                                return result.hasExportInfo === true
+                                    && result.resolved === true
+                                    && result.name === 'demo_export'
+                                    && result.moduleBase === '0x180000000'
+                                    && result.address === '0x180001230'
+                                    && result.offsetHex === '0x1230'
+                                    && result.hasAddress === true
+                                    && result.hasName === true
+                                    && result.hasModuleName === true
+                                    && result.exportInfo !== null
+                                    && result.exportInfo.name === 'demo_export'
+                                    && typeof result.exportInfo.text === 'string'
+                                    && result.text === result.exportInfo.text;
+                            } finally {
+                                Native.exportInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native exportInfo summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependencies', moduleName: main.image.name, query: null }); if (!(result.kind === 'native.dependencies' && result.hasQuery === false && result.count === result.dependencies.length && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasDependencies === 'boolean' && typeof result.uniquePathKindCount === 'number' && typeof result.uniqueKindCount === 'number' && typeof result.uniqueDependencyNameCount === 'number' && typeof result.weakDependencyCount === 'number' && typeof result.reexportDependencyCount === 'number' && typeof result.upwardDependencyCount === 'number' && typeof result.loadDependencyCount === 'number' && typeof result.timestampedDependencyCount === 'number' && typeof result.versionMismatchCount === 'number' && typeof result.hasTimestampedDependencies === 'boolean' && typeof result.hasVersionMismatches === 'boolean' && Array.isArray(result.pathKindNames) && Array.isArray(result.pathKindList) && Array.isArray(result.kindNames) && Array.isArray(result.kindList) && Array.isArray(result.dependencyNameList) && Array.isArray(result.pathKinds) && Array.isArray(result.kinds) && Array.isArray(result.dependencyNames))) { return false; } if (!(result.pathKindNames.length === result.pathKindList.length && result.pathKindList.length === result.pathKinds.length && result.kindNames.length === result.kindList.length && result.kindList.length === result.kinds.length && result.dependencyNameList.length === result.dependencyNames.length)) { return false; } if (result.image === null) { if (!(result.hasImage === false && result.resolved === false && result.imageName === null && result.imagePath === null && result.resolvedImageName === null && result.resolvedImagePath === null && result.directoryPath === null && result.resolvedDirectoryPath === null && result.pathKind === null && result.resolvedPathKind === null && result.resolvedBase === null && result.slide === null && result.resolvedSlide === null && result.sizeHex === null && result.resolvedSizeHex === null && result.hasDirectoryPath === false && result.isSystemPath === false && result.isAppPath === false && result.isJailbreakPath === false)) { return false; } } else if (!(result.hasImage === true && result.resolved === true && result.imageName === result.image.name && result.imagePath === result.image.path && result.resolvedImageName === result.image.name && result.resolvedImagePath === result.image.path && result.directoryPath === result.image.directoryPath && result.resolvedDirectoryPath === result.image.directoryPath && result.pathKind === result.image.pathKind && result.resolvedPathKind === result.image.pathKind && result.resolvedBase === result.image.base && result.slide === result.image.slide && result.resolvedSlide === result.image.slide && result.sizeHex === result.image.sizeHex && result.resolvedSizeHex === result.image.sizeHex && result.hasDirectoryPath === (result.image.hasDirectoryPath === true) && result.isSystemPath === (result.image.isSystemPath === true) && result.isAppPath === (result.image.isAppPath === true) && result.isJailbreakPath === (result.image.isJailbreakPath === true))) { return false; } if (result.dependencies.length === 0) { return result.hasDependencies === false && result.firstDependencyName === null && result.lastDependencyName === null && result.firstPath === null && result.lastPath === null; } const dependency = result.dependencies[0]; const pathKind = result.pathKinds.length === 0 ? null : result.pathKinds[0]; const kind = result.kinds.length === 0 ? null : result.kinds[0]; const dependencyName = result.dependencyNames.length === 0 ? null : result.dependencyNames[0]; return result.hasDependencies === true && typeof result.firstDependencyName === 'string' && typeof result.lastDependencyName === 'string' && typeof result.firstPath === 'string' && typeof result.lastPath === 'string' && typeof dependency.ordinal === 'number' && typeof dependency.kind === 'string' && typeof dependency.hasPath === 'boolean' && typeof dependency.pathKind === 'string' && typeof dependency.isTokenPath === 'boolean' && typeof dependency.pathDepth === 'number' && typeof dependency.hasName === 'boolean' && typeof dependency.isWeakDependency === 'boolean' && typeof dependency.isReexportDependency === 'boolean' && typeof dependency.isUpwardDependency === 'boolean' && typeof dependency.isLoadDependency === 'boolean' && typeof dependency.versionMismatch === 'boolean' && typeof dependency.hasTimestamp === 'boolean' && (pathKind === null || (result.pathKindNames[0] === pathKind.pathKind && result.pathKindList[0] === pathKind.pathKind && typeof pathKind.pathKind === 'string' && typeof pathKind.count === 'number' && typeof pathKind.firstDependencyName === 'string' && typeof pathKind.lastDependencyName === 'string' && typeof pathKind.firstPath === 'string' && typeof pathKind.lastPath === 'string')) && (kind === null || (result.kindNames[0] === kind.kind && result.kindList[0] === kind.kind && typeof kind.kind === 'string' && typeof kind.count === 'number' && typeof kind.firstDependencyName === 'string' && typeof kind.lastDependencyName === 'string' && typeof kind.timestampedCount === 'number' && typeof kind.versionMismatchCount === 'number')) && (dependencyName === null || (result.dependencyNameList[0] === dependencyName.dependencyName && typeof dependencyName.dependencyName === 'string' && typeof dependencyName.count === 'number' && typeof dependencyName.firstPath === 'string' && typeof dependencyName.lastPath === 'string' && typeof dependencyName.firstKind === 'string' && typeof dependencyName.lastKind === 'string' && typeof dependencyName.timestampedCount === 'number' && typeof dependencyName.versionMismatchCount === 'number')); })()"
                     )
                     .expect("agent native dependencies result"),
@@ -8675,6 +8716,69 @@ undefined;
                         })()"#
                     )
                     .expect("synthetic native dependencyInfo fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.dependencyInfo;
+                            Native.dependencyInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: ptr('0x180000000'),
+                                    ordinal: 7,
+                                    path: '@rpath/libDemo.dylib',
+                                    kind: 'reexport',
+                                    currentVersion: 0x00010002,
+                                    compatibilityVersion: 0x00010000,
+                                    timestamp: 42
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.dependency_info',
+                                    moduleName: 'Demo',
+                                    pathOrName: 'libDemo.dylib'
+                                });
+                                return result.hasDependencyInfo === true
+                                    && result.resolved === true
+                                    && result.name === 'libDemo.dylib'
+                                    && result.path === '@rpath/libDemo.dylib'
+                                    && result.pathKind === 'rpath'
+                                    && result.moduleBase === '0x180000000'
+                                    && result.ordinal === 7
+                                    && result.currentVersion === '1.0.2'
+                                    && result.compatibilityVersion === '1.0.0'
+                                    && result.timestamp === 42
+                                    && result.kindName === 'reexport'
+                                    && result.isWeakDependency === false
+                                    && result.isReexportDependency === true
+                                    && result.isUpwardDependency === false
+                                    && result.isLoadDependency === false
+                                    && result.hasTimestamp === true
+                                    && result.versionMismatch === true
+                                    && result.dependencyInfo !== null
+                                    && result.dependencyInfo.pathKind === 'rpath'
+                                    && result.dependencyInfo.kind === 'reexport'
+                                    && result.dependencyInfo.hasPath === true
+                                    && result.dependencyInfo.hasName === true
+                                    && result.dependencyInfo.isTokenPath === true
+                                    && result.dependencyInfo.pathDepth === 2
+                                    && result.dependencyInfo.isWeakDependency === false
+                                    && result.dependencyInfo.isReexportDependency === true
+                                    && result.dependencyInfo.isUpwardDependency === false
+                                    && result.dependencyInfo.isLoadDependency === false
+                                    && result.dependencyInfo.hasTimestamp === true
+                                    && result.dependencyInfo.versionMismatch === true
+                                    && typeof result.dependencyInfo.text === 'string'
+                                    && result.text === result.dependencyInfo.text;
+                            } finally {
+                                Native.dependencyInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native dependencyInfo summary"),
                 "true"
             );
             assert_eq!(
@@ -8864,6 +8968,64 @@ undefined;
                         })()"#
                     )
                     .expect("synthetic native segmentInfo direct fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.segmentInfo;
+                            Native.segmentInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: '__DATA',
+                                    vmaddr: 0x180004000n,
+                                    vmsize: 0x3000n,
+                                    fileoff: 0x4000n,
+                                    filesize: 0n,
+                                    maxprot: 3,
+                                    initprot: 3
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.segment_info',
+                                    moduleName: 'Demo',
+                                    segmentName: '__DATA'
+                                });
+                                return result.hasSegmentInfo === true
+                                    && result.resolved === true
+                                    && result.name === '__DATA'
+                                    && result.vmaddr === '6442467328'
+                                    && result.vmEnd === '0x180007000'
+                                    && result.vmsizeHex === '0x3000'
+                                    && result.fileoffHex === '0x4000'
+                                    && result.filesizeHex === '0x0'
+                                    && result.fileEndHex === '0x4000'
+                                    && result.initprotFlags === 'rw-'
+                                    && result.maxprotFlags === 'rw-'
+                                    && result.hasVmRange === true
+                                    && result.hasFileData === false
+                                    && result.isEmpty === false
+                                    && result.isZeroFillLike === true
+                                    && result.isReadable === true
+                                    && result.isWritable === true
+                                    && result.isExecutable === false
+                                    && result.segmentInfo !== null
+                                    && result.segmentInfo.moduleBase === BigInt('0x180000000').toString()
+                                    && result.segmentInfo.vmSizeMatchesFileSize === false
+                                    && result.segmentInfo.maxReadable === true
+                                    && result.segmentInfo.maxWritable === true
+                                    && result.segmentInfo.maxExecutable === false
+                                    && typeof result.segmentInfo.text === 'string'
+                                    && result.text === result.segmentInfo.text;
+                            } finally {
+                                Native.segmentInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native segmentInfo summary"),
                 "true"
             );
             assert_eq!(
@@ -9061,6 +9223,63 @@ undefined;
                         })()"#
                     )
                     .expect("synthetic native sectionInfo symbol pointer fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.sectionInfo;
+                            Native.sectionInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    segmentName: '__DATA',
+                                    name: '__la_symbol_ptr',
+                                    addr: 0x180005000n,
+                                    size: 0x20n,
+                                    offset: 0x5000n,
+                                    align: 3,
+                                    flags: 0x6n
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.section_info',
+                                    moduleName: 'Demo',
+                                    segmentName: '__DATA',
+                                    sectionName: '__la_symbol_ptr'
+                                });
+                                return result.hasSectionInfo === true
+                                    && result.resolved === true
+                                    && result.name === '__la_symbol_ptr'
+                                    && result.fullName === '__DATA,__la_symbol_ptr'
+                                    && result.addr === '6442471424'
+                                    && result.endAddr === '0x180005020'
+                                    && result.offsetHex === '0x5000'
+                                    && result.alignmentBytesHex === '0x8'
+                                    && result.sectionType === 6
+                                    && result.sectionTypeName === 'S_NON_LAZY_SYMBOL_POINTERS'
+                                    && result.hasData === true
+                                    && result.isZeroFillLike === false
+                                    && result.isCStringLike === false
+                                    && result.isSymbolPointers === true
+                                    && result.sectionInfo !== null
+                                    && result.sectionInfo.moduleBase === BigInt('0x180000000').toString()
+                                    && result.sectionInfo.sizeHex === '0x20'
+                                    && result.sectionInfo.alignPower === 3
+                                    && result.sectionInfo.flagsHex === '0x6'
+                                    && result.sectionInfo.sectionAttributesHex === '0x0'
+                                    && result.sectionInfo.isEmpty === false
+                                    && result.sectionInfo.isSymbolPointers === true
+                                    && typeof result.sectionInfo.text === 'string'
+                                    && result.text === result.sectionInfo.text;
+                            } finally {
+                                Native.sectionInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native sectionInfo summary"),
                 "true"
             );
             assert_eq!(
@@ -14168,6 +14387,75 @@ undefined;
                         })()"#
                     )
                     .expect("synthetic native importInfo fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.importInfo;
+                            Native.importInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: ptr('0x180000000'),
+                                    name: '_malloc',
+                                    dylibOrdinal: -1,
+                                    dylibName: '<main-executable>',
+                                    weakImport: true
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.import_info',
+                                    moduleName: 'Demo',
+                                    symbolName: 'malloc'
+                                });
+                                return result.hasImportInfo === true
+                                    && result.resolved === true
+                                    && result.name === '_malloc'
+                                    && result.normalizedName === 'malloc'
+                                    && result.moduleBase === '0x180000000'
+                                    && result.dylibOrdinal === -1
+                                    && result.dylibName === '<main-executable>'
+                                    && result.source === '<main-executable>'
+                                    && result.sourceKind === 'main-executable'
+                                    && result.hasDylibName === true
+                                    && result.usesOrdinalOnly === false
+                                    && result.isMainExecutableImport === true
+                                    && result.isFlatLookupImport === false
+                                    && result.isSelfImport === false
+                                    && result.weakImport === true
+                                    && result.importInfo !== null
+                                    && result.importInfo.moduleName === 'Demo'
+                                    && result.importInfo.moduleBase === '0x180000000'
+                                    && result.importInfo.name === '_malloc'
+                                    && result.importInfo.normalizedName === 'malloc'
+                                    && result.importInfo.hasName === true
+                                    && result.importInfo.hasNormalizedName === true
+                                    && result.importInfo.nameLength === 7
+                                    && result.importInfo.dylibOrdinal === -1
+                                    && result.importInfo.dylibName === '<main-executable>'
+                                    && result.importInfo.hasDylibName === true
+                                    && result.importInfo.usesOrdinalOnly === false
+                                    && result.importInfo.isMainExecutableImport === true
+                                    && result.importInfo.isFlatLookupImport === false
+                                    && result.importInfo.isSelfImport === false
+                                    && result.importInfo.weakImport === true
+                                    && result.importInfo.sourceKind === 'main-executable'
+                                    && result.importInfo.source === '<main-executable>'
+                                    && result.importInfo.sourcePathKind === 'other'
+                                    && result.importInfo.isTokenSource === false
+                                    && result.importInfo.usesLoaderPath === false
+                                    && result.importInfo.usesExecutablePath === false
+                                    && result.importInfo.usesRpathToken === false
+                                    && typeof result.importInfo.text === 'string'
+                                    && result.text === result.importInfo.text;
+                            } finally {
+                                Native.importInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native importInfo summary"),
                 "true"
             );
             assert_eq!(
