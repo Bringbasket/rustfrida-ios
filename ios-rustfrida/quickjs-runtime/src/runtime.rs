@@ -21294,6 +21294,18 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.main_image' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); return value === result.text; })()")
+                    .expect("agent spec native main image"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const malloc = Module.findExportByName(null, 'malloc'); if (malloc === null) { return true; } const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.image', address: malloc.toString() }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.image', address: malloc.toString() }); return value === result.text; })()")
+                    .expect("agent spec native image"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.symbol_info', moduleName: null, symbolName: 'malloc' }); return value === result.text; })()")
                     .expect("agent spec native symbolInfo"),
                 "true"
@@ -21488,6 +21500,36 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.protocol_property_info', protocolName: 'NSObject', propertyName: 'description' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_property_info', protocolName: 'NSObject', propertyName: 'description' }); return value === result.text; })()")
                     .expect("agent spec objc protocolPropertyInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.class_image', className: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_image', className: 'NSObject' }); return value === result.text; })()")
+                    .expect("agent spec objc classImage"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.method_image', className: 'NSObject', selectorName: 'init', isClassMethod: false }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_image', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return value === result.text; })()")
+                    .expect("agent spec objc methodImage"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.method_imp', className: 'NSObject', selectorName: 'init', isClassMethod: false }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_imp', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return value === result.text; })()")
+                    .expect("agent spec objc methodImp"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.selector_name', selector: '0x0' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector_name', selector: '0x0' }); return value === result.text; })()")
+                    .expect("agent spec objc selectorName"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.object_class_name', object: '0x0' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.object_class_name', object: '0x0' }); return value === result.text; })()")
+                    .expect("agent spec objc objectClassName"),
                 "true"
             );
             assert_eq!(
