@@ -9997,6 +9997,138 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function(moduleName, commandOrIndex) {
+                                switch (String(commandOrIndex)) {
+                                case 'LC_LOAD_DYLIB':
+                                    return {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        index: 0,
+                                        name: 'LC_LOAD_DYLIB',
+                                        cmd: 0xcn,
+                                        cmdsize: 56,
+                                        offset: 0x100n,
+                                        detail: 'name=@rpath/DemoKit.framework/DemoKit current=1.2.3 compat=1.0.0 timestamp=7'
+                                    };
+                                case 'LC_BUILD_VERSION':
+                                    return {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        index: 3,
+                                        name: 'LC_BUILD_VERSION',
+                                        cmd: 0x32n,
+                                        cmdsize: 32,
+                                        offset: 0x188n,
+                                        detail: 'platform=ios minos=15.0.0 sdk=17.0.0 tools=clang:15.0.0,swift:5.9.0'
+                                    };
+                                case 'LC_UUID':
+                                    return {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        index: 5,
+                                        name: 'LC_UUID',
+                                        cmd: 0x1bn,
+                                        cmdsize: 24,
+                                        offset: 0x1b8n,
+                                        detail: 'uuid=12345678-1234-1234-1234-1234567890ab'
+                                    };
+                                case 'LC_DYLD_EXPORTS_TRIE':
+                                    return {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        index: 4,
+                                        name: 'LC_DYLD_EXPORTS_TRIE',
+                                        cmd: 0x33n,
+                                        cmdsize: 16,
+                                        offset: 0x1a8n,
+                                        detail: 'dataoff=0x2000 datasize=0x180'
+                                    };
+                                case 'LC_MAIN':
+                                    return {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        index: 6,
+                                        name: 'LC_MAIN',
+                                        cmd: 0x80000028n,
+                                        cmdsize: 24,
+                                        offset: 0x1d0n,
+                                        detail: 'entryoff=0x1234 stacksize=0x4000'
+                                    };
+                                case 'LC_ENCRYPTION_INFO_64':
+                                    return {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        index: 7,
+                                        name: 'LC_ENCRYPTION_INFO_64',
+                                        cmd: 0x2cn,
+                                        cmdsize: 24,
+                                        offset: 0x1e8n,
+                                        detail: 'cryptoff=0x4000 cryptsize=0x2000 cryptid=1'
+                                    };
+                                case 'LC_RPATH':
+                                    return {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        index: 8,
+                                        name: 'LC_RPATH',
+                                        cmd: 0x8000001cn,
+                                        cmdsize: 32,
+                                        offset: 0x200n,
+                                        detail: 'path=@loader_path/Frameworks'
+                                    };
+                                case 'LC_LOAD_DYLINKER':
+                                    return {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        index: 9,
+                                        name: 'LC_LOAD_DYLINKER',
+                                        cmd: 0xen,
+                                        cmdsize: 40,
+                                        offset: 0x220n,
+                                        detail: 'name=@executable_path/usr/lib/dyld'
+                                    };
+                                default:
+                                    return null;
+                                }
+                            };
+
+                            try {
+                                const dylib = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'Demo', commandOrIndex: 'LC_LOAD_DYLIB' });
+                                return dylib.hasLoadCommandInfo === true
+                                    && dylib.resolved === true
+                                    && dylib.loadCommandInfo !== null
+                                    && dylib.commandFamily === 'dylib'
+                                    && dylib.resolvedCommandFamily === 'dylib'
+                                    && dylib.hasDetail === true
+                                    && dylib.resolvedHasDetail === true
+                                    && dylib.hasPayload === true
+                                    && dylib.resolvedHasPayload === true
+                                    && dylib.path === '@rpath/DemoKit.framework/DemoKit'
+                                    && dylib.pathKind === 'rpath'
+                                    && dylib.hasPath === true
+                                    && dylib.usesRpathToken === true
+                                    && dylib.currentVersion === '1.2.3'
+                                    && dylib.compatibilityVersion === '1.0.0'
+                                    && dylib.timestamp === 7
+                                    && dylib.hasCurrentVersion === true
+                                    && dylib.hasCompatibilityVersion === true
+                                    && dylib.hasTimestamp === true
+                                    && dylib.versionMismatch === true
+                                    && typeof dylib.loadCommandInfo.text === 'string'
+                                    && dylib.text === dylib.loadCommandInfo.text;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo summaries"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.encryption_info', moduleName: main.image.name }); return result.kind === 'native.encryption_info' && typeof result.hasEncryptionInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasEncryptedRange === 'boolean' && ((result.encryptionInfo === null && result.hasEncryptionInfo === false && result.resolved === false && result.resolvedModuleName === null && result.cryptoffHex === null && result.cryptsizeHex === null && result.cryptid === null && result.hasEncryptedRange === false && result.text === '<null>') || (typeof result.encryptionInfo.cryptoffHex === 'string' && typeof result.encryptionInfo.cryptid === 'number' && result.hasEncryptionInfo === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.cryptoffHex === 'string' && typeof result.cryptsizeHex === 'string' && typeof result.cryptid === 'number' && result.resolvedModuleName === result.encryptionInfo.moduleName && result.cryptoffHex === result.encryptionInfo.cryptoffHex && result.cryptsizeHex === result.encryptionInfo.cryptsizeHex && result.cryptid === result.encryptionInfo.cryptid && result.hasEncryptedRange === (result.encryptionInfo.cryptid !== 0) && result.text === result.encryptionInfo.text)); })()"
                     )
                     .expect("agent native encryption info result"),
