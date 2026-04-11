@@ -9901,6 +9901,54 @@ undefined;
                                 return {
                                     moduleName: 'Demo',
                                     moduleBase: 0x180000000n,
+                                    index: 5,
+                                    name: 'LC_UUID',
+                                    cmd: 0x1bn,
+                                    cmdsize: 24,
+                                    offset: 0x1b8n,
+                                    detail: 'uuid=12345678-1234-1234-1234-1234567890ab'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_UUID'
+                                });
+                                return result.hasLoadCommandInfo === true
+                                    && result.resolved === true
+                                    && result.commandFamily === 'uuid'
+                                    && result.resolvedCommandFamily === 'uuid'
+                                    && result.hasDetail === true
+                                    && result.resolvedHasDetail === true
+                                    && result.hasPayload === true
+                                    && result.resolvedHasPayload === true
+                                    && result.uuid === '12345678-1234-1234-1234-1234567890ab'
+                                    && result.hasUuid === true
+                                    && result.uuidLength === 36
+                                    && result.loadCommandInfo !== null
+                                    && result.loadCommandInfo.uuid === '12345678-1234-1234-1234-1234567890ab'
+                                    && result.loadCommandInfo.hasUuid === true
+                                    && result.loadCommandInfo.uuidLength === 36
+                                    && typeof result.loadCommandInfo.text === 'string'
+                                    && result.text === result.loadCommandInfo.text;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo uuid summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
                                     index: 4,
                                     name: 'LC_DYLD_EXPORTS_TRIE',
                                     cmd: 0x33n,
