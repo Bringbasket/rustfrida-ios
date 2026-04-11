@@ -7035,6 +7035,373 @@ undefined;
                         r#"(function() {
                             const originals = {
                                 classInfo: ObjC.classInfo,
+                                protocolInfo: ObjC.protocolInfo,
+                                methodInfo: ObjC.methodInfo,
+                                protocolMethodInfo: ObjC.protocolMethodInfo,
+                                propertyInfo: ObjC.propertyInfo,
+                                protocolPropertyInfo: ObjC.protocolPropertyInfo,
+                            };
+                            ObjC.classInfo = function() {
+                                return {
+                                    className: 'DemoView',
+                                    classPointer: ptr('0x180001000'),
+                                    isMetaClass: true,
+                                    superclassName: 'NSObject',
+                                    superclassPointer: ptr('0x180001100'),
+                                    instanceSize: 48,
+                                    protocolCount: 2,
+                                    instancePropertyCount: 0,
+                                    classPropertyCount: 2,
+                                    ivarCount: 0,
+                                    instanceMethodCount: 0,
+                                    classMethodCount: 4,
+                                    imagePath: '/System/Library/Frameworks/UIKit.framework/UIKit',
+                                };
+                            };
+                            ObjC.protocolInfo = function() {
+                                return {
+                                    protocolName: 'DemoProtocol',
+                                    protocolPointer: ptr('0x180002000'),
+                                    adoptedProtocols: ['NSCopying', 'NSSecureCoding'],
+                                    requiredInstanceMethodCount: 1,
+                                    requiredClassMethodCount: 0,
+                                    optionalInstanceMethodCount: 0,
+                                    optionalClassMethodCount: 1,
+                                    propertyCount: 2,
+                                    imagePath: '/var/jb/usr/lib/libDemoProto.dylib',
+                                };
+                            };
+                            ObjC.methodInfo = function() {
+                                return {
+                                    className: 'DemoView',
+                                    selector: 'setTitle:',
+                                    isClassMethod: false,
+                                    methodPointer: ptr('0x180003000'),
+                                    imp: ptr('0x180004000'),
+                                    typeEncoding: 'v24@0:8@16',
+                                    imagePath: '/System/Library/Frameworks/UIKit.framework/UIKit',
+                                };
+                            };
+                            ObjC.protocolMethodInfo = function() {
+                                return {
+                                    protocolName: 'DemoProtocol',
+                                    selector: 'demoValue',
+                                    typeEncoding: '@16@0:8',
+                                    isRequired: false,
+                                    isInstanceMethod: true,
+                                    imagePath: '/usr/lib/libobjc.A.dylib',
+                                };
+                            };
+                            ObjC.propertyInfo = function() {
+                                return {
+                                    className: 'DemoView',
+                                    name: 'title',
+                                    attributes: 'T@\"NSString\",&,N,GcustomTitle,ScustomSetTitle:,V_title',
+                                    isClassProperty: false,
+                                    propertyPointer: ptr('0x180005000'),
+                                    imagePath: '/Applications/Demo.app/Demo',
+                                };
+                            };
+                            ObjC.protocolPropertyInfo = function() {
+                                return {
+                                    protocolName: 'DemoProtocol',
+                                    name: 'delegate',
+                                    attributes: 'T@\"NSObject\",W,Gdelegate,SDemoSetDelegate:',
+                                    propertyPointer: ptr('0x180006000'),
+                                    imagePath: '/var/containers/Bundle/Application/UUID/Demo.app/Demo',
+                                };
+                            };
+                            function checkImage(result, pathKind, imageName, directoryPath) {
+                                return result.imagePath !== null &&
+                                    result.resolvedImagePath === result.imagePath &&
+                                    result.imagePathKind === pathKind &&
+                                    result.resolvedImagePathKind === pathKind &&
+                                    result.imageName === imageName &&
+                                    result.resolvedImageName === imageName &&
+                                    result.imageDirectoryPath === directoryPath &&
+                                    result.resolvedImageDirectoryPath === directoryPath;
+                            }
+                            function checkClass(result) {
+                                return result.kind === 'objc.class_info' &&
+                                    result.className === 'DemoView' &&
+                                    result.classInfo !== null &&
+                                    result.text === result.classInfo.text &&
+                                    result.hasClassInfo === true &&
+                                    result.resolved === true &&
+                                    result.resolvedClassName === result.classInfo.className &&
+                                    result.resolvedClassPointer === result.classInfo.classPointer &&
+                                    result.resolvedIsMetaClass === result.classInfo.isMetaClass &&
+                                    result.resolvedHasSuperclass === result.classInfo.hasSuperclass &&
+                                    result.hasSuperclass === (result.classInfo.hasSuperclass === true) &&
+                                    result.superclassName === result.classInfo.superclassName &&
+                                    result.resolvedSuperclassPointer === result.classInfo.superclassPointer &&
+                                    result.resolvedIsRootClass === result.classInfo.isRootClass &&
+                                    result.isRootClass === (result.classInfo.isRootClass === true) &&
+                                    result.resolvedHasProtocols === result.classInfo.hasProtocols &&
+                                    result.hasProtocols === (result.classInfo.hasProtocols === true) &&
+                                    result.resolvedHasInstanceProperties === result.classInfo.hasInstanceProperties &&
+                                    result.hasInstanceProperties === (result.classInfo.hasInstanceProperties === true) &&
+                                    result.resolvedHasClassProperties === result.classInfo.hasClassProperties &&
+                                    result.hasClassProperties === (result.classInfo.hasClassProperties === true) &&
+                                    result.resolvedHasProperties === result.classInfo.hasProperties &&
+                                    result.hasProperties === (result.classInfo.hasProperties === true) &&
+                                    result.resolvedHasIvars === result.classInfo.hasIvars &&
+                                    result.hasIvars === (result.classInfo.hasIvars === true) &&
+                                    result.resolvedHasInstanceMethods === result.classInfo.hasInstanceMethods &&
+                                    result.hasInstanceMethods === (result.classInfo.hasInstanceMethods === true) &&
+                                    result.resolvedHasClassMethods === result.classInfo.hasClassMethods &&
+                                    result.hasClassMethods === (result.classInfo.hasClassMethods === true) &&
+                                    result.resolvedHasMethods === result.classInfo.hasMethods &&
+                                    result.hasMethods === (result.classInfo.hasMethods === true) &&
+                                    result.resolvedInstanceSize === result.classInfo.instanceSize &&
+                                    result.instanceSize === result.classInfo.instanceSize &&
+                                    result.resolvedProtocolCount === result.classInfo.protocolCount &&
+                                    result.protocolCount === result.classInfo.protocolCount &&
+                                    result.resolvedTotalPropertyCount === result.classInfo.totalPropertyCount &&
+                                    result.totalPropertyCount === result.classInfo.totalPropertyCount &&
+                                    result.resolvedIvarCount === result.classInfo.ivarCount &&
+                                    result.ivarCount === result.classInfo.ivarCount &&
+                                    result.resolvedTotalMethodCount === result.classInfo.totalMethodCount &&
+                                    result.totalMethodCount === result.classInfo.totalMethodCount &&
+                                    checkImage(result, 'system', 'UIKit', '/System/Library/Frameworks/UIKit.framework');
+                            }
+                            function checkProtocol(result) {
+                                return result.kind === 'objc.protocol_info' &&
+                                    result.protocolName === 'DemoProtocol' &&
+                                    result.protocolInfo !== null &&
+                                    result.text === result.protocolInfo.text &&
+                                    result.hasProtocolInfo === true &&
+                                    result.resolved === true &&
+                                    result.resolvedProtocolName === result.protocolInfo.protocolName &&
+                                    result.resolvedProtocolPointer === result.protocolInfo.protocolPointer &&
+                                    JSON.stringify(result.adoptedProtocolNames) === JSON.stringify(result.protocolInfo.adoptedProtocols) &&
+                                    JSON.stringify(result.resolvedAdoptedProtocolNames) === JSON.stringify(result.protocolInfo.adoptedProtocols) &&
+                                    result.firstAdoptedProtocol === result.protocolInfo.adoptedProtocols[0] &&
+                                    result.lastAdoptedProtocol === result.protocolInfo.adoptedProtocols[result.protocolInfo.adoptedProtocolCount - 1] &&
+                                    result.resolvedHasAdoptedProtocols === result.protocolInfo.hasAdoptedProtocols &&
+                                    result.hasAdoptedProtocols === (result.protocolInfo.hasAdoptedProtocols === true) &&
+                                    result.resolvedHasRequiredMethods === result.protocolInfo.hasRequiredMethods &&
+                                    result.hasRequiredMethods === (result.protocolInfo.hasRequiredMethods === true) &&
+                                    result.resolvedHasOptionalMethods === result.protocolInfo.hasOptionalMethods &&
+                                    result.hasOptionalMethods === (result.protocolInfo.hasOptionalMethods === true) &&
+                                    result.resolvedHasInstanceMethods === result.protocolInfo.hasInstanceMethods &&
+                                    result.hasInstanceMethods === (result.protocolInfo.hasInstanceMethods === true) &&
+                                    result.resolvedHasClassMethods === result.protocolInfo.hasClassMethods &&
+                                    result.hasClassMethods === (result.protocolInfo.hasClassMethods === true) &&
+                                    result.resolvedHasProperties === result.protocolInfo.hasProperties &&
+                                    result.hasProperties === (result.protocolInfo.hasProperties === true) &&
+                                    result.resolvedAdoptedProtocolCount === result.protocolInfo.adoptedProtocolCount &&
+                                    result.adoptedProtocolCount === result.protocolInfo.adoptedProtocolCount &&
+                                    result.resolvedTotalMethodCount === result.protocolInfo.totalMethodCount &&
+                                    result.totalMethodCount === result.protocolInfo.totalMethodCount &&
+                                    result.resolvedPropertyCount === result.protocolInfo.propertyCount &&
+                                    result.propertyCount === result.protocolInfo.propertyCount &&
+                                    checkImage(result, 'jailbreak', 'libDemoProto.dylib', '/var/jb/usr/lib');
+                            }
+                            function checkMethod(result) {
+                                return result.kind === 'objc.method_info' &&
+                                    result.className === 'DemoView' &&
+                                    result.selectorName === 'setTitle:' &&
+                                    result.methodInfo !== null &&
+                                    result.text === result.methodInfo.text &&
+                                    result.hasMethodInfo === true &&
+                                    result.resolved === true &&
+                                    result.resolvedClassName === result.methodInfo.className &&
+                                    result.resolvedSelector === result.methodInfo.selector &&
+                                    result.resolvedMethodPointer === result.methodInfo.methodPointer &&
+                                    result.resolvedImp === result.methodInfo.imp &&
+                                    result.resolvedTypeEncoding === result.methodInfo.typeEncoding &&
+                                    result.resolvedReturnTypeName === result.methodInfo.returnTypeName &&
+                                    result.resolvedSignature === result.methodInfo.signature &&
+                                    result.resolvedArgumentCount === result.methodInfo.argumentCount &&
+                                    result.argumentCount === result.methodInfo.argumentCount &&
+                                    result.resolvedExplicitArgumentCount === result.methodInfo.explicitArgumentCount &&
+                                    result.explicitArgumentCount === result.methodInfo.explicitArgumentCount &&
+                                    result.resolvedHiddenArgumentCount === result.methodInfo.hiddenArgumentCount &&
+                                    result.hiddenArgumentCount === result.methodInfo.hiddenArgumentCount &&
+                                    result.resolvedSelectorPartCount === result.methodInfo.selectorPartCount &&
+                                    result.selectorPartCount === result.methodInfo.selectorPartCount &&
+                                    result.resolvedHasImagePath === true &&
+                                    result.hasImagePath === true &&
+                                    result.resolvedHasSelectorArguments === result.methodInfo.hasSelectorArguments &&
+                                    result.hasSelectorArguments === (result.methodInfo.hasSelectorArguments === true) &&
+                                    result.resolvedIsUnarySelector === result.methodInfo.isUnarySelector &&
+                                    result.isUnarySelector === (result.methodInfo.isUnarySelector === true) &&
+                                    result.resolvedIsKeywordSelector === result.methodInfo.isKeywordSelector &&
+                                    result.isKeywordSelector === (result.methodInfo.isKeywordSelector === true) &&
+                                    result.resolvedHasExplicitArguments === result.methodInfo.hasExplicitArguments &&
+                                    result.hasExplicitArguments === (result.methodInfo.hasExplicitArguments === true) &&
+                                    result.resolvedHasHiddenArguments === result.methodInfo.hasHiddenArguments &&
+                                    result.hasHiddenArguments === (result.methodInfo.hasHiddenArguments === true) &&
+                                    result.resolvedReturnsVoid === result.methodInfo.returnsVoid &&
+                                    result.returnsVoid === (result.methodInfo.returnsVoid === true) &&
+                                    result.resolvedReturnsObject === result.methodInfo.returnsObject &&
+                                    result.returnsObject === (result.methodInfo.returnsObject === true) &&
+                                    result.resolvedReturnsBlock === result.methodInfo.returnsBlock &&
+                                    result.returnsBlock === (result.methodInfo.returnsBlock === true) &&
+                                    checkImage(result, 'system', 'UIKit', '/System/Library/Frameworks/UIKit.framework');
+                            }
+                            function checkProtocolMethod(result) {
+                                return result.kind === 'objc.protocol_method_info' &&
+                                    result.protocolName === 'DemoProtocol' &&
+                                    result.selectorName === 'demoValue' &&
+                                    result.methodInfo !== null &&
+                                    result.text === result.methodInfo.text &&
+                                    result.hasMethodInfo === true &&
+                                    result.resolved === true &&
+                                    result.resolvedProtocolName === result.methodInfo.protocolName &&
+                                    result.resolvedSelector === result.methodInfo.selector &&
+                                    result.resolvedTypeEncoding === result.methodInfo.typeEncoding &&
+                                    result.resolvedReturnTypeName === result.methodInfo.returnTypeName &&
+                                    result.resolvedSignature === result.methodInfo.signature &&
+                                    result.resolvedArgumentCount === result.methodInfo.argumentCount &&
+                                    result.argumentCount === result.methodInfo.argumentCount &&
+                                    result.resolvedExplicitArgumentCount === result.methodInfo.explicitArgumentCount &&
+                                    result.explicitArgumentCount === result.methodInfo.explicitArgumentCount &&
+                                    result.resolvedHiddenArgumentCount === result.methodInfo.hiddenArgumentCount &&
+                                    result.hiddenArgumentCount === result.methodInfo.hiddenArgumentCount &&
+                                    result.resolvedSelectorPartCount === result.methodInfo.selectorPartCount &&
+                                    result.selectorPartCount === result.methodInfo.selectorPartCount &&
+                                    result.resolvedHasImagePath === true &&
+                                    result.hasImagePath === true &&
+                                    result.resolvedHasSelectorArguments === result.methodInfo.hasSelectorArguments &&
+                                    result.hasSelectorArguments === (result.methodInfo.hasSelectorArguments === true) &&
+                                    result.resolvedIsUnarySelector === result.methodInfo.isUnarySelector &&
+                                    result.isUnarySelector === (result.methodInfo.isUnarySelector === true) &&
+                                    result.resolvedIsKeywordSelector === result.methodInfo.isKeywordSelector &&
+                                    result.isKeywordSelector === (result.methodInfo.isKeywordSelector === true) &&
+                                    result.resolvedHasExplicitArguments === result.methodInfo.hasExplicitArguments &&
+                                    result.hasExplicitArguments === (result.methodInfo.hasExplicitArguments === true) &&
+                                    result.resolvedHasHiddenArguments === result.methodInfo.hasHiddenArguments &&
+                                    result.hasHiddenArguments === (result.methodInfo.hasHiddenArguments === true) &&
+                                    result.resolvedReturnsVoid === result.methodInfo.returnsVoid &&
+                                    result.returnsVoid === (result.methodInfo.returnsVoid === true) &&
+                                    result.resolvedReturnsObject === result.methodInfo.returnsObject &&
+                                    result.returnsObject === (result.methodInfo.returnsObject === true) &&
+                                    result.resolvedReturnsBlock === result.methodInfo.returnsBlock &&
+                                    result.returnsBlock === (result.methodInfo.returnsBlock === true) &&
+                                    checkImage(result, 'system', 'libobjc.A.dylib', '/usr/lib');
+                            }
+                            function checkProperty(result) {
+                                return result.kind === 'objc.property_info' &&
+                                    result.className === 'DemoView' &&
+                                    result.propertyName === 'title' &&
+                                    result.propertyInfo !== null &&
+                                    result.text === result.propertyInfo.text &&
+                                    result.hasPropertyInfo === true &&
+                                    result.resolved === true &&
+                                    result.resolvedClassName === result.propertyInfo.className &&
+                                    result.resolvedName === result.propertyInfo.name &&
+                                    result.resolvedPropertyPointer === result.propertyInfo.propertyPointer &&
+                                    result.resolvedTypeName === result.propertyInfo.typeName &&
+                                    result.typeName === result.propertyInfo.typeName &&
+                                    result.resolvedOwnership === result.propertyInfo.ownership &&
+                                    result.ownership === result.propertyInfo.ownership &&
+                                    result.resolvedObjectClassName === result.propertyInfo.objectClassName &&
+                                    result.objectClassName === result.propertyInfo.objectClassName &&
+                                    result.resolvedGetterName === result.propertyInfo.getterName &&
+                                    result.getterName === result.propertyInfo.getterName &&
+                                    result.resolvedSetterName === result.propertyInfo.setterName &&
+                                    result.setterName === result.propertyInfo.setterName &&
+                                    result.resolvedIvarName === result.propertyInfo.ivarName &&
+                                    result.ivarName === result.propertyInfo.ivarName &&
+                                    result.resolvedObjectProtocolCount === result.propertyInfo.objectProtocolCount &&
+                                    result.objectProtocolCount === result.propertyInfo.objectProtocolCount &&
+                                    result.resolvedParsedTokenCount === result.propertyInfo.parsedTokenCount &&
+                                    result.parsedTokenCount === result.propertyInfo.parsedTokenCount &&
+                                    result.resolvedHasAccessorCustomization === result.propertyInfo.hasAccessorCustomization &&
+                                    result.hasAccessorCustomization === (result.propertyInfo.hasAccessorCustomization === true) &&
+                                    result.resolvedHasGetterName === result.propertyInfo.hasGetterName &&
+                                    result.hasGetterName === (result.propertyInfo.hasGetterName === true) &&
+                                    result.resolvedHasSetterName === result.propertyInfo.hasSetterName &&
+                                    result.hasSetterName === (result.propertyInfo.hasSetterName === true) &&
+                                    result.resolvedHasBackingIvar === result.propertyInfo.hasBackingIvar &&
+                                    result.hasBackingIvar === (result.propertyInfo.hasBackingIvar === true) &&
+                                    result.resolvedHasObjectClassName === result.propertyInfo.hasObjectClassName &&
+                                    result.hasObjectClassName === (result.propertyInfo.hasObjectClassName === true) &&
+                                    result.resolvedHasObjectProtocols === result.propertyInfo.hasObjectProtocols &&
+                                    result.hasObjectProtocols === (result.propertyInfo.hasObjectProtocols === true) &&
+                                    result.resolvedHasTypeInfo === result.propertyInfo.hasTypeInfo &&
+                                    result.hasTypeInfo === (result.propertyInfo.hasTypeInfo === true) &&
+                                    result.resolvedIsObject === result.propertyInfo.isObject &&
+                                    result.isObject === (result.propertyInfo.isObject === true) &&
+                                    result.resolvedIsBlock === result.propertyInfo.isBlock &&
+                                    result.isBlock === (result.propertyInfo.isBlock === true) &&
+                                    checkImage(result, 'application', 'Demo', '/Applications/Demo.app');
+                            }
+                            function checkProtocolProperty(result) {
+                                return result.kind === 'objc.protocol_property_info' &&
+                                    result.protocolName === 'DemoProtocol' &&
+                                    result.propertyName === 'delegate' &&
+                                    result.propertyInfo !== null &&
+                                    result.text === result.propertyInfo.text &&
+                                    result.hasPropertyInfo === true &&
+                                    result.resolved === true &&
+                                    result.resolvedProtocolName === result.propertyInfo.protocolName &&
+                                    result.resolvedName === result.propertyInfo.name &&
+                                    result.resolvedPropertyPointer === result.propertyInfo.propertyPointer &&
+                                    result.resolvedTypeName === result.propertyInfo.typeName &&
+                                    result.typeName === result.propertyInfo.typeName &&
+                                    result.resolvedOwnership === result.propertyInfo.ownership &&
+                                    result.ownership === result.propertyInfo.ownership &&
+                                    result.resolvedObjectClassName === result.propertyInfo.objectClassName &&
+                                    result.objectClassName === result.propertyInfo.objectClassName &&
+                                    result.resolvedGetterName === result.propertyInfo.getterName &&
+                                    result.getterName === result.propertyInfo.getterName &&
+                                    result.resolvedSetterName === result.propertyInfo.setterName &&
+                                    result.setterName === result.propertyInfo.setterName &&
+                                    result.resolvedIvarName === result.propertyInfo.ivarName &&
+                                    result.ivarName === result.propertyInfo.ivarName &&
+                                    result.resolvedObjectProtocolCount === result.propertyInfo.objectProtocolCount &&
+                                    result.objectProtocolCount === result.propertyInfo.objectProtocolCount &&
+                                    result.resolvedParsedTokenCount === result.propertyInfo.parsedTokenCount &&
+                                    result.parsedTokenCount === result.propertyInfo.parsedTokenCount &&
+                                    result.resolvedHasAccessorCustomization === result.propertyInfo.hasAccessorCustomization &&
+                                    result.hasAccessorCustomization === (result.propertyInfo.hasAccessorCustomization === true) &&
+                                    result.resolvedHasGetterName === result.propertyInfo.hasGetterName &&
+                                    result.hasGetterName === (result.propertyInfo.hasGetterName === true) &&
+                                    result.resolvedHasSetterName === result.propertyInfo.hasSetterName &&
+                                    result.hasSetterName === (result.propertyInfo.hasSetterName === true) &&
+                                    result.resolvedHasBackingIvar === result.propertyInfo.hasBackingIvar &&
+                                    result.hasBackingIvar === (result.propertyInfo.hasBackingIvar === true) &&
+                                    result.resolvedHasObjectClassName === result.propertyInfo.hasObjectClassName &&
+                                    result.hasObjectClassName === (result.propertyInfo.hasObjectClassName === true) &&
+                                    result.resolvedHasObjectProtocols === result.propertyInfo.hasObjectProtocols &&
+                                    result.hasObjectProtocols === (result.propertyInfo.hasObjectProtocols === true) &&
+                                    result.resolvedHasTypeInfo === result.propertyInfo.hasTypeInfo &&
+                                    result.hasTypeInfo === (result.propertyInfo.hasTypeInfo === true) &&
+                                    result.resolvedIsObject === result.propertyInfo.isObject &&
+                                    result.isObject === (result.propertyInfo.isObject === true) &&
+                                    result.resolvedIsBlock === result.propertyInfo.isBlock &&
+                                    result.isBlock === (result.propertyInfo.isBlock === true) &&
+                                    checkImage(result, 'app', 'Demo', '/var/containers/Bundle/Application/UUID/Demo.app');
+                            }
+                            try {
+                                return checkClass(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'DemoView', isMetaClass: true })) &&
+                                    checkProtocol(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_info', protocolName: 'DemoProtocol' })) &&
+                                    checkMethod(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_info', className: 'DemoView', selectorName: 'setTitle:', isClassMethod: false })) &&
+                                    checkProtocolMethod(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_method_info', protocolName: 'DemoProtocol', selectorName: 'demoValue', isRequired: false, isInstanceMethod: true })) &&
+                                    checkProperty(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.property_info', className: 'DemoView', propertyName: 'title', isClassProperty: false })) &&
+                                    checkProtocolProperty(__iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_property_info', protocolName: 'DemoProtocol', propertyName: 'delegate' }));
+                            } finally {
+                                ObjC.classInfo = originals.classInfo;
+                                ObjC.protocolInfo = originals.protocolInfo;
+                                ObjC.methodInfo = originals.methodInfo;
+                                ObjC.protocolMethodInfo = originals.protocolMethodInfo;
+                                ObjC.propertyInfo = originals.propertyInfo;
+                                ObjC.protocolPropertyInfo = originals.protocolPropertyInfo;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic objc info summary fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const originals = {
+                                classInfo: ObjC.classInfo,
                                 methods: ObjC.methods,
                                 properties: ObjC.properties,
                                 ivars: ObjC.ivars,
