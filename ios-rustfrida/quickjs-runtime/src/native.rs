@@ -6028,9 +6028,32 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     );
     result.set_property(
         ctx,
+        "coexistenceLayerRequired",
+        JSValue::bool(coexistence_layer.required),
+    );
+    result.set_property(
+        ctx,
         "coexistenceLayerStatus",
         JSValue::string(ctx, coexistence_layer.status),
     );
+    result.set_property(
+        ctx,
+        "coexistenceLayerPreferredPhase",
+        JSValue::string(ctx, coexistence_layer.preferred_phase),
+    );
+    result.set_property(
+        ctx,
+        "coexistenceLayerSummary",
+        JSValue::string(ctx, coexistence_layer.summary),
+    );
+    match coexistence_layer.recommended_action_key {
+        Some(action_key) => result.set_property(
+            ctx,
+            "coexistenceLayerRecommendedActionKey",
+            JSValue::string(ctx, action_key),
+        ),
+        None => result.set_property(ctx, "coexistenceLayerRecommendedActionKey", JSValue::null()),
+    };
     result.set_property(ctx, "backendPressure", JSValue::string(ctx, backend_pressure));
     result.set_property(ctx, "externalBackendLoaded", JSValue::bool(loaded_backend_count > 0));
     result.set_property(

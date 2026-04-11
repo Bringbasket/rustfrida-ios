@@ -121,6 +121,10 @@ pub struct HookRecommendedAction {
 pub struct HookCoexistenceLayerStatus {
     pub available: bool,
     pub status: &'static str,
+    pub required: bool,
+    pub preferred_phase: &'static str,
+    pub summary: &'static str,
+    pub recommended_action_key: Option<&'static str>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -287,20 +291,66 @@ pub fn hook_coexistence_layer_status_for_mode(
             } else {
                 "not-required"
             },
+            required: false,
+            preferred_phase: if filesystem_only_backend_detected {
+                "preflight"
+            } else {
+                "install"
+            },
+            summary: if filesystem_only_backend_detected {
+                "external backend files are present on disk, but no backend is loaded; a coexistence layer is not required yet, but preflight is still recommended before hook-install"
+            } else {
+                "no external hook backend is loaded; a coexistence layer is not required"
+            },
+            recommended_action_key: if filesystem_only_backend_detected {
+                Some("hook.query")
+            } else {
+                None
+            },
         };
     }
 
-    let status = match command_mode {
-        Some("allowed") => "missing-inline-risky",
-        Some("query-only") => "missing-query-only",
-        Some("cleanup-only") => "missing-cleanup-only",
-        Some("blocked") => "missing-blocked",
-        _ => "missing-unknown",
-    };
-
-    HookCoexistenceLayerStatus {
-        available: false,
-        status,
+    match command_mode {
+        Some("allowed") => HookCoexistenceLayerStatus {
+            available: false,
+            status: "missing-inline-risky",
+            required: true,
+            preferred_phase: "query",
+            summary: "an external hook backend is already loaded, but ios-rustfrida has no coexistence layer; prefer query/status first and only attempt inline install if you accept coexistence risk",
+            recommended_action_key: Some("hook.query"),
+        },
+        Some("query-only") => HookCoexistenceLayerStatus {
+            available: false,
+            status: "missing-query-only",
+            required: true,
+            preferred_phase: "query",
+            summary: "an external hook backend is loaded and current policy is query-only; no coexistence layer is available, so stay on query commands",
+            recommended_action_key: Some("hook.query"),
+        },
+        Some("cleanup-only") => HookCoexistenceLayerStatus {
+            available: false,
+            status: "missing-cleanup-only",
+            required: true,
+            preferred_phase: "cleanup",
+            summary: "an external hook backend is loaded and current policy only allows cleanup commands; no coexistence layer is available, so use status/stop commands to recover state",
+            recommended_action_key: Some("hook.status"),
+        },
+        Some("blocked") => HookCoexistenceLayerStatus {
+            available: false,
+            status: "missing-blocked",
+            required: true,
+            preferred_phase: "blocked",
+            summary: "an external hook backend is loaded and current policy blocks hook command groups; no coexistence layer is available",
+            recommended_action_key: None,
+        },
+        _ => HookCoexistenceLayerStatus {
+            available: false,
+            status: "missing-unknown",
+            required: true,
+            preferred_phase: "query",
+            summary: "an external hook backend is loaded, but hook strategy is unavailable; no coexistence layer is available, so query the target before attempting hook-install",
+            recommended_action_key: Some("hook.query"),
+        },
     }
 }
 
@@ -970,6 +1020,13 @@ mod tests {
         let status = hook_coexistence_layer_status(&report, None);
         assert!(status.available);
         assert_eq!(status.status, "not-required");
+        assert!(!status.required);
+        assert_eq!(status.preferred_phase, "install");
+        assert_eq!(
+            status.summary,
+            "no external hook backend is loaded; a coexistence layer is not required"
+        );
+        assert_eq!(status.recommended_action_key, None);
     }
 
     #[test]
@@ -987,6 +1044,9 @@ mod tests {
         let status = hook_coexistence_layer_status(&report, None);
         assert!(status.available);
         assert_eq!(status.status, "not-required-filesystem-only");
+        assert!(!status.required);
+        assert_eq!(status.preferred_phase, "preflight");
+        assert_eq!(status.recommended_action_key, Some("hook.query"));
     }
 
     #[test]
@@ -994,9 +1054,15 @@ mod tests {
         let status = hook_coexistence_layer_status_for_mode(Some("cleanup-only"), true, false);
         assert!(!status.available);
         assert_eq!(status.status, "missing-cleanup-only");
+        assert!(status.required);
+        assert_eq!(status.preferred_phase, "cleanup");
+        assert_eq!(status.recommended_action_key, Some("hook.status"));
 
         let unknown_status = hook_coexistence_layer_status_for_mode(None, true, false);
         assert!(!unknown_status.available);
         assert_eq!(unknown_status.status, "missing-unknown");
+        assert!(unknown_status.required);
+        assert_eq!(unknown_status.preferred_phase, "query");
+        assert_eq!(unknown_status.recommended_action_key, Some("hook.query"));
     }
 }

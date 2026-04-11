@@ -2015,7 +2015,12 @@ undefined;
                                 report.recommendedActionCount === report.recommendedActions.length &&
                                 report.recommendedActionCount === (report.allowedActionCount + report.blockedActionCount) &&
                                 typeof report.coexistenceLayerAvailable === 'boolean' &&
+                                typeof report.coexistenceLayerRequired === 'boolean' &&
                                 typeof report.coexistenceLayerStatus === 'string' &&
+                                typeof report.coexistenceLayerPreferredPhase === 'string' &&
+                                typeof report.coexistenceLayerSummary === 'string' &&
+                                (report.coexistenceLayerRecommendedActionKey === null ||
+                                    typeof report.coexistenceLayerRecommendedActionKey === 'string') &&
                                 typeof report.externalBackendLoaded === 'boolean' &&
                                 typeof report.singleExternalBackendLoaded === 'boolean' &&
                                 typeof report.multipleExternalBackendsLoaded === 'boolean' &&
@@ -20865,7 +20870,11 @@ undefined;
                                 coexistenceMode: 'avoid-inline',
                                 coexistenceRecommendation: 'query-only',
                                 coexistenceLayerAvailable: false,
+                                coexistenceLayerRequired: false,
                                 coexistenceLayerStatus: 'unavailable',
+                                coexistenceLayerPreferredPhase: 'preflight',
+                                coexistenceLayerSummary: 'filesystem-only backend detected; preflight before hook-install',
+                                coexistenceLayerRecommendedActionKey: 'hook.query',
                                 externalBackendLoaded: false,
                                 singleExternalBackendLoaded: false,
                                 multipleExternalBackendsLoaded: false,
@@ -20940,6 +20949,10 @@ undefined;
                                     result.text === value &&
                                     value.indexOf('active=ellekit') !== -1 &&
                                     value.indexOf('active_backend_display_name=ElleKit') !== -1 &&
+                                    value.indexOf('coexistence_layer_required=false') !== -1 &&
+                                    value.indexOf('coexistence_layer_preferred_phase=preflight') !== -1 &&
+                                    value.indexOf('coexistence_layer_recommended_action_key=hook.query') !== -1 &&
+                                    value.indexOf('coexistence_layer_summary=filesystem-only backend detected; preflight before hook-install') !== -1 &&
                                     value.indexOf('backend_count=1') !== -1 &&
                                     value.indexOf('filesystem_only_backend_count=1') !== -1 &&
                                     value.indexOf('next_action query key=query.images priority=10 allowed=true status=allowed recommendation=enumerate first') !== -1 &&
@@ -20975,6 +20988,13 @@ undefined;
                                 typeof report.commandMode === 'string' &&
                                 typeof report.coexistenceMode === 'string' &&
                                 typeof report.coexistenceRecommendation === 'string' &&
+                                typeof report.coexistenceLayerAvailable === 'boolean' &&
+                                typeof report.coexistenceLayerRequired === 'boolean' &&
+                                typeof report.coexistenceLayerStatus === 'string' &&
+                                typeof report.coexistenceLayerPreferredPhase === 'string' &&
+                                typeof report.coexistenceLayerSummary === 'string' &&
+                                (report.coexistenceLayerRecommendedActionKey === null ||
+                                    typeof report.coexistenceLayerRecommendedActionKey === 'string') &&
                                 typeof report.backendCount === 'number' &&
                                 Array.isArray(report.backends) &&
                                 report.backendCount === report.backends.length &&

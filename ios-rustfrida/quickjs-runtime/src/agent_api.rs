@@ -2316,7 +2316,27 @@ function formatHookEnvironmentReport(report) {
     lines.push('coexistence_mode=' + String(report.coexistenceMode));
     lines.push('coexistence_recommendation=' + String(report.coexistenceRecommendation));
     lines.push('coexistence_layer_available=' + String(!!report.coexistenceLayerAvailable));
+    lines.push('coexistence_layer_required=' + String(!!report.coexistenceLayerRequired));
     lines.push('coexistence_layer_status=' + String(report.coexistenceLayerStatus));
+    lines.push(
+        'coexistence_layer_preferred_phase=' +
+            (report.coexistenceLayerPreferredPhase === null || report.coexistenceLayerPreferredPhase === undefined
+                ? '<none>'
+                : String(report.coexistenceLayerPreferredPhase))
+    );
+    lines.push(
+        'coexistence_layer_recommended_action_key=' +
+            (report.coexistenceLayerRecommendedActionKey === null ||
+            report.coexistenceLayerRecommendedActionKey === undefined
+                ? '<none>'
+                : String(report.coexistenceLayerRecommendedActionKey))
+    );
+    lines.push(
+        'coexistence_layer_summary=' +
+            (report.coexistenceLayerSummary === null || report.coexistenceLayerSummary === undefined
+                ? '<none>'
+                : String(report.coexistenceLayerSummary))
+    );
     lines.push('external_backend_loaded=' + String(!!report.externalBackendLoaded));
     lines.push('single_external_backend_loaded=' + String(!!report.singleExternalBackendLoaded));
     lines.push('multiple_external_backends_loaded=' + String(!!report.multipleExternalBackendsLoaded));

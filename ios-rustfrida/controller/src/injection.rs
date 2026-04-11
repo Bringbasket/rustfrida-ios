@@ -852,7 +852,11 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "strategy": strategy,
         "riskLevel": risk_level,
         "coexistenceLayerAvailable": coexistence_layer.available,
+        "coexistenceLayerRequired": coexistence_layer.required,
         "coexistenceLayerStatus": coexistence_layer.status,
+        "coexistenceLayerPreferredPhase": coexistence_layer.preferred_phase,
+        "coexistenceLayerSummary": coexistence_layer.summary,
+        "coexistenceLayerRecommendedActionKey": coexistence_layer.recommended_action_key,
         "baseCommandMode": base_command_mode,
         "effectiveCommandMode": command_mode,
         "commandMode": command_mode,
@@ -11343,7 +11347,11 @@ fn hook_environment_to_json(
         "coexistenceMode": coexistence_mode,
         "coexistenceRecommendation": coexistence_recommendation,
         "coexistenceLayerAvailable": coexistence_layer.available,
+        "coexistenceLayerRequired": coexistence_layer.required,
         "coexistenceLayerStatus": coexistence_layer.status,
+        "coexistenceLayerPreferredPhase": coexistence_layer.preferred_phase,
+        "coexistenceLayerSummary": coexistence_layer.summary,
+        "coexistenceLayerRecommendedActionKey": coexistence_layer.recommended_action_key,
         "externalBackendLoaded": loaded_backend_count > 0,
         "singleExternalBackendLoaded": loaded_backend_count == 1,
         "multipleExternalBackendsLoaded": loaded_backend_count > 1,
@@ -17028,6 +17036,18 @@ mod tests {
             false
         );
         assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceLayerRequired"],
+            true
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceLayerPreferredPhase"],
+            "query"
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceLayerRecommendedActionKey"],
+            "hook.query"
+        );
+        assert_eq!(
             rendered["environment"]["hookEnvironment"]["externalBackendLoaded"],
             true
         );
@@ -17924,6 +17944,15 @@ mod tests {
             true
         );
         assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceLayerRequired"],
+            false
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["coexistenceLayerPreferredPhase"],
+            "install"
+        );
+        assert!(rendered["environment"]["hookEnvironment"]["coexistenceLayerRecommendedActionKey"].is_null());
+        assert_eq!(
             rendered["environment"]["hookEnvironment"]["externalBackendLoaded"],
             false
         );
@@ -17962,6 +17991,15 @@ mod tests {
             rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerAvailable"],
             true
         );
+        assert_eq!(
+            rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerRequired"],
+            false
+        );
+        assert_eq!(
+            rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerPreferredPhase"],
+            "install"
+        );
+        assert!(rendered["preflight"]["targetHookEnvironment"]["coexistenceLayerRecommendedActionKey"].is_null());
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["loadedBackendCount"], 0);
         assert_eq!(
             rendered["preflight"]["targetHookEnvironment"]["singleExternalBackendLoaded"],
