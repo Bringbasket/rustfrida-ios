@@ -3173,6 +3173,10 @@ undefined;
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateCommand === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateCommand &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateKind === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateKind &&
                                     adaptation.preferredBackendPrimaryCommandJsonTemplateEligible === adaptation.preferredBackendRecommendation.primaryCommandJsonTemplateEligible));
+                            const hasConflictResolutionPlan =
+                                adaptation.preferredConflictResolutionGroupKey !== null &&
+                                adaptation.preferredConflictResolutionGroupKey !== 'none' &&
+                                adaptation.preferredConflictResolutionChainCount > 0;
                             const conflictPairOk =
                                 ((adaptation.conflictBackendPairCount === 0 &&
                                     adaptation.preferredConflictBackendPair === null &&
@@ -3189,21 +3193,7 @@ undefined;
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplate === null &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateCommand === null &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateKind === null &&
-                                    adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateEligible === null &&
-                                    adaptation.preferredConflictResolutionGroupKey === null &&
-                                    adaptation.preferredConflictResolutionReason === null &&
-                                    adaptation.preferredConflictResolutionTemplates === null &&
-                                    adaptation.preferredConflictResolutionTemplateCount === null &&
-                                    adaptation.preferredConflictResolutionCommandJsonTemplates === null &&
-                                    adaptation.preferredConflictResolutionCommandJsonTemplateCount === null &&
-                                    adaptation.preferredConflictResolutionCommandJsonEligibleTemplateCount === null &&
-                                    adaptation.preferredConflictResolutionChain === null &&
-                                    adaptation.preferredConflictResolutionChainCount === null &&
-                                    adaptation.preferredConflictResolutionPhaseOrder === null &&
-                                    adaptation.preferredConflictResolutionRetryableStepCount === null &&
-                                    adaptation.preferredConflictResolutionTotalRetryBudget === null &&
-                                    adaptation.preferredConflictResolutionTerminationPolicy === null &&
-                                    adaptation.preferredConflictResolutionRouting === null) ||
+                                    adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateEligible === null) ||
                                 (adaptation.conflictBackendPairCount > 0 &&
                                     typeof adaptation.preferredConflictBackendPair === 'object' &&
                                     adaptation.preferredConflictBackendPair !== null &&
@@ -3225,18 +3215,32 @@ undefined;
                                     adaptation.preferredConflictBackendPairCommandJsonEligibleTemplateCount === adaptation.preferredConflictBackendPair.commandJsonEligibleTemplateCount &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateCommand === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateCommand &&
                                     adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateKind === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateKind &&
-                                    adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateEligible === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateEligible &&
-                                    adaptation.preferredConflictResolutionGroupKey === adaptation.preferredConflictBackendPair.suggestedGroupKey &&
-                                    adaptation.preferredConflictResolutionReason === adaptation.preferredConflictBackendPair.resolutionReason &&
+                                    adaptation.preferredConflictBackendPairPrimaryCommandJsonTemplateEligible === adaptation.preferredConflictBackendPair.primaryCommandJsonTemplateEligible));
+                            const conflictResolutionPlanOk =
+                                (!hasConflictResolutionPlan ? (
+                                    adaptation.preferredConflictResolutionGroupKey === null &&
+                                    adaptation.preferredConflictResolutionReason === null &&
+                                    adaptation.preferredConflictResolutionTemplates === null &&
+                                    adaptation.preferredConflictResolutionTemplateCount === null &&
+                                    adaptation.preferredConflictResolutionCommandJsonTemplates === null &&
+                                    adaptation.preferredConflictResolutionCommandJsonTemplateCount === null &&
+                                    adaptation.preferredConflictResolutionCommandJsonEligibleTemplateCount === null &&
+                                    adaptation.preferredConflictResolutionChain === null &&
+                                    adaptation.preferredConflictResolutionChainCount === null &&
+                                    adaptation.preferredConflictResolutionPhaseOrder === null &&
+                                    adaptation.preferredConflictResolutionRetryableStepCount === null &&
+                                    adaptation.preferredConflictResolutionTotalRetryBudget === null &&
+                                    adaptation.preferredConflictResolutionTerminationPolicy === null &&
+                                    adaptation.preferredConflictResolutionRouting === null
+                                ) : (
+                                    typeof adaptation.preferredConflictResolutionGroupKey === 'string' &&
+                                    typeof adaptation.preferredConflictResolutionReason === 'string' &&
                                     Array.isArray(adaptation.preferredConflictResolutionTemplates) &&
-                                    adaptation.preferredConflictResolutionTemplateCount === adaptation.preferredConflictBackendPair.templateCount &&
                                     adaptation.preferredConflictResolutionTemplateCount === adaptation.preferredConflictResolutionTemplates.length &&
                                     Array.isArray(adaptation.preferredConflictResolutionCommandJsonTemplates) &&
-                                    adaptation.preferredConflictResolutionCommandJsonTemplateCount === adaptation.preferredConflictBackendPair.commandJsonTemplateCount &&
                                     adaptation.preferredConflictResolutionCommandJsonTemplateCount === adaptation.preferredConflictResolutionCommandJsonTemplates.length &&
-                                    adaptation.preferredConflictResolutionCommandJsonEligibleTemplateCount === adaptation.preferredConflictBackendPair.commandJsonEligibleTemplateCount &&
+                                    typeof adaptation.preferredConflictResolutionCommandJsonEligibleTemplateCount === 'number' &&
                                     Array.isArray(adaptation.preferredConflictResolutionChain) &&
-                                    adaptation.preferredConflictResolutionChainCount === adaptation.preferredConflictBackendPair.resolutionChainCount &&
                                     adaptation.preferredConflictResolutionChainCount === adaptation.preferredConflictResolutionChain.length &&
                                     Array.isArray(adaptation.preferredConflictResolutionPhaseOrder) &&
                                     adaptation.preferredConflictResolutionPhaseOrder.length === adaptation.preferredConflictResolutionChainCount &&
@@ -3291,9 +3295,16 @@ undefined;
                                         adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanupTemplateCount === null) ||
                                         (typeof adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup === 'object' &&
                                             adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup !== null &&
-                                            adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanupTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup.templates.length))));
+                                            adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanupTemplateCount === adaptation.preferredConflictResolutionRouting.routingDecision.ready.phaseCleanup.templates.length)) &&
+                                    (adaptation.conflictBackendPairCount === 0 ||
+                                        (adaptation.preferredConflictResolutionGroupKey === adaptation.preferredConflictBackendPair.suggestedGroupKey &&
+                                         adaptation.preferredConflictResolutionReason === adaptation.preferredConflictBackendPair.resolutionReason &&
+                                         adaptation.preferredConflictResolutionTemplateCount === adaptation.preferredConflictBackendPair.templateCount &&
+                                         adaptation.preferredConflictResolutionCommandJsonTemplateCount === adaptation.preferredConflictBackendPair.commandJsonTemplateCount &&
+                                         adaptation.preferredConflictResolutionCommandJsonEligibleTemplateCount === adaptation.preferredConflictBackendPair.commandJsonEligibleTemplateCount &&
+                                         adaptation.preferredConflictResolutionChainCount === adaptation.preferredConflictBackendPair.resolutionChainCount))));
                             const preferredConflictRoutingAliasesOk =
-                                ((adaptation.conflictBackendPairCount === 0 &&
+                                ((!hasConflictResolutionPlan &&
                                     adaptation.preferredConflictResolutionResolve === null &&
                                     adaptation.preferredConflictResolutionResolveDefault === null &&
                                     adaptation.preferredConflictResolutionResolveDefaultEffective === null &&
@@ -3503,7 +3514,7 @@ undefined;
                                     adaptation.preferredConflictResolutionPhaseCleanupCommandJsonTemplateKind === null &&
                                     adaptation.preferredConflictResolutionPhaseCleanupCommandJsonTemplateEligible === null &&
                                     adaptation.preferredConflictResolutionPhaseQueryCommandJsonTemplateEligible === null) ||
-                                (adaptation.conflictBackendPairCount > 0 &&
+                                (hasConflictResolutionPlan &&
                                     adaptation.preferredConflictResolutionResolve === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolve &&
                                     adaptation.preferredConflictResolutionResolveDefault === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefault &&
                                     adaptation.preferredConflictResolutionResolveDefaultEffective === adaptation.preferredConflictResolutionRouting.routingDecision.ready.resolveDefaultEffective &&
@@ -3805,6 +3816,7 @@ undefined;
                                 primaryTemplateOk &&
                                 backendSpecificOk &&
                                 conflictPairOk &&
+                                conflictResolutionPlanOk &&
                                 preferredConflictRoutingAliasesOk;
                         })()"#,
                     )
@@ -3818,7 +3830,6 @@ undefined;
                             const report = Native.detectHookEnvironment();
                             const adaptation = report.backendAdaptation;
                             const hasConflictExecutionPath =
-                                adaptation.conflictBackendPairCount > 0 &&
                                 adaptation.preferredConflictResolutionGroupKey !== null &&
                                 adaptation.preferredConflictResolutionGroupKey !== 'none' &&
                                 adaptation.preferredConflictResolutionChainCount > 0;
