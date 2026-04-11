@@ -10530,6 +10530,86 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.codeSignature;
+                            Native.codeSignature = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    dataoff: 0x2600n,
+                                    datasize: 0x40n,
+                                    linkeditBase: 0x180100000n,
+                                    dataAddress: 0x180102600n,
+                                    magic: 0xfade0cc0n,
+                                    magicName: 'CSMAGIC_EMBEDDED_SIGNATURE',
+                                    length: 0x40n,
+                                    count: 2
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.code_signature', moduleName: 'Demo' });
+                                return result.hasCodeSignature === true
+                                    && result.resolved === true
+                                    && result.dataoffHex === '0x2600'
+                                    && result.datasizeHex === '0x40'
+                                    && result.dataEnd === '0x180102640'
+                                    && result.magicHex === '0xfade0cc0'
+                                    && result.magicName === 'CSMAGIC_EMBEDDED_SIGNATURE'
+                                    && result.hasMagic === true
+                                    && result.knownMagic === true
+                                    && result.magicCategory === 'signature'
+                                    && result.blobKind === 'embedded-signature'
+                                    && result.lengthHex === '0x40'
+                                    && result.count === 2
+                                    && result.hasCount === true
+                                    && result.hasData === true
+                                    && result.hasBlobLength === true
+                                    && result.blobLengthMatchesDataSize === true
+                                    && result.blobLengthRelation === 'equal'
+                                    && result.isSuperBlob === true
+                                    && result.countMatchesSuperBlob === true
+                                    && result.isDetachedSignature === false
+                                    && result.isBlobWrapper === false
+                                    && result.isCodeDirectory === false
+                                    && result.isEntitlements === false
+                                    && result.codeSignature.moduleName === 'Demo'
+                                    && result.codeSignature.moduleBase === BigInt('0x180000000').toString()
+                                    && result.codeSignature.dataoffHex === '0x2600'
+                                    && result.codeSignature.datasizeHex === '0x40'
+                                    && result.codeSignature.linkeditBase === BigInt('0x180100000').toString()
+                                    && result.codeSignature.dataAddress === BigInt('0x180102600').toString()
+                                    && result.codeSignature.dataEnd === '0x180102640'
+                                    && result.codeSignature.magicHex === '0xfade0cc0'
+                                    && result.codeSignature.magicName === 'CSMAGIC_EMBEDDED_SIGNATURE'
+                                    && result.codeSignature.hasMagic === true
+                                    && result.codeSignature.hasMagicName === true
+                                    && result.codeSignature.knownMagic === true
+                                    && result.codeSignature.magicCategory === 'signature'
+                                    && result.codeSignature.blobKind === 'embedded-signature'
+                                    && result.codeSignature.lengthHex === '0x40'
+                                    && result.codeSignature.count === 2
+                                    && result.codeSignature.hasCount === true
+                                    && result.codeSignature.hasData === true
+                                    && result.codeSignature.hasBlobLength === true
+                                    && result.codeSignature.blobLengthMatchesDataSize === true
+                                    && result.codeSignature.blobLengthRelation === 'equal'
+                                    && result.codeSignature.isSuperBlob === true
+                                    && result.codeSignature.countMatchesSuperBlob === true
+                                    && result.codeSignature.isDetachedSignature === false
+                                    && result.codeSignature.isBlobWrapper === false
+                                    && result.codeSignature.isCodeDirectory === false
+                                    && result.codeSignature.isEntitlements === false;
+                            } finally {
+                                Native.codeSignature = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native code signature summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.data_in_code', moduleName: main.image.name }); return result.kind === 'native.data_in_code' && typeof result.hasDataInCode === 'boolean' && typeof result.resolved === 'boolean' && typeof result.entryCount === 'number' && typeof result.hasEntries === 'boolean' && typeof result.uniqueKindCount === 'number' && typeof result.hasMultipleKinds === 'boolean' && typeof result.dataEntryCount === 'number' && typeof result.hasDataEntries === 'boolean' && typeof result.jumpTableEntryCount === 'number' && typeof result.hasJumpTables === 'boolean' && typeof result.unknownEntryCount === 'number' && typeof result.hasUnknownKinds === 'boolean' && Array.isArray(result.kinds) && ((result.dataInCode === null && result.hasDataInCode === false && result.resolved === false && result.moduleBase === null && result.dataoffHex === null && result.datasizeHex === null && result.linkeditBase === null && result.dataAddress === null && result.dataEnd === null && result.entryCount === 0 && result.hasEntries === false && result.totalEntryLength === null && result.uniqueKindCount === 0 && result.hasMultipleKinds === false && result.dataEntryCount === 0 && result.hasDataEntries === false && result.jumpTableEntryCount === 0 && result.hasJumpTables === false && result.unknownEntryCount === 0 && result.hasUnknownKinds === false && result.firstEntryOffsetHex === null && result.firstEntryAddress === null && result.lastEntryOffsetHex === null && result.lastEntryAddress === null && result.largestEntryOffsetHex === null && result.largestEntryAddress === null && result.largestEntryLength === null && result.kinds.length === 0 && result.text === '<null>') || (typeof result.moduleBase === 'string' && typeof result.dataoffHex === 'string' && typeof result.datasizeHex === 'string' && typeof result.linkeditBase === 'string' && typeof result.dataAddress === 'string' && typeof result.dataEnd === 'string' && typeof result.totalEntryLength === 'string' && typeof result.dataInCode.dataoffHex === 'string' && typeof result.dataInCode.dataEnd === 'string' && typeof result.dataInCode.count === 'number' && typeof result.dataInCode.hasEntries === 'boolean' && typeof result.dataInCode.hasData === 'boolean' && typeof result.dataInCode.totalEntryLength === 'string' && typeof result.dataInCode.totalSpanHex === 'string' && (result.dataInCode.firstEntryOffsetHex === null || typeof result.dataInCode.firstEntryOffsetHex === 'string') && (result.dataInCode.firstEntryAddress === null || typeof result.dataInCode.firstEntryAddress === 'string') && (result.dataInCode.firstKindName === null || typeof result.dataInCode.firstKindName === 'string') && (result.dataInCode.lastEntryOffsetHex === null || typeof result.dataInCode.lastEntryOffsetHex === 'string') && (result.dataInCode.lastEntryAddress === null || typeof result.dataInCode.lastEntryAddress === 'string') && (result.dataInCode.lastKindName === null || typeof result.dataInCode.lastKindName === 'string') && (result.dataInCode.largestEntryOffsetHex === null || typeof result.dataInCode.largestEntryOffsetHex === 'string') && (result.dataInCode.largestEntryAddress === null || typeof result.dataInCode.largestEntryAddress === 'string') && (result.dataInCode.largestEntryLength === null || typeof result.dataInCode.largestEntryLength === 'number') && typeof result.dataInCode.uniqueKindCount === 'number' && typeof result.dataInCode.hasMultipleKinds === 'boolean' && typeof result.dataInCode.dataEntryCount === 'number' && typeof result.dataInCode.hasDataEntries === 'boolean' && typeof result.dataInCode.jumpTableEntryCount === 'number' && typeof result.dataInCode.hasJumpTables === 'boolean' && typeof result.dataInCode.unknownEntryCount === 'number' && typeof result.dataInCode.hasUnknownKinds === 'boolean' && result.hasDataInCode === true && result.resolved === true && result.moduleBase === result.dataInCode.moduleBase && result.dataoffHex === result.dataInCode.dataoffHex && result.datasizeHex === result.dataInCode.datasizeHex && result.linkeditBase === result.dataInCode.linkeditBase && result.dataAddress === result.dataInCode.dataAddress && result.dataEnd === result.dataInCode.dataEnd && result.entryCount === result.dataInCode.count && result.hasEntries === (result.dataInCode.hasEntries === true) && result.totalEntryLength === result.dataInCode.totalEntryLength && result.uniqueKindCount === result.dataInCode.uniqueKindCount && result.hasMultipleKinds === (result.dataInCode.hasMultipleKinds === true) && result.dataEntryCount === result.dataInCode.dataEntryCount && result.hasDataEntries === (result.dataInCode.hasDataEntries === true) && result.jumpTableEntryCount === result.dataInCode.jumpTableEntryCount && result.hasJumpTables === (result.dataInCode.hasJumpTables === true) && result.unknownEntryCount === result.dataInCode.unknownEntryCount && result.hasUnknownKinds === (result.dataInCode.hasUnknownKinds === true) && result.firstEntryOffsetHex === result.dataInCode.firstEntryOffsetHex && result.firstEntryAddress === result.dataInCode.firstEntryAddress && result.lastEntryOffsetHex === result.dataInCode.lastEntryOffsetHex && result.lastEntryAddress === result.dataInCode.lastEntryAddress && result.largestEntryOffsetHex === result.dataInCode.largestEntryOffsetHex && result.largestEntryAddress === result.dataInCode.largestEntryAddress && result.largestEntryLength === result.dataInCode.largestEntryLength && Array.isArray(result.dataInCode.kinds) && Array.isArray(result.dataInCode.entries) && result.kinds.length === result.dataInCode.kinds.length && (result.kinds.length === 0 || (typeof result.kinds[0].totalLengthHex === 'string' && typeof result.kinds[0].hasKnownKind === 'boolean' && typeof result.kinds[0].isData === 'boolean' && typeof result.kinds[0].isJumpTable === 'boolean' && typeof result.kinds[0].isAbsJumpTable === 'boolean')) && (result.dataInCode.entries.length === 0 || (typeof result.dataInCode.entries[0].endOffsetHex === 'string' && typeof result.dataInCode.entries[0].endAddress === 'string' && typeof result.dataInCode.entries[0].hasKnownKind === 'boolean' && typeof result.dataInCode.entries[0].isData === 'boolean' && typeof result.dataInCode.entries[0].isJumpTable === 'boolean' && typeof result.dataInCode.entries[0].isAbsJumpTable === 'boolean')) && (result.dataInCode.kinds.length === 0 || (typeof result.dataInCode.kinds[0].totalLengthHex === 'string' && typeof result.dataInCode.kinds[0].hasKnownKind === 'boolean' && typeof result.dataInCode.kinds[0].isData === 'boolean' && typeof result.dataInCode.kinds[0].isJumpTable === 'boolean' && typeof result.dataInCode.kinds[0].isAbsJumpTable === 'boolean')) && result.text === result.dataInCode.text)); })()"
                     )
                     .expect("agent native data in code result"),
