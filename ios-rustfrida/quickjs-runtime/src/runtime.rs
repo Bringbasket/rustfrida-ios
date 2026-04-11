@@ -21474,8 +21474,20 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.protocol_info', protocolName: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_info', protocolName: 'NSObject' }); return value === result.text; })()")
+                    .expect("agent spec objc protocolInfo"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.protocol_protocols', protocolName: 'NSObject', filter: 'NS' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_protocols', protocolName: 'NSObject', filter: 'NS' }); return value === result.text; })()")
                     .expect("agent spec objc protocolProtocols"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.method_info', className: 'NSObject', selectorName: 'init', isClassMethod: false }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_info', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return value === result.text; })()")
+                    .expect("agent spec objc methodInfo"),
                 "true"
             );
             assert_eq!(
