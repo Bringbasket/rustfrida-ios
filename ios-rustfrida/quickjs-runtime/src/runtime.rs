@@ -10177,6 +10177,99 @@ undefined;
                             const original = Native.loadCommandInfo;
                             Native.loadCommandInfo = function(moduleName, commandOrIndex) {
                                 switch (String(commandOrIndex)) {
+                                case 'LC_RPATH':
+                                    return {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        index: 8,
+                                        name: 'LC_RPATH',
+                                        cmd: 0x8000001cn,
+                                        cmdsize: 32,
+                                        offset: 0x200n,
+                                        detail: 'path=@loader_path/Frameworks'
+                                    };
+                                case 'LC_LOAD_DYLINKER':
+                                    return {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        index: 9,
+                                        name: 'LC_LOAD_DYLINKER',
+                                        cmd: 0xen,
+                                        cmdsize: 40,
+                                        offset: 0x220n,
+                                        detail: 'name=@executable_path/usr/lib/dyld'
+                                    };
+                                default:
+                                    return null;
+                                }
+                            };
+                            try {
+                                const rpath = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_RPATH'
+                                });
+                                const dylinker = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.load_command_info',
+                                    moduleName: 'Demo',
+                                    commandOrIndex: 'LC_LOAD_DYLINKER'
+                                });
+                                return rpath.hasLoadCommandInfo === true
+                                    && rpath.resolved === true
+                                    && rpath.commandFamily === 'rpath'
+                                    && rpath.resolvedCommandFamily === 'rpath'
+                                    && rpath.hasDetail === true
+                                    && rpath.resolvedHasDetail === true
+                                    && rpath.hasPayload === true
+                                    && rpath.resolvedHasPayload === true
+                                    && rpath.path === '@loader_path/Frameworks'
+                                    && rpath.pathKind === 'loader_path'
+                                    && rpath.hasPath === true
+                                    && rpath.isTokenPath === true
+                                    && rpath.usesLoaderPath === true
+                                    && rpath.usesExecutablePath === false
+                                    && rpath.usesRpathToken === false
+                                    && rpath.isReqDyld === true
+                                    && rpath.loadCommandInfo !== null
+                                    && rpath.loadCommandInfo.path === '@loader_path/Frameworks'
+                                    && rpath.loadCommandInfo.pathKind === 'loader_path'
+                                    && typeof rpath.loadCommandInfo.text === 'string'
+                                    && rpath.text === rpath.loadCommandInfo.text
+                                    && dylinker.hasLoadCommandInfo === true
+                                    && dylinker.resolved === true
+                                    && dylinker.commandFamily === 'dylinker'
+                                    && dylinker.resolvedCommandFamily === 'dylinker'
+                                    && dylinker.hasDetail === true
+                                    && dylinker.resolvedHasDetail === true
+                                    && dylinker.hasPayload === true
+                                    && dylinker.resolvedHasPayload === true
+                                    && dylinker.path === '@executable_path/usr/lib/dyld'
+                                    && dylinker.pathKind === 'executable_path'
+                                    && dylinker.hasPath === true
+                                    && dylinker.isTokenPath === true
+                                    && dylinker.usesLoaderPath === false
+                                    && dylinker.usesExecutablePath === true
+                                    && dylinker.usesRpathToken === false
+                                    && dylinker.loadCommandInfo !== null
+                                    && dylinker.loadCommandInfo.path === '@executable_path/usr/lib/dyld'
+                                    && dylinker.loadCommandInfo.pathKind === 'executable_path'
+                                    && typeof dylinker.loadCommandInfo.text === 'string'
+                                    && dylinker.text === dylinker.loadCommandInfo.text;
+                            } finally {
+                                Native.loadCommandInfo = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native loadCommandInfo path summaries"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const original = Native.loadCommandInfo;
+                            Native.loadCommandInfo = function(moduleName, commandOrIndex) {
+                                switch (String(commandOrIndex)) {
                                 case 'LC_LOAD_DYLIB':
                                     return {
                                         moduleName: 'Demo',
