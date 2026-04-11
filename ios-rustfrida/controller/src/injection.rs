@@ -15595,6 +15595,35 @@ fn render_command_outcome_json(outcome: &CommandOutcome) -> Value {
 #[cfg(unix)]
 #[cfg_attr(not(test), allow(dead_code))]
 fn render_command_error_json(command: &str, err: &Error, logs: &[String]) -> Value {
+    let diagnostics = match err {
+        Error::State(message) if message.contains("hook-effective-blocked") => {
+            let parsed = parse_hook_effective_blocked_details(message);
+            json!({
+                "phase": "hook-policy",
+                "actionKey": normalize_hook_action_key(parsed.action_key),
+                "commandGroup": normalize_hook_command_group(parsed.command_group),
+                "blockedBy": normalize_hook_blocked_by(parsed.blocked_by),
+                "commandMode": normalize_hook_command_mode(parsed.command_mode),
+                "baseCommandMode": normalize_hook_command_mode(parsed.base_command_mode),
+                "effectiveCommandMode": normalize_hook_command_mode(parsed.effective_command_mode),
+                "autoDowngradedToQueryOnly": parse_bool_token(parsed.auto_downgraded_to_query_only),
+                "autoDowngradeReason": normalize_hook_auto_downgrade_reason(parsed.auto_downgrade_reason),
+                "recommendation": parsed.recommendation,
+                "coexistenceMode": normalize_hook_coexistence_mode(parsed.coexistence_mode),
+                "backendPressure": normalize_hook_backend_pressure(parsed.backend_pressure),
+                "coexistenceLayerRequired": parse_bool_token(parsed.coexistence_layer_required),
+                "coexistenceLayerStatus": parsed.coexistence_layer_status,
+                "coexistenceLayerPreferredPhase": normalize_hook_fallback_phase(parsed.coexistence_layer_preferred_phase),
+                "coexistenceLayerRecommendedActionKey": normalize_hook_action_key(parsed.coexistence_layer_recommended_action_key),
+                "coexistenceLayerSummary": parsed.coexistence_layer_summary,
+                "fallbackActionKey": normalize_hook_action_key(parsed.fallback_action_key),
+                "fallbackStepId": normalize_hook_fallback_step_id(parsed.fallback_step_id),
+                "fallbackCommand": parsed.fallback_command,
+                "fallbackPhase": normalize_hook_fallback_phase(parsed.fallback_phase),
+            })
+        }
+        _ => Value::Null,
+    };
     json!({
         "ok": false,
         "command": command,
@@ -15606,6 +15635,7 @@ fn render_command_error_json(command: &str, err: &Error, logs: &[String]) -> Val
             Error::Unsupported(_) => "unsupported",
         },
         "error": err.to_string(),
+        "diagnostics": diagnostics,
         "logs": logs,
     })
 }
@@ -17262,7 +17292,49 @@ mod tests {
         assert_eq!(rendered["ok"], false);
         assert_eq!(rendered["command"], "trace stop");
         assert_eq!(rendered["errorKind"], "unsupported");
+        assert!(rendered["diagnostics"].is_null());
         assert_eq!(rendered["logs"][0], "bootstrap pending");
+    }
+
+    #[test]
+    fn render_command_error_json_parses_hook_effective_blocked_details() {
+        let rendered = render_command_error_json(
+            "trace UIViewController",
+            &Error::State(
+                "hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both coexistenceLayerRequired=true coexistenceLayerStatus=missing-cleanup-only coexistenceLayerPreferredPhase=cleanup coexistenceLayerRecommendedActionKey=hook.status coexistenceLayerSummary=an external hook backend is loaded and current policy only allows cleanup commands; no coexistence layer is available, so use status/stop commands to recover state fallbackActionKey=hook.status fallbackStepId=next-action:hook.status:0 fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
+            ),
+            &[],
+        );
+
+        assert_eq!(rendered["errorKind"], "state");
+        assert_eq!(rendered["diagnostics"]["phase"], "hook-policy");
+        assert_eq!(rendered["diagnostics"]["actionKey"], "hook.install");
+        assert_eq!(rendered["diagnostics"]["commandGroup"], "hook-install");
+        assert_eq!(rendered["diagnostics"]["blockedBy"], "target");
+        assert_eq!(rendered["diagnostics"]["commandMode"], "query-only");
+        assert_eq!(rendered["diagnostics"]["coexistenceMode"], "cleanup-only");
+        assert_eq!(rendered["diagnostics"]["backendPressure"], "both");
+        assert_eq!(rendered["diagnostics"]["coexistenceLayerRequired"], true);
+        assert_eq!(
+            rendered["diagnostics"]["coexistenceLayerStatus"],
+            "missing-cleanup-only"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["coexistenceLayerPreferredPhase"],
+            "cleanup"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["coexistenceLayerRecommendedActionKey"],
+            "hook.status"
+        );
+        assert!(rendered["diagnostics"]["coexistenceLayerSummary"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("no coexistence layer is available"));
+        assert_eq!(rendered["diagnostics"]["fallbackActionKey"], "hook.status");
+        assert_eq!(rendered["diagnostics"]["fallbackStepId"], "next-action:hook.status:0");
+        assert_eq!(rendered["diagnostics"]["fallbackCommand"], "trace status");
+        assert_eq!(rendered["diagnostics"]["fallbackPhase"], "cleanup");
     }
 
     #[test]
@@ -18147,7 +18219,7 @@ mod tests {
         let hook_blocked_rendered = render_command_error_json_with_context(
             "trace UIViewController",
             &Error::State(
-                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both fallbackActionKey=hook.status fallbackStepId=next-action:hook.status:0 fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
+                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both coexistenceLayerRequired=true coexistenceLayerStatus=missing-cleanup-only coexistenceLayerPreferredPhase=cleanup coexistenceLayerRecommendedActionKey=hook.status coexistenceLayerSummary=an external hook backend is loaded and current policy only allows cleanup commands; no coexistence layer is available, so use status/stop commands to recover state fallbackActionKey=hook.status fallbackStepId=next-action:hook.status:0 fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
             ),
             &[],
             &CommandJsonContext {
