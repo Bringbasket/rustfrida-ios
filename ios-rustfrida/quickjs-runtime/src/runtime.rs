@@ -9874,6 +9874,51 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const original = Native.sourceVersion;
+                            Native.sourceVersion = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    version: '1.2.3.4'
+                                };
+                            };
+                            try {
+                                const result = __iosRustFridaAgentApi.handleSpecResult({
+                                    kind: 'native.source_version',
+                                    moduleName: 'Demo'
+                                });
+                                return result.hasSourceVersion === true
+                                    && result.resolved === true
+                                    && result.version === '1.2.3.4'
+                                    && result.hasVersion === true
+                                    && result.versionPartCount === 4
+                                    && result.majorVersion === '1'
+                                    && result.minorVersion === '2'
+                                    && result.patchVersion === '3'
+                                    && result.extraVersionCount === 1
+                                    && result.sourceVersion.moduleName === 'Demo'
+                                    && result.sourceVersion.moduleBase === BigInt('0x180000000').toString()
+                                    && result.sourceVersion.version === '1.2.3.4'
+                                    && result.sourceVersion.hasVersion === true
+                                    && result.sourceVersion.versionPartCount === 4
+                                    && result.sourceVersion.majorVersion === '1'
+                                    && result.sourceVersion.minorVersion === '2'
+                                    && result.sourceVersion.patchVersion === '3'
+                                    && result.sourceVersion.extraVersionCount === 1
+                                    && typeof result.sourceVersion.text === 'string'
+                                    && result.text === result.sourceVersion.text;
+                            } finally {
+                                Native.sourceVersion = original;
+                            }
+                        })()"#
+                    )
+                    .expect("synthetic native source version summary"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.entry_point', moduleName: main.image.name }); return result.kind === 'native.entry_point' && typeof result.hasEntryPoint === 'boolean' && typeof result.resolved === 'boolean' && ((result.entryPoint === null && result.hasEntryPoint === false && result.resolved === false && result.resolvedModuleName === null && result.entryoffHex === null && result.stacksizeHex === null && result.text === '<null>') || (typeof result.entryPoint.entryoffHex === 'string' && typeof result.entryPoint.stacksizeHex === 'string' && result.hasEntryPoint === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.entryoffHex === 'string' && typeof result.stacksizeHex === 'string' && result.resolvedModuleName === result.entryPoint.moduleName && result.entryoffHex === result.entryPoint.entryoffHex && result.stacksizeHex === result.entryPoint.stacksizeHex && result.text === result.entryPoint.text)); })()"
                     )
                     .expect("agent native entry point result"),
