@@ -5267,6 +5267,17 @@ undefined;
                 runtime
                     .eval(
                         "(function() {
+                            return __iosRustFridaAgentApi.handle('swift.findSymbols ViewController') === __iosRustFridaAgentApi.handle('swift.symbols ViewController') &&
+                                __iosRustFridaAgentApi.handle('swift.findTypeMethods ViewController') === __iosRustFridaAgentApi.handle('swift.typeMethods ViewController');
+                        })()"
+                    )
+                    .expect("agent swift collection aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
                             return __iosRustFridaAgentApi.handle('swift.findConformances ViewController') === __iosRustFridaAgentApi.handle('swift.conformances ViewController') &&
                                 __iosRustFridaAgentApi.handle('swift.findMetadata ViewController') === __iosRustFridaAgentApi.handle('swift.metadata ViewController') &&
                                 __iosRustFridaAgentApi.handle('swift.findVtable ViewController') === __iosRustFridaAgentApi.handle('swift.vtable ViewController') &&
@@ -21545,6 +21556,26 @@ undefined;
                         })()"
                     )
                     .expect("agent native remaining find aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const main = __iosRustFridaAgentApi.handle('native.mainImage');
+                            if (main === '<null>') {
+                                return true;
+                            }
+                            const path = main.split(' ').slice(2).join(' ');
+                            const base = path.split('/').filter(Boolean).pop() || path;
+                            return __iosRustFridaAgentApi.handle('native.findExports ' + base) === __iosRustFridaAgentApi.handle('native.exports ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findDependencies ' + base) === __iosRustFridaAgentApi.handle('native.dependencies ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findRpaths ' + base) === __iosRustFridaAgentApi.handle('native.rpaths ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findSegments ' + base) === __iosRustFridaAgentApi.handle('native.segments ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findSections ' + base) === __iosRustFridaAgentApi.handle('native.sections ' + base);
+                        })()"
+                    )
+                    .expect("agent native collection aliases"),
                 "true"
             );
             assert_eq!(
