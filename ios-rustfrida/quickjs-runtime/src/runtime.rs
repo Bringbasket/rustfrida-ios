@@ -14232,30 +14232,50 @@ undefined;
                                     return result.resolvedModuleBase === null
                                         && result.resolvedDylibOrdinal === null
                                         && result.resolvedDylibName === null
+                                        && result.resolvedSourcePathKind === null
+                                        && result.resolvedIsTokenSource === null
+                                        && result.resolvedUsesLoaderPath === null
+                                        && result.resolvedUsesExecutablePath === null
+                                        && result.resolvedUsesRpathToken === null
                                         && result.name === null
                                         && result.normalizedName === null
                                         && result.moduleBase === null
                                         && result.dylibOrdinal === null
                                         && result.dylibName === null
+                                        && result.sourcePathKind === null
                                         && result.hasDylibName === false
                                         && result.usesOrdinalOnly === false
                                         && result.isMainExecutableImport === false
                                         && result.isFlatLookupImport === false
-                                        && result.isSelfImport === false;
+                                        && result.isSelfImport === false
+                                        && result.isTokenSource === false
+                                        && result.usesLoaderPath === false
+                                        && result.usesExecutablePath === false
+                                        && result.usesRpathToken === false;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
                                     && result.resolvedDylibOrdinal === info.dylibOrdinal
                                     && result.resolvedDylibName === info.dylibName
+                                    && result.resolvedSourcePathKind === info.sourcePathKind
+                                    && result.resolvedIsTokenSource === info.isTokenSource
+                                    && result.resolvedUsesLoaderPath === info.usesLoaderPath
+                                    && result.resolvedUsesExecutablePath === info.usesExecutablePath
+                                    && result.resolvedUsesRpathToken === info.usesRpathToken
                                     && result.name === info.name
                                     && result.normalizedName === info.normalizedName
                                     && result.moduleBase === info.moduleBase
                                     && result.dylibOrdinal === info.dylibOrdinal
                                     && result.dylibName === info.dylibName
+                                    && result.sourcePathKind === info.sourcePathKind
                                     && result.hasDylibName === (info.hasDylibName === true)
                                     && result.usesOrdinalOnly === (info.usesOrdinalOnly === true)
                                     && result.isMainExecutableImport === (info.isMainExecutableImport === true)
                                     && result.isFlatLookupImport === (info.isFlatLookupImport === true)
-                                    && result.isSelfImport === (info.isSelfImport === true);
+                                    && result.isSelfImport === (info.isSelfImport === true)
+                                    && result.isTokenSource === (info.isTokenSource === true)
+                                    && result.usesLoaderPath === (info.usesLoaderPath === true)
+                                    && result.usesExecutablePath === (info.usesExecutablePath === true)
+                                    && result.usesRpathToken === (info.usesRpathToken === true);
                             }
 
                             function checkSegmentInfo(result) {
@@ -15654,7 +15674,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.import_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); return result.kind === 'native.import_info' && result.moduleName === 'libsystem_malloc.dylib' && result.symbolName === 'malloc' && typeof result.hasImportInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.weakImport === 'boolean' && ((result.importInfo === null && result.hasImportInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedNormalizedName === null && result.resolvedModuleName === null && result.name === null && result.normalizedName === null && result.moduleBase === null && result.dylibOrdinal === null && result.dylibName === null && result.source === null && result.sourceKind === null && result.weakImport === false && result.text === '<null>') || (typeof result.importInfo.moduleBase === 'string' && typeof result.importInfo.dylibOrdinal === 'number' && typeof result.importInfo.weakImport === 'boolean' && typeof result.importInfo.hasName === 'boolean' && typeof result.importInfo.hasDylibName === 'boolean' && typeof result.importInfo.usesOrdinalOnly === 'boolean' && typeof result.importInfo.isMainExecutableImport === 'boolean' && typeof result.importInfo.isFlatLookupImport === 'boolean' && typeof result.importInfo.source === 'string' && result.hasImportInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedNormalizedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.name === 'string' && typeof result.normalizedName === 'string' && typeof result.moduleBase === 'string' && typeof result.dylibOrdinal === 'number' && (result.dylibName === null || typeof result.dylibName === 'string') && typeof result.source === 'string' && typeof result.sourceKind === 'string' && result.weakImport === (result.importInfo.weakImport === true) && result.resolvedName === result.importInfo.name && result.resolvedNormalizedName === result.importInfo.normalizedName && result.resolvedModuleName === result.importInfo.moduleName && result.name === result.importInfo.name && result.normalizedName === result.importInfo.normalizedName && result.moduleBase === result.importInfo.moduleBase && result.dylibOrdinal === result.importInfo.dylibOrdinal && result.dylibName === result.importInfo.dylibName && result.source === result.importInfo.source && result.sourceKind === result.importInfo.sourceKind && result.text === result.importInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.import_info', moduleName: 'libsystem_malloc.dylib', symbolName: 'malloc' }); return result.kind === 'native.import_info' && result.moduleName === 'libsystem_malloc.dylib' && result.symbolName === 'malloc' && typeof result.hasImportInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.weakImport === 'boolean' && typeof result.isTokenSource === 'boolean' && typeof result.usesLoaderPath === 'boolean' && typeof result.usesExecutablePath === 'boolean' && typeof result.usesRpathToken === 'boolean' && ((result.importInfo === null && result.hasImportInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedNormalizedName === null && result.resolvedModuleName === null && result.resolvedSourcePathKind === null && result.resolvedIsTokenSource === null && result.resolvedUsesLoaderPath === null && result.resolvedUsesExecutablePath === null && result.resolvedUsesRpathToken === null && result.name === null && result.normalizedName === null && result.moduleBase === null && result.dylibOrdinal === null && result.dylibName === null && result.source === null && result.sourceKind === null && result.sourcePathKind === null && result.weakImport === false && result.isTokenSource === false && result.usesLoaderPath === false && result.usesExecutablePath === false && result.usesRpathToken === false && result.text === '<null>') || (typeof result.importInfo.moduleBase === 'string' && typeof result.importInfo.dylibOrdinal === 'number' && typeof result.importInfo.weakImport === 'boolean' && typeof result.importInfo.hasName === 'boolean' && typeof result.importInfo.hasDylibName === 'boolean' && typeof result.importInfo.usesOrdinalOnly === 'boolean' && typeof result.importInfo.isMainExecutableImport === 'boolean' && typeof result.importInfo.isFlatLookupImport === 'boolean' && typeof result.importInfo.isTokenSource === 'boolean' && typeof result.importInfo.usesLoaderPath === 'boolean' && typeof result.importInfo.usesExecutablePath === 'boolean' && typeof result.importInfo.usesRpathToken === 'boolean' && typeof result.importInfo.source === 'string' && typeof result.importInfo.sourcePathKind === 'string' && result.hasImportInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedNormalizedName === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.resolvedSourcePathKind === 'string' && typeof result.name === 'string' && typeof result.normalizedName === 'string' && typeof result.moduleBase === 'string' && typeof result.dylibOrdinal === 'number' && (result.dylibName === null || typeof result.dylibName === 'string') && typeof result.source === 'string' && typeof result.sourceKind === 'string' && typeof result.sourcePathKind === 'string' && result.weakImport === (result.importInfo.weakImport === true) && result.isTokenSource === (result.importInfo.isTokenSource === true) && result.usesLoaderPath === (result.importInfo.usesLoaderPath === true) && result.usesExecutablePath === (result.importInfo.usesExecutablePath === true) && result.usesRpathToken === (result.importInfo.usesRpathToken === true) && result.resolvedName === result.importInfo.name && result.resolvedNormalizedName === result.importInfo.normalizedName && result.resolvedModuleName === result.importInfo.moduleName && result.resolvedSourcePathKind === result.importInfo.sourcePathKind && result.resolvedIsTokenSource === result.importInfo.isTokenSource && result.resolvedUsesLoaderPath === result.importInfo.usesLoaderPath && result.resolvedUsesExecutablePath === result.importInfo.usesExecutablePath && result.resolvedUsesRpathToken === result.importInfo.usesRpathToken && result.name === result.importInfo.name && result.normalizedName === result.importInfo.normalizedName && result.moduleBase === result.importInfo.moduleBase && result.dylibOrdinal === result.importInfo.dylibOrdinal && result.dylibName === result.importInfo.dylibName && result.source === result.importInfo.source && result.sourceKind === result.importInfo.sourceKind && result.sourcePathKind === result.importInfo.sourcePathKind && result.text === result.importInfo.text)); })()"
                     )
                     .expect("agent native importInfo result"),
                 "true"
@@ -15689,11 +15709,16 @@ undefined;
                                     && result.resolvedDylibName === result.importInfo.dylibName
                                     && result.resolvedSource === result.importInfo.source
                                     && result.resolvedSourceKind === result.importInfo.sourceKind
+                                    && result.resolvedSourcePathKind === result.importInfo.sourcePathKind
                                     && result.resolvedHasDylibName === result.importInfo.hasDylibName
                                     && result.resolvedUsesOrdinalOnly === result.importInfo.usesOrdinalOnly
                                     && result.resolvedIsMainExecutableImport === result.importInfo.isMainExecutableImport
                                     && result.resolvedIsFlatLookupImport === result.importInfo.isFlatLookupImport
                                     && result.resolvedIsSelfImport === result.importInfo.isSelfImport
+                                    && result.resolvedIsTokenSource === result.importInfo.isTokenSource
+                                    && result.resolvedUsesLoaderPath === result.importInfo.usesLoaderPath
+                                    && result.resolvedUsesExecutablePath === result.importInfo.usesExecutablePath
+                                    && result.resolvedUsesRpathToken === result.importInfo.usesRpathToken
                                     && result.resolvedWeakImport === result.importInfo.weakImport
                                     && result.name === '_malloc'
                                     && result.normalizedName === 'malloc'
@@ -15702,6 +15727,7 @@ undefined;
                                     && result.dylibName === '<main-executable>'
                                     && result.source === '<main-executable>'
                                     && result.sourceKind === 'main-executable'
+                                    && result.sourcePathKind === 'other'
                                     && result.hasImportInfo === true
                                     && result.resolved === true
                                     && result.hasDylibName === true
@@ -15709,6 +15735,10 @@ undefined;
                                     && result.isMainExecutableImport === true
                                     && result.isFlatLookupImport === false
                                     && result.isSelfImport === false
+                                    && result.isTokenSource === false
+                                    && result.usesLoaderPath === false
+                                    && result.usesExecutablePath === false
+                                    && result.usesRpathToken === false
                                     && result.weakImport === true;
                             } finally {
                                 Native.importInfo = original;
@@ -15748,11 +15778,16 @@ undefined;
                                     && result.dylibName === '<main-executable>'
                                     && result.source === '<main-executable>'
                                     && result.sourceKind === 'main-executable'
+                                    && result.sourcePathKind === 'other'
                                     && result.hasDylibName === true
                                     && result.usesOrdinalOnly === false
                                     && result.isMainExecutableImport === true
                                     && result.isFlatLookupImport === false
                                     && result.isSelfImport === false
+                                    && result.isTokenSource === false
+                                    && result.usesLoaderPath === false
+                                    && result.usesExecutablePath === false
+                                    && result.usesRpathToken === false
                                     && result.weakImport === true
                                     && result.importInfo !== null
                                     && result.importInfo.moduleName === 'Demo'
@@ -15830,11 +15865,16 @@ undefined;
                                 if (result.importInfo === null) {
                                     return result.resolvedSource === null
                                         && result.resolvedSourceKind === null
+                                        && result.resolvedSourcePathKind === null
                                         && result.resolvedHasDylibName === null
                                         && result.resolvedUsesOrdinalOnly === null
                                         && result.resolvedIsMainExecutableImport === null
                                         && result.resolvedIsFlatLookupImport === null
                                         && result.resolvedIsSelfImport === null
+                                        && result.resolvedIsTokenSource === null
+                                        && result.resolvedUsesLoaderPath === null
+                                        && result.resolvedUsesExecutablePath === null
+                                        && result.resolvedUsesRpathToken === null
                                         && result.resolvedWeakImport === null
                                         && result.name === null
                                         && result.normalizedName === null
@@ -15843,20 +15883,30 @@ undefined;
                                         && result.dylibName === null
                                         && result.source === null
                                         && result.sourceKind === null
+                                        && result.sourcePathKind === null
                                         && result.hasDylibName === false
                                         && result.usesOrdinalOnly === false
                                         && result.isMainExecutableImport === false
                                         && result.isFlatLookupImport === false
                                         && result.isSelfImport === false
+                                        && result.isTokenSource === false
+                                        && result.usesLoaderPath === false
+                                        && result.usesExecutablePath === false
+                                        && result.usesRpathToken === false
                                         && result.weakImport === false;
                                 }
                                 return result.resolvedSource === result.importInfo.source
                                     && result.resolvedSourceKind === result.importInfo.sourceKind
+                                    && result.resolvedSourcePathKind === result.importInfo.sourcePathKind
                                     && result.resolvedHasDylibName === result.importInfo.hasDylibName
                                     && result.resolvedUsesOrdinalOnly === result.importInfo.usesOrdinalOnly
                                     && result.resolvedIsMainExecutableImport === result.importInfo.isMainExecutableImport
                                     && result.resolvedIsFlatLookupImport === result.importInfo.isFlatLookupImport
                                     && result.resolvedIsSelfImport === result.importInfo.isSelfImport
+                                    && result.resolvedIsTokenSource === result.importInfo.isTokenSource
+                                    && result.resolvedUsesLoaderPath === result.importInfo.usesLoaderPath
+                                    && result.resolvedUsesExecutablePath === result.importInfo.usesExecutablePath
+                                    && result.resolvedUsesRpathToken === result.importInfo.usesRpathToken
                                     && result.resolvedWeakImport === result.importInfo.weakImport
                                     && result.name === result.importInfo.name
                                     && result.normalizedName === result.importInfo.normalizedName
@@ -15865,11 +15915,16 @@ undefined;
                                     && result.dylibName === result.importInfo.dylibName
                                     && result.source === result.importInfo.source
                                     && result.sourceKind === result.importInfo.sourceKind
+                                    && result.sourcePathKind === result.importInfo.sourcePathKind
                                     && result.hasDylibName === (result.importInfo.hasDylibName === true)
                                     && result.usesOrdinalOnly === (result.importInfo.usesOrdinalOnly === true)
                                     && result.isMainExecutableImport === (result.importInfo.isMainExecutableImport === true)
                                     && result.isFlatLookupImport === (result.importInfo.isFlatLookupImport === true)
                                     && result.isSelfImport === (result.importInfo.isSelfImport === true)
+                                    && result.isTokenSource === (result.importInfo.isTokenSource === true)
+                                    && result.usesLoaderPath === (result.importInfo.usesLoaderPath === true)
+                                    && result.usesExecutablePath === (result.importInfo.usesExecutablePath === true)
+                                    && result.usesRpathToken === (result.importInfo.usesRpathToken === true)
                                     && result.weakImport === (result.importInfo.weakImport === true);
                             }
 
