@@ -352,9 +352,39 @@ fn hook_strategy_capabilities_to_json(strategy: &native_api::HookStrategyDecisio
 }
 
 #[cfg(unix)]
+fn hook_arm64e_recovery_summary_to_json(
+    preflight: &InjectionTargetPreflightReport,
+    trace: Option<&InjectionTrace>,
+) -> Value {
+    let arm64e_summary = arm64e_runtime_summary_to_json(preflight, trace);
+    let override_required_for_fallback = arm64e_summary["overrideRequiredForFallback"]
+        .as_bool()
+        .unwrap_or(false);
+
+    if !override_required_for_fallback {
+        return Value::Null;
+    }
+
+    let commands = arm64e_readonly_recovery_commands();
+    json!({
+        "strategy": "arm64e-query-only-until-override",
+        "readonlyOnly": true,
+        "appliesToHookInstall": true,
+        "recommendedAction": "run-readonly-diagnostics",
+        "nextActionKey": "hook.query",
+        "nextActionPhase": "query",
+        "overrideEnv": "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK",
+        "commandCount": commands.len(),
+        "commands": commands,
+        "firstCommand": commands.first().cloned(),
+    })
+}
+
+#[cfg(unix)]
 fn hook_shortcut_entry_to_json(
     strategy: &native_api::HookStrategyDecision,
     recommended_actions: &[native_api::HookRecommendedAction],
+    recovery_summary: &Value,
 ) -> Value {
     json!({
         "policy": strategy.policy.as_str(),
@@ -369,6 +399,7 @@ fn hook_shortcut_entry_to_json(
         "filesystemCaution": strategy.filesystem_caution(),
         "reason": strategy.reason,
         "capabilities": hook_strategy_capabilities_to_json(strategy),
+        "recoverySummary": recovery_summary,
         "recommendedActions": recommended_actions
             .iter()
             .map(hook_recommended_action_to_json)
@@ -11251,16 +11282,20 @@ fn hook_shortcuts_to_json(
         &preflight.target_hook_environment,
     );
     let arm64e_context = HookAutomationArm64eContext::from_runtime(preflight, trace);
+    let recovery_summary = hook_arm64e_recovery_summary_to_json(preflight, trace);
 
     json!({
         "controller": hook_shortcut_entry_to_json(
             &injection_environment.hook_strategy,
             &controller_actions,
+            &recovery_summary,
         ),
         "target": hook_shortcut_entry_to_json(
             &preflight.target_hook_strategy,
             &target_actions,
+            &recovery_summary,
         ),
+        "recoverySummary": recovery_summary.clone(),
         "effectiveActions": hook_effective_actions_to_json(&effective_actions),
         "effective": hook_effective_to_json(&effective_actions),
         "backendMatrix": backend_matrix.clone(),
@@ -11609,6 +11644,7 @@ fn hook_environment_to_json(
 fn hook_side_summary_to_json(
     report: &native_api::HookEnvironmentReport,
     strategy: &native_api::HookStrategyDecision,
+    recovery_summary: &Value,
 ) -> Value {
     let coexistence_layer = hook_coexistence_layer_status(report, Some(strategy));
     let coexistence_mode = match strategy.command_mode() {
@@ -11651,6 +11687,7 @@ fn hook_side_summary_to_json(
         "filesystemOnlyBackendCount": report.filesystem_only_backend_count(),
         "warningCount": report.warnings.len(),
         "reason": strategy.reason,
+        "recoverySummary": recovery_summary,
         "nextActionKey": next_action.as_ref().map(|item| item.action_key.clone()),
         "nextActionCommandGroup": next_action.as_ref().map(|item| item.command_group.clone()),
         "nextActionAllowed": next_action.as_ref().map(|item| item.allowed),
@@ -11666,10 +11703,32 @@ fn injection_environment_to_json(report: &InjectionEnvironmentReport) -> Value {
         "bootstrapWaitMs": report.bootstrap_wait_ms,
         "hookPolicy": report.hook_policy.as_str(),
         "hookStrategy": hook_strategy_to_json(&report.hook_strategy),
-        "hookSummary": hook_side_summary_to_json(&report.hook_environment, &report.hook_strategy),
+        "hookSummary": hook_side_summary_to_json(
+            &report.hook_environment,
+            &report.hook_strategy,
+            &Value::Null,
+        ),
         "hookEnvironment": hook_environment_to_json(&report.hook_environment, Some(&report.hook_strategy)),
         "recommendations": hook_environment_recommendations(&report.hook_environment, Some(&report.hook_strategy)),
     })
+}
+
+#[cfg(unix)]
+fn injection_environment_to_json_with_recovery(
+    report: &InjectionEnvironmentReport,
+    preflight: &InjectionTargetPreflightReport,
+    trace: Option<&InjectionTrace>,
+) -> Value {
+    let mut rendered = injection_environment_to_json(report)
+        .as_object()
+        .cloned()
+        .unwrap_or_default();
+    let recovery_summary = hook_arm64e_recovery_summary_to_json(preflight, trace);
+    rendered.insert("hookRecoverySummary".into(), recovery_summary.clone());
+    if let Some(hook_summary) = rendered.get_mut("hookSummary").and_then(Value::as_object_mut) {
+        hook_summary.insert("recoverySummary".into(), recovery_summary);
+    }
+    Value::Object(rendered)
 }
 
 #[cfg(unix)]
@@ -11901,6 +11960,7 @@ fn arm64e_runtime_summary_to_json(
 
 #[cfg(unix)]
 fn injection_preflight_to_json(report: &InjectionTargetPreflightReport) -> Value {
+    let recovery_summary = hook_arm64e_recovery_summary_to_json(report, None);
     json!({
         "mainImage": report.main_image.as_ref().map(image_info_to_json),
         "targetImages": report.target_images.iter().map(image_info_to_json).collect::<Vec<_>>(),
@@ -11918,6 +11978,7 @@ fn injection_preflight_to_json(report: &InjectionTargetPreflightReport) -> Value
         "targetHookSummary": hook_side_summary_to_json(
             &report.target_hook_environment,
             &report.target_hook_strategy,
+            &recovery_summary,
         ),
         "targetHookEnvironment": hook_environment_to_json(
             &report.target_hook_environment,
@@ -12289,7 +12350,11 @@ fn render_preflight_json(
         "entrySymbol": config.entry_symbol,
         "scriptPath": config.script_path,
         "hook": hook_shortcuts_to_json(injection_environment, preflight, None),
-        "environment": injection_environment_to_json(injection_environment),
+        "environment": injection_environment_to_json_with_recovery(
+            injection_environment,
+            preflight,
+            None,
+        ),
         "doctor": doctor_report_to_json(doctor),
         "plan": injection_plan_to_json(plan),
         "preflight": injection_preflight_to_json(preflight),
@@ -13362,7 +13427,11 @@ fn render_injection_result_json(
         "entrySymbol": config.entry_symbol,
         "scriptPath": config.script_path,
         "hook": hook_shortcuts_to_json(injection_environment, preflight, trace),
-        "environment": injection_environment_to_json(injection_environment),
+        "environment": injection_environment_to_json_with_recovery(
+            injection_environment,
+            preflight,
+            trace,
+        ),
         "doctor": doctor_report_to_json(doctor),
         "plan": injection_plan_to_json(plan),
         "preflight": injection_preflight_to_json(preflight),
@@ -17898,6 +17967,8 @@ mod tests {
         assert_eq!(rendered["environment"]["hookSummary"]["inlineHookRisk"], "risky");
         assert_eq!(rendered["environment"]["hookSummary"]["coexistenceRequired"], true);
         assert_eq!(rendered["environment"]["hookSummary"]["nextActionKey"], "hook.query");
+        assert!(rendered["environment"]["hookSummary"]["recoverySummary"].is_null());
+        assert!(rendered["environment"]["hookRecoverySummary"].is_null());
         assert!(rendered["environment"]["hookEnvironment"]["recommendedActions"].is_array());
         assert_eq!(
             rendered["environment"]["hookEnvironment"]["coexistenceMode"],
@@ -17970,6 +18041,10 @@ mod tests {
         assert_eq!(rendered["preflight"]["targetHookSummary"]["commandModeSource"], "topology");
         assert_eq!(rendered["preflight"]["targetHookSummary"]["inlineHookRisk"], "risky");
         assert_eq!(rendered["preflight"]["targetHookSummary"]["nextActionKey"], "hook.query");
+        assert!(rendered["preflight"]["targetHookSummary"]["recoverySummary"].is_null());
+        assert!(rendered["hook"]["recoverySummary"].is_null());
+        assert!(rendered["hook"]["controller"]["recoverySummary"].is_null());
+        assert!(rendered["hook"]["target"]["recoverySummary"].is_null());
         assert_eq!(
             rendered["preflight"]["resolvedLoaderSymbols"][0]["threadBootstrapKind"],
             "pthread-create-from-mach-thread"
@@ -18051,6 +18126,27 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][1], "pac.available");
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][2], "pac.arm64e");
         assert_eq!(rendered["hook"]["coexistence"]["preferredPath"], "arm64e-query-only");
+        assert_eq!(
+            rendered["environment"]["hookSummary"]["recoverySummary"]["strategy"],
+            "arm64e-query-only-until-override"
+        );
+        assert_eq!(
+            rendered["environment"]["hookRecoverySummary"]["overrideEnv"],
+            "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
+        );
+        assert_eq!(
+            rendered["preflight"]["targetHookSummary"]["recoverySummary"]["nextActionKey"],
+            "hook.query"
+        );
+        assert_eq!(rendered["hook"]["recoverySummary"]["firstCommand"], "native.hookenv");
+        assert_eq!(
+            rendered["hook"]["controller"]["recoverySummary"]["strategy"],
+            "arm64e-query-only-until-override"
+        );
+        assert_eq!(
+            rendered["hook"]["target"]["recoverySummary"]["recommendedAction"],
+            "run-readonly-diagnostics"
+        );
 
         let install_templates = rendered["hook"]["automation"]["commandTemplates"]
             .as_array()
