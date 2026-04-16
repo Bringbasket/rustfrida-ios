@@ -11612,6 +11612,66 @@ fn injection_plan_to_json(plan: &InjectionPlan) -> Value {
 }
 
 #[cfg(unix)]
+fn arm64e_preflight_summary_to_json(report: &InjectionTargetPreflightReport) -> Value {
+    let preferred_thread_bootstrap_kind = native_api::ThreadBootstrapKind::PthreadCreateFromMachThread;
+    let preferred_thread_bootstrap_resolved = report.thread_bootstrap_kind == preferred_thread_bootstrap_kind;
+    let fallback_thread_bootstrap_detected = matches!(report.target_uses_arm64e, Some(true))
+        && !preferred_thread_bootstrap_resolved;
+    let injection_ready = match report.target_uses_arm64e {
+        Some(true) => preferred_thread_bootstrap_resolved,
+        Some(false) => true,
+        None => false,
+    };
+    let status = match report.target_uses_arm64e {
+        Some(true) => "arm64e",
+        Some(false) => "non-arm64e",
+        None => "unknown",
+    };
+    let inline_hook_install_risk = match report.target_uses_arm64e {
+        Some(true) => "elevated",
+        Some(false) => "normal",
+        None => "unknown",
+    };
+    let recommended_action = match report.target_uses_arm64e {
+        Some(true) if preferred_thread_bootstrap_resolved => "inject",
+        Some(true) => "query-only-until-override",
+        Some(false) => "inject",
+        None => "preflight-more",
+    };
+    let note = match report.target_uses_arm64e {
+        Some(true) if preferred_thread_bootstrap_resolved => {
+            "arm64e target resolved the preferred bootstrap; query commands remain read-only safe and injection can proceed"
+        }
+        Some(true) => {
+            "arm64e target resolved a fallback bootstrap; keep to read-only queries unless IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK=1 is explicitly set"
+        }
+        Some(false) => "target is not arm64e; standard bootstrap rules apply",
+        None => "target arm64e status is unknown; keep to diagnostics until preflight resolves bootstrap characteristics",
+    };
+
+    json!({
+        "status": status,
+        "targetUsesArm64e": report.target_uses_arm64e,
+        "queryCommandsSafe": true,
+        "pacQueriesSafe": true,
+        "inlineHookInstallRisk": inline_hook_install_risk,
+        "preferredThreadBootstrapKind": preferred_thread_bootstrap_kind.as_str(),
+        "threadBootstrapKind": report.thread_bootstrap_kind.as_str(),
+        "preferredThreadBootstrapResolved": preferred_thread_bootstrap_resolved,
+        "fallbackThreadBootstrapDetected": fallback_thread_bootstrap_detected,
+        "overrideRequiredForFallback": fallback_thread_bootstrap_detected,
+        "overrideEnv": if fallback_thread_bootstrap_detected {
+            Some("IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK")
+        } else {
+            None
+        },
+        "injectionReady": injection_ready,
+        "recommendedAction": recommended_action,
+        "note": note,
+    })
+}
+
+#[cfg(unix)]
 fn injection_preflight_to_json(report: &InjectionTargetPreflightReport) -> Value {
     json!({
         "mainImage": report.main_image.as_ref().map(image_info_to_json),
@@ -11626,6 +11686,7 @@ fn injection_preflight_to_json(report: &InjectionTargetPreflightReport) -> Value
         "threadBootstrapRawAddress": report.thread_bootstrap_raw_address,
         "threadBootstrapRawAddressHex": json_hex_usize(report.thread_bootstrap_raw_address),
         "threadBootstrapCanonicalized": report.thread_bootstrap_canonicalized,
+        "arm64eSummary": arm64e_preflight_summary_to_json(report),
         "targetHookSummary": hook_side_summary_to_json(
             &report.target_hook_environment,
             &report.target_hook_strategy,
@@ -15945,6 +16006,7 @@ mod tests {
         print_injection_preflight, quote_js_string, render_bootstrap_summary, render_command_error_json,
         render_command_error_json_with_context, render_command_outcome_json, render_image_list_json,
         render_injection_environment, render_injection_result_json, render_loader_symbol, render_preflight_json,
+        arm64e_preflight_summary_to_json,
         CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, HookEffectiveAction, NativeHookTarget,
         NativeLogArgument, NativeLogReturn, NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand,
         SwiftHookCommand, TraceCommand,
@@ -17451,6 +17513,20 @@ mod tests {
         assert_eq!(rendered["preflight"]["loaderSymbolChecks"]["allImagesFound"], false);
         assert_eq!(rendered["preflight"]["loaderSymbolChecks"]["allAddressesMatch"], false);
         assert_eq!(rendered["preflight"]["targetUsesArm64e"], true);
+        assert_eq!(rendered["preflight"]["arm64eSummary"]["status"], "arm64e");
+        assert_eq!(rendered["preflight"]["arm64eSummary"]["queryCommandsSafe"], true);
+        assert_eq!(rendered["preflight"]["arm64eSummary"]["pacQueriesSafe"], true);
+        assert_eq!(rendered["preflight"]["arm64eSummary"]["inlineHookInstallRisk"], "elevated");
+        assert_eq!(
+            rendered["preflight"]["arm64eSummary"]["preferredThreadBootstrapResolved"],
+            true
+        );
+        assert_eq!(
+            rendered["preflight"]["arm64eSummary"]["fallbackThreadBootstrapDetected"],
+            false
+        );
+        assert_eq!(rendered["preflight"]["arm64eSummary"]["overrideRequiredForFallback"], false);
+        assert_eq!(rendered["preflight"]["arm64eSummary"]["recommendedAction"], "inject");
         assert_eq!(rendered["preflight"]["targetHookSummary"]["commandMode"], "allowed");
         assert_eq!(rendered["preflight"]["targetHookSummary"]["commandModeSource"], "topology");
         assert_eq!(rendered["preflight"]["targetHookSummary"]["inlineHookRisk"], "risky");
@@ -17484,6 +17560,48 @@ mod tests {
         assert_eq!(rendered["images"][1]["baseHex"], json!("0x18100000"));
         assert_eq!(rendered["images"][1]["slideHex"], json!("0x2000"));
         assert_eq!(rendered["images"][1]["sizeHex"], json!("0x9000"));
+    }
+
+    #[test]
+    fn arm64e_preflight_summary_marks_fallback_bootstrap_as_override_only() {
+        let rendered = arm64e_preflight_summary_to_json(&InjectionTargetPreflightReport {
+            main_image: None,
+            target_images: vec![],
+            target_image_count: 0,
+            target_uses_arm64e: Some(true),
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFallback,
+            thread_bootstrap_label: "pthread_create".into(),
+            thread_bootstrap_address: 0x1234,
+            thread_bootstrap_raw_address: 0x1234,
+            thread_bootstrap_canonicalized: false,
+            target_hook_environment: HookEnvironmentReport {
+                active_backend: None,
+                backends: vec![],
+                warnings: vec![],
+            },
+            target_hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: None,
+            },
+            resolved_loader_symbols: vec![],
+        });
+
+        assert_eq!(rendered["status"], "arm64e");
+        assert_eq!(rendered["queryCommandsSafe"], true);
+        assert_eq!(rendered["pacQueriesSafe"], true);
+        assert_eq!(rendered["inlineHookInstallRisk"], "elevated");
+        assert_eq!(rendered["preferredThreadBootstrapResolved"], false);
+        assert_eq!(rendered["fallbackThreadBootstrapDetected"], true);
+        assert_eq!(rendered["overrideRequiredForFallback"], true);
+        assert_eq!(
+            rendered["overrideEnv"],
+            "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
+        );
+        assert_eq!(rendered["injectionReady"], false);
+        assert_eq!(rendered["recommendedAction"], "query-only-until-override");
     }
 
     #[test]
