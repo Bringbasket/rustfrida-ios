@@ -12143,6 +12143,10 @@ struct ParsedHookEffectiveBlockedDetails {
     command_mode: Option<String>,
     base_command_mode: Option<String>,
     effective_command_mode: Option<String>,
+    controller_command_mode_source: Option<String>,
+    target_command_mode_source: Option<String>,
+    controller_inline_hook_risk: Option<String>,
+    target_inline_hook_risk: Option<String>,
     auto_downgraded_to_query_only: Option<String>,
     auto_downgrade_reason: Option<String>,
     recommendation: Option<String>,
@@ -12206,6 +12210,10 @@ fn parse_hook_effective_blocked_details(message: &str) -> ParsedHookEffectiveBlo
         command_mode: parse_error_field(message, "commandMode"),
         base_command_mode: parse_error_field(message, "baseCommandMode"),
         effective_command_mode: parse_error_field(message, "effectiveCommandMode"),
+        controller_command_mode_source: parse_error_field(message, "controllerCommandModeSource"),
+        target_command_mode_source: parse_error_field(message, "targetCommandModeSource"),
+        controller_inline_hook_risk: parse_error_field(message, "controllerInlineHookRisk"),
+        target_inline_hook_risk: parse_error_field(message, "targetInlineHookRisk"),
         auto_downgraded_to_query_only: parse_error_field(message, "autoDowngradedToQueryOnly"),
         auto_downgrade_reason: parse_error_field(message, "autoDowngradeReason"),
         recommendation: parse_error_field_with_boundaries(message, "recommendation", &[]),
@@ -12291,7 +12299,25 @@ fn normalize_hook_coexistence_mode(value: Option<String>) -> Option<String> {
 #[cfg(unix)]
 fn normalize_hook_backend_pressure(value: Option<String>) -> Option<String> {
     match value.as_deref() {
-        Some("none" | "controller" | "target" | "both" | "unknown") => value,
+        Some("none" | "controller" | "target" | "both" | "filesystem-only" | "unknown") => value,
+        Some(_) => Some("unknown".into()),
+        None => None,
+    }
+}
+
+#[cfg(unix)]
+fn normalize_hook_command_mode_source(value: Option<String>) -> Option<String> {
+    match value.as_deref() {
+        Some("none" | "policy" | "topology" | "filesystem" | "unknown") => value,
+        Some(_) => Some("unknown".into()),
+        None => None,
+    }
+}
+
+#[cfg(unix)]
+fn normalize_hook_inline_risk(value: Option<String>) -> Option<String> {
+    match value.as_deref() {
+        Some("safe" | "cautious" | "risky" | "disabled" | "cleanup-only" | "blocked" | "unknown") => value,
         Some(_) => Some("unknown".into()),
         None => None,
     }
@@ -12396,6 +12422,10 @@ fn failure_diagnostics_to_json(
     let mut hook_command_mode: Option<String> = None;
     let mut hook_base_command_mode: Option<String> = None;
     let mut hook_effective_command_mode: Option<String> = None;
+    let mut controller_command_mode_source: Option<String> = None;
+    let mut target_command_mode_source: Option<String> = None;
+    let mut controller_inline_hook_risk: Option<String> = None;
+    let mut target_inline_hook_risk: Option<String> = None;
     let mut hook_auto_downgraded_to_query_only: Option<bool> = None;
     let mut hook_auto_downgrade_reason: Option<String> = None;
     let mut hook_recommendation: Option<String> = None;
@@ -12536,6 +12566,11 @@ fn failure_diagnostics_to_json(
             hook_command_mode = hook_effective_command_mode
                 .clone()
                 .or_else(|| legacy_command_mode.clone());
+            controller_command_mode_source =
+                normalize_hook_command_mode_source(parsed.controller_command_mode_source);
+            target_command_mode_source = normalize_hook_command_mode_source(parsed.target_command_mode_source);
+            controller_inline_hook_risk = normalize_hook_inline_risk(parsed.controller_inline_hook_risk);
+            target_inline_hook_risk = normalize_hook_inline_risk(parsed.target_inline_hook_risk);
             hook_auto_downgraded_to_query_only = parse_bool_token(parsed.auto_downgraded_to_query_only);
             hook_auto_downgrade_reason = normalize_hook_auto_downgrade_reason(parsed.auto_downgrade_reason);
             if let Some(mode) = hook_command_mode.as_deref() {
@@ -12634,6 +12669,10 @@ fn failure_diagnostics_to_json(
         hook_command_mode.get_or_insert_with(|| "unknown".into());
         hook_base_command_mode.get_or_insert_with(|| "unknown".into());
         hook_effective_command_mode.get_or_insert_with(|| "unknown".into());
+        controller_command_mode_source.get_or_insert_with(|| "unknown".into());
+        target_command_mode_source.get_or_insert_with(|| "unknown".into());
+        controller_inline_hook_risk.get_or_insert_with(|| "unknown".into());
+        target_inline_hook_risk.get_or_insert_with(|| "unknown".into());
         hook_auto_downgraded_to_query_only.get_or_insert(false);
         hook_auto_downgrade_reason.get_or_insert_with(|| "unknown".into());
         coexistence_mode.get_or_insert_with(|| "unknown".into());
@@ -12671,6 +12710,41 @@ fn failure_diagnostics_to_json(
                 &mut hints,
                 format!("inline hook install path auto-downgraded to query-only: {reason}"),
             );
+        }
+
+        for (scope, source, risk) in [
+            (
+                "controller",
+                controller_command_mode_source.as_deref(),
+                controller_inline_hook_risk.as_deref(),
+            ),
+            (
+                "target",
+                target_command_mode_source.as_deref(),
+                target_inline_hook_risk.as_deref(),
+            ),
+        ] {
+            match source {
+                Some("policy") => push_unique_hint(
+                    &mut hints,
+                    format!("{scope} hook decision is policy-forced; inspect IOS_RUSTFRIDA_HOOK_POLICY"),
+                ),
+                Some("topology") => push_unique_hint(
+                    &mut hints,
+                    format!("{scope} hook decision is topology-forced; inspect loaded external backends in that process"),
+                ),
+                Some("filesystem") => push_unique_hint(
+                    &mut hints,
+                    format!("{scope} hook decision is filesystem-cautious; preflight before hook-install"),
+                ),
+                _ => {}
+            }
+
+            if let Some(risk) = risk {
+                if risk != "unknown" {
+                    push_unique_hint(&mut hints, format!("{scope} inline hook risk classification: {risk}"));
+                }
+            }
         }
 
         if hook_fallback_available == Some(true) {
@@ -12718,6 +12792,10 @@ fn failure_diagnostics_to_json(
         || hook_command_mode.is_some()
         || hook_base_command_mode.is_some()
         || hook_effective_command_mode.is_some()
+        || controller_command_mode_source.is_some()
+        || target_command_mode_source.is_some()
+        || controller_inline_hook_risk.is_some()
+        || target_inline_hook_risk.is_some()
         || hook_auto_downgraded_to_query_only.is_some()
         || hook_auto_downgrade_reason.is_some()
         || hook_recommendation.is_some()
@@ -12741,6 +12819,10 @@ fn failure_diagnostics_to_json(
             "commandMode": hook_command_mode,
             "baseCommandMode": hook_base_command_mode,
             "effectiveCommandMode": hook_effective_command_mode,
+            "controllerCommandModeSource": controller_command_mode_source,
+            "targetCommandModeSource": target_command_mode_source,
+            "controllerInlineHookRisk": controller_inline_hook_risk,
+            "targetInlineHookRisk": target_inline_hook_risk,
             "autoDowngradedToQueryOnly": hook_auto_downgraded_to_query_only,
             "autoDowngradeReason": hook_auto_downgrade_reason,
             "recommendation": hook_recommendation,
@@ -12773,6 +12855,10 @@ fn failure_diagnostics_to_json(
         "hookCommandMode": hook_command_mode.clone(),
         "hookBaseCommandMode": hook_base_command_mode.clone(),
         "hookEffectiveCommandMode": hook_effective_command_mode.clone(),
+        "controllerCommandModeSource": controller_command_mode_source.clone(),
+        "targetCommandModeSource": target_command_mode_source.clone(),
+        "controllerInlineHookRisk": controller_inline_hook_risk.clone(),
+        "targetInlineHookRisk": target_inline_hook_risk.clone(),
         "hookAutoDowngradedToQueryOnly": hook_auto_downgraded_to_query_only,
         "hookAutoDowngradeReason": hook_auto_downgrade_reason.clone(),
         "hookRecommendation": hook_recommendation.clone(),
@@ -14528,6 +14614,10 @@ fn ensure_inline_hooks_allowed_for_command(
         .get("coexistenceLayerSummary")
         .and_then(Value::as_str)
         .unwrap_or("<none>");
+    let controller_command_mode_source = injection_environment.hook_strategy.command_mode_source();
+    let target_command_mode_source = preflight.target_hook_strategy.command_mode_source();
+    let controller_inline_hook_risk = injection_environment.hook_strategy.inline_hook_risk();
+    let target_inline_hook_risk = preflight.target_hook_strategy.inline_hook_risk();
     let auto_downgrade_reason = auto_downgrade_reason.unwrap_or("<none>");
     let detail_text = if blocked_details.is_empty() {
         effective_action.recommendation.clone()
@@ -14535,13 +14625,17 @@ fn ensure_inline_hooks_allowed_for_command(
         blocked_details.join("; ")
     };
     Err(Error::State(format!(
-        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={} baseCommandMode={} effectiveCommandMode={} autoDowngradedToQueryOnly={} autoDowngradeReason={} coexistenceMode={} backendPressure={} coexistenceLayerRequired={} coexistenceLayerStatus={} coexistenceLayerPreferredPhase={} coexistenceLayerRecommendedActionKey={} coexistenceLayerSummary={} fallbackActionKey={} fallbackStepId={} fallbackCommand={} fallbackPhase={}; recommendation={}; {}",
+        "{reason}: hook-effective-blocked actionKey={} commandGroup={} blockedBy={} commandMode={} baseCommandMode={} effectiveCommandMode={} controllerCommandModeSource={} targetCommandModeSource={} controllerInlineHookRisk={} targetInlineHookRisk={} autoDowngradedToQueryOnly={} autoDowngradeReason={} coexistenceMode={} backendPressure={} coexistenceLayerRequired={} coexistenceLayerStatus={} coexistenceLayerPreferredPhase={} coexistenceLayerRecommendedActionKey={} coexistenceLayerSummary={} fallbackActionKey={} fallbackStepId={} fallbackCommand={} fallbackPhase={}; recommendation={}; {}",
         effective_action.action_key,
         effective_action.command_group,
         effective_action.blocked_by,
         command_mode,
         base_command_mode,
         effective_command_mode,
+        controller_command_mode_source,
+        target_command_mode_source,
+        controller_inline_hook_risk,
+        target_inline_hook_risk,
         auto_downgraded_to_query_only,
         auto_downgrade_reason,
         coexistence_mode,
