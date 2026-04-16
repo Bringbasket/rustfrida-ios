@@ -7776,6 +7776,46 @@ fn hook_automation_to_json_with_arm64e(
         })
         .collect::<Vec<_>>();
     let mut escalation_recommendations = Vec::<Value>::new();
+    let mut escalation_query_templates = vec!["native.hookenv".to_string()];
+    if arm64e_context.query_only_until_override {
+        append_unique_commands(
+            &mut escalation_query_templates,
+            [
+                "pac.available".to_string(),
+                "pac.arm64e".to_string(),
+                "pac.images <filter>".to_string(),
+                "native.images <filter>".to_string(),
+            ],
+        );
+    }
+    append_unique_commands(&mut escalation_query_templates, hook_query_templates());
+    let escalation_query_command_json_templates = escalation_query_templates
+        .iter()
+        .map(|template| command_json_template_entry(template))
+        .collect::<Vec<_>>();
+    if arm64e_context.query_only_until_override {
+        let arm64e_query_error_codes = vec![
+            "hook-fallback-hook-install-failed",
+            "hook-fallback-hook-install-timeout",
+            "hook-fallback-inject-failed",
+            "hook-fallback-inject-timeout",
+        ];
+        escalation_recommendations.push(json!({
+            "key": "arm64e-query-only-path",
+            "condition": "arm64e-fallback-override-required",
+            "phase": "query",
+            "reason": "arm64e fallback bootstrap requires explicit override; stay on query/PAC diagnostics until override is intentionally enabled",
+            "note": "keep to native.hookenv, pac.*, and readonly runtime queries until IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK=1 is intentionally set",
+            "overrideEnv": "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK",
+            "onErrorCodeCount": arm64e_query_error_codes.len(),
+            "onErrorCodes": arm64e_query_error_codes,
+            "templateCount": escalation_query_templates.len(),
+            "templates": escalation_query_templates.clone(),
+            "commandJsonTemplateCount": escalation_query_command_json_templates.len(),
+            "commandJsonTemplates": escalation_query_command_json_templates.clone(),
+            "commandJsonEligibleTemplateCount": command_json_eligible_count(&escalation_query_command_json_templates),
+        }));
+    }
     let escalation_preflight_templates = vec!["controller --preflight-only --preflight-json --pid <pid>".to_string()];
     let escalation_preflight_command_json_templates = escalation_preflight_templates
         .iter()
@@ -7801,12 +7841,6 @@ fn hook_automation_to_json_with_arm64e(
         "commandJsonEligibleTemplateCount": command_json_eligible_count(&escalation_preflight_command_json_templates),
     }));
     if hook_effective_allowed_for(actions, "hook.query") {
-        let mut escalation_query_templates = vec!["native.hookenv".to_string()];
-        escalation_query_templates.extend(hook_query_templates());
-        let escalation_query_command_json_templates = escalation_query_templates
-            .iter()
-            .map(|template| command_json_template_entry(template))
-            .collect::<Vec<_>>();
         let escalation_query_error_codes = vec![
             "hook-fallback-query-failed",
             "hook-fallback-query-timeout",
@@ -8355,7 +8389,7 @@ fn hook_automation_to_json_with_arm64e(
             .and_then(|entry| entry.get("effective"))
             .and_then(|entry| entry.get("escalationKey"))
             .and_then(Value::as_str)
-            .is_some_and(|key| key == "query-only-path");
+            .is_some_and(|key| matches!(key, "query-only-path" | "arm64e-query-only-path"));
     let routing_decision_ready_resolve_examples = json!({
         "knownErrorCode": routing_decision_ready_example_known_error_code,
         "knownResult": routing_decision_ready_example_known_error_result,
@@ -29028,6 +29062,141 @@ mod tests {
             .expect("hook.install templates");
         assert_eq!(install_templates["templateCount"], 0);
         assert_eq!(install_templates["templates"], json!([]));
+    }
+
+    #[test]
+    fn hook_automation_fallback_escalation_prefers_arm64e_query_only_path_when_override_is_required() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let backend_matrix = hook_backend_matrix_to_json(&report, &report);
+        let actions = vec![
+            HookEffectiveAction {
+                action_key: "hook.bootstrap",
+                command_group: "bootstrap",
+                allowed: false,
+                blocked_by: "both",
+                priority: 2,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 2,
+                target_priority: 2,
+                recommendation: "bootstrap blocked".into(),
+                controller_reason: Some("controller blocked bootstrap".into()),
+                target_reason: Some("target blocked bootstrap".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.install",
+                command_group: "hook-install",
+                allowed: false,
+                blocked_by: "both",
+                priority: 3,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 3,
+                target_priority: 3,
+                recommendation: "install blocked".into(),
+                controller_reason: Some("controller blocked install".into()),
+                target_reason: Some("target blocked install".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.status",
+                command_group: "hook-status",
+                allowed: false,
+                blocked_by: "both",
+                priority: 4,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 4,
+                target_priority: 4,
+                recommendation: "status blocked".into(),
+                controller_reason: Some("controller blocked status".into()),
+                target_reason: Some("target blocked status".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.stop",
+                command_group: "hook-stop",
+                allowed: false,
+                blocked_by: "both",
+                priority: 5,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 5,
+                target_priority: 5,
+                recommendation: "stop blocked".into(),
+                controller_reason: Some("controller blocked stop".into()),
+                target_reason: Some("target blocked stop".into()),
+            },
+        ];
+
+        let automation = hook_automation_to_json_with_arm64e(
+            &actions,
+            &backend_matrix,
+            HookAutomationArm64eContext {
+                query_only_until_override: true,
+            },
+        );
+
+        assert_eq!(automation["preferredPath"], "arm64e-query-only");
+        assert_eq!(automation["hasFallbackPlan"], true);
+        assert_eq!(
+            automation["fallbackPlan"]["suggestedEscalationKey"],
+            "arm64e-query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["key"],
+            "arm64e-query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["phase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["overrideEnv"],
+            "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]["templates"][1],
+            "pac.available"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRouting"]["hook-fallback-hook-install-failed"],
+            "arm64e-query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultRecommendedEscalationKey"],
+            "arm64e-query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultEffectiveEscalationKey"],
+            "arm64e-query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveDefaultEffectiveEscalationKey"],
+            "arm64e-query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyEffectiveEscalationKey"],
+            "arm64e-query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyWouldUsePath"],
+            true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffectiveEscalationKey"],
+            "arm64e-query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyEffectiveEscalationKey"],
+            "arm64e-query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResultEffectiveEscalationKey"],
+            "arm64e-query-only-path"
+        );
     }
 
     #[test]
