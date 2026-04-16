@@ -7080,6 +7080,7 @@ function handleSpecResult(spec) {
             resolvedModuleName: symbol.moduleName,
             resolvedAddress: symbol.address,
             name: symbol.name,
+            moduleName: symbol.moduleName,
             hasName: symbol.name !== null,
             hasModuleName: symbol.moduleName !== null,
             text: symbol.text,
@@ -9519,6 +9520,7 @@ function handleSpecResult(spec) {
         return {
             kind: 'swift.demangle',
             symbol,
+            inputSymbol: normalized === null ? null : symbol,
             demangled: normalized,
             hasDemangled: normalized !== null,
             resolved: normalized !== null,
