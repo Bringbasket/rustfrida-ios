@@ -73,6 +73,59 @@ impl HookStrategyDecision {
         matches!(self.policy, HookPolicy::DenyExternalLoaded) && !self.allowed && !self.inline_hooks_allowed
     }
 
+    pub fn backend_pressure(&self) -> &'static str {
+        match self.strategy.as_str() {
+            "query-only-multiple-external-loaded" => "multiple-loaded",
+            "internal-inline-risky" | "query-only-external-loaded" | "cleanup-only-external-loaded" => {
+                "external-loaded"
+            }
+            "internal-inline-cautious" => "filesystem-only",
+            _ => "none",
+        }
+    }
+
+    pub fn command_mode_source(&self) -> &'static str {
+        match self.strategy.as_str() {
+            "query-only-external-loaded" | "cleanup-only-external-loaded" => "policy",
+            "internal-inline-risky" | "query-only-multiple-external-loaded" => "topology",
+            "internal-inline-cautious" => "filesystem",
+            "internal-inline" => "none",
+            _ => "unknown",
+        }
+    }
+
+    pub fn inline_hook_risk(&self) -> &'static str {
+        if self.hook_install_commands_allowed() {
+            match self.backend_pressure() {
+                "external-loaded" | "multiple-loaded" => "risky",
+                "filesystem-only" => "cautious",
+                _ => "safe",
+            }
+        } else if self.query_commands_allowed() {
+            "disabled"
+        } else if self.hook_status_commands_allowed() || self.hook_stop_commands_allowed() {
+            "cleanup-only"
+        } else {
+            "blocked"
+        }
+    }
+
+    pub fn coexistence_required(&self) -> bool {
+        matches!(self.backend_pressure(), "external-loaded" | "multiple-loaded")
+    }
+
+    pub fn policy_forced(&self) -> bool {
+        self.command_mode_source() == "policy"
+    }
+
+    pub fn topology_forced(&self) -> bool {
+        self.command_mode_source() == "topology"
+    }
+
+    pub fn filesystem_caution(&self) -> bool {
+        self.command_mode_source() == "filesystem"
+    }
+
     pub fn bootstrap_injection_allowed(&self) -> bool {
         self.allowed || self.cleanup_commands_only_mode()
     }
@@ -796,6 +849,13 @@ mod tests {
         assert_eq!(decision.command_mode(), "allowed");
         assert_eq!(decision.strategy, "internal-inline-risky");
         assert_eq!(decision.policy, HookPolicy::Warn);
+        assert_eq!(decision.backend_pressure(), "external-loaded");
+        assert_eq!(decision.command_mode_source(), "topology");
+        assert_eq!(decision.inline_hook_risk(), "risky");
+        assert!(decision.coexistence_required());
+        assert!(!decision.policy_forced());
+        assert!(decision.topology_forced());
+        assert!(!decision.filesystem_caution());
     }
 
     #[test]
@@ -822,6 +882,13 @@ mod tests {
         assert_eq!(decision.command_mode(), "query-only");
         assert_eq!(decision.strategy, "query-only-external-loaded");
         assert_eq!(decision.policy, HookPolicy::QueryOnlyExternalLoaded);
+        assert_eq!(decision.backend_pressure(), "external-loaded");
+        assert_eq!(decision.command_mode_source(), "policy");
+        assert_eq!(decision.inline_hook_risk(), "disabled");
+        assert!(decision.coexistence_required());
+        assert!(decision.policy_forced());
+        assert!(!decision.topology_forced());
+        assert!(!decision.filesystem_caution());
     }
 
     #[test]
@@ -856,6 +923,13 @@ mod tests {
         assert_eq!(decision.command_mode(), "query-only");
         assert_eq!(decision.strategy, "query-only-multiple-external-loaded");
         assert_eq!(decision.policy, HookPolicy::Warn);
+        assert_eq!(decision.backend_pressure(), "multiple-loaded");
+        assert_eq!(decision.command_mode_source(), "topology");
+        assert_eq!(decision.inline_hook_risk(), "disabled");
+        assert!(decision.coexistence_required());
+        assert!(!decision.policy_forced());
+        assert!(decision.topology_forced());
+        assert!(!decision.filesystem_caution());
     }
 
     #[test]
@@ -882,6 +956,38 @@ mod tests {
         assert_eq!(decision.command_mode(), "cleanup-only");
         assert_eq!(decision.strategy, "cleanup-only-external-loaded");
         assert_eq!(decision.policy, HookPolicy::DenyExternalLoaded);
+        assert_eq!(decision.backend_pressure(), "external-loaded");
+        assert_eq!(decision.command_mode_source(), "policy");
+        assert_eq!(decision.inline_hook_risk(), "cleanup-only");
+        assert!(decision.coexistence_required());
+        assert!(decision.policy_forced());
+        assert!(!decision.topology_forced());
+        assert!(!decision.filesystem_caution());
+    }
+
+    #[test]
+    fn strategy_marks_filesystem_only_state_as_cautious_not_required() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![super::HookBackendInfo {
+                id: "libhooker".into(),
+                display_name: "libhooker".into(),
+                loaded_images: Vec::new(),
+                filesystem_paths: vec!["/var/jb/usr/lib/libhooker.dylib".into()],
+            }],
+            warnings: Vec::new(),
+        };
+
+        let decision = resolve_hook_strategy_with_report(&report, HookPolicy::Warn);
+        assert_eq!(decision.strategy, "internal-inline-cautious");
+        assert_eq!(decision.command_mode(), "allowed");
+        assert_eq!(decision.backend_pressure(), "filesystem-only");
+        assert_eq!(decision.command_mode_source(), "filesystem");
+        assert_eq!(decision.inline_hook_risk(), "cautious");
+        assert!(!decision.coexistence_required());
+        assert!(!decision.policy_forced());
+        assert!(!decision.topology_forced());
+        assert!(decision.filesystem_caution());
     }
 
     #[test]

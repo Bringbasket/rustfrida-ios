@@ -6191,6 +6191,17 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     if let Some(decision) = &decision {
         result.set_property(ctx, "policy", JSValue::string(ctx, decision.policy.as_str()));
         result.set_property(ctx, "strategy", JSValue::string(ctx, &decision.strategy));
+        result.set_property(
+            ctx,
+            "commandModeSource",
+            JSValue::string(ctx, decision.command_mode_source()),
+        );
+        result.set_property(ctx, "backendPressure", JSValue::string(ctx, decision.backend_pressure()));
+        result.set_property(ctx, "inlineHookRisk", JSValue::string(ctx, decision.inline_hook_risk()));
+        result.set_property(ctx, "coexistenceRequired", JSValue::bool(decision.coexistence_required()));
+        result.set_property(ctx, "policyForced", JSValue::bool(decision.policy_forced()));
+        result.set_property(ctx, "topologyForced", JSValue::bool(decision.topology_forced()));
+        result.set_property(ctx, "filesystemCaution", JSValue::bool(decision.filesystem_caution()));
         result.set_property(ctx, "allowed", JSValue::bool(decision.allowed));
         result.set_property(ctx, "inlineHooksAllowed", JSValue::bool(decision.inline_hooks_allowed));
         result.set_property(
@@ -6240,6 +6251,13 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     } else {
         result.set_property(ctx, "policy", JSValue::string(ctx, "warn"));
         result.set_property(ctx, "strategy", JSValue::null());
+        result.set_property(ctx, "commandModeSource", JSValue::string(ctx, "none"));
+        result.set_property(ctx, "backendPressure", JSValue::string(ctx, "none"));
+        result.set_property(ctx, "inlineHookRisk", JSValue::string(ctx, "safe"));
+        result.set_property(ctx, "coexistenceRequired", JSValue::bool(false));
+        result.set_property(ctx, "policyForced", JSValue::bool(false));
+        result.set_property(ctx, "topologyForced", JSValue::bool(false));
+        result.set_property(ctx, "filesystemCaution", JSValue::bool(false));
         result.set_property(ctx, "allowed", JSValue::bool(true));
         result.set_property(ctx, "inlineHooksAllowed", JSValue::bool(true));
         result.set_property(ctx, "bootstrapInjectionAllowed", JSValue::bool(true));

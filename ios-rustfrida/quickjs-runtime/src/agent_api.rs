@@ -2306,6 +2306,13 @@ function formatHookEnvironmentReport(report) {
     lines.push('policy=' + String(report.policy));
     lines.push('strategy=' + String(report.strategy));
     lines.push('command_mode=' + String(report.commandMode));
+    lines.push('command_mode_source=' + String(report.commandModeSource));
+    lines.push('backend_pressure=' + String(report.backendPressure));
+    lines.push('inline_hook_risk=' + String(report.inlineHookRisk));
+    lines.push('coexistence_required=' + String(!!report.coexistenceRequired));
+    lines.push('policy_forced=' + String(!!report.policyForced));
+    lines.push('topology_forced=' + String(!!report.topologyForced));
+    lines.push('filesystem_caution=' + String(!!report.filesystemCaution));
     lines.push('allowed=' + String(!!report.allowed));
     lines.push('inline_hooks_allowed=' + String(!!report.inlineHooksAllowed));
     lines.push('bootstrap_injection_allowed=' + String(!!report.bootstrapInjectionAllowed));

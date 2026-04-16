@@ -20871,6 +20871,13 @@ undefined;
                                 policy: 'query-only',
                                 strategy: 'query-only',
                                 commandMode: 'query-only',
+                                commandModeSource: 'filesystem',
+                                backendPressure: 'filesystem-only',
+                                inlineHookRisk: 'cautious',
+                                coexistenceRequired: false,
+                                policyForced: false,
+                                topologyForced: false,
+                                filesystemCaution: true,
                                 allowed: true,
                                 inlineHooksAllowed: false,
                                 bootstrapInjectionAllowed: true,
@@ -20964,6 +20971,13 @@ undefined;
                                     value.indexOf('coexistence_layer_preferred_phase=preflight') !== -1 &&
                                     value.indexOf('coexistence_layer_recommended_action_key=hook.query') !== -1 &&
                                     value.indexOf('coexistence_layer_summary=filesystem-only backend detected; preflight before hook-install') !== -1 &&
+                                    value.indexOf('command_mode_source=filesystem') !== -1 &&
+                                    value.indexOf('backend_pressure=filesystem-only') !== -1 &&
+                                    value.indexOf('inline_hook_risk=cautious') !== -1 &&
+                                    value.indexOf('coexistence_required=false') !== -1 &&
+                                    value.indexOf('policy_forced=false') !== -1 &&
+                                    value.indexOf('topology_forced=false') !== -1 &&
+                                    value.indexOf('filesystem_caution=true') !== -1 &&
                                     value.indexOf('backend_count=1') !== -1 &&
                                     value.indexOf('filesystem_only_backend_count=1') !== -1 &&
                                     value.indexOf('next_action query key=query.images priority=10 allowed=true status=allowed recommendation=enumerate first') !== -1 &&
@@ -20997,6 +21011,13 @@ undefined;
                                 typeof report.conflictState === 'string' &&
                                 typeof report.riskLevel === 'string' &&
                                 typeof report.commandMode === 'string' &&
+                                typeof report.commandModeSource === 'string' &&
+                                typeof report.backendPressure === 'string' &&
+                                typeof report.inlineHookRisk === 'string' &&
+                                typeof report.coexistenceRequired === 'boolean' &&
+                                typeof report.policyForced === 'boolean' &&
+                                typeof report.topologyForced === 'boolean' &&
+                                typeof report.filesystemCaution === 'boolean' &&
                                 typeof report.coexistenceMode === 'string' &&
                                 typeof report.coexistenceRecommendation === 'string' &&
                                 typeof report.coexistenceLayerAvailable === 'boolean' &&

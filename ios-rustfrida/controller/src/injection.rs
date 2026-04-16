@@ -322,6 +322,13 @@ fn hook_strategy_to_json(strategy: &native_api::HookStrategyDecision) -> Value {
         "policy": strategy.policy.as_str(),
         "strategy": strategy.strategy,
         "commandMode": strategy.command_mode(),
+        "commandModeSource": strategy.command_mode_source(),
+        "backendPressure": strategy.backend_pressure(),
+        "inlineHookRisk": strategy.inline_hook_risk(),
+        "coexistenceRequired": strategy.coexistence_required(),
+        "policyForced": strategy.policy_forced(),
+        "topologyForced": strategy.topology_forced(),
+        "filesystemCaution": strategy.filesystem_caution(),
         "allowed": strategy.allowed,
         "inlineHooksAllowed": strategy.inline_hooks_allowed,
         "bootstrapInjectionAllowed": strategy.bootstrap_injection_allowed(),
@@ -353,6 +360,13 @@ fn hook_shortcut_entry_to_json(
         "policy": strategy.policy.as_str(),
         "strategy": strategy.strategy,
         "commandMode": strategy.command_mode(),
+        "commandModeSource": strategy.command_mode_source(),
+        "backendPressure": strategy.backend_pressure(),
+        "inlineHookRisk": strategy.inline_hook_risk(),
+        "coexistenceRequired": strategy.coexistence_required(),
+        "policyForced": strategy.policy_forced(),
+        "topologyForced": strategy.topology_forced(),
+        "filesystemCaution": strategy.filesystem_caution(),
         "reason": strategy.reason,
         "capabilities": hook_strategy_capabilities_to_json(strategy),
         "recommendedActions": recommended_actions
@@ -11380,6 +11394,13 @@ fn hook_environment_to_json(
         "conflictState": report.conflict_state(),
         "riskLevel": risk_level,
         "commandMode": command_mode,
+        "commandModeSource": strategy.map(|item| item.command_mode_source()),
+        "backendPressure": strategy.map(|item| item.backend_pressure()),
+        "inlineHookRisk": strategy.map(|item| item.inline_hook_risk()),
+        "coexistenceRequired": strategy.map(|item| item.coexistence_required()),
+        "policyForced": strategy.map(|item| item.policy_forced()),
+        "topologyForced": strategy.map(|item| item.topology_forced()),
+        "filesystemCaution": strategy.map(|item| item.filesystem_caution()),
         "coexistenceMode": coexistence_mode,
         "coexistenceRecommendation": coexistence_recommendation,
         "coexistenceLayerAvailable": coexistence_layer.available,
@@ -13600,12 +13621,16 @@ fn render_injection_environment(report: &InjectionEnvironmentReport) -> Vec<Stri
         .map(|value| format!("{value}ms"))
         .unwrap_or_else(|| "disabled".into());
     let mut lines = vec![format!(
-        "injection environment: dry_run={} bootstrap_wait={} hook_policy={} strategy={} command_mode={} allowed={} inline_hooks_allowed={} query_commands_allowed={} hook_install_commands_allowed={} hook_status_commands_allowed={} hook_stop_commands_allowed={}",
+        "injection environment: dry_run={} bootstrap_wait={} hook_policy={} strategy={} command_mode={} command_mode_source={} backend_pressure={} inline_hook_risk={} coexistence_required={} allowed={} inline_hooks_allowed={} query_commands_allowed={} hook_install_commands_allowed={} hook_status_commands_allowed={} hook_stop_commands_allowed={}",
         report.dry_run,
         bootstrap_wait,
         report.hook_policy.as_str(),
         report.hook_strategy.strategy,
         report.hook_strategy.command_mode(),
+        report.hook_strategy.command_mode_source(),
+        report.hook_strategy.backend_pressure(),
+        report.hook_strategy.inline_hook_risk(),
+        report.hook_strategy.coexistence_required(),
         report.hook_strategy.allowed,
         report.hook_strategy.inline_hooks_allowed,
         report.hook_strategy.query_commands_allowed(),
@@ -30147,6 +30172,10 @@ mod tests {
         assert!(lines[0].contains("bootstrap_wait=1500ms"));
         assert!(lines[0].contains("strategy=internal-inline-risky"));
         assert!(lines[0].contains("command_mode=allowed"));
+        assert!(lines[0].contains("command_mode_source=topology"));
+        assert!(lines[0].contains("backend_pressure=external-loaded"));
+        assert!(lines[0].contains("inline_hook_risk=risky"));
+        assert!(lines[0].contains("coexistence_required=true"));
         assert!(lines[0].contains("inline_hooks_allowed=true"));
         assert!(lines[0].contains("query_commands_allowed=true"));
         assert!(lines[0].contains("hook_install_commands_allowed=true"));
@@ -30206,6 +30235,37 @@ mod tests {
         assert_eq!(rendered["backends"][1]["filesystemOnly"], true);
         assert!(rendered["recommendations"].is_array());
         assert_eq!(rendered["filesystemOnlyBackendDisplayNames"], json!(["Substitute"]));
+    }
+
+    #[test]
+    fn hook_environment_json_includes_strategy_source_fields() {
+        let rendered = hook_environment_to_json(
+            &HookEnvironmentReport {
+                active_backend: Some("ellekit".into()),
+                backends: vec![HookBackendInfo {
+                    id: "ellekit".into(),
+                    display_name: "ElleKit".into(),
+                    loaded_images: vec!["/usr/lib/libellekit.dylib".into()],
+                    filesystem_paths: vec!["/usr/lib/libellekit.dylib".into()],
+                }],
+                warnings: vec![],
+            },
+            Some(&HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline-risky".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: Some("external hook backend is already loaded".into()),
+            }),
+        );
+
+        assert_eq!(rendered["commandModeSource"], "topology");
+        assert_eq!(rendered["backendPressure"], "external-loaded");
+        assert_eq!(rendered["inlineHookRisk"], "risky");
+        assert_eq!(rendered["coexistenceRequired"], true);
+        assert_eq!(rendered["policyForced"], false);
+        assert_eq!(rendered["topologyForced"], true);
+        assert_eq!(rendered["filesystemCaution"], false);
     }
 
     #[test]
