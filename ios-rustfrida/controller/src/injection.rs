@@ -765,6 +765,9 @@ fn hook_coexistence_to_json_with_arm64e(
         });
 
     let preferred_path = arm64e_context.preferred_path_override(mode);
+    let next_action_command_group = recommended_action.map(|item| item.command_group);
+    let next_action_phase = recommended_action.map(|item| hook_action_phase(item.action_key));
+    let next_action_class = recommended_action.map(|item| hook_action_class(item.action_key));
     let next_action_templates = recommended_action
         .map(|item| hook_action_command_templates(item.action_key, preferred_path))
         .unwrap_or_default();
@@ -883,6 +886,8 @@ fn hook_coexistence_to_json_with_arm64e(
             json!({
                 "actionKey": item.action_key,
                 "commandGroup": item.command_group,
+                "actionPhase": hook_action_phase(item.action_key),
+                "actionClass": hook_action_class(item.action_key),
                 "allowed": item.allowed,
                 "blockedBy": item.blocked_by,
                 "branch": hook_automation_branch(item),
@@ -956,6 +961,9 @@ fn hook_coexistence_to_json_with_arm64e(
         "installBlockedBy": install_action.map(|item| item.blocked_by),
         "installRecommendation": install_action.map(|item| item.recommendation.clone()),
         "nextActionKey": recommended_action.map(|item| item.action_key),
+        "nextActionCommandGroup": next_action_command_group,
+        "nextActionPhase": next_action_phase,
+        "nextActionClass": next_action_class,
         "nextActionAllowed": recommended_action.map(|item| item.allowed),
         "nextActionBlockedBy": recommended_action.map(|item| item.blocked_by),
         "nextActionBranch": recommended_action.map(hook_automation_branch),
@@ -1153,6 +1161,28 @@ fn hook_action_command_group(action_key: &str) -> Option<&'static str> {
         .iter()
         .find(|(key, _)| *key == action_key)
         .map(|(_, command_group)| *command_group)
+}
+
+#[cfg(unix)]
+fn hook_action_phase(action_key: &str) -> &'static str {
+    match action_key {
+        "hook.query" => "query",
+        "hook.bootstrap" => "inject",
+        "hook.install" => "hook-install",
+        "hook.status" | "hook.stop" => "cleanup",
+        _ => "unknown",
+    }
+}
+
+#[cfg(unix)]
+fn hook_action_class(action_key: &str) -> &'static str {
+    match action_key {
+        "hook.query" => "readonly-diagnostics",
+        "hook.bootstrap" => "inject",
+        "hook.install" => "hook-install",
+        "hook.status" | "hook.stop" => "cleanup",
+        _ => "unknown",
+    }
 }
 
 #[cfg(unix)]
@@ -7464,6 +7494,13 @@ fn hook_automation_to_json_with_arm64e(
     let next_action_key = selected_action.map(|item| item.action_key).map(ToOwned::to_owned);
     let next_runnable_action_key = next_action.map(|item| item.action_key).map(ToOwned::to_owned);
     let next_blocked_action_key = blocked_action.map(|item| item.action_key).map(ToOwned::to_owned);
+    let next_action_command_group = selected_action.map(|item| item.command_group).map(ToOwned::to_owned);
+    let next_action_phase = selected_action
+        .map(|item| hook_action_phase(item.action_key))
+        .map(ToOwned::to_owned);
+    let next_action_class = selected_action
+        .map(|item| hook_action_class(item.action_key))
+        .map(ToOwned::to_owned);
     let next_action_reason = selected_action.map(|item| item.recommendation.clone());
     let branch_execution_order = ordered_actions
         .iter()
@@ -10988,6 +11025,8 @@ fn hook_automation_to_json_with_arm64e(
             json!({
                 "actionKey": item.action_key,
                 "commandGroup": item.command_group,
+                "actionPhase": hook_action_phase(item.action_key),
+                "actionClass": hook_action_class(item.action_key),
                 "allowed": item.allowed,
                 "blockedBy": item.blocked_by,
                 "branch": hook_automation_branch(item),
@@ -11089,6 +11128,9 @@ fn hook_automation_to_json_with_arm64e(
         "readyBranchCount": ready_branch_count,
         "blockedBranchCount": blocked_branch_count,
         "nextActionKey": next_action_key,
+        "nextActionCommandGroup": next_action_command_group,
+        "nextActionPhase": next_action_phase,
+        "nextActionClass": next_action_class,
         "nextReadyActionKey": next_ready_action_key,
         "nextRunnableActionKey": next_runnable_action_key,
         "nextBlockedActionKey": next_blocked_action_key,
@@ -18175,10 +18217,22 @@ mod tests {
             "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
         );
         assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["nextActionCommandGroup"], "query");
+        assert_eq!(rendered["hook"]["automation"]["nextActionPhase"], "query");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionClass"],
+            "readonly-diagnostics"
+        );
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][1], "pac.available");
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][2], "pac.arm64e");
         assert_eq!(rendered["hook"]["coexistence"]["preferredPath"], "arm64e-query-only");
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionCommandGroup"], "query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPhase"], "query");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionClass"],
+            "readonly-diagnostics"
+        );
         assert_eq!(
             rendered["environment"]["hookSummary"]["recoverySummary"]["strategy"],
             "arm64e-query-only-until-override"
@@ -18695,6 +18749,12 @@ mod tests {
             true
         );
         assert_eq!(rendered["hook"]["coexistence"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionCommandGroup"], "query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextActionPhase"], "query");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionClass"],
+            "readonly-diagnostics"
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextActionAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBlockedBy"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionBranch"], "run");
@@ -18702,6 +18762,14 @@ mod tests {
         assert_eq!(
             rendered["hook"]["coexistence"]["nextActionPlan"]["actionKey"],
             "hook.query"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["actionPhase"],
+            "query"
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["actionClass"],
+            "readonly-diagnostics"
         );
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["branch"], "run");
@@ -18996,6 +19064,12 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["readyBranchCount"], 5);
         assert_eq!(rendered["hook"]["automation"]["blockedBranchCount"], 0);
         assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["nextActionCommandGroup"], "query");
+        assert_eq!(rendered["hook"]["automation"]["nextActionPhase"], "query");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionClass"],
+            "readonly-diagnostics"
+        );
         assert_eq!(rendered["hook"]["automation"]["nextReadyActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["nextRunnableActionKey"], "hook.query");
         assert!(rendered["hook"]["automation"]["nextBlockedActionKey"].is_null());
@@ -19204,6 +19278,14 @@ mod tests {
         assert_eq!(
             rendered["hook"]["automation"]["nextActionPlan"]["actionKey"],
             "hook.query"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionPlan"]["actionPhase"],
+            "query"
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionPlan"]["actionClass"],
+            "readonly-diagnostics"
         );
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["branch"], "run");
