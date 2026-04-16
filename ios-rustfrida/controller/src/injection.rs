@@ -11672,6 +11672,64 @@ fn arm64e_preflight_summary_to_json(report: &InjectionTargetPreflightReport) -> 
 }
 
 #[cfg(unix)]
+fn arm64e_runtime_summary_to_json(
+    preflight: &InjectionTargetPreflightReport,
+    trace: Option<&InjectionTrace>,
+) -> Value {
+    let mut summary = arm64e_preflight_summary_to_json(preflight);
+    let Some(summary_obj) = summary.as_object_mut() else {
+        return summary;
+    };
+
+    summary_obj.insert("traceAvailable".into(), Value::Bool(trace.is_some()));
+    match trace {
+        Some(trace) => {
+            summary_obj.insert("traceTargetUsesArm64e".into(), json!(trace.target_uses_arm64e));
+            summary_obj.insert(
+                "traceThreadBootstrapKind".into(),
+                Value::String(trace.thread_bootstrap_kind.as_str().into()),
+            );
+            summary_obj.insert(
+                "traceBootstrapTimedOut".into(),
+                Value::Bool(trace.bootstrap_timed_out),
+            );
+            summary_obj.insert(
+                "traceThreadTermination".into(),
+                Value::String(trace.thread_termination.as_str().into()),
+            );
+            summary_obj.insert("traceResourcesPersist".into(), Value::Bool(trace.resources_persist));
+            summary_obj.insert(
+                "traceThreadBootstrapMatchesPreflight".into(),
+                Value::Bool(trace.thread_bootstrap_kind == preflight.thread_bootstrap_kind),
+            );
+            summary_obj.insert(
+                "traceTargetArm64eMatchesPreflight".into(),
+                Value::Bool(trace.target_uses_arm64e == preflight.target_uses_arm64e),
+            );
+            summary_obj.insert(
+                "traceBootstrapStatus".into(),
+                trace.bootstrap_report
+                    .as_ref()
+                    .map(|report| Value::String(report.status.as_str().into()))
+                    .unwrap_or(Value::Null),
+            );
+        }
+        None => {
+            summary_obj.insert("traceTargetUsesArm64e".into(), Value::Null);
+            summary_obj.insert("traceThreadBootstrapKind".into(), Value::Null);
+            summary_obj.insert("traceBootstrapTimedOut".into(), Value::Null);
+            summary_obj.insert("traceThreadTermination".into(), Value::Null);
+            summary_obj.insert("traceResourcesPersist".into(), Value::Null);
+            summary_obj.insert("traceThreadBootstrapMatchesPreflight".into(), Value::Null);
+            summary_obj.insert("traceTargetArm64eMatchesPreflight".into(), Value::Null);
+            summary_obj.insert("traceBootstrapStatus".into(), Value::Null);
+        }
+    }
+
+    summary
+}
+
+#[cfg(unix)]
 fn injection_preflight_to_json(report: &InjectionTargetPreflightReport) -> Value {
     json!({
         "mainImage": report.main_image.as_ref().map(image_info_to_json),
@@ -12520,6 +12578,7 @@ fn extract_stage_error_message(error: Option<&Error>, stage: &str) -> Option<Str
 #[cfg(unix)]
 fn failure_diagnostics_to_json(
     config: &ControllerConfig,
+    preflight: &InjectionTargetPreflightReport,
     trace: Option<&InjectionTrace>,
     hello: Option<&Hello>,
     ping: Option<&str>,
@@ -12606,6 +12665,14 @@ fn failure_diagnostics_to_json(
                 }
             }
         }
+    }
+
+    let arm64e_summary = arm64e_runtime_summary_to_json(preflight, trace);
+    if arm64e_summary["overrideRequiredForFallback"].as_bool() == Some(true) {
+        push_unique_hint(
+            &mut hints,
+            "arm64e fallback bootstrap requires explicit override; keep to query/PAC diagnostics unless IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK=1 is intentionally set",
+        );
     }
 
     if code == "unknown" {
@@ -13006,6 +13073,7 @@ fn failure_diagnostics_to_json(
         "fallbackCommand": fallback_command.clone(),
         "fallbackPhase": fallback_phase.clone(),
         "hookFallbackAvailable": hook_fallback_available,
+        "arm64eSummary": arm64e_summary,
         "hook": hook_diagnostics,
         "hints": hints,
     })
@@ -13113,9 +13181,11 @@ fn render_injection_result_json(
         "doctor": doctor_report_to_json(doctor),
         "plan": injection_plan_to_json(plan),
         "preflight": injection_preflight_to_json(preflight),
+        "arm64eSummary": arm64e_runtime_summary_to_json(preflight, trace),
         "trace": trace.map(injection_trace_to_json),
         "diagnostics": failure_diagnostics_to_json(
             config,
+            preflight,
             trace,
             hello,
             ping,
@@ -18780,6 +18850,19 @@ mod tests {
         );
 
         assert_eq!(rendered["ok"], true);
+        assert_eq!(rendered["arm64eSummary"]["status"], "non-arm64e");
+        assert_eq!(rendered["arm64eSummary"]["traceAvailable"], true);
+        assert_eq!(rendered["arm64eSummary"]["traceTargetUsesArm64e"], false);
+        assert_eq!(
+            rendered["arm64eSummary"]["traceThreadBootstrapKind"],
+            "pthread-create-from-mach-thread"
+        );
+        assert_eq!(rendered["arm64eSummary"]["traceTargetArm64eMatchesPreflight"], true);
+        assert_eq!(
+            rendered["arm64eSummary"]["traceThreadBootstrapMatchesPreflight"],
+            true
+        );
+        assert_eq!(rendered["arm64eSummary"]["traceBootstrapStatus"], "agent-running");
         assert_eq!(rendered["hook"]["controller"]["commandMode"], "allowed");
         assert_eq!(rendered["hook"]["target"]["commandMode"], "allowed");
         assert!(rendered["hook"]["controller"]["recommendedActions"].is_array());
@@ -28893,6 +28976,10 @@ mod tests {
 
         assert_eq!(rendered["diagnostics"]["phase"], "hook-policy");
         assert_eq!(rendered["diagnostics"]["code"], "target-hook-policy-blocked");
+        assert_eq!(rendered["arm64eSummary"]["status"], "non-arm64e");
+        assert_eq!(rendered["arm64eSummary"]["traceAvailable"], false);
+        assert_eq!(rendered["diagnostics"]["arm64eSummary"]["status"], "non-arm64e");
+        assert_eq!(rendered["diagnostics"]["arm64eSummary"]["traceAvailable"], false);
         assert_eq!(rendered["diagnostics"]["hookActionKey"], "hook.install");
         assert_eq!(rendered["diagnostics"]["hookCommandGroup"], "hook-install");
         assert_eq!(rendered["diagnostics"]["hookBlockedBy"], "target");
@@ -29590,6 +29677,15 @@ mod tests {
         assert_eq!(rendered["diagnostics"]["code"], "connect-failed");
         assert!(rendered["diagnostics"]["hook"].is_null());
         assert_eq!(rendered["diagnostics"]["bootstrapStatus"], "connect-failed");
+        assert_eq!(rendered["arm64eSummary"]["status"], "arm64e");
+        assert_eq!(rendered["arm64eSummary"]["traceAvailable"], true);
+        assert_eq!(rendered["arm64eSummary"]["traceTargetUsesArm64e"], true);
+        assert_eq!(
+            rendered["arm64eSummary"]["traceThreadBootstrapKind"],
+            "pthread-create-from-mach-thread"
+        );
+        assert_eq!(rendered["diagnostics"]["arm64eSummary"]["status"], "arm64e");
+        assert_eq!(rendered["diagnostics"]["arm64eSummary"]["traceAvailable"], true);
         assert_eq!(rendered["diagnostics"]["handshakeStage"], "awaiting-hello");
         assert_eq!(rendered["diagnostics"]["failedStep"], "hello");
         assert!(rendered["diagnostics"]["hints"]
@@ -29600,6 +29696,115 @@ mod tests {
                 .as_str()
                 .unwrap_or_default()
                 .contains("connect failed from the target back to the controller socket")));
+    }
+
+    #[test]
+    fn render_injection_result_json_reports_arm64e_fallback_override_hint() {
+        let config = ControllerConfig {
+            mode: InjectionMode::Attach,
+            pid: Some(42),
+            bundle_id: None,
+            spawn_command: None,
+            command: None,
+            command_json: false,
+            list_images_json: false,
+            preflight_only: false,
+            preflight_json: false,
+            inject_json: true,
+            agent_path: DEFAULT_AGENT_PATH_ROOTFUL.into(),
+            entry_symbol: "ios_agent_entry".into(),
+            script_path: None,
+            socket_path: Some("/tmp/iosrf.sock".into()),
+            connect_timeout_secs: 15,
+        };
+        let plan = MachInjector
+            .plan(&InjectionTarget {
+                pid: 42,
+                dylib_path: DEFAULT_AGENT_PATH_ROOTFUL.into(),
+                entry_symbol: "ios_agent_entry".into(),
+                socket_path: "/tmp/iosrf.sock".into(),
+            })
+            .expect("build plan");
+        let environment = InjectionEnvironmentReport {
+            dry_run: false,
+            bootstrap_wait_ms: Some(3000),
+            hook_policy: HookPolicy::Warn,
+            hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: None,
+            },
+            hook_environment: HookEnvironmentReport {
+                active_backend: None,
+                backends: vec![],
+                warnings: vec![],
+            },
+        };
+        let preflight = InjectionTargetPreflightReport {
+            main_image: None,
+            target_images: vec![],
+            target_image_count: 0,
+            target_uses_arm64e: Some(true),
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFallback,
+            thread_bootstrap_label: "pthread_create".into(),
+            thread_bootstrap_address: 0,
+            thread_bootstrap_raw_address: 0,
+            thread_bootstrap_canonicalized: false,
+            target_hook_environment: HookEnvironmentReport {
+                active_backend: None,
+                backends: vec![],
+                warnings: vec![],
+            },
+            target_hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: None,
+            },
+            resolved_loader_symbols: vec![],
+        };
+        let doctor = analyze_doctor_report(&config, 42, Path::new("/tmp/iosrf.sock"), &environment, &preflight);
+        let rendered = render_injection_result_json(
+            &config,
+            42,
+            "/tmp/iosrf.sock",
+            &plan,
+            &environment,
+            &doctor,
+            &preflight,
+            None,
+            None,
+            None,
+            None,
+            false,
+            None,
+            None,
+            &[],
+            Some(&Error::State("task_for_pid failed: denied".into())),
+        );
+
+        assert_eq!(rendered["arm64eSummary"]["status"], "arm64e");
+        assert_eq!(rendered["arm64eSummary"]["overrideRequiredForFallback"], true);
+        assert_eq!(
+            rendered["arm64eSummary"]["overrideEnv"],
+            "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
+        );
+        assert_eq!(rendered["diagnostics"]["arm64eSummary"]["status"], "arm64e");
+        assert_eq!(
+            rendered["diagnostics"]["arm64eSummary"]["overrideRequiredForFallback"],
+            true
+        );
+        assert!(rendered["diagnostics"]["hints"]
+            .as_array()
+            .expect("hints array")
+            .iter()
+            .any(|item| item
+                .as_str()
+                .unwrap_or_default()
+                .contains("arm64e fallback bootstrap requires explicit override")));
     }
 
     #[test]
