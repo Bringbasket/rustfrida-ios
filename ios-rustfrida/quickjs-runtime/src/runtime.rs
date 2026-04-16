@@ -13141,6 +13141,11 @@ undefined;
                                     return result.hasImage === false
                                         && result.imageName === null
                                         && result.imagePath === null
+                                        && result.directoryPath === null
+                                        && result.pathKind === null
+                                        && result.base === null
+                                        && result.slide === null
+                                        && result.sizeHex === null
                                         && result.resolvedImageName === null
                                         && result.resolvedImagePath === null
                                         && result.resolvedDirectoryPath === null
@@ -13156,6 +13161,11 @@ undefined;
                                 return result.hasImage === true
                                     && result.imageName === image.name
                                     && result.imagePath === image.path
+                                    && result.directoryPath === image.directoryPath
+                                    && result.pathKind === image.pathKind
+                                    && result.base === image.base
+                                    && result.slide === image.slide
+                                    && result.sizeHex === image.sizeHex
                                     && result.resolvedImageName === image.name
                                     && result.resolvedImagePath === image.path
                                     && result.resolvedDirectoryPath === image.directoryPath
@@ -14491,6 +14501,11 @@ undefined;
                                     return result.hasImage === false
                                         && result.imageName === null
                                         && result.imagePath === null
+                                        && result.directoryPath === null
+                                        && result.pathKind === null
+                                        && result.base === null
+                                        && result.slide === null
+                                        && result.sizeHex === null
                                         && result.resolvedImageName === null
                                         && result.resolvedImagePath === null
                                         && result.resolvedDirectoryPath === null
@@ -14506,6 +14521,11 @@ undefined;
                                 return result.hasImage === true
                                     && result.imageName === image.name
                                     && result.imagePath === image.path
+                                    && result.directoryPath === image.directoryPath
+                                    && result.pathKind === image.pathKind
+                                    && result.base === image.base
+                                    && result.slide === image.slide
+                                    && result.sizeHex === image.sizeHex
                                     && result.resolvedImageName === image.name
                                     && result.resolvedImagePath === image.path
                                     && result.resolvedDirectoryPath === image.directoryPath
