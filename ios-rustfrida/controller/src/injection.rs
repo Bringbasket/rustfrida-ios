@@ -13698,7 +13698,25 @@ pub fn run_controller(config: &ControllerConfig, list_images: bool) -> Result<()
             }
             Ok(outcome)
         })() {
-            Ok(outcome) => render_command_outcome_json(&outcome),
+            Ok(outcome) => render_command_outcome_json_with_context(
+                &outcome,
+                &CommandJsonContext {
+                    config,
+                    pid,
+                    socket_path: &socket_path,
+                    plan: &plan,
+                    injection_environment: &injection_environment,
+                    doctor: &doctor,
+                    preflight: &preflight,
+                    trace: Some(&inject_trace),
+                    hello: hello_json.as_ref(),
+                    ping: ping_json.as_deref(),
+                    hook_environment_notice: hook_environment_notice.as_deref(),
+                    hook_environment_checked: hook_environment_checked_json,
+                    jsinit_result: jsinit_result_json.as_deref(),
+                    loadjs_result: loadjs_result_json.as_deref(),
+                },
+            ),
             Err(err) => render_command_error_json_with_context(
                 command,
                 &err,
@@ -15944,6 +15962,67 @@ fn render_command_outcome_json(outcome: &CommandOutcome) -> Value {
 }
 
 #[cfg(unix)]
+fn hook_capability_label(capability: HookCommandCapability) -> &'static str {
+    match capability {
+        HookCommandCapability::Query => "query",
+        HookCommandCapability::HookInstall => "hook-install",
+        HookCommandCapability::HookStatus => "hook-status",
+        HookCommandCapability::HookStop => "hook-stop",
+    }
+}
+
+#[cfg(unix)]
+fn command_arm64e_safety_to_json(
+    command: &str,
+    preflight: &InjectionTargetPreflightReport,
+    trace: Option<&InjectionTrace>,
+) -> Value {
+    let arm64e_summary = arm64e_runtime_summary_to_json(preflight, trace);
+    let hook_capability = command_required_capability(command)
+        .ok()
+        .flatten()
+        .map(hook_capability_label);
+    let requires_inline_hooks = command_requests_inline_hook_install(command).ok();
+    let is_pac_command = command.trim().starts_with("pac.");
+    let target_uses_arm64e = preflight.target_uses_arm64e;
+    let preferred_thread_bootstrap_resolved = arm64e_summary["preferredThreadBootstrapResolved"]
+        .as_bool()
+        .unwrap_or(false);
+    let override_required_for_fallback = arm64e_summary["overrideRequiredForFallback"]
+        .as_bool()
+        .unwrap_or(false);
+
+    let (classification, risk_level, recommended_action) = match target_uses_arm64e {
+        Some(true) if requires_inline_hooks == Some(true) && override_required_for_fallback => (
+            "blocked-without-override",
+            "high",
+            "query-only-until-override",
+        ),
+        Some(true) if requires_inline_hooks == Some(true) && preferred_thread_bootstrap_resolved => {
+            ("inline-risky", "elevated", "run-with-caution")
+        }
+        Some(true) if requires_inline_hooks == Some(true) => ("inline-risky", "elevated", "preflight-more"),
+        Some(true) if is_pac_command => ("safe-readonly-pac", "low", "run"),
+        Some(true) => ("safe-readonly", "low", "run"),
+        Some(false) if requires_inline_hooks == Some(true) => ("standard-inline", "normal", "run"),
+        Some(false) => ("standard-readonly", "low", "run"),
+        None => ("unknown", "unknown", "preflight-more"),
+    };
+
+    json!({
+        "classification": classification,
+        "riskLevel": risk_level,
+        "recommendedAction": recommended_action,
+        "targetUsesArm64e": target_uses_arm64e,
+        "requiresInlineHooks": requires_inline_hooks,
+        "hookCapability": hook_capability,
+        "pacCommand": is_pac_command,
+        "preferredThreadBootstrapResolved": preferred_thread_bootstrap_resolved,
+        "overrideRequiredForFallback": override_required_for_fallback,
+    })
+}
+
+#[cfg(unix)]
 #[cfg_attr(not(test), allow(dead_code))]
 fn render_command_error_json(command: &str, err: &Error, logs: &[String]) -> Value {
     let diagnostics = match err {
@@ -15992,6 +16071,26 @@ fn render_command_error_json(command: &str, err: &Error, logs: &[String]) -> Val
 }
 
 #[cfg(unix)]
+fn render_command_outcome_json_with_context(
+    outcome: &CommandOutcome,
+    context: &CommandJsonContext<'_>,
+) -> Value {
+    let mut rendered = render_command_outcome_json(outcome)
+        .as_object()
+        .cloned()
+        .unwrap_or_default();
+    rendered.insert(
+        "arm64eSummary".into(),
+        arm64e_runtime_summary_to_json(context.preflight, context.trace),
+    );
+    rendered.insert(
+        "arm64eCommandSafety".into(),
+        command_arm64e_safety_to_json(&outcome.command, context.preflight, context.trace),
+    );
+    Value::Object(rendered)
+}
+
+#[cfg(unix)]
 fn render_command_error_json_with_context(
     command: &str,
     err: &Error,
@@ -16021,6 +16120,10 @@ fn render_command_error_json_with_context(
     .unwrap_or_default();
 
     rendered.insert("command".into(), json!(command));
+    rendered.insert(
+        "arm64eCommandSafety".into(),
+        command_arm64e_safety_to_json(command, context.preflight, context.trace),
+    );
     rendered.insert("kind".into(), Value::Null);
     rendered.insert("payload".into(), Value::Null);
     rendered.insert("payloadJson".into(), Value::Null);
@@ -16074,9 +16177,9 @@ mod tests {
         hook_effective_to_json, hook_environment_requires_notice, hook_environment_to_json, parse_hfl_command,
         parse_jhook_command, parse_shook_command, parse_stalker_command, parse_trace_command,
         print_injection_preflight, quote_js_string, render_bootstrap_summary, render_command_error_json,
-        render_command_error_json_with_context, render_command_outcome_json, render_image_list_json,
-        render_injection_environment, render_injection_result_json, render_loader_symbol, render_preflight_json,
-        arm64e_preflight_summary_to_json,
+        render_command_error_json_with_context, render_command_outcome_json, render_command_outcome_json_with_context,
+        render_image_list_json, render_injection_environment, render_injection_result_json, render_loader_symbol,
+        render_preflight_json, arm64e_preflight_summary_to_json,
         CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, HookEffectiveAction, NativeHookTarget,
         NativeLogArgument, NativeLogReturn, NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand,
         SwiftHookCommand, TraceCommand,
@@ -17694,6 +17797,155 @@ mod tests {
     }
 
     #[test]
+    fn render_command_outcome_json_with_context_reports_arm64e_readonly_safety() {
+        let config = ControllerConfig {
+            mode: InjectionMode::Attach,
+            pid: Some(42),
+            bundle_id: None,
+            spawn_command: None,
+            command: Some("pac.images UIKit".into()),
+            command_json: true,
+            list_images_json: false,
+            preflight_only: false,
+            preflight_json: false,
+            inject_json: false,
+            agent_path: DEFAULT_AGENT_PATH_ROOTFUL.into(),
+            entry_symbol: "ios_agent_entry".into(),
+            script_path: None,
+            socket_path: Some("/tmp/iosrf.sock".into()),
+            connect_timeout_secs: 15,
+        };
+        let plan = MachInjector
+            .plan(&InjectionTarget {
+                pid: 42,
+                dylib_path: DEFAULT_AGENT_PATH_ROOTFUL.into(),
+                entry_symbol: "ios_agent_entry".into(),
+                socket_path: "/tmp/iosrf.sock".into(),
+            })
+            .expect("build plan");
+        let environment = InjectionEnvironmentReport {
+            dry_run: false,
+            bootstrap_wait_ms: Some(3000),
+            hook_policy: HookPolicy::Warn,
+            hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: None,
+            },
+            hook_environment: HookEnvironmentReport {
+                active_backend: None,
+                backends: vec![],
+                warnings: vec![],
+            },
+        };
+        let preflight = InjectionTargetPreflightReport {
+            main_image: None,
+            target_images: vec![],
+            target_image_count: 0,
+            target_uses_arm64e: Some(true),
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFromMachThread,
+            thread_bootstrap_label: "pthread_create_from_mach_thread".into(),
+            thread_bootstrap_address: 0,
+            thread_bootstrap_raw_address: 0,
+            thread_bootstrap_canonicalized: false,
+            target_hook_environment: HookEnvironmentReport {
+                active_backend: None,
+                backends: vec![],
+                warnings: vec![],
+            },
+            target_hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: None,
+            },
+            resolved_loader_symbols: vec![],
+        };
+        let trace = InjectionTrace {
+            payload_address: 0x5000,
+            payload_size: 0x100,
+            payload_allocated_size: 0x1000,
+            data_address: 0x7000,
+            data_size: 0x80,
+            data_allocated_size: 0x1000,
+            stack_address: 0x9000,
+            stack_size: 0x4000,
+            target_uses_arm64e: Some(true),
+            code_protection: RemoteProtectionOutcome::SetMaximumAndCurrent,
+            data_protection: RemoteProtectionOutcome::CurrentOnlyFallback,
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFromMachThread,
+            thread_bootstrap_label: "pthread_create_from_mach_thread".into(),
+            thread_plan: ThreadCreatePlan {
+                flavor: 6,
+                count: 70,
+                state: Arm64ThreadState {
+                    x: [0; 29],
+                    fp: 0,
+                    lr: 0,
+                    sp: 0xa000,
+                    pc: 0x1800_0123,
+                    cpsr: 0,
+                    pad: 0,
+                },
+            },
+            thread_port: Some(77),
+            thread_termination: RemoteThreadTerminationOutcome::NotAttempted,
+            thread_port_deallocated: true,
+            resources_persist: true,
+            bootstrap_report: Some(BootstrapResultReport {
+                status: BootstrapStatus::AgentRunning,
+                status_raw: 6,
+                dylib_handle: 0x1234,
+                entry_address: 0x5678,
+                socket_fd: 9,
+                entry_return: 0,
+            }),
+            bootstrap_timed_out: false,
+        };
+        let doctor = analyze_doctor_report(&config, 42, Path::new("/tmp/iosrf.sock"), &environment, &preflight);
+
+        let rendered = render_command_outcome_json_with_context(
+            &CommandOutcome {
+                command: "pac.images UIKit".into(),
+                kind: CommandOutcomeKind::Eval,
+                ok: true,
+                payload: Some("{\"count\":1}".into()),
+                items: vec![],
+                error: None,
+                logs: vec![],
+            },
+            &CommandJsonContext {
+                config: &config,
+                pid: 42,
+                socket_path: "/tmp/iosrf.sock",
+                plan: &plan,
+                injection_environment: &environment,
+                doctor: &doctor,
+                preflight: &preflight,
+                trace: Some(&trace),
+                hello: None,
+                ping: None,
+                hook_environment_notice: None,
+                hook_environment_checked: false,
+                jsinit_result: None,
+                loadjs_result: None,
+            },
+        );
+
+        assert_eq!(rendered["arm64eSummary"]["status"], "arm64e");
+        assert_eq!(rendered["arm64eCommandSafety"]["classification"], "safe-readonly-pac");
+        assert_eq!(rendered["arm64eCommandSafety"]["riskLevel"], "low");
+        assert_eq!(rendered["arm64eCommandSafety"]["recommendedAction"], "run");
+        assert_eq!(rendered["arm64eCommandSafety"]["targetUsesArm64e"], true);
+        assert_eq!(rendered["arm64eCommandSafety"]["requiresInlineHooks"], false);
+        assert_eq!(rendered["arm64eCommandSafety"]["hookCapability"], "query");
+        assert_eq!(rendered["arm64eCommandSafety"]["pacCommand"], true);
+    }
+
+    #[test]
     fn render_command_error_json_contains_kind_message_and_logs() {
         let rendered = render_command_error_json(
             "trace stop",
@@ -17858,6 +18110,11 @@ mod tests {
         assert_eq!(rendered["hook"]["controller"]["recommendedActions"][0]["priority"], 1);
         assert_eq!(rendered["hook"]["effectiveActions"][0]["actionKey"], "hook.query");
         assert_eq!(rendered["hook"]["effectiveActions"][0]["blockedBy"], "none");
+        assert_eq!(rendered["arm64eSummary"]["status"], "non-arm64e");
+        assert_eq!(rendered["arm64eCommandSafety"]["classification"], "standard-readonly");
+        assert_eq!(rendered["arm64eCommandSafety"]["requiresInlineHooks"], false);
+        assert_eq!(rendered["arm64eCommandSafety"]["hookCapability"], "query");
+        assert_eq!(rendered["arm64eCommandSafety"]["pacCommand"], false);
         assert_eq!(rendered["hook"]["effective"]["commandMode"], "allowed");
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["controller"], 0);
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["target"], 0);
