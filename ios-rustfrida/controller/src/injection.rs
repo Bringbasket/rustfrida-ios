@@ -1200,6 +1200,18 @@ fn hook_action_class(action_key: &str) -> &'static str {
 }
 
 #[cfg(unix)]
+fn routing_phase_action_class(phase: &str) -> &'static str {
+    match phase {
+        "query" => "readonly-diagnostics",
+        "diagnose" | "preflight" => "preflight",
+        "cleanup" => "cleanup",
+        "inject" => "inject",
+        "hook-install" => "hook-install",
+        _ => "unknown",
+    }
+}
+
+#[cfg(unix)]
 fn hook_automation_branch(action: &HookEffectiveAction) -> &'static str {
     if action.allowed {
         "run"
@@ -1352,6 +1364,8 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 "key": format!("conflict-{group_key}"),
                 "condition": format!("phase-{phase}-failed"),
                 "phase": phase,
+                "actionPhase": phase,
+                "actionClass": routing_phase_action_class(phase),
                 "reason": entry.get("reason").cloned().unwrap_or(Value::Null),
                 "onErrorCodeCount": 2,
                 "onErrorCodes": vec![
@@ -1432,6 +1446,22 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 "resolvedFrom": "errorCodeRouting",
                 "recommendedPhase": recommended_phase.clone(),
                 "effectivePhase": recommended_phase,
+                "recommendedActionPhase": recommended
+                    .and_then(|item| item.get("actionPhase"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "recommendedActionClass": recommended
+                    .and_then(|item| item.get("actionClass"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "effectiveActionPhase": recommended
+                    .and_then(|item| item.get("actionPhase"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "effectiveActionClass": recommended
+                    .and_then(|item| item.get("actionClass"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
                 "recommendedTemplateCount": recommended
                     .and_then(|item| item.get("templateCount"))
                     .cloned()
@@ -1462,6 +1492,10 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                         "phase": entry.get("recommendedPhase").cloned().unwrap_or(Value::Null),
                         "effectiveEscalationKey": entry.get("effectiveEscalationKey").cloned().unwrap_or(Value::Null),
                         "effectivePhase": entry.get("effectivePhase").cloned().unwrap_or(Value::Null),
+                        "actionPhase": entry.get("recommendedActionPhase").cloned().unwrap_or(Value::Null),
+                        "actionClass": entry.get("recommendedActionClass").cloned().unwrap_or(Value::Null),
+                        "effectiveActionPhase": entry.get("effectiveActionPhase").cloned().unwrap_or(Value::Null),
+                        "effectiveActionClass": entry.get("effectiveActionClass").cloned().unwrap_or(Value::Null),
                         "matchConfidence": entry.get("matchConfidence").cloned().unwrap_or(Value::Null),
                         "resolvedFrom": entry.get("resolvedFrom").cloned().unwrap_or(Value::Null),
                         "templateCount": entry.get("recommendedTemplateCount").cloned().unwrap_or(Value::Null),
@@ -1493,6 +1527,10 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 "resolvedFrom": "defaultRecommendedEscalationKey",
                 "recommendedPhase": recommended_phase.clone(),
                 "effectivePhase": recommended_phase,
+                "recommendedActionPhase": item.get("actionPhase").cloned().unwrap_or(Value::Null),
+                "recommendedActionClass": item.get("actionClass").cloned().unwrap_or(Value::Null),
+                "effectiveActionPhase": item.get("actionPhase").cloned().unwrap_or(Value::Null),
+                "effectiveActionClass": item.get("actionClass").cloned().unwrap_or(Value::Null),
                 "effectiveEscalationKey": recommended_escalation_key,
                 "recommendedTemplateCount": item.get("templateCount").cloned().unwrap_or(Value::Null),
                 "recommendedTemplates": item.get("templates").cloned().unwrap_or(json!([])),
@@ -1518,6 +1556,10 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                         "phase": entry.get("recommendedPhase").cloned().unwrap_or(Value::Null),
                         "effectiveEscalationKey": entry.get("effectiveEscalationKey").cloned().unwrap_or(Value::Null),
                         "effectivePhase": entry.get("effectivePhase").cloned().unwrap_or(Value::Null),
+                        "actionPhase": entry.get("recommendedActionPhase").cloned().unwrap_or(Value::Null),
+                        "actionClass": entry.get("recommendedActionClass").cloned().unwrap_or(Value::Null),
+                        "effectiveActionPhase": entry.get("effectiveActionPhase").cloned().unwrap_or(Value::Null),
+                        "effectiveActionClass": entry.get("effectiveActionClass").cloned().unwrap_or(Value::Null),
                         "templateCount": entry.get("recommendedTemplateCount").cloned().unwrap_or(Value::Null),
                         "templates": entry.get("recommendedTemplates").cloned().unwrap_or(json!([])),
                         "commandJsonTemplateCount": entry
@@ -1556,12 +1598,38 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .get("recommendedPhase")
             .cloned()
             .unwrap_or(Value::Null),
+        "actionPhase": routing_decision_default
+            .get("recommendedActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "actionClass": routing_decision_default
+            .get("recommendedActionClass")
+            .cloned()
+            .unwrap_or(Value::Null),
         "effectivePhase": routing_decision_default
             .get("effectivePhase")
             .cloned()
             .unwrap_or_else(|| {
                 routing_decision_default
                     .get("recommendedPhase")
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }),
+        "effectiveActionPhase": routing_decision_default
+            .get("effectiveActionPhase")
+            .cloned()
+            .unwrap_or_else(|| {
+                routing_decision_default
+                    .get("recommendedActionPhase")
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }),
+        "effectiveActionClass": routing_decision_default
+            .get("effectiveActionClass")
+            .cloned()
+            .unwrap_or_else(|| {
+                routing_decision_default
+                    .get("recommendedActionClass")
                     .cloned()
                     .unwrap_or(Value::Null)
             }),
@@ -1606,6 +1674,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                         "usedDefault": false,
                         "reason": "matched-error-code",
                         "effectivePhase": decision.get("effectivePhase").cloned().unwrap_or(Value::Null),
+                        "effectiveActionPhase": decision
+                            .get("effectiveActionPhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effectiveActionClass": decision
+                            .get("effectiveActionClass")
+                            .cloned()
+                            .unwrap_or(Value::Null),
                         "effectiveEscalationKey": decision
                             .get("effectiveEscalationKey")
                             .cloned()
@@ -1621,6 +1697,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         "reason": "missing-error-code",
         "effectivePhase": routing_decision_ready_default
             .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "effectiveActionPhase": routing_decision_ready_default
+            .get("effectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "effectiveActionClass": routing_decision_ready_default
+            .get("effectiveActionClass")
             .cloned()
             .unwrap_or(Value::Null),
         "effectiveEscalationKey": routing_decision_ready_default
@@ -1823,8 +1907,24 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .get("phase")
             .cloned()
             .unwrap_or(Value::Null),
+        "defaultActionPhase": routing_decision_ready_default
+            .get("actionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultActionClass": routing_decision_ready_default
+            .get("actionClass")
+            .cloned()
+            .unwrap_or(Value::Null),
         "defaultEffectivePhase": routing_decision_ready_default
             .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveActionPhase": routing_decision_ready_default
+            .get("effectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveActionClass": routing_decision_ready_default
+            .get("effectiveActionClass")
             .cloned()
             .unwrap_or(Value::Null),
         "defaultTemplateCount": routing_decision_ready_default
@@ -2256,12 +2356,28 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .get("recommendedPhase")
             .cloned()
             .unwrap_or(Value::Null),
+        "defaultRecommendedActionPhase": routing_decision_default
+            .get("recommendedActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultRecommendedActionClass": routing_decision_default
+            .get("recommendedActionClass")
+            .cloned()
+            .unwrap_or(Value::Null),
         "defaultEffectiveEscalationKey": routing_decision_default
             .get("effectiveEscalationKey")
             .cloned()
             .unwrap_or(Value::Null),
         "defaultEffectivePhase": routing_decision_default
             .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveActionPhase": routing_decision_default
+            .get("effectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveActionClass": routing_decision_default
+            .get("effectiveActionClass")
             .cloned()
             .unwrap_or(Value::Null),
         "default": routing_decision_default,
@@ -2280,6 +2396,16 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         "suggestedEscalationKey": escalation_recommendations
             .first()
             .and_then(|item| item.get("key"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "suggestedActionPhase": escalation_recommendations
+            .first()
+            .and_then(|item| item.get("actionPhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "suggestedActionClass": escalation_recommendations
+            .first()
+            .and_then(|item| item.get("actionClass"))
             .cloned()
             .unwrap_or(Value::Null),
         "errorCodeRoutingCount": error_code_routing_entries.len(),
@@ -7927,6 +8053,8 @@ fn hook_automation_to_json_with_arm64e(
             "key": "arm64e-query-only-path",
             "condition": "arm64e-fallback-override-required",
             "phase": "query",
+            "actionPhase": "query",
+            "actionClass": "readonly-diagnostics",
             "reason": "arm64e fallback bootstrap requires explicit override; stay on query/PAC diagnostics until override is intentionally enabled",
             "note": "keep to native.hookenv, pac.*, and readonly runtime queries until IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK=1 is intentionally set",
             "overrideEnv": "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK",
@@ -7954,6 +8082,8 @@ fn hook_automation_to_json_with_arm64e(
         "key": "preflight-refresh",
         "condition": "always",
         "phase": "preflight",
+        "actionPhase": "preflight",
+        "actionClass": "preflight",
         "reason": "refresh target context and diagnostics before changing hook policy or retrying injection",
         "onErrorCodeCount": escalation_preflight_error_codes.len(),
         "onErrorCodes": escalation_preflight_error_codes,
@@ -7974,6 +8104,8 @@ fn hook_automation_to_json_with_arm64e(
             "key": "query-only-path",
             "condition": "query-commands-allowed",
             "phase": "query",
+            "actionPhase": "query",
+            "actionClass": "readonly-diagnostics",
             "reason": "switch to query-only diagnostics path when inline hook actions are blocked",
             "onErrorCodeCount": escalation_query_error_codes.len(),
             "onErrorCodes": escalation_query_error_codes,
@@ -7995,6 +8127,8 @@ fn hook_automation_to_json_with_arm64e(
             "key": "policy-review",
             "condition": "selected-next-action-blocked",
             "phase": "diagnose",
+            "actionPhase": "diagnose",
+            "actionClass": "preflight",
             "reason": "hook policy blocked the selected next action; inspect environment summary and adjust policy before retrying",
             "note": "review IOS_RUSTFRIDA_HOOK_POLICY / target hook backend and retry with preflight-only first",
             "onErrorCodeCount": escalation_policy_error_codes.len(),
@@ -8071,6 +8205,22 @@ fn hook_automation_to_json_with_arm64e(
                 "resolvedFrom": "errorCodeRouting",
                 "recommendedPhase": recommended_phase.clone(),
                 "effectivePhase": recommended_phase,
+                "recommendedActionPhase": recommended
+                    .and_then(|item| item.get("actionPhase"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "recommendedActionClass": recommended
+                    .and_then(|item| item.get("actionClass"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "effectiveActionPhase": recommended
+                    .and_then(|item| item.get("actionPhase"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "effectiveActionClass": recommended
+                    .and_then(|item| item.get("actionClass"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
                 "recommendedTemplateCount": recommended
                     .and_then(|item| item.get("templateCount"))
                     .cloned()
@@ -8105,12 +8255,28 @@ fn hook_automation_to_json_with_arm64e(
                             .get("recommendedPhase")
                             .cloned()
                             .unwrap_or(Value::Null),
+                        "actionPhase": entry
+                            .get("recommendedActionPhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "actionClass": entry
+                            .get("recommendedActionClass")
+                            .cloned()
+                            .unwrap_or(Value::Null),
                         "effectiveEscalationKey": entry
                             .get("effectiveEscalationKey")
                             .cloned()
                             .unwrap_or(Value::Null),
                         "effectivePhase": entry
                             .get("effectivePhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effectiveActionPhase": entry
+                            .get("effectiveActionPhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effectiveActionClass": entry
+                            .get("effectiveActionClass")
                             .cloned()
                             .unwrap_or(Value::Null),
                         "matchConfidence": entry
@@ -8172,8 +8338,24 @@ fn hook_automation_to_json_with_arm64e(
                             .get("recommendedPhase")
                             .cloned()
                             .unwrap_or(Value::Null),
+                        "recommendedActionPhase": entry
+                            .get("recommendedActionPhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "recommendedActionClass": entry
+                            .get("recommendedActionClass")
+                            .cloned()
+                            .unwrap_or(Value::Null),
                         "effectivePhase": entry
                             .get("effectivePhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effectiveActionPhase": entry
+                            .get("effectiveActionPhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effectiveActionClass": entry
+                            .get("effectiveActionClass")
                             .cloned()
                             .unwrap_or(Value::Null),
                         "recommendedTemplateCount": entry
@@ -8215,6 +8397,10 @@ fn hook_automation_to_json_with_arm64e(
                 "resolvedFrom": "defaultRecommendedEscalationKey",
                 "recommendedPhase": recommended_phase.clone(),
                 "effectivePhase": recommended_phase,
+                "recommendedActionPhase": item.get("actionPhase").cloned().unwrap_or(Value::Null),
+                "recommendedActionClass": item.get("actionClass").cloned().unwrap_or(Value::Null),
+                "effectiveActionPhase": item.get("actionPhase").cloned().unwrap_or(Value::Null),
+                "effectiveActionClass": item.get("actionClass").cloned().unwrap_or(Value::Null),
                 "effectiveEscalationKey": default_recommended_escalation_key.clone(),
                 "recommendedTemplateCount": item.get("templateCount").cloned().unwrap_or(Value::Null),
                 "recommendedTemplates": item.get("templates").cloned().unwrap_or(json!([])),
@@ -8240,8 +8426,24 @@ fn hook_automation_to_json_with_arm64e(
                     json!({
                         "escalationKey": escalation_key.clone(),
                         "phase": phase.clone(),
+                        "actionPhase": decision
+                            .get("recommendedActionPhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "actionClass": decision
+                            .get("recommendedActionClass")
+                            .cloned()
+                            .unwrap_or(Value::Null),
                         "effectiveEscalationKey": escalation_key,
                         "effectivePhase": phase,
+                        "effectiveActionPhase": decision
+                            .get("effectiveActionPhase")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "effectiveActionClass": decision
+                            .get("effectiveActionClass")
+                            .cloned()
+                            .unwrap_or(Value::Null),
                         "templateCount": decision
                             .get("recommendedTemplateCount")
                             .cloned()
@@ -8288,12 +8490,38 @@ fn hook_automation_to_json_with_arm64e(
             .get("recommendedPhase")
             .cloned()
             .unwrap_or(Value::Null),
+        "actionPhase": routing_decision_default
+            .get("recommendedActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "actionClass": routing_decision_default
+            .get("recommendedActionClass")
+            .cloned()
+            .unwrap_or(Value::Null),
         "effectivePhase": routing_decision_default
             .get("effectivePhase")
             .cloned()
             .unwrap_or_else(|| {
                 routing_decision_default
                     .get("recommendedPhase")
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }),
+        "effectiveActionPhase": routing_decision_default
+            .get("effectiveActionPhase")
+            .cloned()
+            .unwrap_or_else(|| {
+                routing_decision_default
+                    .get("recommendedActionPhase")
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }),
+        "effectiveActionClass": routing_decision_default
+            .get("effectiveActionClass")
+            .cloned()
+            .unwrap_or_else(|| {
+                routing_decision_default
+                    .get("recommendedActionClass")
                     .cloned()
                     .unwrap_or(Value::Null)
             }),
@@ -9037,8 +9265,24 @@ fn hook_automation_to_json_with_arm64e(
             .get("phase")
             .cloned()
             .unwrap_or(Value::Null),
+        "defaultActionPhase": routing_decision_ready_default
+            .get("actionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultActionClass": routing_decision_ready_default
+            .get("actionClass")
+            .cloned()
+            .unwrap_or(Value::Null),
         "defaultEffectivePhase": routing_decision_ready_default
             .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveActionPhase": routing_decision_ready_default
+            .get("effectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveActionClass": routing_decision_ready_default
+            .get("effectiveActionClass")
             .cloned()
             .unwrap_or(Value::Null),
         "defaultTemplateCount": routing_decision_ready_default
@@ -10770,12 +11014,28 @@ fn hook_automation_to_json_with_arm64e(
             .get("recommendedPhase")
             .cloned()
             .unwrap_or(Value::Null),
+        "defaultRecommendedActionPhase": routing_decision_default
+            .get("recommendedActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultRecommendedActionClass": routing_decision_default
+            .get("recommendedActionClass")
+            .cloned()
+            .unwrap_or(Value::Null),
         "defaultEffectiveEscalationKey": routing_decision_default
             .get("effectiveEscalationKey")
             .cloned()
             .unwrap_or(Value::Null),
         "defaultEffectivePhase": routing_decision_default
             .get("effectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveActionPhase": routing_decision_default
+            .get("effectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultEffectiveActionClass": routing_decision_default
+            .get("effectiveActionClass")
             .cloned()
             .unwrap_or(Value::Null),
         "defaultRecommendedTemplateCount": routing_decision_default
@@ -10841,6 +11101,16 @@ fn hook_automation_to_json_with_arm64e(
                 .and_then(|item| item.get("key"))
                 .and_then(Value::as_str)
                 .map(ToOwned::to_owned),
+            "suggestedActionPhase": escalation_recommendations
+                .first()
+                .and_then(|item| item.get("actionPhase"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "suggestedActionClass": escalation_recommendations
+                .first()
+                .and_then(|item| item.get("actionClass"))
+                .cloned()
+                .unwrap_or(Value::Null),
             "errorCodeRoutingCount": error_code_routing_entries.len(),
             "errorCodeRouting": error_code_routing,
             "errorCodeRoutingResolvedCount": error_code_routing_resolved.len(),
@@ -21464,6 +21734,8 @@ mod tests {
             automation["fallbackPlan"]["suggestedEscalationKey"],
             "preflight-refresh"
         );
+        assert_eq!(automation["fallbackPlan"]["suggestedActionPhase"], "preflight");
+        assert_eq!(automation["fallbackPlan"]["suggestedActionClass"], "preflight");
         assert_eq!(automation["fallbackPlan"]["errorCodeRoutingCount"], 6);
         assert_eq!(
             automation["fallbackPlan"]["errorCodeRouting"]["hook-fallback-preflight-failed"],
@@ -21487,12 +21759,28 @@ mod tests {
             "preflight"
         );
         assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["actionPhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["actionClass"],
+            "preflight"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]
                 ["effectiveEscalationKey"],
             "preflight-refresh"
         );
         assert_eq!(
             automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["effectivePhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["effectiveActionPhase"],
+            "preflight"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["effectiveActionClass"],
             "preflight"
         );
         assert_eq!(
@@ -25295,6 +25583,14 @@ mod tests {
             "conflict-query"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["suggestedActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["suggestedActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionSuggestedEscalationKey"],
             "conflict-query"
         );
@@ -25317,6 +25613,16 @@ mod tests {
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
                 ["defaultEscalationKey"],
             "conflict-query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["defaultActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["defaultActionClass"],
+            "readonly-diagnostics"
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultEscalationKey"],
@@ -29718,6 +30024,11 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["suggestedEscalationKey"],
             "arm64e-query-only-path"
+        );
+        assert_eq!(automation["fallbackPlan"]["suggestedActionPhase"], "query");
+        assert_eq!(
+            automation["fallbackPlan"]["suggestedActionClass"],
+            "readonly-diagnostics"
         );
         assert_eq!(
             automation["fallbackPlan"]["escalationRecommendations"][0]["key"],
