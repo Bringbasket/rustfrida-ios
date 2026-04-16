@@ -798,6 +798,8 @@ fn hook_coexistence_to_json_with_arm64e(
                 "id": next_step_id.clone(),
                 "actionKey": item.action_key,
                 "commandGroup": item.command_group,
+                "actionPhase": hook_action_phase(item.action_key),
+                "actionClass": hook_action_class(item.action_key),
                 "allowed": item.allowed,
                 "branch": hook_automation_branch(item),
                 "reason": item.recommendation,
@@ -825,6 +827,8 @@ fn hook_coexistence_to_json_with_arm64e(
                         "source": "next-action",
                         "actionKey": item.action_key,
                         "commandGroup": item.command_group,
+                        "actionPhase": hook_action_phase(item.action_key),
+                        "actionClass": hook_action_class(item.action_key),
                         "allowed": item.allowed,
                         "blockedBy": item.blocked_by,
                         "branch": hook_automation_branch(item),
@@ -974,6 +978,8 @@ fn hook_coexistence_to_json_with_arm64e(
         "nextStepSource": recommended_action.map(|_| "next-action"),
         "nextStepActionKey": recommended_action.map(|item| item.action_key),
         "nextStepCommandGroup": recommended_action.map(|item| item.command_group),
+        "nextStepActionPhase": recommended_action.map(|item| hook_action_phase(item.action_key)),
+        "nextStepActionClass": recommended_action.map(|item| hook_action_class(item.action_key)),
         "nextStepAllowed": recommended_action.map(|item| item.allowed),
         "nextStepBlockedBy": recommended_action.map(|item| item.blocked_by),
         "nextStepBranch": recommended_action.map(hook_automation_branch),
@@ -1056,6 +1062,14 @@ fn hook_coexistence_to_json_with_arm64e(
             .unwrap_or(Value::Null),
         "activeStepCommandGroup": active_step
             .and_then(|entry| entry.get("commandGroup"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepActionPhase": active_step
+            .and_then(|entry| entry.get("actionPhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepActionClass": active_step
+            .and_then(|entry| entry.get("actionClass"))
             .cloned()
             .unwrap_or(Value::Null),
         "activeStepId": active_step
@@ -7619,6 +7633,8 @@ fn hook_automation_to_json_with_arm64e(
                 "source": "fallback-plan",
                 "actionKey": fallback_action_key.clone(),
                 "commandGroup": fallback_action_command_group.clone(),
+                "actionPhase": fallback_action_key.as_deref().map(hook_action_phase),
+                "actionClass": fallback_action_key.as_deref().map(hook_action_class),
                 "allowed": Value::Null,
                 "blockedBy": Value::Null,
                 "branch": Value::Null,
@@ -7657,6 +7673,8 @@ fn hook_automation_to_json_with_arm64e(
                 "id": next_step_id.clone(),
                 "actionKey": item.action_key,
                 "commandGroup": item.command_group,
+                "actionPhase": hook_action_phase(item.action_key),
+                "actionClass": hook_action_class(item.action_key),
                 "allowed": item.allowed,
                 "branch": hook_automation_branch(item),
                 "blockedBy": item.blocked_by,
@@ -7683,6 +7701,8 @@ fn hook_automation_to_json_with_arm64e(
                         "source": "next-action",
                         "actionKey": item.action_key,
                         "commandGroup": item.command_group,
+                        "actionPhase": hook_action_phase(item.action_key),
+                        "actionClass": hook_action_class(item.action_key),
                         "allowed": item.allowed,
                         "blockedBy": item.blocked_by,
                         "branch": hook_automation_branch(item),
@@ -7768,6 +7788,8 @@ fn hook_automation_to_json_with_arm64e(
                     "source": "fallback-plan",
                     "actionKey": fallback_action_key.clone(),
                     "commandGroup": fallback_action_command_group.clone(),
+                    "actionPhase": fallback_action_key.as_deref().map(hook_action_phase),
+                    "actionClass": fallback_action_key.as_deref().map(hook_action_class),
                     "allowed": Value::Null,
                     "blockedBy": Value::Null,
                     "branch": Value::Null,
@@ -10844,6 +10866,14 @@ fn hook_automation_to_json_with_arm64e(
                 .and_then(|entry| entry.get("commandGroup"))
                 .cloned()
                 .unwrap_or(Value::Null),
+            "nextStepActionPhase": fallback_next_chain_step
+                .and_then(|entry| entry.get("actionPhase"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "nextStepActionClass": fallback_next_chain_step
+                .and_then(|entry| entry.get("actionClass"))
+                .cloned()
+                .unwrap_or(Value::Null),
             "nextStepAllowed": fallback_next_chain_step
                 .and_then(|entry| entry.get("allowed"))
                 .cloned()
@@ -10944,6 +10974,14 @@ fn hook_automation_to_json_with_arm64e(
                 .unwrap_or(Value::Null),
             "activeStepCommandGroup": fallback_next_chain_step
                 .and_then(|entry| entry.get("commandGroup"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepActionPhase": fallback_next_chain_step
+                .and_then(|entry| entry.get("actionPhase"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "activeStepActionClass": fallback_next_chain_step
+                .and_then(|entry| entry.get("actionClass"))
                 .cloned()
                 .unwrap_or(Value::Null),
             "activeStepId": fallback_next_chain_step
@@ -11143,6 +11181,8 @@ fn hook_automation_to_json_with_arm64e(
         "nextStepSource": selected_action.map(|_| "next-action"),
         "nextStepActionKey": selected_action.map(|item| item.action_key),
         "nextStepCommandGroup": selected_action.map(|item| item.command_group),
+        "nextStepActionPhase": selected_action.map(|item| hook_action_phase(item.action_key)),
+        "nextStepActionClass": selected_action.map(|item| hook_action_class(item.action_key)),
         "nextStepAllowed": selected_action.map(|item| item.allowed),
         "nextStepBlockedBy": selected_action.map(|item| item.blocked_by),
         "nextStepBranch": selected_action.map(hook_automation_branch),
@@ -11225,6 +11265,14 @@ fn hook_automation_to_json_with_arm64e(
             .unwrap_or(Value::Null),
         "activeStepCommandGroup": active_step
             .and_then(|entry| entry.get("commandGroup"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepActionPhase": active_step
+            .and_then(|entry| entry.get("actionPhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "activeStepActionClass": active_step
+            .and_then(|entry| entry.get("actionClass"))
             .cloned()
             .unwrap_or(Value::Null),
         "activeStepId": active_step
@@ -18786,6 +18834,11 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextStepSource"], "next-action");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepCommandGroup"], "query");
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepActionPhase"], "query");
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextStepActionClass"],
+            "readonly-diagnostics"
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepAllowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextStepBlockedBy"], "none");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepBranch"], "run");
@@ -18876,6 +18929,14 @@ mod tests {
         assert_eq!(
             rendered["hook"]["coexistence"]["activeStepCommandGroup"],
             rendered["hook"]["coexistence"]["activeStep"]["commandGroup"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepActionPhase"],
+            rendered["hook"]["coexistence"]["activeStep"]["actionPhase"]
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["activeStepActionClass"],
+            rendered["hook"]["coexistence"]["activeStep"]["actionClass"]
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["activeStep"]["id"],
@@ -19081,6 +19142,11 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextStepSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["nextStepActionKey"], "hook.query");
         assert_eq!(rendered["hook"]["automation"]["nextStepCommandGroup"], "query");
+        assert_eq!(rendered["hook"]["automation"]["nextStepActionPhase"], "query");
+        assert_eq!(
+            rendered["hook"]["automation"]["nextStepActionClass"],
+            "readonly-diagnostics"
+        );
         assert_eq!(rendered["hook"]["automation"]["nextStepAllowed"], true);
         assert_eq!(rendered["hook"]["automation"]["nextStepBlockedBy"], "none");
         assert_eq!(rendered["hook"]["automation"]["nextStepBranch"], "run");
@@ -19112,6 +19178,14 @@ mod tests {
         assert_eq!(
             rendered["hook"]["automation"]["activeStepCommandGroup"],
             rendered["hook"]["automation"]["activeStep"]["commandGroup"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepActionPhase"],
+            rendered["hook"]["automation"]["activeStep"]["actionPhase"]
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["activeStepActionClass"],
+            rendered["hook"]["automation"]["activeStep"]["actionClass"]
         );
         assert_eq!(
             rendered["hook"]["automation"]["activeStep"]["id"],
@@ -20563,6 +20637,8 @@ mod tests {
         assert_eq!(automation["nextStepSource"], "next-action");
         assert_eq!(automation["nextStepActionKey"], "hook.status");
         assert_eq!(automation["nextStepCommandGroup"], "hook-status");
+        assert_eq!(automation["nextStepActionPhase"], "cleanup");
+        assert_eq!(automation["nextStepActionClass"], "cleanup");
         assert_eq!(automation["nextStepAllowed"], true);
         assert_eq!(automation["nextStepBlockedBy"], "none");
         assert_eq!(automation["nextStepBranch"], "run");
@@ -20620,6 +20696,8 @@ mod tests {
         assert_eq!(automation["nextStepReadyToRun"], true);
         assert_eq!(automation["nextStepRequiresFallback"], false);
         assert_eq!(automation["activeStepSource"], "next-action");
+        assert_eq!(automation["activeStepActionPhase"], "cleanup");
+        assert_eq!(automation["activeStepActionClass"], "cleanup");
         assert_eq!(automation["activeStepAllowed"], true);
         assert_eq!(automation["activeStepBlockedBy"], "none");
         assert_eq!(automation["activeStepBranch"], "run");
@@ -20890,6 +20968,8 @@ mod tests {
         assert_eq!(automation["nextStepReadyToRun"], false);
         assert_eq!(automation["nextStepRequiresFallback"], true);
         assert_eq!(automation["activeStepSource"], "fallback-plan");
+        assert_eq!(automation["nextStepActionPhase"], "query");
+        assert_eq!(automation["nextStepActionClass"], "readonly-diagnostics");
         assert_eq!(
             automation["activeStepAllowed"],
             automation["nextStepChain"][0]["allowed"]
