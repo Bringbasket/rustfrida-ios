@@ -16241,6 +16241,8 @@ undefined;
                                     result.resolved === false &&
                                     result.resolvedName === null &&
                                     result.resolvedModuleName === null &&
+                                    result.name === null &&
+                                    result.moduleBase === null &&
                                     result.sourceKind === null &&
                                     result.qualifiedName === null &&
                                     result.signature === null &&
@@ -16258,6 +16260,8 @@ undefined;
                                 typeof result.resolvedName === 'string' &&
                                 typeof result.resolvedModuleName === 'string' &&
                                 typeof result.protocolInfo.moduleBase === 'string' &&
+                                result.name === result.protocolInfo.name &&
+                                result.moduleBase === result.protocolInfo.moduleBase &&
                                 typeof result.protocolInfo.sourceSymbolName === 'string' &&
                                 typeof result.protocolInfo.sourceOffsetHex === 'string' &&
                                 (result.qualifiedName === null || typeof result.qualifiedName === 'string') &&
@@ -16302,6 +16306,8 @@ undefined;
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' });
                                 return result.protocolInfo !== null
                                     && result.resolvedName === 'Renderable'
+                                    && result.name === 'Renderable'
+                                    && result.moduleBase === BigInt('0x180000000').toString()
                                     && result.qualifiedName === 'Demo.Renderable'
                                     && result.signature === 'protocol descriptor for Demo.Renderable'
                                     && result.contextModuleName === 'Demo'
@@ -16350,6 +16356,7 @@ undefined;
                                     result.resolvedTypeName === null &&
                                     result.resolvedProtocolName === null &&
                                     result.resolvedModuleName === null &&
+                                    result.moduleBase === null &&
                                     result.signature === null &&
                                     result.relation === null &&
                                     result.contextModuleName === null &&
@@ -16373,6 +16380,7 @@ undefined;
                                 typeof result.resolvedProtocolName === 'string' &&
                                 typeof result.resolvedModuleName === 'string' &&
                                 typeof result.conformanceInfo.moduleBase === 'string' &&
+                                result.moduleBase === result.conformanceInfo.moduleBase &&
                                 typeof result.conformanceInfo.sourceSymbolName === 'string' &&
                                 typeof result.conformanceInfo.sourceOffsetHex === 'string' &&
                                 (result.signature === null || typeof result.signature === 'string') &&
@@ -16427,6 +16435,8 @@ undefined;
                                     result.resolved === false &&
                                     result.resolvedName === null &&
                                     result.resolvedModuleName === null &&
+                                    result.name === null &&
+                                    result.moduleBase === null &&
                                     result.sourceKind === null &&
                                     result.qualifiedName === null &&
                                     result.signature === null &&
@@ -16446,6 +16456,8 @@ undefined;
                                 typeof result.resolvedName === 'string' &&
                                 typeof result.resolvedModuleName === 'string' &&
                                 typeof result.typeInfo.moduleBase === 'string' &&
+                                result.name === result.typeInfo.name &&
+                                result.moduleBase === result.typeInfo.moduleBase &&
                                 typeof result.typeInfo.sourceSymbolName === 'string' &&
                                 typeof result.typeInfo.sourceOffsetHex === 'string' &&
                                 (result.qualifiedName === null || typeof result.qualifiedName === 'string') &&
@@ -16492,6 +16504,8 @@ undefined;
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_info', moduleName: null, typeName: 'ViewController' });
                                 return result.typeInfo !== null
                                     && result.resolvedName === 'ViewController'
+                                    && result.name === 'ViewController'
+                                    && result.moduleBase === BigInt('0x180000000').toString()
                                     && result.qualifiedName === 'Demo.ViewController'
                                     && result.signature === 'Demo.ViewController'
                                     && result.contextModuleName === 'Demo'
@@ -17633,6 +17647,8 @@ undefined;
                                     result.resolved === false &&
                                     result.resolvedName === null &&
                                     result.resolvedModuleName === null &&
+                                    result.name === null &&
+                                    result.moduleBase === null &&
                                     result.sourceKind === null &&
                                     result.qualifiedName === null &&
                                     result.signature === null &&
@@ -17652,6 +17668,8 @@ undefined;
                                 typeof result.resolvedName === 'string' &&
                                 typeof result.resolvedModuleName === 'string' &&
                                 typeof result.metadataInfo.moduleBase === 'string' &&
+                                result.name === result.metadataInfo.name &&
+                                result.moduleBase === result.metadataInfo.moduleBase &&
                                 typeof result.metadataInfo.sourceSymbolName === 'string' &&
                                 typeof result.metadataInfo.sourceOffsetHex === 'string' &&
                                 (result.qualifiedName === null || typeof result.qualifiedName === 'string') &&
@@ -17698,6 +17716,8 @@ undefined;
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' });
                                 return result.metadataInfo !== null
                                     && result.resolvedName === 'ViewController'
+                                    && result.name === 'ViewController'
+                                    && result.moduleBase === BigInt('0x180000000').toString()
                                     && result.qualifiedName === 'Demo.ViewController'
                                     && result.signature === 'type metadata for Demo.ViewController'
                                     && result.contextModuleName === 'Demo'
@@ -19285,6 +19305,8 @@ undefined;
                             const protocolInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.protocol_info', moduleName: null, protocolName: 'Renderable' });
                             if (protocolInfo.protocolInfo === null) {
                                 if (!(protocolInfo.resolvedModuleBase === null
+                                    && protocolInfo.name === null
+                                    && protocolInfo.moduleBase === null
                                     && protocolInfo.resolvedSourceSymbolName === null
                                     && protocolInfo.resolvedSourceAddress === null
                                     && protocolInfo.resolvedSourceOffsetHex === null
@@ -19319,6 +19341,8 @@ undefined;
                                     return false;
                                 }
                             } else if (!(protocolInfo.resolvedModuleBase === protocolInfo.protocolInfo.moduleBase
+                                && protocolInfo.name === protocolInfo.protocolInfo.name
+                                && protocolInfo.moduleBase === protocolInfo.protocolInfo.moduleBase
                                 && protocolInfo.resolvedSourceSymbolName === protocolInfo.protocolInfo.sourceSymbolName
                                 && protocolInfo.resolvedSourceAddress === protocolInfo.protocolInfo.sourceAddress
                                 && protocolInfo.resolvedSourceOffsetHex === protocolInfo.protocolInfo.sourceOffsetHex
@@ -19356,6 +19380,7 @@ undefined;
                             const conformanceInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.conformance_info', moduleName: null, typeName: 'ViewController', protocolName: 'Renderable' });
                             if (conformanceInfo.conformanceInfo === null) {
                                 if (!(conformanceInfo.resolvedModuleBase === null
+                                    && conformanceInfo.moduleBase === null
                                     && conformanceInfo.resolvedSourceSymbolName === null
                                     && conformanceInfo.resolvedSourceAddress === null
                                     && conformanceInfo.resolvedSourceOffsetHex === null
@@ -19401,6 +19426,7 @@ undefined;
                                     return false;
                                 }
                             } else if (!(conformanceInfo.resolvedModuleBase === conformanceInfo.conformanceInfo.moduleBase
+                                && conformanceInfo.moduleBase === conformanceInfo.conformanceInfo.moduleBase
                                 && conformanceInfo.resolvedSourceSymbolName === conformanceInfo.conformanceInfo.sourceSymbolName
                                 && conformanceInfo.resolvedSourceAddress === conformanceInfo.conformanceInfo.sourceAddress
                                 && conformanceInfo.resolvedSourceOffsetHex === conformanceInfo.conformanceInfo.sourceOffsetHex
@@ -19449,6 +19475,8 @@ undefined;
                             const metadataInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.metadata_info', moduleName: null, typeName: 'ViewController' });
                             if (metadataInfo.metadataInfo === null) {
                                 if (!(metadataInfo.resolvedModuleBase === null
+                                    && metadataInfo.name === null
+                                    && metadataInfo.moduleBase === null
                                     && metadataInfo.resolvedSourceSymbolName === null
                                     && metadataInfo.resolvedSourceAddress === null
                                     && metadataInfo.resolvedSourceOffsetHex === null
@@ -19487,6 +19515,8 @@ undefined;
                                     return false;
                                 }
                             } else if (!(metadataInfo.resolvedModuleBase === metadataInfo.metadataInfo.moduleBase
+                                && metadataInfo.name === metadataInfo.metadataInfo.name
+                                && metadataInfo.moduleBase === metadataInfo.metadataInfo.moduleBase
                                 && metadataInfo.resolvedSourceSymbolName === metadataInfo.metadataInfo.sourceSymbolName
                                 && metadataInfo.resolvedSourceAddress === metadataInfo.metadataInfo.sourceAddress
                                 && metadataInfo.resolvedSourceOffsetHex === metadataInfo.metadataInfo.sourceOffsetHex
@@ -19528,6 +19558,8 @@ undefined;
                             const typeInfo = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.type_info', moduleName: null, typeName: 'ViewController' });
                             if (typeInfo.typeInfo === null) {
                                 if (!(typeInfo.resolvedModuleBase === null
+                                    && typeInfo.name === null
+                                    && typeInfo.moduleBase === null
                                     && typeInfo.resolvedSourceSymbolName === null
                                     && typeInfo.resolvedSourceAddress === null
                                     && typeInfo.resolvedSourceOffsetHex === null
@@ -19566,6 +19598,8 @@ undefined;
                                     return false;
                                 }
                             } else if (!(typeInfo.resolvedModuleBase === typeInfo.typeInfo.moduleBase
+                                && typeInfo.name === typeInfo.typeInfo.name
+                                && typeInfo.moduleBase === typeInfo.typeInfo.moduleBase
                                 && typeInfo.resolvedSourceSymbolName === typeInfo.typeInfo.sourceSymbolName
                                 && typeInfo.resolvedSourceAddress === typeInfo.typeInfo.sourceAddress
                                 && typeInfo.resolvedSourceOffsetHex === typeInfo.typeInfo.sourceOffsetHex
