@@ -5248,6 +5248,24 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() {
+                            return __iosRustFridaAgentApi.handle('swift.findConformances ViewController') === __iosRustFridaAgentApi.handle('swift.conformances ViewController') &&
+                                __iosRustFridaAgentApi.handle('swift.findMetadata ViewController') === __iosRustFridaAgentApi.handle('swift.metadata ViewController') &&
+                                __iosRustFridaAgentApi.handle('swift.findVtable ViewController') === __iosRustFridaAgentApi.handle('swift.vtable ViewController') &&
+                                __iosRustFridaAgentApi.handle('swift.findWitnessTable Renderable') === __iosRustFridaAgentApi.handle('swift.witnessTable Renderable') &&
+                                __iosRustFridaAgentApi.handle('swift.findTypeLayout ViewController') === __iosRustFridaAgentApi.handle('swift.typeLayout ViewController') &&
+                                __iosRustFridaAgentApi.handle('swift.findTypes ViewController') === __iosRustFridaAgentApi.handle('swift.types ViewController') &&
+                                __iosRustFridaAgentApi.handle('swift.findTypesOfKind metadata-accessor ViewController') === __iosRustFridaAgentApi.handle('swift.typesOfKind metadata-accessor ViewController') &&
+                                __iosRustFridaAgentApi.handle('swift.findMethodOwners viewDidLoad') === __iosRustFridaAgentApi.handle('swift.methodOwners viewDidLoad') &&
+                                __iosRustFridaAgentApi.handle('swift.findMethods ViewController viewDidLoad') === __iosRustFridaAgentApi.handle('swift.methods ViewController viewDidLoad');
+                        })()"
+                    )
+                    .expect("agent swift query aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handle('swift.conformances ViewController'); return value === '' || value.indexOf(' : ') !== -1; })()")
                     .expect("agent swift conformances"),
                 "true"
