@@ -4057,6 +4057,7 @@ function normalizeFunctionStarts(functionStarts) {
         firstGapToOffsetHex: firstGap === null ? null : firstGap.toOffsetHex,
         lastGapFromOffsetHex: lastGap === null ? null : lastGap.fromOffsetHex,
         lastGapToOffsetHex: lastGap === null ? null : lastGap.toOffsetHex,
+        gaps,
         starts,
         text: formatFunctionStarts(functionStarts),
     };
@@ -7715,6 +7716,8 @@ function handleSpecResult(spec) {
             lastGapToOffsetHex: normalized === null ? null : normalized.lastGapToOffsetHex,
             resolvedLargestGapHex: normalized === null ? null : normalized.largestGapHex,
             largestGapHex: normalized === null ? null : normalized.largestGapHex,
+            starts: normalized === null ? [] : normalized.starts,
+            gaps: normalized === null ? [] : normalized.gaps,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
