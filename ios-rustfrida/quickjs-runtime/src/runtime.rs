@@ -21489,6 +21489,31 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() {
+                            const main = __iosRustFridaAgentApi.handle('native.mainImage');
+                            if (main === '<null>') {
+                                return true;
+                            }
+                            const path = main.split(' ').slice(2).join(' ');
+                            const base = path.split('/').filter(Boolean).pop() || path;
+                            return __iosRustFridaAgentApi.handle('native.findEncryptionInfo ' + base) === __iosRustFridaAgentApi.handle('native.encryptionInfo ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findEntryPoint ' + base) === __iosRustFridaAgentApi.handle('native.entryPoint ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findLinkedit ' + base) === __iosRustFridaAgentApi.handle('native.linkedit ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findFunctionStarts ' + base) === __iosRustFridaAgentApi.handle('native.functionStarts ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findCodeSignature ' + base) === __iosRustFridaAgentApi.handle('native.codeSignature ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findSourceVersion ' + base) === __iosRustFridaAgentApi.handle('native.sourceVersion ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findBuildVersion ' + base) === __iosRustFridaAgentApi.handle('native.buildVersion ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findDylinker ' + base) === __iosRustFridaAgentApi.handle('native.dylinker ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findInstallName ' + base) === __iosRustFridaAgentApi.handle('native.installName ' + base) &&
+                                __iosRustFridaAgentApi.handle('native.findUuid ' + base) === __iosRustFridaAgentApi.handle('native.uuid ' + base);
+                        })()"
+                    )
+                    .expect("agent native remaining find aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.findLoadCommands ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: base }); return value === result.text && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && result.count === result.commands.length; })()")
                     .expect("agent native findLoadCommands"),
                 "true"
