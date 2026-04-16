@@ -9098,7 +9098,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependency_info', moduleName: 'libsystem_malloc.dylib', pathOrName: 'libSystem.B.dylib' }); return result.kind === 'native.dependency_info' && result.moduleName === 'libsystem_malloc.dylib' && result.pathOrName === 'libSystem.B.dylib' && typeof result.hasDependencyInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasTimestamp === 'boolean' && typeof result.versionMismatch === 'boolean' && ((result.dependencyInfo === null && result.hasDependencyInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedPath === null && result.resolvedModuleName === null && result.name === null && result.path === null && result.pathKind === null && result.moduleBase === null && result.ordinal === null && result.currentVersion === null && result.compatibilityVersion === null && result.timestamp === null && result.kindName === null && result.hasTimestamp === false && result.versionMismatch === false && result.text === '<null>') || (result.dependencyInfo !== null && typeof result.dependencyInfo.moduleBase === 'string' && typeof result.dependencyInfo.ordinal === 'number' && typeof result.dependencyInfo.kind === 'string' && typeof result.dependencyInfo.hasPath === 'boolean' && typeof result.dependencyInfo.hasName === 'boolean' && typeof result.dependencyInfo.isWeakDependency === 'boolean' && typeof result.dependencyInfo.isReexportDependency === 'boolean' && typeof result.dependencyInfo.isUpwardDependency === 'boolean' && typeof result.dependencyInfo.isLoadDependency === 'boolean' && typeof result.dependencyInfo.versionMismatch === 'boolean' && typeof result.dependencyInfo.hasTimestamp === 'boolean' && result.hasDependencyInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedPath === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.name === 'string' && typeof result.path === 'string' && typeof result.pathKind === 'string' && typeof result.moduleBase === 'string' && typeof result.ordinal === 'number' && typeof result.currentVersion === 'string' && typeof result.compatibilityVersion === 'string' && typeof result.timestamp === 'number' && typeof result.kindName === 'string' && result.hasTimestamp === (result.dependencyInfo.hasTimestamp === true) && result.versionMismatch === (result.dependencyInfo.versionMismatch === true) && result.resolvedName === result.dependencyInfo.name && result.resolvedPath === result.dependencyInfo.path && result.resolvedModuleName === result.dependencyInfo.moduleName && result.name === result.dependencyInfo.name && result.path === result.dependencyInfo.path && result.pathKind === result.dependencyInfo.pathKind && result.moduleBase === result.dependencyInfo.moduleBase && result.ordinal === result.dependencyInfo.ordinal && result.currentVersion === result.dependencyInfo.currentVersion && result.compatibilityVersion === result.dependencyInfo.compatibilityVersion && result.timestamp === result.dependencyInfo.timestamp && result.kindName === result.dependencyInfo.kind && result.text === result.dependencyInfo.text)); })()"
+                        "(function() { const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dependency_info', moduleName: 'libsystem_malloc.dylib', pathOrName: 'libSystem.B.dylib' }); return result.kind === 'native.dependency_info' && result.moduleName === 'libsystem_malloc.dylib' && result.pathOrName === 'libSystem.B.dylib' && typeof result.hasDependencyInfo === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasTimestamp === 'boolean' && typeof result.versionMismatch === 'boolean' && typeof result.hasPath === 'boolean' && typeof result.isTokenPath === 'boolean' && typeof result.pathDepth === 'number' && ((result.dependencyInfo === null && result.hasDependencyInfo === false && result.resolved === false && result.resolvedName === null && result.resolvedPath === null && result.resolvedModuleName === null && result.resolvedHasPath === null && result.resolvedIsTokenPath === null && result.resolvedPathDepth === 0 && result.name === null && result.path === null && result.pathKind === null && result.moduleBase === null && result.ordinal === null && result.currentVersion === null && result.compatibilityVersion === null && result.timestamp === null && result.kindName === null && result.hasPath === false && result.isTokenPath === false && result.pathDepth === 0 && result.hasTimestamp === false && result.versionMismatch === false && result.text === '<null>') || (result.dependencyInfo !== null && typeof result.dependencyInfo.moduleBase === 'string' && typeof result.dependencyInfo.ordinal === 'number' && typeof result.dependencyInfo.kind === 'string' && typeof result.dependencyInfo.hasPath === 'boolean' && typeof result.dependencyInfo.hasName === 'boolean' && typeof result.dependencyInfo.isTokenPath === 'boolean' && typeof result.dependencyInfo.pathDepth === 'number' && typeof result.dependencyInfo.isWeakDependency === 'boolean' && typeof result.dependencyInfo.isReexportDependency === 'boolean' && typeof result.dependencyInfo.isUpwardDependency === 'boolean' && typeof result.dependencyInfo.isLoadDependency === 'boolean' && typeof result.dependencyInfo.versionMismatch === 'boolean' && typeof result.dependencyInfo.hasTimestamp === 'boolean' && result.hasDependencyInfo === true && result.resolved === true && typeof result.resolvedName === 'string' && typeof result.resolvedPath === 'string' && typeof result.resolvedModuleName === 'string' && typeof result.resolvedHasPath === 'boolean' && typeof result.resolvedIsTokenPath === 'boolean' && typeof result.name === 'string' && typeof result.path === 'string' && typeof result.pathKind === 'string' && typeof result.moduleBase === 'string' && typeof result.ordinal === 'number' && typeof result.currentVersion === 'string' && typeof result.compatibilityVersion === 'string' && typeof result.timestamp === 'number' && typeof result.kindName === 'string' && result.hasPath === (result.dependencyInfo.hasPath === true) && result.isTokenPath === (result.dependencyInfo.isTokenPath === true) && result.pathDepth === result.dependencyInfo.pathDepth && result.hasTimestamp === (result.dependencyInfo.hasTimestamp === true) && result.versionMismatch === (result.dependencyInfo.versionMismatch === true) && result.resolvedName === result.dependencyInfo.name && result.resolvedPath === result.dependencyInfo.path && result.resolvedModuleName === result.dependencyInfo.moduleName && result.resolvedHasPath === result.dependencyInfo.hasPath && result.resolvedIsTokenPath === result.dependencyInfo.isTokenPath && result.resolvedPathDepth === result.dependencyInfo.pathDepth && result.name === result.dependencyInfo.name && result.path === result.dependencyInfo.path && result.pathKind === result.dependencyInfo.pathKind && result.moduleBase === result.dependencyInfo.moduleBase && result.ordinal === result.dependencyInfo.ordinal && result.currentVersion === result.dependencyInfo.currentVersion && result.compatibilityVersion === result.dependencyInfo.compatibilityVersion && result.timestamp === result.dependencyInfo.timestamp && result.kindName === result.dependencyInfo.kind && result.text === result.dependencyInfo.text)); })()"
                     )
                     .expect("agent native dependencyInfo result"),
                 "true"
@@ -9134,6 +9134,9 @@ undefined;
                                     && result.resolvedOrdinal === result.dependencyInfo.ordinal
                                     && result.resolvedCurrentVersion === result.dependencyInfo.currentVersion
                                     && result.resolvedCompatibilityVersion === result.dependencyInfo.compatibilityVersion
+                                    && result.resolvedHasPath === result.dependencyInfo.hasPath
+                                    && result.resolvedIsTokenPath === result.dependencyInfo.isTokenPath
+                                    && result.resolvedPathDepth === result.dependencyInfo.pathDepth
                                     && result.name === 'libDemo.dylib'
                                     && result.path === '@rpath/libDemo.dylib'
                                     && result.pathKind === 'rpath'
@@ -9143,6 +9146,9 @@ undefined;
                                     && result.compatibilityVersion === '1.0.0'
                                     && result.timestamp === 42
                                     && result.kindName === 'reexport'
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.pathDepth === 2
                                     && result.hasDependencyInfo === true
                                     && result.resolved === true
                                     && result.isWeakDependency === false
@@ -9193,6 +9199,9 @@ undefined;
                                     && result.compatibilityVersion === '1.0.0'
                                     && result.timestamp === 42
                                     && result.kindName === 'reexport'
+                                    && result.hasPath === true
+                                    && result.isTokenPath === true
+                                    && result.pathDepth === 2
                                     && result.isWeakDependency === false
                                     && result.isReexportDependency === true
                                     && result.isUpwardDependency === false
@@ -14216,14 +14225,24 @@ undefined;
                                 const info = result.rpathInfo;
                                 if (info === null) {
                                     return result.resolvedModuleBase === null
+                                        && result.resolvedHasPath === null
+                                        && result.resolvedIsTokenPath === null
+                                        && result.resolvedPathDepth === 0
                                         && result.pathKind === null
                                         && result.moduleBase === null
-                                        && result.hasPath === false;
+                                        && result.hasPath === false
+                                        && result.isTokenPath === false
+                                        && result.pathDepth === 0;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
+                                    && result.resolvedHasPath === info.hasPath
+                                    && result.resolvedIsTokenPath === info.isTokenPath
+                                    && result.resolvedPathDepth === info.pathDepth
                                     && result.pathKind === info.pathKind
                                     && result.moduleBase === info.moduleBase
-                                    && result.hasPath === (info.path.length !== 0);
+                                    && result.hasPath === (info.path.length !== 0)
+                                    && result.isTokenPath === (info.isTokenPath === true)
+                                    && result.pathDepth === info.pathDepth;
                             }
 
                             function checkImportInfo(result) {
