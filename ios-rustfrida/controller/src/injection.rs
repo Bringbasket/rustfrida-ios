@@ -6942,6 +6942,21 @@ impl HookAutomationArm64eContext {
 }
 
 #[cfg(unix)]
+fn arm64e_readonly_recovery_commands() -> Vec<String> {
+    let mut commands = vec!["native.hookenv".to_string()];
+    append_unique_commands(
+        &mut commands,
+        [
+            "pac.available".to_string(),
+            "pac.arm64e".to_string(),
+            "pac.images <filter>".to_string(),
+            "native.images <filter>".to_string(),
+        ],
+    );
+    commands
+}
+
+#[cfg(unix)]
 fn append_unique_commands(target: &mut Vec<String>, commands: impl IntoIterator<Item = String>) {
     for command in commands {
         if !target.iter().any(|existing| existing == &command) {
@@ -13125,6 +13140,18 @@ fn failure_diagnostics_to_json(
             }
         }
 
+        if arm64e_summary["overrideRequiredForFallback"].as_bool() == Some(true)
+            && hook_action_key.as_deref() == Some("hook.install")
+        {
+            push_unique_hint(
+                &mut hints,
+                format!(
+                    "arm64e inline-hook recovery path: {}",
+                    arm64e_readonly_recovery_commands().join(" -> ")
+                ),
+            );
+        }
+
         if coexistence_layer_required == Some(true) {
             if let Some(status) = coexistence_layer_status.as_deref() {
                 let preferred_phase = coexistence_layer_preferred_phase.as_deref().unwrap_or("unknown");
@@ -16178,6 +16205,46 @@ fn command_arm64e_safety_to_json(
 }
 
 #[cfg(unix)]
+fn command_error_recovery_to_json(
+    command: &str,
+    err: &Error,
+    preflight: &InjectionTargetPreflightReport,
+    trace: Option<&InjectionTrace>,
+) -> Value {
+    let arm64e_safety = command_arm64e_safety_to_json(command, preflight, trace);
+    let override_required_for_fallback = arm64e_safety["overrideRequiredForFallback"]
+        .as_bool()
+        .unwrap_or(false);
+    let requires_inline_hooks = arm64e_safety["requiresInlineHooks"].as_bool().unwrap_or(false);
+    let hook_blocked = matches!(err, Error::State(message) if message.contains("hook-effective-blocked"));
+
+    if override_required_for_fallback && requires_inline_hooks {
+        let commands = arm64e_readonly_recovery_commands();
+        let command_json_templates = commands
+            .iter()
+            .map(|template| command_json_template_entry(template))
+            .collect::<Vec<_>>();
+
+        return json!({
+            "strategy": "arm64e-query-only-until-override",
+            "reason": "arm64e fallback bootstrap requires explicit override before inline-hook commands should be retried",
+            "arm64eConstrained": true,
+            "hookBlocked": hook_blocked,
+            "overrideRequiredForFallback": true,
+            "overrideEnv": "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK",
+            "nextStepPhase": "query",
+            "recommendedAction": "run-readonly-diagnostics",
+            "commandCount": commands.len(),
+            "commands": commands,
+            "commandJsonTemplateCount": command_json_templates.len(),
+            "commandJsonTemplates": command_json_templates,
+        });
+    }
+
+    Value::Null
+}
+
+#[cfg(unix)]
 #[cfg_attr(not(test), allow(dead_code))]
 fn render_command_error_json(command: &str, err: &Error, logs: &[String]) -> Value {
     let diagnostics = match err {
@@ -16278,6 +16345,10 @@ fn render_command_error_json_with_context(
     rendered.insert(
         "arm64eCommandSafety".into(),
         command_arm64e_safety_to_json(command, context.preflight, context.trace),
+    );
+    rendered.insert(
+        "recovery".into(),
+        command_error_recovery_to_json(command, err, context.preflight, context.trace),
     );
     rendered.insert("kind".into(), Value::Null);
     rendered.insert("payload".into(), Value::Null);
@@ -18356,6 +18427,7 @@ mod tests {
         assert_eq!(rendered["arm64eCommandSafety"]["requiresInlineHooks"], false);
         assert_eq!(rendered["arm64eCommandSafety"]["hookCapability"], "query");
         assert_eq!(rendered["arm64eCommandSafety"]["pacCommand"], false);
+        assert!(rendered["recovery"].is_null());
         assert_eq!(rendered["hook"]["effective"]["commandMode"], "allowed");
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["controller"], 0);
         assert_eq!(rendered["hook"]["effective"]["blockedBySummary"]["target"], 0);
@@ -19197,6 +19269,127 @@ mod tests {
             "trace status"
         );
         assert_eq!(hook_blocked_rendered["diagnostics"]["hook"]["fallbackAvailable"], true);
+    }
+
+    #[test]
+    fn render_command_error_json_with_context_surfaces_arm64e_query_only_recovery() {
+        let config = ControllerConfig {
+            mode: InjectionMode::Attach,
+            pid: Some(42),
+            bundle_id: None,
+            spawn_command: None,
+            command: Some("trace UIViewController".into()),
+            command_json: true,
+            list_images_json: false,
+            preflight_only: false,
+            preflight_json: false,
+            inject_json: false,
+            agent_path: LEGACY_AGENT_PATH_ROOTFUL.into(),
+            entry_symbol: "ios_agent_entry".into(),
+            script_path: None,
+            socket_path: Some("/tmp/iosrf.sock".into()),
+            connect_timeout_secs: 15,
+        };
+        let plan = MachInjector
+            .plan(&InjectionTarget {
+                pid: 42,
+                dylib_path: DEFAULT_AGENT_PATH.into(),
+                entry_symbol: "ios_agent_entry".into(),
+                socket_path: "/tmp/iosrf.sock".into(),
+            })
+            .expect("build plan");
+        let environment = InjectionEnvironmentReport {
+            dry_run: false,
+            bootstrap_wait_ms: Some(3000),
+            hook_policy: HookPolicy::Warn,
+            hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: None,
+            },
+            hook_environment: HookEnvironmentReport {
+                active_backend: None,
+                backends: vec![],
+                warnings: vec![],
+            },
+        };
+        let preflight = InjectionTargetPreflightReport {
+            main_image: None,
+            target_images: vec![],
+            target_image_count: 0,
+            target_uses_arm64e: Some(true),
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFallback,
+            thread_bootstrap_label: "pthread_create".into(),
+            thread_bootstrap_address: 0,
+            thread_bootstrap_raw_address: 0,
+            thread_bootstrap_canonicalized: false,
+            target_hook_environment: HookEnvironmentReport {
+                active_backend: None,
+                backends: vec![],
+                warnings: vec![],
+            },
+            target_hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: None,
+            },
+            resolved_loader_symbols: vec![],
+        };
+        let doctor = analyze_doctor_report(&config, 42, Path::new("/tmp/iosrf.sock"), &environment, &preflight);
+
+        let rendered = render_command_error_json_with_context(
+            "trace UIViewController",
+            &Error::State(
+                "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both coexistenceLayerRequired=true coexistenceLayerStatus=missing-cleanup-only coexistenceLayerPreferredPhase=cleanup coexistenceLayerRecommendedActionKey=hook.status coexistenceLayerSummary=an external hook backend is loaded and current policy only allows cleanup commands; no coexistence layer is available, so use status/stop commands to recover state fallbackActionKey=hook.status fallbackStepId=next-action:hook.status:0 fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
+            ),
+            &[],
+            &CommandJsonContext {
+                config: &config,
+                pid: 42,
+                socket_path: "/tmp/iosrf.sock",
+                plan: &plan,
+                injection_environment: &environment,
+                doctor: &doctor,
+                preflight: &preflight,
+                trace: None,
+                hello: None,
+                ping: None,
+                hook_environment_notice: None,
+                hook_environment_checked: false,
+                jsinit_result: None,
+                loadjs_result: None,
+            },
+        );
+
+        assert_eq!(rendered["arm64eCommandSafety"]["classification"], "blocked-without-override");
+        assert_eq!(rendered["recovery"]["strategy"], "arm64e-query-only-until-override");
+        assert_eq!(rendered["recovery"]["arm64eConstrained"], true);
+        assert_eq!(rendered["recovery"]["hookBlocked"], true);
+        assert_eq!(
+            rendered["recovery"]["overrideEnv"],
+            "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
+        );
+        assert_eq!(rendered["recovery"]["nextStepPhase"], "query");
+        assert_eq!(rendered["recovery"]["recommendedAction"], "run-readonly-diagnostics");
+        assert_eq!(rendered["recovery"]["commands"][0], "native.hookenv");
+        assert_eq!(rendered["recovery"]["commands"][1], "pac.available");
+        assert_eq!(rendered["recovery"]["commands"][2], "pac.arm64e");
+        assert_eq!(
+            rendered["recovery"]["commandJsonTemplates"][0]["command"],
+            "native.hookenv"
+        );
+        assert!(rendered["diagnostics"]["hints"]
+            .as_array()
+            .expect("hints array")
+            .iter()
+            .any(|item| item
+                .as_str()
+                .unwrap_or_default()
+                .contains("arm64e inline-hook recovery path: native.hookenv -> pac.available -> pac.arm64e")));
     }
 
     #[test]
