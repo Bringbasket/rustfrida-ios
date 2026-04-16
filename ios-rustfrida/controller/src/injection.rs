@@ -2286,8 +2286,8 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .cloned()
             .unwrap_or(Value::Null),
         "resolveLookupKey": "errorCode",
-        "resolvePolicy": "index[errorCode] || default",
-        "resolveOutputShape": "effective",
+        "resolvePolicy": "index-then-default",
+        "resolveOutputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
         "resolveIndex": routing_decision_ready_resolve_index,
         "resolveIndexEntries": routing_decision_ready_resolve_index,
         "resolveDefault": routing_decision_ready_resolve_default,
@@ -2391,8 +2391,8 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .cloned()
             .unwrap_or(Value::Null),
         "phaseResolveLookupKey": "phase",
-        "phaseResolvePolicy": "phaseIndex[phase] || default",
-        "phaseResolveOutputShape": "effective",
+        "phaseResolvePolicy": "index-then-defaultPhase",
+        "phaseResolveOutputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
         "phaseResolveIndex": routing_decision_ready_phase_resolve_index,
         "phaseResolveIndexEntries": routing_decision_ready_phase_resolve_index,
         "phaseResolveDefault": routing_decision_ready_phase_resolve_default,
@@ -2504,8 +2504,8 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         "default": routing_decision_ready_default,
         "resolve": {
             "lookupKey": "errorCode",
-            "policy": "index[errorCode] || default",
-            "outputShape": "effective",
+            "policy": "index-then-default",
+            "outputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
             "errorCodeCount": routing_decision_ready_known_error_codes.len(),
             "knownErrorCodes": routing_decision_ready_known_error_codes,
             "knownEntries": routing_decision_ready_known_error_codes,
@@ -2683,8 +2683,8 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         },
         "phaseResolve": {
             "lookupKey": "phase",
-            "policy": "phaseIndex[phase] || default",
-            "outputShape": "effective",
+            "policy": "index-then-defaultPhase",
+            "outputShape": "{ matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective }",
             "phaseCount": routing_decision_ready_known_phases.len(),
             "knownPhases": routing_decision_ready_known_phases,
             "knownEntries": routing_decision_ready_known_phases,
