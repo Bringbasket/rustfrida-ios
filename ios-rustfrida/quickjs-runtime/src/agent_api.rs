@@ -11194,6 +11194,8 @@ function handleSpecResult(spec) {
             resolvedName: normalized === null ? null : normalized.name,
             resolvedModuleName: normalized === null ? null : normalized.moduleName,
             resolvedModuleBase: normalized === null ? null : normalized.moduleBase,
+            name: normalized === null ? null : normalized.name,
+            moduleBase: normalized === null ? null : normalized.moduleBase,
             resolvedHasName: normalized === null ? null : normalized.hasName,
             resolvedFirstMetadataName: normalized === null ? null : normalized.firstMetadataName,
             resolvedLastMetadataName: normalized === null ? null : normalized.lastMetadataName,
