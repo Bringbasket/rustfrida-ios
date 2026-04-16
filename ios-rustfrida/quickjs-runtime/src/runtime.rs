@@ -21471,6 +21471,24 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() {
+                            const main = __iosRustFridaAgentApi.handle('native.mainImage');
+                            if (main === '<null>') {
+                                return true;
+                            }
+                            const path = main.split(' ').slice(2).join(' ');
+                            const base = path.split('/').filter(Boolean).pop() || path;
+                            return __iosRustFridaAgentApi.handle('native.findDataInCode ' + base) === __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.data_in_code', moduleName: base }).text &&
+                                __iosRustFridaAgentApi.handle('native.findExportsTrie ' + base) === __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.exports_trie', moduleName: base }).text &&
+                                __iosRustFridaAgentApi.handle('native.findChainedFixups ' + base) === __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.chained_fixups', moduleName: base }).text;
+                        })()"
+                    )
+                    .expect("agent native find* structural aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.findLoadCommands ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: base }); return value === result.text && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && result.count === result.commands.length; })()")
                     .expect("agent native findLoadCommands"),
                 "true"
