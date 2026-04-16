@@ -8080,6 +8080,8 @@ function handleSpecResult(spec) {
             resolvedMinOs: normalized === null ? null : normalized.minOs,
             resolvedSdk: normalized === null ? null : normalized.sdk,
             platform: normalized === null ? null : normalized.platform,
+            minOs: normalized === null ? null : normalized.minOs,
+            sdk: normalized === null ? null : normalized.sdk,
             resolvedHasMinOs: normalized === null ? null : normalized.hasMinOs,
             hasMinOs: normalized !== null && normalized.hasMinOs === true,
             resolvedHasSdk: normalized === null ? null : normalized.hasSdk,
