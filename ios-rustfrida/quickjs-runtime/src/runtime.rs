@@ -11241,6 +11241,7 @@ undefined;
                                 return result.encryptionInfo !== null
                                     && result.resolvedModuleName === result.encryptionInfo.moduleName
                                     && result.resolvedModuleBase === result.encryptionInfo.moduleBase
+                                    && result.moduleBase === result.encryptionInfo.moduleBase
                                     && result.resolvedCryptoffHex === result.encryptionInfo.cryptoffHex
                                     && result.resolvedCryptsizeHex === result.encryptionInfo.cryptsizeHex
                                     && result.cryptoffHex === '0x4000'
@@ -11278,6 +11279,7 @@ undefined;
                                 });
                                 return result.hasEncryptionInfo === true
                                     && result.resolved === true
+                                    && result.moduleBase === BigInt('0x180000000').toString()
                                     && result.cryptoffHex === '0x4000'
                                     && result.cryptsizeHex === '0x2000'
                                     && result.cryptid === 1
@@ -11325,6 +11327,7 @@ undefined;
                                 return result.sourceVersion !== null
                                     && result.resolvedModuleName === result.sourceVersion.moduleName
                                     && result.resolvedModuleBase === result.sourceVersion.moduleBase
+                                    && result.moduleBase === result.sourceVersion.moduleBase
                                     && result.resolvedVersion === result.sourceVersion.version
                                     && result.resolvedHasVersion === result.sourceVersion.hasVersion
                                     && result.resolvedVersionPartCount === result.sourceVersion.versionPartCount
@@ -11366,6 +11369,7 @@ undefined;
                                 });
                                 return result.hasSourceVersion === true
                                     && result.resolved === true
+                                    && result.moduleBase === BigInt('0x180000000').toString()
                                     && result.version === '1.2.3.4'
                                     && result.hasVersion === true
                                     && result.versionPartCount === 4
@@ -11421,6 +11425,7 @@ undefined;
                                 return result.entryPoint !== null
                                     && result.resolvedModuleName === result.entryPoint.moduleName
                                     && result.resolvedModuleBase === result.entryPoint.moduleBase
+                                    && result.moduleBase === result.entryPoint.moduleBase
                                     && result.entryoffHex === result.entryPoint.entryoffHex
                                     && result.stacksizeHex === result.entryPoint.stacksizeHex
                                     && result.entryoffHex === '0x1234'
@@ -11455,6 +11460,7 @@ undefined;
                                 });
                                 return result.hasEntryPoint === true
                                     && result.resolved === true
+                                    && result.moduleBase === BigInt('0x180000000').toString()
                                     && result.entryoffHex === '0x1234'
                                     && result.stacksizeHex === '0x4000'
                                     && result.entryPoint.moduleName === 'Demo'
@@ -14474,6 +14480,7 @@ undefined;
                                 const info = result.encryptionInfo;
                                 if (info === null) {
                                     return result.resolvedModuleBase === null
+                                        && result.moduleBase === null
                                         && result.resolvedCryptoffHex === null
                                         && result.resolvedCryptsizeHex === null
                                         && result.cryptoffHex === null
@@ -14482,6 +14489,7 @@ undefined;
                                         && result.hasEncryptedRange === false;
                                 }
                                 return result.resolvedModuleBase === info.moduleBase
+                                    && result.moduleBase === info.moduleBase
                                     && result.resolvedCryptoffHex === info.cryptoffHex
                                     && result.resolvedCryptsizeHex === info.cryptsizeHex
                                     && result.cryptoffHex === info.cryptoffHex
@@ -14495,11 +14503,13 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedModuleName === null
                                         && result.resolvedModuleBase === null
+                                        && result.moduleBase === null
                                         && result.entryoffHex === null
                                         && result.stacksizeHex === null;
                                 }
                                 return result.resolvedModuleName === info.moduleName
                                     && result.resolvedModuleBase === info.moduleBase
+                                    && result.moduleBase === info.moduleBase
                                     && result.entryoffHex === info.entryoffHex
                                     && result.stacksizeHex === info.stacksizeHex;
                             }
@@ -14509,6 +14519,7 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedModuleName === null
                                         && result.resolvedModuleBase === null
+                                        && result.moduleBase === null
                                         && result.resolvedVersion === null
                                         && result.resolvedHasVersion === null
                                         && result.resolvedVersionPartCount === 0
@@ -14526,6 +14537,7 @@ undefined;
                                 }
                                 return result.resolvedModuleName === info.moduleName
                                     && result.resolvedModuleBase === info.moduleBase
+                                    && result.moduleBase === info.moduleBase
                                     && result.resolvedVersion === info.version
                                     && result.resolvedHasVersion === info.hasVersion
                                     && result.resolvedVersionPartCount === info.versionPartCount
@@ -14547,6 +14559,7 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedModuleName === null
                                         && result.resolvedModuleBase === null
+                                        && result.moduleBase === null
                                         && result.resolvedPlatform === null
                                         && result.resolvedMinOs === null
                                         && result.resolvedSdk === null
@@ -14585,6 +14598,7 @@ undefined;
                                 }
                                 return result.resolvedModuleName === info.moduleName
                                     && result.resolvedModuleBase === info.moduleBase
+                                    && result.moduleBase === info.moduleBase
                                     && result.resolvedPlatform === info.platform
                                     && result.resolvedMinOs === info.minOs
                                     && result.resolvedSdk === info.sdk
@@ -14624,6 +14638,7 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedModuleName === null
                                         && result.resolvedModuleBase === null
+                                        && result.moduleBase === null
                                         && result.resolvedName === null
                                         && result.resolvedPath === null
                                         && result.resolvedPathKind === null
@@ -14658,6 +14673,7 @@ undefined;
                                 }
                                 return result.resolvedModuleName === info.moduleName
                                     && result.resolvedModuleBase === info.moduleBase
+                                    && result.moduleBase === info.moduleBase
                                     && result.resolvedName === info.name
                                     && result.resolvedPath === info.path
                                     && result.resolvedPathKind === info.pathKind
@@ -14696,6 +14712,7 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedModuleName === null
                                         && result.resolvedModuleBase === null
+                                        && result.moduleBase === null
                                         && result.resolvedName === null
                                         && result.resolvedPath === null
                                         && result.resolvedPathKind === null
@@ -14729,6 +14746,7 @@ undefined;
                                 }
                                 return result.resolvedModuleName === info.moduleName
                                     && result.resolvedModuleBase === info.moduleBase
+                                    && result.moduleBase === info.moduleBase
                                     && result.resolvedName === info.name
                                     && result.resolvedPath === info.path
                                     && result.resolvedPathKind === info.pathKind
@@ -14766,6 +14784,7 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedModuleName === null
                                         && result.resolvedModuleBase === null
+                                        && result.moduleBase === null
                                         && result.resolvedUuid === null
                                         && result.resolvedNormalizedUuid === null
                                         && result.resolvedHasUuid === null
@@ -14778,6 +14797,7 @@ undefined;
                                 }
                                 return result.resolvedModuleName === info.moduleName
                                     && result.resolvedModuleBase === info.moduleBase
+                                    && result.moduleBase === info.moduleBase
                                     && result.resolvedUuid === info.uuid
                                     && result.resolvedNormalizedUuid === info.normalizedUuid
                                     && result.resolvedHasUuid === info.hasUuid
@@ -14851,6 +14871,7 @@ undefined;
                                 return result.buildVersion !== null
                                     && result.resolvedModuleName === result.buildVersion.moduleName
                                     && result.resolvedModuleBase === result.buildVersion.moduleBase
+                                    && result.moduleBase === result.buildVersion.moduleBase
                                     && result.resolvedPlatform === result.buildVersion.platform
                                     && result.resolvedMinOs === result.buildVersion.minOs
                                     && result.resolvedSdk === result.buildVersion.sdk
@@ -14929,6 +14950,7 @@ undefined;
                                 });
                                 return result.hasBuildVersion === true
                                     && result.resolved === true
+                                    && result.moduleBase === BigInt('0x180000000').toString()
                                     && result.platform === 'ios'
                                     && result.hasMinOs === true
                                     && result.hasSdk === true
@@ -15027,6 +15049,7 @@ undefined;
                                 return result.imageUuid !== null
                                     && result.resolvedModuleName === result.imageUuid.moduleName
                                     && result.resolvedModuleBase === result.imageUuid.moduleBase
+                                    && result.moduleBase === result.imageUuid.moduleBase
                                     && result.resolvedUuid === result.imageUuid.uuid
                                     && result.resolvedNormalizedUuid === result.imageUuid.normalizedUuid
                                     && result.resolvedHasUuid === result.imageUuid.hasUuid
@@ -15064,6 +15087,7 @@ undefined;
                                 });
                                 return result.hasUuid === true
                                     && result.resolved === true
+                                    && result.moduleBase === BigInt('0x180000000').toString()
                                     && result.uuid === '12345678-9abc-def0-1234-56789abcdef0'
                                     && result.normalizedUuid === '12345678-9ABC-DEF0-1234-56789ABCDEF0'
                                     && result.uuidLength === 36
@@ -15122,6 +15146,7 @@ undefined;
                                 return result.dylinker !== null
                                     && result.resolvedModuleName === result.dylinker.moduleName
                                     && result.resolvedModuleBase === result.dylinker.moduleBase
+                                    && result.moduleBase === result.dylinker.moduleBase
                                     && result.resolvedName === result.dylinker.name
                                     && result.resolvedPath === result.dylinker.path
                                     && result.resolvedPathKind === result.dylinker.pathKind
@@ -15181,6 +15206,7 @@ undefined;
                                 });
                                 return result.hasDylinker === true
                                     && result.resolved === true
+                                    && result.moduleBase === BigInt('0x180000000').toString()
                                     && result.name === 'dyld'
                                     && result.path === '@executable_path/usr/lib/dyld'
                                     && result.pathKind === 'executable_path'
@@ -15247,6 +15273,7 @@ undefined;
                                 return result.installName !== null
                                     && result.resolvedModuleName === result.installName.moduleName
                                     && result.resolvedModuleBase === result.installName.moduleBase
+                                    && result.moduleBase === result.installName.moduleBase
                                     && result.resolvedName === result.installName.name
                                     && result.resolvedPath === result.installName.path
                                     && result.resolvedPathKind === result.installName.pathKind
@@ -15307,6 +15334,7 @@ undefined;
                                 });
                                 return result.hasInstallName === true
                                     && result.resolved === true
+                                    && result.moduleBase === BigInt('0x180000000').toString()
                                     && result.name === 'DemoKit'
                                     && result.path === '@loader_path/Frameworks/DemoKit.framework/DemoKit'
                                     && result.pathKind === 'loader_path'
