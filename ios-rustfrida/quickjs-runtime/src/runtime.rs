@@ -6287,8 +6287,10 @@ undefined;
                                 const info = result.classInfo;
                                 if (info === null) {
                                     return result.resolvedClassPointer === null &&
+                                        result.classPointer === null &&
                                         result.resolvedSuperclassName === null &&
                                         result.resolvedSuperclassPointer === null &&
+                                        result.superclassPointer === null &&
                                         result.resolvedHasSuperclass === null &&
                                         result.resolvedIsRootClass === null &&
                                         result.resolvedHasProtocols === null &&
@@ -6313,8 +6315,10 @@ undefined;
                                         result.classMethodCount === 0;
                                 }
                                 return result.resolvedClassPointer === info.classPointer &&
+                                    result.classPointer === info.classPointer &&
                                     result.resolvedSuperclassName === info.superclassName &&
                                     result.resolvedSuperclassPointer === info.superclassPointer &&
+                                    result.superclassPointer === info.superclassPointer &&
                                     result.resolvedHasSuperclass === info.hasSuperclass &&
                                     result.resolvedIsRootClass === info.isRootClass &&
                                     result.resolvedHasProtocols === info.hasProtocols &&
@@ -6344,6 +6348,7 @@ undefined;
                                 const info = result.protocolInfo;
                                 if (info === null) {
                                     return result.resolvedProtocolPointer === null &&
+                                        result.protocolPointer === null &&
                                         result.resolvedHasAdoptedProtocols === null &&
                                         result.resolvedHasRequiredMethods === null &&
                                         result.resolvedHasOptionalMethods === null &&
@@ -6365,6 +6370,7 @@ undefined;
                                         result.optionalClassMethodCount === 0;
                                 }
                                 return result.resolvedProtocolPointer === info.protocolPointer &&
+                                    result.protocolPointer === info.protocolPointer &&
                                     result.resolvedHasAdoptedProtocols === info.hasAdoptedProtocols &&
                                     result.resolvedHasRequiredMethods === info.hasRequiredMethods &&
                                     result.resolvedHasOptionalMethods === info.hasOptionalMethods &&
@@ -6392,10 +6398,15 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedClassName === null &&
                                         result.resolvedMethodPointer === null &&
+                                        result.methodPointer === null &&
                                         result.resolvedImp === null &&
+                                        result.imp === null &&
                                         result.resolvedTypeEncoding === null &&
+                                        result.typeEncoding === null &&
                                         result.resolvedReturnTypeName === null &&
+                                        result.returnTypeName === null &&
                                         result.resolvedSignature === null &&
+                                        result.signature === null &&
                                         result.resolvedImagePath === null &&
                                         result.resolvedArgumentCount === 0 &&
                                         result.resolvedExplicitArgumentCount === 0 &&
@@ -6419,10 +6430,15 @@ undefined;
                                 }
                                 return result.resolvedClassName === info.className &&
                                     result.resolvedMethodPointer === info.methodPointer &&
+                                    result.methodPointer === info.methodPointer &&
                                     result.resolvedImp === info.imp &&
+                                    result.imp === info.imp &&
                                     result.resolvedTypeEncoding === info.typeEncoding &&
+                                    result.typeEncoding === info.typeEncoding &&
                                     result.resolvedReturnTypeName === info.returnTypeName &&
+                                    result.returnTypeName === info.returnTypeName &&
                                     result.resolvedSignature === info.signature &&
+                                    result.signature === info.signature &&
                                     result.resolvedImagePath === info.imagePath &&
                                     result.resolvedArgumentCount === info.argumentCount &&
                                     result.resolvedExplicitArgumentCount === info.explicitArgumentCount &&
@@ -6451,8 +6467,11 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedProtocolName === null &&
                                         result.resolvedTypeEncoding === null &&
+                                        result.typeEncoding === null &&
                                         result.resolvedReturnTypeName === null &&
+                                        result.returnTypeName === null &&
                                         result.resolvedSignature === null &&
+                                        result.signature === null &&
                                         result.resolvedImagePath === null &&
                                         result.resolvedArgumentCount === 0 &&
                                         result.resolvedExplicitArgumentCount === 0 &&
@@ -6476,8 +6495,11 @@ undefined;
                                 }
                                 return result.resolvedProtocolName === info.protocolName &&
                                     result.resolvedTypeEncoding === info.typeEncoding &&
+                                    result.typeEncoding === info.typeEncoding &&
                                     result.resolvedReturnTypeName === info.returnTypeName &&
+                                    result.returnTypeName === info.returnTypeName &&
                                     result.resolvedSignature === info.signature &&
+                                    result.signature === info.signature &&
                                     result.resolvedImagePath === info.imagePath &&
                                     result.resolvedArgumentCount === info.argumentCount &&
                                     result.resolvedExplicitArgumentCount === info.explicitArgumentCount &&
@@ -6506,6 +6528,7 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedClassName === null &&
                                         result.resolvedPropertyPointer === null &&
+                                        result.propertyPointer === null &&
                                         result.resolvedTypeName === null &&
                                         result.resolvedOwnership === null &&
                                         result.resolvedObjectClassName === null &&
@@ -6536,6 +6559,7 @@ undefined;
                                 }
                                 return result.resolvedClassName === info.className &&
                                     result.resolvedPropertyPointer === info.propertyPointer &&
+                                    result.propertyPointer === info.propertyPointer &&
                                     result.resolvedTypeName === info.typeName &&
                                     result.resolvedOwnership === info.ownership &&
                                     result.resolvedObjectClassName === info.objectClassName &&
@@ -6571,6 +6595,7 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedProtocolName === null &&
                                         result.resolvedPropertyPointer === null &&
+                                        result.propertyPointer === null &&
                                         result.resolvedTypeName === null &&
                                         result.resolvedOwnership === null &&
                                         result.resolvedObjectClassName === null &&
@@ -6601,6 +6626,7 @@ undefined;
                                 }
                                 return result.resolvedProtocolName === info.protocolName &&
                                     result.resolvedPropertyPointer === info.propertyPointer &&
+                                    result.propertyPointer === info.propertyPointer &&
                                     result.resolvedTypeName === info.typeName &&
                                     result.resolvedOwnership === info.ownership &&
                                     result.resolvedObjectClassName === info.objectClassName &&
@@ -6636,8 +6662,11 @@ undefined;
                                 if (info === null) {
                                     return result.resolvedClassName === null &&
                                         result.resolvedIvarPointer === null &&
+                                        result.ivarPointer === null &&
                                         result.resolvedOffset === null &&
+                                        result.offset === null &&
                                         result.resolvedOffsetHex === null &&
+                                        result.offsetHex === null &&
                                         result.resolvedTypeName === null &&
                                         result.resolvedKindName === null &&
                                         result.resolvedObjectClassName === null &&
@@ -6660,8 +6689,11 @@ undefined;
                                 }
                                 return result.resolvedClassName === info.className &&
                                     result.resolvedIvarPointer === info.ivarPointer &&
+                                    result.ivarPointer === info.ivarPointer &&
                                     result.resolvedOffset === info.offset &&
+                                    result.offset === info.offset &&
                                     result.resolvedOffsetHex === info.offsetHex &&
+                                    result.offsetHex === info.offsetHex &&
                                     result.resolvedTypeName === info.typeName &&
                                     result.resolvedKindName === info.kind &&
                                     result.resolvedObjectClassName === info.objectClassName &&
@@ -6824,11 +6856,13 @@ undefined;
                                     && cls.text === cls.classInfo.text
                                     && cls.resolvedClassName === 'DemoView'
                                     && cls.resolvedClassPointer === '0x180001000'
+                                    && cls.classPointer === '0x180001000'
                                     && cls.resolvedIsMetaClass === true
                                     && cls.resolvedHasSuperclass === true
                                     && cls.hasSuperclass === true
                                     && cls.superclassName === 'NSObject'
                                     && cls.resolvedSuperclassPointer === '0x180001100'
+                                    && cls.superclassPointer === '0x180001100'
                                     && cls.resolvedIsRootClass === false
                                     && cls.isRootClass === false
                                     && cls.resolvedHasProtocols === true
@@ -6864,6 +6898,7 @@ undefined;
                                     && proto.text === proto.protocolInfo.text
                                     && proto.resolvedProtocolName === 'DemoProtocol'
                                     && proto.resolvedProtocolPointer === '0x180002000'
+                                    && proto.protocolPointer === '0x180002000'
                                     && JSON.stringify(proto.adoptedProtocolNames) === JSON.stringify(['NSCopying', 'NSSecureCoding'])
                                     && JSON.stringify(proto.resolvedAdoptedProtocolNames) === JSON.stringify(['NSCopying', 'NSSecureCoding'])
                                     && proto.firstAdoptedProtocol === 'NSCopying'
@@ -6895,10 +6930,15 @@ undefined;
                                     && method.resolvedClassName === 'DemoView'
                                     && method.resolvedSelector === 'setTitle:'
                                     && method.resolvedMethodPointer === '0x180003000'
+                                    && method.methodPointer === '0x180003000'
                                     && method.resolvedImp === '0x180004000'
+                                    && method.imp === '0x180004000'
                                     && method.resolvedTypeEncoding === 'v24@0:8@16'
+                                    && method.typeEncoding === 'v24@0:8@16'
                                     && method.resolvedReturnTypeName === method.methodInfo.returnTypeName
+                                    && method.returnTypeName === method.methodInfo.returnTypeName
                                     && method.resolvedSignature === method.methodInfo.signature
+                                    && method.signature === method.methodInfo.signature
                                     && method.argumentCount === 3
                                     && method.explicitArgumentCount === 1
                                     && method.hiddenArgumentCount === 2
@@ -6927,8 +6967,11 @@ undefined;
                                     && protocolMethod.resolvedProtocolName === 'DemoProtocol'
                                     && protocolMethod.resolvedSelector === 'demoValue'
                                     && protocolMethod.resolvedTypeEncoding === '@16@0:8'
+                                    && protocolMethod.typeEncoding === '@16@0:8'
                                     && protocolMethod.resolvedReturnTypeName === protocolMethod.methodInfo.returnTypeName
+                                    && protocolMethod.returnTypeName === protocolMethod.methodInfo.returnTypeName
                                     && protocolMethod.resolvedSignature === protocolMethod.methodInfo.signature
+                                    && protocolMethod.signature === protocolMethod.methodInfo.signature
                                     && protocolMethod.argumentCount === 2
                                     && protocolMethod.explicitArgumentCount === 0
                                     && protocolMethod.hiddenArgumentCount === 2
@@ -6957,6 +7000,7 @@ undefined;
                                     && property.resolvedClassName === 'DemoView'
                                     && property.resolvedName === 'title'
                                     && property.resolvedPropertyPointer === '0x180005000'
+                                    && property.propertyPointer === '0x180005000'
                                     && property.resolvedTypeName === property.propertyInfo.typeName
                                     && property.typeName === property.propertyInfo.typeName
                                     && property.resolvedOwnership === 'strong'
@@ -6997,6 +7041,7 @@ undefined;
                                     && protocolProperty.resolvedProtocolName === 'DemoProtocol'
                                     && protocolProperty.resolvedName === 'delegate'
                                     && protocolProperty.resolvedPropertyPointer === '0x180006000'
+                                    && protocolProperty.propertyPointer === '0x180006000'
                                     && protocolProperty.resolvedTypeName === protocolProperty.propertyInfo.typeName
                                     && protocolProperty.typeName === protocolProperty.propertyInfo.typeName
                                     && protocolProperty.resolvedOwnership === 'weak'
@@ -7146,11 +7191,13 @@ undefined;
                                     result.resolved === true &&
                                     result.resolvedClassName === result.classInfo.className &&
                                     result.resolvedClassPointer === result.classInfo.classPointer &&
+                                    result.classPointer === result.classInfo.classPointer &&
                                     result.resolvedIsMetaClass === result.classInfo.isMetaClass &&
                                     result.resolvedHasSuperclass === result.classInfo.hasSuperclass &&
                                     result.hasSuperclass === (result.classInfo.hasSuperclass === true) &&
                                     result.superclassName === result.classInfo.superclassName &&
                                     result.resolvedSuperclassPointer === result.classInfo.superclassPointer &&
+                                    result.superclassPointer === result.classInfo.superclassPointer &&
                                     result.resolvedIsRootClass === result.classInfo.isRootClass &&
                                     result.isRootClass === (result.classInfo.isRootClass === true) &&
                                     result.resolvedHasProtocols === result.classInfo.hasProtocols &&
@@ -7190,6 +7237,7 @@ undefined;
                                     result.resolved === true &&
                                     result.resolvedProtocolName === result.protocolInfo.protocolName &&
                                     result.resolvedProtocolPointer === result.protocolInfo.protocolPointer &&
+                                    result.protocolPointer === result.protocolInfo.protocolPointer &&
                                     JSON.stringify(result.adoptedProtocolNames) === JSON.stringify(result.protocolInfo.adoptedProtocols) &&
                                     JSON.stringify(result.resolvedAdoptedProtocolNames) === JSON.stringify(result.protocolInfo.adoptedProtocols) &&
                                     result.firstAdoptedProtocol === result.protocolInfo.adoptedProtocols[0] &&
@@ -7225,10 +7273,15 @@ undefined;
                                     result.resolvedClassName === result.methodInfo.className &&
                                     result.resolvedSelector === result.methodInfo.selector &&
                                     result.resolvedMethodPointer === result.methodInfo.methodPointer &&
+                                    result.methodPointer === result.methodInfo.methodPointer &&
                                     result.resolvedImp === result.methodInfo.imp &&
+                                    result.imp === result.methodInfo.imp &&
                                     result.resolvedTypeEncoding === result.methodInfo.typeEncoding &&
+                                    result.typeEncoding === result.methodInfo.typeEncoding &&
                                     result.resolvedReturnTypeName === result.methodInfo.returnTypeName &&
+                                    result.returnTypeName === result.methodInfo.returnTypeName &&
                                     result.resolvedSignature === result.methodInfo.signature &&
+                                    result.signature === result.methodInfo.signature &&
                                     result.resolvedArgumentCount === result.methodInfo.argumentCount &&
                                     result.argumentCount === result.methodInfo.argumentCount &&
                                     result.resolvedExplicitArgumentCount === result.methodInfo.explicitArgumentCount &&
@@ -7268,8 +7321,11 @@ undefined;
                                     result.resolvedProtocolName === result.methodInfo.protocolName &&
                                     result.resolvedSelector === result.methodInfo.selector &&
                                     result.resolvedTypeEncoding === result.methodInfo.typeEncoding &&
+                                    result.typeEncoding === result.methodInfo.typeEncoding &&
                                     result.resolvedReturnTypeName === result.methodInfo.returnTypeName &&
+                                    result.returnTypeName === result.methodInfo.returnTypeName &&
                                     result.resolvedSignature === result.methodInfo.signature &&
+                                    result.signature === result.methodInfo.signature &&
                                     result.resolvedArgumentCount === result.methodInfo.argumentCount &&
                                     result.argumentCount === result.methodInfo.argumentCount &&
                                     result.resolvedExplicitArgumentCount === result.methodInfo.explicitArgumentCount &&
@@ -7309,6 +7365,7 @@ undefined;
                                     result.resolvedClassName === result.propertyInfo.className &&
                                     result.resolvedName === result.propertyInfo.name &&
                                     result.resolvedPropertyPointer === result.propertyInfo.propertyPointer &&
+                                    result.propertyPointer === result.propertyInfo.propertyPointer &&
                                     result.resolvedTypeName === result.propertyInfo.typeName &&
                                     result.typeName === result.propertyInfo.typeName &&
                                     result.resolvedOwnership === result.propertyInfo.ownership &&
@@ -7356,6 +7413,7 @@ undefined;
                                     result.resolvedProtocolName === result.propertyInfo.protocolName &&
                                     result.resolvedName === result.propertyInfo.name &&
                                     result.resolvedPropertyPointer === result.propertyInfo.propertyPointer &&
+                                    result.propertyPointer === result.propertyInfo.propertyPointer &&
                                     result.resolvedTypeName === result.propertyInfo.typeName &&
                                     result.typeName === result.propertyInfo.typeName &&
                                     result.resolvedOwnership === result.propertyInfo.ownership &&
