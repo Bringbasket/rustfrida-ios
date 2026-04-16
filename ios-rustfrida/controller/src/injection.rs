@@ -596,7 +596,11 @@ fn hook_effective_to_json(actions: &[HookEffectiveAction]) -> Value {
 }
 
 #[cfg(unix)]
-fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
+fn hook_coexistence_to_json_with_arm64e(
+    actions: &[HookEffectiveAction],
+    backend_matrix: &Value,
+    arm64e_context: HookAutomationArm64eContext,
+) -> Value {
     let base_command_mode = hook_effective_command_mode(actions);
     let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
     let loaded_in_target_count = json_u64_field(backend_matrix, "loadedInTargetCount");
@@ -711,7 +715,7 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
             })
         });
 
-    let preferred_path = mode;
+    let preferred_path = arm64e_context.preferred_path_override(mode);
     let next_action_templates = recommended_action
         .map(|item| hook_action_command_templates(item.action_key, preferred_path))
         .unwrap_or_default();
@@ -865,6 +869,9 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "mode": mode,
         "strategy": strategy,
         "riskLevel": risk_level,
+        "arm64eConstrainedQueryOnly": arm64e_context.query_only_until_override,
+        "arm64eConstraintReason": arm64e_context.note(),
+        "arm64eOverrideEnv": arm64e_context.override_env(),
         "coexistenceLayerAvailable": coexistence_layer.available,
         "coexistenceLayerRequired": coexistence_layer.required,
         "coexistenceLayerStatus": coexistence_layer.status,
@@ -1072,6 +1079,15 @@ fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Va
         "nextActionCommandJsonEligibleTemplateCount": command_json_eligible_count(&next_action_command_json_templates),
         "nextActionCommandJsonTemplates": next_action_command_json_templates,
     })
+}
+
+#[cfg(unix)]
+fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
+    hook_coexistence_to_json_with_arm64e(
+        actions,
+        backend_matrix,
+        HookAutomationArm64eContext::default(),
+    )
 }
 
 #[cfg(unix)]
@@ -2228,9 +2244,12 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         _ => "unknown",
     };
     let requires_cleanup_phase = command_mode == "cleanup-only";
-    let requires_preflight =
-        topology_kind == "filesystem-only" || matches!(preferred_path, "inline-cautious" | "inline-risky");
+    let arm64e_query_only = preferred_path == "arm64e-query-only";
+    let requires_preflight = topology_kind == "filesystem-only"
+        || matches!(preferred_path, "inline-cautious" | "inline-risky")
+        || arm64e_query_only;
     let requires_query_phase = matches!(preferred_path, "query-only" | "inline-risky")
+        || arm64e_query_only
         || matches!(
             topology_kind,
             "shared-loaded"
@@ -2258,6 +2277,9 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
     let summary = match recommended_action_bias {
         "blocked" => "no compatible hook path is currently available",
         "cleanup" => "current policy only allows cleanup or status commands; stop existing hooks before retrying",
+        "query" if arm64e_query_only => {
+            "arm64e fallback bootstrap is active; stay on query/PAC diagnostics until explicit override is enabled"
+        }
         "preflight" => "only filesystem backend artifacts were detected; run preflight before inline install",
         "install" => "no external backend runtime pressure is active; inline install can proceed directly",
         "query" => match topology_kind {
@@ -6874,10 +6896,76 @@ fn hook_query_templates() -> Vec<String> {
 }
 
 #[cfg(unix)]
+#[derive(Clone, Copy, Debug, Default)]
+struct HookAutomationArm64eContext {
+    query_only_until_override: bool,
+}
+
+#[cfg(unix)]
+impl HookAutomationArm64eContext {
+    fn from_runtime(
+        preflight: &InjectionTargetPreflightReport,
+        trace: Option<&InjectionTrace>,
+    ) -> Self {
+        let arm64e_summary = arm64e_runtime_summary_to_json(preflight, trace);
+        Self {
+            query_only_until_override: arm64e_summary["overrideRequiredForFallback"].as_bool()
+                == Some(true),
+        }
+    }
+
+    fn preferred_path_override(self, preferred_path: &'static str) -> &'static str {
+        if self.query_only_until_override {
+            "arm64e-query-only"
+        } else {
+            preferred_path
+        }
+    }
+
+    fn note(self) -> Option<&'static str> {
+        if self.query_only_until_override {
+            Some(
+                "arm64e fallback bootstrap requires explicit override; keep automation on query/PAC diagnostics until IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK=1 is intentionally set",
+            )
+        } else {
+            None
+        }
+    }
+
+    fn override_env(self) -> Option<&'static str> {
+        if self.query_only_until_override {
+            Some("IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK")
+        } else {
+            None
+        }
+    }
+}
+
+#[cfg(unix)]
+fn append_unique_commands(target: &mut Vec<String>, commands: impl IntoIterator<Item = String>) {
+    for command in commands {
+        if !target.iter().any(|existing| existing == &command) {
+            target.push(command);
+        }
+    }
+}
+
+#[cfg(unix)]
 fn hook_automation_suggested_sequence(preferred_path: &str) -> Vec<String> {
-    if preferred_path == "query-only" {
+    if matches!(preferred_path, "query-only" | "arm64e-query-only") {
         let mut commands = vec!["native.hookenv".to_string()];
-        commands.extend(hook_query_templates());
+        if preferred_path == "arm64e-query-only" {
+            append_unique_commands(
+                &mut commands,
+                [
+                    "pac.available".to_string(),
+                    "pac.arm64e".to_string(),
+                    "pac.images <filter>".to_string(),
+                    "native.images <filter>".to_string(),
+                ],
+            );
+        }
+        append_unique_commands(&mut commands, hook_query_templates());
         return commands;
     }
 
@@ -6930,11 +7018,17 @@ fn hook_action_command_templates(action_key: &str, preferred_path: &str) -> Vec<
     }
 
     let templates: &[&str] = match action_key {
-        "hook.bootstrap" => &[
-            "native.hookenv",
-            "controller --preflight-only --preflight-json --pid <pid>",
-            "controller --inject-json --pid <pid>",
-        ],
+        "hook.bootstrap" => match preferred_path {
+            "arm64e-query-only" => &[
+                "native.hookenv",
+                "controller --preflight-only --preflight-json --pid <pid>",
+            ],
+            _ => &[
+                "native.hookenv",
+                "controller --preflight-only --preflight-json --pid <pid>",
+                "controller --inject-json --pid <pid>",
+            ],
+        },
         "hook.install" => match preferred_path {
             "inline-risky" => &[
                 "trace <objc-filter|native-target> # risky-with-external-backend",
@@ -7192,7 +7286,11 @@ fn command_phase_order(command_json_templates: &[Value]) -> Vec<String> {
 }
 
 #[cfg(unix)]
-fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
+fn hook_automation_to_json_with_arm64e(
+    actions: &[HookEffectiveAction],
+    backend_matrix: &Value,
+    arm64e_context: HookAutomationArm64eContext,
+) -> Value {
     let base_command_mode = hook_effective_command_mode(actions);
     let loaded_in_controller_count = json_u64_field(backend_matrix, "loadedInControllerCount");
     let loaded_in_target_count = json_u64_field(backend_matrix, "loadedInTargetCount");
@@ -7235,6 +7333,7 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "cleanup-only" => "cleanup-only",
         _ => "blocked",
     };
+    let preferred_path = arm64e_context.preferred_path_override(preferred_path);
     let backend_adaptation = hook_backend_adaptation_to_json(backend_matrix, preferred_path, command_mode);
 
     let mode_rank = |action_key: &str| -> u8 {
@@ -10874,6 +10973,9 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
         "commandMode": command_mode,
         "autoDowngradedToQueryOnly": auto_downgraded_to_query_only,
         "autoDowngradeReason": auto_downgrade_reason,
+        "arm64eConstrainedQueryOnly": arm64e_context.query_only_until_override,
+        "arm64eConstraintReason": arm64e_context.note(),
+        "arm64eOverrideEnv": arm64e_context.override_env(),
         "preferredPath": preferred_path,
         "backendPressure": backend_pressure,
         "backendAdaptation": backend_adaptation.clone(),
@@ -11072,9 +11174,19 @@ fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Val
 }
 
 #[cfg(unix)]
+fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
+    hook_automation_to_json_with_arm64e(
+        actions,
+        backend_matrix,
+        HookAutomationArm64eContext::default(),
+    )
+}
+
+#[cfg(unix)]
 fn hook_shortcuts_to_json(
     injection_environment: &InjectionEnvironmentReport,
     preflight: &InjectionTargetPreflightReport,
+    trace: Option<&InjectionTrace>,
 ) -> Value {
     let controller_actions = hook_environment_recommended_actions(
         &injection_environment.hook_environment,
@@ -11089,6 +11201,7 @@ fn hook_shortcuts_to_json(
         &injection_environment.hook_environment,
         &preflight.target_hook_environment,
     );
+    let arm64e_context = HookAutomationArm64eContext::from_runtime(preflight, trace);
 
     json!({
         "controller": hook_shortcut_entry_to_json(
@@ -11102,8 +11215,16 @@ fn hook_shortcuts_to_json(
         "effectiveActions": hook_effective_actions_to_json(&effective_actions),
         "effective": hook_effective_to_json(&effective_actions),
         "backendMatrix": backend_matrix.clone(),
-        "coexistence": hook_coexistence_to_json(&effective_actions, &backend_matrix),
-        "automation": hook_automation_to_json(&effective_actions, &backend_matrix),
+        "coexistence": hook_coexistence_to_json_with_arm64e(
+            &effective_actions,
+            &backend_matrix,
+            arm64e_context,
+        ),
+        "automation": hook_automation_to_json_with_arm64e(
+            &effective_actions,
+            &backend_matrix,
+            arm64e_context,
+        ),
     })
 }
 
@@ -12118,7 +12239,7 @@ fn render_preflight_json(
         "agentPath": config.agent_path,
         "entrySymbol": config.entry_symbol,
         "scriptPath": config.script_path,
-        "hook": hook_shortcuts_to_json(injection_environment, preflight),
+        "hook": hook_shortcuts_to_json(injection_environment, preflight, None),
         "environment": injection_environment_to_json(injection_environment),
         "doctor": doctor_report_to_json(doctor),
         "plan": injection_plan_to_json(plan),
@@ -13176,7 +13297,7 @@ fn render_injection_result_json(
         "agentPath": config.agent_path,
         "entrySymbol": config.entry_symbol,
         "scriptPath": config.script_path,
-        "hook": hook_shortcuts_to_json(injection_environment, preflight),
+        "hook": hook_shortcuts_to_json(injection_environment, preflight, trace),
         "environment": injection_environment_to_json(injection_environment),
         "doctor": doctor_report_to_json(doctor),
         "plan": injection_plan_to_json(plan),
@@ -16173,13 +16294,14 @@ mod tests {
         analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
         build_trace_spec, command_json_template_entry, command_requests_inline_hook_install,
         command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_action_command_templates,
-        hook_automation_to_json, hook_backend_matrix_to_json, hook_effective_actions, hook_effective_actions_to_json,
-        hook_effective_to_json, hook_environment_requires_notice, hook_environment_to_json, parse_hfl_command,
-        parse_jhook_command, parse_shook_command, parse_stalker_command, parse_trace_command,
-        print_injection_preflight, quote_js_string, render_bootstrap_summary, render_command_error_json,
+        hook_automation_to_json, hook_automation_to_json_with_arm64e, hook_backend_matrix_to_json,
+        hook_effective_actions, hook_effective_actions_to_json, hook_effective_to_json,
+        hook_environment_requires_notice, hook_environment_to_json, parse_hfl_command, parse_jhook_command,
+        parse_shook_command, parse_stalker_command, parse_trace_command, print_injection_preflight,
+        quote_js_string, render_bootstrap_summary, render_command_error_json,
         render_command_error_json_with_context, render_command_outcome_json, render_command_outcome_json_with_context,
         render_image_list_json, render_injection_environment, render_injection_result_json, render_loader_symbol,
-        render_preflight_json, arm64e_preflight_summary_to_json,
+        render_preflight_json, arm64e_preflight_summary_to_json, HookAutomationArm64eContext,
         CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, HookEffectiveAction, NativeHookTarget,
         NativeLogArgument, NativeLogReturn, NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand,
         SwiftHookCommand, TraceCommand,
@@ -17709,6 +17831,91 @@ mod tests {
             "pthread-create-from-mach-thread"
         );
         assert_eq!(rendered["preflight"]["threadBootstrapAddressHex"], json!("0x18000123"));
+    }
+
+    #[test]
+    fn render_preflight_json_routes_hook_automation_to_query_only_for_arm64e_fallback() {
+        let config = ControllerConfig {
+            mode: InjectionMode::Attach,
+            pid: Some(42),
+            bundle_id: None,
+            spawn_command: None,
+            command: None,
+            command_json: false,
+            list_images_json: false,
+            preflight_only: true,
+            preflight_json: true,
+            inject_json: false,
+            agent_path: DEFAULT_AGENT_PATH_ROOTFUL.into(),
+            entry_symbol: "ios_agent_entry".into(),
+            script_path: None,
+            socket_path: Some("/tmp/iosrf.sock".into()),
+            connect_timeout_secs: 15,
+        };
+        let plan = MachInjector
+            .plan(&InjectionTarget {
+                pid: 42,
+                dylib_path: DEFAULT_AGENT_PATH_ROOTFUL.into(),
+                entry_symbol: "ios_agent_entry".into(),
+                socket_path: "/tmp/iosrf.sock".into(),
+            })
+            .expect("build plan");
+        let environment = InjectionEnvironmentReport {
+            dry_run: false,
+            bootstrap_wait_ms: Some(3000),
+            hook_policy: HookPolicy::Warn,
+            hook_strategy: HookStrategyDecision {
+                policy: HookPolicy::Warn,
+                strategy: "internal-inline-safe".into(),
+                allowed: true,
+                inline_hooks_allowed: true,
+                reason: None,
+            },
+            hook_environment: HookEnvironmentReport {
+                active_backend: None,
+                backends: vec![],
+                warnings: vec![],
+            },
+        };
+        let preflight = InjectionTargetPreflightReport {
+            main_image: None,
+            target_images: vec![],
+            target_image_count: 0,
+            target_uses_arm64e: Some(true),
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFallback,
+            thread_bootstrap_label: "/usr/lib/system/libsystem_pthread.dylib!pthread_create".into(),
+            thread_bootstrap_address: 0x1800_0123,
+            thread_bootstrap_raw_address: 0x1800_0123,
+            thread_bootstrap_canonicalized: true,
+            target_hook_environment: environment.hook_environment.clone(),
+            target_hook_strategy: environment.hook_strategy.clone(),
+            resolved_loader_symbols: vec![],
+        };
+
+        let doctor = analyze_doctor_report(&config, 42, Path::new("/tmp/iosrf.sock"), &environment, &preflight);
+        let rendered = render_preflight_json(&config, 42, "/tmp/iosrf.sock", &plan, &environment, &preflight, &doctor);
+
+        assert_eq!(rendered["preflight"]["arm64eSummary"]["overrideRequiredForFallback"], true);
+        assert_eq!(rendered["hook"]["automation"]["preferredPath"], "arm64e-query-only");
+        assert_eq!(rendered["hook"]["automation"]["arm64eConstrainedQueryOnly"], true);
+        assert_eq!(
+            rendered["hook"]["automation"]["arm64eOverrideEnv"],
+            "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
+        );
+        assert_eq!(rendered["hook"]["automation"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
+        assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][1], "pac.available");
+        assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][2], "pac.arm64e");
+        assert_eq!(rendered["hook"]["coexistence"]["preferredPath"], "arm64e-query-only");
+
+        let install_templates = rendered["hook"]["automation"]["commandTemplates"]
+            .as_array()
+            .expect("command templates")
+            .iter()
+            .find(|item| item["actionKey"] == "hook.install")
+            .expect("hook.install templates");
+        assert_eq!(install_templates["templateCount"], 0);
+        assert_eq!(install_templates["templates"], json!([]));
     }
 
     #[test]
@@ -28729,6 +28936,10 @@ mod tests {
             Vec::<String>::new()
         );
         assert_eq!(
+            hook_action_command_templates("hook.install", "arm64e-query-only"),
+            Vec::<String>::new()
+        );
+        assert_eq!(
             hook_action_command_templates("hook.install", "cleanup-only"),
             Vec::<String>::new()
         );
@@ -28736,6 +28947,87 @@ mod tests {
             hook_action_command_templates("hook.install", "blocked"),
             Vec::<String>::new()
         );
+    }
+
+    #[test]
+    fn hook_bootstrap_templates_drop_inject_when_arm64e_override_is_required() {
+        let templates = hook_action_command_templates("hook.bootstrap", "arm64e-query-only");
+        assert_eq!(templates.len(), 2);
+        assert_eq!(templates[0], "native.hookenv");
+        assert_eq!(
+            templates[1],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert!(!templates.iter().any(|item| item.contains("--inject-json")));
+    }
+
+    #[test]
+    fn hook_automation_prefers_query_pac_path_when_arm64e_override_is_required() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let backend_matrix = hook_backend_matrix_to_json(&report, &report);
+        let strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-safe".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&report, Some(&strategy)),
+            &hook_environment_recommended_actions(&report, Some(&strategy)),
+        );
+        let automation = hook_automation_to_json_with_arm64e(
+            &actions,
+            &backend_matrix,
+            HookAutomationArm64eContext {
+                query_only_until_override: true,
+            },
+        );
+
+        assert_eq!(automation["preferredPath"], "arm64e-query-only");
+        assert_eq!(automation["arm64eConstrainedQueryOnly"], true);
+        assert_eq!(
+            automation["arm64eOverrideEnv"],
+            "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
+        );
+        assert_eq!(automation["nextActionKey"], "hook.query");
+        assert_eq!(automation["suggestedSequence"][0], "native.hookenv");
+        assert_eq!(automation["suggestedSequence"][1], "pac.available");
+        assert_eq!(automation["suggestedSequence"][2], "pac.arm64e");
+        assert_eq!(automation["backendAdaptation"]["recommendedActionBias"], "query");
+        assert_eq!(
+            automation["backendAdaptation"]["summary"],
+            "arm64e fallback bootstrap is active; stay on query/PAC diagnostics until explicit override is enabled"
+        );
+
+        let templates = automation["commandTemplates"].as_array().expect("command templates");
+        let bootstrap_templates = templates
+            .iter()
+            .find(|item| item["actionKey"] == "hook.bootstrap")
+            .expect("hook.bootstrap templates");
+        assert_eq!(bootstrap_templates["templateCount"], 2);
+        assert_eq!(
+            bootstrap_templates["templates"][1],
+            "controller --preflight-only --preflight-json --pid <pid>"
+        );
+        assert!(
+            bootstrap_templates["templates"]
+                .as_array()
+                .expect("bootstrap template array")
+                .iter()
+                .all(|item| item.as_str().unwrap_or_default() != "controller --inject-json --pid <pid>")
+        );
+
+        let install_templates = templates
+            .iter()
+            .find(|item| item["actionKey"] == "hook.install")
+            .expect("hook.install templates");
+        assert_eq!(install_templates["templateCount"], 0);
+        assert_eq!(install_templates["templates"], json!([]));
     }
 
     #[test]
