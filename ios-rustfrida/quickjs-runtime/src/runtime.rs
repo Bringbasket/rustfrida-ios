@@ -5266,6 +5266,156 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const originalProtocolInfo = Swift.protocolInfo;
+                            const originalConformanceInfo = Swift.conformanceInfo;
+                            const originalTypeInfo = Swift.typeInfo;
+                            const originalMethodInfo = Swift.methodInfo;
+                            const originalSymbolInfo = Swift.symbolInfo;
+                            const originalMetadataInfo = Swift.metadataInfo;
+                            const originalVtableInfo = Swift.vtableInfo;
+                            const originalWitnessTableInfo = Swift.witnessTableInfo;
+                            const originalTypeLayoutInfo = Swift.typeLayoutInfo;
+                            Swift.protocolInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: 'Renderable',
+                                    sourceSymbolName: '$s4Demo10RenderableMp',
+                                    sourceKind: 'protocol-descriptor',
+                                    sourceAddress: 0x180000800n,
+                                    sourceOffset: 0x800n,
+                                    sourceDemangledName: 'protocol descriptor for Demo.Renderable',
+                                };
+                            };
+                            Swift.conformanceInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    typeName: 'ViewController',
+                                    protocolName: 'Renderable',
+                                    sourceSymbolName: '$s4Demo14ViewControllerCAA10RenderableAAMc',
+                                    sourceKind: 'protocol-conformance-descriptor',
+                                    sourceAddress: 0x180008000n,
+                                    sourceOffset: 0x8000n,
+                                    sourceDemangledName: 'protocol conformance descriptor for Demo.ViewController : Demo.Renderable where Demo.ViewController.Item == Swift.String in Demo',
+                                };
+                            };
+                            Swift.typeInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: 'ViewController',
+                                    sourceSymbolName: '$s4Demo14ViewControllerVN',
+                                    sourceKind: 'nominal-type',
+                                    sourceAddress: 0x180000a00n,
+                                    sourceOffset: 0xa00n,
+                                    sourceDemangledName: 'Demo.ViewController',
+                                };
+                            };
+                            Swift.methodInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: '$s4Demo14ViewControllerC6sharedACyYaKFZ',
+                                    demangledName: 'static Demo.ViewController.shared() async throws -> Demo.ViewController',
+                                    address: 0x180001000n,
+                                    offset: 0x1000n,
+                                };
+                            };
+                            Swift.symbolInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: '$s4Demo14ViewControllerC6sharedACyYaKFZ',
+                                    demangledName: 'static Demo.ViewController.shared() async throws -> Demo.ViewController',
+                                    address: 0x180001000n,
+                                    offset: 0x1000n,
+                                };
+                            };
+                            Swift.metadataInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: 'ViewController',
+                                    sourceSymbolName: '$s4Demo14ViewControllerCMf',
+                                    sourceKind: 'metadata',
+                                    sourceAddress: 0x180000900n,
+                                    sourceOffset: 0x900n,
+                                    sourceDemangledName: 'type metadata for Demo.ViewController',
+                                };
+                            };
+                            Swift.vtableInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    typeName: 'Demo.ViewController',
+                                    memberName: 'viewDidLoad',
+                                    name: '$s4Demo14ViewControllerC11viewDidLoadyyF',
+                                    demangledName: 'Demo.ViewController.viewDidLoad() -> ()',
+                                    sourceKind: 'member',
+                                    address: 0x180002000n,
+                                    offset: 0x2000n,
+                                    isDispatchThunk: false,
+                                };
+                            };
+                            Swift.witnessTableInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    typeName: 'ViewController',
+                                    protocolName: 'Renderable',
+                                    name: '$s4Demo14ViewControllerCAA10RenderableAAWP',
+                                    demangledName: 'protocol witness table accessor for Demo.ViewController : Demo.Renderable where Demo.ViewController.Item == Swift.String in Demo',
+                                    sourceKind: 'protocol-witness-table-accessor',
+                                    address: 0x180009000n,
+                                    offset: 0x9000n,
+                                    isAccessor: true,
+                                };
+                            };
+                            Swift.typeLayoutInfo = function() {
+                                return {
+                                    moduleName: 'Demo',
+                                    moduleBase: 0x180000000n,
+                                    name: 'Demo.ViewController',
+                                    metadata: [],
+                                    metadataAccessors: [],
+                                    nominalDescriptors: [],
+                                    metadataCaches: [],
+                                    associatedTypeDescriptors: [],
+                                    vtableEntries: [],
+                                    witnessTables: [],
+                                };
+                            };
+                            try {
+                                return __iosRustFridaAgentApi.handle('swift.findProtocolInfo Demo -- Renderable') === __iosRustFridaAgentApi.handle('swift.protocolInfo Demo -- Renderable') &&
+                                    __iosRustFridaAgentApi.handle('swift.findConformanceInfo Demo -- ViewController Renderable') === __iosRustFridaAgentApi.handle('swift.conformanceInfo Demo -- ViewController Renderable') &&
+                                    __iosRustFridaAgentApi.handle('swift.findTypeInfo Demo -- ViewController') === __iosRustFridaAgentApi.handle('swift.typeInfo Demo -- ViewController') &&
+                                    __iosRustFridaAgentApi.handle('swift.findMethodInfo Demo -- ViewController viewDidLoad') === __iosRustFridaAgentApi.handle('swift.methodInfo Demo -- ViewController viewDidLoad') &&
+                                    __iosRustFridaAgentApi.handle('swift.findSymbolInfo Demo -- ViewController') === __iosRustFridaAgentApi.handle('swift.symbolInfo Demo -- ViewController') &&
+                                    __iosRustFridaAgentApi.handle('swift.findMetadataInfo Demo -- ViewController') === __iosRustFridaAgentApi.handle('swift.metadataInfo Demo -- ViewController') &&
+                                    __iosRustFridaAgentApi.handle('swift.findVtableInfo Demo -- ViewController viewDidLoad') === __iosRustFridaAgentApi.handle('swift.vtableInfo Demo -- ViewController viewDidLoad') &&
+                                    __iosRustFridaAgentApi.handle('swift.findWitnessTableInfo Demo -- ViewController Renderable') === __iosRustFridaAgentApi.handle('swift.witnessTableInfo Demo -- ViewController Renderable') &&
+                                    __iosRustFridaAgentApi.handle('swift.findTypeLayoutInfo Demo -- ViewController') === __iosRustFridaAgentApi.handle('swift.typeLayoutInfo Demo -- ViewController');
+                            } finally {
+                                Swift.protocolInfo = originalProtocolInfo;
+                                Swift.conformanceInfo = originalConformanceInfo;
+                                Swift.typeInfo = originalTypeInfo;
+                                Swift.methodInfo = originalMethodInfo;
+                                Swift.symbolInfo = originalSymbolInfo;
+                                Swift.metadataInfo = originalMetadataInfo;
+                                Swift.vtableInfo = originalVtableInfo;
+                                Swift.witnessTableInfo = originalWitnessTableInfo;
+                                Swift.typeLayoutInfo = originalTypeLayoutInfo;
+                            }
+                        })()"#
+                    )
+                    .expect("agent swift module info aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() {
                             return __iosRustFridaAgentApi.handle('swift.findSymbols ViewController') === __iosRustFridaAgentApi.handle('swift.symbols ViewController') &&
                                 __iosRustFridaAgentApi.handle('swift.findTypeMethods ViewController') === __iosRustFridaAgentApi.handle('swift.typeMethods ViewController');
