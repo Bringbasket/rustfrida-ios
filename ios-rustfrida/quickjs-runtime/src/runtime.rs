@@ -4906,6 +4906,23 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() {
+                            return __iosRustFridaAgentApi.handle('objc.findClassProtocols NSObject NS') === __iosRustFridaAgentApi.handle('objc.classProtocols NSObject NS') &&
+                                __iosRustFridaAgentApi.handle('objc.findProtocolProtocols NSObject NS') === __iosRustFridaAgentApi.handle('objc.protocolProtocols NSObject NS') &&
+                                __iosRustFridaAgentApi.handle('objc.findProtocolMethods NSObject optional class description') === __iosRustFridaAgentApi.handle('objc.protocolMethods NSObject optional class description') &&
+                                __iosRustFridaAgentApi.handle('objc.findProtocolProperties NSObject description') === __iosRustFridaAgentApi.handle('objc.protocolProperties NSObject description') &&
+                                __iosRustFridaAgentApi.handle('objc.findMethods NSObject init') === __iosRustFridaAgentApi.handle('objc.methods NSObject init') &&
+                                __iosRustFridaAgentApi.handle('objc.findProperties NSObject delegate') === __iosRustFridaAgentApi.handle('objc.properties NSObject delegate') &&
+                                __iosRustFridaAgentApi.handle('objc.findIvars NSObject isa') === __iosRustFridaAgentApi.handle('objc.ivars NSObject isa') &&
+                                __iosRustFridaAgentApi.handle('objc.findMethodOwners init') === __iosRustFridaAgentApi.handle('objc.methodOwners init');
+                        })()"
+                    )
+                    .expect("agent objc query aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("__iosRustFridaAgentApi.handle('pac.strip 0x1234')")
                     .expect("agent pac strip"),
                 "0x1234"
