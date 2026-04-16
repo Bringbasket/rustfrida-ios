@@ -11436,12 +11436,67 @@ fn hook_environment_to_json(
 }
 
 #[cfg(unix)]
+fn hook_side_summary_to_json(
+    report: &native_api::HookEnvironmentReport,
+    strategy: &native_api::HookStrategyDecision,
+) -> Value {
+    let coexistence_layer = hook_coexistence_layer_status(report, Some(strategy));
+    let coexistence_mode = match strategy.command_mode() {
+        "allowed" => {
+            if report.loaded_backend_count() > 0 {
+                "inline-risky"
+            } else if report.filesystem_only_backend_count() > 0 {
+                "inline-cautious"
+            } else {
+                "inline-safe"
+            }
+        }
+        "query-only" => "query-only",
+        "cleanup-only" => "cleanup-only",
+        "blocked" => "blocked",
+        _ => "unknown",
+    };
+    let next_action = hook_environment_recommended_actions(report, Some(strategy))
+        .into_iter()
+        .next();
+
+    json!({
+        "policy": strategy.policy.as_str(),
+        "strategy": strategy.strategy,
+        "commandMode": strategy.command_mode(),
+        "commandModeSource": strategy.command_mode_source(),
+        "backendPressure": strategy.backend_pressure(),
+        "inlineHookRisk": strategy.inline_hook_risk(),
+        "coexistenceRequired": strategy.coexistence_required(),
+        "policyForced": strategy.policy_forced(),
+        "topologyForced": strategy.topology_forced(),
+        "filesystemCaution": strategy.filesystem_caution(),
+        "coexistenceMode": coexistence_mode,
+        "coexistenceLayerStatus": coexistence_layer.status,
+        "coexistenceLayerPreferredPhase": coexistence_layer.preferred_phase,
+        "coexistenceLayerRecommendedActionKey": coexistence_layer.recommended_action_key,
+        "externalBackendLoaded": report.loaded_backend_count() > 0,
+        "filesystemOnlyBackendDetected": report.filesystem_only_backend_count() > 0,
+        "loadedBackendCount": report.loaded_backend_count(),
+        "filesystemOnlyBackendCount": report.filesystem_only_backend_count(),
+        "warningCount": report.warnings.len(),
+        "reason": strategy.reason,
+        "nextActionKey": next_action.as_ref().map(|item| item.action_key.clone()),
+        "nextActionCommandGroup": next_action.as_ref().map(|item| item.command_group.clone()),
+        "nextActionAllowed": next_action.as_ref().map(|item| item.allowed),
+        "nextActionPriority": next_action.as_ref().map(|item| item.priority),
+        "nextActionStatus": next_action.as_ref().map(|item| item.status.clone()),
+    })
+}
+
+#[cfg(unix)]
 fn injection_environment_to_json(report: &InjectionEnvironmentReport) -> Value {
     json!({
         "dryRun": report.dry_run,
         "bootstrapWaitMs": report.bootstrap_wait_ms,
         "hookPolicy": report.hook_policy.as_str(),
         "hookStrategy": hook_strategy_to_json(&report.hook_strategy),
+        "hookSummary": hook_side_summary_to_json(&report.hook_environment, &report.hook_strategy),
         "hookEnvironment": hook_environment_to_json(&report.hook_environment, Some(&report.hook_strategy)),
         "recommendations": hook_environment_recommendations(&report.hook_environment, Some(&report.hook_strategy)),
     })
@@ -11571,6 +11626,10 @@ fn injection_preflight_to_json(report: &InjectionTargetPreflightReport) -> Value
         "threadBootstrapRawAddress": report.thread_bootstrap_raw_address,
         "threadBootstrapRawAddressHex": json_hex_usize(report.thread_bootstrap_raw_address),
         "threadBootstrapCanonicalized": report.thread_bootstrap_canonicalized,
+        "targetHookSummary": hook_side_summary_to_json(
+            &report.target_hook_environment,
+            &report.target_hook_strategy,
+        ),
         "targetHookEnvironment": hook_environment_to_json(
             &report.target_hook_environment,
             Some(&report.target_hook_strategy),
@@ -11759,9 +11818,12 @@ fn analyze_doctor_report(
             "controller-hook-strategy",
             status,
             format!(
-                "controller hook strategy is {} ({}) query={} install={} status={} stop={}",
+                "controller hook strategy is {} ({}) source={} pressure={} risk={} query={} install={} status={} stop={}",
                 injection_environment.hook_strategy.command_mode(),
                 injection_environment.hook_strategy.strategy,
+                injection_environment.hook_strategy.command_mode_source(),
+                injection_environment.hook_strategy.backend_pressure(),
+                injection_environment.hook_strategy.inline_hook_risk(),
                 injection_environment.hook_strategy.query_commands_allowed(),
                 injection_environment.hook_strategy.hook_install_commands_allowed(),
                 injection_environment.hook_strategy.hook_status_commands_allowed(),
@@ -11774,8 +11836,11 @@ fn analyze_doctor_report(
             "controller-hook-strategy",
             "fail",
             format!(
-                "controller hook strategy is blocked ({}) query={} install={} status={} stop={}",
+                "controller hook strategy is blocked ({}) source={} pressure={} risk={} query={} install={} status={} stop={}",
                 injection_environment.hook_strategy.strategy,
+                injection_environment.hook_strategy.command_mode_source(),
+                injection_environment.hook_strategy.backend_pressure(),
+                injection_environment.hook_strategy.inline_hook_risk(),
                 injection_environment.hook_strategy.query_commands_allowed(),
                 injection_environment.hook_strategy.hook_install_commands_allowed(),
                 injection_environment.hook_strategy.hook_status_commands_allowed(),
@@ -11798,10 +11863,13 @@ fn analyze_doctor_report(
             "target-hook-strategy",
             status,
             format!(
-                "target hook strategy for pid {} is {} ({}) query={} install={} status={} stop={}",
+                "target hook strategy for pid {} is {} ({}) source={} pressure={} risk={} query={} install={} status={} stop={}",
                 pid,
                 preflight.target_hook_strategy.command_mode(),
                 preflight.target_hook_strategy.strategy,
+                preflight.target_hook_strategy.command_mode_source(),
+                preflight.target_hook_strategy.backend_pressure(),
+                preflight.target_hook_strategy.inline_hook_risk(),
                 preflight.target_hook_strategy.query_commands_allowed(),
                 preflight.target_hook_strategy.hook_install_commands_allowed(),
                 preflight.target_hook_strategy.hook_status_commands_allowed(),
@@ -11814,9 +11882,12 @@ fn analyze_doctor_report(
             "target-hook-strategy",
             "fail",
             format!(
-                "target hook strategy for pid {} is blocked ({}) query={} install={} status={} stop={}",
+                "target hook strategy for pid {} is blocked ({}) source={} pressure={} risk={} query={} install={} status={} stop={}",
                 pid,
                 preflight.target_hook_strategy.strategy,
+                preflight.target_hook_strategy.command_mode_source(),
+                preflight.target_hook_strategy.backend_pressure(),
+                preflight.target_hook_strategy.inline_hook_risk(),
                 preflight.target_hook_strategy.query_commands_allowed(),
                 preflight.target_hook_strategy.hook_install_commands_allowed(),
                 preflight.target_hook_strategy.hook_status_commands_allowed(),
@@ -17320,6 +17391,12 @@ mod tests {
         assert_eq!(rendered["preflightOnly"], true);
         assert_eq!(rendered["environment"]["hookPolicy"], "warn");
         assert_eq!(rendered["environment"]["hookStrategy"]["commandMode"], "allowed");
+        assert_eq!(rendered["environment"]["hookSummary"]["commandMode"], "allowed");
+        assert_eq!(rendered["environment"]["hookSummary"]["commandModeSource"], "topology");
+        assert_eq!(rendered["environment"]["hookSummary"]["backendPressure"], "external-loaded");
+        assert_eq!(rendered["environment"]["hookSummary"]["inlineHookRisk"], "risky");
+        assert_eq!(rendered["environment"]["hookSummary"]["coexistenceRequired"], true);
+        assert_eq!(rendered["environment"]["hookSummary"]["nextActionKey"], "hook.query");
         assert!(rendered["environment"]["hookEnvironment"]["recommendedActions"].is_array());
         assert_eq!(
             rendered["environment"]["hookEnvironment"]["coexistenceMode"],
@@ -17374,6 +17451,10 @@ mod tests {
         assert_eq!(rendered["preflight"]["loaderSymbolChecks"]["allImagesFound"], false);
         assert_eq!(rendered["preflight"]["loaderSymbolChecks"]["allAddressesMatch"], false);
         assert_eq!(rendered["preflight"]["targetUsesArm64e"], true);
+        assert_eq!(rendered["preflight"]["targetHookSummary"]["commandMode"], "allowed");
+        assert_eq!(rendered["preflight"]["targetHookSummary"]["commandModeSource"], "topology");
+        assert_eq!(rendered["preflight"]["targetHookSummary"]["inlineHookRisk"], "risky");
+        assert_eq!(rendered["preflight"]["targetHookSummary"]["nextActionKey"], "hook.query");
         assert_eq!(
             rendered["preflight"]["resolvedLoaderSymbols"][0]["threadBootstrapKind"],
             "pthread-create-from-mach-thread"
@@ -18320,8 +18401,19 @@ mod tests {
             rendered["environment"]["hookStrategy"]["hookInstallCommandsAllowed"],
             true
         );
+        assert_eq!(rendered["environment"]["hookSummary"]["commandMode"], "allowed");
+        assert_eq!(rendered["environment"]["hookSummary"]["commandModeSource"], "none");
+        assert_eq!(rendered["environment"]["hookSummary"]["backendPressure"], "none");
+        assert_eq!(rendered["environment"]["hookSummary"]["inlineHookRisk"], "safe");
+        assert_eq!(rendered["environment"]["hookSummary"]["coexistenceRequired"], false);
+        assert_eq!(rendered["environment"]["hookSummary"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["conflictState"], "none");
         assert_eq!(rendered["preflight"]["targetHookEnvironment"]["riskLevel"], "normal");
+        assert_eq!(rendered["preflight"]["targetHookSummary"]["commandMode"], "allowed");
+        assert_eq!(rendered["preflight"]["targetHookSummary"]["commandModeSource"], "none");
+        assert_eq!(rendered["preflight"]["targetHookSummary"]["backendPressure"], "none");
+        assert_eq!(rendered["preflight"]["targetHookSummary"]["inlineHookRisk"], "safe");
+        assert_eq!(rendered["preflight"]["targetHookSummary"]["coexistenceRequired"], false);
         assert_eq!(
             rendered["preflight"]["targetHookEnvironment"]["coexistenceMode"],
             "inline-safe"
