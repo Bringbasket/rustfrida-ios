@@ -352,6 +352,18 @@ fn hook_strategy_capabilities_to_json(strategy: &native_api::HookStrategyDecisio
 }
 
 #[cfg(unix)]
+fn arm64e_recommended_action_class(recommended_action: &str) -> &'static str {
+    match recommended_action {
+        "inject" => "inject",
+        "query-only-until-override" | "run-readonly-diagnostics" => "readonly-diagnostics",
+        "preflight-more" => "preflight",
+        "run" => "run",
+        "run-with-caution" => "run-with-caution",
+        _ => "unknown",
+    }
+}
+
+#[cfg(unix)]
 fn hook_arm64e_recovery_summary_to_json(
     preflight: &InjectionTargetPreflightReport,
     trace: Option<&InjectionTrace>,
@@ -372,6 +384,9 @@ fn hook_arm64e_recovery_summary_to_json(
         "readonlyOnly": true,
         "appliesToHookInstall": true,
         "recommendedAction": "run-readonly-diagnostics",
+        "recommendedActionClass": "readonly-diagnostics",
+        "recommendedActionKey": "hook.query",
+        "recommendedActionPhase": "query",
         "overrideRequiredForFallback": true,
         "nextActionKey": "hook.query",
         "nextActionPhase": "query",
@@ -11870,6 +11885,12 @@ fn arm64e_preflight_summary_to_json(report: &InjectionTargetPreflightReport) -> 
         Some(false) => "inject",
         None => "preflight-more",
     };
+    let recommended_action_phase = match recommended_action {
+        "inject" => "inject",
+        "query-only-until-override" => "query",
+        "preflight-more" => "preflight",
+        _ => "unknown",
+    };
     let note = match report.target_uses_arm64e {
         Some(true) if preferred_thread_bootstrap_resolved => {
             "arm64e target resolved the preferred bootstrap; query commands remain read-only safe and injection can proceed"
@@ -11899,6 +11920,8 @@ fn arm64e_preflight_summary_to_json(report: &InjectionTargetPreflightReport) -> 
         },
         "injectionReady": injection_ready,
         "recommendedAction": recommended_action,
+        "recommendedActionClass": arm64e_recommended_action_class(recommended_action),
+        "recommendedActionPhase": recommended_action_phase,
         "note": note,
     })
 }
@@ -16253,27 +16276,30 @@ fn command_arm64e_safety_to_json(
         .as_bool()
         .unwrap_or(false);
 
-    let (classification, risk_level, recommended_action) = match target_uses_arm64e {
+    let (classification, risk_level, recommended_action, recommended_action_phase) = match target_uses_arm64e {
         Some(true) if requires_inline_hooks == Some(true) && override_required_for_fallback => (
             "blocked-without-override",
             "high",
             "query-only-until-override",
+            "query",
         ),
         Some(true) if requires_inline_hooks == Some(true) && preferred_thread_bootstrap_resolved => {
-            ("inline-risky", "elevated", "run-with-caution")
+            ("inline-risky", "elevated", "run-with-caution", "hook-install")
         }
-        Some(true) if requires_inline_hooks == Some(true) => ("inline-risky", "elevated", "preflight-more"),
-        Some(true) if is_pac_command => ("safe-readonly-pac", "low", "run"),
-        Some(true) => ("safe-readonly", "low", "run"),
-        Some(false) if requires_inline_hooks == Some(true) => ("standard-inline", "normal", "run"),
-        Some(false) => ("standard-readonly", "low", "run"),
-        None => ("unknown", "unknown", "preflight-more"),
+        Some(true) if requires_inline_hooks == Some(true) => ("inline-risky", "elevated", "preflight-more", "preflight"),
+        Some(true) if is_pac_command => ("safe-readonly-pac", "low", "run", "query"),
+        Some(true) => ("safe-readonly", "low", "run", "query"),
+        Some(false) if requires_inline_hooks == Some(true) => ("standard-inline", "normal", "run", "hook-install"),
+        Some(false) => ("standard-readonly", "low", "run", "query"),
+        None => ("unknown", "unknown", "preflight-more", "preflight"),
     };
 
     json!({
         "classification": classification,
         "riskLevel": risk_level,
         "recommendedAction": recommended_action,
+        "recommendedActionClass": arm64e_recommended_action_class(recommended_action),
+        "recommendedActionPhase": recommended_action_phase,
         "targetUsesArm64e": target_uses_arm64e,
         "requiresInlineHooks": requires_inline_hooks,
         "hookCapability": hook_capability,
@@ -16317,6 +16343,9 @@ fn command_error_recovery_to_json(
             "nextActionPhase": "query",
             "nextStepPhase": "query",
             "recommendedAction": "run-readonly-diagnostics",
+            "recommendedActionClass": "readonly-diagnostics",
+            "recommendedActionKey": "hook.query",
+            "recommendedActionPhase": "query",
             "commandCount": commands.len(),
             "commands": commands,
             "firstCommand": commands.first().cloned(),
@@ -16358,6 +16387,9 @@ fn hook_failure_recovery_to_json(
             "nextActionPhase": "query",
             "nextStepPhase": "query",
             "recommendedAction": "run-readonly-diagnostics",
+            "recommendedActionClass": "readonly-diagnostics",
+            "recommendedActionKey": "hook.query",
+            "recommendedActionPhase": "query",
             "commandCount": commands.len(),
             "commands": commands,
             "firstCommand": commands.first().cloned(),
@@ -18256,6 +18288,8 @@ mod tests {
         );
         assert_eq!(rendered["injectionReady"], false);
         assert_eq!(rendered["recommendedAction"], "query-only-until-override");
+        assert_eq!(rendered["recommendedActionClass"], "readonly-diagnostics");
+        assert_eq!(rendered["recommendedActionPhase"], "query");
     }
 
     #[test]
@@ -18420,6 +18454,8 @@ mod tests {
         assert_eq!(rendered["arm64eCommandSafety"]["classification"], "safe-readonly-pac");
         assert_eq!(rendered["arm64eCommandSafety"]["riskLevel"], "low");
         assert_eq!(rendered["arm64eCommandSafety"]["recommendedAction"], "run");
+        assert_eq!(rendered["arm64eCommandSafety"]["recommendedActionClass"], "run");
+        assert_eq!(rendered["arm64eCommandSafety"]["recommendedActionPhase"], "query");
         assert_eq!(rendered["arm64eCommandSafety"]["targetUsesArm64e"], true);
         assert_eq!(rendered["arm64eCommandSafety"]["requiresInlineHooks"], false);
         assert_eq!(rendered["arm64eCommandSafety"]["hookCapability"], "query");
@@ -19551,6 +19587,9 @@ mod tests {
         assert_eq!(rendered["recovery"]["nextActionPhase"], "query");
         assert_eq!(rendered["recovery"]["nextStepPhase"], "query");
         assert_eq!(rendered["recovery"]["recommendedAction"], "run-readonly-diagnostics");
+        assert_eq!(rendered["recovery"]["recommendedActionClass"], "readonly-diagnostics");
+        assert_eq!(rendered["recovery"]["recommendedActionKey"], "hook.query");
+        assert_eq!(rendered["recovery"]["recommendedActionPhase"], "query");
         assert_eq!(rendered["recovery"]["commands"][0], "native.hookenv");
         assert_eq!(rendered["recovery"]["firstCommand"], "native.hookenv");
         assert_eq!(rendered["recovery"]["commands"][1], "pac.available");
@@ -31014,6 +31053,18 @@ mod tests {
         assert_eq!(
             rendered["diagnostics"]["hook"]["recovery"]["overrideEnv"],
             "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["recovery"]["recommendedActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["recovery"]["recommendedActionKey"],
+            "hook.query"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["recovery"]["recommendedActionPhase"],
+            "query"
         );
         assert_eq!(rendered["diagnostics"]["hook"]["recovery"]["firstCommand"], "native.hookenv");
         assert_eq!(
