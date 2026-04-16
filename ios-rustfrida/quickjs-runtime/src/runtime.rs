@@ -5416,6 +5416,114 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        r#"(function() {
+                            const originalSymbols = Swift.symbols;
+                            const originalTypes = Swift.types;
+                            const originalTypesOfKind = Swift.typesOfKind;
+                            const originalTypeMethods = Swift.typeMethods;
+                            const originalMethodOwners = Swift.methodOwners;
+                            const originalMethods = Swift.methods;
+                            Swift.symbols = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: '$s4Demo14ViewControllerC6sharedACyYaKFZ',
+                                        demangledName: 'static Demo.ViewController.shared() async throws -> Demo.ViewController',
+                                        address: 0x180001000n,
+                                        offset: 0x1000n,
+                                    }
+                                ];
+                            };
+                            Swift.types = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'ViewController',
+                                        sourceSymbolName: '$s4Demo14ViewControllerVN',
+                                        sourceKind: 'nominal-type',
+                                        sourceAddress: 0x180001300n,
+                                        sourceOffset: 0x1300n,
+                                        sourceDemangledName: 'Demo.ViewController',
+                                    }
+                                ];
+                            };
+                            Swift.typesOfKind = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'Helper',
+                                        sourceSymbolName: '$s4Demo6HelperVMa',
+                                        sourceKind: 'metadata-accessor',
+                                        sourceAddress: 0x180001500n,
+                                        sourceOffset: 0x1500n,
+                                        sourceDemangledName: 'type metadata accessor for Demo.Helper',
+                                    }
+                                ];
+                            };
+                            Swift.typeMethods = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: '$s4Demo14ViewControllerC6sharedACyYaKFZ',
+                                        demangledName: 'static Demo.ViewController.shared() async throws -> Demo.ViewController',
+                                        address: 0x180001100n,
+                                        offset: 0x1100n,
+                                    }
+                                ];
+                            };
+                            Swift.methodOwners = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: 'ViewController',
+                                        sourceSymbolName: '$s4Demo14ViewControllerVN',
+                                        sourceKind: 'nominal-type',
+                                        sourceAddress: 0x180001700n,
+                                        sourceOffset: 0x1700n,
+                                        sourceDemangledName: 'Demo.ViewController',
+                                    }
+                                ];
+                            };
+                            Swift.methods = function() {
+                                return [
+                                    {
+                                        moduleName: 'Demo',
+                                        moduleBase: 0x180000000n,
+                                        name: '$s4Demo14ViewControllerC11viewDidLoadyyF',
+                                        demangledName: 'Demo.ViewController.viewDidLoad() -> ()',
+                                        address: 0x180002000n,
+                                        offset: 0x2000n,
+                                    }
+                                ];
+                            };
+                            try {
+                                return __iosRustFridaAgentApi.handle('swift.findSymbols Demo -- ViewController') === __iosRustFridaAgentApi.handle('swift.symbols Demo -- ViewController') &&
+                                    __iosRustFridaAgentApi.handle('swift.findTypes Demo -- ViewController') === __iosRustFridaAgentApi.handle('swift.types Demo -- ViewController') &&
+                                    __iosRustFridaAgentApi.handle('swift.findTypesOfKind Demo -- metadata-accessor ViewController') === __iosRustFridaAgentApi.handle('swift.typesOfKind Demo -- metadata-accessor ViewController') &&
+                                    __iosRustFridaAgentApi.handle('swift.findTypeMethods Demo -- ViewController') === __iosRustFridaAgentApi.handle('swift.typeMethods Demo -- ViewController') &&
+                                    __iosRustFridaAgentApi.handle('swift.findMethodOwners Demo -- viewDidLoad') === __iosRustFridaAgentApi.handle('swift.methodOwners Demo -- viewDidLoad') &&
+                                    __iosRustFridaAgentApi.handle('swift.findMethods Demo -- ViewController viewDidLoad') === __iosRustFridaAgentApi.handle('swift.methods Demo -- ViewController viewDidLoad');
+                            } finally {
+                                Swift.symbols = originalSymbols;
+                                Swift.types = originalTypes;
+                                Swift.typesOfKind = originalTypesOfKind;
+                                Swift.typeMethods = originalTypeMethods;
+                                Swift.methodOwners = originalMethodOwners;
+                                Swift.methods = originalMethods;
+                            }
+                        })()"#
+                    )
+                    .expect("agent swift module collection aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() {
                             return __iosRustFridaAgentApi.handle('swift.findSymbols ViewController') === __iosRustFridaAgentApi.handle('swift.symbols ViewController') &&
                                 __iosRustFridaAgentApi.handle('swift.findTypeMethods ViewController') === __iosRustFridaAgentApi.handle('swift.typeMethods ViewController');
