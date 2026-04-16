@@ -12235,7 +12235,10 @@ undefined;
                                     && result.unknownEntryCount === 1
                                     && result.hasUnknownKinds === true
                                     && Array.isArray(result.kinds)
-                                    && result.kinds.length === 3;
+                                    && result.kinds.length === 3
+                                    && Array.isArray(result.entries)
+                                    && result.entries.length === 3
+                                    && JSON.stringify(result.entries) === JSON.stringify(result.dataInCode.entries);
                             } finally {
                                 Native.dataInCode = original;
                             }
@@ -12272,6 +12275,9 @@ undefined;
                                     && result.kinds.some((entry) => entry.kind === 1 && entry.kindName === 'DICE_KIND_DATA' && entry.count === 1 && entry.totalLengthHex === '0x4' && entry.firstOffsetHex === '0x10' && entry.lastOffsetHex === '0x10' && entry.hasKnownKind === true && entry.isData === true && entry.isJumpTable === false && entry.isAbsJumpTable === false)
                                     && result.kinds.some((entry) => entry.kind === 3 && entry.kindName === 'DICE_KIND_JUMP_TABLE16' && entry.count === 1 && entry.totalLengthHex === '0x8' && entry.firstOffsetHex === '0x20' && entry.lastOffsetHex === '0x20' && entry.hasKnownKind === true && entry.isData === false && entry.isJumpTable === true && entry.isAbsJumpTable === false)
                                     && result.kinds.some((entry) => entry.kind === 255 && entry.kindName === 'DICE_KIND_UNKNOWN' && entry.count === 1 && entry.totalLengthHex === '0xc' && entry.firstOffsetHex === '0x30' && entry.lastOffsetHex === '0x30' && entry.hasKnownKind === false && entry.isData === false && entry.isJumpTable === false && entry.isAbsJumpTable === false)
+                                    && Array.isArray(result.entries)
+                                    && result.entries.length === result.dataInCode.entries.length
+                                    && JSON.stringify(result.entries) === JSON.stringify(result.dataInCode.entries)
                                     && Array.isArray(result.dataInCode.entries)
                                     && result.dataInCode.entries.length === 3
                                     && result.dataInCode.entries[0].offsetHex === '0x10'
@@ -12398,7 +12404,10 @@ undefined;
                                     && result.weakDefinitionCount === 1
                                     && result.hasWeakDefinitions === true
                                     && Array.isArray(result.kinds)
-                                    && result.kinds.length === 3;
+                                    && result.kinds.length === 3
+                                    && Array.isArray(result.entries)
+                                    && result.entries.length === 4
+                                    && JSON.stringify(result.entries) === JSON.stringify(result.exportsTrie.entries);
                             } finally {
                                 Native.exportsTrie = original;
                             }
@@ -12437,6 +12446,9 @@ undefined;
                                     && result.kinds.some((entry) => entry.kind === 'regular' && entry.count === 2 && entry.firstExportName === '_funcA' && entry.lastExportName === '_weakData' && entry.hasAddress === true && entry.hasOffset === true && entry.hasImportName === false && entry.weakDefinitionCount === 1 && entry.reexportCount === 0 && entry.stubAndResolverCount === 0)
                                     && result.kinds.some((entry) => entry.kind === 'stub-and-resolver' && entry.count === 1 && entry.firstExportName === '_resolverThunk' && entry.lastExportName === '_resolverThunk' && entry.hasAddress === true && entry.hasOffset === true && entry.hasImportName === false && entry.weakDefinitionCount === 0 && entry.reexportCount === 0 && entry.stubAndResolverCount === 1)
                                     && result.kinds.some((entry) => entry.kind === 'reexport' && entry.count === 1 && entry.firstExportName === '_libFoo' && entry.lastExportName === '_libFoo' && entry.hasAddress === false && entry.hasOffset === true && entry.hasImportName === true && entry.weakDefinitionCount === 0 && entry.reexportCount === 1 && entry.stubAndResolverCount === 0)
+                                    && Array.isArray(result.entries)
+                                    && result.entries.length === result.exportsTrie.entries.length
+                                    && JSON.stringify(result.entries) === JSON.stringify(result.exportsTrie.entries)
                                     && Array.isArray(result.exportsTrie.entries)
                                     && result.exportsTrie.entries.length === 4
                                     && result.exportsTrie.entries[0].name === '_funcA'
@@ -12543,6 +12555,10 @@ undefined;
                                     result.hasNegativeAddends === false &&
                                     result.firstLibOrdinal === null &&
                                     result.lastLibOrdinal === null &&
+                                    Array.isArray(result.segments) &&
+                                    result.segments.length === 0 &&
+                                    Array.isArray(result.imports) &&
+                                    result.imports.length === 0 &&
                                     Array.isArray(result.pointerFormats) &&
                                     result.pointerFormats.length === 0 &&
                                     Array.isArray(result.libOrdinals) &&
@@ -12610,6 +12626,9 @@ undefined;
                                 && Array.isArray(result.pointerFormats)
                                 && result.pointerFormats.length === fixups.pointerFormats.length
                                 && JSON.stringify(result.pointerFormats) === JSON.stringify(fixups.pointerFormats)
+                                && Array.isArray(result.segments)
+                                && result.segments.length === fixups.segments.length
+                                && JSON.stringify(result.segments) === JSON.stringify(fixups.segments)
                                 && result.importCount === fixups.importCount
                                 && result.hasImports === (fixups.hasImports === true)
                                 && result.firstImportName === fixups.firstImportName
@@ -12628,6 +12647,9 @@ undefined;
                                 && Array.isArray(result.libOrdinals)
                                 && result.libOrdinals.length === fixups.libOrdinals.length
                                 && JSON.stringify(result.libOrdinals) === JSON.stringify(fixups.libOrdinals)
+                                && Array.isArray(result.imports)
+                                && result.imports.length === fixups.imports.length
+                                && JSON.stringify(result.imports) === JSON.stringify(fixups.imports)
                                 && typeof fixups.dataoffHex === 'string'
                                 && typeof fixups.dataEnd === 'string'
                                 && typeof fixups.hasData === 'boolean'
@@ -12674,7 +12696,9 @@ undefined;
                                 && Array.isArray(fixups.pointerFormats)
                                 && Array.isArray(fixups.libOrdinals)
                                 && Array.isArray(fixups.segments)
-                                && Array.isArray(fixups.imports))) {
+                                && Array.isArray(fixups.imports)
+                                && Array.isArray(result.segments)
+                                && Array.isArray(result.imports))) {
                                 return false;
                             }
                             if (fixups.segments.length !== 0) {
@@ -12891,6 +12915,12 @@ undefined;
                                     && result.uniqueLibOrdinalCount === 2
                                     && result.firstLibOrdinal === 1
                                     && result.lastLibOrdinal === 2
+                                    && Array.isArray(result.segments)
+                                    && result.segments.length === 2
+                                    && JSON.stringify(result.segments) === JSON.stringify(result.chainedFixups.segments)
+                                    && Array.isArray(result.imports)
+                                    && result.imports.length === 3
+                                    && JSON.stringify(result.imports) === JSON.stringify(result.chainedFixups.imports)
                                     && Array.isArray(result.libOrdinals)
                                     && result.libOrdinals.length === 2;
                             } finally {
@@ -12981,6 +13011,9 @@ undefined;
                                     && result.libOrdinals.length === 2
                                     && result.libOrdinals.some((entry) => entry.libOrdinal === 1 && entry.count === 1 && entry.weakImportCount === 0 && entry.namedImportCount === 1 && entry.addendImportCount === 1)
                                     && result.libOrdinals.some((entry) => entry.libOrdinal === 2 && entry.count === 2 && entry.weakImportCount === 1 && entry.namedImportCount === 1 && entry.addendImportCount === 1)
+                                    && Array.isArray(result.segments)
+                                    && result.segments.length === result.chainedFixups.segments.length
+                                    && JSON.stringify(result.segments) === JSON.stringify(result.chainedFixups.segments)
                                     && Array.isArray(result.chainedFixups.segments)
                                     && result.chainedFixups.segments.length === 2
                                     && result.chainedFixups.segments[0].segmentIndex === 0
@@ -13022,6 +13055,9 @@ undefined;
                                     && result.chainedFixups.segments[0].pages[1].effectiveStartCount === 2
                                     && result.chainedFixups.segments[0].pages[1].firstChainStartHex === '0x20'
                                     && result.chainedFixups.segments[0].pages[1].lastChainStartHex === '0x40'
+                                    && Array.isArray(result.imports)
+                                    && result.imports.length === result.chainedFixups.imports.length
+                                    && JSON.stringify(result.imports) === JSON.stringify(result.chainedFixups.imports)
                                     && Array.isArray(result.chainedFixups.imports)
                                     && result.chainedFixups.imports.length === 3
                                     && result.chainedFixups.imports[0].index === 0
@@ -13902,7 +13938,11 @@ undefined;
                                     && fixups.resolvedFirstLibOrdinal === null
                                     && fixups.firstLibOrdinal === null
                                     && fixups.resolvedLastLibOrdinal === null
-                                    && fixups.lastLibOrdinal === null;
+                                    && fixups.lastLibOrdinal === null
+                                    && Array.isArray(fixups.segments)
+                                    && fixups.segments.length === 0
+                                    && Array.isArray(fixups.imports)
+                                    && fixups.imports.length === 0;
                             }
                             return fixups.resolvedModuleName === fixups.chainedFixups.moduleName
                                 && fixups.resolvedModuleBase === fixups.chainedFixups.moduleBase
@@ -13971,6 +14011,9 @@ undefined;
                                 && Array.isArray(fixups.pointerFormats)
                                 && fixups.pointerFormats.length === fixups.chainedFixups.pointerFormats.length
                                 && JSON.stringify(fixups.pointerFormats) === JSON.stringify(fixups.chainedFixups.pointerFormats)
+                                && Array.isArray(fixups.segments)
+                                && fixups.segments.length === fixups.chainedFixups.segments.length
+                                && JSON.stringify(fixups.segments) === JSON.stringify(fixups.chainedFixups.segments)
                                 && fixups.firstPointerFormatName === fixups.chainedFixups.firstPointerFormatName
                                 && fixups.lastPointerFormatName === fixups.chainedFixups.lastPointerFormatName
                                 && fixups.resolvedDominantPointerFormatName === fixups.chainedFixups.dominantPointerFormatName
@@ -13996,7 +14039,10 @@ undefined;
                                 && fixups.resolvedFirstLibOrdinal === fixups.chainedFixups.firstLibOrdinal
                                 && fixups.firstLibOrdinal === fixups.chainedFixups.firstLibOrdinal
                                 && fixups.resolvedLastLibOrdinal === fixups.chainedFixups.lastLibOrdinal
-                                && fixups.lastLibOrdinal === fixups.chainedFixups.lastLibOrdinal;
+                                && fixups.lastLibOrdinal === fixups.chainedFixups.lastLibOrdinal
+                                && Array.isArray(fixups.imports)
+                                && fixups.imports.length === fixups.chainedFixups.imports.length
+                                && JSON.stringify(fixups.imports) === JSON.stringify(fixups.chainedFixups.imports);
                         })()"#
                     )
                     .expect("agent native heavy single result summaries"),

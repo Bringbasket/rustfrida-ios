@@ -7835,6 +7835,7 @@ function handleSpecResult(spec) {
             unknownEntryCount: normalized === null ? 0 : normalized.unknownEntryCount,
             hasUnknownKinds: normalized !== null && normalized.hasUnknownKinds === true,
             kinds: normalized === null ? [] : normalized.kinds,
+            entries: normalized === null ? [] : normalized.entries,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -7913,6 +7914,7 @@ function handleSpecResult(spec) {
             weakDefinitionCount: normalized === null ? 0 : normalized.weakDefinitionCount,
             hasWeakDefinitions: normalized !== null && normalized.hasWeakDefinitions === true,
             kinds: normalized === null ? [] : normalized.kinds,
+            entries: normalized === null ? [] : normalized.entries,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
@@ -7997,6 +7999,7 @@ function handleSpecResult(spec) {
             resolvedDominantPointerFormatName: normalized === null ? null : normalized.dominantPointerFormatName,
             dominantPointerFormatName: normalized === null ? null : normalized.dominantPointerFormatName,
             pointerFormats: normalized === null ? [] : normalized.pointerFormats,
+            segments: normalized === null ? [] : normalized.segments,
             importCount: normalized === null ? 0 : normalized.importCount,
             hasImports: normalized !== null && normalized.hasImports === true,
             resolvedFirstImportName: normalized === null ? null : normalized.firstImportName,
@@ -8017,6 +8020,7 @@ function handleSpecResult(spec) {
             resolvedLastLibOrdinal: normalized === null ? null : normalized.lastLibOrdinal,
             lastLibOrdinal: normalized === null ? null : normalized.lastLibOrdinal,
             libOrdinals: normalized === null ? [] : normalized.libOrdinals,
+            imports: normalized === null ? [] : normalized.imports,
             text: normalized === null ? '<null>' : normalized.text,
         };
     }
