@@ -368,11 +368,14 @@ fn hook_arm64e_recovery_summary_to_json(
     let commands = arm64e_readonly_recovery_commands();
     json!({
         "strategy": "arm64e-query-only-until-override",
+        "arm64eConstrained": true,
         "readonlyOnly": true,
         "appliesToHookInstall": true,
         "recommendedAction": "run-readonly-diagnostics",
+        "overrideRequiredForFallback": true,
         "nextActionKey": "hook.query",
         "nextActionPhase": "query",
+        "nextStepPhase": "query",
         "overrideEnv": "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK",
         "commandCount": commands.len(),
         "commands": commands,
@@ -13415,6 +13418,7 @@ fn render_injection_result_json(
     let hook_environment_error = extract_stage_error_message(error, "agent hook environment query");
     let jsinit_error = extract_stage_error_message(error, "agent jsinit");
     let loadjs_error = extract_stage_error_message(error, "agent loadjs");
+    let recovery_summary = hook_arm64e_recovery_summary_to_json(preflight, trace);
 
     json!({
         "ok": ok,
@@ -13436,6 +13440,9 @@ fn render_injection_result_json(
         "plan": injection_plan_to_json(plan),
         "preflight": injection_preflight_to_json(preflight),
         "arm64eSummary": arm64e_runtime_summary_to_json(preflight, trace),
+        "hookRecoverySummary": recovery_summary.clone(),
+        "recoverySummary": recovery_summary.clone(),
+        "arm64eRecoverySummary": recovery_summary,
         "trace": trace.map(injection_trace_to_json),
         "diagnostics": failure_diagnostics_to_json(
             config,
@@ -16301,13 +16308,18 @@ fn command_error_recovery_to_json(
             "strategy": "arm64e-query-only-until-override",
             "reason": "arm64e fallback bootstrap requires explicit override before inline-hook commands should be retried",
             "arm64eConstrained": true,
+            "readonlyOnly": true,
+            "appliesToHookInstall": true,
             "hookBlocked": hook_blocked,
             "overrideRequiredForFallback": true,
             "overrideEnv": "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK",
+            "nextActionKey": "hook.query",
+            "nextActionPhase": "query",
             "nextStepPhase": "query",
             "recommendedAction": "run-readonly-diagnostics",
             "commandCount": commands.len(),
             "commands": commands,
+            "firstCommand": commands.first().cloned(),
             "commandJsonTemplateCount": command_json_templates.len(),
             "commandJsonTemplates": command_json_templates,
         });
@@ -16338,12 +16350,17 @@ fn hook_failure_recovery_to_json(
             "strategy": "arm64e-query-only-until-override",
             "reason": "arm64e fallback bootstrap requires explicit override before inline-hook recovery should be retried",
             "arm64eConstrained": true,
+            "readonlyOnly": true,
+            "appliesToHookInstall": true,
             "overrideRequiredForFallback": true,
             "overrideEnv": "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK",
+            "nextActionKey": "hook.query",
+            "nextActionPhase": "query",
             "nextStepPhase": "query",
             "recommendedAction": "run-readonly-diagnostics",
             "commandCount": commands.len(),
             "commands": commands,
+            "firstCommand": commands.first().cloned(),
             "commandJsonTemplateCount": command_json_templates.len(),
             "commandJsonTemplates": command_json_templates,
         });
@@ -16405,6 +16422,7 @@ fn render_command_outcome_json_with_context(
     outcome: &CommandOutcome,
     context: &CommandJsonContext<'_>,
 ) -> Value {
+    let recovery_summary = hook_arm64e_recovery_summary_to_json(context.preflight, context.trace);
     let mut rendered = render_command_outcome_json(outcome)
         .as_object()
         .cloned()
@@ -16417,6 +16435,9 @@ fn render_command_outcome_json_with_context(
         "arm64eCommandSafety".into(),
         command_arm64e_safety_to_json(&outcome.command, context.preflight, context.trace),
     );
+    rendered.insert("hookRecoverySummary".into(), recovery_summary.clone());
+    rendered.insert("recoverySummary".into(), recovery_summary.clone());
+    rendered.insert("arm64eRecoverySummary".into(), recovery_summary);
     Value::Object(rendered)
 }
 
@@ -18131,6 +18152,18 @@ mod tests {
             "arm64e-query-only-until-override"
         );
         assert_eq!(
+            rendered["environment"]["hookSummary"]["recoverySummary"]["nextActionKey"],
+            "hook.query"
+        );
+        assert_eq!(
+            rendered["environment"]["hookSummary"]["recoverySummary"]["nextActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            rendered["environment"]["hookSummary"]["recoverySummary"]["nextStepPhase"],
+            "query"
+        );
+        assert_eq!(
             rendered["environment"]["hookRecoverySummary"]["overrideEnv"],
             "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
         );
@@ -18147,6 +18180,7 @@ mod tests {
             rendered["hook"]["target"]["recoverySummary"]["recommendedAction"],
             "run-readonly-diagnostics"
         );
+        assert_eq!(rendered["hook"]["recoverySummary"]["firstCommand"], "native.hookenv");
 
         let install_templates = rendered["hook"]["automation"]["commandTemplates"]
             .as_array()
@@ -18292,8 +18326,8 @@ mod tests {
             target_images: vec![],
             target_image_count: 0,
             target_uses_arm64e: Some(true),
-            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFromMachThread,
-            thread_bootstrap_label: "pthread_create_from_mach_thread".into(),
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFallback,
+            thread_bootstrap_label: "pthread_create".into(),
             thread_bootstrap_address: 0,
             thread_bootstrap_raw_address: 0,
             thread_bootstrap_canonicalized: false,
@@ -18323,8 +18357,8 @@ mod tests {
             target_uses_arm64e: Some(true),
             code_protection: RemoteProtectionOutcome::SetMaximumAndCurrent,
             data_protection: RemoteProtectionOutcome::CurrentOnlyFallback,
-            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFromMachThread,
-            thread_bootstrap_label: "pthread_create_from_mach_thread".into(),
+            thread_bootstrap_kind: ThreadBootstrapKind::PthreadCreateFallback,
+            thread_bootstrap_label: "pthread_create".into(),
             thread_plan: ThreadCreatePlan {
                 flavor: 6,
                 count: 70,
@@ -18390,6 +18424,9 @@ mod tests {
         assert_eq!(rendered["arm64eCommandSafety"]["requiresInlineHooks"], false);
         assert_eq!(rendered["arm64eCommandSafety"]["hookCapability"], "query");
         assert_eq!(rendered["arm64eCommandSafety"]["pacCommand"], true);
+        assert_eq!(rendered["hookRecoverySummary"]["firstCommand"], "native.hookenv");
+        assert_eq!(rendered["recoverySummary"]["strategy"], "arm64e-query-only-until-override");
+        assert_eq!(rendered["arm64eRecoverySummary"]["nextActionPhase"], "query");
     }
 
     #[test]
@@ -19504,13 +19541,18 @@ mod tests {
         assert_eq!(rendered["recovery"]["strategy"], "arm64e-query-only-until-override");
         assert_eq!(rendered["recovery"]["arm64eConstrained"], true);
         assert_eq!(rendered["recovery"]["hookBlocked"], true);
+        assert_eq!(rendered["recovery"]["readonlyOnly"], true);
+        assert_eq!(rendered["recovery"]["appliesToHookInstall"], true);
         assert_eq!(
             rendered["recovery"]["overrideEnv"],
             "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
         );
+        assert_eq!(rendered["recovery"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["recovery"]["nextActionPhase"], "query");
         assert_eq!(rendered["recovery"]["nextStepPhase"], "query");
         assert_eq!(rendered["recovery"]["recommendedAction"], "run-readonly-diagnostics");
         assert_eq!(rendered["recovery"]["commands"][0], "native.hookenv");
+        assert_eq!(rendered["recovery"]["firstCommand"], "native.hookenv");
         assert_eq!(rendered["recovery"]["commands"][1], "pac.available");
         assert_eq!(rendered["recovery"]["commands"][2], "pac.arm64e");
         assert_eq!(
@@ -19679,6 +19721,9 @@ mod tests {
         assert_eq!(rendered["arm64eSummary"]["status"], "non-arm64e");
         assert_eq!(rendered["arm64eSummary"]["traceAvailable"], true);
         assert_eq!(rendered["arm64eSummary"]["traceTargetUsesArm64e"], false);
+        assert!(rendered["hookRecoverySummary"].is_null());
+        assert!(rendered["recoverySummary"].is_null());
+        assert!(rendered["arm64eRecoverySummary"].is_null());
         assert_eq!(
             rendered["arm64eSummary"]["traceThreadBootstrapKind"],
             "pthread-create-from-mach-thread"
@@ -30946,18 +30991,31 @@ mod tests {
         );
 
         assert_eq!(rendered["diagnostics"]["arm64eSummary"]["overrideRequiredForFallback"], true);
+        assert_eq!(rendered["hookRecoverySummary"]["strategy"], "arm64e-query-only-until-override");
+        assert_eq!(rendered["recoverySummary"]["firstCommand"], "native.hookenv");
+        assert_eq!(rendered["arm64eRecoverySummary"]["nextActionKey"], "hook.query");
         assert_eq!(rendered["diagnostics"]["recovery"]["strategy"], "arm64e-query-only-until-override");
+        assert_eq!(rendered["diagnostics"]["recovery"]["readonlyOnly"], true);
+        assert_eq!(rendered["diagnostics"]["recovery"]["appliesToHookInstall"], true);
+        assert_eq!(rendered["diagnostics"]["recovery"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["diagnostics"]["recovery"]["nextActionPhase"], "query");
         assert_eq!(rendered["diagnostics"]["recovery"]["commands"][0], "native.hookenv");
+        assert_eq!(rendered["diagnostics"]["recovery"]["firstCommand"], "native.hookenv");
         assert_eq!(rendered["diagnostics"]["recovery"]["commands"][1], "pac.available");
         assert_eq!(rendered["diagnostics"]["recovery"]["commands"][2], "pac.arm64e");
         assert_eq!(
             rendered["diagnostics"]["hook"]["recovery"]["strategy"],
             "arm64e-query-only-until-override"
         );
+        assert_eq!(rendered["diagnostics"]["hook"]["recovery"]["readonlyOnly"], true);
+        assert_eq!(rendered["diagnostics"]["hook"]["recovery"]["appliesToHookInstall"], true);
+        assert_eq!(rendered["diagnostics"]["hook"]["recovery"]["nextActionKey"], "hook.query");
+        assert_eq!(rendered["diagnostics"]["hook"]["recovery"]["nextActionPhase"], "query");
         assert_eq!(
             rendered["diagnostics"]["hook"]["recovery"]["overrideEnv"],
             "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
         );
+        assert_eq!(rendered["diagnostics"]["hook"]["recovery"]["firstCommand"], "native.hookenv");
         assert_eq!(
             rendered["diagnostics"]["hook"]["recovery"]["commandJsonTemplates"][0]["command"],
             "native.hookenv"
