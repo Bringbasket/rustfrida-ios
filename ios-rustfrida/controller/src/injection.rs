@@ -1723,6 +1723,72 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         .and_then(|error_code| routing_decision_ready_resolve_index.get(error_code))
         .cloned()
         .unwrap_or(Value::Null);
+    let routing_decision_ready_example_query_only_error_code = "hook-fallback-hook-install-failed";
+    let routing_decision_ready_example_query_only_result = routing_decision_ready_resolve_index
+        .get(routing_decision_ready_example_query_only_error_code)
+        .cloned();
+    let routing_decision_ready_example_query_only_blocked_by: Option<String> = None;
+    let routing_decision_ready_example_query_only_blocked_by_source =
+        routing_decision_ready_example_query_only_blocked_by
+            .clone()
+            .unwrap_or_else(|| "none".to_string());
+    let routing_decision_ready_example_query_only_is_blocked =
+        routing_decision_ready_example_query_only_blocked_by_source != "none";
+    let routing_decision_ready_example_query_only_available =
+        routing_decision_ready_example_query_only_result.is_some();
+    let routing_decision_ready_example_query_only_matched =
+        routing_decision_ready_example_query_only_result
+            .as_ref()
+            .and_then(|entry| entry.get("matched"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+    let routing_decision_ready_example_query_only_used_default =
+        routing_decision_ready_example_query_only_result
+            .as_ref()
+            .and_then(|entry| entry.get("usedDefault"))
+            .and_then(Value::as_bool)
+            .unwrap_or(!routing_decision_ready_example_query_only_available);
+    let routing_decision_ready_example_query_only_reason =
+        routing_decision_ready_example_query_only_result
+            .as_ref()
+            .and_then(|entry| entry.get("reason"))
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+            .or_else(|| {
+                (!routing_decision_ready_example_query_only_available)
+                    .then(|| "missing-error-code".to_string())
+            });
+    let routing_decision_ready_example_query_only_phase =
+        routing_decision_ready_example_query_only_result
+            .as_ref()
+            .and_then(|entry| entry.get("effective"))
+            .and_then(|entry| entry.get("phase"))
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned);
+    let routing_decision_ready_example_query_only_effective_escalation_key =
+        routing_decision_ready_example_query_only_result
+            .as_ref()
+            .and_then(|entry| entry.get("effective"))
+            .and_then(|entry| entry.get("escalationKey"))
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+            .or_else(|| {
+                routing_decision_ready_example_query_only_result
+                    .as_ref()
+                    .and_then(|entry| entry.get("effective"))
+                    .and_then(|entry| entry.get("escalationKeys"))
+                    .and_then(Value::as_array)
+                    .and_then(|keys| keys.first())
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned)
+            });
+    let routing_decision_ready_example_query_only_would_use_query_path =
+        routing_decision_ready_example_query_only_result
+            .as_ref()
+            .and_then(|entry| entry.get("effective"))
+            .and_then(|entry| entry.get("escalationKey"))
+            .and_then(Value::as_str)
+            .is_some_and(|key| matches!(key, "query-only-path" | "arm64e-query-only-path"));
     let routing_decision_ready_resolve_examples = json!({
         "knownErrorCode": routing_decision_ready_example_known_error_code,
         "knownResult": routing_decision_ready_example_known_result,
@@ -1778,6 +1844,42 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .get("effectiveEscalationKey")
             .cloned()
             .unwrap_or(Value::Null),
+        "queryOnlyInstallFailure": {
+            "errorCode": routing_decision_ready_example_query_only_error_code,
+            "blockedBy": routing_decision_ready_example_query_only_blocked_by,
+            "blockedBySource": routing_decision_ready_example_query_only_blocked_by_source,
+            "isBlocked": routing_decision_ready_example_query_only_is_blocked,
+            "available": routing_decision_ready_example_query_only_available,
+            "matched": routing_decision_ready_example_query_only_matched,
+            "usedDefault": routing_decision_ready_example_query_only_used_default,
+            "reason": routing_decision_ready_example_query_only_reason,
+            "effectivePhase": routing_decision_ready_example_query_only_phase,
+            "effectiveActionPhase": routing_decision_ready_example_query_only_result
+                .as_ref()
+                .and_then(|entry| entry.get("effectiveActionPhase"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "effectiveActionClass": routing_decision_ready_example_query_only_result
+                .as_ref()
+                .and_then(|entry| entry.get("effectiveActionClass"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "effectiveEscalationKey": routing_decision_ready_example_query_only_effective_escalation_key,
+            "result": routing_decision_ready_example_query_only_result
+                .clone()
+                .unwrap_or(Value::Null),
+            "resultEffectiveActionPhase": routing_decision_ready_example_query_only_result
+                .as_ref()
+                .and_then(|result| result.get("effectiveActionPhase"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "resultEffectiveActionClass": routing_decision_ready_example_query_only_result
+                .as_ref()
+                .and_then(|result| result.get("effectiveActionClass"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "wouldUseQueryOnlyPath": routing_decision_ready_example_query_only_would_use_query_path,
+        },
     });
     let routing_decision_ready_phase_entries = {
         let mut phase_groups = BTreeMap::<String, Vec<String>>::new();
@@ -1953,6 +2055,42 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
         .cloned()
         .unwrap_or(Value::Null);
+    let routing_decision_ready_example_query_only_phase_result =
+        routing_decision_ready_example_query_only_phase
+            .as_ref()
+            .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
+            .cloned();
+    let routing_decision_ready_example_query_only_phase_available =
+        routing_decision_ready_example_query_only_phase_result.is_some();
+    let routing_decision_ready_example_query_only_phase_matched =
+        routing_decision_ready_example_query_only_phase_result
+            .as_ref()
+            .and_then(|entry| entry.get("matched"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+    let routing_decision_ready_example_query_only_phase_used_default =
+        routing_decision_ready_example_query_only_phase_result
+            .as_ref()
+            .and_then(|entry| entry.get("usedDefault"))
+            .and_then(Value::as_bool)
+            .unwrap_or(!routing_decision_ready_example_query_only_phase_available);
+    let routing_decision_ready_example_query_only_phase_reason =
+        routing_decision_ready_example_query_only_phase_result
+            .as_ref()
+            .and_then(|entry| entry.get("reason"))
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+            .or_else(|| {
+                (!routing_decision_ready_example_query_only_phase_available)
+                    .then(|| "missing-phase".to_string())
+            });
+    let routing_decision_ready_example_query_only_would_use_query_phase =
+        routing_decision_ready_example_query_only_phase_result
+            .as_ref()
+            .and_then(|entry| entry.get("effective"))
+            .and_then(|entry| entry.get("phase"))
+            .and_then(Value::as_str)
+            .is_some_and(|phase| phase == "query");
     let routing_decision_ready_phase_resolve_examples = json!({
         "knownPhase": routing_decision_ready_example_known_phase,
         "knownResult": routing_decision_ready_example_known_phase_result,
@@ -2008,7 +2146,62 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .get("effectiveEscalationKey")
             .cloned()
             .unwrap_or(Value::Null),
+        "queryOnlyInstallFailure": {
+            "sourceErrorCode": routing_decision_ready_example_query_only_error_code,
+            "blockedBy": routing_decision_ready_example_query_only_blocked_by,
+            "blockedBySource": routing_decision_ready_example_query_only_blocked_by_source,
+            "isBlocked": routing_decision_ready_example_query_only_is_blocked,
+            "phase": routing_decision_ready_example_query_only_phase,
+            "available": routing_decision_ready_example_query_only_phase_available,
+            "matched": routing_decision_ready_example_query_only_phase_matched,
+            "usedDefault": routing_decision_ready_example_query_only_phase_used_default,
+            "reason": routing_decision_ready_example_query_only_phase_reason,
+            "effectivePhase": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|entry| entry.get("effective"))
+                .and_then(|entry| entry.get("phase"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "effectiveActionPhase": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|entry| entry.get("effectiveActionPhase"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "effectiveActionClass": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|entry| entry.get("effectiveActionClass"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "effectiveEscalationKey": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|entry| entry.get("effectiveEscalationKey"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "result": routing_decision_ready_example_query_only_phase_result
+                .clone()
+                .unwrap_or(Value::Null),
+            "resultEffectiveActionPhase": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|result| result.get("effectiveActionPhase"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "resultEffectiveActionClass": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|result| result.get("effectiveActionClass"))
+                .cloned()
+                .unwrap_or(Value::Null),
+            "wouldUseQueryPhase": routing_decision_ready_example_query_only_would_use_query_phase,
+        },
     });
+    let routing_decision_ready_resolve_query_only_example = routing_decision_ready_resolve_examples
+        .get("queryOnlyInstallFailure")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_resolve_query_only_example =
+        routing_decision_ready_phase_resolve_examples
+            .get("queryOnlyInstallFailure")
+            .cloned()
+            .unwrap_or(Value::Null);
     let routing_decision_ready = json!({
         "lookupRule": "index[errorCode] || default",
         "entryCount": error_code_routing_entries.len(),
@@ -2313,9 +2506,36 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             "lookupKey": "errorCode",
             "policy": "index[errorCode] || default",
             "outputShape": "effective",
+            "errorCodeCount": routing_decision_ready_known_error_codes.len(),
+            "knownErrorCodes": routing_decision_ready_known_error_codes,
+            "knownEntries": routing_decision_ready_known_error_codes,
+            "knownList": routing_decision_ready_known_error_codes,
+            "knownEntriesCount": routing_decision_ready_known_error_codes.len(),
+            "knownErrorCodesCount": routing_decision_ready_known_error_codes.len(),
+            "knownErrorCodeFirst": routing_decision_ready_known_error_codes.first(),
+            "knownErrorCodesFirst": routing_decision_ready_known_error_codes.first(),
+            "knownEntriesFirst": routing_decision_ready_known_error_codes.first(),
+            "knownFirst": routing_decision_ready_known_error_codes.first(),
+            "knownErrorCodeLast": routing_decision_ready_known_error_codes.last(),
+            "knownErrorCodesLast": routing_decision_ready_known_error_codes.last(),
+            "knownEntriesLast": routing_decision_ready_known_error_codes.last(),
+            "knownLast": routing_decision_ready_known_error_codes.last(),
+            "missingErrorCodeHint": "if errorCode is not in knownErrorCodes, use resolve.default",
             "index": routing_decision_ready_resolve_index,
             "default": routing_decision_ready_resolve_default,
             "examples": routing_decision_ready_resolve_examples,
+            "defaultMatched": routing_decision_ready_resolve_default
+                .get("matched")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "defaultUsedDefault": routing_decision_ready_resolve_default
+                .get("usedDefault")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "defaultReason": routing_decision_ready_resolve_default
+                .get("reason")
+                .cloned()
+                .unwrap_or(Value::Null),
             "defaultEffectivePhase": routing_decision_ready_resolve_default
                 .get("effectivePhase")
                 .cloned()
@@ -2330,6 +2550,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 .unwrap_or(Value::Null),
             "defaultEffectiveEscalationKey": routing_decision_ready_resolve_default
                 .get("effectiveEscalationKey")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "knownErrorCode": routing_decision_ready_resolve_examples
+                .get("knownErrorCode")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "knownResult": routing_decision_ready_resolve_examples
+                .get("knownResult")
                 .cloned()
                 .unwrap_or(Value::Null),
             "knownEffectivePhase": routing_decision_ready_resolve_examples
@@ -2356,6 +2584,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 .get("knownEffectiveEscalationKey")
                 .cloned()
                 .unwrap_or(Value::Null),
+            "missingErrorCode": routing_decision_ready_resolve_examples
+                .get("missingErrorCode")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "missingResult": routing_decision_ready_resolve_examples
+                .get("missingResult")
+                .cloned()
+                .unwrap_or(Value::Null),
             "missingEffectivePhase": routing_decision_ready_resolve_examples
                 .get("missingEffectivePhase")
                 .cloned()
@@ -2380,14 +2616,106 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 .get("missingEffectiveEscalationKey")
                 .cloned()
                 .unwrap_or(Value::Null),
+            "queryOnlyErrorCode": routing_decision_ready_resolve_query_only_example
+                .get("errorCode")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyBlockedBy": routing_decision_ready_resolve_query_only_example
+                .get("blockedBy")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyBlockedBySource": routing_decision_ready_resolve_query_only_example
+                .get("blockedBySource")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyIsBlocked": routing_decision_ready_resolve_query_only_example
+                .get("isBlocked")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyAvailable": routing_decision_ready_resolve_query_only_example
+                .get("available")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyMatched": routing_decision_ready_resolve_query_only_example
+                .get("matched")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyUsedDefault": routing_decision_ready_resolve_query_only_example
+                .get("usedDefault")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyReason": routing_decision_ready_resolve_query_only_example
+                .get("reason")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyEffectivePhase": routing_decision_ready_resolve_query_only_example
+                .get("effectivePhase")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyEffectiveActionPhase": routing_decision_ready_resolve_query_only_example
+                .get("effectiveActionPhase")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyEffectiveActionClass": routing_decision_ready_resolve_query_only_example
+                .get("effectiveActionClass")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyEffectiveEscalationKey": routing_decision_ready_resolve_query_only_example
+                .get("effectiveEscalationKey")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyWouldUsePath": routing_decision_ready_resolve_query_only_example
+                .get("wouldUseQueryOnlyPath")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyResult": routing_decision_ready_resolve_query_only_example
+                .get("result")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyResultEffectiveActionPhase": routing_decision_ready_resolve_query_only_example
+                .get("resultEffectiveActionPhase")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyResultEffectiveActionClass": routing_decision_ready_resolve_query_only_example
+                .get("resultEffectiveActionClass")
+                .cloned()
+                .unwrap_or(Value::Null),
         },
         "phaseResolve": {
             "lookupKey": "phase",
             "policy": "phaseIndex[phase] || default",
             "outputShape": "effective",
+            "phaseCount": routing_decision_ready_known_phases.len(),
+            "knownPhases": routing_decision_ready_known_phases,
+            "knownEntries": routing_decision_ready_known_phases,
+            "knownList": routing_decision_ready_known_phases,
+            "knownEntriesCount": routing_decision_ready_known_phases.len(),
+            "knownPhasesCount": routing_decision_ready_known_phases.len(),
+            "knownPhaseFirst": routing_decision_ready_known_phases.first(),
+            "knownPhasesFirst": routing_decision_ready_known_phases.first(),
+            "knownEntriesFirst": routing_decision_ready_known_phases.first(),
+            "knownFirst": routing_decision_ready_known_phases.first(),
+            "knownPhaseLast": routing_decision_ready_known_phases.last(),
+            "knownPhasesLast": routing_decision_ready_known_phases.last(),
+            "knownEntriesLast": routing_decision_ready_known_phases.last(),
+            "knownLast": routing_decision_ready_known_phases.last(),
+            "defaultPhase": routing_decision_ready_default_phase,
+            "missingPhaseHint": "if phase is not in knownPhases, use phaseResolve.default",
             "index": routing_decision_ready_phase_resolve_index,
             "default": routing_decision_ready_phase_resolve_default,
             "examples": routing_decision_ready_phase_resolve_examples,
+            "defaultMatched": routing_decision_ready_phase_resolve_default
+                .get("matched")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "defaultUsedDefault": routing_decision_ready_phase_resolve_default
+                .get("usedDefault")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "defaultReason": routing_decision_ready_phase_resolve_default
+                .get("reason")
+                .cloned()
+                .unwrap_or(Value::Null),
             "defaultEffectivePhase": routing_decision_ready_phase_resolve_default
                 .get("effectivePhase")
                 .cloned()
@@ -2402,6 +2730,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 .unwrap_or(Value::Null),
             "defaultEffectiveEscalationKey": routing_decision_ready_phase_resolve_default
                 .get("effectiveEscalationKey")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "knownPhase": routing_decision_ready_phase_resolve_examples
+                .get("knownPhase")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "knownResult": routing_decision_ready_phase_resolve_examples
+                .get("knownResult")
                 .cloned()
                 .unwrap_or(Value::Null),
             "knownEffectivePhase": routing_decision_ready_phase_resolve_examples
@@ -2428,6 +2764,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 .get("knownEffectiveEscalationKey")
                 .cloned()
                 .unwrap_or(Value::Null),
+            "missingPhase": routing_decision_ready_phase_resolve_examples
+                .get("missingPhase")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "missingResult": routing_decision_ready_phase_resolve_examples
+                .get("missingResult")
+                .cloned()
+                .unwrap_or(Value::Null),
             "missingEffectivePhase": routing_decision_ready_phase_resolve_examples
                 .get("missingEffectivePhase")
                 .cloned()
@@ -2452,6 +2796,76 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 .get("missingEffectiveEscalationKey")
                 .cloned()
                 .unwrap_or(Value::Null),
+            "queryOnlySourceErrorCode": routing_decision_ready_phase_resolve_query_only_example
+                .get("sourceErrorCode")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyBlockedBy": routing_decision_ready_phase_resolve_query_only_example
+                .get("blockedBy")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyBlockedBySource": routing_decision_ready_phase_resolve_query_only_example
+                .get("blockedBySource")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyIsBlocked": routing_decision_ready_phase_resolve_query_only_example
+                .get("isBlocked")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyPhase": routing_decision_ready_phase_resolve_query_only_example
+                .get("phase")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyAvailable": routing_decision_ready_phase_resolve_query_only_example
+                .get("available")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyMatched": routing_decision_ready_phase_resolve_query_only_example
+                .get("matched")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyUsedDefault": routing_decision_ready_phase_resolve_query_only_example
+                .get("usedDefault")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyReason": routing_decision_ready_phase_resolve_query_only_example
+                .get("reason")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyEffectivePhase": routing_decision_ready_phase_resolve_query_only_example
+                .get("effectivePhase")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyEffectiveActionPhase": routing_decision_ready_phase_resolve_query_only_example
+                .get("effectiveActionPhase")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyEffectiveActionClass": routing_decision_ready_phase_resolve_query_only_example
+                .get("effectiveActionClass")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyEffectiveEscalationKey": routing_decision_ready_phase_resolve_query_only_example
+                .get("effectiveEscalationKey")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyWouldUsePhase": routing_decision_ready_phase_resolve_query_only_example
+                .get("wouldUseQueryPhase")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyResult": routing_decision_ready_phase_resolve_query_only_example
+                .get("result")
+                .cloned()
+                .unwrap_or(Value::Null),
+            "queryOnlyResultEffectiveActionPhase":
+                routing_decision_ready_phase_resolve_query_only_example
+                    .get("resultEffectiveActionPhase")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+            "queryOnlyResultEffectiveActionClass":
+                routing_decision_ready_phase_resolve_query_only_example
+                    .get("resultEffectiveActionClass")
+                    .cloned()
+                    .unwrap_or(Value::Null),
         },
         "phaseCount": routing_decision_ready_phase_entries.len(),
         "phases": routing_decision_ready_phase_entries,
