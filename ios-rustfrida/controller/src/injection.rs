@@ -9379,8 +9379,23 @@ fn hook_automation_to_json_with_arm64e(
             "usedDefault": routing_decision_ready_example_query_only_used_default,
             "reason": routing_decision_ready_example_query_only_reason,
             "effectivePhase": routing_decision_ready_example_query_only_phase,
+            "effectiveActionPhase": routing_decision_ready_example_query_only_phase,
+            "effectiveActionClass": routing_decision_ready_example_query_only_phase
+                .as_deref()
+                .map(routing_phase_action_class),
             "effectiveEscalationKey": routing_decision_ready_example_query_only_effective_escalation_key,
-            "result": routing_decision_ready_example_query_only_result.unwrap_or(Value::Null),
+            "result": routing_decision_ready_example_query_only_result
+                .clone()
+                .unwrap_or(Value::Null),
+            "resultEffectiveActionPhase": routing_decision_ready_example_query_only_result
+                .as_ref()
+                .and_then(|result| result.get("effectivePhase"))
+                .and_then(Value::as_str),
+            "resultEffectiveActionClass": routing_decision_ready_example_query_only_result
+                .as_ref()
+                .and_then(|result| result.get("effectivePhase"))
+                .and_then(Value::as_str)
+                .map(routing_phase_action_class),
             "wouldUseQueryOnlyPath": routing_decision_ready_example_query_only_would_use_query_path,
         },
     });
@@ -9671,6 +9686,18 @@ fn hook_automation_to_json_with_arm64e(
                 .and_then(|entry| entry.get("phase"))
                 .and_then(Value::as_str)
                 .map(ToOwned::to_owned),
+            "effectiveActionPhase": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|entry| entry.get("effective"))
+                .and_then(|entry| entry.get("phase"))
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned),
+            "effectiveActionClass": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|entry| entry.get("effective"))
+                .and_then(|entry| entry.get("phase"))
+                .and_then(Value::as_str)
+                .map(routing_phase_action_class),
             "effectiveEscalationKey": routing_decision_ready_example_query_only_phase_result
                 .as_ref()
                 .and_then(|entry| entry.get("effective"))
@@ -9687,7 +9714,19 @@ fn hook_automation_to_json_with_arm64e(
                         .and_then(Value::as_str)
                         .map(ToOwned::to_owned)
                 }),
-            "result": routing_decision_ready_example_query_only_phase_result.unwrap_or(Value::Null),
+            "result": routing_decision_ready_example_query_only_phase_result
+                .clone()
+                .unwrap_or(Value::Null),
+            "resultEffectiveActionPhase": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|result| result.get("effectivePhase"))
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned),
+            "resultEffectiveActionClass": routing_decision_ready_example_query_only_phase_result
+                .as_ref()
+                .and_then(|result| result.get("effectivePhase"))
+                .and_then(Value::as_str)
+                .map(routing_phase_action_class),
             "wouldUseQueryPhase": routing_decision_ready_example_query_only_would_use_query_phase,
         },
     });
@@ -9763,6 +9802,14 @@ fn hook_automation_to_json_with_arm64e(
             .get("effectivePhase")
             .cloned()
             .unwrap_or(Value::Null),
+        "queryOnlyEffectiveActionPhase": routing_decision_ready_resolve_query_only_example
+            .get("effectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyEffectiveActionClass": routing_decision_ready_resolve_query_only_example
+            .get("effectiveActionClass")
+            .cloned()
+            .unwrap_or(Value::Null),
         "queryOnlyEffectiveEscalationKey": routing_decision_ready_resolve_query_only_example
             .get("effectiveEscalationKey")
             .cloned()
@@ -9773,6 +9820,14 @@ fn hook_automation_to_json_with_arm64e(
             .unwrap_or(Value::Null),
         "queryOnlyResult": routing_decision_ready_resolve_query_only_example
             .get("result")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResultEffectiveActionPhase": routing_decision_ready_resolve_query_only_example
+            .get("resultEffectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResultEffectiveActionClass": routing_decision_ready_resolve_query_only_example
+            .get("resultEffectiveActionClass")
             .cloned()
             .unwrap_or(Value::Null),
         "index": routing_decision_ready_resolve_index,
@@ -9852,6 +9907,14 @@ fn hook_automation_to_json_with_arm64e(
             .get("effectivePhase")
             .cloned()
             .unwrap_or(Value::Null),
+        "queryOnlyEffectiveActionPhase": routing_decision_ready_phase_resolve_query_only_example
+            .get("effectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyEffectiveActionClass": routing_decision_ready_phase_resolve_query_only_example
+            .get("effectiveActionClass")
+            .cloned()
+            .unwrap_or(Value::Null),
         "queryOnlyEffectiveEscalationKey": routing_decision_ready_phase_resolve_query_only_example
             .get("effectiveEscalationKey")
             .cloned()
@@ -9862,6 +9925,14 @@ fn hook_automation_to_json_with_arm64e(
             .unwrap_or(Value::Null),
         "queryOnlyResult": routing_decision_ready_phase_resolve_query_only_example
             .get("result")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResultEffectiveActionPhase": routing_decision_ready_phase_resolve_query_only_example
+            .get("resultEffectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResultEffectiveActionClass": routing_decision_ready_phase_resolve_query_only_example
+            .get("resultEffectiveActionClass")
             .cloned()
             .unwrap_or(Value::Null),
         "index": routing_decision_ready_phase_resolve_index,
@@ -10248,6 +10319,18 @@ fn hook_automation_to_json_with_arm64e(
             .and_then(|example| example.get("effectivePhase"))
             .cloned()
             .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyEffectiveActionPhase": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("effectiveActionPhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyEffectiveActionClass": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("effectiveActionClass"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "resolveExampleQueryOnlyEffectiveEscalationKey": routing_decision_ready_resolve
             .get("examples")
             .and_then(|examples| examples.get("queryOnlyInstallFailure"))
@@ -10299,6 +10382,18 @@ fn hook_automation_to_json_with_arm64e(
             .and_then(|examples| examples.get("queryOnlyInstallFailure"))
             .and_then(|example| example.get("result"))
             .and_then(|result| result.get("effectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyResultEffectiveActionPhase": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("resultEffectiveActionPhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "resolveExampleQueryOnlyResultEffectiveActionClass": routing_decision_ready_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("resultEffectiveActionClass"))
             .cloned()
             .unwrap_or(Value::Null),
         "resolveExampleQueryOnlyResultEffectiveEscalationKey": routing_decision_ready_resolve
@@ -10747,6 +10842,18 @@ fn hook_automation_to_json_with_arm64e(
             .and_then(|example| example.get("effectivePhase"))
             .cloned()
             .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyEffectiveActionPhase": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("effectiveActionPhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyEffectiveActionClass": routing_decision_ready_phase_resolve
+            .get("examples")
+            .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+            .and_then(|example| example.get("effectiveActionClass"))
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseResolveExampleQueryOnlyEffectiveEscalationKey": routing_decision_ready_phase_resolve
             .get("examples")
             .and_then(|examples| examples.get("queryOnlyInstallFailure"))
@@ -10800,6 +10907,20 @@ fn hook_automation_to_json_with_arm64e(
             .and_then(|result| result.get("effectivePhase"))
             .cloned()
             .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyResultEffectiveActionPhase":
+            routing_decision_ready_phase_resolve
+                .get("examples")
+                .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+                .and_then(|example| example.get("resultEffectiveActionPhase"))
+                .cloned()
+                .unwrap_or(Value::Null),
+        "phaseResolveExampleQueryOnlyResultEffectiveActionClass":
+            routing_decision_ready_phase_resolve
+                .get("examples")
+                .and_then(|examples| examples.get("queryOnlyInstallFailure"))
+                .and_then(|example| example.get("resultEffectiveActionClass"))
+                .cloned()
+                .unwrap_or(Value::Null),
         "phaseResolveExampleQueryOnlyResultEffectiveEscalationKey": routing_decision_ready_phase_resolve
             .get("examples")
             .and_then(|examples| examples.get("queryOnlyInstallFailure"))
@@ -11120,6 +11241,14 @@ fn hook_automation_to_json_with_arm64e(
             .get("queryOnlyEffectivePhase")
             .cloned()
             .unwrap_or(Value::Null),
+        "queryOnlyPhaseResolveEffectiveActionPhase": routing_decision_ready_phase_resolve
+            .get("queryOnlyEffectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyPhaseResolveEffectiveActionClass": routing_decision_ready_phase_resolve
+            .get("queryOnlyEffectiveActionClass")
+            .cloned()
+            .unwrap_or(Value::Null),
         "queryOnlyPhaseResolveEffectiveEscalationKey": routing_decision_ready_phase_resolve
             .get("queryOnlyEffectiveEscalationKey")
             .cloned()
@@ -11160,8 +11289,24 @@ fn hook_automation_to_json_with_arm64e(
             .get("queryOnlyEffectivePhase")
             .cloned()
             .unwrap_or(Value::Null),
+        "queryOnlyEffectiveActionPhase": routing_decision_ready_resolve
+            .get("queryOnlyEffectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyEffectiveActionClass": routing_decision_ready_resolve
+            .get("queryOnlyEffectiveActionClass")
+            .cloned()
+            .unwrap_or(Value::Null),
         "queryOnlyResolveEffectivePhase": routing_decision_ready_resolve
             .get("queryOnlyEffectivePhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResolveEffectiveActionPhase": routing_decision_ready_resolve
+            .get("queryOnlyEffectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResolveEffectiveActionClass": routing_decision_ready_resolve
+            .get("queryOnlyEffectiveActionClass")
             .cloned()
             .unwrap_or(Value::Null),
         "queryOnlyEffectiveEscalationKey": routing_decision_ready_resolve
@@ -11217,6 +11362,14 @@ fn hook_automation_to_json_with_arm64e(
             .and_then(|result| result.get("effectivePhase"))
             .cloned()
             .unwrap_or(Value::Null),
+        "queryOnlyResolveResultEffectiveActionPhase": routing_decision_ready_resolve
+            .get("queryOnlyResultEffectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyResolveResultEffectiveActionClass": routing_decision_ready_resolve
+            .get("queryOnlyResultEffectiveActionClass")
+            .cloned()
+            .unwrap_or(Value::Null),
         "queryOnlyResolveResultEffectiveEscalationKey": routing_decision_ready_resolve
             .get("queryOnlyResult")
             .and_then(|result| result.get("effectiveEscalationKey"))
@@ -11249,6 +11402,14 @@ fn hook_automation_to_json_with_arm64e(
         "queryOnlyPhaseResolveResultEffectivePhase": routing_decision_ready_phase_resolve
             .get("queryOnlyResult")
             .and_then(|result| result.get("effectivePhase"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyPhaseResolveResultEffectiveActionPhase": routing_decision_ready_phase_resolve
+            .get("queryOnlyResultEffectiveActionPhase")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "queryOnlyPhaseResolveResultEffectiveActionClass": routing_decision_ready_phase_resolve
+            .get("queryOnlyResultEffectiveActionClass")
             .cloned()
             .unwrap_or(Value::Null),
         "queryOnlyPhaseResolveResultEffectiveEscalationKey": routing_decision_ready_phase_resolve
@@ -23312,6 +23473,14 @@ mod tests {
             json!(null)
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveEffectiveActionPhase"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveEffectiveActionClass"],
+            json!(null)
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveEffectiveEscalationKey"],
             json!(null)
         );
@@ -23740,6 +23909,12 @@ mod tests {
             "missing-error-code"
         );
         assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyEffectivePhase"].is_null());
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]
+            ["queryOnlyEffectiveActionPhase"]
+            .is_null());
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]
+            ["queryOnlyEffectiveActionClass"]
+            .is_null());
         assert!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyEffectiveEscalationKey"]
                 .is_null()
@@ -23752,6 +23927,12 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyResult"],
             json!(null)
         );
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]
+            ["queryOnlyResultEffectiveActionPhase"]
+            .is_null());
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]
+            ["queryOnlyResultEffectiveActionClass"]
+            .is_null());
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["knownErrorCode"],
             "hook-fallback-diagnose-failed"
@@ -24108,6 +24289,12 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyEffectivePhase"].is_null()
         );
         assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]
+            ["queryOnlyEffectiveActionPhase"]
+            .is_null());
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]
+            ["queryOnlyEffectiveActionClass"]
+            .is_null());
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]
             ["queryOnlyEffectiveEscalationKey"]
             .is_null());
         assert_eq!(
@@ -24118,6 +24305,12 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyResult"],
             json!(null)
         );
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]
+            ["queryOnlyResultEffectiveActionPhase"]
+            .is_null());
+        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]
+            ["queryOnlyResultEffectiveActionClass"]
+            .is_null());
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]["knownPhase"],
             "diagnose"
@@ -24220,6 +24413,16 @@ mod tests {
         );
         assert!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectiveActionClass"]
+                .is_null()
+        );
+        assert!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
                 ["queryOnlyInstallFailure"]["effectiveEscalationKey"]
                 .is_null()
         );
@@ -24275,6 +24478,16 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyEffectiveActionPhase"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyEffectiveActionClass"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
                 ["phaseResolveExampleQueryOnlyEffectiveEscalationKey"],
             json!(null)
         );
@@ -24304,6 +24517,16 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResultEffectivePhase"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyResultEffectiveActionPhase"],
+            json!(null)
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyResultEffectiveActionClass"],
             json!(null)
         );
         assert_eq!(
@@ -25083,6 +25306,16 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["effectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["effectiveActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
                 ["effectiveEscalationKey"],
             "query-only-path"
         );
@@ -25143,6 +25376,14 @@ mod tests {
             "query"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyEffectiveActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyEffectiveEscalationKey"],
             "query-only-path"
         );
@@ -25174,6 +25415,16 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResultEffectivePhase"],
             "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["resolveExampleQueryOnlyResultEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["resolveExampleQueryOnlyResultEffectiveActionClass"],
+            "readonly-diagnostics"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]
@@ -25225,6 +25476,14 @@ mod tests {
             "query"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyEffectiveActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyEffectiveEscalationKey"],
             "query-only-path"
         );
@@ -25233,8 +25492,24 @@ mod tests {
             true
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyEffectiveActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyWouldUsePhase"],
             true
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyEffectiveActionClass"],
+            "readonly-diagnostics"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResult"]["effective"]
@@ -25260,6 +25535,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffectivePhase"],
             "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffectiveActionClass"],
+            "readonly-diagnostics"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyResolveResultEffectiveEscalationKey"],
@@ -25290,8 +25573,38 @@ mod tests {
             "query"
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["queryOnlyPhaseResolveEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["queryOnlyPhaseResolveEffectiveActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["queryOnlyPhaseResolveResultEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["queryOnlyPhaseResolveResultEffectiveActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffectiveEscalationKey"],
             "query-only-path"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]
+                ["queryOnlyResultEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]
+                ["queryOnlyResultEffectiveActionClass"],
+            "readonly-diagnostics"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyWouldUsePath"],
@@ -25359,6 +25672,16 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectiveActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
                 ["queryOnlyInstallFailure"]["effectiveEscalationKey"],
             "query-only-path"
         );
@@ -25409,6 +25732,16 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyEffectiveActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
                 ["phaseResolveExampleQueryOnlyEffectiveEscalationKey"],
             "query-only-path"
         );
@@ -25443,6 +25776,16 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyResultEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyResultEffectiveActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
                 ["phaseResolveExampleQueryOnlyResultEffectiveEscalationKey"],
             "query-only-path"
         );
@@ -25450,6 +25793,16 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyInstallFailure"]
                 ["reason"],
             "matched-phase"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]
+                ["queryOnlyResultEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]
+                ["queryOnlyResultEffectiveActionClass"],
+            "readonly-diagnostics"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["queryOnlyWouldUsePhase"],
@@ -25525,6 +25878,16 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["effectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
+                ["effectiveActionClass"],
+            "readonly-diagnostics"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
                 ["effectiveEscalationKey"],
             "query-only-path"
         );
@@ -25572,6 +25935,14 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyEffectivePhase"],
             "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyEffectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyEffectiveActionClass"],
+            "readonly-diagnostics"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyEffectiveEscalationKey"],
@@ -25646,6 +26017,16 @@ mod tests {
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
                 ["queryOnlyInstallFailure"]["effectivePhase"],
             "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectiveActionPhase"],
+            "query"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
+                ["queryOnlyInstallFailure"]["effectiveActionClass"],
+            "readonly-diagnostics"
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["examples"]
