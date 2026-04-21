@@ -1378,6 +1378,31 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                     .get("commandJsonTemplateCount")
                     .cloned()
                     .unwrap_or(Value::Null),
+                "commandJsonInstructionTemplateCount": entry
+                    .get("commandJsonTemplates")
+                    .and_then(Value::as_array)
+                    .map(|items| {
+                        items
+                            .iter()
+                            .filter(|template| {
+                                template.get("kind").and_then(Value::as_str) == Some("instruction")
+                            })
+                            .count()
+                    })
+                    .unwrap_or(0),
+                "commandJsonExecutableTemplateCount": entry
+                    .get("commandJsonTemplates")
+                    .and_then(Value::as_array)
+                    .map(|items| {
+                        let instruction_count = items
+                            .iter()
+                            .filter(|template| {
+                                template.get("kind").and_then(Value::as_str) == Some("instruction")
+                            })
+                            .count();
+                        items.len().saturating_sub(instruction_count)
+                    })
+                    .unwrap_or(0),
                 "commandJsonTemplates": entry
                     .get("commandJsonTemplates")
                     .cloned()
@@ -1474,6 +1499,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                     .and_then(|item| item.get("commandJsonTemplateCount"))
                     .cloned()
                     .unwrap_or(Value::Null),
+                "recommendedCommandJsonInstructionTemplateCount": recommended
+                    .and_then(|item| item.get("commandJsonInstructionTemplateCount"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "recommendedCommandJsonExecutableTemplateCount": recommended
+                    .and_then(|item| item.get("commandJsonExecutableTemplateCount"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
                 "recommendedCommandJsonTemplates": recommended
                     .and_then(|item| item.get("commandJsonTemplates"))
                     .cloned()
@@ -1502,6 +1535,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                         "templates": entry.get("recommendedTemplates").cloned().unwrap_or(json!([])),
                         "commandJsonTemplateCount": entry
                             .get("recommendedCommandJsonTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonInstructionTemplateCount": entry
+                            .get("recommendedCommandJsonInstructionTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonExecutableTemplateCount": entry
+                            .get("recommendedCommandJsonExecutableTemplateCount")
                             .cloned()
                             .unwrap_or(Value::Null),
                         "commandJsonTemplates": entry
@@ -1538,6 +1579,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                     .get("commandJsonTemplateCount")
                     .cloned()
                     .unwrap_or(Value::Null),
+                "recommendedCommandJsonInstructionTemplateCount": item
+                    .get("commandJsonInstructionTemplateCount")
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "recommendedCommandJsonExecutableTemplateCount": item
+                    .get("commandJsonExecutableTemplateCount")
+                    .cloned()
+                    .unwrap_or(Value::Null),
                 "recommendedCommandJsonTemplates": item
                     .get("commandJsonTemplates")
                     .cloned()
@@ -1564,6 +1613,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                         "templates": entry.get("recommendedTemplates").cloned().unwrap_or(json!([])),
                         "commandJsonTemplateCount": entry
                             .get("recommendedCommandJsonTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonInstructionTemplateCount": entry
+                            .get("recommendedCommandJsonInstructionTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonExecutableTemplateCount": entry
+                            .get("recommendedCommandJsonExecutableTemplateCount")
                             .cloned()
                             .unwrap_or(Value::Null),
                         "commandJsonTemplates": entry
@@ -1649,6 +1706,27 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .get("recommendedCommandJsonTemplates")
             .and_then(Value::as_array)
             .map(|items| command_json_eligible_count(items))
+            .unwrap_or(0),
+        "commandJsonInstructionTemplateCount": routing_decision_default
+            .get("recommendedCommandJsonTemplates")
+            .and_then(Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter(|template| template.get("kind").and_then(Value::as_str) == Some("instruction"))
+                    .count()
+            })
+            .unwrap_or(0),
+        "commandJsonExecutableTemplateCount": routing_decision_default
+            .get("recommendedCommandJsonTemplates")
+            .and_then(Value::as_array)
+            .map(|items| {
+                let instruction_count = items
+                    .iter()
+                    .filter(|template| template.get("kind").and_then(Value::as_str) == Some("instruction"))
+                    .count();
+                items.len().saturating_sub(instruction_count)
+            })
             .unwrap_or(0),
         "commandJsonTemplates": routing_decision_default
             .get("recommendedCommandJsonTemplates")
@@ -1936,6 +2014,15 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                         }
                     }
                 }
+                let command_json_instruction_template_count = command_json_templates
+                    .iter()
+                    .filter(|template| {
+                        template.get("kind").and_then(Value::as_str) == Some("instruction")
+                    })
+                    .count();
+                let command_json_executable_template_count = command_json_templates
+                    .len()
+                    .saturating_sub(command_json_instruction_template_count);
                 json!({
                     "phase": phase,
                     "errorCodeCount": error_codes.len(),
@@ -1946,6 +2033,8 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                     "templates": templates,
                     "commandJsonTemplateCount": command_json_templates.len(),
                     "commandJsonEligibleTemplateCount": command_json_eligible_count(&command_json_templates),
+                    "commandJsonInstructionTemplateCount": command_json_instruction_template_count,
+                    "commandJsonExecutableTemplateCount": command_json_executable_template_count,
                     "commandJsonTemplates": command_json_templates,
                 })
             })
@@ -3926,6 +4015,27 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .as_array()
                 .map(|items| command_json_eligible_count(items))
                 .unwrap_or(0),
+            "commandJsonInstructionTemplateCount": conflict_resolution_command_json_templates
+                .as_array()
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter(|template| template.get("kind").and_then(Value::as_str) == Some("instruction"))
+                        .count()
+                })
+                .unwrap_or(0),
+            "commandJsonExecutableTemplateCount": conflict_resolution_command_json_templates
+                .as_array()
+                .map(|items| {
+                    let instruction_count = items
+                        .iter()
+                        .filter(|template| {
+                            template.get("kind").and_then(Value::as_str) == Some("instruction")
+                        })
+                        .count();
+                    items.len().saturating_sub(instruction_count)
+                })
+                .unwrap_or(0),
             "resolutionChain": preferred_conflict_resolution_chain.clone(),
             "resolutionChainCount": preferred_conflict_resolution_chain.len(),
             "source": if has_preferred_conflict_backend_pair {
@@ -4952,6 +5062,14 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .as_ref()
             .and_then(|item| item.get("commandJsonEligibleTemplateCount"))
             .cloned(),
+        "preferredConflictResolutionCommandJsonInstructionTemplateCount": preferred_conflict_resolution_plan
+            .as_ref()
+            .and_then(|item| item.get("commandJsonInstructionTemplateCount"))
+            .cloned(),
+        "preferredConflictResolutionCommandJsonExecutableTemplateCount": preferred_conflict_resolution_plan
+            .as_ref()
+            .and_then(|item| item.get("commandJsonExecutableTemplateCount"))
+            .cloned(),
         "preferredConflictResolutionChain": preferred_conflict_resolution_plan
             .as_ref()
             .and_then(|item| item.get("resolutionChain"))
@@ -5140,6 +5258,26 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
                 .and_then(|value| value.get("defaultCommandJsonEligibleTemplateCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionDefaultCommandJsonInstructionTemplateCount": if has_preferred_conflict_resolution_plan {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("defaultCommandJsonInstructionTemplateCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionDefaultCommandJsonExecutableTemplateCount": if has_preferred_conflict_resolution_plan {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("defaultCommandJsonExecutableTemplateCount"))
                 .cloned()
                 .unwrap_or(Value::Null)
         } else {
@@ -7791,6 +7929,28 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
+        "preferredConflictResolutionPhaseQueryCommandJsonInstructionTemplateCount": if has_preferred_conflict_resolution_plan {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseQuery"))
+                .and_then(|value| value.get("commandJsonInstructionTemplateCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseQueryCommandJsonExecutableTemplateCount": if has_preferred_conflict_resolution_plan {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseQuery"))
+                .and_then(|value| value.get("commandJsonExecutableTemplateCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
         "preferredConflictResolutionPhaseQueryCommandJsonTemplates": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
@@ -7965,6 +8125,28 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         } else {
             Value::Null
         },
+        "preferredConflictResolutionPhasePreflightCommandJsonInstructionTemplateCount": if has_preferred_conflict_resolution_plan {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phasePreflight"))
+                .and_then(|value| value.get("commandJsonInstructionTemplateCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhasePreflightCommandJsonExecutableTemplateCount": if has_preferred_conflict_resolution_plan {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phasePreflight"))
+                .and_then(|value| value.get("commandJsonExecutableTemplateCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
         "preferredConflictResolutionPhasePreflightCommandJsonTemplates": if has_preferred_conflict_resolution_plan {
             preferred_conflict_resolution_routing
                 .get("routingDecision")
@@ -8124,6 +8306,28 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .and_then(|value| value.get("ready"))
                 .and_then(|value| value.get("phaseCleanup"))
                 .and_then(|value| value.get("commandJsonTemplateCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseCleanupCommandJsonInstructionTemplateCount": if has_preferred_conflict_resolution_plan {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseCleanup"))
+                .and_then(|value| value.get("commandJsonInstructionTemplateCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionPhaseCleanupCommandJsonExecutableTemplateCount": if has_preferred_conflict_resolution_plan {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("ready"))
+                .and_then(|value| value.get("phaseCleanup"))
+                .and_then(|value| value.get("commandJsonExecutableTemplateCount"))
                 .cloned()
                 .unwrap_or(Value::Null)
         } else {
@@ -28778,6 +28982,14 @@ mod tests {
             121
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonInstructionTemplateCount"],
+            coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonInstructionTemplateCount"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonExecutableTemplateCount"],
+            coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonExecutableTemplateCount"]
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["resolutionChainCount"],
             2
         );
@@ -29023,6 +29235,16 @@ mod tests {
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"],
             121
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonInstructionTemplateCount"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["defaultCommandJsonInstructionTemplateCount"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonExecutableTemplateCount"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["defaultCommandJsonExecutableTemplateCount"]
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"],
@@ -30141,6 +30363,16 @@ mod tests {
             121
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonInstructionTemplateCount"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQuery"]
+                ["commandJsonInstructionTemplateCount"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonExecutableTemplateCount"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQuery"]
+                ["commandJsonExecutableTemplateCount"]
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplates"],
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQuery"]["commandJsonTemplates"]
         );
@@ -30215,6 +30447,18 @@ mod tests {
             coexistence["backendAdaptation"]
                 ["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"],
             1
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhasePreflightCommandJsonInstructionTemplateCount"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflight"]
+                ["commandJsonInstructionTemplateCount"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhasePreflightCommandJsonExecutableTemplateCount"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflight"]
+                ["commandJsonExecutableTemplateCount"]
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplates"],
@@ -30627,6 +30871,16 @@ mod tests {
             121
         );
         assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonInstructionTemplateCount"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["defaultCommandJsonInstructionTemplateCount"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonExecutableTemplateCount"],
+            automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
+                ["defaultCommandJsonExecutableTemplateCount"]
+        );
+        assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"],
             automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
                 ["defaultCommandJsonTemplates"]
@@ -30932,6 +31186,16 @@ mod tests {
             121
         );
         assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonInstructionTemplateCount"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseQuery"]
+                ["commandJsonInstructionTemplateCount"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonExecutableTemplateCount"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseQuery"]
+                ["commandJsonExecutableTemplateCount"]
+        );
+        assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplates"],
             automation["backendAdaptation"]["preferredConflictResolutionPhaseQuery"]["commandJsonTemplates"]
         );
@@ -30996,6 +31260,18 @@ mod tests {
             automation["backendAdaptation"]
                 ["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"],
             1
+        );
+        assert_eq!(
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhasePreflightCommandJsonInstructionTemplateCount"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhasePreflight"]
+                ["commandJsonInstructionTemplateCount"]
+        );
+        assert_eq!(
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhasePreflightCommandJsonExecutableTemplateCount"],
+            automation["backendAdaptation"]["preferredConflictResolutionPhasePreflight"]
+                ["commandJsonExecutableTemplateCount"]
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplates"],
@@ -32255,6 +32531,14 @@ mod tests {
                 phase_cleanup["commandJsonTemplateCount"]
             );
             assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupCommandJsonInstructionTemplateCount"],
+                phase_cleanup["commandJsonInstructionTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseCleanupCommandJsonExecutableTemplateCount"],
+                phase_cleanup["commandJsonExecutableTemplateCount"]
+            );
+            assert_eq!(
                 adaptation["preferredConflictResolutionPhaseCleanupCommandJsonTemplates"],
                 phase_cleanup["commandJsonTemplates"]
             );
@@ -32558,6 +32842,14 @@ mod tests {
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"].is_null()
         );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonInstructionTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonExecutableTemplateCount"]
+                .is_null()
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStep"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStepActionPhase"].is_null());
@@ -32589,6 +32881,16 @@ mod tests {
         );
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionDefaultCommandJsonInstructionTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionDefaultCommandJsonExecutableTemplateCount"]
                 .is_null()
         );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"].is_null());
@@ -33148,6 +33450,12 @@ mod tests {
         assert!(coexistence["backendAdaptation"]
             ["preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount"]
             .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseQueryCommandJsonInstructionTemplateCount"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseQueryCommandJsonExecutableTemplateCount"]
+            .is_null());
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplates"].is_null()
         );
@@ -33182,6 +33490,12 @@ mod tests {
         assert!(coexistence["backendAdaptation"]
             ["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"]
             .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhasePreflightCommandJsonInstructionTemplateCount"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhasePreflightCommandJsonExecutableTemplateCount"]
+            .is_null());
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplates"].is_null()
         );
@@ -33213,6 +33527,16 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupTemplate"].is_null());
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseCleanupCommandJsonInstructionTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseCleanupCommandJsonExecutableTemplateCount"]
                 .is_null()
         );
         assert!(
@@ -33404,6 +33728,14 @@ mod tests {
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"].is_null()
         );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionCommandJsonInstructionTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionCommandJsonExecutableTemplateCount"]
+                .is_null()
+        );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionSuggestedEscalationKey"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionSuggestedActionPhase"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionSuggestedActionClass"].is_null());
@@ -33423,6 +33755,16 @@ mod tests {
         );
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionDefaultCommandJsonInstructionTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionDefaultCommandJsonExecutableTemplateCount"]
                 .is_null()
         );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"].is_null());
@@ -33953,6 +34295,12 @@ mod tests {
         assert!(automation["backendAdaptation"]
             ["preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount"]
             .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseQueryCommandJsonInstructionTemplateCount"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseQueryCommandJsonExecutableTemplateCount"]
+            .is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplate"].is_null());
         assert!(
@@ -33985,6 +34333,12 @@ mod tests {
         assert!(automation["backendAdaptation"]
             ["preferredConflictResolutionPhasePreflightCommandJsonEligibleTemplateCount"]
             .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhasePreflightCommandJsonInstructionTemplateCount"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhasePreflightCommandJsonExecutableTemplateCount"]
+            .is_null());
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionPhasePreflightCommandJsonTemplates"].is_null()
         );
@@ -34015,6 +34369,16 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupTemplate"].is_null());
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhaseCleanupCommandJsonInstructionTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhaseCleanupCommandJsonExecutableTemplateCount"]
                 .is_null()
         );
         assert!(
