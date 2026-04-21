@@ -37601,6 +37601,13 @@ mod tests {
             &hook_environment_recommended_actions(&report, Some(&strategy)),
             &hook_environment_recommended_actions(&report, Some(&strategy)),
         );
+        let coexistence = super::hook_coexistence_to_json_with_arm64e(
+            &actions,
+            &backend_matrix,
+            HookAutomationArm64eContext {
+                query_only_until_override: true,
+            },
+        );
         let automation = hook_automation_to_json_with_arm64e(
             &actions,
             &backend_matrix,
@@ -37608,8 +37615,43 @@ mod tests {
                 query_only_until_override: true,
             },
         );
+        assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_eq!(
+            coexistence["backendAdaptation"],
+            automation["backendAdaptation"],
+            "arm64e-query-only.backendAdaptationParity"
+        );
+        for key in [
+            "backendAdaptationMode",
+            "backendAdaptationAlignment",
+            "backendAdaptationBias",
+            "backendAdaptationSummary",
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextActionReadyToRun",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(coexistence[key], automation[key], "arm64e-query-only.{key}");
+        }
+        assert_eq!(coexistence["nextStepChainSource"], "next-action");
+        assert_eq!(automation["nextStepChainSource"], "next-action");
+        assert_eq!(automation["hasFallbackPlan"], false);
+        assert!(automation["fallbackPlan"].is_null());
 
+        assert_eq!(coexistence["preferredPath"], "arm64e-query-only");
         assert_eq!(automation["preferredPath"], "arm64e-query-only");
         assert_eq!(automation["arm64eConstrainedQueryOnly"], true);
         assert_eq!(
@@ -37719,6 +37761,13 @@ mod tests {
             },
         ];
 
+        let coexistence = super::hook_coexistence_to_json_with_arm64e(
+            &actions,
+            &backend_matrix,
+            HookAutomationArm64eContext {
+                query_only_until_override: true,
+            },
+        );
         let automation = hook_automation_to_json_with_arm64e(
             &actions,
             &backend_matrix,
@@ -37726,7 +37775,35 @@ mod tests {
                 query_only_until_override: true,
             },
         );
+        assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_eq!(
+            coexistence["backendAdaptation"],
+            automation["backendAdaptation"],
+            "arm64e-fallback.backendAdaptationParity"
+        );
+        for key in [
+            "backendAdaptationMode",
+            "backendAdaptationAlignment",
+            "backendAdaptationBias",
+            "backendAdaptationSummary",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(coexistence[key], automation[key], "arm64e-fallback.{key}");
+        }
+        assert_ne!(
+            coexistence["nextActionKey"],
+            automation["nextActionKey"],
+            "arm64e-fallback.nextActionKey should diverge between views"
+        );
+        assert_ne!(
+            coexistence["nextStepCommand"],
+            automation["nextStepCommand"],
+            "arm64e-fallback.nextStepCommand should diverge between views"
+        );
+        assert_eq!(coexistence["nextStepChainSource"], "next-action");
+        assert_eq!(automation["nextStepChainSource"], "fallback-plan");
+        assert_eq!(coexistence["preferredPath"], "arm64e-query-only");
 
         assert_eq!(automation["preferredPath"], "arm64e-query-only");
         assert_eq!(automation["hasFallbackPlan"], true);
