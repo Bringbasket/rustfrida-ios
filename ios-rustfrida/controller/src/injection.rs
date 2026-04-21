@@ -24885,6 +24885,94 @@ mod tests {
     }
 
     #[test]
+    fn query_only_coexistence_and_automation_keep_next_step_core_fields_aligned() {
+        let controller_report = HookEnvironmentReport {
+            active_backend: Some("ellekit".into()),
+            backends: vec![HookBackendInfo {
+                id: "ellekit".into(),
+                display_name: "ElleKit".into(),
+                loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                filesystem_paths: vec![],
+            }],
+            warnings: vec![],
+        };
+        let target_report = HookEnvironmentReport {
+            active_backend: Some("substrate".into()),
+            backends: vec![HookBackendInfo {
+                id: "substrate".into(),
+                display_name: "Cydia Substrate".into(),
+                loaded_images: vec!["/Library/MobileSubstrate/MobileSubstrate.dylib".into()],
+                filesystem_paths: vec![],
+            }],
+            warnings: vec![],
+        };
+        let backend_matrix = hook_backend_matrix_to_json(&controller_report, &target_report);
+        assert_eq!(backend_matrix["topology"]["kind"], "split-loaded");
+
+        let strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-risky".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&controller_report, Some(&strategy)),
+            &hook_environment_recommended_actions(&target_report, Some(&strategy)),
+        );
+
+        let coexistence = super::hook_coexistence_to_json(&actions, &backend_matrix);
+        let automation = hook_automation_to_json(&actions, &backend_matrix);
+        assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
+        assert_command_json_template_kind_count_pairs(&automation, "automation");
+
+        assert_eq!(coexistence["commandMode"], "query-only");
+        assert_eq!(automation["commandMode"], "query-only");
+        assert_eq!(coexistence["preferredPath"], "query-only");
+        assert_eq!(automation["preferredPath"], "query-only");
+        assert_eq!(coexistence["backendAdaptationMode"], "runtime-alignment-required");
+        assert_eq!(automation["backendAdaptationMode"], "runtime-alignment-required");
+        assert_eq!(coexistence["backendAdaptationAlignment"], "split");
+        assert_eq!(automation["backendAdaptationAlignment"], "split");
+        assert_eq!(coexistence["backendAdaptationBias"], "query");
+        assert_eq!(automation["backendAdaptationBias"], "query");
+
+        for key in [
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextActionReadyToRun",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(coexistence[key], automation[key], "{key}");
+        }
+
+        assert_eq!(coexistence["nextActionKey"], "hook.query");
+        assert_eq!(automation["nextActionKey"], "hook.query");
+        assert_eq!(coexistence["nextStepChainSource"], "next-action");
+        assert_eq!(automation["nextStepChainSource"], "next-action");
+        assert_eq!(coexistence["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(automation["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(coexistence["nextStepChain"][0]["command"], "objc.classes <filter>");
+        assert_eq!(automation["nextStepChain"][0]["command"], "objc.classes <filter>");
+        assert_eq!(coexistence["nextStepChain"][0]["phase"], "query");
+        assert_eq!(automation["nextStepChain"][0]["phase"], "query");
+        assert_eq!(automation["hasFallbackPlan"], false);
+        assert!(automation["fallbackPlan"].is_null());
+    }
+
+    #[test]
     fn hook_automation_emits_fallback_plan_when_next_action_not_ready() {
         let report = HookEnvironmentReport {
             active_backend: None,
