@@ -775,6 +775,13 @@ fn hook_coexistence_to_json_with_arm64e(
         .iter()
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
+    let next_action_command_json_instruction_template_count = next_action_command_json_templates
+        .iter()
+        .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+        .count();
+    let next_action_command_json_executable_template_count = next_action_command_json_templates
+        .len()
+        .saturating_sub(next_action_command_json_instruction_template_count);
     let next_step_command = next_action_templates.first().cloned();
     let next_step_command_json_template = next_action_command_json_templates.first().cloned();
     let next_step_phase = next_step_command_json_template
@@ -1148,6 +1155,8 @@ fn hook_coexistence_to_json_with_arm64e(
         "nextActionTemplates": next_action_templates,
         "nextActionCommandJsonTemplateCount": next_action_command_json_templates.len(),
         "nextActionCommandJsonEligibleTemplateCount": command_json_eligible_count(&next_action_command_json_templates),
+        "nextActionCommandJsonInstructionTemplateCount": next_action_command_json_instruction_template_count,
+        "nextActionCommandJsonExecutableTemplateCount": next_action_command_json_executable_template_count,
         "nextActionCommandJsonTemplates": next_action_command_json_templates,
     })
 }
@@ -9391,6 +9400,13 @@ fn hook_automation_to_json_with_arm64e(
         .iter()
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
+    let next_action_command_json_instruction_template_count = next_action_command_json_templates
+        .iter()
+        .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+        .count();
+    let next_action_command_json_executable_template_count = next_action_command_json_templates
+        .len()
+        .saturating_sub(next_action_command_json_instruction_template_count);
     let next_step_command = next_action_templates.first().cloned();
     let next_step_command_json_template = next_action_command_json_templates.first().cloned();
     let next_step_phase = next_step_command_json_template
@@ -13494,6 +13510,8 @@ fn hook_automation_to_json_with_arm64e(
                 "templateCount": next_action_templates.len(),
                 "templates": next_action_templates.clone(),
                 "commandJsonTemplateCount": next_action_command_json_templates.len(),
+                "commandJsonInstructionTemplateCount": next_action_command_json_instruction_template_count,
+                "commandJsonExecutableTemplateCount": next_action_command_json_executable_template_count,
                 "commandJsonTemplates": next_action_command_json_templates.clone(),
             })
         })
@@ -13778,6 +13796,8 @@ fn hook_automation_to_json_with_arm64e(
         "nextActionTemplateCount": next_action_templates.len(),
         "nextActionTemplates": next_action_templates,
         "nextActionCommandJsonTemplateCount": next_action_command_json_templates.len(),
+        "nextActionCommandJsonInstructionTemplateCount": next_action_command_json_instruction_template_count,
+        "nextActionCommandJsonExecutableTemplateCount": next_action_command_json_executable_template_count,
         "nextActionCommandJsonTemplates": next_action_command_json_templates,
         "actionBranches": action_branches,
     })
@@ -22655,6 +22675,14 @@ mod tests {
             121
         );
         assert_eq!(
+            rendered["hook"]["automation"]["nextActionCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionCommandJsonExecutableTemplateCount"],
+            121
+        );
+        assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonTemplates"][0]["cliArgs"][2],
             "--command"
         );
@@ -23746,6 +23774,14 @@ mod tests {
             121
         );
         assert_eq!(
+            rendered["hook"]["automation"]["nextActionCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionCommandJsonExecutableTemplateCount"],
+            121
+        );
+        assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonTemplates"][0]["cliArgs"][2],
             "--command"
         );
@@ -24017,6 +24053,8 @@ mod tests {
         assert_eq!(automation["nextActionTemplateCount"], 5);
         assert_eq!(automation["nextActionTemplates"][0], "trace status");
         assert_eq!(automation["nextActionCommandJsonTemplateCount"], 5);
+        assert_eq!(automation["nextActionCommandJsonInstructionTemplateCount"], 0);
+        assert_eq!(automation["nextActionCommandJsonExecutableTemplateCount"], 5);
         assert_eq!(
             automation["nextActionCommandJsonTemplates"][0]["command"],
             "trace status"
@@ -32190,6 +32228,8 @@ mod tests {
         assert_eq!(automation["nextActionTemplateCount"], 121);
         assert_eq!(automation["nextActionTemplates"][0], "objc.classes <filter>");
         assert_eq!(automation["nextActionCommandJsonTemplateCount"], 121);
+        assert_eq!(automation["nextActionCommandJsonInstructionTemplateCount"], 0);
+        assert_eq!(automation["nextActionCommandJsonExecutableTemplateCount"], 121);
         assert_eq!(
             automation["nextActionCommandJsonTemplates"][0]["command"],
             "objc.classes <filter>"
