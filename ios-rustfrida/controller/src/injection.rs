@@ -18713,7 +18713,8 @@ fn event_name(event: &AgentEvent) -> &'static str {
 mod tests {
     use super::{
         analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
-        build_trace_spec, command_json_template_entry, command_requests_inline_hook_install,
+        build_trace_spec, command_json_template_entry, command_template_group_to_json,
+        command_requests_inline_hook_install,
         command_required_capability,
         command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_action_command_templates,
         controller_help_control_command_synopsis,
@@ -19048,6 +19049,49 @@ mod tests {
                         "query-phase runtime template should parse through legacy command parser: {materialized_command}"
                     );
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn command_template_group_json_keeps_command_json_eligibility_summary_consistent() {
+        let templates = materialized_hook_action_templates();
+        let group = command_template_group_to_json("hook.parity-check", templates);
+        let entries = group["commandJsonTemplates"]
+            .as_array()
+            .expect("commandJsonTemplates should be an array");
+
+        let expected_eligible_count = entries
+            .iter()
+            .filter(|entry| {
+                entry
+                    .get("commandJsonEligible")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+            })
+            .count();
+        assert_eq!(
+            group["commandJsonEligibleTemplateCount"].as_u64(),
+            Some(expected_eligible_count as u64),
+            "group commandJsonEligibleTemplateCount should match entry-level eligibility count"
+        );
+
+        for entry in entries {
+            let command = entry["command"]
+                .as_str()
+                .expect("entry should include command");
+            let kind = entry["kind"]
+                .as_str()
+                .expect("entry should include kind");
+            let command_json_eligible = entry["commandJsonEligible"]
+                .as_bool()
+                .expect("entry should include commandJsonEligible");
+            if command.starts_with("controller ") {
+                assert_eq!(kind, "controller-cli");
+                assert!(!command_json_eligible);
+            } else {
+                assert_eq!(kind, "runtime-command");
+                assert!(command_json_eligible);
             }
         }
     }
