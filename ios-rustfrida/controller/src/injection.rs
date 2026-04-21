@@ -18179,6 +18179,17 @@ fn read_prompt_line(prompt: &str) -> Result<Option<String>> {
 }
 
 #[cfg(unix)]
+fn controller_help_hook_command_synopsis() -> &'static [&'static str] {
+    &[
+        "stalker [filter]|stalker native [module] <symbol> [-- template]|stalker addr <address> [-- template]|stalker status|stalker stop|stalker stop [filter]|stalker stop native [module] <symbol>|stalker stop addr <address>",
+        "trace [filter]|trace native [module] <symbol> [-- template]|trace addr <address> [-- template]|trace status|trace stop|trace stop [filter]|trace stop native [module] <symbol>|trace stop addr <address>",
+        "hfl <module> <offset>|hfl status|hfl stop|hfl stop <module> <offset>",
+        "jhook <class> <selector> [meta]|jhook status|jhook stop|jhook stop <class> <selector> [meta]",
+        "shook <type> <method>|shook <module> -- <type> <method>|shook status|shook stop|shook stop <type> <method>|shook stop <module> -- <type> <method>",
+    ]
+}
+
+#[cfg(unix)]
 fn controller_help_runtime_command_synopsis() -> &'static [&'static str] {
     &[
         "objc.classes",
@@ -18296,13 +18307,9 @@ fn print_controller_help() {
     println!("commands:");
     println!("  help");
     println!("  ping");
-    println!("  stalker [filter]|stalker native [module] <symbol> [-- template]|stalker addr <address> [-- template]|stalker status|stalker stop|stalker stop [filter]|stalker stop native [module] <symbol>|stalker stop addr <address>");
-    println!(
-        "  trace [filter]|trace native [module] <symbol> [-- template]|trace addr <address> [-- template]|trace status|trace stop|trace stop [filter]|trace stop native [module] <symbol>|trace stop addr <address>"
-    );
-    println!("  hfl <module> <offset>|hfl status|hfl stop|hfl stop <module> <offset>");
-    println!("  jhook <class> <selector> [meta]|jhook status|jhook stop|jhook stop <class> <selector> [meta]");
-    println!("  shook <type> <method>|shook <module> -- <type> <method>|shook status|shook stop|shook stop <type> <method>|shook stop <module> -- <type> <method>");
+    for line in controller_help_hook_command_synopsis() {
+        println!("  {line}");
+    }
     println!("  jsinit");
     println!("  jsclean");
     println!("  loadjs <script>");
@@ -18700,6 +18707,7 @@ mod tests {
         build_trace_spec, command_json_template_entry, command_requests_inline_hook_install,
         command_required_capability,
         command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_action_command_templates,
+        controller_help_hook_command_synopsis,
         controller_help_runtime_command_synopsis,
         hook_automation_suggested_sequence, hook_query_templates,
         hook_automation_to_json, hook_automation_to_json_with_arm64e, hook_backend_matrix_to_json,
@@ -18742,6 +18750,7 @@ mod tests {
             ("<class>", "UIViewController"),
             ("<module>", "DemoBinary"),
             ("<symbol>", "malloc"),
+            ("<offset>", "0x1234"),
             ("<query>", "malloc"),
             ("<path-or-name>", "libSystem.B.dylib"),
             ("<path>", "@loader_path"),
@@ -18761,6 +18770,7 @@ mod tests {
             ("<member>", "viewDidLoad"),
             ("<kind>", "metadata-accessor"),
             ("<type|protocol>", "ViewController"),
+            ("<objc-filter|native-target>", "UIViewController"),
         ];
         for (placeholder, value) in placeholders {
             command = command.replace(placeholder, value);
@@ -18769,6 +18779,8 @@ mod tests {
         let optional_tokens = [
             ("[meta]", "meta"),
             ("[filter]", "UIView"),
+            ("[module]", "DemoBinary"),
+            ("[-- template]", "-- fd"),
             ("[query]", "UIView"),
             ("[required]", "optional"),
             ("[instance]", "class"),
@@ -18914,6 +18926,57 @@ mod tests {
                 help_shapes.contains(&command_shape(&command)),
                 "runtime help should include query template command form or shape: {command}"
             );
+        }
+    }
+
+    #[test]
+    fn controller_help_hook_synopsis_routes_to_hook_capabilities() {
+        for synopsis in controller_help_hook_command_synopsis() {
+            for variant in split_help_synopsis_variants(synopsis) {
+                let command = materialize_help_template(variant);
+                assert!(!command.is_empty(), "hook help command should not be empty");
+
+                let capability = command_required_capability(&command)
+                    .expect("hook command capability")
+                    .expect("hook command should always map to a capability");
+                assert!(
+                    matches!(
+                        capability,
+                        HookCommandCapability::HookInstall
+                            | HookCommandCapability::HookStatus
+                            | HookCommandCapability::HookStop
+                    ),
+                    "hook help command should map to hook capability: {command}"
+                );
+
+                let installs = command_requests_inline_hook_install(&command)
+                    .expect("hook install intent should parse");
+                if installs {
+                    assert_eq!(
+                        capability,
+                        HookCommandCapability::HookInstall,
+                        "install commands must map to install capability: {command}"
+                    );
+                } else if command.contains(" status") {
+                    assert_eq!(
+                        capability,
+                        HookCommandCapability::HookStatus,
+                        "status commands must map to status capability: {command}"
+                    );
+                } else if command.contains(" stop") {
+                    assert_eq!(
+                        capability,
+                        HookCommandCapability::HookStop,
+                        "stop commands must map to stop capability: {command}"
+                    );
+                } else {
+                    assert_eq!(
+                        capability,
+                        HookCommandCapability::HookInstall,
+                        "non-status/non-stop hook commands should be install paths: {command}"
+                    );
+                }
+            }
         }
     }
 
