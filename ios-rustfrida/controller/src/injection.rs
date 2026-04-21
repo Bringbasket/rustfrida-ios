@@ -18689,8 +18689,9 @@ mod tests {
     use super::{
         analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
         build_trace_spec, command_json_template_entry, command_requests_inline_hook_install,
+        command_required_capability,
         command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_action_command_templates,
-        hook_query_templates,
+        hook_automation_suggested_sequence, hook_query_templates,
         hook_automation_to_json, hook_automation_to_json_with_arm64e, hook_backend_matrix_to_json,
         hook_effective_actions, hook_effective_actions_to_json, hook_effective_to_json,
         hook_environment_requires_notice, hook_environment_to_json, parse_hfl_command, parse_jhook_command,
@@ -18700,8 +18701,8 @@ mod tests {
         render_image_list_json, render_injection_environment, render_injection_result_json, render_loader_symbol,
         render_preflight_json, arm64e_preflight_summary_to_json, HookAutomationArm64eContext,
         CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, HookEffectiveAction, NativeHookTarget,
-        NativeLogArgument, NativeLogReturn, NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand,
-        SwiftHookCommand, TraceCommand,
+        HookCommandCapability, NativeLogArgument, NativeLogReturn, NativeLogTemplate, NativeValueFormat,
+        ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
     };
     use common::{
         AgentCommand, ControllerConfig, Error, Hello, InjectionMode, DEFAULT_AGENT_PATH, DEFAULT_AGENT_PATH_ROOTFUL,
@@ -18818,6 +18819,42 @@ mod tests {
                 ),
                 "query command should parse as RuntimeDispatch: {command}"
             );
+        }
+    }
+
+    #[test]
+    fn hook_query_templates_are_query_capability_commands() {
+        for template in hook_query_templates() {
+            let command = materialize_query_template(&template);
+            assert_eq!(
+                command_required_capability(&command).expect("query template capability"),
+                Some(HookCommandCapability::Query),
+                "query template should map to query capability: {command}"
+            );
+            assert!(
+                !command_requests_inline_hook_install(&command).expect("query template install check"),
+                "query template should never request inline install: {command}"
+            );
+        }
+    }
+
+    #[test]
+    fn query_only_suggested_sequence_stays_query_capability() {
+        for preferred_path in ["query-only", "arm64e-query-only"] {
+            let commands = hook_automation_suggested_sequence(preferred_path);
+            assert!(!commands.is_empty(), "query-only suggested sequence should not be empty");
+
+            for command in commands {
+                assert_eq!(
+                    command_required_capability(&command).expect("suggested sequence capability"),
+                    Some(HookCommandCapability::Query),
+                    "query-only suggested sequence should remain query capability: {command}"
+                );
+                assert!(
+                    !command_requires_inline_hooks(&command),
+                    "query-only suggested sequence should avoid inline-hook commands: {command}"
+                );
+            }
         }
     }
 
