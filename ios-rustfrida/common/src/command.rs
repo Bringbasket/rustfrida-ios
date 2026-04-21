@@ -3314,6 +3314,140 @@ mod tests {
     }
 
     #[test]
+    fn runtime_singleton_and_lookup_commands_parse_expected_specs() {
+        assert_eq!(
+            AgentCommand::from_legacy("native.mainImage"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.main_image",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.hookenv"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.hook_environment",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.detectHookEnvironment"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.hook_environment",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.image 0x1234"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.image",
+                    "address": "0x1234",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.symbol 0x1234"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.symbol",
+                    "address": "0x1234",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("pac.available"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "pac.available",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("pac.arm64e"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "pac.arm64e",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("pac.isProcessArm64e"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "pac.arm64e",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.available"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "swift.available",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.typeSourceKinds"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "swift.type_kinds",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.typeKinds"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "swift.type_kinds",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.classExists UIView"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_exists",
+                    "className": "UIView",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.selector viewDidLoad:"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.selector",
+                    "selectorName": "viewDidLoad:",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.methodImp UIViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.method_imp",
+                    "className": "UIViewController",
+                    "selectorName": "viewDidLoad",
+                    "isClassMethod": false,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.methodImp UIViewController viewDidLoad meta"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.method_imp",
+                    "className": "UIViewController",
+                    "selectorName": "viewDidLoad",
+                    "isClassMethod": true,
+                })
+            })
+        );
+    }
+
+    #[test]
     fn malformed_runtime_commands_fall_back_to_text_handler() {
         assert_eq!(
             AgentCommand::from_legacy("swift.methods ViewController"),
