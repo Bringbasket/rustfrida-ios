@@ -21838,6 +21838,38 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        "(function() {
+                            return __iosRustFridaAgentApi.handle('native.findExports libsystem_malloc.dylib -- malloc') === __iosRustFridaAgentApi.handle('native.exports libsystem_malloc.dylib -- malloc') &&
+                                __iosRustFridaAgentApi.handle('native.findDependencies libsystem_malloc.dylib -- libSystem.B.dylib') === __iosRustFridaAgentApi.handle('native.dependencies libsystem_malloc.dylib -- libSystem.B.dylib') &&
+                                __iosRustFridaAgentApi.handle('native.findRpaths libsystem_malloc.dylib -- @loader_path') === __iosRustFridaAgentApi.handle('native.rpaths libsystem_malloc.dylib -- @loader_path') &&
+                                __iosRustFridaAgentApi.handle('native.findImports libsystem_malloc.dylib -- malloc') === __iosRustFridaAgentApi.handle('native.imports libsystem_malloc.dylib -- malloc');
+                        })()"
+                    )
+                    .expect("agent native module query aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            return __iosRustFridaAgentApi.handle('native.findDyldInfo DemoBinary') === __iosRustFridaAgentApi.handle('native.dyldInfo DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findLinkedit DemoBinary') === __iosRustFridaAgentApi.handle('native.linkedit DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findFunctionStarts DemoBinary') === __iosRustFridaAgentApi.handle('native.functionStarts DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findCodeSignature DemoBinary') === __iosRustFridaAgentApi.handle('native.codeSignature DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findDataInCode DemoBinary') === __iosRustFridaAgentApi.handle('native.dataInCode DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findExportsTrie DemoBinary') === __iosRustFridaAgentApi.handle('native.exportsTrie DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findChainedFixups DemoBinary') === __iosRustFridaAgentApi.handle('native.chainedFixups DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findLoadCommands DemoBinary') === __iosRustFridaAgentApi.handle('native.loadCommands DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findSegments DemoBinary') === __iosRustFridaAgentApi.handle('native.segments DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findSections DemoBinary') === __iosRustFridaAgentApi.handle('native.sections DemoBinary');
+                        })()"
+                    )
+                    .expect("agent native module structural aliases"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const value = __iosRustFridaAgentApi.handle('native.findLoadCommands ' + base); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_commands', moduleName: base }); return value === result.text && typeof result.hasImage === 'boolean' && typeof result.resolved === 'boolean' && result.count === result.commands.length; })()")
                     .expect("agent native findLoadCommands"),
                 "true"
