@@ -18190,6 +18190,21 @@ fn controller_help_hook_command_synopsis() -> &'static [&'static str] {
 }
 
 #[cfg(unix)]
+fn controller_help_control_command_synopsis() -> &'static [&'static str] {
+    &[
+        "help",
+        "ping",
+        "jsinit",
+        "jsclean",
+        "loadjs <script>",
+        "jseval <expr>",
+        "jscomplete <prefix>",
+        "jsrepl",
+        "exit",
+    ]
+}
+
+#[cfg(unix)]
 fn controller_help_runtime_command_synopsis() -> &'static [&'static str] {
     &[
         "objc.classes",
@@ -18305,21 +18320,15 @@ fn controller_help_runtime_command_synopsis() -> &'static [&'static str] {
 #[cfg(unix)]
 fn print_controller_help() {
     println!("commands:");
-    println!("  help");
-    println!("  ping");
+    for line in controller_help_control_command_synopsis() {
+        println!("  {line}");
+    }
     for line in controller_help_hook_command_synopsis() {
         println!("  {line}");
     }
-    println!("  jsinit");
-    println!("  jsclean");
-    println!("  loadjs <script>");
-    println!("  jseval <expr>");
-    println!("  jscomplete <prefix>");
-    println!("  jsrepl");
     for line in controller_help_runtime_command_synopsis() {
         println!("  {line}");
     }
-    println!("  exit");
 }
 
 #[cfg(unix)]
@@ -18707,6 +18716,7 @@ mod tests {
         build_trace_spec, command_json_template_entry, command_requests_inline_hook_install,
         command_required_capability,
         command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_action_command_templates,
+        controller_help_control_command_synopsis,
         controller_help_hook_command_synopsis,
         controller_help_runtime_command_synopsis,
         hook_automation_suggested_sequence, hook_query_templates,
@@ -18752,6 +18762,9 @@ mod tests {
             ("<symbol>", "malloc"),
             ("<offset>", "0x1234"),
             ("<query>", "malloc"),
+            ("<script>", "console.log(1)"),
+            ("<expr>", "1 + 1"),
+            ("<prefix>", "objc."),
             ("<path-or-name>", "libSystem.B.dylib"),
             ("<path>", "@loader_path"),
             ("<name|cmd|index>", "LC_UUID"),
@@ -18975,6 +18988,43 @@ mod tests {
                         HookCommandCapability::HookInstall,
                         "non-status/non-stop hook commands should be install paths: {command}"
                     );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn controller_help_control_synopsis_stays_non_hook() {
+        for synopsis in controller_help_control_command_synopsis() {
+            for variant in split_help_synopsis_variants(synopsis) {
+                let command = materialize_help_template(variant);
+                assert!(!command.is_empty(), "control help command should not be empty");
+                assert!(
+                    !command_requires_inline_hooks(&command),
+                    "control command should not require inline hooks: {command}"
+                );
+                assert!(
+                    !command_requests_inline_hook_install(&command).expect("control install check"),
+                    "control command should not request inline install: {command}"
+                );
+
+                let capability = command_required_capability(&command).expect("control capability");
+                match command.as_str() {
+                    "exit" => assert_eq!(
+                        capability,
+                        None,
+                        "exit should bypass hook capability routing"
+                    ),
+                    _ if command.starts_with("jscomplete ") => assert_eq!(
+                        capability,
+                        None,
+                        "jscomplete should bypass hook capability routing"
+                    ),
+                    _ => assert_eq!(
+                        capability,
+                        Some(HookCommandCapability::Query),
+                        "control command should remain query capability: {command}"
+                    ),
                 }
             }
         }
