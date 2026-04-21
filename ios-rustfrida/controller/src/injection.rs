@@ -32850,6 +32850,115 @@ mod tests {
     }
 
     #[test]
+    fn command_json_template_kind_counts_remain_paired_across_backend_topologies() {
+        let strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-risky".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+
+        let scenarios = vec![
+            (
+                "no-backend",
+                HookEnvironmentReport {
+                    active_backend: None,
+                    backends: vec![],
+                    warnings: vec![],
+                },
+                HookEnvironmentReport {
+                    active_backend: None,
+                    backends: vec![],
+                    warnings: vec![],
+                },
+            ),
+            (
+                "split-loaded",
+                HookEnvironmentReport {
+                    active_backend: Some("ellekit".into()),
+                    backends: vec![HookBackendInfo {
+                        id: "ellekit".into(),
+                        display_name: "ElleKit".into(),
+                        loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                        filesystem_paths: vec![],
+                    }],
+                    warnings: vec![],
+                },
+                HookEnvironmentReport {
+                    active_backend: Some("substrate".into()),
+                    backends: vec![HookBackendInfo {
+                        id: "substrate".into(),
+                        display_name: "Cydia Substrate".into(),
+                        loaded_images: vec!["/Library/MobileSubstrate/MobileSubstrate.dylib".into()],
+                        filesystem_paths: vec![],
+                    }],
+                    warnings: vec![],
+                },
+            ),
+            (
+                "controller-loaded-only",
+                HookEnvironmentReport {
+                    active_backend: Some("ellekit".into()),
+                    backends: vec![HookBackendInfo {
+                        id: "ellekit".into(),
+                        display_name: "ElleKit".into(),
+                        loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                        filesystem_paths: vec![],
+                    }],
+                    warnings: vec![],
+                },
+                HookEnvironmentReport {
+                    active_backend: None,
+                    backends: vec![],
+                    warnings: vec![],
+                },
+            ),
+            (
+                "filesystem-only",
+                HookEnvironmentReport {
+                    active_backend: None,
+                    backends: vec![HookBackendInfo {
+                        id: "substitute".into(),
+                        display_name: "Substitute".into(),
+                        loaded_images: vec![],
+                        filesystem_paths: vec!["/var/jb/usr/lib/libsubstitute.dylib".into()],
+                    }],
+                    warnings: vec![],
+                },
+                HookEnvironmentReport {
+                    active_backend: None,
+                    backends: vec![],
+                    warnings: vec![],
+                },
+            ),
+        ];
+
+        for (name, controller_report, target_report) in scenarios {
+            let backend_matrix = hook_backend_matrix_to_json(&controller_report, &target_report);
+            let controller_actions = hook_environment_recommended_actions(&controller_report, Some(&strategy));
+            let target_actions = hook_environment_recommended_actions(&target_report, Some(&strategy));
+            let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
+            let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
+            let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+            let automation_arm64e = hook_automation_to_json_with_arm64e(
+                &effective_actions,
+                &backend_matrix,
+                HookAutomationArm64eContext {
+                    query_only_until_override: true,
+                },
+            );
+
+            assert_command_json_template_kind_count_pairs(&coexistence, &format!("{name}.coexistence"));
+            assert_command_json_template_kind_count_pairs(&automation, &format!("{name}.automation"));
+            assert_command_json_template_kind_count_pairs(
+                &automation_arm64e,
+                &format!("{name}.automationArm64e"),
+            );
+        }
+    }
+
+    #[test]
     fn hook_backend_adaptation_uses_conflict_resolution_for_controller_loaded_only_topology() {
         let controller_report = HookEnvironmentReport {
             active_backend: Some("ellekit".into()),
