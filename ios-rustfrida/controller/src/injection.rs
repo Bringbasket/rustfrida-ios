@@ -25516,6 +25516,200 @@ mod tests {
     }
 
     #[test]
+    fn backend_adaptation_alias_fields_match_nested_object_across_core_modes() {
+        let assert_alias_fields = |name: &str, rendered: &Value| {
+            assert_command_json_template_kind_count_pairs(rendered, name);
+            let adaptation = &rendered["backendAdaptation"];
+            assert_eq!(rendered["backendAdaptationMode"], adaptation["mode"], "{name}.mode");
+            assert_eq!(
+                rendered["backendAdaptationAlignment"],
+                adaptation["alignment"],
+                "{name}.alignment"
+            );
+            assert_eq!(
+                rendered["backendAdaptationBias"],
+                adaptation["recommendedActionBias"],
+                "{name}.bias"
+            );
+            assert_eq!(
+                rendered["backendAdaptationSummary"],
+                adaptation["summary"],
+                "{name}.summary"
+            );
+        };
+
+        let clean_report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let clean_backend_matrix = hook_backend_matrix_to_json(&clean_report, &clean_report);
+
+        let clean_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-safe".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let clean_actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&clean_report, Some(&clean_strategy)),
+            &hook_environment_recommended_actions(&clean_report, Some(&clean_strategy)),
+        );
+        let clean_coexistence = super::hook_coexistence_to_json(&clean_actions, &clean_backend_matrix);
+        let clean_automation = hook_automation_to_json(&clean_actions, &clean_backend_matrix);
+        assert_alias_fields("clean.coexistence", &clean_coexistence);
+        assert_alias_fields("clean.automation", &clean_automation);
+
+        let controller_query_report = HookEnvironmentReport {
+            active_backend: Some("ellekit".into()),
+            backends: vec![HookBackendInfo {
+                id: "ellekit".into(),
+                display_name: "ElleKit".into(),
+                loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                filesystem_paths: vec![],
+            }],
+            warnings: vec![],
+        };
+        let target_query_report = HookEnvironmentReport {
+            active_backend: Some("substrate".into()),
+            backends: vec![HookBackendInfo {
+                id: "substrate".into(),
+                display_name: "Cydia Substrate".into(),
+                loaded_images: vec!["/Library/MobileSubstrate/MobileSubstrate.dylib".into()],
+                filesystem_paths: vec![],
+            }],
+            warnings: vec![],
+        };
+        let query_backend_matrix = hook_backend_matrix_to_json(&controller_query_report, &target_query_report);
+        let query_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-risky".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let query_actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&controller_query_report, Some(&query_strategy)),
+            &hook_environment_recommended_actions(&target_query_report, Some(&query_strategy)),
+        );
+        let query_coexistence = super::hook_coexistence_to_json(&query_actions, &query_backend_matrix);
+        let query_automation = hook_automation_to_json(&query_actions, &query_backend_matrix);
+        assert_alias_fields("query-only.coexistence", &query_coexistence);
+        assert_alias_fields("query-only.automation", &query_automation);
+
+        let controller_cleanup_strategy = HookStrategyDecision {
+            policy: HookPolicy::QueryOnlyExternalLoaded,
+            strategy: "query-only-external-loaded".into(),
+            allowed: true,
+            inline_hooks_allowed: false,
+            reason: Some("controller query-only".into()),
+        };
+        let target_cleanup_strategy = HookStrategyDecision {
+            policy: HookPolicy::DenyExternalLoaded,
+            strategy: "cleanup-only-external-loaded".into(),
+            allowed: false,
+            inline_hooks_allowed: false,
+            reason: Some("target cleanup-only".into()),
+        };
+        let cleanup_actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&clean_report, Some(&controller_cleanup_strategy)),
+            &hook_environment_recommended_actions(&clean_report, Some(&target_cleanup_strategy)),
+        );
+        let cleanup_coexistence = super::hook_coexistence_to_json(&cleanup_actions, &clean_backend_matrix);
+        let cleanup_automation = hook_automation_to_json(&cleanup_actions, &clean_backend_matrix);
+        assert_alias_fields("cleanup-only.coexistence", &cleanup_coexistence);
+        assert_alias_fields("cleanup-only.automation", &cleanup_automation);
+
+        let blocked_actions = vec![
+            HookEffectiveAction {
+                action_key: "hook.query",
+                command_group: "query",
+                allowed: false,
+                blocked_by: "both",
+                priority: 1,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 1,
+                target_priority: 1,
+                recommendation: "query blocked".into(),
+                controller_reason: Some("controller blocked query".into()),
+                target_reason: Some("target blocked query".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.bootstrap",
+                command_group: "bootstrap",
+                allowed: false,
+                blocked_by: "both",
+                priority: 2,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 2,
+                target_priority: 2,
+                recommendation: "bootstrap blocked".into(),
+                controller_reason: Some("controller blocked bootstrap".into()),
+                target_reason: Some("target blocked bootstrap".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.install",
+                command_group: "hook-install",
+                allowed: false,
+                blocked_by: "both",
+                priority: 3,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 3,
+                target_priority: 3,
+                recommendation: "install blocked".into(),
+                controller_reason: Some("controller blocked install".into()),
+                target_reason: Some("target blocked install".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.status",
+                command_group: "hook-status",
+                allowed: false,
+                blocked_by: "both",
+                priority: 4,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 4,
+                target_priority: 4,
+                recommendation: "status blocked".into(),
+                controller_reason: Some("controller blocked status".into()),
+                target_reason: Some("target blocked status".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.stop",
+                command_group: "hook-stop",
+                allowed: false,
+                blocked_by: "both",
+                priority: 5,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 5,
+                target_priority: 5,
+                recommendation: "stop blocked".into(),
+                controller_reason: Some("controller blocked stop".into()),
+                target_reason: Some("target blocked stop".into()),
+            },
+        ];
+        let blocked_coexistence = super::hook_coexistence_to_json(&blocked_actions, &clean_backend_matrix);
+        let blocked_automation = hook_automation_to_json(&blocked_actions, &clean_backend_matrix);
+        assert_alias_fields("blocked.coexistence", &blocked_coexistence);
+        assert_alias_fields("blocked.automation", &blocked_automation);
+
+        let arm64e_context = HookAutomationArm64eContext {
+            query_only_until_override: true,
+        };
+        let arm64e_coexistence =
+            super::hook_coexistence_to_json_with_arm64e(&clean_actions, &clean_backend_matrix, arm64e_context);
+        let arm64e_automation =
+            hook_automation_to_json_with_arm64e(&clean_actions, &clean_backend_matrix, arm64e_context);
+        assert_alias_fields("arm64e-query-only.coexistence", &arm64e_coexistence);
+        assert_alias_fields("arm64e-query-only.automation", &arm64e_automation);
+    }
+
+    #[test]
     fn hook_automation_emits_fallback_plan_when_next_action_not_ready() {
         let report = HookEnvironmentReport {
             active_backend: None,
