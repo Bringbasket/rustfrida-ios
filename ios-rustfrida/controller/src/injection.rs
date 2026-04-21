@@ -27597,6 +27597,16 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]
+                ["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]
+                ["commandJsonExecutableTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["index"]["hook-fallback-preflight-failed"]
                 ["matchConfidence"],
             "exact"
         );
@@ -27631,6 +27641,16 @@ mod tests {
             1
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseIndex"]["preflight"]
+                ["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseIndex"]["preflight"]
+                ["commandJsonExecutableTemplateCount"],
+            1
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseIndex"]["diagnose"]["errorCodeCount"],
             2
         );
@@ -27653,6 +27673,16 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseIndex"]["diagnose"]
                 ["commandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseIndex"]["diagnose"]
+                ["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseIndex"]["diagnose"]
+                ["commandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(
