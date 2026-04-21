@@ -35244,6 +35244,7 @@ mod tests {
                 query_only_until_override: true,
             },
         );
+        assert_command_json_template_kind_count_pairs(&automation, "automation");
 
         assert_eq!(automation["preferredPath"], "arm64e-query-only");
         assert_eq!(automation["arm64eConstrainedQueryOnly"], true);
@@ -35361,6 +35362,7 @@ mod tests {
                 query_only_until_override: true,
             },
         );
+        assert_command_json_template_kind_count_pairs(&automation, "automation");
 
         assert_eq!(automation["preferredPath"], "arm64e-query-only");
         assert_eq!(automation["hasFallbackPlan"], true);
