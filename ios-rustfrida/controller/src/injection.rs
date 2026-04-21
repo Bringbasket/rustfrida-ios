@@ -21146,6 +21146,22 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][0], "native.hookenv");
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][1], "pac.available");
         assert_eq!(rendered["hook"]["automation"]["suggestedSequence"][2], "pac.arm64e");
+        let suggested_count = rendered["hook"]["automation"]["suggestedSequence"]
+            .as_array()
+            .map(Vec::len)
+            .unwrap_or(0) as u64;
+        assert_eq!(
+            rendered["hook"]["automation"]["suggestedSequenceCommandJsonTemplateCount"],
+            suggested_count
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["suggestedSequenceCommandJsonEligibleTemplateCount"],
+            suggested_count
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["suggestedSequenceInstructionTemplateCount"],
+            0
+        );
         assert_eq!(rendered["hook"]["coexistence"]["preferredPath"], "arm64e-query-only");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionCommandGroup"], "query");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPhase"], "query");
