@@ -9016,6 +9016,19 @@ fn hook_automation_to_json_with_arm64e(
         .map(|item| item.action_key)
         .map(ToOwned::to_owned);
     let suggested_sequence = hook_automation_suggested_sequence(preferred_path);
+    let suggested_sequence_command_json_templates = suggested_sequence
+        .iter()
+        .map(|template| command_json_template_entry(template))
+        .collect::<Vec<_>>();
+    let suggested_sequence_command_json_eligible_template_count =
+        command_json_eligible_count(&suggested_sequence_command_json_templates);
+    let suggested_sequence_instruction_template_count = suggested_sequence_command_json_templates
+        .iter()
+        .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+        .count();
+    let suggested_sequence_executable_template_count = suggested_sequence_command_json_templates
+        .len()
+        .saturating_sub(suggested_sequence_instruction_template_count);
     let command_templates = HOOK_EFFECTIVE_ACTIONS
         .iter()
         .map(|(action_key, command_group)| {
@@ -13419,6 +13432,12 @@ fn hook_automation_to_json_with_arm64e(
         "nextActionPlan": next_action_plan,
         "hasSuggestedSequence": !suggested_sequence.is_empty(),
         "suggestedSequence": suggested_sequence,
+        "suggestedSequenceCommandJsonTemplateCount": suggested_sequence_command_json_templates.len(),
+        "suggestedSequenceCommandJsonEligibleTemplateCount":
+            suggested_sequence_command_json_eligible_template_count,
+        "suggestedSequenceInstructionTemplateCount": suggested_sequence_instruction_template_count,
+        "suggestedSequenceExecutableTemplateCount": suggested_sequence_executable_template_count,
+        "suggestedSequenceCommandJsonTemplates": suggested_sequence_command_json_templates,
         "commandTemplates": command_templates,
         "nextActionTemplateCount": next_action_templates.len(),
         "nextActionTemplates": next_action_templates,
@@ -23673,6 +23692,111 @@ mod tests {
         assert_eq!(status_branch["templateCount"], 5);
         assert_eq!(status_branch["commandJsonTemplateCount"], 5);
         assert_eq!(status_branch["commandJsonEligibleTemplateCount"], 5);
+    }
+
+    #[test]
+    fn blocked_mode_suggested_sequence_marks_instruction_entries() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let backend_matrix = hook_backend_matrix_to_json(&report, &report);
+        let actions = vec![
+            HookEffectiveAction {
+                action_key: "hook.query",
+                command_group: "query",
+                allowed: false,
+                blocked_by: "both",
+                priority: 1,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 1,
+                target_priority: 1,
+                recommendation: "query blocked".into(),
+                controller_reason: Some("controller blocked query".into()),
+                target_reason: Some("target blocked query".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.bootstrap",
+                command_group: "bootstrap",
+                allowed: false,
+                blocked_by: "both",
+                priority: 2,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 2,
+                target_priority: 2,
+                recommendation: "bootstrap blocked".into(),
+                controller_reason: Some("controller blocked bootstrap".into()),
+                target_reason: Some("target blocked bootstrap".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.install",
+                command_group: "install",
+                allowed: false,
+                blocked_by: "both",
+                priority: 3,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 3,
+                target_priority: 3,
+                recommendation: "install blocked".into(),
+                controller_reason: Some("controller blocked install".into()),
+                target_reason: Some("target blocked install".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.status",
+                command_group: "status",
+                allowed: false,
+                blocked_by: "both",
+                priority: 4,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 4,
+                target_priority: 4,
+                recommendation: "status blocked".into(),
+                controller_reason: Some("controller blocked status".into()),
+                target_reason: Some("target blocked status".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.stop",
+                command_group: "stop",
+                allowed: false,
+                blocked_by: "both",
+                priority: 5,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 5,
+                target_priority: 5,
+                recommendation: "stop blocked".into(),
+                controller_reason: Some("controller blocked stop".into()),
+                target_reason: Some("target blocked stop".into()),
+            },
+        ];
+
+        let automation = hook_automation_to_json(&actions, &backend_matrix);
+        assert_eq!(automation["commandMode"], "blocked");
+        assert_eq!(automation["hasSuggestedSequence"], true);
+        assert_eq!(
+            automation["suggestedSequenceCommandJsonTemplateCount"],
+            automation["suggestedSequence"].as_array().map(Vec::len).unwrap_or(0)
+        );
+        assert_eq!(automation["suggestedSequenceCommandJsonTemplateCount"], 3);
+        assert_eq!(automation["suggestedSequenceCommandJsonEligibleTemplateCount"], 1);
+        assert_eq!(automation["suggestedSequenceInstructionTemplateCount"], 1);
+        assert_eq!(automation["suggestedSequenceExecutableTemplateCount"], 2);
+
+        let entries = automation["suggestedSequenceCommandJsonTemplates"]
+            .as_array()
+            .expect("suggested sequence command json templates");
+        assert_eq!(entries.len(), 3);
+        assert_eq!(entries[0]["kind"], "runtime-command");
+        assert_eq!(entries[0]["commandJsonEligible"], true);
+        assert_eq!(entries[1]["kind"], "controller-cli");
+        assert_eq!(entries[1]["commandJsonEligible"], false);
+        assert_eq!(entries[2]["kind"], "instruction");
+        assert_eq!(entries[2]["commandJsonEligible"], false);
     }
 
     #[test]
