@@ -2373,6 +2373,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .get("commandJsonTemplateCount")
             .cloned()
             .unwrap_or(Value::Null),
+        "defaultCommandJsonInstructionTemplateCount": routing_decision_ready_default
+            .get("commandJsonInstructionTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonExecutableTemplateCount": routing_decision_ready_default
+            .get("commandJsonExecutableTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
         "defaultCommandJsonEligibleTemplateCount": routing_decision_ready_default
             .get("commandJsonEligibleTemplateCount")
             .cloned()
@@ -3098,6 +3106,14 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .unwrap_or(Value::Null),
         "phasePreflightCommandJsonTemplateCount": routing_decision_ready_phase_preflight
             .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonInstructionTemplateCount": routing_decision_ready_phase_preflight
+            .get("commandJsonInstructionTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonExecutableTemplateCount": routing_decision_ready_phase_preflight
+            .get("commandJsonExecutableTemplateCount")
             .cloned()
             .unwrap_or(Value::Null),
         "phasePreflightCommandJsonEligibleTemplateCount": routing_decision_ready_phase_preflight
@@ -11475,6 +11491,14 @@ fn hook_automation_to_json_with_arm64e(
             .unwrap_or(Value::Null),
         "defaultCommandJsonTemplateCount": routing_decision_ready_default
             .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonInstructionTemplateCount": routing_decision_ready_default
+            .get("commandJsonInstructionTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultCommandJsonExecutableTemplateCount": routing_decision_ready_default
+            .get("commandJsonExecutableTemplateCount")
             .cloned()
             .unwrap_or(Value::Null),
         "defaultCommandJsonEligibleTemplateCount": routing_decision_ready_default
