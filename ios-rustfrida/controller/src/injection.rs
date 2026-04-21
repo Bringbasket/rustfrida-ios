@@ -25346,6 +25346,46 @@ mod tests {
             false,
         );
 
+        let filesystem_report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![HookBackendInfo {
+                id: "libhooker".into(),
+                display_name: "libhooker".into(),
+                loaded_images: vec![],
+                filesystem_paths: vec!["/var/jb/usr/lib/libhooker.dylib".into()],
+            }],
+            warnings: vec![],
+        };
+        let filesystem_backend_matrix = hook_backend_matrix_to_json(&filesystem_report, &filesystem_report);
+        let filesystem_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-cautious".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: Some("filesystem-only backend artifacts detected".into()),
+        };
+        let filesystem_actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
+            &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
+        );
+        let filesystem_coexistence =
+            super::hook_coexistence_to_json(&filesystem_actions, &filesystem_backend_matrix);
+        let filesystem_automation = hook_automation_to_json(&filesystem_actions, &filesystem_backend_matrix);
+        assert_core_alignment(
+            "filesystem-only-preflight",
+            &filesystem_coexistence,
+            &filesystem_automation,
+            "allowed",
+            "inline-cautious",
+            "preflight-before-inline",
+            "filesystem-only",
+            "preflight",
+            "hook.query",
+            "objc.classes <filter>",
+            "query",
+            false,
+        );
+
         let arm64e_strategy = HookStrategyDecision {
             policy: HookPolicy::Warn,
             strategy: "internal-inline-safe".into(),
@@ -25535,6 +25575,37 @@ mod tests {
             "query-only"
         );
 
+        let filesystem_report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![HookBackendInfo {
+                id: "libhooker".into(),
+                display_name: "libhooker".into(),
+                loaded_images: vec![],
+                filesystem_paths: vec!["/var/jb/usr/lib/libhooker.dylib".into()],
+            }],
+            warnings: vec![],
+        };
+        let filesystem_backend_matrix = hook_backend_matrix_to_json(&filesystem_report, &filesystem_report);
+        let filesystem_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-cautious".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: Some("filesystem-only backend artifacts detected".into()),
+        };
+        let filesystem_actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
+            &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
+        );
+        let filesystem_coexistence =
+            super::hook_coexistence_to_json(&filesystem_actions, &filesystem_backend_matrix);
+        let filesystem_automation = hook_automation_to_json(&filesystem_actions, &filesystem_backend_matrix);
+        assert_eq!(
+            filesystem_coexistence["backendAdaptation"],
+            filesystem_automation["backendAdaptation"],
+            "filesystem-only-preflight"
+        );
+
         let arm64e_strategy = HookStrategyDecision {
             policy: HookPolicy::Warn,
             strategy: "internal-inline-safe".into(),
@@ -25605,6 +25676,34 @@ mod tests {
         let clean_automation = hook_automation_to_json(&clean_actions, &clean_backend_matrix);
         assert_alias_fields("clean.coexistence", &clean_coexistence);
         assert_alias_fields("clean.automation", &clean_automation);
+
+        let filesystem_report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![HookBackendInfo {
+                id: "libhooker".into(),
+                display_name: "libhooker".into(),
+                loaded_images: vec![],
+                filesystem_paths: vec!["/var/jb/usr/lib/libhooker.dylib".into()],
+            }],
+            warnings: vec![],
+        };
+        let filesystem_backend_matrix = hook_backend_matrix_to_json(&filesystem_report, &filesystem_report);
+        let filesystem_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-cautious".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: Some("filesystem-only backend artifacts detected".into()),
+        };
+        let filesystem_actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
+            &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
+        );
+        let filesystem_coexistence =
+            super::hook_coexistence_to_json(&filesystem_actions, &filesystem_backend_matrix);
+        let filesystem_automation = hook_automation_to_json(&filesystem_actions, &filesystem_backend_matrix);
+        assert_alias_fields("filesystem-only-preflight.coexistence", &filesystem_coexistence);
+        assert_alias_fields("filesystem-only-preflight.automation", &filesystem_automation);
 
         let controller_query_report = HookEnvironmentReport {
             active_backend: Some("ellekit".into()),
