@@ -3774,6 +3774,19 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             let conflict_resolution_command_json_templates = conflict_resolution_command_json_templates.clone();
             let conflict_resolution_command_json_template_count =
                 conflict_resolution_command_json_template_count.clone();
+            let conflict_command_json_instruction_template_count = conflict_resolution_command_json_templates
+                .as_array()
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+                        .count()
+                })
+                .unwrap_or(0);
+            let conflict_command_json_executable_template_count = conflict_resolution_command_json_templates
+                .as_array()
+                .map(|items| items.len().saturating_sub(conflict_command_json_instruction_template_count))
+                .unwrap_or(0);
             let preferred_conflict_resolution_chain = preferred_conflict_resolution_chain.clone();
             let conflict_primary_command_json_template = conflict_resolution_command_json_templates
                 .as_array()
@@ -3830,6 +3843,8 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                         .as_array()
                         .map(|items| command_json_eligible_count(items))
                         .unwrap_or(0),
+                    "commandJsonInstructionTemplateCount": conflict_command_json_instruction_template_count,
+                    "commandJsonExecutableTemplateCount": conflict_command_json_executable_template_count,
                     "primaryCommandJsonTemplate": conflict_primary_command_json_template.clone(),
                     "primaryCommandJsonTemplateCommand": conflict_primary_command_json_template
                         .get("command")
@@ -3849,6 +3864,42 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             })
         })
         .collect::<Vec<_>>();
+    let conflict_backend_pair_command_json_template_count = conflict_backend_pairs
+        .iter()
+        .map(|entry| {
+            entry
+                .get("commandJsonTemplateCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0)
+        })
+        .sum::<u64>();
+    let conflict_backend_pair_command_json_eligible_template_count = conflict_backend_pairs
+        .iter()
+        .map(|entry| {
+            entry
+                .get("commandJsonEligibleTemplateCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0)
+        })
+        .sum::<u64>();
+    let conflict_backend_pair_command_json_instruction_template_count = conflict_backend_pairs
+        .iter()
+        .map(|entry| {
+            entry
+                .get("commandJsonInstructionTemplateCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0)
+        })
+        .sum::<u64>();
+    let conflict_backend_pair_command_json_executable_template_count = conflict_backend_pairs
+        .iter()
+        .map(|entry| {
+            entry
+                .get("commandJsonExecutableTemplateCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0)
+        })
+        .sum::<u64>();
     let preferred_conflict_backend_pair = conflict_backend_pairs.first().cloned();
     let has_preferred_conflict_backend_pair = preferred_conflict_backend_pair.is_some();
     let topology_requires_conflict_resolution = matches!(
@@ -4800,6 +4851,13 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .and_then(|item| item.get("primaryCommandJsonTemplateEligible"))
             .cloned(),
         "conflictBackendPairCount": conflict_backend_pairs.len(),
+        "conflictBackendPairCommandJsonTemplateCount": conflict_backend_pair_command_json_template_count,
+        "conflictBackendPairCommandJsonEligibleTemplateCount":
+            conflict_backend_pair_command_json_eligible_template_count,
+        "conflictBackendPairCommandJsonInstructionTemplateCount":
+            conflict_backend_pair_command_json_instruction_template_count,
+        "conflictBackendPairCommandJsonExecutableTemplateCount":
+            conflict_backend_pair_command_json_executable_template_count,
         "conflictBackendPairs": conflict_backend_pairs,
         "preferredConflictBackendPair": preferred_conflict_backend_pair.clone(),
         "preferredConflictBackendPairKey": preferred_conflict_backend_pair
@@ -4841,6 +4899,14 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         "preferredConflictBackendPairCommandJsonEligibleTemplateCount": preferred_conflict_backend_pair
             .as_ref()
             .and_then(|item| item.get("commandJsonEligibleTemplateCount"))
+            .cloned(),
+        "preferredConflictBackendPairCommandJsonInstructionTemplateCount": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("commandJsonInstructionTemplateCount"))
+            .cloned(),
+        "preferredConflictBackendPairCommandJsonExecutableTemplateCount": preferred_conflict_backend_pair
+            .as_ref()
+            .and_then(|item| item.get("commandJsonExecutableTemplateCount"))
             .cloned(),
         "preferredConflictBackendPairPrimaryCommandJsonTemplate": preferred_conflict_backend_pair
             .as_ref()
@@ -28540,6 +28606,22 @@ mod tests {
         );
         assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 1);
         assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairCommandJsonTemplateCount"],
+            121
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairCommandJsonEligibleTemplateCount"],
+            121
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairCommandJsonExecutableTemplateCount"],
+            121
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["pairKey"],
             "ellekit->substrate"
         );
@@ -28596,6 +28678,14 @@ mod tests {
             121
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairs"][0]["commandJsonExecutableTemplateCount"],
+            121
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["primaryCommandJsonTemplateCommand"],
             "objc.classes <filter>"
         );
@@ -28645,6 +28735,14 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"],
+            121
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonExecutableTemplateCount"],
             121
         );
         assert_eq!(
@@ -30339,6 +30437,22 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 3);
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "ellekit");
         assert_eq!(automation["backendAdaptation"]["conflictBackendPairCount"], 1);
+        assert_eq!(
+            automation["backendAdaptation"]["conflictBackendPairCommandJsonTemplateCount"],
+            121
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["conflictBackendPairCommandJsonEligibleTemplateCount"],
+            121
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["conflictBackendPairCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["conflictBackendPairCommandJsonExecutableTemplateCount"],
+            121
+        );
         assert_eq!(
             automation["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
             "objc.classes <filter>"
@@ -32403,6 +32517,22 @@ mod tests {
             "runtime-command"
         );
         assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 0);
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairCommandJsonTemplateCount"],
+            0
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairCommandJsonEligibleTemplateCount"],
+            0
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["conflictBackendPairCommandJsonExecutableTemplateCount"],
+            0
+        );
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPair"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairScope"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairReason"].is_null());
@@ -32414,6 +32544,14 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplateCount"].is_null());
         assert!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonInstructionTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonExecutableTemplateCount"]
+                .is_null()
         );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"].is_null());
@@ -33252,6 +33390,14 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplateCount"].is_null());
         assert!(
             automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonInstructionTemplateCount"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonExecutableTemplateCount"]
+                .is_null()
         );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"].is_null());
