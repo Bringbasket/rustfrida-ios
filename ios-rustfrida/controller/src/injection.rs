@@ -33074,6 +33074,109 @@ mod tests {
     }
 
     #[test]
+    fn hook_backend_adaptation_uses_conflict_resolution_for_target_loaded_only_topology() {
+        let controller_report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let target_report = HookEnvironmentReport {
+            active_backend: Some("ellekit".into()),
+            backends: vec![HookBackendInfo {
+                id: "ellekit".into(),
+                display_name: "ElleKit".into(),
+                loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                filesystem_paths: vec![],
+            }],
+            warnings: vec![],
+        };
+
+        let backend_matrix = hook_backend_matrix_to_json(&controller_report, &target_report);
+        assert_eq!(backend_matrix["topology"]["kind"], "target-loaded-only");
+
+        let controller_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-safe".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let target_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-risky".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let controller_actions = hook_environment_recommended_actions(&controller_report, Some(&controller_strategy));
+        let target_actions = hook_environment_recommended_actions(&target_report, Some(&target_strategy));
+        let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
+        let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
+        let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+
+        for rendered in [&coexistence, &automation] {
+            assert_command_json_template_kind_count_pairs(rendered, "rendered");
+            let adaptation = &rendered["backendAdaptation"];
+            assert_eq!(adaptation["preferredGroupKey"], "query");
+            assert_eq!(adaptation["conflictBackendPairCount"], 0);
+            assert!(adaptation["preferredConflictBackendPair"].is_null());
+            assert_eq!(adaptation["preferredConflictResolutionGroupKey"], "query");
+            assert_eq!(adaptation["preferredConflictResolutionChainCount"], 2);
+            assert_eq!(
+                adaptation["preferredConflictResolutionPhaseOrder"],
+                json!(["query", "preflight"])
+            );
+            assert_eq!(adaptation["executionKind"], "conflict-resolution");
+            assert_eq!(adaptation["executionSource"], "preferred-conflict-resolution-chain");
+            assert_eq!(adaptation["executionHasConflictPair"], false);
+            assert_eq!(adaptation["nextStepSource"], "preferred-conflict-resolution-chain");
+            assert_eq!(adaptation["nextStepCommandGroup"], "conflict-resolution");
+            assert_eq!(adaptation["nextStepPhase"], "query");
+            assert_eq!(adaptation["preferredConflictResolutionNextStepPhase"], "query");
+            assert_eq!(
+                adaptation["queryCommandJsonInstructionTemplateCount"],
+                adaptation["queryGroup"]["commandJsonInstructionTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["queryCommandJsonExecutableTemplateCount"],
+                adaptation["queryGroup"]["commandJsonExecutableTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["preflightCommandJsonInstructionTemplateCount"],
+                adaptation["preflightGroup"]["commandJsonInstructionTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["preflightCommandJsonExecutableTemplateCount"],
+                adaptation["preflightGroup"]["commandJsonExecutableTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["cleanupCommandJsonInstructionTemplateCount"],
+                adaptation["cleanupGroup"]["commandJsonInstructionTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["cleanupCommandJsonExecutableTemplateCount"],
+                adaptation["cleanupGroup"]["commandJsonExecutableTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["installCommandJsonInstructionTemplateCount"],
+                adaptation["installGroup"]["commandJsonInstructionTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["installCommandJsonExecutableTemplateCount"],
+                adaptation["installGroup"]["commandJsonExecutableTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["preferredCommandJsonInstructionTemplateCount"],
+                adaptation["preferredGroup"]["commandJsonInstructionTemplateCount"]
+            );
+            assert_eq!(
+                adaptation["preferredCommandJsonExecutableTemplateCount"],
+                adaptation["preferredGroup"]["commandJsonExecutableTemplateCount"]
+            );
+        }
+    }
+
+    #[test]
     fn hook_backend_matrix_split_loaded_cleanup_mode_exposes_cleanup_phase_aliases() {
         let controller_report = HookEnvironmentReport {
             active_backend: Some("ellekit".into()),
