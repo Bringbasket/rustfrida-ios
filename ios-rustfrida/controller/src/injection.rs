@@ -10080,6 +10080,14 @@ fn hook_automation_to_json_with_arm64e(
                     .and_then(|item| item.get("commandJsonTemplateCount"))
                     .cloned()
                     .unwrap_or(Value::Null),
+                "recommendedCommandJsonInstructionTemplateCount": recommended
+                    .and_then(|item| item.get("commandJsonInstructionTemplateCount"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "recommendedCommandJsonExecutableTemplateCount": recommended
+                    .and_then(|item| item.get("commandJsonExecutableTemplateCount"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
                 "recommendedCommandJsonTemplates": recommended
                     .and_then(|item| item.get("commandJsonTemplates"))
                     .cloned()
@@ -10144,6 +10152,14 @@ fn hook_automation_to_json_with_arm64e(
                             .unwrap_or(json!([])),
                         "commandJsonTemplateCount": entry
                             .get("recommendedCommandJsonTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonInstructionTemplateCount": entry
+                            .get("recommendedCommandJsonInstructionTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonExecutableTemplateCount": entry
+                            .get("recommendedCommandJsonExecutableTemplateCount")
                             .cloned()
                             .unwrap_or(Value::Null),
                         "commandJsonTemplates": entry
@@ -10353,6 +10369,14 @@ fn hook_automation_to_json_with_arm64e(
                             .unwrap_or(json!([])),
                         "commandJsonTemplateCount": decision
                             .get("recommendedCommandJsonTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonInstructionTemplateCount": decision
+                            .get("recommendedCommandJsonInstructionTemplateCount")
+                            .cloned()
+                            .unwrap_or(Value::Null),
+                        "commandJsonExecutableTemplateCount": decision
+                            .get("recommendedCommandJsonExecutableTemplateCount")
                             .cloned()
                             .unwrap_or(Value::Null),
                         "commandJsonTemplates": decision
