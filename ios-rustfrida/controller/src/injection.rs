@@ -24737,6 +24737,78 @@ mod tests {
     }
 
     #[test]
+    fn arm64e_query_only_coexistence_and_automation_keep_next_step_core_fields_aligned() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let backend_matrix = hook_backend_matrix_to_json(&report, &report);
+        let strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-safe".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&report, Some(&strategy)),
+            &hook_environment_recommended_actions(&report, Some(&strategy)),
+        );
+        let arm64e_context = HookAutomationArm64eContext {
+            query_only_until_override: true,
+        };
+        let coexistence =
+            super::hook_coexistence_to_json_with_arm64e(&actions, &backend_matrix, arm64e_context);
+        let automation = hook_automation_to_json_with_arm64e(&actions, &backend_matrix, arm64e_context);
+        assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
+        assert_command_json_template_kind_count_pairs(&automation, "automation");
+
+        assert_eq!(coexistence["preferredPath"], "arm64e-query-only");
+        assert_eq!(automation["preferredPath"], "arm64e-query-only");
+        assert_eq!(coexistence["arm64eConstrainedQueryOnly"], true);
+        assert_eq!(automation["arm64eConstrainedQueryOnly"], true);
+        assert_eq!(coexistence["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(automation["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(coexistence["backendAdaptationAlignment"], "clean");
+        assert_eq!(automation["backendAdaptationAlignment"], "clean");
+        assert_eq!(coexistence["backendAdaptationBias"], "query");
+        assert_eq!(automation["backendAdaptationBias"], "query");
+
+        for key in [
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextActionReadyToRun",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(coexistence[key], automation[key], "{key}");
+        }
+
+        assert_eq!(coexistence["nextStepChainSource"], "next-action");
+        assert_eq!(automation["nextStepChainSource"], "next-action");
+        assert_eq!(coexistence["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(automation["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(coexistence["nextStepChain"][0]["command"], "objc.classes <filter>");
+        assert_eq!(automation["nextStepChain"][0]["command"], "objc.classes <filter>");
+        assert_eq!(coexistence["nextStepChain"][0]["phase"], "query");
+        assert_eq!(automation["nextStepChain"][0]["phase"], "query");
+        assert_eq!(automation["hasFallbackPlan"], false);
+        assert!(automation["fallbackPlan"].is_null());
+    }
+
+    #[test]
     fn hook_automation_emits_fallback_plan_when_next_action_not_ready() {
         let report = HookEnvironmentReport {
             active_backend: None,
