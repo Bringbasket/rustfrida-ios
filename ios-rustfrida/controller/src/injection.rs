@@ -25031,6 +25031,51 @@ mod tests {
                 expected_adaptation_bias,
                 "{name}.backendAdaptationBias"
             );
+            assert_eq!(
+                coexistence["backendAdaptationSummary"],
+                automation["backendAdaptationSummary"],
+                "{name}.backendAdaptationSummary"
+            );
+            assert_eq!(
+                coexistence["backendAdaptationMode"],
+                coexistence["backendAdaptation"]["mode"],
+                "{name}.coexistence.backendAdaptationModeAlias"
+            );
+            assert_eq!(
+                automation["backendAdaptationMode"],
+                automation["backendAdaptation"]["mode"],
+                "{name}.automation.backendAdaptationModeAlias"
+            );
+            assert_eq!(
+                coexistence["backendAdaptationAlignment"],
+                coexistence["backendAdaptation"]["alignment"],
+                "{name}.coexistence.backendAdaptationAlignmentAlias"
+            );
+            assert_eq!(
+                automation["backendAdaptationAlignment"],
+                automation["backendAdaptation"]["alignment"],
+                "{name}.automation.backendAdaptationAlignmentAlias"
+            );
+            assert_eq!(
+                coexistence["backendAdaptationBias"],
+                coexistence["backendAdaptation"]["recommendedActionBias"],
+                "{name}.coexistence.backendAdaptationBiasAlias"
+            );
+            assert_eq!(
+                automation["backendAdaptationBias"],
+                automation["backendAdaptation"]["recommendedActionBias"],
+                "{name}.automation.backendAdaptationBiasAlias"
+            );
+            assert_eq!(
+                coexistence["backendAdaptationSummary"],
+                coexistence["backendAdaptation"]["summary"],
+                "{name}.coexistence.backendAdaptationSummaryAlias"
+            );
+            assert_eq!(
+                automation["backendAdaptationSummary"],
+                automation["backendAdaptation"]["summary"],
+                "{name}.automation.backendAdaptationSummaryAlias"
+            );
 
             for key in [
                 "nextActionKey",
