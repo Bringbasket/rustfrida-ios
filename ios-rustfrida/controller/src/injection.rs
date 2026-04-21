@@ -912,6 +912,8 @@ fn hook_coexistence_to_json_with_arm64e(
                 "templateCount": next_action_templates.len(),
                 "templates": next_action_templates.clone(),
                 "commandJsonTemplateCount": next_action_command_json_templates.len(),
+                "commandJsonInstructionTemplateCount": next_action_command_json_instruction_template_count,
+                "commandJsonExecutableTemplateCount": next_action_command_json_executable_template_count,
                 "commandJsonTemplates": next_action_command_json_templates.clone(),
             })
         })
@@ -1265,11 +1267,20 @@ fn command_template_group_to_json(group_key: &str, templates: Vec<String>) -> Va
         .iter()
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
+    let command_json_instruction_template_count = command_json_templates
+        .iter()
+        .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+        .count();
+    let command_json_executable_template_count = command_json_templates
+        .len()
+        .saturating_sub(command_json_instruction_template_count);
     json!({
         "groupKey": group_key,
         "templateCount": templates.len(),
         "templates": templates,
         "commandJsonTemplateCount": command_json_templates.len(),
+        "commandJsonInstructionTemplateCount": command_json_instruction_template_count,
+        "commandJsonExecutableTemplateCount": command_json_executable_template_count,
         "commandJsonTemplates": command_json_templates,
         "commandJsonEligibleTemplateCount": command_json_eligible_count(&command_json_templates),
     })
@@ -1299,6 +1310,14 @@ fn conflict_resolution_chain_entry(index: usize, group_key: &str, phase: &str, r
         "commandJsonTemplates": group.get("commandJsonTemplates").cloned().unwrap_or(Value::Null),
         "commandJsonTemplateCount": group
             .get("commandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "commandJsonInstructionTemplateCount": group
+            .get("commandJsonInstructionTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "commandJsonExecutableTemplateCount": group
+            .get("commandJsonExecutableTemplateCount")
             .cloned()
             .unwrap_or(Value::Null),
     })
@@ -9438,12 +9457,21 @@ fn hook_automation_to_json_with_arm64e(
                 .iter()
                 .map(|template| command_json_template_entry(template))
                 .collect::<Vec<_>>();
+            let command_json_instruction_template_count = command_json_templates
+                .iter()
+                .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+                .count();
+            let command_json_executable_template_count = command_json_templates
+                .len()
+                .saturating_sub(command_json_instruction_template_count);
             json!({
                 "actionKey": action_key,
                 "commandGroup": command_group,
                 "templateCount": templates.len(),
                 "templates": templates,
                 "commandJsonTemplateCount": command_json_templates.len(),
+                "commandJsonInstructionTemplateCount": command_json_instruction_template_count,
+                "commandJsonExecutableTemplateCount": command_json_executable_template_count,
                 "commandJsonTemplates": command_json_templates,
             })
         })
@@ -9527,6 +9555,13 @@ fn hook_automation_to_json_with_arm64e(
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
     let fallback_eligible_command_json_template_count = command_json_eligible_count(&fallback_command_json_templates);
+    let fallback_instruction_command_json_template_count = fallback_command_json_templates
+        .iter()
+        .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+        .count();
+    let fallback_executable_command_json_template_count = fallback_command_json_templates
+        .len()
+        .saturating_sub(fallback_instruction_command_json_template_count);
     let fallback_phase_order = command_phase_order(&fallback_command_json_templates);
     let fallback_steps = fallback_command_json_templates
         .iter()
@@ -9821,6 +9856,13 @@ fn hook_automation_to_json_with_arm64e(
         .iter()
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
+    let escalation_query_command_json_instruction_template_count = escalation_query_command_json_templates
+        .iter()
+        .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+        .count();
+    let escalation_query_command_json_executable_template_count = escalation_query_command_json_templates
+        .len()
+        .saturating_sub(escalation_query_command_json_instruction_template_count);
     if arm64e_context.query_only_until_override {
         let arm64e_query_error_codes = vec![
             "hook-fallback-hook-install-failed",
@@ -9842,6 +9884,8 @@ fn hook_automation_to_json_with_arm64e(
             "templateCount": escalation_query_templates.len(),
             "templates": escalation_query_templates.clone(),
             "commandJsonTemplateCount": escalation_query_command_json_templates.len(),
+            "commandJsonInstructionTemplateCount": escalation_query_command_json_instruction_template_count,
+            "commandJsonExecutableTemplateCount": escalation_query_command_json_executable_template_count,
             "commandJsonTemplates": escalation_query_command_json_templates.clone(),
             "commandJsonEligibleTemplateCount": command_json_eligible_count(&escalation_query_command_json_templates),
         }));
@@ -9851,6 +9895,15 @@ fn hook_automation_to_json_with_arm64e(
         .iter()
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
+    let escalation_preflight_command_json_instruction_template_count =
+        escalation_preflight_command_json_templates
+            .iter()
+            .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+            .count();
+    let escalation_preflight_command_json_executable_template_count =
+        escalation_preflight_command_json_templates
+            .len()
+            .saturating_sub(escalation_preflight_command_json_instruction_template_count);
     let escalation_preflight_error_codes = vec![
         "hook-fallback-preflight-failed",
         "hook-fallback-inject-failed",
@@ -9869,6 +9922,8 @@ fn hook_automation_to_json_with_arm64e(
         "templateCount": escalation_preflight_templates.len(),
         "templates": escalation_preflight_templates,
         "commandJsonTemplateCount": escalation_preflight_command_json_templates.len(),
+        "commandJsonInstructionTemplateCount": escalation_preflight_command_json_instruction_template_count,
+        "commandJsonExecutableTemplateCount": escalation_preflight_command_json_executable_template_count,
         "commandJsonTemplates": escalation_preflight_command_json_templates.clone(),
         "commandJsonEligibleTemplateCount": command_json_eligible_count(&escalation_preflight_command_json_templates),
     }));
@@ -9891,6 +9946,8 @@ fn hook_automation_to_json_with_arm64e(
             "templateCount": escalation_query_templates.len(),
             "templates": escalation_query_templates,
             "commandJsonTemplateCount": escalation_query_command_json_templates.len(),
+            "commandJsonInstructionTemplateCount": escalation_query_command_json_instruction_template_count,
+            "commandJsonExecutableTemplateCount": escalation_query_command_json_executable_template_count,
             "commandJsonTemplates": escalation_query_command_json_templates.clone(),
             "commandJsonEligibleTemplateCount": command_json_eligible_count(&escalation_query_command_json_templates),
         }));
@@ -9901,6 +9958,15 @@ fn hook_automation_to_json_with_arm64e(
             .iter()
             .map(|template| command_json_template_entry(template))
             .collect::<Vec<_>>();
+        let escalation_policy_command_json_instruction_template_count =
+            escalation_policy_command_json_templates
+                .iter()
+                .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+                .count();
+        let escalation_policy_command_json_executable_template_count =
+            escalation_policy_command_json_templates
+                .len()
+                .saturating_sub(escalation_policy_command_json_instruction_template_count);
         let escalation_policy_error_codes = vec!["hook-fallback-diagnose-failed", "hook-fallback-diagnose-timeout"];
         escalation_recommendations.push(json!({
             "key": "policy-review",
@@ -9915,6 +9981,8 @@ fn hook_automation_to_json_with_arm64e(
             "templateCount": escalation_policy_templates.len(),
             "templates": escalation_policy_templates,
             "commandJsonTemplateCount": escalation_policy_command_json_templates.len(),
+            "commandJsonInstructionTemplateCount": escalation_policy_command_json_instruction_template_count,
+            "commandJsonExecutableTemplateCount": escalation_policy_command_json_executable_template_count,
             "commandJsonTemplates": escalation_policy_command_json_templates.clone(),
             "commandJsonEligibleTemplateCount": command_json_eligible_count(&escalation_policy_command_json_templates),
         }));
@@ -13444,6 +13512,8 @@ fn hook_automation_to_json_with_arm64e(
             "errorCodeRoutingEntries": error_code_routing_entries,
             "routingDecision": routing_decision,
             "commandJsonTemplateCount": fallback_command_json_templates.len(),
+            "commandJsonInstructionTemplateCount": fallback_instruction_command_json_template_count,
+            "commandJsonExecutableTemplateCount": fallback_executable_command_json_template_count,
             "commandJsonTemplates": fallback_command_json_templates,
             "commandJsonEligibleTemplateCount": fallback_eligible_command_json_template_count,
             "nextStepId": fallback_next_chain_step
@@ -13689,6 +13759,13 @@ fn hook_automation_to_json_with_arm64e(
                 .iter()
                 .map(|template| command_json_template_entry(template))
                 .collect::<Vec<_>>();
+            let command_json_instruction_template_count = command_json_templates
+                .iter()
+                .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+                .count();
+            let command_json_executable_template_count = command_json_templates
+                .len()
+                .saturating_sub(command_json_instruction_template_count);
             let command_json_eligible_template_count = command_json_eligible_count(&command_json_templates);
             let selected_as_next = next_action_key
                 .as_ref()
@@ -13729,6 +13806,8 @@ fn hook_automation_to_json_with_arm64e(
                 "templateCount": templates.len(),
                 "templates": templates,
                 "commandJsonTemplateCount": command_json_templates.len(),
+                "commandJsonInstructionTemplateCount": command_json_instruction_template_count,
+                "commandJsonExecutableTemplateCount": command_json_executable_template_count,
                 "commandJsonTemplates": command_json_templates,
                 "commandJsonEligibleTemplateCount": command_json_eligible_template_count,
             })
@@ -22248,6 +22327,14 @@ mod tests {
             121
         );
         assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonExecutableTemplateCount"],
+            121
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["nextStepId"],
             "next-action:hook.query:0"
         );
@@ -22795,6 +22882,14 @@ mod tests {
             121
         );
         assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonExecutableTemplateCount"],
+            121
+        );
+        assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["cliArgs"][4],
             "--command-json"
         );
@@ -22877,6 +22972,14 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
+            121
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["commandJsonExecutableTemplateCount"],
             121
         );
         assert_eq!(
@@ -23405,6 +23508,14 @@ mod tests {
             121
         );
         assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonExecutableTemplateCount"],
+            121
+        );
+        assert_eq!(
             rendered["hook"]["coexistence"]["nextStepId"],
             "next-action:hook.query:0"
         );
@@ -23894,6 +24005,14 @@ mod tests {
             121
         );
         assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonExecutableTemplateCount"],
+            121
+        );
+        assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["cliArgs"][4],
             "--command-json"
         );
@@ -23976,6 +24095,14 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
+            121
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            rendered["hook"]["automation"]["actionBranches"][0]["commandJsonExecutableTemplateCount"],
             121
         );
         assert_eq!(
@@ -24247,6 +24374,8 @@ mod tests {
         assert_eq!(query_branch["readyToRun"], false);
         assert_eq!(query_branch["templateCount"], 121);
         assert_eq!(query_branch["commandJsonTemplateCount"], 121);
+        assert_eq!(query_branch["commandJsonInstructionTemplateCount"], 0);
+        assert_eq!(query_branch["commandJsonExecutableTemplateCount"], 121);
         assert_eq!(query_branch["commandJsonEligibleTemplateCount"], 121);
         let status_branch = branches
             .iter()
@@ -24257,6 +24386,8 @@ mod tests {
         assert_eq!(status_branch["readyToRun"], true);
         assert_eq!(status_branch["templateCount"], 5);
         assert_eq!(status_branch["commandJsonTemplateCount"], 5);
+        assert_eq!(status_branch["commandJsonInstructionTemplateCount"], 0);
+        assert_eq!(status_branch["commandJsonExecutableTemplateCount"], 5);
         assert_eq!(status_branch["commandJsonEligibleTemplateCount"], 5);
     }
 
@@ -27791,6 +27922,16 @@ mod tests {
             "controller-cli"
         );
         assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]
+                ["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][0]
+                ["commandJsonExecutableTemplateCount"],
+            1
+        );
+        assert_eq!(
             automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonTemplates"][0]["phase"],
             "preflight"
         );
@@ -27856,10 +27997,22 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][1]
+                ["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["escalationRecommendations"][1]
+                ["commandJsonExecutableTemplateCount"],
+            1
+        );
+        assert_eq!(
             automation["fallbackPlan"]["escalationRecommendations"][1]["commandJsonTemplates"][0]["retryable"],
             true
         );
         assert_eq!(automation["fallbackPlan"]["commandJsonTemplateCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["commandJsonInstructionTemplateCount"], 0);
+        assert_eq!(automation["fallbackPlan"]["commandJsonExecutableTemplateCount"], 2);
         assert_eq!(automation["fallbackPlan"]["commandJsonEligibleTemplateCount"], 1);
         assert_eq!(
             automation["fallbackPlan"]["commandJsonTemplates"][0]["kind"],
