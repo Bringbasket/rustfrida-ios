@@ -24809,6 +24809,82 @@ mod tests {
     }
 
     #[test]
+    fn cleanup_only_coexistence_and_automation_keep_next_step_core_fields_aligned() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let backend_matrix = hook_backend_matrix_to_json(&report, &report);
+        let controller_strategy = HookStrategyDecision {
+            policy: HookPolicy::QueryOnlyExternalLoaded,
+            strategy: "query-only-external-loaded".into(),
+            allowed: true,
+            inline_hooks_allowed: false,
+            reason: Some("controller query-only".into()),
+        };
+        let target_strategy = HookStrategyDecision {
+            policy: HookPolicy::DenyExternalLoaded,
+            strategy: "cleanup-only-external-loaded".into(),
+            allowed: false,
+            inline_hooks_allowed: false,
+            reason: Some("target cleanup-only".into()),
+        };
+        let actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&report, Some(&controller_strategy)),
+            &hook_environment_recommended_actions(&report, Some(&target_strategy)),
+        );
+
+        let coexistence = super::hook_coexistence_to_json(&actions, &backend_matrix);
+        let automation = hook_automation_to_json(&actions, &backend_matrix);
+        assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
+        assert_command_json_template_kind_count_pairs(&automation, "automation");
+
+        assert_eq!(coexistence["commandMode"], "cleanup-only");
+        assert_eq!(automation["commandMode"], "cleanup-only");
+        assert_eq!(coexistence["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(automation["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(coexistence["backendAdaptationAlignment"], "clean");
+        assert_eq!(automation["backendAdaptationAlignment"], "clean");
+        assert_eq!(coexistence["backendAdaptationBias"], "cleanup");
+        assert_eq!(automation["backendAdaptationBias"], "cleanup");
+
+        for key in [
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextActionReadyToRun",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(coexistence[key], automation[key], "{key}");
+        }
+
+        assert_eq!(coexistence["nextActionKey"], "hook.status");
+        assert_eq!(automation["nextActionKey"], "hook.status");
+        assert_eq!(coexistence["nextStepChainSource"], "next-action");
+        assert_eq!(automation["nextStepChainSource"], "next-action");
+        assert_eq!(coexistence["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(automation["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(coexistence["nextStepChain"][0]["command"], "trace status");
+        assert_eq!(automation["nextStepChain"][0]["command"], "trace status");
+        assert_eq!(coexistence["nextStepChain"][0]["phase"], "cleanup");
+        assert_eq!(automation["nextStepChain"][0]["phase"], "cleanup");
+        assert_eq!(automation["hasFallbackPlan"], false);
+        assert!(automation["fallbackPlan"].is_null());
+    }
+
+    #[test]
     fn hook_automation_emits_fallback_plan_when_next_action_not_ready() {
         let report = HookEnvironmentReport {
             active_backend: None,
