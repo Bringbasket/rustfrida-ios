@@ -18834,6 +18834,32 @@ mod tests {
         commands
     }
 
+    fn materialized_hook_action_templates() -> Vec<String> {
+        let mut templates = HashSet::<String>::new();
+        let action_keys = ["hook.query", "hook.bootstrap", "hook.install", "hook.status", "hook.stop"];
+        let preferred_paths = [
+            "inline-safe",
+            "inline-cautious",
+            "inline-risky",
+            "query-only",
+            "arm64e-query-only",
+            "cleanup-only",
+            "blocked",
+        ];
+
+        for action_key in action_keys {
+            for preferred_path in preferred_paths {
+                for template in hook_action_command_templates(action_key, preferred_path) {
+                    templates.insert(template);
+                }
+            }
+        }
+
+        let mut sorted = templates.into_iter().collect::<Vec<_>>();
+        sorted.sort_unstable();
+        sorted
+    }
+
     fn command_shape(command: &str) -> (String, bool) {
         (
             command.split_whitespace().next().unwrap_or_default().to_string(),
@@ -18951,6 +18977,78 @@ mod tests {
                 help_shapes.contains(&command_shape(&command)),
                 "runtime help should include query template command form or shape: {command}"
             );
+        }
+    }
+
+    #[test]
+    fn controller_help_runtime_commands_parse_to_query_dispatch() {
+        for command in materialized_runtime_help_commands() {
+            assert!(
+                matches!(
+                    AgentCommand::from_legacy(&command),
+                    Some(AgentCommand::RuntimeDispatch { .. })
+                ),
+                "runtime help command should parse as RuntimeDispatch: {command}"
+            );
+            assert_eq!(
+                command_required_capability(&command).expect("runtime capability"),
+                Some(HookCommandCapability::Query),
+                "runtime help command should map to query capability: {command}"
+            );
+            assert!(
+                !command_requires_inline_hooks(&command),
+                "runtime help command should not require inline hooks: {command}"
+            );
+            assert!(
+                !command_requests_inline_hook_install(&command).expect("runtime install check"),
+                "runtime help command should not request inline install: {command}"
+            );
+        }
+    }
+
+    #[test]
+    fn hook_action_command_templates_keep_command_json_kind_eligibility_consistent() {
+        for template in materialized_hook_action_templates() {
+            let entry = command_json_template_entry(&template);
+            let command = entry["command"]
+                .as_str()
+                .expect("command json entry should include command");
+            let materialized_command = materialize_help_template(&template);
+            let kind = entry["kind"]
+                .as_str()
+                .expect("command json entry should include kind");
+            let command_json_eligible = entry["commandJsonEligible"]
+                .as_bool()
+                .expect("command json entry should include commandJsonEligible");
+
+            if command.starts_with("controller ") {
+                assert_eq!(
+                    kind, "controller-cli",
+                    "controller template should remain controller-cli kind: {template}"
+                );
+                assert!(
+                    !command_json_eligible,
+                    "controller template should never be command-json eligible: {template}"
+                );
+            } else {
+                assert_eq!(
+                    kind, "runtime-command",
+                    "runtime template should remain runtime-command kind: {template}"
+                );
+                assert!(
+                    command_json_eligible,
+                    "runtime template should stay command-json eligible: {template}"
+                );
+                if command_required_capability(&materialized_command)
+                    .expect("runtime command capability check")
+                    == Some(HookCommandCapability::Query)
+                {
+                    assert!(
+                        AgentCommand::from_legacy(&materialized_command).is_some(),
+                        "query-phase runtime template should parse through legacy command parser: {materialized_command}"
+                    );
+                }
+            }
         }
     }
 
