@@ -18690,6 +18690,7 @@ mod tests {
         analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
         build_trace_spec, command_json_template_entry, command_requests_inline_hook_install,
         command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_action_command_templates,
+        hook_query_templates,
         hook_automation_to_json, hook_automation_to_json_with_arm64e, hook_backend_matrix_to_json,
         hook_effective_actions, hook_effective_actions_to_json, hook_effective_to_json,
         hook_environment_requires_notice, hook_environment_to_json, parse_hfl_command, parse_jhook_command,
@@ -18716,6 +18717,56 @@ mod tests {
     use serde_json::{json, Value};
     use std::path::Path;
 
+    fn materialize_query_template(template: &str) -> String {
+        let mut command = template
+            .split(" #")
+            .next()
+            .map(str::trim)
+            .unwrap_or_default()
+            .to_string();
+
+        let placeholders = [
+            ("<filter>", "UIView"),
+            ("<class>", "UIViewController"),
+            ("<module>", "DemoBinary"),
+            ("<symbol>", "malloc"),
+            ("<query>", "malloc"),
+            ("<path-or-name>", "libSystem.B.dylib"),
+            ("<path>", "@loader_path"),
+            ("<name|cmd|index>", "LC_UUID"),
+            ("<segment>", "__TEXT"),
+            ("<section>", "__text"),
+            ("<address>", "0x1234"),
+            ("<protocol>", "NSObject"),
+            ("<selector>", "viewDidLoad"),
+            ("<property>", "view"),
+            ("<ivar>", "_viewControllerFlags"),
+            ("<name>", "UIView"),
+            ("<object>", "0x1234"),
+            ("<mangled-symbol>", "_$s5Demo14ViewControllerC11viewDidLoadyyF"),
+            ("<type>", "ViewController"),
+            ("<method>", "viewDidLoad"),
+            ("<member>", "viewDidLoad"),
+            ("<kind>", "metadata-accessor"),
+            ("<type|protocol>", "ViewController"),
+        ];
+        for (placeholder, value) in placeholders {
+            command = command.replace(placeholder, value);
+        }
+
+        let optional_tokens = [
+            ("[meta]", "meta"),
+            ("[filter]", "UIView"),
+            ("[required]", "optional"),
+            ("[instance]", "class"),
+        ];
+        for (placeholder, value) in optional_tokens {
+            command = command.replace(placeholder, value);
+        }
+
+        command.split_whitespace().collect::<Vec<_>>().join(" ")
+    }
+
     #[test]
     fn parse_hfl_accepts_hex_offset() {
         assert_eq!(
@@ -18741,6 +18792,33 @@ mod tests {
                 offset: 0x1234,
             }
         );
+    }
+
+    #[test]
+    fn hook_query_templates_route_to_runtime_dispatch() {
+        for template in hook_query_templates() {
+            let entry = command_json_template_entry(&template);
+            assert_eq!(entry["phase"], "query", "template should stay query phase: {template}");
+            assert_eq!(entry["kind"], "runtime-command", "template should stay runtime kind: {template}");
+            assert_eq!(
+                entry["commandJsonEligible"],
+                true,
+                "query template should stay command-json eligible: {template}"
+            );
+
+            let command = materialize_query_template(&template);
+            assert!(
+                !command_requires_inline_hooks(&command),
+                "query command should not require inline hooks: {command}"
+            );
+            assert!(
+                matches!(
+                    AgentCommand::from_legacy(&command),
+                    Some(AgentCommand::RuntimeDispatch { .. })
+                ),
+                "query command should parse as RuntimeDispatch: {command}"
+            );
+        }
     }
 
     #[test]
