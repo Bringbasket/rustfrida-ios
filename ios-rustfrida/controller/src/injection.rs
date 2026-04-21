@@ -19565,6 +19565,55 @@ mod tests {
         )
     }
 
+    fn assert_command_json_template_kind_count_pairs(value: &Value, path: &str) {
+        match value {
+            Value::Object(map) => {
+                if map.contains_key("commandJsonTemplateCount") {
+                    assert!(
+                        map.contains_key("commandJsonInstructionTemplateCount"),
+                        "missing commandJsonInstructionTemplateCount at {path}"
+                    );
+                    assert!(
+                        map.contains_key("commandJsonExecutableTemplateCount"),
+                        "missing commandJsonExecutableTemplateCount at {path}"
+                    );
+                }
+                for key in map.keys() {
+                    if key == "commandJsonTemplateCount" {
+                        continue;
+                    }
+                    if let Some(prefix) = key.strip_suffix("CommandJsonTemplateCount") {
+                        let instruction_key = format!("{prefix}CommandJsonInstructionTemplateCount");
+                        let executable_key = format!("{prefix}CommandJsonExecutableTemplateCount");
+                        assert!(
+                            map.contains_key(&instruction_key),
+                            "missing {instruction_key} at {path}"
+                        );
+                        assert!(
+                            map.contains_key(&executable_key),
+                            "missing {executable_key} at {path}"
+                        );
+                    }
+                }
+                for (key, child) in map {
+                    let child_path = if path.is_empty() {
+                        key.to_string()
+                    } else {
+                        format!("{path}.{key}")
+                    };
+                    assert_command_json_template_kind_count_pairs(child, &child_path);
+                }
+            }
+            Value::Array(items) => {
+                for (index, child) in items.iter().enumerate() {
+                    let child_path = format!("{path}[{index}]");
+                    assert_command_json_template_kind_count_pairs(child, &child_path);
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn split_help_synopsis_variants(synopsis: &str) -> Vec<&str> {
         let mut variants = Vec::new();
         let mut start = 0usize;
@@ -29131,6 +29180,8 @@ mod tests {
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &rendered);
         let automation = hook_automation_to_json(&effective_actions, &rendered);
+        assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
+        assert_command_json_template_kind_count_pairs(&automation, "automation");
         assert_eq!(coexistence["mode"], "query-only");
         assert_eq!(coexistence["strategy"], "query-only-fallback");
         assert_eq!(coexistence["riskLevel"], "elevated");
