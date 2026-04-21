@@ -10093,6 +10093,33 @@ fn hook_automation_to_json_with_arm64e(
                             .get("recommendedCommandJsonTemplateCount")
                             .cloned()
                             .unwrap_or(Value::Null),
+                        "recommendedCommandJsonInstructionTemplateCount": entry
+                            .get("recommendedCommandJsonTemplates")
+                            .and_then(Value::as_array)
+                            .map(|items| {
+                                items
+                                    .iter()
+                                    .filter(|template| {
+                                        template.get("kind").and_then(Value::as_str)
+                                            == Some("instruction")
+                                    })
+                                    .count()
+                            })
+                            .unwrap_or(0),
+                        "recommendedCommandJsonExecutableTemplateCount": entry
+                            .get("recommendedCommandJsonTemplates")
+                            .and_then(Value::as_array)
+                            .map(|items| {
+                                let instruction_count = items
+                                    .iter()
+                                    .filter(|template| {
+                                        template.get("kind").and_then(Value::as_str)
+                                            == Some("instruction")
+                                    })
+                                    .count();
+                                items.len().saturating_sub(instruction_count)
+                            })
+                            .unwrap_or(0),
                         "recommendedCommandJsonTemplates": entry
                             .get("recommendedCommandJsonTemplates")
                             .cloned()
@@ -10131,6 +10158,31 @@ fn hook_automation_to_json_with_arm64e(
                     .get("commandJsonTemplateCount")
                     .cloned()
                     .unwrap_or(Value::Null),
+                "recommendedCommandJsonInstructionTemplateCount": item
+                    .get("commandJsonTemplates")
+                    .and_then(Value::as_array)
+                    .map(|items| {
+                        items
+                            .iter()
+                            .filter(|template| {
+                                template.get("kind").and_then(Value::as_str) == Some("instruction")
+                            })
+                            .count()
+                    })
+                    .unwrap_or(0),
+                "recommendedCommandJsonExecutableTemplateCount": item
+                    .get("commandJsonTemplates")
+                    .and_then(Value::as_array)
+                    .map(|items| {
+                        let instruction_count = items
+                            .iter()
+                            .filter(|template| {
+                                template.get("kind").and_then(Value::as_str) == Some("instruction")
+                            })
+                            .count();
+                        items.len().saturating_sub(instruction_count)
+                    })
+                    .unwrap_or(0),
                 "recommendedCommandJsonTemplates": item
                     .get("commandJsonTemplates")
                     .cloned()
@@ -10264,6 +10316,27 @@ fn hook_automation_to_json_with_arm64e(
             .get("recommendedCommandJsonTemplates")
             .and_then(Value::as_array)
             .map(|items| command_json_eligible_count(items))
+            .unwrap_or(0),
+        "commandJsonInstructionTemplateCount": routing_decision_default
+            .get("recommendedCommandJsonTemplates")
+            .and_then(Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter(|template| template.get("kind").and_then(Value::as_str) == Some("instruction"))
+                    .count()
+            })
+            .unwrap_or(0),
+        "commandJsonExecutableTemplateCount": routing_decision_default
+            .get("recommendedCommandJsonTemplates")
+            .and_then(Value::as_array)
+            .map(|items| {
+                let instruction_count = items
+                    .iter()
+                    .filter(|template| template.get("kind").and_then(Value::as_str) == Some("instruction"))
+                    .count();
+                items.len().saturating_sub(instruction_count)
+            })
             .unwrap_or(0),
         "commandJsonTemplates": routing_decision_default
             .get("recommendedCommandJsonTemplates")
@@ -10599,6 +10672,15 @@ fn hook_automation_to_json_with_arm64e(
             }
 
             let templates = templates.into_iter().collect::<Vec<_>>();
+            let command_json_instruction_template_count = command_json_templates
+                .iter()
+                .filter(|template| {
+                    template.get("kind").and_then(Value::as_str) == Some("instruction")
+                })
+                .count();
+            let command_json_executable_template_count = command_json_templates
+                .len()
+                .saturating_sub(command_json_instruction_template_count);
             json!({
                 "phase": phase,
                 "errorCodeCount": error_codes.len(),
@@ -10609,6 +10691,8 @@ fn hook_automation_to_json_with_arm64e(
                 "templates": templates,
                 "commandJsonTemplateCount": command_json_templates.len(),
                 "commandJsonEligibleTemplateCount": command_json_eligible_count(&command_json_templates),
+                "commandJsonInstructionTemplateCount": command_json_instruction_template_count,
+                "commandJsonExecutableTemplateCount": command_json_executable_template_count,
                 "commandJsonTemplates": command_json_templates,
             })
         })
@@ -12868,6 +12952,14 @@ fn hook_automation_to_json_with_arm64e(
             .get("commandJsonTemplateCount")
             .cloned()
             .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonInstructionTemplateCount": routing_decision_ready_phase_preflight
+            .get("commandJsonInstructionTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phasePreflightCommandJsonExecutableTemplateCount": routing_decision_ready_phase_preflight
+            .get("commandJsonExecutableTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
         "phasePreflightCommandJsonTemplates": routing_decision_ready_phase_preflight
             .get("commandJsonTemplates")
             .cloned()
@@ -13042,6 +13134,14 @@ fn hook_automation_to_json_with_arm64e(
             .get("commandJsonTemplateCount")
             .cloned()
             .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonInstructionTemplateCount": routing_decision_ready_phase_diagnose
+            .get("commandJsonInstructionTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phaseDiagnoseCommandJsonExecutableTemplateCount": routing_decision_ready_phase_diagnose
+            .get("commandJsonExecutableTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
         "phaseDiagnoseCommandJsonTemplates": routing_decision_ready_phase_diagnose
             .get("commandJsonTemplates")
             .cloned()
@@ -13210,6 +13310,14 @@ fn hook_automation_to_json_with_arm64e(
             .unwrap_or(json!([])),
         "defaultRecommendedCommandJsonTemplateCount": routing_decision_default
             .get("recommendedCommandJsonTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultRecommendedCommandJsonInstructionTemplateCount": routing_decision_default
+            .get("recommendedCommandJsonInstructionTemplateCount")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "defaultRecommendedCommandJsonExecutableTemplateCount": routing_decision_default
+            .get("recommendedCommandJsonExecutableTemplateCount")
             .cloned()
             .unwrap_or(Value::Null),
         "defaultRecommendedCommandJsonTemplates": routing_decision_default
@@ -24940,6 +25048,14 @@ mod tests {
             1
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultRecommendedCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultRecommendedCommandJsonExecutableTemplateCount"],
+            1
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["defaultRecommendedCommandJsonTemplates"][0]["phase"],
             "preflight"
         );
@@ -24977,6 +25093,16 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["default"]["recommendedCommandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]
+                ["recommendedCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["default"]
+                ["recommendedCommandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(
@@ -27291,6 +27417,16 @@ mod tests {
             1
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phasePreflightCommandJsonExecutableTemplateCount"],
+            1
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonTemplates"][0]["phase"],
             "preflight"
         );
@@ -27406,6 +27542,16 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseDiagnoseCommandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(
