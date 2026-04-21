@@ -24602,6 +24602,141 @@ mod tests {
     }
 
     #[test]
+    fn blocked_mode_coexistence_and_automation_keep_next_step_core_fields_aligned() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let backend_matrix = hook_backend_matrix_to_json(&report, &report);
+        let actions = vec![
+            HookEffectiveAction {
+                action_key: "hook.query",
+                command_group: "query",
+                allowed: false,
+                blocked_by: "both",
+                priority: 1,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 1,
+                target_priority: 1,
+                recommendation: "query blocked".into(),
+                controller_reason: Some("controller blocked query".into()),
+                target_reason: Some("target blocked query".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.bootstrap",
+                command_group: "bootstrap",
+                allowed: false,
+                blocked_by: "both",
+                priority: 2,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 2,
+                target_priority: 2,
+                recommendation: "bootstrap blocked".into(),
+                controller_reason: Some("controller blocked bootstrap".into()),
+                target_reason: Some("target blocked bootstrap".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.install",
+                command_group: "hook-install",
+                allowed: false,
+                blocked_by: "both",
+                priority: 3,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 3,
+                target_priority: 3,
+                recommendation: "install blocked".into(),
+                controller_reason: Some("controller blocked install".into()),
+                target_reason: Some("target blocked install".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.status",
+                command_group: "hook-status",
+                allowed: false,
+                blocked_by: "both",
+                priority: 4,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 4,
+                target_priority: 4,
+                recommendation: "status blocked".into(),
+                controller_reason: Some("controller blocked status".into()),
+                target_reason: Some("target blocked status".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.stop",
+                command_group: "hook-stop",
+                allowed: false,
+                blocked_by: "both",
+                priority: 5,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 5,
+                target_priority: 5,
+                recommendation: "stop blocked".into(),
+                controller_reason: Some("controller blocked stop".into()),
+                target_reason: Some("target blocked stop".into()),
+            },
+        ];
+
+        let coexistence = super::hook_coexistence_to_json(&actions, &backend_matrix);
+        let automation = hook_automation_to_json(&actions, &backend_matrix);
+        assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
+        assert_command_json_template_kind_count_pairs(&automation, "automation");
+
+        assert_eq!(coexistence["commandMode"], "blocked");
+        assert_eq!(automation["commandMode"], "blocked");
+        assert_eq!(coexistence["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(automation["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(coexistence["backendAdaptationAlignment"], "clean");
+        assert_eq!(automation["backendAdaptationAlignment"], "clean");
+        assert_eq!(coexistence["backendAdaptationBias"], "blocked");
+        assert_eq!(automation["backendAdaptationBias"], "blocked");
+
+        for key in [
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(coexistence[key], automation[key], "{key}");
+        }
+
+        assert_eq!(coexistence["nextStepChainSource"], "next-action");
+        assert_eq!(coexistence["activeStepSource"], "next-action");
+        assert_eq!(coexistence["nextStepChainCount"], 3);
+        assert_eq!(coexistence["nextStepChain"][0]["source"], "next-action");
+        assert_eq!(coexistence["nextStepChain"][0]["command"], "objc.classes <filter>");
+
+        assert_eq!(automation["nextStepChainSource"], "fallback-plan");
+        assert_eq!(automation["activeStepSource"], "fallback-plan");
+        assert_eq!(automation["hasFallbackPlan"], true);
+        assert_eq!(automation["fallbackPlan"]["trigger"], "next-action-not-ready");
+        assert_eq!(automation["fallbackPlan"]["nextStepChainSource"], "fallback-plan");
+        assert_eq!(automation["fallbackPlan"]["nextStepChainCount"], 2);
+        assert_eq!(automation["fallbackPlan"]["nextStepChain"][0]["source"], "fallback-plan");
+        assert_eq!(automation["fallbackPlan"]["nextStepChain"][0]["command"], "native.hookenv");
+        assert_eq!(
+            automation["fallbackPlan"]["nextStepChain"][1]["command"],
+            "controller --preflight-only --preflight-json"
+        );
+    }
+
+    #[test]
     fn hook_automation_emits_fallback_plan_when_next_action_not_ready() {
         let report = HookEnvironmentReport {
             active_backend: None,
