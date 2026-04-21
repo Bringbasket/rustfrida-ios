@@ -34615,6 +34615,54 @@ mod tests {
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+        assert_eq!(
+            coexistence["backendAdaptation"],
+            automation["backendAdaptation"],
+            "shared-and-split-loaded.backendAdaptationParity"
+        );
+        for key in [
+            "backendAdaptationMode",
+            "backendAdaptationAlignment",
+            "backendAdaptationBias",
+            "backendAdaptationSummary",
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextActionReadyToRun",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(coexistence[key], automation[key], "shared-and-split-loaded.{key}");
+        }
+        assert_eq!(
+            coexistence["nextStepChainSource"],
+            "next-action",
+            "shared-and-split-loaded.coexistence.chain"
+        );
+        assert_eq!(
+            automation["nextStepChainSource"],
+            "next-action",
+            "shared-and-split-loaded.automation.chain"
+        );
+        assert_eq!(
+            automation["hasFallbackPlan"],
+            false,
+            "shared-and-split-loaded.automation.fallback"
+        );
+        assert!(
+            automation["fallbackPlan"].is_null(),
+            "shared-and-split-loaded.automation.fallbackNull"
+        );
 
         for rendered in [&coexistence, &automation] {
             assert_command_json_template_kind_count_pairs(rendered, "rendered");
