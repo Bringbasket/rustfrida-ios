@@ -3366,6 +3366,19 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("commandJsonEligibleTemplateCount")
                 .cloned()
                 .unwrap_or(Value::Null);
+            let suggested_command_json_instruction_template_count = suggested_command_json_templates
+                .as_array()
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+                        .count()
+                })
+                .unwrap_or(0);
+            let suggested_command_json_executable_template_count = suggested_command_json_templates
+                .as_array()
+                .map(|items| items.len().saturating_sub(suggested_command_json_instruction_template_count))
+                .unwrap_or(0);
             let primary_command_json_template = suggested_command_json_templates
                 .as_array()
                 .and_then(|items| items.first())
@@ -3388,6 +3401,8 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 "commandJsonTemplates": suggested_command_json_templates,
                 "commandJsonTemplateCount": suggested_command_json_template_count,
                 "commandJsonEligibleTemplateCount": suggested_command_json_eligible_template_count,
+                "commandJsonInstructionTemplateCount": suggested_command_json_instruction_template_count,
+                "commandJsonExecutableTemplateCount": suggested_command_json_executable_template_count,
                 "primaryCommandJsonTemplate": primary_command_json_template.clone(),
                 "primaryCommandJsonTemplateCommand": primary_command_json_template
                     .get("command")
@@ -3424,6 +3439,42 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         );
         left_key.cmp(&right_key)
     });
+    let backend_specific_command_json_template_count = backend_specific_recommendations
+        .iter()
+        .map(|entry| {
+            entry
+                .get("commandJsonTemplateCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0)
+        })
+        .sum::<u64>();
+    let backend_specific_command_json_eligible_template_count = backend_specific_recommendations
+        .iter()
+        .map(|entry| {
+            entry
+                .get("commandJsonEligibleTemplateCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0)
+        })
+        .sum::<u64>();
+    let backend_specific_command_json_instruction_template_count = backend_specific_recommendations
+        .iter()
+        .map(|entry| {
+            entry
+                .get("commandJsonInstructionTemplateCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0)
+        })
+        .sum::<u64>();
+    let backend_specific_command_json_executable_template_count = backend_specific_recommendations
+        .iter()
+        .map(|entry| {
+            entry
+                .get("commandJsonExecutableTemplateCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0)
+        })
+        .sum::<u64>();
     let preferred_backend_recommendation = backend_specific_recommendations.first().cloned();
     let preferred_group_step_chain = preferred_group
         .get("commandJsonTemplates")
@@ -4655,6 +4706,13 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             backend_adaptation_active_step.get("cliArgs").cloned().unwrap_or(Value::Null)
         },
         "backendSpecificRecommendationCount": backend_specific_recommendations.len(),
+        "backendSpecificCommandJsonTemplateCount": backend_specific_command_json_template_count,
+        "backendSpecificCommandJsonEligibleTemplateCount":
+            backend_specific_command_json_eligible_template_count,
+        "backendSpecificCommandJsonInstructionTemplateCount":
+            backend_specific_command_json_instruction_template_count,
+        "backendSpecificCommandJsonExecutableTemplateCount":
+            backend_specific_command_json_executable_template_count,
         "backendSpecificRecommendations": backend_specific_recommendations,
         "preferredBackendRecommendation": preferred_backend_recommendation.clone(),
         "preferredBackendId": preferred_backend_recommendation
@@ -4716,6 +4774,14 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         "preferredBackendCommandJsonEligibleTemplateCount": preferred_backend_recommendation
             .as_ref()
             .and_then(|item| item.get("commandJsonEligibleTemplateCount"))
+            .cloned(),
+        "preferredBackendCommandJsonInstructionTemplateCount": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("commandJsonInstructionTemplateCount"))
+            .cloned(),
+        "preferredBackendCommandJsonExecutableTemplateCount": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("commandJsonExecutableTemplateCount"))
             .cloned(),
         "preferredBackendPrimaryCommandJsonTemplate": preferred_backend_recommendation
             .as_ref()
@@ -28381,6 +28447,22 @@ mod tests {
             coexistence["backendAdaptation"]["backendSpecificRecommendationCount"],
             3
         );
+        assert_eq!(
+            coexistence["backendAdaptation"]["backendSpecificCommandJsonTemplateCount"],
+            244
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["backendSpecificCommandJsonEligibleTemplateCount"],
+            243
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["backendSpecificCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["backendSpecificCommandJsonExecutableTemplateCount"],
+            244
+        );
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "ellekit");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "controller");
         assert_eq!(
@@ -28422,6 +28504,14 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendCommandJsonEligibleTemplateCount"],
+            121
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendCommandJsonExecutableTemplateCount"],
             121
         );
         assert_eq!(
@@ -32229,6 +32319,22 @@ mod tests {
             coexistence["backendAdaptation"]["backendSpecificRecommendationCount"],
             1
         );
+        assert_eq!(
+            coexistence["backendAdaptation"]["backendSpecificCommandJsonTemplateCount"],
+            2
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["backendSpecificCommandJsonEligibleTemplateCount"],
+            1
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["backendSpecificCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["backendSpecificCommandJsonExecutableTemplateCount"],
+            2
+        );
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendScope"],
@@ -32271,6 +32377,14 @@ mod tests {
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendCommandJsonEligibleTemplateCount"],
             1
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendCommandJsonExecutableTemplateCount"],
+            2
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
@@ -33079,6 +33193,22 @@ mod tests {
             "runtime-command"
         );
         assert_eq!(automation["backendAdaptation"]["backendSpecificRecommendationCount"], 1);
+        assert_eq!(
+            automation["backendAdaptation"]["backendSpecificCommandJsonTemplateCount"],
+            2
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["backendSpecificCommandJsonEligibleTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["backendSpecificCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["backendSpecificCommandJsonExecutableTemplateCount"],
+            2
+        );
         assert_eq!(automation["backendAdaptation"]["preferredBackendId"], "libhooker");
         assert_eq!(automation["backendAdaptation"]["preferredBackendTemplateCount"], 2);
         assert_eq!(
@@ -33088,6 +33218,14 @@ mod tests {
         assert_eq!(
             automation["backendAdaptation"]["preferredBackendCommandJsonEligibleTemplateCount"],
             1
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredBackendCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["backendAdaptation"]["preferredBackendCommandJsonExecutableTemplateCount"],
+            2
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
