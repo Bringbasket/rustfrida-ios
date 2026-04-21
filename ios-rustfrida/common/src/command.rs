@@ -3058,6 +3058,262 @@ mod tests {
     }
 
     #[test]
+    fn native_find_info_aliases_match_canonical_specs() {
+        let alias_pairs = [
+            (
+                "native.findImageInfo DemoBinary",
+                "native.imageInfo DemoBinary",
+            ),
+            ("native.findSymbolInfo malloc", "native.symbolInfo malloc"),
+            (
+                "native.findSymbolInfo DemoBinary -- malloc",
+                "native.symbolInfo DemoBinary -- malloc",
+            ),
+            (
+                "native.findExportInfo DemoBinary -- malloc",
+                "native.exportInfo DemoBinary -- malloc",
+            ),
+            (
+                "native.findDependencyInfo DemoBinary -- libSystem.B.dylib",
+                "native.dependencyInfo DemoBinary -- libSystem.B.dylib",
+            ),
+            (
+                "native.findRpathInfo DemoBinary -- @loader_path",
+                "native.rpathInfo DemoBinary -- @loader_path",
+            ),
+            (
+                "native.findImportInfo DemoBinary -- malloc",
+                "native.importInfo DemoBinary -- malloc",
+            ),
+            (
+                "native.findSegmentInfo DemoBinary -- __TEXT",
+                "native.segmentInfo DemoBinary -- __TEXT",
+            ),
+            (
+                "native.findSectionInfo DemoBinary -- __TEXT __text",
+                "native.sectionInfo DemoBinary -- __TEXT __text",
+            ),
+            (
+                "native.findLoadCommandInfo DemoBinary -- LC_UUID",
+                "native.loadCommandInfo DemoBinary -- LC_UUID",
+            ),
+            ("native.findDyldInfo DemoBinary", "native.dyldInfo DemoBinary"),
+        ];
+
+        for (alias, canonical) in alias_pairs {
+            assert_eq!(
+                AgentCommand::from_legacy(alias),
+                AgentCommand::from_legacy(canonical),
+                "alias {alias:?} should match canonical {canonical:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn objc_find_aliases_match_canonical_specs() {
+        let alias_pairs = [
+            ("objc.findClasses UIView", "objc.classes UIView"),
+            ("objc.findProtocols NS", "objc.protocols NS"),
+            (
+                "objc.findClassProtocols UIViewController UI",
+                "objc.classProtocols UIViewController UI",
+            ),
+            (
+                "objc.findClassInfo UIViewController meta",
+                "objc.classInfo UIViewController meta",
+            ),
+            ("objc.findProtocolInfo NSObject", "objc.protocolInfo NSObject"),
+            (
+                "objc.findProtocolProtocols NSObject NS",
+                "objc.protocolProtocols NSObject NS",
+            ),
+            (
+                "objc.findProtocolMethods NSObject optional class description",
+                "objc.protocolMethods NSObject optional class description",
+            ),
+            (
+                "objc.findProtocolMethodInfo NSObject description optional class",
+                "objc.protocolMethodInfo NSObject description optional class",
+            ),
+            (
+                "objc.findProtocolProperties NSObject description",
+                "objc.protocolProperties NSObject description",
+            ),
+            (
+                "objc.findProtocolPropertyInfo NSObject description",
+                "objc.protocolPropertyInfo NSObject description",
+            ),
+            ("objc.findSuperclass UIViewController", "objc.superclass UIViewController"),
+            ("objc.findClassChain UIViewController", "objc.classChain UIViewController"),
+            (
+                "objc.findMethodInfo UIViewController viewDidLoad",
+                "objc.methodInfo UIViewController viewDidLoad",
+            ),
+            ("objc.findClassImage UIViewController", "objc.classImage UIViewController"),
+            (
+                "objc.findMethodImage UIViewController viewDidLoad",
+                "objc.methodImage UIViewController viewDidLoad",
+            ),
+            (
+                "objc.findPropertyInfo UIViewController view",
+                "objc.propertyInfo UIViewController view",
+            ),
+            (
+                "objc.findIvarInfo UIViewController _viewControllerFlags",
+                "objc.ivarInfo UIViewController _viewControllerFlags",
+            ),
+            ("objc.findSelectorName 0x1234", "objc.selectorName 0x1234"),
+            (
+                "objc.findObjectClassName 0x1234",
+                "objc.objectClassName 0x1234",
+            ),
+            ("objc.findMethods UIViewController viewDidLoad", "objc.methods UIViewController viewDidLoad"),
+            ("objc.findProperties UIViewController view", "objc.properties UIViewController view"),
+            ("objc.findIvars UIViewController view", "objc.ivars UIViewController view"),
+            ("objc.findMethodOwners viewDidLoad", "objc.methodOwners viewDidLoad"),
+        ];
+
+        for (alias, canonical) in alias_pairs {
+            assert_eq!(
+                AgentCommand::from_legacy(alias),
+                AgentCommand::from_legacy(canonical),
+                "alias {alias:?} should match canonical {canonical:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn swift_find_aliases_match_canonical_specs() {
+        let alias_pairs = [
+            ("swift.findSymbols ViewController", "swift.symbols ViewController"),
+            ("swift.findProtocols Renderable", "swift.protocols Renderable"),
+            (
+                "swift.findConformances ViewController",
+                "swift.conformances ViewController",
+            ),
+            ("swift.findMetadata ViewController", "swift.metadata ViewController"),
+            ("swift.findVtable ViewController", "swift.vtable ViewController"),
+            ("swift.findWitnessTable Renderable", "swift.witnessTable Renderable"),
+            ("swift.findTypeLayout ViewController", "swift.typeLayout ViewController"),
+            ("swift.findTypes ViewController", "swift.types ViewController"),
+            (
+                "swift.findTypesOfKind metadata-accessor ViewController",
+                "swift.typesOfKind metadata-accessor ViewController",
+            ),
+            (
+                "swift.findMethodOwners viewDidLoad",
+                "swift.methodOwners viewDidLoad",
+            ),
+            ("swift.findTypeMethods ViewController", "swift.typeMethods ViewController"),
+            (
+                "swift.findMethods ViewController viewDidLoad",
+                "swift.methods ViewController viewDidLoad",
+            ),
+            ("swift.findProtocolInfo Renderable", "swift.protocolInfo Renderable"),
+            (
+                "swift.findConformanceInfo ViewController Renderable",
+                "swift.conformanceInfo ViewController Renderable",
+            ),
+            ("swift.findTypeInfo ViewController", "swift.typeInfo ViewController"),
+            (
+                "swift.findMethodInfo ViewController viewDidLoad",
+                "swift.methodInfo ViewController viewDidLoad",
+            ),
+            ("swift.findMetadataInfo ViewController", "swift.metadataInfo ViewController"),
+            (
+                "swift.findVtableInfo ViewController viewDidLoad",
+                "swift.vtableInfo ViewController viewDidLoad",
+            ),
+            (
+                "swift.findWitnessTableInfo ViewController Renderable",
+                "swift.witnessTableInfo ViewController Renderable",
+            ),
+            (
+                "swift.findTypeLayoutInfo ViewController",
+                "swift.typeLayoutInfo ViewController",
+            ),
+            ("swift.findSymbolInfo ViewController", "swift.symbolInfo ViewController"),
+            (
+                "swift.findProtocolInfo Demo -- Renderable",
+                "swift.protocolInfo Demo -- Renderable",
+            ),
+            (
+                "swift.findConformanceInfo Demo -- ViewController Renderable",
+                "swift.conformanceInfo Demo -- ViewController Renderable",
+            ),
+            (
+                "swift.findTypeInfo Demo -- ViewController",
+                "swift.typeInfo Demo -- ViewController",
+            ),
+            (
+                "swift.findMethodInfo Demo -- ViewController viewDidLoad",
+                "swift.methodInfo Demo -- ViewController viewDidLoad",
+            ),
+            (
+                "swift.findMetadataInfo Demo -- ViewController",
+                "swift.metadataInfo Demo -- ViewController",
+            ),
+            (
+                "swift.findVtableInfo Demo -- ViewController viewDidLoad",
+                "swift.vtableInfo Demo -- ViewController viewDidLoad",
+            ),
+            (
+                "swift.findWitnessTableInfo Demo -- ViewController Renderable",
+                "swift.witnessTableInfo Demo -- ViewController Renderable",
+            ),
+            (
+                "swift.findTypeLayoutInfo Demo -- ViewController",
+                "swift.typeLayoutInfo Demo -- ViewController",
+            ),
+            (
+                "swift.findSymbolInfo Demo -- ViewController",
+                "swift.symbolInfo Demo -- ViewController",
+            ),
+            ("swift.findSymbols Demo -- ViewController", "swift.symbols Demo -- ViewController"),
+            ("swift.findProtocols Demo -- Renderable", "swift.protocols Demo -- Renderable"),
+            (
+                "swift.findConformances Demo -- ViewController",
+                "swift.conformances Demo -- ViewController",
+            ),
+            ("swift.findMetadata Demo -- ViewController", "swift.metadata Demo -- ViewController"),
+            ("swift.findVtable Demo -- ViewController", "swift.vtable Demo -- ViewController"),
+            (
+                "swift.findWitnessTable Demo -- Renderable",
+                "swift.witnessTable Demo -- Renderable",
+            ),
+            (
+                "swift.findTypeLayout Demo -- ViewController",
+                "swift.typeLayout Demo -- ViewController",
+            ),
+            ("swift.findTypes Demo -- ViewController", "swift.types Demo -- ViewController"),
+            (
+                "swift.findTypesOfKind Demo -- metadata-accessor ViewController",
+                "swift.typesOfKind Demo -- metadata-accessor ViewController",
+            ),
+            (
+                "swift.findMethodOwners Demo -- viewDidLoad",
+                "swift.methodOwners Demo -- viewDidLoad",
+            ),
+            (
+                "swift.findTypeMethods Demo -- ViewController",
+                "swift.typeMethods Demo -- ViewController",
+            ),
+            (
+                "swift.findMethods Demo -- ViewController viewDidLoad",
+                "swift.methods Demo -- ViewController viewDidLoad",
+            ),
+        ];
+
+        for (alias, canonical) in alias_pairs {
+            assert_eq!(
+                AgentCommand::from_legacy(alias),
+                AgentCommand::from_legacy(canonical),
+                "alias {alias:?} should match canonical {canonical:?}"
+            );
+        }
+    }
+
+    #[test]
     fn malformed_runtime_commands_fall_back_to_text_handler() {
         assert_eq!(
             AgentCommand::from_legacy("swift.methods ViewController"),

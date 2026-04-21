@@ -19645,6 +19645,112 @@ mod tests {
     }
 
     #[test]
+    fn legacy_native_find_info_aliases_match_canonical_specs() {
+        let alias_pairs = [
+            (
+                "native.findImageInfo DemoBinary",
+                "native.imageInfo DemoBinary",
+            ),
+            ("native.findSymbolInfo malloc", "native.symbolInfo malloc"),
+            (
+                "native.findSymbolInfo DemoBinary -- malloc",
+                "native.symbolInfo DemoBinary -- malloc",
+            ),
+            (
+                "native.findExportInfo DemoBinary -- malloc",
+                "native.exportInfo DemoBinary -- malloc",
+            ),
+            (
+                "native.findDependencyInfo DemoBinary -- libSystem.B.dylib",
+                "native.dependencyInfo DemoBinary -- libSystem.B.dylib",
+            ),
+            (
+                "native.findRpathInfo DemoBinary -- @loader_path",
+                "native.rpathInfo DemoBinary -- @loader_path",
+            ),
+            (
+                "native.findImportInfo DemoBinary -- malloc",
+                "native.importInfo DemoBinary -- malloc",
+            ),
+            (
+                "native.findSegmentInfo DemoBinary -- __TEXT",
+                "native.segmentInfo DemoBinary -- __TEXT",
+            ),
+            (
+                "native.findSectionInfo DemoBinary -- __TEXT __text",
+                "native.sectionInfo DemoBinary -- __TEXT __text",
+            ),
+            (
+                "native.findLoadCommandInfo DemoBinary -- LC_UUID",
+                "native.loadCommandInfo DemoBinary -- LC_UUID",
+            ),
+            ("native.findDyldInfo DemoBinary", "native.dyldInfo DemoBinary"),
+        ];
+
+        for (alias, canonical) in alias_pairs {
+            assert_eq!(
+                AgentCommand::from_legacy(alias),
+                AgentCommand::from_legacy(canonical),
+                "alias {alias:?} should match canonical {canonical:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn legacy_objc_and_swift_find_aliases_match_canonical_specs() {
+        let alias_pairs = [
+            ("objc.findClasses UIView", "objc.classes UIView"),
+            (
+                "objc.findMethodInfo UIViewController viewDidLoad",
+                "objc.methodInfo UIViewController viewDidLoad",
+            ),
+            (
+                "objc.findProtocolMethods NSObject optional class description",
+                "objc.protocolMethods NSObject optional class description",
+            ),
+            ("objc.findClassImage UIViewController", "objc.classImage UIViewController"),
+            ("objc.findMethodImage UIViewController viewDidLoad", "objc.methodImage UIViewController viewDidLoad"),
+            ("swift.findTypes ViewController", "swift.types ViewController"),
+            (
+                "swift.findMethods ViewController viewDidLoad",
+                "swift.methods ViewController viewDidLoad",
+            ),
+            ("swift.findSymbolInfo ViewController", "swift.symbolInfo ViewController"),
+            ("swift.findProtocolInfo Renderable", "swift.protocolInfo Renderable"),
+            (
+                "swift.findConformanceInfo ViewController Renderable",
+                "swift.conformanceInfo ViewController Renderable",
+            ),
+            ("swift.findMetadataInfo ViewController", "swift.metadataInfo ViewController"),
+            (
+                "swift.findTypeLayoutInfo ViewController",
+                "swift.typeLayoutInfo ViewController",
+            ),
+            ("swift.findTypes Demo -- ViewController", "swift.types Demo -- ViewController"),
+            (
+                "swift.findMethods Demo -- ViewController viewDidLoad",
+                "swift.methods Demo -- ViewController viewDidLoad",
+            ),
+            (
+                "swift.findSymbolInfo Demo -- ViewController",
+                "swift.symbolInfo Demo -- ViewController",
+            ),
+            (
+                "swift.findMethodOwners Demo -- viewDidLoad",
+                "swift.methodOwners Demo -- viewDidLoad",
+            ),
+        ];
+
+        for (alias, canonical) in alias_pairs {
+            assert_eq!(
+                AgentCommand::from_legacy(alias),
+                AgentCommand::from_legacy(canonical),
+                "alias {alias:?} should match canonical {canonical:?}"
+            );
+        }
+    }
+
+    #[test]
     fn command_requires_inline_hooks_only_for_hook_commands() {
         assert!(command_requires_inline_hooks("trace UIViewController"));
         assert!(command_requires_inline_hooks("stalker stop"));

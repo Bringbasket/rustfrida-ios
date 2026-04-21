@@ -21903,6 +21903,7 @@ undefined;
                         "(function() {
                             return __iosRustFridaAgentApi.handle('native.findImageInfo libsystem_malloc.dylib') === __iosRustFridaAgentApi.handle('native.imageInfo libsystem_malloc.dylib') &&
                                 __iosRustFridaAgentApi.handle('native.findSymbolInfo malloc') === __iosRustFridaAgentApi.handle('native.symbolInfo malloc') &&
+                                __iosRustFridaAgentApi.handle('native.findSymbolInfo libsystem_malloc.dylib -- malloc') === __iosRustFridaAgentApi.handle('native.symbolInfo libsystem_malloc.dylib -- malloc') &&
                                 __iosRustFridaAgentApi.handle('native.findExportInfo libsystem_malloc.dylib -- malloc') === __iosRustFridaAgentApi.handle('native.exportInfo libsystem_malloc.dylib -- malloc') &&
                                 __iosRustFridaAgentApi.handle('native.findDependencyInfo libsystem_malloc.dylib -- libSystem.B.dylib') === __iosRustFridaAgentApi.handle('native.dependencyInfo libsystem_malloc.dylib -- libSystem.B.dylib') &&
                                 __iosRustFridaAgentApi.handle('native.findRpathInfo libsystem_malloc.dylib -- @loader_path') === __iosRustFridaAgentApi.handle('native.rpathInfo libsystem_malloc.dylib -- @loader_path') &&
