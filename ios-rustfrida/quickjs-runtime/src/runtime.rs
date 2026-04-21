@@ -21854,13 +21854,24 @@ undefined;
                     .eval(
                         "(function() {
                             return __iosRustFridaAgentApi.handle('native.findDyldInfo DemoBinary') === __iosRustFridaAgentApi.handle('native.dyldInfo DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findEncryptionInfo DemoBinary') === __iosRustFridaAgentApi.handle('native.encryptionInfo DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findEntryPoint DemoBinary') === __iosRustFridaAgentApi.handle('native.entryPoint DemoBinary') &&
                                 __iosRustFridaAgentApi.handle('native.findLinkedit DemoBinary') === __iosRustFridaAgentApi.handle('native.linkedit DemoBinary') &&
                                 __iosRustFridaAgentApi.handle('native.findFunctionStarts DemoBinary') === __iosRustFridaAgentApi.handle('native.functionStarts DemoBinary') &&
                                 __iosRustFridaAgentApi.handle('native.findCodeSignature DemoBinary') === __iosRustFridaAgentApi.handle('native.codeSignature DemoBinary') &&
                                 __iosRustFridaAgentApi.handle('native.findDataInCode DemoBinary') === __iosRustFridaAgentApi.handle('native.dataInCode DemoBinary') &&
                                 __iosRustFridaAgentApi.handle('native.findExportsTrie DemoBinary') === __iosRustFridaAgentApi.handle('native.exportsTrie DemoBinary') &&
                                 __iosRustFridaAgentApi.handle('native.findChainedFixups DemoBinary') === __iosRustFridaAgentApi.handle('native.chainedFixups DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findSourceVersion DemoBinary') === __iosRustFridaAgentApi.handle('native.sourceVersion DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findBuildVersion DemoBinary') === __iosRustFridaAgentApi.handle('native.buildVersion DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findDylinker DemoBinary') === __iosRustFridaAgentApi.handle('native.dylinker DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findInstallName DemoBinary') === __iosRustFridaAgentApi.handle('native.installName DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findUuid DemoBinary') === __iosRustFridaAgentApi.handle('native.uuid DemoBinary') &&
                                 __iosRustFridaAgentApi.handle('native.findLoadCommands DemoBinary') === __iosRustFridaAgentApi.handle('native.loadCommands DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findExports DemoBinary') === __iosRustFridaAgentApi.handle('native.exports DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findDependencies DemoBinary') === __iosRustFridaAgentApi.handle('native.dependencies DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findRpaths DemoBinary') === __iosRustFridaAgentApi.handle('native.rpaths DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findImports DemoBinary') === __iosRustFridaAgentApi.handle('native.imports DemoBinary') &&
                                 __iosRustFridaAgentApi.handle('native.findSegments DemoBinary') === __iosRustFridaAgentApi.handle('native.segments DemoBinary') &&
                                 __iosRustFridaAgentApi.handle('native.findSections DemoBinary') === __iosRustFridaAgentApi.handle('native.sections DemoBinary');
                         })()"
