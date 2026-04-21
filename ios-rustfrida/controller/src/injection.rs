@@ -35064,6 +35064,39 @@ mod tests {
         );
         let cleanup_coexistence = super::hook_coexistence_to_json(&cleanup_actions, &backend_matrix);
         let cleanup_automation = hook_automation_to_json(&cleanup_actions, &backend_matrix);
+        assert_eq!(
+            cleanup_coexistence["backendAdaptation"],
+            cleanup_automation["backendAdaptation"],
+            "cleanup.backendAdaptationParity"
+        );
+        for key in [
+            "backendAdaptationMode",
+            "backendAdaptationAlignment",
+            "backendAdaptationBias",
+            "backendAdaptationSummary",
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextActionReadyToRun",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(cleanup_coexistence[key], cleanup_automation[key], "cleanup.{key}");
+        }
+        assert_eq!(cleanup_coexistence["nextStepChainSource"], "next-action", "cleanup.coexistence.chain");
+        assert_eq!(cleanup_automation["nextStepChainSource"], "next-action", "cleanup.automation.chain");
+        assert_eq!(cleanup_automation["hasFallbackPlan"], false, "cleanup.automation.fallback");
+        assert!(cleanup_automation["fallbackPlan"].is_null(), "cleanup.automation.fallbackNull");
         for rendered in [&cleanup_coexistence, &cleanup_automation] {
             assert_command_json_template_kind_count_pairs(rendered, "cleanup.rendered");
             let adaptation = &rendered["backendAdaptation"];
@@ -35152,7 +35185,50 @@ mod tests {
                 target_reason: Some("target blocked stop".into()),
             },
         ];
+        let blocked_coexistence = super::hook_coexistence_to_json(&blocked_actions, &backend_matrix);
         let blocked_automation = hook_automation_to_json(&blocked_actions, &backend_matrix);
+        assert_eq!(
+            blocked_coexistence["backendAdaptation"],
+            blocked_automation["backendAdaptation"],
+            "blocked.backendAdaptationParity"
+        );
+        for key in [
+            "backendAdaptationMode",
+            "backendAdaptationAlignment",
+            "backendAdaptationBias",
+            "backendAdaptationSummary",
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextActionReadyToRun",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(blocked_coexistence[key], blocked_automation[key], "blocked.{key}");
+        }
+        assert_eq!(blocked_coexistence["nextStepChainSource"], "next-action", "blocked.coexistence.chain");
+        assert_eq!(blocked_automation["nextStepChainSource"], "fallback-plan", "blocked.automation.chain");
+        assert_eq!(blocked_automation["hasFallbackPlan"], true, "blocked.automation.fallback");
+        assert_eq!(
+            blocked_automation["fallbackPlan"]["trigger"],
+            "next-action-not-ready",
+            "blocked.automation.fallbackTrigger"
+        );
+        assert_eq!(
+            blocked_automation["nextStepChain"][0]["command"],
+            "native.hookenv",
+            "blocked.automation.chainCommand"
+        );
         assert_command_json_template_kind_count_pairs(&blocked_automation, "blocked.automation");
         let blocked_adaptation = &blocked_automation["backendAdaptation"];
         assert_eq!(blocked_automation["commandMode"], "blocked");
@@ -35178,6 +35254,13 @@ mod tests {
             &hook_environment_recommended_actions(&report, Some(&arm64e_strategy)),
             &hook_environment_recommended_actions(&report, Some(&arm64e_strategy)),
         );
+        let arm64e_coexistence = super::hook_coexistence_to_json_with_arm64e(
+            &arm64e_actions,
+            &backend_matrix,
+            HookAutomationArm64eContext {
+                query_only_until_override: true,
+            },
+        );
         let arm64e_automation = hook_automation_to_json_with_arm64e(
             &arm64e_actions,
             &backend_matrix,
@@ -35185,8 +35268,43 @@ mod tests {
                 query_only_until_override: true,
             },
         );
+        assert_eq!(
+            arm64e_coexistence["backendAdaptation"],
+            arm64e_automation["backendAdaptation"],
+            "arm64e.backendAdaptationParity"
+        );
+        for key in [
+            "backendAdaptationMode",
+            "backendAdaptationAlignment",
+            "backendAdaptationBias",
+            "backendAdaptationSummary",
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextActionReadyToRun",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(arm64e_coexistence[key], arm64e_automation[key], "arm64e.{key}");
+        }
+        assert_eq!(arm64e_coexistence["nextStepChainSource"], "next-action", "arm64e.coexistence.chain");
+        assert_eq!(arm64e_automation["nextStepChainSource"], "next-action", "arm64e.automation.chain");
+        assert_eq!(arm64e_automation["hasFallbackPlan"], false, "arm64e.automation.fallback");
+        assert!(arm64e_automation["fallbackPlan"].is_null(), "arm64e.automation.fallbackNull");
+        assert_command_json_template_kind_count_pairs(&arm64e_coexistence, "arm64e.coexistence");
         assert_command_json_template_kind_count_pairs(&arm64e_automation, "arm64e.automation");
         let arm64e_adaptation = &arm64e_automation["backendAdaptation"];
+        assert_eq!(arm64e_coexistence["preferredPath"], "arm64e-query-only");
         assert_eq!(arm64e_automation["preferredPath"], "arm64e-query-only");
         assert_eq!(arm64e_automation["backendAdaptationMode"], "no-adaptation-needed");
         assert_eq!(arm64e_automation["backendAdaptationAlignment"], "clean");
