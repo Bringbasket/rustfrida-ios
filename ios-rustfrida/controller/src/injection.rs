@@ -32774,6 +32774,8 @@ mod tests {
             .expect("hook.install templates");
         assert_eq!(install_templates["templateCount"], 0);
         assert_eq!(install_templates["commandJsonTemplateCount"], 0);
+        assert_eq!(install_templates["commandJsonInstructionTemplateCount"], 0);
+        assert_eq!(install_templates["commandJsonExecutableTemplateCount"], 0);
         assert_eq!(install_templates["templates"], json!([]));
         assert_eq!(install_templates["commandJsonTemplates"], json!([]));
         let branches = automation["actionBranches"].as_array().expect("automation branches");
@@ -32784,6 +32786,8 @@ mod tests {
         assert_eq!(install_branch["selectedAsNext"], false);
         assert_eq!(install_branch["templateCount"], 0);
         assert_eq!(install_branch["commandJsonTemplateCount"], 0);
+        assert_eq!(install_branch["commandJsonInstructionTemplateCount"], 0);
+        assert_eq!(install_branch["commandJsonExecutableTemplateCount"], 0);
         assert_eq!(install_branch["commandJsonEligibleTemplateCount"], 0);
         assert_eq!(install_branch["templates"], json!([]));
     }
