@@ -25247,6 +25247,16 @@ mod tests {
             1
         );
         assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]
+                ["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]
+                ["commandJsonExecutableTemplateCount"],
+            1
+        );
+        assert_eq!(
             automation["fallbackPlan"]["errorCodeRoutingEntries"][0]["candidateCount"],
             1
         );
@@ -25261,6 +25271,16 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["errorCodeRoutingEntries"][0]["effectivePhase"],
             "diagnose"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingEntries"][0]
+                ["recommendedCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["errorCodeRoutingEntries"][0]
+                ["recommendedCommandJsonExecutableTemplateCount"],
+            1
         );
         assert_eq!(automation["fallbackPlan"]["routingDecision"]["lookupKey"], "errorCode");
         assert_eq!(
@@ -26453,6 +26473,14 @@ mod tests {
             1
         );
         assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["defaultCommandJsonExecutableTemplateCount"],
+            1
+        );
+        assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["defaultMatchConfidence"],
             "default"
         );
@@ -26554,6 +26582,16 @@ mod tests {
         );
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["commandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]
+                ["commandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]
+                ["commandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(
@@ -27913,6 +27951,16 @@ mod tests {
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]
                 ["recommendedCommandJsonTemplateCount"],
+            1
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]
+                ["recommendedCommandJsonInstructionTemplateCount"],
+            0
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["index"]["hook-fallback-preflight-failed"]
+                ["recommendedCommandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(
