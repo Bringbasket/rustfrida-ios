@@ -33177,6 +33177,139 @@ mod tests {
     }
 
     #[test]
+    fn hook_backend_adaptation_shared_plus_sidecar_topologies_are_query_first() {
+        let scenarios = vec![
+            (
+                "shared-plus-controller-loaded",
+                HookEnvironmentReport {
+                    active_backend: Some("ellekit".into()),
+                    backends: vec![
+                        HookBackendInfo {
+                            id: "ellekit".into(),
+                            display_name: "ElleKit".into(),
+                            loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                            filesystem_paths: vec![],
+                        },
+                        HookBackendInfo {
+                            id: "substitute".into(),
+                            display_name: "Substitute".into(),
+                            loaded_images: vec!["/var/jb/usr/lib/libsubstitute.dylib".into()],
+                            filesystem_paths: vec![],
+                        },
+                    ],
+                    warnings: vec![],
+                },
+                HookEnvironmentReport {
+                    active_backend: Some("ellekit".into()),
+                    backends: vec![HookBackendInfo {
+                        id: "ellekit".into(),
+                        display_name: "ElleKit".into(),
+                        loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                        filesystem_paths: vec![],
+                    }],
+                    warnings: vec![],
+                },
+                "shared-plus-controller-loaded",
+                "controller-leading",
+                1u64,
+                1u64,
+                0u64,
+            ),
+            (
+                "shared-plus-target-loaded",
+                HookEnvironmentReport {
+                    active_backend: Some("ellekit".into()),
+                    backends: vec![HookBackendInfo {
+                        id: "ellekit".into(),
+                        display_name: "ElleKit".into(),
+                        loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                        filesystem_paths: vec![],
+                    }],
+                    warnings: vec![],
+                },
+                HookEnvironmentReport {
+                    active_backend: Some("ellekit".into()),
+                    backends: vec![
+                        HookBackendInfo {
+                            id: "ellekit".into(),
+                            display_name: "ElleKit".into(),
+                            loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                            filesystem_paths: vec![],
+                        },
+                        HookBackendInfo {
+                            id: "substrate".into(),
+                            display_name: "Cydia Substrate".into(),
+                            loaded_images: vec!["/Library/MobileSubstrate/MobileSubstrate.dylib".into()],
+                            filesystem_paths: vec![],
+                        },
+                    ],
+                    warnings: vec![],
+                },
+                "shared-plus-target-loaded",
+                "target-leading",
+                1u64,
+                0u64,
+                1u64,
+            ),
+        ];
+
+        let strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-risky".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+
+        for (
+            name,
+            controller_report,
+            target_report,
+            expected_topology,
+            expected_alignment,
+            expected_shared_loaded,
+            expected_controller_only_loaded,
+            expected_target_only_loaded,
+        ) in scenarios
+        {
+            let backend_matrix = hook_backend_matrix_to_json(&controller_report, &target_report);
+            assert_eq!(backend_matrix["topology"]["kind"], expected_topology, "{name}");
+            let controller_actions = hook_environment_recommended_actions(&controller_report, Some(&strategy));
+            let target_actions = hook_environment_recommended_actions(&target_report, Some(&strategy));
+            let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
+            let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
+            let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+
+            for rendered in [&coexistence, &automation] {
+                assert_command_json_template_kind_count_pairs(rendered, &format!("{name}.rendered"));
+                let adaptation = &rendered["backendAdaptation"];
+                assert_eq!(
+                    rendered["backendAdaptationMode"],
+                    "shared-runtime-with-sidecar-query-first",
+                    "{name}"
+                );
+                assert_eq!(rendered["backendAdaptationAlignment"], expected_alignment, "{name}");
+                assert_eq!(adaptation["recommendedActionBias"], "query", "{name}");
+                assert_eq!(adaptation["requiresQueryPhase"], true, "{name}");
+                assert_eq!(adaptation["preferredGroupKey"], "query", "{name}");
+                assert_eq!(adaptation["sharedLoadedBackendCount"], expected_shared_loaded, "{name}");
+                assert_eq!(
+                    adaptation["controllerLoadedOnlyBackendCount"],
+                    expected_controller_only_loaded,
+                    "{name}"
+                );
+                assert_eq!(
+                    adaptation["targetLoadedOnlyBackendCount"],
+                    expected_target_only_loaded,
+                    "{name}"
+                );
+                assert_eq!(adaptation["conflictBackendPairCount"], 0, "{name}");
+                assert!(adaptation["preferredConflictBackendPair"].is_null(), "{name}");
+            }
+        }
+    }
+
+    #[test]
     fn hook_backend_matrix_split_loaded_cleanup_mode_exposes_cleanup_phase_aliases() {
         let controller_report = HookEnvironmentReport {
             active_backend: Some("ellekit".into()),
