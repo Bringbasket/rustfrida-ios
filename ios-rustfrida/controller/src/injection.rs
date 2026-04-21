@@ -18805,10 +18805,14 @@ mod tests {
         command.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 
-    fn materialized_runtime_help_commands() -> HashSet<String> {
+    fn materialized_help_commands(
+        synopsis_lines: &[&str],
+        skip_alias_summary: bool,
+    ) -> (HashSet<String>, Vec<String>) {
         let mut commands = HashSet::new();
-        for synopsis in controller_help_runtime_command_synopsis() {
-            if synopsis.contains("...") {
+        let mut duplicates = Vec::new();
+        for synopsis in synopsis_lines {
+            if skip_alias_summary && synopsis.contains("...") {
                 continue;
             }
             for variant in split_help_synopsis_variants(synopsis) {
@@ -18816,9 +18820,17 @@ mod tests {
                 if variant.is_empty() {
                     continue;
                 }
-                commands.insert(variant);
+                if !commands.insert(variant.clone()) {
+                    duplicates.push(variant);
+                }
             }
         }
+        (commands, duplicates)
+    }
+
+    fn materialized_runtime_help_commands() -> HashSet<String> {
+        let (commands, _duplicates) =
+            materialized_help_commands(controller_help_runtime_command_synopsis(), true);
         commands
     }
 
@@ -18940,6 +18952,72 @@ mod tests {
                 "runtime help should include query template command form or shape: {command}"
             );
         }
+    }
+
+    #[test]
+    fn controller_help_synopsis_has_no_duplicate_materialized_commands() {
+        let (_control_commands, control_duplicates) =
+            materialized_help_commands(controller_help_control_command_synopsis(), false);
+        assert!(
+            control_duplicates.is_empty(),
+            "control help has duplicate commands: {:?}",
+            control_duplicates
+        );
+
+        let (_hook_commands, hook_duplicates) =
+            materialized_help_commands(controller_help_hook_command_synopsis(), false);
+        assert!(
+            hook_duplicates.is_empty(),
+            "hook help has duplicate commands: {:?}",
+            hook_duplicates
+        );
+
+        let (_runtime_commands, runtime_duplicates) =
+            materialized_help_commands(controller_help_runtime_command_synopsis(), true);
+        assert!(
+            runtime_duplicates.is_empty(),
+            "runtime help has duplicate commands: {:?}",
+            runtime_duplicates
+        );
+    }
+
+    #[test]
+    fn controller_help_synopsis_categories_stay_disjoint() {
+        let (control_commands, _control_duplicates) =
+            materialized_help_commands(controller_help_control_command_synopsis(), false);
+        let (hook_commands, _hook_duplicates) =
+            materialized_help_commands(controller_help_hook_command_synopsis(), false);
+        let (runtime_commands, _runtime_duplicates) =
+            materialized_help_commands(controller_help_runtime_command_synopsis(), true);
+
+        let control_hook = control_commands
+            .intersection(&hook_commands)
+            .cloned()
+            .collect::<Vec<_>>();
+        let control_runtime = control_commands
+            .intersection(&runtime_commands)
+            .cloned()
+            .collect::<Vec<_>>();
+        let hook_runtime = hook_commands
+            .intersection(&runtime_commands)
+            .cloned()
+            .collect::<Vec<_>>();
+
+        assert!(
+            control_hook.is_empty(),
+            "control/hook help commands should be disjoint, overlap: {:?}",
+            control_hook
+        );
+        assert!(
+            control_runtime.is_empty(),
+            "control/runtime help commands should be disjoint, overlap: {:?}",
+            control_runtime
+        );
+        assert!(
+            hook_runtime.is_empty(),
+            "hook/runtime help commands should be disjoint, overlap: {:?}",
+            hook_runtime
+        );
     }
 
     #[test]
