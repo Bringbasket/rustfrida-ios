@@ -33847,6 +33847,8 @@ mod tests {
 
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &rendered);
         let automation = hook_automation_to_json(&effective_actions, &rendered);
+        assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
+        assert_command_json_template_kind_count_pairs(&automation, "automation");
 
         assert_eq!(coexistence["mode"], "inline-cautious");
         assert_eq!(coexistence["strategy"], "filesystem-candidate-cautious");
