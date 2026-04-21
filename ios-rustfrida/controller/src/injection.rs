@@ -21671,6 +21671,10 @@ mod tests {
 
         let doctor = analyze_doctor_report(&config, 42, Path::new("/tmp/iosrf.sock"), &environment, &preflight);
         let rendered = render_preflight_json(&config, 42, "/tmp/iosrf.sock", &plan, &environment, &preflight, &doctor);
+        assert_command_json_template_kind_count_pairs(
+            &rendered["environment"]["hookEnvironment"],
+            "environment.hookEnvironment",
+        );
 
         assert_eq!(rendered["mode"], "attach");
         assert_eq!(rendered["preflightOnly"], true);
@@ -22307,6 +22311,7 @@ mod tests {
                 loadjs_result: None,
             },
         );
+        assert_command_json_template_kind_count_pairs(&rendered["hook"], "hook");
 
         assert_eq!(rendered["ok"], false);
         assert_eq!(rendered["command"], "objc.classes UIView");
@@ -23539,6 +23544,7 @@ mod tests {
             &["agent log line".into()],
             None,
         );
+        assert_command_json_template_kind_count_pairs(&rendered["hook"], "hook");
 
         assert_eq!(rendered["ok"], true);
         assert_eq!(rendered["arm64eSummary"]["status"], "non-arm64e");
