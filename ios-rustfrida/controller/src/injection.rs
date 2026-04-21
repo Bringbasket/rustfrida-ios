@@ -33519,6 +33519,174 @@ mod tests {
     }
 
     #[test]
+    fn hook_backend_adaptation_command_modes_stay_consistent_on_clean_topology() {
+        let report = HookEnvironmentReport {
+            active_backend: None,
+            backends: vec![],
+            warnings: vec![],
+        };
+        let backend_matrix = hook_backend_matrix_to_json(&report, &report);
+        assert_eq!(backend_matrix["topology"]["kind"], "clean");
+
+        let controller_cleanup_strategy = HookStrategyDecision {
+            policy: HookPolicy::QueryOnlyExternalLoaded,
+            strategy: "query-only-external-loaded".into(),
+            allowed: true,
+            inline_hooks_allowed: false,
+            reason: Some("controller query-only".into()),
+        };
+        let target_cleanup_strategy = HookStrategyDecision {
+            policy: HookPolicy::DenyExternalLoaded,
+            strategy: "cleanup-only-external-loaded".into(),
+            allowed: false,
+            inline_hooks_allowed: false,
+            reason: Some("target cleanup-only".into()),
+        };
+        let cleanup_actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&report, Some(&controller_cleanup_strategy)),
+            &hook_environment_recommended_actions(&report, Some(&target_cleanup_strategy)),
+        );
+        let cleanup_coexistence = super::hook_coexistence_to_json(&cleanup_actions, &backend_matrix);
+        let cleanup_automation = hook_automation_to_json(&cleanup_actions, &backend_matrix);
+        for rendered in [&cleanup_coexistence, &cleanup_automation] {
+            assert_command_json_template_kind_count_pairs(rendered, "cleanup.rendered");
+            let adaptation = &rendered["backendAdaptation"];
+            assert_eq!(rendered["commandMode"], "cleanup-only");
+            assert_eq!(rendered["backendAdaptationMode"], "no-adaptation-needed");
+            assert_eq!(rendered["backendAdaptationAlignment"], "clean");
+            assert_eq!(rendered["backendAdaptationBias"], "cleanup");
+            assert_eq!(adaptation["mode"], "no-adaptation-needed");
+            assert_eq!(adaptation["alignment"], "clean");
+            assert_eq!(adaptation["recommendedActionBias"], "cleanup");
+            assert_eq!(adaptation["preferredGroupKey"], "cleanup");
+            assert_eq!(adaptation["requiresCleanupPhase"], true);
+            assert_eq!(adaptation["conflictBackendPairCount"], 0);
+            assert!(adaptation["preferredConflictBackendPair"].is_null());
+        }
+
+        let blocked_actions = vec![
+            HookEffectiveAction {
+                action_key: "hook.query",
+                command_group: "query",
+                allowed: false,
+                blocked_by: "both",
+                priority: 1,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 1,
+                target_priority: 1,
+                recommendation: "query blocked".into(),
+                controller_reason: Some("controller blocked query".into()),
+                target_reason: Some("target blocked query".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.bootstrap",
+                command_group: "bootstrap",
+                allowed: false,
+                blocked_by: "both",
+                priority: 2,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 2,
+                target_priority: 2,
+                recommendation: "bootstrap blocked".into(),
+                controller_reason: Some("controller blocked bootstrap".into()),
+                target_reason: Some("target blocked bootstrap".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.install",
+                command_group: "hook-install",
+                allowed: false,
+                blocked_by: "both",
+                priority: 3,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 3,
+                target_priority: 3,
+                recommendation: "install blocked".into(),
+                controller_reason: Some("controller blocked install".into()),
+                target_reason: Some("target blocked install".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.status",
+                command_group: "hook-status",
+                allowed: false,
+                blocked_by: "both",
+                priority: 4,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 4,
+                target_priority: 4,
+                recommendation: "status blocked".into(),
+                controller_reason: Some("controller blocked status".into()),
+                target_reason: Some("target blocked status".into()),
+            },
+            HookEffectiveAction {
+                action_key: "hook.stop",
+                command_group: "hook-stop",
+                allowed: false,
+                blocked_by: "both",
+                priority: 5,
+                controller_allowed: false,
+                target_allowed: false,
+                controller_priority: 5,
+                target_priority: 5,
+                recommendation: "stop blocked".into(),
+                controller_reason: Some("controller blocked stop".into()),
+                target_reason: Some("target blocked stop".into()),
+            },
+        ];
+        let blocked_automation = hook_automation_to_json(&blocked_actions, &backend_matrix);
+        assert_command_json_template_kind_count_pairs(&blocked_automation, "blocked.automation");
+        let blocked_adaptation = &blocked_automation["backendAdaptation"];
+        assert_eq!(blocked_automation["commandMode"], "blocked");
+        assert_eq!(blocked_automation["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(blocked_automation["backendAdaptationAlignment"], "clean");
+        assert_eq!(blocked_automation["backendAdaptationBias"], "blocked");
+        assert_eq!(blocked_adaptation["mode"], "no-adaptation-needed");
+        assert_eq!(blocked_adaptation["alignment"], "clean");
+        assert_eq!(blocked_adaptation["recommendedActionBias"], "blocked");
+        assert_eq!(blocked_adaptation["preferredGroupKey"], "none");
+        assert!(blocked_adaptation["executionKind"].is_null());
+        assert_eq!(blocked_adaptation["conflictBackendPairCount"], 0);
+        assert!(blocked_adaptation["preferredConflictBackendPair"].is_null());
+
+        let arm64e_strategy = HookStrategyDecision {
+            policy: HookPolicy::Warn,
+            strategy: "internal-inline-safe".into(),
+            allowed: true,
+            inline_hooks_allowed: true,
+            reason: None,
+        };
+        let arm64e_actions = hook_effective_actions(
+            &hook_environment_recommended_actions(&report, Some(&arm64e_strategy)),
+            &hook_environment_recommended_actions(&report, Some(&arm64e_strategy)),
+        );
+        let arm64e_automation = hook_automation_to_json_with_arm64e(
+            &arm64e_actions,
+            &backend_matrix,
+            HookAutomationArm64eContext {
+                query_only_until_override: true,
+            },
+        );
+        assert_command_json_template_kind_count_pairs(&arm64e_automation, "arm64e.automation");
+        let arm64e_adaptation = &arm64e_automation["backendAdaptation"];
+        assert_eq!(arm64e_automation["preferredPath"], "arm64e-query-only");
+        assert_eq!(arm64e_automation["backendAdaptationMode"], "no-adaptation-needed");
+        assert_eq!(arm64e_automation["backendAdaptationAlignment"], "clean");
+        assert_eq!(arm64e_automation["backendAdaptationBias"], "query");
+        assert_eq!(arm64e_adaptation["mode"], "no-adaptation-needed");
+        assert_eq!(arm64e_adaptation["alignment"], "clean");
+        assert_eq!(arm64e_adaptation["recommendedActionBias"], "query");
+        assert_eq!(arm64e_adaptation["preferredGroupKey"], "query");
+        assert_eq!(arm64e_adaptation["requiresPreflight"], true);
+        assert_eq!(arm64e_adaptation["requiresQueryPhase"], true);
+        assert_eq!(arm64e_adaptation["inlineInstallReadyNow"], false);
+        assert_eq!(arm64e_adaptation["conflictBackendPairCount"], 0);
+        assert!(arm64e_adaptation["preferredConflictBackendPair"].is_null());
+    }
+
+    #[test]
     fn hook_backend_matrix_split_loaded_cleanup_mode_exposes_cleanup_phase_aliases() {
         let controller_report = HookEnvironmentReport {
             active_backend: Some("ellekit".into()),
