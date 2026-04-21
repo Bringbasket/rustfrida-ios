@@ -8801,7 +8801,16 @@ fn command_json_template_entry(template: &str) -> Value {
             "placeholders": placeholders,
             "cliArgs": cli_args,
         })
-    } else {
+    } else if command.starts_with("objc.")
+        || command.starts_with("native.")
+        || command.starts_with("swift.")
+        || command.starts_with("pac.")
+        || command.starts_with("trace ")
+        || command.starts_with("stalker ")
+        || command.starts_with("jhook ")
+        || command.starts_with("shook ")
+        || command.starts_with("hfl ")
+    {
         let command_for_cli = command.clone();
         json!({
             "command": command,
@@ -8819,6 +8828,24 @@ fn command_json_template_entry(template: &str) -> Value {
             "placeholderCount": placeholders.len(),
             "placeholders": placeholders,
             "cliArgs": ["--pid", "<pid>", "--command", command_for_cli, "--command-json"],
+        })
+    } else {
+        json!({
+            "command": command,
+            "kind": "instruction",
+            "commandJsonEligible": false,
+            "risk": risk,
+            "phase": phase,
+            "retryable": retryable,
+            "maxSuggestedRetries": max_suggested_retries,
+            "retryDelayHintMs": retry_delay_hint_ms,
+            "timeoutHintMs": timeout_hint_ms,
+            "timeoutAction": timeout_action,
+            "errorCode": error_code,
+            "timeoutErrorCode": timeout_error_code,
+            "placeholderCount": placeholders.len(),
+            "placeholders": placeholders,
+            "cliArgs": [],
         })
     }
 }
@@ -19094,6 +19121,15 @@ mod tests {
                 assert!(command_json_eligible);
             }
         }
+    }
+
+    #[test]
+    fn non_command_template_entries_are_instruction_only() {
+        let entry = command_json_template_entry("check IOS_RUSTFRIDA_HOOK_POLICY and retry");
+        assert_eq!(entry["kind"], "instruction");
+        assert_eq!(entry["commandJsonEligible"], false);
+        assert_eq!(entry["phase"], "general");
+        assert_eq!(entry["cliArgs"], json!([]));
     }
 
     #[test]
