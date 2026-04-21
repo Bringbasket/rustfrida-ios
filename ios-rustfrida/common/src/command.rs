@@ -3358,15 +3358,33 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("native.findImageInfo  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.findImageInfo  ".into(),
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("native.symbolInfo "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.symbolInfo ".into(),
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("native.findSymbolInfo "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.findSymbolInfo ".into(),
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("native.exportInfo libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.exportInfo libsystem_malloc.dylib".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findExportInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.findExportInfo libsystem_malloc.dylib".into(),
             })
         );
         assert_eq!(
@@ -3382,6 +3400,12 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("native.findImportInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.findImportInfo libsystem_malloc.dylib".into(),
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("native.dependencies  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.dependencies  ".into(),
@@ -3391,6 +3415,12 @@ mod tests {
             AgentCommand::from_legacy("native.dependencyInfo libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.dependencyInfo libsystem_malloc.dylib".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findDependencyInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.findDependencyInfo libsystem_malloc.dylib".into(),
             })
         );
         assert_eq!(
@@ -3496,9 +3526,21 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("native.findRpathInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.findRpathInfo libsystem_malloc.dylib".into(),
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("native.loadCommandInfo libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.loadCommandInfo libsystem_malloc.dylib".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findLoadCommandInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.findLoadCommandInfo libsystem_malloc.dylib".into(),
             })
         );
         assert_eq!(
@@ -3508,9 +3550,33 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("native.findSectionInfo libsystem_malloc.dylib -- __TEXT"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.findSectionInfo libsystem_malloc.dylib -- __TEXT".into(),
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("native.segmentInfo libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.segmentInfo libsystem_malloc.dylib".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findSegmentInfo libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "native.findSegmentInfo libsystem_malloc.dylib".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findMethodInfo NSObject"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "objc.findMethodInfo NSObject".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("swift.findMethodInfo ViewController"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "swift.findMethodInfo ViewController".into(),
             })
         );
     }
