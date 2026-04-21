@@ -34250,8 +34250,57 @@ mod tests {
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+        assert_eq!(
+            coexistence["backendAdaptation"],
+            automation["backendAdaptation"],
+            "controller-loaded-only.backendAdaptationParity"
+        );
+        for key in [
+            "backendAdaptationMode",
+            "backendAdaptationAlignment",
+            "backendAdaptationBias",
+            "backendAdaptationSummary",
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextActionReadyToRun",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(coexistence[key], automation[key], "controller-loaded-only.{key}");
+        }
+        assert_eq!(
+            coexistence["nextStepChainSource"],
+            "next-action",
+            "controller-loaded-only.coexistence.chain"
+        );
+        assert_eq!(
+            automation["nextStepChainSource"],
+            "next-action",
+            "controller-loaded-only.automation.chain"
+        );
+        assert_eq!(
+            automation["hasFallbackPlan"],
+            false,
+            "controller-loaded-only.automation.fallback"
+        );
+        assert!(
+            automation["fallbackPlan"].is_null(),
+            "controller-loaded-only.automation.fallbackNull"
+        );
 
         for rendered in [&coexistence, &automation] {
+            assert_command_json_template_kind_count_pairs(rendered, "controller-loaded-only.rendered");
             let adaptation = &rendered["backendAdaptation"];
             assert_eq!(adaptation["preferredGroupKey"], "query");
             assert_eq!(
@@ -34365,9 +34414,57 @@ mod tests {
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+        assert_eq!(
+            coexistence["backendAdaptation"],
+            automation["backendAdaptation"],
+            "target-loaded-only.backendAdaptationParity"
+        );
+        for key in [
+            "backendAdaptationMode",
+            "backendAdaptationAlignment",
+            "backendAdaptationBias",
+            "backendAdaptationSummary",
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextActionReadyToRun",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(coexistence[key], automation[key], "target-loaded-only.{key}");
+        }
+        assert_eq!(
+            coexistence["nextStepChainSource"],
+            "next-action",
+            "target-loaded-only.coexistence.chain"
+        );
+        assert_eq!(
+            automation["nextStepChainSource"],
+            "next-action",
+            "target-loaded-only.automation.chain"
+        );
+        assert_eq!(
+            automation["hasFallbackPlan"],
+            false,
+            "target-loaded-only.automation.fallback"
+        );
+        assert!(
+            automation["fallbackPlan"].is_null(),
+            "target-loaded-only.automation.fallbackNull"
+        );
 
         for rendered in [&coexistence, &automation] {
-            assert_command_json_template_kind_count_pairs(rendered, "rendered");
+            assert_command_json_template_kind_count_pairs(rendered, "target-loaded-only.rendered");
             let adaptation = &rendered["backendAdaptation"];
             assert_eq!(adaptation["preferredGroupKey"], "query");
             assert_eq!(adaptation["conflictBackendPairCount"], 0);
@@ -34531,6 +34628,39 @@ mod tests {
             let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
             let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
             let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+            assert_eq!(
+                coexistence["backendAdaptation"],
+                automation["backendAdaptation"],
+                "{name}.backendAdaptationParity"
+            );
+            for key in [
+                "backendAdaptationMode",
+                "backendAdaptationAlignment",
+                "backendAdaptationBias",
+                "backendAdaptationSummary",
+                "nextActionKey",
+                "nextActionCommandGroup",
+                "nextActionAllowed",
+                "nextActionBlockedBy",
+                "nextActionBranch",
+                "nextActionReadyToRun",
+                "nextStepActionKey",
+                "nextStepCommandGroup",
+                "nextStepAllowed",
+                "nextStepBlockedBy",
+                "nextStepBranch",
+                "nextStepCommand",
+                "nextStepPhase",
+                "nextStepCommandJsonEligible",
+                "nextStepReadyToRun",
+                "nextStepRequiresFallback",
+            ] {
+                assert_eq!(coexistence[key], automation[key], "{name}.{key}");
+            }
+            assert_eq!(coexistence["nextStepChainSource"], "next-action", "{name}.coexistence.chain");
+            assert_eq!(automation["nextStepChainSource"], "next-action", "{name}.automation.chain");
+            assert_eq!(automation["hasFallbackPlan"], false, "{name}.automation.fallback");
+            assert!(automation["fallbackPlan"].is_null(), "{name}.automation.fallbackNull");
 
             for rendered in [&coexistence, &automation] {
                 assert_command_json_template_kind_count_pairs(rendered, &format!("{name}.rendered"));
