@@ -29584,7 +29584,19 @@ mod tests {
             },
         ];
 
+        let coexistence = super::hook_coexistence_to_json(&actions, &backend_matrix);
         let automation = hook_automation_to_json(&actions, &backend_matrix);
+        assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
+        assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_eq!(
+            coexistence["backendAdaptation"],
+            automation["backendAdaptation"],
+            "query-only-install-failure.backendAdaptationParity"
+        );
+        assert_eq!(coexistence["preferredPath"], automation["preferredPath"]);
+        assert_eq!(coexistence["nextStepRequiresFallback"], automation["nextStepRequiresFallback"]);
+        assert_eq!(coexistence["nextStepChainSource"], "next-action");
+        assert_eq!(automation["nextStepChainSource"], "fallback-plan");
         assert_eq!(automation["hasFallbackPlan"], true);
         assert_eq!(
             automation["fallbackPlan"]["errorCodeRouting"]["hook-fallback-hook-install-failed"],
@@ -30141,7 +30153,18 @@ mod tests {
         let backend_matrix = hook_backend_matrix_to_json(&report, &report);
         let actions: Vec<HookEffectiveAction> = Vec::new();
 
+        let coexistence = super::hook_coexistence_to_json(&actions, &backend_matrix);
         let automation = hook_automation_to_json(&actions, &backend_matrix);
+        assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
+        assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_eq!(
+            coexistence["backendAdaptation"],
+            automation["backendAdaptation"],
+            "query-only-empty-actions.backendAdaptationParity"
+        );
+        assert_eq!(coexistence["preferredPath"], automation["preferredPath"]);
+        assert_eq!(coexistence["nextStepChainSource"], "none");
+        assert_eq!(automation["nextStepChainSource"], "fallback-plan");
         assert_eq!(automation["hasFallbackPlan"], true);
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["examples"]["queryOnlyInstallFailure"]
