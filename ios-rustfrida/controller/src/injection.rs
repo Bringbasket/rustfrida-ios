@@ -18179,6 +18179,119 @@ fn read_prompt_line(prompt: &str) -> Result<Option<String>> {
 }
 
 #[cfg(unix)]
+fn controller_help_runtime_command_synopsis() -> &'static [&'static str] {
+    &[
+        "objc.classes",
+        "objc.classes [filter]",
+        "objc.findClasses <query>",
+        "objc.protocols",
+        "objc.protocols [filter]",
+        "objc.classProtocols <class> [filter]",
+        "objc.findClassProtocols <class> <query>",
+        "objc.classInfo <class> [meta]",
+        "objc.protocolInfo <protocol>",
+        "objc.protocolProtocols <protocol> [filter]",
+        "objc.findProtocolProtocols <protocol> <query>",
+        "objc.protocolMethods <protocol> [required] [instance] [filter]",
+        "objc.findProtocolMethods <protocol> [required] [instance] <query>",
+        "objc.protocolMethodInfo <protocol> <selector> [required] [instance]",
+        "objc.protocolProperties <protocol> [filter]",
+        "objc.findProtocolProperties <protocol> <query>",
+        "objc.protocolPropertyInfo <protocol> <property>",
+        "objc.superclass <class>",
+        "objc.classChain <class>",
+        "objc.classExists <name>",
+        "objc.selector <name>",
+        "objc.classImage <class>",
+        "objc.selectorName <selector>",
+        "objc.objectClassName <object>",
+        "objc.methodImp <class> <selector> [meta]",
+        "objc.methodInfo <class> <selector> [meta]",
+        "objc.propertyInfo <class> <property> [meta]",
+        "objc.ivarInfo <class> <ivar>",
+        "objc.methodImage <class> <selector> [meta]",
+        "objc.methodOwners <selector> [meta]",
+        "objc.methods <class> [meta] [filter]",
+        "objc.properties <class> [meta] [filter]",
+        "objc.ivars <class> [filter]",
+        "objc.findClassInfo/findProtocolInfo/findProtocolMethodInfo/findProtocolPropertyInfo/findSuperclass/findClassChain/findClassImage/findMethodInfo/findMethodImage/findPropertyInfo/findIvarInfo/findSelectorName/findObjectClassName ... (info aliases)",
+        "objc.findMethods/findProperties/findIvars/findMethodOwners/findProtocols ... (query aliases)",
+        "native.base <module>",
+        "native.imageInfo <module>",
+        "native.export <symbol>|native.export <module> -- <symbol>",
+        "native.exports <module>|native.exports <module> -- <query>",
+        "native.exportInfo <module> -- <symbol>",
+        "native.dependencies <module>|native.dependencies <module> -- <query>",
+        "native.dependencyInfo <module> -- <path-or-name>",
+        "native.encryptionInfo <module>",
+        "native.entryPoint <module>",
+        "native.dyldInfo <module>",
+        "native.linkedit <module>",
+        "native.functionStarts <module>",
+        "native.codeSignature <module>",
+        "native.dataInCode <module>",
+        "native.exportsTrie <module>",
+        "native.chainedFixups <module>",
+        "native.sourceVersion <module>",
+        "native.buildVersion <module>",
+        "native.dylinker <module>",
+        "native.installName <module>",
+        "native.uuid <module>",
+        "native.rpaths <module>|native.rpaths <module> -- <query>",
+        "native.rpathInfo <module> -- <path>",
+        "native.imports <module>|native.imports <module> -- <query>",
+        "native.importInfo <module> -- <symbol>",
+        "native.loadcmds <module>|native.loadCommands <module>",
+        "native.loadCommandInfo <module> -- <name|cmd|index>",
+        "native.sections <module>",
+        "native.sectionInfo <module> -- <segment> <section>",
+        "native.segments <module>",
+        "native.segmentInfo <module> -- <segment>",
+        "native.symbolInfo <symbol>|native.symbolInfo <module> -- <symbol>",
+        "native.symbols <query>|native.symbols <module> -- <query>",
+        "native.findImageInfo/findSymbolInfo/findExportInfo/findDependencyInfo/findRpathInfo/findImportInfo/findSegmentInfo/findSectionInfo/findLoadCommandInfo ... (info aliases)",
+        "native.findSymbols/findExports/findDependencies/findEncryptionInfo/findEntryPoint/findDyldInfo/findLinkedit/findFunctionStarts/findCodeSignature/findDataInCode/findExportsTrie/findChainedFixups/findSourceVersion/findBuildVersion/findDylinker/findInstallName/findUuid/findRpaths/findImports/findSegments/findSections/findLoadCommands ... (aliases)",
+        "native.images [filter]",
+        "native.mainImage",
+        "native.image <address>",
+        "native.symbol <address>",
+        "native.hookenv|native.detectHookEnvironment",
+        "pac.available",
+        "pac.arm64e|pac.isProcessArm64e",
+        "pac.image <module>|pac.isImageArm64e <module>",
+        "pac.images [filter]|pac.arm64eImages [filter]",
+        "pac.strip <address>",
+        "pac.stripdata <address>|pac.stripData <address>",
+        "swift.available",
+        "swift.demangle <mangled-symbol>",
+        "swift.symbolInfo <symbol>|swift.symbolInfo <module> -- <symbol>",
+        "swift.protocolInfo <protocol>|swift.protocolInfo <module> -- <protocol>",
+        "swift.conformanceInfo <type> <protocol>|swift.conformanceInfo <module> -- <type> <protocol>",
+        "swift.typeInfo <type>|swift.typeInfo <module> -- <type>",
+        "swift.methodInfo <type> <method>|swift.methodInfo <module> -- <type> <method>",
+        "swift.protocols [query]|swift.protocols <module> -- <query>",
+        "swift.conformances <type>|swift.conformances <module> -- <type>",
+        "swift.metadata <type>|swift.metadata <module> -- <type>",
+        "swift.metadataInfo <type>|swift.metadataInfo <module> -- <type>",
+        "swift.vtable <type>|swift.vtable <module> -- <type>",
+        "swift.witnessTable <type|protocol>|swift.witnessTable <module> -- <type|protocol>",
+        "swift.witnessTableInfo <type> <protocol>|swift.witnessTableInfo <module> -- <type> <protocol>",
+        "swift.typeLayout <type>|swift.typeLayout <module> -- <type>",
+        "swift.typeLayoutInfo <type>|swift.typeLayoutInfo <module> -- <type>",
+        "swift.vtableInfo <type> <member>|swift.vtableInfo <module> -- <type> <member>",
+        "swift.symbols <query>|swift.symbols <module> -- <query>",
+        "swift.typeKinds|swift.typeSourceKinds",
+        "swift.methodOwners <method>|swift.methodOwners <module> -- <method>",
+        "swift.types <query>|swift.types <module> -- <query>",
+        "swift.typesOfKind <kind> <query>|swift.typesOfKind <module> -- <kind> <query>",
+        "swift.typeMethods <type>|swift.typeMethods <module> -- <type>",
+        "swift.methods <type> <method>|swift.methods <module> -- <type> <method>",
+        "swift.findSymbolInfo/findProtocolInfo/findConformanceInfo/findTypeInfo/findMethodInfo/findMetadataInfo/findVtableInfo/findWitnessTableInfo/findTypeLayoutInfo ... (info aliases)",
+        "swift.findSymbols/findProtocols/findConformances/findMetadata/findVtable/findWitnessTable/findTypeLayout/findTypes/findTypesOfKind/findMethodOwners/findTypeMethods/findMethods ... (query aliases)",
+    ]
+}
+
+#[cfg(unix)]
 fn print_controller_help() {
     println!("commands:");
     println!("  help");
@@ -18196,113 +18309,9 @@ fn print_controller_help() {
     println!("  jseval <expr>");
     println!("  jscomplete <prefix>");
     println!("  jsrepl");
-    println!("  objc.classes");
-    println!("  objc.classes [filter]");
-    println!("  objc.findClasses <query>");
-    println!("  objc.protocols");
-    println!("  objc.protocols [filter]");
-    println!("  objc.classProtocols <class> [filter]");
-    println!("  objc.findClassProtocols <class> <query>");
-    println!("  objc.classInfo <class> [meta]");
-    println!("  objc.protocolInfo <protocol>");
-    println!("  objc.protocolProtocols <protocol> [filter]");
-    println!("  objc.findProtocolProtocols <protocol> <query>");
-    println!("  objc.protocolMethods <protocol> [required] [instance] [filter]");
-    println!("  objc.findProtocolMethods <protocol> [required] [instance] <query>");
-    println!("  objc.protocolMethodInfo <protocol> <selector> [required] [instance]");
-    println!("  objc.protocolProperties <protocol> [filter]");
-    println!("  objc.findProtocolProperties <protocol> <query>");
-    println!("  objc.protocolPropertyInfo <protocol> <property>");
-    println!("  objc.superclass <class>");
-    println!("  objc.classChain <class>");
-    println!("  objc.classExists <name>");
-    println!("  objc.selector <name>");
-    println!("  objc.classImage <class>");
-    println!("  objc.selectorName <selector>");
-    println!("  objc.objectClassName <object>");
-    println!("  objc.methodImp <class> <selector> [meta]");
-    println!("  objc.methodInfo <class> <selector> [meta]");
-    println!("  objc.propertyInfo <class> <property> [meta]");
-    println!("  objc.ivarInfo <class> <ivar>");
-    println!("  objc.methodImage <class> <selector> [meta]");
-    println!("  objc.methodOwners <selector> [meta]");
-    println!("  objc.methods <class> [meta] [filter]");
-    println!("  objc.properties <class> [meta] [filter]");
-    println!("  objc.ivars <class> [filter]");
-    println!("  objc.findClassInfo/findProtocolInfo/findProtocolMethodInfo/findProtocolPropertyInfo/findSuperclass/findClassChain/findClassImage/findMethodInfo/findMethodImage/findPropertyInfo/findIvarInfo/findSelectorName/findObjectClassName ... (info aliases)");
-    println!("  objc.findMethods/findProperties/findIvars/findMethodOwners/findProtocols ... (query aliases)");
-    println!("  native.base <module>");
-    println!("  native.imageInfo <module>");
-    println!("  native.export <symbol>|native.export <module> -- <symbol>");
-    println!("  native.exports <module>|native.exports <module> -- <query>");
-    println!("  native.exportInfo <module> -- <symbol>");
-    println!("  native.dependencies <module>|native.dependencies <module> -- <query>");
-    println!("  native.dependencyInfo <module> -- <path-or-name>");
-    println!("  native.encryptionInfo <module>");
-    println!("  native.entryPoint <module>");
-    println!("  native.dyldInfo <module>");
-    println!("  native.linkedit <module>");
-    println!("  native.functionStarts <module>");
-    println!("  native.codeSignature <module>");
-    println!("  native.dataInCode <module>");
-    println!("  native.exportsTrie <module>");
-    println!("  native.chainedFixups <module>");
-    println!("  native.sourceVersion <module>");
-    println!("  native.buildVersion <module>");
-    println!("  native.dylinker <module>");
-    println!("  native.installName <module>");
-    println!("  native.uuid <module>");
-    println!("  native.rpaths <module>|native.rpaths <module> -- <query>");
-    println!("  native.rpathInfo <module> -- <path>");
-    println!("  native.imports <module>|native.imports <module> -- <query>");
-    println!("  native.importInfo <module> -- <symbol>");
-    println!("  native.loadcmds <module>|native.loadCommands <module>");
-    println!("  native.loadCommandInfo <module> -- <name|cmd|index>");
-    println!("  native.sections <module>");
-    println!("  native.sectionInfo <module> -- <segment> <section>");
-    println!("  native.segments <module>");
-    println!("  native.segmentInfo <module> -- <segment>");
-    println!("  native.symbolInfo <symbol>|native.symbolInfo <module> -- <symbol>");
-    println!("  native.symbols <query>|native.symbols <module> -- <query>");
-    println!("  native.findImageInfo/findSymbolInfo/findExportInfo/findDependencyInfo/findRpathInfo/findImportInfo/findSegmentInfo/findSectionInfo/findLoadCommandInfo ... (info aliases)");
-    println!("  native.findSymbols/findExports/findDependencies/findEncryptionInfo/findEntryPoint/findDyldInfo/findLinkedit/findFunctionStarts/findCodeSignature/findDataInCode/findExportsTrie/findChainedFixups/findSourceVersion/findBuildVersion/findDylinker/findInstallName/findUuid/findRpaths/findImports/findSegments/findSections/findLoadCommands ... (aliases)");
-    println!("  native.images [filter]");
-    println!("  native.mainImage");
-    println!("  native.image <address>");
-    println!("  native.symbol <address>");
-    println!("  native.hookenv|native.detectHookEnvironment");
-    println!("  pac.available");
-    println!("  pac.arm64e|pac.isProcessArm64e");
-    println!("  pac.image <module>|pac.isImageArm64e <module>");
-    println!("  pac.images [filter]|pac.arm64eImages [filter]");
-    println!("  pac.strip <address>");
-    println!("  pac.stripdata <address>|pac.stripData <address>");
-    println!("  swift.available");
-    println!("  swift.demangle <mangled-symbol>");
-    println!("  swift.symbolInfo <symbol>|swift.symbolInfo <module> -- <symbol>");
-    println!("  swift.protocolInfo <protocol>|swift.protocolInfo <module> -- <protocol>");
-    println!("  swift.conformanceInfo <type> <protocol>|swift.conformanceInfo <module> -- <type> <protocol>");
-    println!("  swift.typeInfo <type>|swift.typeInfo <module> -- <type>");
-    println!("  swift.methodInfo <type> <method>|swift.methodInfo <module> -- <type> <method>");
-    println!("  swift.protocols [query]|swift.protocols <module> -- <query>");
-    println!("  swift.conformances <type>|swift.conformances <module> -- <type>");
-    println!("  swift.metadata <type>|swift.metadata <module> -- <type>");
-    println!("  swift.metadataInfo <type>|swift.metadataInfo <module> -- <type>");
-    println!("  swift.vtable <type>|swift.vtable <module> -- <type>");
-    println!("  swift.witnessTable <type|protocol>|swift.witnessTable <module> -- <type|protocol>");
-    println!("  swift.witnessTableInfo <type> <protocol>|swift.witnessTableInfo <module> -- <type> <protocol>");
-    println!("  swift.typeLayout <type>|swift.typeLayout <module> -- <type>");
-    println!("  swift.typeLayoutInfo <type>|swift.typeLayoutInfo <module> -- <type>");
-    println!("  swift.vtableInfo <type> <member>|swift.vtableInfo <module> -- <type> <member>");
-    println!("  swift.symbols <query>|swift.symbols <module> -- <query>");
-    println!("  swift.typeKinds|swift.typeSourceKinds");
-    println!("  swift.methodOwners <method>|swift.methodOwners <module> -- <method>");
-    println!("  swift.types <query>|swift.types <module> -- <query>");
-    println!("  swift.typesOfKind <kind> <query>|swift.typesOfKind <module> -- <kind> <query>");
-    println!("  swift.typeMethods <type>|swift.typeMethods <module> -- <type>");
-    println!("  swift.methods <type> <method>|swift.methods <module> -- <type> <method>");
-    println!("  swift.findSymbolInfo/findProtocolInfo/findConformanceInfo/findTypeInfo/findMethodInfo/findMetadataInfo/findVtableInfo/findWitnessTableInfo/findTypeLayoutInfo ... (info aliases)");
-    println!("  swift.findSymbols/findProtocols/findConformances/findMetadata/findVtable/findWitnessTable/findTypeLayout/findTypes/findTypesOfKind/findMethodOwners/findTypeMethods/findMethods ... (query aliases)");
+    for line in controller_help_runtime_command_synopsis() {
+        println!("  {line}");
+    }
     println!("  exit");
 }
 
@@ -18691,6 +18700,7 @@ mod tests {
         build_trace_spec, command_json_template_entry, command_requests_inline_hook_install,
         command_required_capability,
         command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_action_command_templates,
+        controller_help_runtime_command_synopsis,
         hook_automation_suggested_sequence, hook_query_templates,
         hook_automation_to_json, hook_automation_to_json_with_arm64e, hook_backend_matrix_to_json,
         hook_effective_actions, hook_effective_actions_to_json, hook_effective_to_json,
@@ -18716,9 +18726,10 @@ mod tests {
         ThreadCreatePlan,
     };
     use serde_json::{json, Value};
+    use std::collections::HashSet;
     use std::path::Path;
 
-    fn materialize_query_template(template: &str) -> String {
+    fn materialize_help_template(template: &str) -> String {
         let mut command = template
             .split(" #")
             .next()
@@ -18758,6 +18769,7 @@ mod tests {
         let optional_tokens = [
             ("[meta]", "meta"),
             ("[filter]", "UIView"),
+            ("[query]", "UIView"),
             ("[required]", "optional"),
             ("[instance]", "class"),
         ];
@@ -18766,6 +18778,54 @@ mod tests {
         }
 
         command.split_whitespace().collect::<Vec<_>>().join(" ")
+    }
+
+    fn materialized_runtime_help_commands() -> HashSet<String> {
+        let mut commands = HashSet::new();
+        for synopsis in controller_help_runtime_command_synopsis() {
+            if synopsis.contains("...") {
+                continue;
+            }
+            for variant in split_help_synopsis_variants(synopsis) {
+                let variant = materialize_help_template(variant);
+                if variant.is_empty() {
+                    continue;
+                }
+                commands.insert(variant);
+            }
+        }
+        commands
+    }
+
+    fn command_shape(command: &str) -> (String, bool) {
+        (
+            command.split_whitespace().next().unwrap_or_default().to_string(),
+            command.contains(" -- "),
+        )
+    }
+
+    fn split_help_synopsis_variants(synopsis: &str) -> Vec<&str> {
+        let mut variants = Vec::new();
+        let mut start = 0usize;
+        let mut angle_depth = 0usize;
+        let mut bracket_depth = 0usize;
+
+        for (index, ch) in synopsis.char_indices() {
+            match ch {
+                '<' => angle_depth += 1,
+                '>' if angle_depth > 0 => angle_depth -= 1,
+                '[' => bracket_depth += 1,
+                ']' if bracket_depth > 0 => bracket_depth -= 1,
+                '|' if angle_depth == 0 && bracket_depth == 0 => {
+                    variants.push(synopsis[start..index].trim());
+                    start = index + ch.len_utf8();
+                }
+                _ => {}
+            }
+        }
+
+        variants.push(synopsis[start..].trim());
+        variants
     }
 
     #[test]
@@ -18807,7 +18867,7 @@ mod tests {
                 "query template should stay command-json eligible: {template}"
             );
 
-            let command = materialize_query_template(&template);
+            let command = materialize_help_template(&template);
             assert!(
                 !command_requires_inline_hooks(&command),
                 "query command should not require inline hooks: {command}"
@@ -18825,7 +18885,7 @@ mod tests {
     #[test]
     fn hook_query_templates_are_query_capability_commands() {
         for template in hook_query_templates() {
-            let command = materialize_query_template(&template);
+            let command = materialize_help_template(&template);
             assert_eq!(
                 command_required_capability(&command).expect("query template capability"),
                 Some(HookCommandCapability::Query),
@@ -18834,6 +18894,25 @@ mod tests {
             assert!(
                 !command_requests_inline_hook_install(&command).expect("query template install check"),
                 "query template should never request inline install: {command}"
+            );
+        }
+    }
+
+    #[test]
+    fn controller_help_runtime_synopsis_covers_query_templates() {
+        let help_commands = materialized_runtime_help_commands();
+        let help_shapes = help_commands
+            .iter()
+            .map(|item| command_shape(item))
+            .collect::<HashSet<_>>();
+        for template in hook_query_templates() {
+            let command = materialize_help_template(&template);
+            if help_commands.contains(&command) {
+                continue;
+            }
+            assert!(
+                help_shapes.contains(&command_shape(&command)),
+                "runtime help should include query template command form or shape: {command}"
             );
         }
     }
