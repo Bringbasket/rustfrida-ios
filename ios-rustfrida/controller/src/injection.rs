@@ -34659,6 +34659,8 @@ mod tests {
                 "clean",
                 "install",
                 "install",
+                0u64,
+                false,
             ),
             (
                 "filesystem-only",
@@ -34694,6 +34696,8 @@ mod tests {
                 "filesystem-only",
                 "preflight",
                 "preflight",
+                0u64,
+                false,
             ),
             (
                 "shared-loaded",
@@ -34729,6 +34733,45 @@ mod tests {
                 "shared",
                 "query",
                 "query",
+                0u64,
+                false,
+            ),
+            (
+                "split-loaded",
+                HookEnvironmentReport {
+                    active_backend: Some("ellekit".into()),
+                    backends: vec![HookBackendInfo {
+                        id: "ellekit".into(),
+                        display_name: "ElleKit".into(),
+                        loaded_images: vec!["/var/jb/usr/lib/libellekit.dylib".into()],
+                        filesystem_paths: vec![],
+                    }],
+                    warnings: vec![],
+                },
+                HookEnvironmentReport {
+                    active_backend: Some("substrate".into()),
+                    backends: vec![HookBackendInfo {
+                        id: "substrate".into(),
+                        display_name: "Cydia Substrate".into(),
+                        loaded_images: vec!["/Library/MobileSubstrate/MobileSubstrate.dylib".into()],
+                        filesystem_paths: vec![],
+                    }],
+                    warnings: vec![],
+                },
+                HookStrategyDecision {
+                    policy: HookPolicy::Warn,
+                    strategy: "internal-inline-risky".into(),
+                    allowed: true,
+                    inline_hooks_allowed: true,
+                    reason: None,
+                },
+                "split-loaded",
+                "runtime-alignment-required",
+                "split",
+                "query",
+                "query",
+                1u64,
+                true,
             ),
         ];
 
@@ -34742,6 +34785,8 @@ mod tests {
             expected_alignment,
             expected_bias,
             expected_preferred_group_key,
+            expected_conflict_backend_pair_count,
+            expected_has_preferred_conflict_backend_pair,
         ) in scenarios
         {
             let backend_matrix = hook_backend_matrix_to_json(&controller_report, &target_report);
@@ -34753,6 +34798,39 @@ mod tests {
             let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
             let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
             let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+            assert_eq!(
+                coexistence["backendAdaptation"],
+                automation["backendAdaptation"],
+                "{name}.backendAdaptationParity"
+            );
+            for key in [
+                "backendAdaptationMode",
+                "backendAdaptationAlignment",
+                "backendAdaptationBias",
+                "backendAdaptationSummary",
+                "nextActionKey",
+                "nextActionCommandGroup",
+                "nextActionAllowed",
+                "nextActionBlockedBy",
+                "nextActionBranch",
+                "nextActionReadyToRun",
+                "nextStepActionKey",
+                "nextStepCommandGroup",
+                "nextStepAllowed",
+                "nextStepBlockedBy",
+                "nextStepBranch",
+                "nextStepCommand",
+                "nextStepPhase",
+                "nextStepCommandJsonEligible",
+                "nextStepReadyToRun",
+                "nextStepRequiresFallback",
+            ] {
+                assert_eq!(coexistence[key], automation[key], "{name}.{key}");
+            }
+            assert_eq!(coexistence["nextStepChainSource"], "next-action", "{name}.coexistence.chain");
+            assert_eq!(automation["nextStepChainSource"], "next-action", "{name}.automation.chain");
+            assert_eq!(automation["hasFallbackPlan"], false, "{name}.automation.fallback");
+            assert!(automation["fallbackPlan"].is_null(), "{name}.automation.fallbackNull");
 
             for rendered in [&coexistence, &automation] {
                 assert_command_json_template_kind_count_pairs(rendered, &format!("{name}.rendered"));
@@ -34764,8 +34842,16 @@ mod tests {
                 assert_eq!(adaptation["alignment"], expected_alignment, "{name}");
                 assert_eq!(adaptation["recommendedActionBias"], expected_bias, "{name}");
                 assert_eq!(adaptation["preferredGroupKey"], expected_preferred_group_key, "{name}");
-                assert_eq!(adaptation["conflictBackendPairCount"], 0, "{name}");
-                assert!(adaptation["preferredConflictBackendPair"].is_null(), "{name}");
+                assert_eq!(
+                    adaptation["conflictBackendPairCount"],
+                    expected_conflict_backend_pair_count,
+                    "{name}"
+                );
+                assert_eq!(
+                    !adaptation["preferredConflictBackendPair"].is_null(),
+                    expected_has_preferred_conflict_backend_pair,
+                    "{name}"
+                );
             }
         }
     }
