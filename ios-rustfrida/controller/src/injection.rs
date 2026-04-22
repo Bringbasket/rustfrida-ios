@@ -22370,6 +22370,15 @@ mod tests {
             },
         );
         assert_command_json_template_kind_count_pairs(&rendered["hook"], "hook");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &rendered["hook"]["coexistence"],
+            &rendered["hook"]["automation"],
+            "render_command_error_json_with_context_contains_doctor_and_preflight",
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
+        assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
 
         assert_eq!(rendered["ok"], false);
         assert_eq!(rendered["command"], "objc.classes UIView");
@@ -23603,6 +23612,15 @@ mod tests {
             None,
         );
         assert_command_json_template_kind_count_pairs(&rendered["hook"], "hook");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &rendered["hook"]["coexistence"],
+            &rendered["hook"]["automation"],
+            "render_injection_result_json_contains_trace_and_handshake",
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
+        assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
 
         assert_eq!(rendered["ok"], true);
         assert_eq!(rendered["arm64eSummary"]["status"], "non-arm64e");
