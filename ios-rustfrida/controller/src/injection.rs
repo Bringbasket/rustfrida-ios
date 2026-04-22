@@ -19650,6 +19650,19 @@ mod tests {
         }
     }
 
+    fn assert_recovery_summary_aliases(rendered: &Value, name: &str) {
+        assert_eq!(
+            rendered["hookRecoverySummary"],
+            rendered["recoverySummary"],
+            "{name}.hookRecoverySummaryAlias"
+        );
+        assert_eq!(
+            rendered["hookRecoverySummary"],
+            rendered["arm64eRecoverySummary"],
+            "{name}.arm64eRecoverySummaryAlias"
+        );
+    }
+
     fn split_help_synopsis_variants(synopsis: &str) -> Vec<&str> {
         let mut variants = Vec::new();
         let mut start = 0usize;
@@ -22220,6 +22233,10 @@ mod tests {
         assert_eq!(rendered["arm64eCommandSafety"]["requiresInlineHooks"], false);
         assert_eq!(rendered["arm64eCommandSafety"]["hookCapability"], "query");
         assert_eq!(rendered["arm64eCommandSafety"]["pacCommand"], true);
+        assert_recovery_summary_aliases(
+            &rendered,
+            "render_command_outcome_json_with_context_reports_arm64e_readonly_safety",
+        );
         assert_eq!(rendered["hookRecoverySummary"]["firstCommand"], "native.hookenv");
         assert_eq!(rendered["recoverySummary"]["strategy"], "arm64e-query-only-until-override");
         assert_eq!(rendered["arm64eRecoverySummary"]["nextActionPhase"], "query");
@@ -23434,6 +23451,10 @@ mod tests {
             &rendered["hook"]["automation"],
             "render_command_error_json_with_context_surfaces_arm64e_query_only_recovery",
         );
+        assert_recovery_summary_aliases(
+            &rendered,
+            "render_command_error_json_with_context_surfaces_arm64e_query_only_recovery",
+        );
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
@@ -23627,6 +23648,7 @@ mod tests {
             &rendered["hook"]["automation"],
             "render_injection_result_json_contains_trace_and_handshake",
         );
+        assert_recovery_summary_aliases(&rendered, "render_injection_result_json_contains_trace_and_handshake");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
@@ -38488,6 +38510,10 @@ mod tests {
         assert_eq!(rendered["arm64eSummary"]["traceAvailable"], false);
         assert_eq!(rendered["diagnostics"]["arm64eSummary"]["status"], "non-arm64e");
         assert_eq!(rendered["diagnostics"]["arm64eSummary"]["traceAvailable"], false);
+        assert_recovery_summary_aliases(
+            &rendered,
+            "render_injection_result_json_classifies_hook_effective_blocked_failure",
+        );
         assert_eq!(rendered["diagnostics"]["hookActionKey"], "hook.install");
         assert_eq!(rendered["diagnostics"]["hookCommandGroup"], "hook-install");
         assert_eq!(rendered["diagnostics"]["hookBlockedBy"], "target");
@@ -39428,6 +39454,7 @@ mod tests {
             &rendered["hook"]["automation"],
             "render_injection_result_json_surfaces_arm64e_hook_recovery",
         );
+        assert_recovery_summary_aliases(&rendered, "render_injection_result_json_surfaces_arm64e_hook_recovery");
         assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
         assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
