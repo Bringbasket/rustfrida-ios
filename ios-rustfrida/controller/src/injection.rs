@@ -19619,6 +19619,32 @@ mod tests {
         automation: &Value,
         name: &str,
     ) {
+        let assert_backend_adaptation_alias_fields_match_nested =
+            |rendered: &Value, rendered_name: &str| {
+                let adaptation = &rendered["backendAdaptation"];
+                assert_eq!(
+                    rendered["backendAdaptationMode"],
+                    adaptation["mode"],
+                    "{rendered_name}.backendAdaptationModeAlias"
+                );
+                assert_eq!(
+                    rendered["backendAdaptationAlignment"],
+                    adaptation["alignment"],
+                    "{rendered_name}.backendAdaptationAlignmentAlias"
+                );
+                assert_eq!(
+                    rendered["backendAdaptationBias"],
+                    adaptation["recommendedActionBias"],
+                    "{rendered_name}.backendAdaptationBiasAlias"
+                );
+                assert_eq!(
+                    rendered["backendAdaptationSummary"],
+                    adaptation["summary"],
+                    "{rendered_name}.backendAdaptationSummaryAlias"
+                );
+            };
+        assert_backend_adaptation_alias_fields_match_nested(coexistence, &format!("{name}.coexistence"));
+        assert_backend_adaptation_alias_fields_match_nested(automation, &format!("{name}.automation"));
         assert_eq!(
             coexistence["backendAdaptation"],
             automation["backendAdaptation"],
