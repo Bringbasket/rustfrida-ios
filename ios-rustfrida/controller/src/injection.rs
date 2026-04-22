@@ -30617,6 +30617,11 @@ mod tests {
         let automation = hook_automation_to_json(&effective_actions, &rendered);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &coexistence,
+            &automation,
+            "split-loaded-shared-side-specific",
+        );
         assert_eq!(coexistence["mode"], "query-only");
         assert_eq!(coexistence["strategy"], "query-only-fallback");
         assert_eq!(coexistence["riskLevel"], "elevated");
@@ -34380,6 +34385,11 @@ mod tests {
 
             assert_command_json_template_kind_count_pairs(&coexistence, &format!("{name}.coexistence"));
             assert_command_json_template_kind_count_pairs(&automation, &format!("{name}.automation"));
+            assert_hook_coexistence_and_automation_core_fields_match(
+                &coexistence,
+                &automation,
+                name,
+            );
             assert_command_json_template_kind_count_pairs(
                 &automation_arm64e,
                 &format!("{name}.automationArm64e"),
@@ -35863,6 +35873,11 @@ mod tests {
         let automation = hook_automation_to_json(&effective_actions, &rendered);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &coexistence,
+            &automation,
+            "filesystem-only",
+        );
 
         assert_eq!(coexistence["mode"], "inline-cautious");
         assert_eq!(coexistence["strategy"], "filesystem-candidate-cautious");
