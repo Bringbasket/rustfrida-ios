@@ -34459,35 +34459,6 @@ mod tests {
             "controller-loaded-only",
         );
         assert_eq!(
-            coexistence["backendAdaptation"],
-            automation["backendAdaptation"],
-            "controller-loaded-only.backendAdaptationParity"
-        );
-        for key in [
-            "backendAdaptationMode",
-            "backendAdaptationAlignment",
-            "backendAdaptationBias",
-            "backendAdaptationSummary",
-            "nextActionKey",
-            "nextActionCommandGroup",
-            "nextActionAllowed",
-            "nextActionBlockedBy",
-            "nextActionBranch",
-            "nextActionReadyToRun",
-            "nextStepActionKey",
-            "nextStepCommandGroup",
-            "nextStepAllowed",
-            "nextStepBlockedBy",
-            "nextStepBranch",
-            "nextStepCommand",
-            "nextStepPhase",
-            "nextStepCommandJsonEligible",
-            "nextStepReadyToRun",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(coexistence[key], automation[key], "controller-loaded-only.{key}");
-        }
-        assert_eq!(
             coexistence["nextStepChainSource"],
             "next-action",
             "controller-loaded-only.coexistence.chain"
@@ -34627,35 +34598,6 @@ mod tests {
             &automation,
             "target-loaded-only",
         );
-        assert_eq!(
-            coexistence["backendAdaptation"],
-            automation["backendAdaptation"],
-            "target-loaded-only.backendAdaptationParity"
-        );
-        for key in [
-            "backendAdaptationMode",
-            "backendAdaptationAlignment",
-            "backendAdaptationBias",
-            "backendAdaptationSummary",
-            "nextActionKey",
-            "nextActionCommandGroup",
-            "nextActionAllowed",
-            "nextActionBlockedBy",
-            "nextActionBranch",
-            "nextActionReadyToRun",
-            "nextStepActionKey",
-            "nextStepCommandGroup",
-            "nextStepAllowed",
-            "nextStepBlockedBy",
-            "nextStepBranch",
-            "nextStepCommand",
-            "nextStepPhase",
-            "nextStepCommandJsonEligible",
-            "nextStepReadyToRun",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(coexistence[key], automation[key], "target-loaded-only.{key}");
-        }
         assert_eq!(
             coexistence["nextStepChainSource"],
             "next-action",
@@ -34846,35 +34788,6 @@ mod tests {
                 &automation,
                 name,
             );
-            assert_eq!(
-                coexistence["backendAdaptation"],
-                automation["backendAdaptation"],
-                "{name}.backendAdaptationParity"
-            );
-            for key in [
-                "backendAdaptationMode",
-                "backendAdaptationAlignment",
-                "backendAdaptationBias",
-                "backendAdaptationSummary",
-                "nextActionKey",
-                "nextActionCommandGroup",
-                "nextActionAllowed",
-                "nextActionBlockedBy",
-                "nextActionBranch",
-                "nextActionReadyToRun",
-                "nextStepActionKey",
-                "nextStepCommandGroup",
-                "nextStepAllowed",
-                "nextStepBlockedBy",
-                "nextStepBranch",
-                "nextStepCommand",
-                "nextStepPhase",
-                "nextStepCommandJsonEligible",
-                "nextStepReadyToRun",
-                "nextStepRequiresFallback",
-            ] {
-                assert_eq!(coexistence[key], automation[key], "{name}.{key}");
-            }
             assert_eq!(coexistence["nextStepChainSource"], "next-action", "{name}.coexistence.chain");
             assert_eq!(automation["nextStepChainSource"], "next-action", "{name}.automation.chain");
             assert_eq!(automation["hasFallbackPlan"], false, "{name}.automation.fallback");
@@ -34968,35 +34881,6 @@ mod tests {
             &automation,
             "shared-and-split-loaded",
         );
-        assert_eq!(
-            coexistence["backendAdaptation"],
-            automation["backendAdaptation"],
-            "shared-and-split-loaded.backendAdaptationParity"
-        );
-        for key in [
-            "backendAdaptationMode",
-            "backendAdaptationAlignment",
-            "backendAdaptationBias",
-            "backendAdaptationSummary",
-            "nextActionKey",
-            "nextActionCommandGroup",
-            "nextActionAllowed",
-            "nextActionBlockedBy",
-            "nextActionBranch",
-            "nextActionReadyToRun",
-            "nextStepActionKey",
-            "nextStepCommandGroup",
-            "nextStepAllowed",
-            "nextStepBlockedBy",
-            "nextStepBranch",
-            "nextStepCommand",
-            "nextStepPhase",
-            "nextStepCommandJsonEligible",
-            "nextStepReadyToRun",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(coexistence[key], automation[key], "shared-and-split-loaded.{key}");
-        }
         assert_eq!(
             coexistence["nextStepChainSource"],
             "next-action",
@@ -35204,35 +35088,6 @@ mod tests {
                 &automation,
                 name,
             );
-            assert_eq!(
-                coexistence["backendAdaptation"],
-                automation["backendAdaptation"],
-                "{name}.backendAdaptationParity"
-            );
-            for key in [
-                "backendAdaptationMode",
-                "backendAdaptationAlignment",
-                "backendAdaptationBias",
-                "backendAdaptationSummary",
-                "nextActionKey",
-                "nextActionCommandGroup",
-                "nextActionAllowed",
-                "nextActionBlockedBy",
-                "nextActionBranch",
-                "nextActionReadyToRun",
-                "nextStepActionKey",
-                "nextStepCommandGroup",
-                "nextStepAllowed",
-                "nextStepBlockedBy",
-                "nextStepBranch",
-                "nextStepCommand",
-                "nextStepPhase",
-                "nextStepCommandJsonEligible",
-                "nextStepReadyToRun",
-                "nextStepRequiresFallback",
-            ] {
-                assert_eq!(coexistence[key], automation[key], "{name}.{key}");
-            }
             assert_eq!(coexistence["nextStepChainSource"], "next-action", "{name}.coexistence.chain");
             assert_eq!(automation["nextStepChainSource"], "next-action", "{name}.automation.chain");
             assert_eq!(automation["hasFallbackPlan"], false, "{name}.automation.fallback");
@@ -35292,35 +35147,11 @@ mod tests {
         );
         let cleanup_coexistence = super::hook_coexistence_to_json(&cleanup_actions, &backend_matrix);
         let cleanup_automation = hook_automation_to_json(&cleanup_actions, &backend_matrix);
-        assert_eq!(
-            cleanup_coexistence["backendAdaptation"],
-            cleanup_automation["backendAdaptation"],
-            "cleanup.backendAdaptationParity"
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &cleanup_coexistence,
+            &cleanup_automation,
+            "cleanup",
         );
-        for key in [
-            "backendAdaptationMode",
-            "backendAdaptationAlignment",
-            "backendAdaptationBias",
-            "backendAdaptationSummary",
-            "nextActionKey",
-            "nextActionCommandGroup",
-            "nextActionAllowed",
-            "nextActionBlockedBy",
-            "nextActionBranch",
-            "nextActionReadyToRun",
-            "nextStepActionKey",
-            "nextStepCommandGroup",
-            "nextStepAllowed",
-            "nextStepBlockedBy",
-            "nextStepBranch",
-            "nextStepCommand",
-            "nextStepPhase",
-            "nextStepCommandJsonEligible",
-            "nextStepReadyToRun",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(cleanup_coexistence[key], cleanup_automation[key], "cleanup.{key}");
-        }
         assert_eq!(cleanup_coexistence["nextStepChainSource"], "next-action", "cleanup.coexistence.chain");
         assert_eq!(cleanup_automation["nextStepChainSource"], "next-action", "cleanup.automation.chain");
         assert_eq!(cleanup_automation["hasFallbackPlan"], false, "cleanup.automation.fallback");
@@ -35420,35 +35251,6 @@ mod tests {
             &blocked_automation,
             "blocked",
         );
-        assert_eq!(
-            blocked_coexistence["backendAdaptation"],
-            blocked_automation["backendAdaptation"],
-            "blocked.backendAdaptationParity"
-        );
-        for key in [
-            "backendAdaptationMode",
-            "backendAdaptationAlignment",
-            "backendAdaptationBias",
-            "backendAdaptationSummary",
-            "nextActionKey",
-            "nextActionCommandGroup",
-            "nextActionAllowed",
-            "nextActionBlockedBy",
-            "nextActionBranch",
-            "nextActionReadyToRun",
-            "nextStepActionKey",
-            "nextStepCommandGroup",
-            "nextStepAllowed",
-            "nextStepBlockedBy",
-            "nextStepBranch",
-            "nextStepCommand",
-            "nextStepPhase",
-            "nextStepCommandJsonEligible",
-            "nextStepReadyToRun",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(blocked_coexistence[key], blocked_automation[key], "blocked.{key}");
-        }
         assert_eq!(blocked_coexistence["nextStepChainSource"], "next-action", "blocked.coexistence.chain");
         assert_eq!(blocked_automation["nextStepChainSource"], "fallback-plan", "blocked.automation.chain");
         assert_eq!(blocked_automation["hasFallbackPlan"], true, "blocked.automation.fallback");
@@ -35506,35 +35308,6 @@ mod tests {
             &arm64e_automation,
             "arm64e",
         );
-        assert_eq!(
-            arm64e_coexistence["backendAdaptation"],
-            arm64e_automation["backendAdaptation"],
-            "arm64e.backendAdaptationParity"
-        );
-        for key in [
-            "backendAdaptationMode",
-            "backendAdaptationAlignment",
-            "backendAdaptationBias",
-            "backendAdaptationSummary",
-            "nextActionKey",
-            "nextActionCommandGroup",
-            "nextActionAllowed",
-            "nextActionBlockedBy",
-            "nextActionBranch",
-            "nextActionReadyToRun",
-            "nextStepActionKey",
-            "nextStepCommandGroup",
-            "nextStepAllowed",
-            "nextStepBlockedBy",
-            "nextStepBranch",
-            "nextStepCommand",
-            "nextStepPhase",
-            "nextStepCommandJsonEligible",
-            "nextStepReadyToRun",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(arm64e_coexistence[key], arm64e_automation[key], "arm64e.{key}");
-        }
         assert_eq!(arm64e_coexistence["nextStepChainSource"], "next-action", "arm64e.coexistence.chain");
         assert_eq!(arm64e_automation["nextStepChainSource"], "next-action", "arm64e.automation.chain");
         assert_eq!(arm64e_automation["hasFallbackPlan"], false, "arm64e.automation.fallback");
@@ -37865,35 +37638,6 @@ mod tests {
             &automation,
             "arm64e-query-only",
         );
-        assert_eq!(
-            coexistence["backendAdaptation"],
-            automation["backendAdaptation"],
-            "arm64e-query-only.backendAdaptationParity"
-        );
-        for key in [
-            "backendAdaptationMode",
-            "backendAdaptationAlignment",
-            "backendAdaptationBias",
-            "backendAdaptationSummary",
-            "nextActionKey",
-            "nextActionCommandGroup",
-            "nextActionAllowed",
-            "nextActionBlockedBy",
-            "nextActionBranch",
-            "nextActionReadyToRun",
-            "nextStepActionKey",
-            "nextStepCommandGroup",
-            "nextStepAllowed",
-            "nextStepBlockedBy",
-            "nextStepBranch",
-            "nextStepCommand",
-            "nextStepPhase",
-            "nextStepCommandJsonEligible",
-            "nextStepReadyToRun",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(coexistence[key], automation[key], "arm64e-query-only.{key}");
-        }
         assert_eq!(coexistence["nextStepChainSource"], "next-action");
         assert_eq!(automation["nextStepChainSource"], "next-action");
         assert_eq!(automation["hasFallbackPlan"], false);
