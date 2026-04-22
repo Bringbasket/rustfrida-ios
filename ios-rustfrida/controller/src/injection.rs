@@ -24820,6 +24820,11 @@ mod tests {
         let automation = hook_automation_to_json(&actions, &backend_matrix);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &coexistence,
+            &automation,
+            "blocked",
+        );
 
         assert_eq!(coexistence["commandMode"], "blocked");
         assert_eq!(automation["commandMode"], "blocked");
@@ -24897,6 +24902,11 @@ mod tests {
         let automation = hook_automation_to_json_with_arm64e(&actions, &backend_matrix, arm64e_context);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &coexistence,
+            &automation,
+            "arm64e-query-only",
+        );
 
         assert_eq!(coexistence["preferredPath"], "arm64e-query-only");
         assert_eq!(automation["preferredPath"], "arm64e-query-only");
@@ -24973,6 +24983,11 @@ mod tests {
         let automation = hook_automation_to_json(&actions, &backend_matrix);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &coexistence,
+            &automation,
+            "cleanup-only",
+        );
 
         assert_eq!(coexistence["commandMode"], "cleanup-only");
         assert_eq!(automation["commandMode"], "cleanup-only");
@@ -25059,6 +25074,11 @@ mod tests {
         let automation = hook_automation_to_json(&actions, &backend_matrix);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &coexistence,
+            &automation,
+            "query-only",
+        );
 
         assert_eq!(coexistence["commandMode"], "query-only");
         assert_eq!(automation["commandMode"], "query-only");
@@ -35344,6 +35364,11 @@ mod tests {
         ];
         let blocked_coexistence = super::hook_coexistence_to_json(&blocked_actions, &backend_matrix);
         let blocked_automation = hook_automation_to_json(&blocked_actions, &backend_matrix);
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &blocked_coexistence,
+            &blocked_automation,
+            "blocked",
+        );
         assert_eq!(
             blocked_coexistence["backendAdaptation"],
             blocked_automation["backendAdaptation"],
@@ -35424,6 +35449,11 @@ mod tests {
             HookAutomationArm64eContext {
                 query_only_until_override: true,
             },
+        );
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &arm64e_coexistence,
+            &arm64e_automation,
+            "arm64e",
         );
         assert_eq!(
             arm64e_coexistence["backendAdaptation"],
