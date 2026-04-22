@@ -38471,6 +38471,16 @@ mod tests {
                 "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both coexistenceLayerRequired=true coexistenceLayerStatus=missing-cleanup-only coexistenceLayerPreferredPhase=cleanup coexistenceLayerRecommendedActionKey=hook.status coexistenceLayerSummary=an external hook backend is loaded and current policy only allows cleanup commands; no coexistence layer is available, so use status/stop commands to recover state fallbackActionKey=hook.status fallbackStepId=next-action:hook.status:0 fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
             )),
         );
+        assert_command_json_template_kind_count_pairs(&rendered["hook"], "hook");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &rendered["hook"]["coexistence"],
+            &rendered["hook"]["automation"],
+            "render_injection_result_json_classifies_hook_effective_blocked_failure",
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
+        assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
 
         assert_eq!(rendered["diagnostics"]["phase"], "hook-policy");
         assert_eq!(rendered["diagnostics"]["code"], "target-hook-policy-blocked");
@@ -38597,6 +38607,22 @@ mod tests {
                 "hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=allowed effectiveCommandMode=query-only autoDowngradedToQueryOnly=true autoDowngradeReason=split-loaded-external-backends-without-shared-runtime coexistenceMode=query-only backendPressure=both fallbackActionKey=hook.query fallbackStepId=next-action:hook.query:0 fallbackCommand=objc.classes <filter> fallbackPhase=query; recommendation=split backend downgrade".into(),
             )),
         );
+        assert_command_json_template_kind_count_pairs(&auto_downgraded_rendered["hook"], "hook");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &auto_downgraded_rendered["hook"]["coexistence"],
+            &auto_downgraded_rendered["hook"]["automation"],
+            "render_injection_result_json_classifies_hook_effective_blocked_failure.auto_downgraded",
+        );
+        assert_eq!(
+            auto_downgraded_rendered["hook"]["coexistence"]["nextStepChainSource"],
+            "next-action"
+        );
+        assert_eq!(
+            auto_downgraded_rendered["hook"]["automation"]["nextStepChainSource"],
+            "next-action"
+        );
+        assert_eq!(auto_downgraded_rendered["hook"]["automation"]["hasFallbackPlan"], false);
+        assert!(auto_downgraded_rendered["hook"]["automation"]["fallbackPlan"].is_null());
         assert_eq!(
             auto_downgraded_rendered["diagnostics"]["hookBaseCommandMode"],
             "allowed"
