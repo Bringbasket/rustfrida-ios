@@ -25082,6 +25082,7 @@ mod tests {
                                      expected_has_fallback_plan: bool| {
             assert_command_json_template_kind_count_pairs(coexistence, &format!("{name}.coexistence"));
             assert_command_json_template_kind_count_pairs(automation, &format!("{name}.automation"));
+            assert_hook_coexistence_and_automation_core_fields_match(coexistence, automation, name);
 
             assert_eq!(coexistence["commandMode"], expected_command_mode, "{name}.commandMode");
             assert_eq!(automation["commandMode"], expected_command_mode, "{name}.commandMode");
@@ -25125,72 +25126,6 @@ mod tests {
                 expected_adaptation_bias,
                 "{name}.backendAdaptationBias"
             );
-            assert_eq!(
-                coexistence["backendAdaptationSummary"],
-                automation["backendAdaptationSummary"],
-                "{name}.backendAdaptationSummary"
-            );
-            assert_eq!(
-                coexistence["backendAdaptationMode"],
-                coexistence["backendAdaptation"]["mode"],
-                "{name}.coexistence.backendAdaptationModeAlias"
-            );
-            assert_eq!(
-                automation["backendAdaptationMode"],
-                automation["backendAdaptation"]["mode"],
-                "{name}.automation.backendAdaptationModeAlias"
-            );
-            assert_eq!(
-                coexistence["backendAdaptationAlignment"],
-                coexistence["backendAdaptation"]["alignment"],
-                "{name}.coexistence.backendAdaptationAlignmentAlias"
-            );
-            assert_eq!(
-                automation["backendAdaptationAlignment"],
-                automation["backendAdaptation"]["alignment"],
-                "{name}.automation.backendAdaptationAlignmentAlias"
-            );
-            assert_eq!(
-                coexistence["backendAdaptationBias"],
-                coexistence["backendAdaptation"]["recommendedActionBias"],
-                "{name}.coexistence.backendAdaptationBiasAlias"
-            );
-            assert_eq!(
-                automation["backendAdaptationBias"],
-                automation["backendAdaptation"]["recommendedActionBias"],
-                "{name}.automation.backendAdaptationBiasAlias"
-            );
-            assert_eq!(
-                coexistence["backendAdaptationSummary"],
-                coexistence["backendAdaptation"]["summary"],
-                "{name}.coexistence.backendAdaptationSummaryAlias"
-            );
-            assert_eq!(
-                automation["backendAdaptationSummary"],
-                automation["backendAdaptation"]["summary"],
-                "{name}.automation.backendAdaptationSummaryAlias"
-            );
-
-            for key in [
-                "nextActionKey",
-                "nextActionCommandGroup",
-                "nextActionAllowed",
-                "nextActionBlockedBy",
-                "nextActionBranch",
-                "nextActionReadyToRun",
-                "nextStepActionKey",
-                "nextStepCommandGroup",
-                "nextStepAllowed",
-                "nextStepBlockedBy",
-                "nextStepBranch",
-                "nextStepCommand",
-                "nextStepPhase",
-                "nextStepCommandJsonEligible",
-                "nextStepReadyToRun",
-                "nextStepRequiresFallback",
-            ] {
-                assert_eq!(coexistence[key], automation[key], "{name}.{key}");
-            }
 
             assert_eq!(
                 coexistence["nextActionKey"],
