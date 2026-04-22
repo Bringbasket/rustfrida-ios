@@ -19676,6 +19676,29 @@ mod tests {
         }
     }
 
+    fn assert_hook_coexistence_and_automation_arm64e_fallback_shared_fields_match(
+        coexistence: &Value,
+        automation: &Value,
+        name: &str,
+    ) {
+        assert_backend_adaptation_alias_fields_match_nested(coexistence, &format!("{name}.coexistence"));
+        assert_backend_adaptation_alias_fields_match_nested(automation, &format!("{name}.automation"));
+        assert_eq!(
+            coexistence["backendAdaptation"],
+            automation["backendAdaptation"],
+            "{name}.backendAdaptationParity"
+        );
+        for key in [
+            "backendAdaptationMode",
+            "backendAdaptationAlignment",
+            "backendAdaptationBias",
+            "backendAdaptationSummary",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(coexistence[key], automation[key], "{name}.{key}");
+        }
+    }
+
     fn assert_recovery_summary_aliases(rendered: &Value, name: &str) {
         assert_eq!(
             rendered["hookRecoverySummary"],
@@ -37686,25 +37709,11 @@ mod tests {
         );
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
-        assert_backend_adaptation_alias_fields_match_nested(
+        assert_hook_coexistence_and_automation_arm64e_fallback_shared_fields_match(
             &coexistence,
-            "arm64e-fallback.coexistence",
+            &automation,
+            "arm64e-fallback",
         );
-        assert_backend_adaptation_alias_fields_match_nested(&automation, "arm64e-fallback.automation");
-        assert_eq!(
-            coexistence["backendAdaptation"],
-            automation["backendAdaptation"],
-            "arm64e-fallback.backendAdaptationParity"
-        );
-        for key in [
-            "backendAdaptationMode",
-            "backendAdaptationAlignment",
-            "backendAdaptationBias",
-            "backendAdaptationSummary",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(coexistence[key], automation[key], "arm64e-fallback.{key}");
-        }
         assert_ne!(
             coexistence["nextActionKey"],
             automation["nextActionKey"],
