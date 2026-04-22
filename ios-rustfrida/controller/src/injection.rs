@@ -23428,6 +23428,16 @@ mod tests {
                 loadjs_result: None,
             },
         );
+        assert_command_json_template_kind_count_pairs(&rendered["hook"], "hook");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &rendered["hook"]["coexistence"],
+            &rendered["hook"]["automation"],
+            "render_command_error_json_with_context_surfaces_arm64e_query_only_recovery",
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
+        assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
 
         assert_eq!(rendered["arm64eCommandSafety"]["classification"], "blocked-without-override");
         assert_eq!(rendered["recovery"]["strategy"], "arm64e-query-only-until-override");
@@ -39386,6 +39396,16 @@ mod tests {
                 "`trace UIViewController` requires inline hooks, but the current hook policy forbids hook-install commands: hook-effective-blocked actionKey=hook.install commandGroup=hook-install blockedBy=target commandMode=query-only baseCommandMode=query-only effectiveCommandMode=query-only autoDowngradedToQueryOnly=false autoDowngradeReason=<none> coexistenceMode=cleanup-only backendPressure=both coexistenceLayerRequired=true coexistenceLayerStatus=missing-cleanup-only coexistenceLayerPreferredPhase=cleanup coexistenceLayerRecommendedActionKey=hook.status coexistenceLayerSummary=an external hook backend is loaded and current policy only allows cleanup commands; no coexistence layer is available, so use status/stop commands to recover state fallbackActionKey=hook.status fallbackStepId=next-action:hook.status:0 fallbackCommand=trace status fallbackPhase=cleanup; recommendation=blocked by target hook policy".into(),
             )),
         );
+        assert_command_json_template_kind_count_pairs(&rendered["hook"], "hook");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &rendered["hook"]["coexistence"],
+            &rendered["hook"]["automation"],
+            "render_injection_result_json_surfaces_arm64e_hook_recovery",
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
+        assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
 
         assert_eq!(rendered["diagnostics"]["arm64eSummary"]["overrideRequiredForFallback"], true);
         assert_eq!(rendered["hookRecoverySummary"]["strategy"], "arm64e-query-only-until-override");
