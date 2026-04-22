@@ -34427,6 +34427,11 @@ mod tests {
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &coexistence,
+            &automation,
+            "controller-loaded-only",
+        );
         assert_eq!(
             coexistence["backendAdaptation"],
             automation["backendAdaptation"],
@@ -34591,6 +34596,11 @@ mod tests {
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &coexistence,
+            &automation,
+            "target-loaded-only",
+        );
         assert_eq!(
             coexistence["backendAdaptation"],
             automation["backendAdaptation"],
@@ -34805,6 +34815,11 @@ mod tests {
             let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
             let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
             let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+            assert_hook_coexistence_and_automation_core_fields_match(
+                &coexistence,
+                &automation,
+                name,
+            );
             assert_eq!(
                 coexistence["backendAdaptation"],
                 automation["backendAdaptation"],
@@ -34922,6 +34937,11 @@ mod tests {
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &coexistence,
+            &automation,
+            "shared-and-split-loaded",
+        );
         assert_eq!(
             coexistence["backendAdaptation"],
             automation["backendAdaptation"],
@@ -35153,6 +35173,11 @@ mod tests {
             let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
             let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
             let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
+            assert_hook_coexistence_and_automation_core_fields_match(
+                &coexistence,
+                &automation,
+                name,
+            );
             assert_eq!(
                 coexistence["backendAdaptation"],
                 automation["backendAdaptation"],
@@ -37804,6 +37829,11 @@ mod tests {
         );
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &coexistence,
+            &automation,
+            "arm64e-query-only",
+        );
         assert_eq!(
             coexistence["backendAdaptation"],
             automation["backendAdaptation"],
