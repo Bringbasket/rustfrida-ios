@@ -19614,6 +19614,42 @@ mod tests {
         }
     }
 
+    fn assert_hook_coexistence_and_automation_core_fields_match(
+        coexistence: &Value,
+        automation: &Value,
+        name: &str,
+    ) {
+        assert_eq!(
+            coexistence["backendAdaptation"],
+            automation["backendAdaptation"],
+            "{name}.backendAdaptationParity"
+        );
+        for key in [
+            "backendAdaptationMode",
+            "backendAdaptationAlignment",
+            "backendAdaptationBias",
+            "backendAdaptationSummary",
+            "nextActionKey",
+            "nextActionCommandGroup",
+            "nextActionAllowed",
+            "nextActionBlockedBy",
+            "nextActionBranch",
+            "nextActionReadyToRun",
+            "nextStepActionKey",
+            "nextStepCommandGroup",
+            "nextStepAllowed",
+            "nextStepBlockedBy",
+            "nextStepBranch",
+            "nextStepCommand",
+            "nextStepPhase",
+            "nextStepCommandJsonEligible",
+            "nextStepReadyToRun",
+            "nextStepRequiresFallback",
+        ] {
+            assert_eq!(coexistence[key], automation[key], "{name}.{key}");
+        }
+    }
+
     fn split_help_synopsis_variants(synopsis: &str) -> Vec<&str> {
         let mut variants = Vec::new();
         let mut start = 0usize;
@@ -21769,6 +21805,17 @@ mod tests {
             "pthread-create-from-mach-thread"
         );
         assert_eq!(rendered["preflight"]["threadBootstrapAddressHex"], json!("0x18000123"));
+        assert_command_json_template_kind_count_pairs(&rendered["hook"]["coexistence"], "hook.coexistence");
+        assert_command_json_template_kind_count_pairs(&rendered["hook"]["automation"], "hook.automation");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &rendered["hook"]["coexistence"],
+            &rendered["hook"]["automation"],
+            "render_preflight_json_contains_environment_plan_and_preflight",
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
+        assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
     }
 
     #[test]
@@ -21915,6 +21962,17 @@ mod tests {
             "run-readonly-diagnostics"
         );
         assert_eq!(rendered["hook"]["recoverySummary"]["firstCommand"], "native.hookenv");
+        assert_command_json_template_kind_count_pairs(&rendered["hook"]["coexistence"], "hook.coexistence");
+        assert_command_json_template_kind_count_pairs(&rendered["hook"]["automation"], "hook.automation");
+        assert_hook_coexistence_and_automation_core_fields_match(
+            &rendered["hook"]["coexistence"],
+            &rendered["hook"]["automation"],
+            "render_preflight_json_routes_hook_automation_to_query_only_for_arm64e_fallback",
+        );
+        assert_eq!(rendered["hook"]["coexistence"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["nextStepChainSource"], "next-action");
+        assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
+        assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
 
         let install_templates = rendered["hook"]["automation"]["commandTemplates"]
             .as_array()
