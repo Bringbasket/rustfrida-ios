@@ -19614,35 +19614,35 @@ mod tests {
         }
     }
 
+    fn assert_backend_adaptation_alias_fields_match_nested(rendered: &Value, rendered_name: &str) {
+        let adaptation = &rendered["backendAdaptation"];
+        assert_eq!(
+            rendered["backendAdaptationMode"],
+            adaptation["mode"],
+            "{rendered_name}.backendAdaptationModeAlias"
+        );
+        assert_eq!(
+            rendered["backendAdaptationAlignment"],
+            adaptation["alignment"],
+            "{rendered_name}.backendAdaptationAlignmentAlias"
+        );
+        assert_eq!(
+            rendered["backendAdaptationBias"],
+            adaptation["recommendedActionBias"],
+            "{rendered_name}.backendAdaptationBiasAlias"
+        );
+        assert_eq!(
+            rendered["backendAdaptationSummary"],
+            adaptation["summary"],
+            "{rendered_name}.backendAdaptationSummaryAlias"
+        );
+    }
+
     fn assert_hook_coexistence_and_automation_core_fields_match(
         coexistence: &Value,
         automation: &Value,
         name: &str,
     ) {
-        let assert_backend_adaptation_alias_fields_match_nested =
-            |rendered: &Value, rendered_name: &str| {
-                let adaptation = &rendered["backendAdaptation"];
-                assert_eq!(
-                    rendered["backendAdaptationMode"],
-                    adaptation["mode"],
-                    "{rendered_name}.backendAdaptationModeAlias"
-                );
-                assert_eq!(
-                    rendered["backendAdaptationAlignment"],
-                    adaptation["alignment"],
-                    "{rendered_name}.backendAdaptationAlignmentAlias"
-                );
-                assert_eq!(
-                    rendered["backendAdaptationBias"],
-                    adaptation["recommendedActionBias"],
-                    "{rendered_name}.backendAdaptationBiasAlias"
-                );
-                assert_eq!(
-                    rendered["backendAdaptationSummary"],
-                    adaptation["summary"],
-                    "{rendered_name}.backendAdaptationSummaryAlias"
-                );
-            };
         assert_backend_adaptation_alias_fields_match_nested(coexistence, &format!("{name}.coexistence"));
         assert_backend_adaptation_alias_fields_match_nested(automation, &format!("{name}.automation"));
         assert_eq!(
@@ -29742,6 +29742,14 @@ mod tests {
         let automation = hook_automation_to_json(&actions, &backend_matrix);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_backend_adaptation_alias_fields_match_nested(
+            &coexistence,
+            "query-only-install-failure.coexistence",
+        );
+        assert_backend_adaptation_alias_fields_match_nested(
+            &automation,
+            "query-only-install-failure.automation",
+        );
         assert_eq!(
             coexistence["backendAdaptation"],
             automation["backendAdaptation"],
@@ -30311,6 +30319,14 @@ mod tests {
         let automation = hook_automation_to_json(&actions, &backend_matrix);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_backend_adaptation_alias_fields_match_nested(
+            &coexistence,
+            "query-only-empty-actions.coexistence",
+        );
+        assert_backend_adaptation_alias_fields_match_nested(
+            &automation,
+            "query-only-empty-actions.automation",
+        );
         assert_eq!(
             coexistence["backendAdaptation"],
             automation["backendAdaptation"],
@@ -38009,6 +38025,11 @@ mod tests {
         );
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
+        assert_backend_adaptation_alias_fields_match_nested(
+            &coexistence,
+            "arm64e-fallback.coexistence",
+        );
+        assert_backend_adaptation_alias_fields_match_nested(&automation, "arm64e-fallback.automation");
         assert_eq!(
             coexistence["backendAdaptation"],
             automation["backendAdaptation"],
