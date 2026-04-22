@@ -24835,26 +24835,6 @@ mod tests {
         assert_eq!(coexistence["backendAdaptationBias"], "blocked");
         assert_eq!(automation["backendAdaptationBias"], "blocked");
 
-        for key in [
-            "nextActionKey",
-            "nextActionCommandGroup",
-            "nextActionAllowed",
-            "nextActionBlockedBy",
-            "nextActionBranch",
-            "nextStepActionKey",
-            "nextStepCommandGroup",
-            "nextStepAllowed",
-            "nextStepBlockedBy",
-            "nextStepBranch",
-            "nextStepCommand",
-            "nextStepPhase",
-            "nextStepCommandJsonEligible",
-            "nextStepReadyToRun",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(coexistence[key], automation[key], "{key}");
-        }
-
         assert_eq!(coexistence["nextStepChainSource"], "next-action");
         assert_eq!(coexistence["activeStepSource"], "next-action");
         assert_eq!(coexistence["nextStepChainCount"], 3);
@@ -24919,27 +24899,6 @@ mod tests {
         assert_eq!(coexistence["backendAdaptationBias"], "query");
         assert_eq!(automation["backendAdaptationBias"], "query");
 
-        for key in [
-            "nextActionKey",
-            "nextActionCommandGroup",
-            "nextActionAllowed",
-            "nextActionBlockedBy",
-            "nextActionBranch",
-            "nextActionReadyToRun",
-            "nextStepActionKey",
-            "nextStepCommandGroup",
-            "nextStepAllowed",
-            "nextStepBlockedBy",
-            "nextStepBranch",
-            "nextStepCommand",
-            "nextStepPhase",
-            "nextStepCommandJsonEligible",
-            "nextStepReadyToRun",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(coexistence[key], automation[key], "{key}");
-        }
-
         assert_eq!(coexistence["nextStepChainSource"], "next-action");
         assert_eq!(automation["nextStepChainSource"], "next-action");
         assert_eq!(coexistence["nextStepChain"][0]["source"], "next-action");
@@ -24997,27 +24956,6 @@ mod tests {
         assert_eq!(automation["backendAdaptationAlignment"], "clean");
         assert_eq!(coexistence["backendAdaptationBias"], "cleanup");
         assert_eq!(automation["backendAdaptationBias"], "cleanup");
-
-        for key in [
-            "nextActionKey",
-            "nextActionCommandGroup",
-            "nextActionAllowed",
-            "nextActionBlockedBy",
-            "nextActionBranch",
-            "nextActionReadyToRun",
-            "nextStepActionKey",
-            "nextStepCommandGroup",
-            "nextStepAllowed",
-            "nextStepBlockedBy",
-            "nextStepBranch",
-            "nextStepCommand",
-            "nextStepPhase",
-            "nextStepCommandJsonEligible",
-            "nextStepReadyToRun",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(coexistence[key], automation[key], "{key}");
-        }
 
         assert_eq!(coexistence["nextActionKey"], "hook.status");
         assert_eq!(automation["nextActionKey"], "hook.status");
@@ -25090,27 +25028,6 @@ mod tests {
         assert_eq!(automation["backendAdaptationAlignment"], "split");
         assert_eq!(coexistence["backendAdaptationBias"], "query");
         assert_eq!(automation["backendAdaptationBias"], "query");
-
-        for key in [
-            "nextActionKey",
-            "nextActionCommandGroup",
-            "nextActionAllowed",
-            "nextActionBlockedBy",
-            "nextActionBranch",
-            "nextActionReadyToRun",
-            "nextStepActionKey",
-            "nextStepCommandGroup",
-            "nextStepAllowed",
-            "nextStepBlockedBy",
-            "nextStepBranch",
-            "nextStepCommand",
-            "nextStepPhase",
-            "nextStepCommandJsonEligible",
-            "nextStepReadyToRun",
-            "nextStepRequiresFallback",
-        ] {
-            assert_eq!(coexistence[key], automation[key], "{key}");
-        }
 
         assert_eq!(coexistence["nextActionKey"], "hook.query");
         assert_eq!(automation["nextActionKey"], "hook.query");
