@@ -19,6 +19,7 @@ pub fn find_image_dylinker(module_name: &str) -> Result<Option<ImageDylinker>> {
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use common::{Error, Result};
+    use std::mem::size_of;
 
     use crate::{enumerate_images, image_name_matches, ImageDylinker, ImageInfo};
 
@@ -85,11 +86,26 @@ mod platform {
         }
 
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             if matches!(load.cmd, LC_LOAD_DYLINKER | LC_ID_DYLINKER) {
+                if command_size < size_of::<DylinkerCommand>() {
+                    return Ok(None);
+                }
+
                 let command = unsafe { &*(command_ptr as *const DylinkerCommand) };
-                let bytes = unsafe { std::slice::from_raw_parts(command_ptr, load.cmdsize as usize) };
+                let bytes = unsafe { std::slice::from_raw_parts(command_ptr, command_size) };
                 return Ok(Some(ImageDylinker {
                     module_name: image.name.clone(),
                     module_base: image.base,
@@ -98,10 +114,7 @@ mod platform {
                 }));
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 

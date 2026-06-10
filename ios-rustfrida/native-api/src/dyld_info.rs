@@ -29,6 +29,7 @@ pub fn find_image_dyld_info(module_name: &str) -> Result<Option<ImageDyldInfo>> 
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use common::{Error, Result};
+    use std::mem::size_of;
 
     use crate::{enumerate_images, image_name_matches, ImageDyldInfo, ImageInfo};
 
@@ -105,10 +106,25 @@ mod platform {
         }
 
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             let normalized_cmd = load.cmd & !LC_REQ_DYLD;
             if normalized_cmd == LC_DYLD_INFO || normalized_cmd == LC_DYLD_INFO_ONLY {
+                if command_size < size_of::<DyldInfoCommand>() {
+                    return Ok(None);
+                }
+
                 let command = unsafe { &*(command_ptr as *const DyldInfoCommand) };
                 return Ok(Some(ImageDyldInfo {
                     module_name: image.name.clone(),
@@ -128,10 +144,7 @@ mod platform {
                 }));
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 

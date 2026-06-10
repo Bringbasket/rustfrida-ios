@@ -15,6 +15,10 @@ pub mod ffi;
 #[cfg(not(quickjs_runtime_stub))]
 mod hook;
 #[cfg(not(quickjs_runtime_stub))]
+mod java;
+#[cfg(not(quickjs_runtime_stub))]
+mod jni;
+#[cfg(not(quickjs_runtime_stub))]
 mod memory;
 #[cfg(not(quickjs_runtime_stub))]
 mod module;
@@ -28,6 +32,8 @@ mod objc;
 mod pac;
 #[cfg(not(quickjs_runtime_stub))]
 mod ptr;
+#[cfg(not(quickjs_runtime_stub))]
+mod qbdi;
 mod runtime;
 #[cfg(not(quickjs_runtime_stub))]
 mod swift;

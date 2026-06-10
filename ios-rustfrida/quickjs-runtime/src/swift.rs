@@ -7,7 +7,8 @@ use common::Error as CommonError;
 use native_api::{
     find_swift_conformances, find_swift_metadata, find_swift_method_owners, find_swift_methods, find_swift_protocols,
     find_swift_symbols, find_swift_type_layouts, find_swift_type_methods, find_swift_types, find_swift_types_of_kind,
-    find_swift_vtable, find_swift_witness_tables, swift_demangle_symbol, swift_support_available,
+    find_swift_vtable, find_swift_witness_tables, swift_conformance_names_match, swift_demangle_symbol,
+    swift_member_name_matches, swift_protocol_name_matches, swift_support_available, swift_type_name_matches,
     swift_type_source_kinds, SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout,
     SwiftVtableEntry, SwiftWitnessTable,
 };
@@ -339,9 +340,7 @@ unsafe extern "C" fn js_swift_symbol_info(
         Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
     };
 
-    match symbols.into_iter().find(|symbol| {
-        symbol.symbol_name == symbol_name || symbol.demangled_name.as_deref() == Some(symbol_name.as_str())
-    }) {
+    match symbols.into_iter().next() {
         Some(symbol) => swift_symbol_to_js(ctx, &symbol),
         None => JSValue::null().raw(),
     }
@@ -730,7 +729,10 @@ unsafe extern "C" fn js_swift_type_info(
         Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
     };
 
-    match types.into_iter().find(|type_info| type_info.type_name == type_name) {
+    match types
+        .into_iter()
+        .find(|type_info| swift_type_name_matches(&type_info.type_name, &type_name))
+    {
         Some(type_info) => swift_type_to_js(ctx, &type_info),
         None => JSValue::null().raw(),
     }
@@ -836,7 +838,7 @@ unsafe extern "C" fn js_swift_protocol_info(
 
     match protocols
         .into_iter()
-        .find(|protocol_info| protocol_info.protocol_name == protocol_name)
+        .find(|protocol_info| swift_protocol_name_matches(&protocol_info.protocol_name, &protocol_name))
     {
         Some(protocol_info) => swift_protocol_to_js(ctx, &protocol_info),
         None => JSValue::null().raw(),
@@ -942,10 +944,14 @@ unsafe extern "C" fn js_swift_conformance_info(
         Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
     };
 
-    match conformances
-        .into_iter()
-        .find(|conformance| conformance.type_name == type_name && conformance.protocol_name == protocol_name)
-    {
+    match conformances.into_iter().find(|conformance| {
+        swift_conformance_names_match(
+            &conformance.type_name,
+            &conformance.protocol_name,
+            &type_name,
+            &protocol_name,
+        )
+    }) {
         Some(conformance) => swift_conformance_to_js(ctx, &conformance),
         None => JSValue::null().raw(),
     }
@@ -1042,7 +1048,10 @@ unsafe extern "C" fn js_swift_metadata_info(
         Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
     };
 
-    match metadata.into_iter().find(|type_info| type_info.type_name == type_name) {
+    match metadata
+        .into_iter()
+        .find(|type_info| swift_type_name_matches(&type_info.type_name, &type_name))
+    {
         Some(type_info) => swift_type_to_js(ctx, &type_info),
         None => JSValue::null().raw(),
     }
@@ -1150,10 +1159,10 @@ unsafe extern "C" fn js_swift_vtable_info(
         Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
     };
 
-    match entries
-        .into_iter()
-        .find(|entry| entry.type_name == type_name && entry.member_name == member_name)
-    {
+    match entries.into_iter().find(|entry| {
+        swift_type_name_matches(&entry.type_name, &type_name)
+            && swift_member_name_matches(&entry.member_name, &member_name)
+    }) {
         Some(entry) => swift_vtable_entry_to_js(ctx, &entry),
         None => JSValue::null().raw(),
     }
@@ -1263,7 +1272,7 @@ unsafe extern "C" fn js_swift_witness_table_info(
 
     match entries
         .into_iter()
-        .find(|entry| entry.type_name == type_name && entry.protocol_name == protocol_name)
+        .find(|entry| swift_conformance_names_match(&entry.type_name, &entry.protocol_name, &type_name, &protocol_name))
     {
         Some(entry) => swift_witness_table_to_js(ctx, &entry),
         None => JSValue::null().raw(),
@@ -1360,7 +1369,10 @@ unsafe extern "C" fn js_swift_type_layout_info(
         Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
     };
 
-    match layouts.into_iter().find(|layout| layout.type_name == type_name) {
+    match layouts
+        .into_iter()
+        .find(|layout| swift_type_name_matches(&layout.type_name, &type_name))
+    {
         Some(layout) => swift_type_layout_to_js(ctx, &layout),
         None => JSValue::null().raw(),
     }
@@ -1386,7 +1398,13 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findConformances", js_swift_find_conformances, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "conformances", js_swift_find_conformances, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "conformanceInfo", js_swift_conformance_info, 3);
-        add_cfunction_to_object(ctx_ptr, swift.raw(), "findConformanceInfo", js_swift_conformance_info, 3);
+        add_cfunction_to_object(
+            ctx_ptr,
+            swift.raw(),
+            "findConformanceInfo",
+            js_swift_conformance_info,
+            3,
+        );
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findMetadata", js_swift_find_metadata, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "metadata", js_swift_find_metadata, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "metadataInfo", js_swift_metadata_info, 2);
@@ -1398,7 +1416,13 @@ pub(crate) fn register_swift_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findWitnessTable", js_swift_find_witness_table, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "witnessTable", js_swift_find_witness_table, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "witnessTableInfo", js_swift_witness_table_info, 3);
-        add_cfunction_to_object(ctx_ptr, swift.raw(), "findWitnessTableInfo", js_swift_witness_table_info, 3);
+        add_cfunction_to_object(
+            ctx_ptr,
+            swift.raw(),
+            "findWitnessTableInfo",
+            js_swift_witness_table_info,
+            3,
+        );
         add_cfunction_to_object(ctx_ptr, swift.raw(), "findTypeLayout", js_swift_find_type_layout, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "typeLayout", js_swift_find_type_layout, 2);
         add_cfunction_to_object(ctx_ptr, swift.raw(), "typeLayoutInfo", js_swift_type_layout_info, 2);

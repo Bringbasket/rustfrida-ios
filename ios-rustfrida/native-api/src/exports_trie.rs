@@ -58,9 +58,7 @@ fn read_uleb128(bytes: &[u8], cursor: &mut usize, label: &str) -> Result<u64> {
         }
     }
 
-    Err(Error::State(format!(
-        "{label} ended with a truncated ULEB128 value"
-    )))
+    Err(Error::State(format!("{label} ended with a truncated ULEB128 value")))
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
@@ -146,28 +144,22 @@ fn decode_exports_trie(module_base: usize, bytes: &[u8]) -> Result<Vec<ImageExpo
             let mut import_name = None;
 
             if is_reexport {
-                let ordinal = read_uleb128(
-                    bytes,
-                    &mut terminal_cursor,
-                    "LC_DYLD_EXPORTS_TRIE reexport ordinal",
-                )?;
-                let import = read_cstring(
-                    bytes,
-                    &mut terminal_cursor,
-                    "LC_DYLD_EXPORTS_TRIE reexport import name",
-                )?;
+                let ordinal = read_uleb128(bytes, &mut terminal_cursor, "LC_DYLD_EXPORTS_TRIE reexport ordinal")?;
+                let import = read_cstring(bytes, &mut terminal_cursor, "LC_DYLD_EXPORTS_TRIE reexport import name")?;
                 other = Some(ordinal);
                 import_name = Some(if import.is_empty() { prefix.clone() } else { import });
             } else {
                 let value = read_uleb128(bytes, &mut terminal_cursor, "LC_DYLD_EXPORTS_TRIE address")?;
                 offset = Some(value);
-                address = Some(if (flags & EXPORT_SYMBOL_FLAGS_KIND_MASK) == EXPORT_SYMBOL_FLAGS_KIND_ABSOLUTE {
-                    usize::try_from(value).map_err(|_| {
-                        Error::State("LC_DYLD_EXPORTS_TRIE absolute export exceeded address space".into())
-                    })?
-                } else {
-                    checked_add_usize(module_base, value, "exports trie symbol")?
-                });
+                address = Some(
+                    if (flags & EXPORT_SYMBOL_FLAGS_KIND_MASK) == EXPORT_SYMBOL_FLAGS_KIND_ABSOLUTE {
+                        usize::try_from(value).map_err(|_| {
+                            Error::State("LC_DYLD_EXPORTS_TRIE absolute export exceeded address space".into())
+                        })?
+                    } else {
+                        checked_add_usize(module_base, value, "exports trie symbol")?
+                    },
+                );
                 if is_stub_and_resolver {
                     other = Some(read_uleb128(
                         bytes,
@@ -198,20 +190,16 @@ fn decode_exports_trie(module_base: usize, bytes: &[u8]) -> Result<Vec<ImageExpo
         }
 
         cursor = terminal_end;
-        let child_count = *bytes
-            .get(cursor)
-            .ok_or_else(|| Error::State(format!(
+        let child_count = *bytes.get(cursor).ok_or_else(|| {
+            Error::State(format!(
                 "LC_DYLD_EXPORTS_TRIE node at 0x{node_offset:x} was truncated before child count"
-            )))? as usize;
+            ))
+        })? as usize;
         cursor += 1;
 
         let mut children = Vec::with_capacity(child_count);
         for index in 0..child_count {
-            let suffix = read_cstring(
-                bytes,
-                &mut cursor,
-                &format!("LC_DYLD_EXPORTS_TRIE child name #{index}"),
-            )?;
+            let suffix = read_cstring(bytes, &mut cursor, &format!("LC_DYLD_EXPORTS_TRIE child name #{index}"))?;
             let child_offset = read_uleb128(
                 bytes,
                 &mut cursor,
@@ -239,6 +227,7 @@ fn decode_exports_trie(module_base: usize, bytes: &[u8]) -> Result<Vec<ImageExpo
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use common::{Error, Result};
+    use std::mem::size_of;
 
     use super::{checked_add_usize, decode_exports_trie};
     use crate::{enumerate_images, image_name_matches, ImageExportsTrie, ImageInfo};
@@ -326,26 +315,44 @@ mod platform {
         let mut linkedit_segment = None;
         let mut exports_trie = None;
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             let normalized_cmd = load.cmd & !LC_REQ_DYLD;
             match normalized_cmd {
                 LC_SEGMENT_64 => {
+                    if command_size < size_of::<SegmentCommand64>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
                     let segment = unsafe { &*(command_ptr as *const SegmentCommand64) };
                     if segment_name(segment) == "__LINKEDIT" {
                         linkedit_segment = Some(segment);
                     }
                 }
                 cmd if cmd == LC_DYLD_EXPORTS_TRIE || cmd == LC_DYLD_EXPORTS_TRIE_ALT => {
+                    if command_size < size_of::<LinkeditDataCommand>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
                     exports_trie = Some(unsafe { &*(command_ptr as *const LinkeditDataCommand) });
                 }
                 _ => {}
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 

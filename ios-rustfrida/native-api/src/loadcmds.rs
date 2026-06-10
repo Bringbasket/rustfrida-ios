@@ -279,7 +279,7 @@ mod platform {
 
             let load = unsafe { read_unaligned::<LoadCommand>(command_ptr) };
             let command_size = load.cmdsize as usize;
-            if command_size == 0 || command_offset.saturating_add(command_size) > commands_limit {
+            if command_size < size_of::<LoadCommand>() || command_offset.saturating_add(command_size) > commands_limit {
                 break;
             }
 

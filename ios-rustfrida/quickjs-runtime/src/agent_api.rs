@@ -103,6 +103,16 @@ function parseObjcProtocolInfo(raw) {
     };
 }
 
+function parseObjcProtocolImage(raw) {
+    const trimmed = String(raw || '').trim();
+    if (trimmed.length === 0) {
+        throw new Error('objc.protocolImage usage: objc.protocolImage <protocol>');
+    }
+    return {
+        protocolName: trimmed,
+    };
+}
+
 function parseObjcProtocolPropertyInfo(raw) {
     const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
     if (parts.length < 2) {
@@ -305,6 +315,39 @@ function parseObjcClassProtocols(raw) {
     }
     return {
         className: parts[0],
+        filter: parts.length <= 1 ? null : parts.slice(1).join(' '),
+    };
+}
+
+function parseObjcClassConforms(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) {
+        throw new Error('objc.classConforms usage: objc.classConforms <class> <protocol>');
+    }
+    return {
+        className: parts[0],
+        protocolName: parts[1],
+    };
+}
+
+function parseObjcProtocolConforms(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) {
+        throw new Error('objc.protocolConforms usage: objc.protocolConforms <protocol> <parent-protocol>');
+    }
+    return {
+        protocolName: parts[0],
+        parentProtocolName: parts[1],
+    };
+}
+
+function parseObjcProtocolOwners(raw) {
+    const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) {
+        throw new Error('objc.protocolOwners usage: objc.protocolOwners <protocol> [filter]');
+    }
+    return {
+        protocolName: parts[0],
         filter: parts.length <= 1 ? null : parts.slice(1).join(' '),
     };
 }
@@ -2322,6 +2365,35 @@ function formatHookEnvironmentReport(report) {
     lines.push('hook_stop_commands_allowed=' + String(!!report.hookStopCommandsAllowed));
     lines.push('coexistence_mode=' + String(report.coexistenceMode));
     lines.push('coexistence_recommendation=' + String(report.coexistenceRecommendation));
+    lines.push(
+        'instrumentation_backend=' +
+            (report.instrumentationBackend === null || report.instrumentationBackend === undefined
+                ? '<none>'
+                : String(report.instrumentationBackend))
+    );
+    lines.push(
+        'instrumentation_backend_display_name=' +
+            (report.instrumentationBackendDisplayName === null || report.instrumentationBackendDisplayName === undefined
+                ? '<none>'
+                : String(report.instrumentationBackendDisplayName))
+    );
+    lines.push(
+        'android_reference_instrumentation_backend=' +
+            (report.androidReferenceInstrumentationBackend === null ||
+            report.androidReferenceInstrumentationBackend === undefined
+                ? '<none>'
+                : String(report.androidReferenceInstrumentationBackend))
+    );
+    lines.push('qbdi_compatible=' + String(!!report.qbdiCompatible));
+    lines.push('qbdi_available=' + String(!!report.qbdiAvailable));
+    lines.push('trace_available=' + String(!!report.traceAvailable));
+    lines.push('stalker_available=' + String(!!report.stalkerAvailable));
+    lines.push(
+        'recommended_instrumentation_path=' +
+            (report.recommendedInstrumentationPath === null || report.recommendedInstrumentationPath === undefined
+                ? '<none>'
+                : String(report.recommendedInstrumentationPath))
+    );
     lines.push('coexistence_layer_available=' + String(!!report.coexistenceLayerAvailable));
     lines.push('coexistence_layer_required=' + String(!!report.coexistenceLayerRequired));
     lines.push('coexistence_layer_status=' + String(report.coexistenceLayerStatus));
@@ -2452,6 +2524,452 @@ function formatHookEnvironmentReport(report) {
         );
     }
 
+    return lines.join('\n');
+}
+
+function formatInstrumentationReport(report) {
+    if (report === null || report === undefined) {
+        return '<null>';
+    }
+    const lines = [];
+    lines.push('platform=' + String(report.platform || 'ios'));
+    lines.push('backend=' + String(report.backend || '<none>'));
+    lines.push('backend_display_name=' + String(report.backendDisplayName || '<none>'));
+    lines.push('android_reference_backend=' + String(report.androidReferenceBackend || 'QBDI'));
+    lines.push('qbdi_compatible=' + String(!!report.qbdiCompatible));
+    lines.push('qbdi_available=' + String(!!report.qbdiAvailable));
+    lines.push('qbdi_api_ported=' + String(!!report.qbdiApiPorted));
+    lines.push('inline_hook_available=' + String(!!report.inlineHookAvailable));
+    lines.push('trace_available=' + String(!!report.traceAvailable));
+    lines.push('stalker_available=' + String(!!report.stalkerAvailable));
+    lines.push('hfl_available=' + String(!!report.hflAvailable));
+    lines.push('virtual_stack_available=' + String(!!report.virtualStackAvailable));
+    lines.push('register_state_api_available=' + String(!!report.registerStateApiAvailable));
+    lines.push('memory_access_trace_available=' + String(!!report.memoryAccessTraceAvailable));
+    lines.push('recommended_path=' + String(report.recommendedPath || '<none>'));
+    const recommendedCommands = Array.isArray(report.recommendedCommands) ? report.recommendedCommands : [];
+    lines.push('recommended_command_count=' + String(recommendedCommands.length));
+    for (const command of recommendedCommands) {
+        lines.push('recommended_command ' + String(command));
+    }
+    const unsupportedQbdiApis = Array.isArray(report.unsupportedQbdiApis) ? report.unsupportedQbdiApis : [];
+    lines.push('unsupported_qbdi_api_count=' + String(unsupportedQbdiApis.length));
+    for (const api of unsupportedQbdiApis) {
+        lines.push('unsupported_qbdi_api ' + String(api));
+    }
+    if (report.summary !== null && report.summary !== undefined) {
+        lines.push('summary=' + String(report.summary));
+    }
+    return lines.join('\n');
+}
+
+function qbdiStatusReport() {
+    const status = qbdi && typeof qbdi.status === 'function' ? qbdi.status() : {};
+    const fallbackConstants = {
+        MEMORY_READ: Number(qbdi.MEMORY_READ || 1),
+        MEMORY_WRITE: Number(qbdi.MEMORY_WRITE || 2),
+        MEMORY_READ_WRITE: Number(qbdi.MEMORY_READ_WRITE || 3),
+        REG_RETURN: Number(qbdi.REG_RETURN || 0),
+        REG_BP: Number(qbdi.REG_BP || 29),
+        REG_LR: Number(qbdi.REG_LR || 30),
+        REG_SP: Number(qbdi.REG_SP || 31),
+        REG_FLAG: Number(qbdi.REG_FLAG || 32),
+        REG_PC: Number(qbdi.REG_PC || 33),
+    };
+    const fallbackUnsupportedMethods = [
+        'newVM',
+        'destroyVM',
+        'addInstrumentedRange',
+        'addInstrumentedModule',
+        'addInstrumentedModuleFromAddr',
+        'instrumentAllExecutableMaps',
+        'removeInstrumentedRange',
+        'removeAllInstrumentedRanges',
+        'deleteAllInstrumentations',
+        'recordMemoryAccess',
+        'allocateVirtualStack',
+        'clearVirtualStacks',
+        'simulateCall',
+        'run',
+        'call',
+        'switchStackAndCall',
+        'getGPR',
+        'setGPR',
+        'getFPR',
+        'setFPR',
+        'getErrno',
+        'setErrno',
+        'setTraceBundleMetadata',
+        'registerTraceCallbacks',
+        'unregisterTraceCallbacks',
+    ];
+    const constants = status && typeof status.constants === 'object' && status.constants !== null
+        ? status.constants
+        : fallbackConstants;
+    const unsupportedMethods = Array.isArray(status && status.unsupportedMethods)
+        ? status.unsupportedMethods
+        : fallbackUnsupportedMethods;
+    const methodDescriptors = qbdiMethodDescriptors(status, unsupportedMethods);
+    return {
+        available: !!((status && status.available) || qbdi.available),
+        platform: String((status && status.platform) || qbdi.platform || 'ios'),
+        backend: String((status && status.backend) || qbdi.backend || 'unsupported-ios'),
+        androidReferenceBackend: String((status && status.androidReferenceBackend) || qbdi.androidReferenceBackend || 'QBDI'),
+        iosAlternativeBackend: String((status && status.iosAlternativeBackend) || qbdi.iosAlternativeBackend || 'arm64-hook-engine'),
+        compatible: !!((status && status.compatible) || qbdi.compatible),
+        qbdiVmAvailable: status && status.qbdiVmAvailable !== undefined
+            ? !!status.qbdiVmAvailable
+            : !!(qbdi && qbdi.qbdiVmAvailable),
+        qbdiHelperAvailable: status && status.qbdiHelperAvailable !== undefined
+            ? !!status.qbdiHelperAvailable
+            : !!(qbdi && qbdi.qbdiHelperAvailable),
+        virtualStackAvailable: status && status.virtualStackAvailable !== undefined
+            ? !!status.virtualStackAvailable
+            : !!(qbdi && qbdi.virtualStackAvailable),
+        registerStateApiAvailable: status && status.registerStateApiAvailable !== undefined
+            ? !!status.registerStateApiAvailable
+            : !!(qbdi && qbdi.registerStateApiAvailable),
+        memoryAccessTraceAvailable: status && status.memoryAccessTraceAvailable !== undefined
+            ? !!status.memoryAccessTraceAvailable
+            : !!(qbdi && qbdi.memoryAccessTraceAvailable),
+        traceBundleExportAvailable: status && status.traceBundleExportAvailable !== undefined
+            ? !!status.traceBundleExportAvailable
+            : !!(qbdi && qbdi.traceBundleExportAvailable),
+        recommendedPath: String((status && status.recommendedPath) || qbdi.recommendedPath || 'trace-stalker-inline-hook'),
+        lastError: qbdi.lastError(),
+        supportedCommandCount: Array.isArray(status && status.supportedCommands) ? status.supportedCommands.length : 4,
+        supportedCommands: Array.isArray(status && status.supportedCommands)
+            ? status.supportedCommands
+            : ['qbdi.status', 'qbdi.info', 'qbdi.methods', 'qbdi.lastError'],
+        constantCount: Number((status && status.constantCount) || Object.keys(constants).length || 0),
+        constants,
+        supportedMethodCount: Number((status && status.supportedMethodCount) || 0),
+        unsupportedMethodCount: Number((status && status.unsupportedMethodCount) || unsupportedMethods.length || 0),
+        unsupportedMethods,
+        methodDescriptorCount: Number((status && status.methodDescriptorCount) || methodDescriptors.length || 0),
+        methodDescriptors,
+    };
+}
+
+function qbdiMethodDescriptors(status, unsupportedMethods) {
+    if (Array.isArray(status && status.methodDescriptors)) {
+        return status.methodDescriptors.map(function(item) {
+            return {
+                name: String(item && item.name || ''),
+                arity: Number(item && item.arity || 0),
+                category: String(item && item.category || 'unknown'),
+                available: !!(item && item.available),
+                androidOnly: item && item.androidOnly !== undefined ? !!item.androidOnly : true,
+                commandJsonEligible: !!(item && item.commandJsonEligible),
+                replacement: String(item && item.replacement || 'trace/stalker/hfl/jhook/shook'),
+                message: String(item && item.message || 'QBDI VM APIs are not available on iOS'),
+            };
+        }).filter(function(item) { return item.name.length > 0; });
+    }
+    return (Array.isArray(unsupportedMethods) ? unsupportedMethods : []).map(function(name) {
+        return {
+            name: String(name),
+            arity: 0,
+            category: 'android-qbdi',
+            available: false,
+            androidOnly: true,
+            commandJsonEligible: false,
+            replacement: 'trace/stalker/hfl/jhook/shook',
+            message: 'QBDI VM APIs are not available on iOS',
+        };
+    });
+}
+
+function formatQbdiStatusReport(report) {
+    const lines = [];
+    lines.push('available=' + String(!!report.available));
+    lines.push('platform=' + String(report.platform));
+    lines.push('backend=' + String(report.backend));
+    lines.push('android_reference_backend=' + String(report.androidReferenceBackend));
+    lines.push('ios_alternative_backend=' + String(report.iosAlternativeBackend));
+    lines.push('compatible=' + String(!!report.compatible));
+    lines.push('qbdi_vm_available=' + String(!!report.qbdiVmAvailable));
+    lines.push('qbdi_helper_available=' + String(!!report.qbdiHelperAvailable));
+    lines.push('virtual_stack_available=' + String(!!report.virtualStackAvailable));
+    lines.push('register_state_api_available=' + String(!!report.registerStateApiAvailable));
+    lines.push('memory_access_trace_available=' + String(!!report.memoryAccessTraceAvailable));
+    lines.push('trace_bundle_export_available=' + String(!!report.traceBundleExportAvailable));
+    lines.push('recommended_path=' + String(report.recommendedPath));
+    lines.push('last_error=' + String(report.lastError));
+    lines.push('supported_command_count=' + String(Number(report.supportedCommandCount || 0)));
+    for (const command of Array.isArray(report.supportedCommands) ? report.supportedCommands : []) {
+        lines.push('supported_command ' + String(command));
+    }
+    const constants = report.constants && typeof report.constants === 'object' ? report.constants : {};
+    lines.push('constant_count=' + String(Number(report.constantCount || Object.keys(constants).length || 0)));
+    for (const name of Object.keys(constants).sort()) {
+        lines.push('constant ' + String(name) + '=' + String(constants[name]));
+    }
+    lines.push('supported_method_count=' + String(Number(report.supportedMethodCount || 0)));
+    lines.push('unsupported_method_count=' + String(Number(report.unsupportedMethodCount || 0)));
+    for (const method of Array.isArray(report.unsupportedMethods) ? report.unsupportedMethods : []) {
+        lines.push('unsupported_method ' + String(method));
+    }
+    const methodDescriptors = Array.isArray(report.methodDescriptors) ? report.methodDescriptors : [];
+    lines.push('method_descriptor_count=' + String(Number(report.methodDescriptorCount || methodDescriptors.length || 0)));
+    for (const item of methodDescriptors) {
+        lines.push('method_descriptor ' + String(item.name) +
+            ' arity=' + String(Number(item.arity || 0)) +
+            ' category=' + String(item.category || 'unknown') +
+            ' available=' + String(!!item.available) +
+            ' android_only=' + String(!!item.androidOnly) +
+            ' replacement=' + String(item.replacement || ''));
+    }
+    return lines.join('\n');
+}
+
+function formatQbdiMethodsReport(report) {
+    const lines = [];
+    const methods = Array.isArray(report.methods) ? report.methods : [];
+    lines.push('available=' + String(!!report.available));
+    lines.push('platform=' + String(report.platform || 'ios'));
+    lines.push('backend=' + String(report.backend || 'unsupported-ios'));
+    lines.push('method_count=' + String(Number(report.count || methods.length || 0)));
+    lines.push('android_only_count=' + String(Number(report.androidOnlyCount || 0)));
+    lines.push('available_method_count=' + String(Number(report.availableMethodCount || 0)));
+    for (const item of methods) {
+        lines.push('method ' + String(item.name) +
+            ' arity=' + String(Number(item.arity || 0)) +
+            ' category=' + String(item.category || 'unknown') +
+            ' available=' + String(!!item.available) +
+            ' android_only=' + String(!!item.androidOnly) +
+            ' replacement=' + String(item.replacement || ''));
+    }
+    return lines.join('\n');
+}
+
+function javaStatusReport() {
+    const status = Java && typeof Java.status === 'function' ? Java.status() : {};
+    return {
+        available: !!(Java && Java.available),
+        platform: String((status && status.platform) || (Java && Java.platform) || 'ios'),
+        backend: String((status && status.backend) || (Java && Java.backend) || 'unsupported-ios'),
+        androidReferenceBackend: String((status && status.androidReferenceBackend) || (Java && Java.androidReferenceBackend) || 'ART/JNI'),
+        androidReferencePath: String((status && status.androidReferencePath) || 'rustFrida-master/quickjs-hook/src/jsapi/java'),
+        iosAlternativeRuntime: String((status && status.iosAlternativeRuntime) || (Java && Java.iosAlternativeRuntime) || 'ObjC/Swift'),
+        compatible: !!((status && status.compatible) || (Java && Java.compatible)),
+        classLoaderReady: !!(status && status.classLoaderReady),
+        artRuntimeAvailable: status && status.artRuntimeAvailable !== undefined
+            ? !!status.artRuntimeAvailable
+            : false,
+        jniAvailable: status && status.jniAvailable !== undefined
+            ? !!status.jniAvailable
+            : false,
+        hookApiAvailable: status && status.hookApiAvailable !== undefined
+            ? !!status.hookApiAvailable
+            : false,
+        classLoaderEnumerationAvailable: status && status.classLoaderEnumerationAvailable !== undefined
+            ? !!status.classLoaderEnumerationAvailable
+            : false,
+        methodEnumerationAvailable: status && status.methodEnumerationAvailable !== undefined
+            ? !!status.methodEnumerationAvailable
+            : false,
+        fieldAccessAvailable: status && status.fieldAccessAvailable !== undefined
+            ? !!status.fieldAccessAvailable
+            : false,
+        objectInvocationAvailable: status && status.objectInvocationAvailable !== undefined
+            ? !!status.objectInvocationAvailable
+            : false,
+        deoptAvailable: status && status.deoptAvailable !== undefined
+            ? !!status.deoptAvailable
+            : false,
+        supportedMethodCount: Number((status && status.supportedMethodCount) || 0),
+        recommendedPath: String((status && status.recommendedPath) || 'objc-swift-native'),
+        lastError: Java && typeof Java.lastError === 'function'
+            ? Java.lastError()
+            : 'Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS',
+        supportedCommandCount: 3,
+        supportedCommands: ['java.status', 'java.info', 'java.lastError'],
+        unsupportedMethodCount: Array.isArray(status && status.unsupportedMethods) ? status.unsupportedMethods.length : 29,
+        unsupportedMethods: Array.isArray(status && status.unsupportedMethods)
+            ? status.unsupportedMethods
+            : [
+                'perform',
+                'ready',
+                'use',
+                'hook',
+                'unhook',
+                'choose',
+                'enumerateLoadedClasses',
+                'classLoaders',
+                'findClassWithLoader',
+                'setClassLoader',
+                '_classLoaders',
+                '_findClassWithLoader',
+                '_setClassLoader',
+                '_updateClassLoader',
+                'deopt',
+                'deoptimizeBootImage',
+                'deoptimizeEverything',
+                'deoptimizeMethod',
+                '_artRouterDebug',
+                '_methods',
+                '_invokeMethod',
+                '_invokeStaticMethod',
+                '_newObject',
+                '_getFieldAuto',
+                '_setFieldAuto',
+                'getField',
+                '_inspectArtMethod',
+                '_setForcedInterpretOnly',
+                '_initArtController',
+            ],
+        recommendedApis: Array.isArray(status && status.recommendedApis)
+            ? status.recommendedApis
+            : ['ObjC.classes', 'Swift.types', 'Native.images', 'Interceptor.attach'],
+    };
+}
+
+function formatJavaStatusReport(report) {
+    const lines = [];
+    lines.push('available=' + String(!!report.available));
+    lines.push('platform=' + String(report.platform));
+    lines.push('backend=' + String(report.backend));
+    lines.push('android_reference_backend=' + String(report.androidReferenceBackend));
+    lines.push('android_reference_path=' + String(report.androidReferencePath));
+    lines.push('ios_alternative_runtime=' + String(report.iosAlternativeRuntime));
+    lines.push('compatible=' + String(!!report.compatible));
+    lines.push('class_loader_ready=' + String(!!report.classLoaderReady));
+    lines.push('art_runtime_available=' + String(!!report.artRuntimeAvailable));
+    lines.push('jni_available=' + String(!!report.jniAvailable));
+    lines.push('hook_api_available=' + String(!!report.hookApiAvailable));
+    lines.push('class_loader_enumeration_available=' + String(!!report.classLoaderEnumerationAvailable));
+    lines.push('method_enumeration_available=' + String(!!report.methodEnumerationAvailable));
+    lines.push('field_access_available=' + String(!!report.fieldAccessAvailable));
+    lines.push('object_invocation_available=' + String(!!report.objectInvocationAvailable));
+    lines.push('deopt_available=' + String(!!report.deoptAvailable));
+    lines.push('recommended_path=' + String(report.recommendedPath));
+    lines.push('last_error=' + String(report.lastError));
+    const recommendedApis = Array.isArray(report.recommendedApis) ? report.recommendedApis : [];
+    lines.push('recommended_api_count=' + String(recommendedApis.length));
+    for (const api of recommendedApis) {
+        lines.push('recommended_api ' + String(api));
+    }
+    lines.push('supported_command_count=' + String(Number(report.supportedCommandCount || 0)));
+    for (const command of Array.isArray(report.supportedCommands) ? report.supportedCommands : []) {
+        lines.push('supported_command ' + String(command));
+    }
+    lines.push('supported_method_count=' + String(Number(report.supportedMethodCount || 0)));
+    lines.push('unsupported_method_count=' + String(Number(report.unsupportedMethodCount || 0)));
+    for (const method of Array.isArray(report.unsupportedMethods) ? report.unsupportedMethods : []) {
+        lines.push('unsupported_method ' + String(method));
+    }
+    return lines.join('\n');
+}
+
+function jniStatusReport() {
+    const status = Jni && typeof Jni.status === 'function' ? Jni.status() : {};
+    return {
+        available: !!(Jni && Jni.available),
+        platform: String((status && status.platform) || (Jni && Jni.platform) || 'ios'),
+        backend: String((status && status.backend) || (Jni && Jni.backend) || 'unsupported-ios'),
+        androidReferenceBackend: String((status && status.androidReferenceBackend) || (Jni && Jni.androidReferenceBackend) || 'JNIEnv'),
+        androidReferencePath: String((status && status.androidReferencePath) || 'rustFrida-master/quickjs-hook/src/jsapi/jni'),
+        iosAlternativeRuntime: String((status && status.iosAlternativeRuntime) || (Jni && Jni.iosAlternativeRuntime) || 'ObjC/Swift'),
+        compatible: !!((status && status.compatible) || (Jni && Jni.compatible)),
+        threadEnvAvailable: !!(status && status.threadEnvAvailable),
+        recommendedPath: String((status && status.recommendedPath) || 'objc-swift-native'),
+        lastError: Jni && typeof Jni.lastError === 'function'
+            ? Jni.lastError()
+            : 'Jni/JNIEnv APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS',
+        supportedCommandCount: 3,
+        supportedCommands: ['jni.status', 'jni.info', 'jni.lastError'],
+        helperEnvAvailable: status && status.helperEnvAvailable !== undefined
+            ? !!status.helperEnvAvailable
+            : false,
+        functionAddressAvailable: status && status.functionAddressAvailable !== undefined
+            ? !!status.functionAddressAvailable
+            : false,
+        functionTableAvailable: status && status.functionTableAvailable !== undefined
+            ? !!status.functionTableAvailable
+            : false,
+        metadataTableAvailable: status && status.metadataTableAvailable !== undefined
+            ? !!status.metadataTableAvailable
+            : true,
+        jniFunctionCount: Number((status && status.jniFunctionCount) || (Jni && Jni.jniFunctionNames && Jni.jniFunctionNames.length) || 0),
+        tableEntryCount: Number((status && status.tableEntryCount) || (Jni && Jni.table && Object.keys(Jni.table).length) || 0),
+        supportedFunctionCount: Number((status && status.supportedFunctionCount) || 0),
+        unsupportedFunctionCount: Number((status && status.unsupportedFunctionCount) || (Jni && Jni.jniFunctionNames && Jni.jniFunctionNames.length) || 0),
+        functionMetadataAvailable: status && status.functionMetadataAvailable !== undefined
+            ? !!status.functionMetadataAvailable
+            : true,
+        helperStructReadersAvailable: status && status.helperStructReadersAvailable !== undefined
+            ? !!status.helperStructReadersAvailable
+            : true,
+        supportedHelpers: Array.isArray(status && status.supportedHelpers)
+            ? status.supportedHelpers
+            : [
+                'Jni.helper.structs.JNINativeMethod.read',
+                'Jni.helper.structs.JNINativeMethod.readArray',
+                'Jni.helper.structs.jvalue.read',
+                'Jni.helper.structs.jvalue.readArray',
+            ],
+        unsupportedMethodCount: Array.isArray(status && status.unsupportedMethods) ? status.unsupportedMethods.length : 9,
+        unsupportedMethods: Array.isArray(status && status.unsupportedMethods)
+            ? status.unsupportedMethods
+            : [
+                '_threadEnv',
+                '_className',
+                '_getObjectClass',
+                '_getSuperclass',
+                '_isSameObject',
+                '_isInstanceOf',
+                '_getObjectClassName',
+                '_readJString',
+                'addr',
+                'call',
+            ],
+        recommendedApis: Array.isArray(status && status.recommendedApis)
+            ? status.recommendedApis
+            : ['ObjC.objectClassName', 'ObjC.classInfo', 'Swift.typeInfo', 'Native.symbol', 'Interceptor.attach'],
+    };
+}
+
+function formatJniStatusReport(report) {
+    const lines = [];
+    lines.push('available=' + String(!!report.available));
+    lines.push('platform=' + String(report.platform));
+    lines.push('backend=' + String(report.backend));
+    lines.push('android_reference_backend=' + String(report.androidReferenceBackend));
+    lines.push('android_reference_path=' + String(report.androidReferencePath));
+    lines.push('ios_alternative_runtime=' + String(report.iosAlternativeRuntime));
+    lines.push('compatible=' + String(!!report.compatible));
+    lines.push('thread_env_available=' + String(!!report.threadEnvAvailable));
+    lines.push('helper_env_available=' + String(!!report.helperEnvAvailable));
+    lines.push('recommended_path=' + String(report.recommendedPath));
+    lines.push('last_error=' + String(report.lastError));
+    const recommendedApis = Array.isArray(report.recommendedApis) ? report.recommendedApis : [];
+    lines.push('recommended_api_count=' + String(recommendedApis.length));
+    for (const api of recommendedApis) {
+        lines.push('recommended_api ' + String(api));
+    }
+    lines.push('supported_command_count=' + String(Number(report.supportedCommandCount || 0)));
+    for (const command of Array.isArray(report.supportedCommands) ? report.supportedCommands : []) {
+        lines.push('supported_command ' + String(command));
+    }
+    lines.push('function_address_available=' + String(!!report.functionAddressAvailable));
+    lines.push('function_table_available=' + String(!!report.functionTableAvailable));
+    lines.push('metadata_table_available=' + String(!!report.metadataTableAvailable));
+    lines.push('jni_function_count=' + String(Number(report.jniFunctionCount || 0)));
+    lines.push('table_entry_count=' + String(Number(report.tableEntryCount || 0)));
+    lines.push('supported_function_count=' + String(Number(report.supportedFunctionCount || 0)));
+    lines.push('unsupported_function_count=' + String(Number(report.unsupportedFunctionCount || 0)));
+    lines.push('function_metadata_available=' + String(!!report.functionMetadataAvailable));
+    lines.push('helper_struct_readers_available=' + String(!!report.helperStructReadersAvailable));
+    const supportedHelpers = Array.isArray(report.supportedHelpers) ? report.supportedHelpers : [];
+    lines.push('supported_helper_count=' + String(supportedHelpers.length));
+    for (const helper of supportedHelpers) {
+        lines.push('supported_helper ' + String(helper));
+    }
+    lines.push('unsupported_method_count=' + String(Number(report.unsupportedMethodCount || 0)));
+    for (const method of Array.isArray(report.unsupportedMethods) ? report.unsupportedMethods : []) {
+        lines.push('unsupported_method ' + String(method));
+    }
     return lines.join('\n');
 }
 
@@ -5752,6 +6270,58 @@ function handleSpecResult(spec) {
             text: protocols.join('\n'),
         };
     }
+    case 'objc.protocol_owners': {
+        const protocolName = String(spec.protocolName || '');
+        const filter = spec.filter === null || spec.filter === undefined ? null : String(spec.filter);
+        const classes = ObjC.protocolOwners(protocolName, filter).map((name) => String(name));
+        const summary = summarizeObjcClassNames(classes);
+        const protocolInfo = ObjC.protocolInfo(protocolName);
+        const normalizedProtocolInfo = protocolInfo === null ? null : normalizeObjcProtocolInfo(protocolInfo);
+        return {
+            kind: 'objc.protocol_owners',
+            protocolName,
+            filter,
+            protocolInfo: normalizedProtocolInfo,
+            hasProtocolInfo: normalizedProtocolInfo !== null,
+            resolved: normalizedProtocolInfo !== null,
+            resolvedProtocolName: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.protocolName,
+            resolvedProtocolPointer: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.protocolPointer,
+            resolvedHasImagePath: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.hasImagePath,
+            hasImagePath: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasImagePath === true,
+            resolvedImagePath: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.imagePath,
+            imagePath: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.imagePath,
+            resolvedAdoptedProtocolCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.adoptedProtocolCount,
+            adoptedProtocolCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.adoptedProtocolCount,
+            resolvedProtocolTotalMethodCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.totalMethodCount,
+            protocolTotalMethodCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.totalMethodCount,
+            resolvedProtocolPropertyCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.propertyCount,
+            protocolPropertyCount: normalizedProtocolInfo === null ? 0 : normalizedProtocolInfo.propertyCount,
+            resolvedOwnerHasAdoptedProtocols: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.hasAdoptedProtocols,
+            ownerHasAdoptedProtocols: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasAdoptedProtocols === true,
+            resolvedOwnerHasMethods: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.totalMethodCount !== 0,
+            ownerHasMethods: normalizedProtocolInfo !== null && normalizedProtocolInfo.totalMethodCount !== 0,
+            resolvedOwnerHasProperties: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.hasProperties,
+            ownerHasProperties: normalizedProtocolInfo !== null && normalizedProtocolInfo.hasProperties === true,
+            hasFilter: filter !== null && filter.length !== 0,
+            count: classes.length,
+            hasClasses: classes.length !== 0,
+            firstClass: classes.length === 0 ? null : classes[0],
+            lastClass: classes.length === 0 ? null : classes[classes.length - 1],
+            firstImagePath: summary.firstImagePath,
+            lastImagePath: summary.lastImagePath,
+            uniqueImagePathCount: summary.uniqueImagePathCount,
+            classesWithImagePathCount: summary.classesWithImagePathCount,
+            rootClassCount: summary.rootClassCount,
+            classesWithProtocolsCount: summary.classesWithProtocolsCount,
+            classesWithPropertiesCount: summary.classesWithPropertiesCount,
+            classesWithIvarsCount: summary.classesWithIvarsCount,
+            classesWithMethodsCount: summary.classesWithMethodsCount,
+            imagePathList: summary.imagePaths.map((item) => item.imagePath),
+            imagePaths: summary.imagePaths,
+            classes,
+            text: classes.join('\n'),
+        };
+    }
     case 'objc.class_info': {
         const className = String(spec.className || '');
         const isMetaClass = !!spec.isMetaClass;
@@ -6266,6 +6836,64 @@ function handleSpecResult(spec) {
             text: String(exists),
         };
     }
+    case 'objc.protocol_exists': {
+        const protocolName = String(spec.protocolName || '');
+        const exists = !!ObjC.protocolExists(protocolName);
+        return {
+            kind: 'objc.protocol_exists',
+            protocolName,
+            exists,
+            resolved: true,
+            resolvedProtocolName: exists ? protocolName : null,
+            text: String(exists),
+        };
+    }
+    case 'objc.class_conforms': {
+        const className = String(spec.className || '');
+        const protocolName = String(spec.protocolName || '');
+        const conforms = !!ObjC.classConforms(className, protocolName);
+        const classExists = !!ObjC.classExists(className);
+        const protocolInfo = ObjC.protocolInfo(protocolName);
+        const normalizedProtocolInfo = protocolInfo === null ? null : normalizeObjcProtocolInfo(protocolInfo);
+        return {
+            kind: 'objc.class_conforms',
+            className,
+            protocolName,
+            conforms,
+            classExists,
+            hasProtocolInfo: normalizedProtocolInfo !== null,
+            protocolInfo: normalizedProtocolInfo,
+            resolved: classExists && normalizedProtocolInfo !== null,
+            resolvedClassName: classExists ? className : null,
+            resolvedProtocolName: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.protocolName,
+            text: String(conforms),
+        };
+    }
+    case 'objc.protocol_conforms': {
+        const protocolName = String(spec.protocolName || '');
+        const parentProtocolName = String(spec.parentProtocolName || '');
+        const conforms = !!ObjC.protocolConforms(protocolName, parentProtocolName);
+        const protocolInfo = ObjC.protocolInfo(protocolName);
+        const normalizedProtocolInfo = protocolInfo === null ? null : normalizeObjcProtocolInfo(protocolInfo);
+        const parentProtocolInfo = ObjC.protocolInfo(parentProtocolName);
+        const normalizedParentProtocolInfo =
+            parentProtocolInfo === null ? null : normalizeObjcProtocolInfo(parentProtocolInfo);
+        return {
+            kind: 'objc.protocol_conforms',
+            protocolName,
+            parentProtocolName,
+            conforms,
+            hasProtocolInfo: normalizedProtocolInfo !== null,
+            protocolInfo: normalizedProtocolInfo,
+            hasParentProtocolInfo: normalizedParentProtocolInfo !== null,
+            parentProtocolInfo: normalizedParentProtocolInfo,
+            resolved: normalizedProtocolInfo !== null && normalizedParentProtocolInfo !== null,
+            resolvedProtocolName: normalizedProtocolInfo === null ? null : normalizedProtocolInfo.protocolName,
+            resolvedParentProtocolName:
+                normalizedParentProtocolInfo === null ? null : normalizedParentProtocolInfo.protocolName,
+            text: String(conforms),
+        };
+    }
     case 'objc.selector': {
         const selectorName = String(spec.selectorName || '');
         const selector = ObjC.selector(selectorName);
@@ -6377,6 +7005,28 @@ function handleSpecResult(spec) {
             hasImagePath: normalized !== null,
             resolved: normalized !== null,
             resolvedClassName: normalized === null ? null : className,
+            resolvedImagePath: normalized,
+            resolvedImageName: imageSummary === null ? null : imageSummary.name,
+            imageName: imageSummary === null ? null : imageSummary.name,
+            resolvedImageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            imageDirectoryPath: imageSummary === null ? null : imageSummary.directoryPath,
+            resolvedImagePathKind: imageSummary === null ? null : imageSummary.pathKind,
+            imagePathKind: imageSummary === null ? null : imageSummary.pathKind,
+            text: normalized === null ? '<null>' : normalized,
+        };
+    }
+    case 'objc.protocol_image': {
+        const protocolName = String(spec.protocolName || '');
+        const imagePath = ObjC.protocolImage(protocolName);
+        const normalized = imagePath === null ? null : String(imagePath);
+        const imageSummary = normalized === null ? null : normalizeImagePathSummary(normalized);
+        return {
+            kind: 'objc.protocol_image',
+            protocolName,
+            imagePath: normalized,
+            hasImagePath: normalized !== null,
+            resolved: normalized !== null,
+            resolvedProtocolName: normalized === null ? null : protocolName,
             resolvedImagePath: normalized,
             resolvedImageName: imageSummary === null ? null : imageSummary.name,
             imageName: imageSummary === null ? null : imageSummary.name,
@@ -9402,6 +10052,50 @@ function handleSpecResult(spec) {
         const report = Native.detectHookEnvironment();
         return { kind: 'native.hook_environment', report, text: formatHookEnvironmentReport(report) };
     }
+    case 'native.instrumentation': {
+        const report = Native.instrumentation;
+        return { kind: 'native.instrumentation', report, text: formatInstrumentationReport(report) };
+    }
+    case 'qbdi.status': {
+        const report = qbdiStatusReport();
+        return { kind: 'qbdi.status', report, text: formatQbdiStatusReport(report) };
+    }
+    case 'qbdi.methods': {
+        const status = qbdiStatusReport();
+        const methods = Array.isArray(status.methodDescriptors) ? status.methodDescriptors : [];
+        const report = {
+            available: !!status.available,
+            platform: status.platform,
+            backend: status.backend,
+            count: methods.length,
+            androidOnlyCount: methods.filter(function(item) { return !!item.androidOnly; }).length,
+            availableMethodCount: methods.filter(function(item) { return !!item.available; }).length,
+            commandJsonEligibleCount: methods.filter(function(item) { return !!item.commandJsonEligible; }).length,
+            methods,
+            names: methods.map(function(item) { return item.name; }),
+        };
+        return { kind: 'qbdi.methods', report, methods, items: methods, text: formatQbdiMethodsReport(report) };
+    }
+    case 'qbdi.last_error': {
+        const error = qbdi.lastError();
+        return { kind: 'qbdi.last_error', error, text: error };
+    }
+    case 'java.status': {
+        const report = javaStatusReport();
+        return { kind: 'java.status', report, text: formatJavaStatusReport(report) };
+    }
+    case 'java.last_error': {
+        const error = Java.lastError();
+        return { kind: 'java.last_error', error, text: error };
+    }
+    case 'jni.status': {
+        const report = jniStatusReport();
+        return { kind: 'jni.status', report, text: formatJniStatusReport(report) };
+    }
+    case 'jni.last_error': {
+        const error = Jni.lastError();
+        return { kind: 'jni.last_error', error, text: error };
+    }
     case 'pac.available': {
         const available = !!PAC.available;
         return { kind: 'pac.available', available, resolved: true, resolvedAvailable: available, text: String(available) };
@@ -12047,6 +12741,16 @@ function legacyToSpec(command) {
         return { kind: 'objc.class_protocols', className: parsed.className, filter: parsed.filter };
     }
 
+    if (trimmed.startsWith('objc.protocolOwners ')) {
+        const parsed = parseObjcProtocolOwners(trimmed.slice('objc.protocolOwners '.length));
+        return { kind: 'objc.protocol_owners', protocolName: parsed.protocolName, filter: parsed.filter };
+    }
+
+    if (trimmed.startsWith('objc.findProtocolOwners ')) {
+        const parsed = parseObjcProtocolOwners(trimmed.slice('objc.findProtocolOwners '.length));
+        return { kind: 'objc.protocol_owners', protocolName: parsed.protocolName, filter: parsed.filter };
+    }
+
     if (trimmed.startsWith('objc.classInfo ')) {
         const parsed = parseObjcClassInfo(trimmed.slice('objc.classInfo '.length));
         return { kind: 'objc.class_info', className: parsed.className, isMetaClass: parsed.isMetaClass };
@@ -12177,12 +12881,66 @@ function legacyToSpec(command) {
         return { kind: 'objc.class_exists', className: trimmed.slice('objc.classExists '.length) };
     }
 
+    if (trimmed.startsWith('objc.findClassExists ')) {
+        return { kind: 'objc.class_exists', className: trimmed.slice('objc.findClassExists '.length) };
+    }
+
+    if (trimmed.startsWith('objc.protocolExists ')) {
+        return { kind: 'objc.protocol_exists', protocolName: trimmed.slice('objc.protocolExists '.length) };
+    }
+
+    if (trimmed.startsWith('objc.findProtocolExists ')) {
+        return { kind: 'objc.protocol_exists', protocolName: trimmed.slice('objc.findProtocolExists '.length) };
+    }
+
+    if (trimmed.startsWith('objc.classConforms ')) {
+        const parsed = parseObjcClassConforms(trimmed.slice('objc.classConforms '.length));
+        return { kind: 'objc.class_conforms', className: parsed.className, protocolName: parsed.protocolName };
+    }
+
+    if (trimmed.startsWith('objc.findClassConforms ')) {
+        const parsed = parseObjcClassConforms(trimmed.slice('objc.findClassConforms '.length));
+        return { kind: 'objc.class_conforms', className: parsed.className, protocolName: parsed.protocolName };
+    }
+
+    if (trimmed.startsWith('objc.protocolConforms ')) {
+        const parsed = parseObjcProtocolConforms(trimmed.slice('objc.protocolConforms '.length));
+        return {
+            kind: 'objc.protocol_conforms',
+            protocolName: parsed.protocolName,
+            parentProtocolName: parsed.parentProtocolName,
+        };
+    }
+
+    if (trimmed.startsWith('objc.findProtocolConforms ')) {
+        const parsed = parseObjcProtocolConforms(trimmed.slice('objc.findProtocolConforms '.length));
+        return {
+            kind: 'objc.protocol_conforms',
+            protocolName: parsed.protocolName,
+            parentProtocolName: parsed.parentProtocolName,
+        };
+    }
+
     if (trimmed.startsWith('objc.selector ')) {
         return { kind: 'objc.selector', selectorName: trimmed.slice('objc.selector '.length) };
     }
 
+    if (trimmed.startsWith('objc.findSelector ')) {
+        return { kind: 'objc.selector', selectorName: trimmed.slice('objc.findSelector '.length) };
+    }
+
     if (trimmed.startsWith('objc.methodImp ')) {
         const parsed = parseObjcMethodImp(trimmed.slice('objc.methodImp '.length));
+        return {
+            kind: 'objc.method_imp',
+            className: parsed.className,
+            selectorName: parsed.selectorName,
+            isClassMethod: parsed.isClassMethod,
+        };
+    }
+
+    if (trimmed.startsWith('objc.findMethodImp ')) {
+        const parsed = parseObjcMethodImp(trimmed.slice('objc.findMethodImp '.length));
         return {
             kind: 'objc.method_imp',
             className: parsed.className,
@@ -12217,6 +12975,16 @@ function legacyToSpec(command) {
 
     if (trimmed.startsWith('objc.findClassImage ')) {
         return { kind: 'objc.class_image', className: trimmed.slice('objc.findClassImage '.length) };
+    }
+
+    if (trimmed.startsWith('objc.protocolImage ')) {
+        const parsed = parseObjcProtocolImage(trimmed.slice('objc.protocolImage '.length));
+        return { kind: 'objc.protocol_image', protocolName: parsed.protocolName };
+    }
+
+    if (trimmed.startsWith('objc.findProtocolImage ')) {
+        const parsed = parseObjcProtocolImage(trimmed.slice('objc.findProtocolImage '.length));
+        return { kind: 'objc.protocol_image', protocolName: parsed.protocolName };
     }
 
     if (trimmed.startsWith('objc.methodImage ')) {
@@ -12393,6 +13161,14 @@ function legacyToSpec(command) {
         return { kind: 'native.base', moduleName };
     }
 
+    if (trimmed.startsWith('native.findBase ')) {
+        const moduleName = trimmed.slice('native.findBase '.length).trim();
+        if (moduleName.length === 0) {
+            throw new Error('native.findBase usage: native.findBase <module>');
+        }
+        return { kind: 'native.base', moduleName };
+    }
+
     if (trimmed.startsWith('native.imageInfo ')) {
         const moduleName = trimmed.slice('native.imageInfo '.length).trim();
         if (moduleName.length === 0) {
@@ -12421,6 +13197,10 @@ function legacyToSpec(command) {
         return { kind: 'native.main_image' };
     }
 
+    if (trimmed === 'native.findMainImage') {
+        return { kind: 'native.main_image' };
+    }
+
     if (trimmed.startsWith('native.image ')) {
         return {
             kind: 'native.image',
@@ -12428,10 +13208,24 @@ function legacyToSpec(command) {
         };
     }
 
+    if (trimmed.startsWith('native.findImage ')) {
+        return {
+            kind: 'native.image',
+            address: trimmed.slice('native.findImage '.length),
+        };
+    }
+
     if (trimmed.startsWith('native.symbol ')) {
         return {
             kind: 'native.symbol',
             address: trimmed.slice('native.symbol '.length),
+        };
+    }
+
+    if (trimmed.startsWith('native.findSymbol ')) {
+        return {
+            kind: 'native.symbol',
+            address: trimmed.slice('native.findSymbol '.length),
         };
     }
 
@@ -13098,6 +13892,38 @@ function legacyToSpec(command) {
             moduleName: parsed.moduleName,
             commandOrIndex: parsed.query,
         };
+    }
+
+    if (trimmed === 'native.instrumentation') {
+        return { kind: 'native.instrumentation' };
+    }
+
+    if (trimmed === 'qbdi.status' || trimmed === 'qbdi.info') {
+        return { kind: 'qbdi.status' };
+    }
+
+    if (trimmed === 'qbdi.methods') {
+        return { kind: 'qbdi.methods' };
+    }
+
+    if (trimmed === 'qbdi.lastError') {
+        return { kind: 'qbdi.last_error' };
+    }
+
+    if (trimmed === 'java.status' || trimmed === 'java.info') {
+        return { kind: 'java.status' };
+    }
+
+    if (trimmed === 'java.lastError') {
+        return { kind: 'java.last_error' };
+    }
+
+    if (trimmed === 'jni.status' || trimmed === 'jni.info') {
+        return { kind: 'jni.status' };
+    }
+
+    if (trimmed === 'jni.lastError') {
+        return { kind: 'jni.last_error' };
     }
 
     if (trimmed === 'native.hookenv' || trimmed === 'native.detectHookEnvironment') {

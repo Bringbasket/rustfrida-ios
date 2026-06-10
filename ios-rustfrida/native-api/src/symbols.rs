@@ -37,6 +37,7 @@ fn query_matches_symbol(symbol_name: &str, query: &str) -> bool {
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use common::{Error, Result};
+    use std::mem::size_of;
 
     use crate::{enumerate_images, image_name_matches, ImageInfo, NativeSymbol};
 
@@ -156,27 +157,45 @@ mod platform {
         let mut linkedit_segment = None;
         let mut symtab = None;
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
 
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             match load.cmd {
                 LC_SEGMENT_64 => {
+                    if command_size < size_of::<SegmentCommand64>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
                     let segment = unsafe { &*(command_ptr as *const SegmentCommand64) };
                     if segment_name(segment) == "__LINKEDIT" {
                         linkedit_segment = Some(segment);
                     }
                 }
                 LC_SYMTAB => {
+                    if command_size < size_of::<SymtabCommand>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
                     let table = unsafe { &*(command_ptr as *const SymtabCommand) };
                     symtab = Some(table);
                 }
                 _ => {}
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 

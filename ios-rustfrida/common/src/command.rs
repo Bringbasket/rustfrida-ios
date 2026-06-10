@@ -76,6 +76,8 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
             | "objc.protocols"
             | "native.images"
             | "native.mainImage"
+            | "native.findMainImage"
+            | "native.instrumentation"
             | "native.hookenv"
             | "native.detectHookEnvironment"
             | "pac.available"
@@ -83,14 +85,29 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
             | "pac.isProcessArm64e"
             | "pac.images"
             | "pac.arm64eImages"
+            | "qbdi.status"
+            | "qbdi.info"
+            | "qbdi.methods"
+            | "qbdi.lastError"
+            | "java.status"
+            | "java.info"
+            | "java.lastError"
+            | "jni.status"
+            | "jni.info"
+            | "jni.lastError"
             | "swift.available"
             | "swift.protocols"
             | "swift.typeSourceKinds"
             | "swift.typeKinds"
     ) || command.starts_with("objc.classExists ")
+        || command.starts_with("objc.findClassExists ")
+        || command.starts_with("objc.protocolExists ")
+        || command.starts_with("objc.findProtocolExists ")
         || command.starts_with("objc.findClasses ")
         || command.starts_with("objc.classProtocols ")
         || command.starts_with("objc.findClassProtocols ")
+        || command.starts_with("objc.protocolOwners ")
+        || command.starts_with("objc.findProtocolOwners ")
         || command.starts_with("objc.classInfo ")
         || command.starts_with("objc.findClassInfo ")
         || command.starts_with("objc.protocolInfo ")
@@ -110,8 +127,15 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.classChain ")
         || command.starts_with("objc.findClassChain ")
         || command.starts_with("objc.selector ")
+        || command.starts_with("objc.findSelector ")
         || command.starts_with("objc.classImage ")
         || command.starts_with("objc.findClassImage ")
+        || command.starts_with("objc.protocolImage ")
+        || command.starts_with("objc.findProtocolImage ")
+        || command.starts_with("objc.classConforms ")
+        || command.starts_with("objc.findClassConforms ")
+        || command.starts_with("objc.protocolConforms ")
+        || command.starts_with("objc.findProtocolConforms ")
         || command.starts_with("objc.methodImage ")
         || command.starts_with("objc.findMethodImage ")
         || command.starts_with("objc.methodInfo ")
@@ -123,6 +147,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.objectClassName ")
         || command.starts_with("objc.findObjectClassName ")
         || command.starts_with("objc.methodImp ")
+        || command.starts_with("objc.findMethodImp ")
         || command.starts_with("objc.methods ")
         || command.starts_with("objc.findMethods ")
         || command.starts_with("objc.properties ")
@@ -137,6 +162,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("objc.protocols ")
         || command.starts_with("objc.findProtocols ")
         || command.starts_with("native.base ")
+        || command.starts_with("native.findBase ")
         || command.starts_with("native.imageInfo ")
         || command.starts_with("native.findImageInfo ")
         || command.starts_with("native.export ")
@@ -186,6 +212,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.findImportInfo ")
         || command.starts_with("native.images ")
         || command.starts_with("native.image ")
+        || command.starts_with("native.findImage ")
         || command.starts_with("native.loadcmds ")
         || command.starts_with("native.loadCommands ")
         || command.starts_with("native.findLoadCommands ")
@@ -200,6 +227,7 @@ fn is_runtime_handle_legacy_command(command: &str) -> bool {
         || command.starts_with("native.segmentInfo ")
         || command.starts_with("native.findSegmentInfo ")
         || command.starts_with("native.symbol ")
+        || command.starts_with("native.findSymbol ")
         || command.starts_with("native.symbols ")
         || command.starts_with("native.findSymbols ")
         || command.starts_with("native.findExports ")
@@ -262,6 +290,8 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         "objc.protocols" => return Some(json!({ "kind": "objc.protocols", "filter": null })),
         "native.images" => return Some(json!({ "kind": "native.images", "filter": null })),
         "native.mainImage" => return Some(json!({ "kind": "native.main_image" })),
+        "native.findMainImage" => return Some(json!({ "kind": "native.main_image" })),
+        "native.instrumentation" => return Some(json!({ "kind": "native.instrumentation" })),
         "native.hookenv" => return Some(json!({ "kind": "native.hook_environment" })),
         "native.detectHookEnvironment" => return Some(json!({ "kind": "native.hook_environment" })),
         "pac.available" => return Some(json!({ "kind": "pac.available" })),
@@ -269,6 +299,16 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         "pac.isProcessArm64e" => return Some(json!({ "kind": "pac.arm64e" })),
         "pac.images" => return Some(json!({ "kind": "pac.images", "filter": null })),
         "pac.arm64eImages" => return Some(json!({ "kind": "pac.images", "filter": null })),
+        "qbdi.status" => return Some(json!({ "kind": "qbdi.status" })),
+        "qbdi.info" => return Some(json!({ "kind": "qbdi.status" })),
+        "qbdi.methods" => return Some(json!({ "kind": "qbdi.methods" })),
+        "qbdi.lastError" => return Some(json!({ "kind": "qbdi.last_error" })),
+        "java.status" => return Some(json!({ "kind": "java.status" })),
+        "java.info" => return Some(json!({ "kind": "java.status" })),
+        "java.lastError" => return Some(json!({ "kind": "java.last_error" })),
+        "jni.status" => return Some(json!({ "kind": "jni.status" })),
+        "jni.info" => return Some(json!({ "kind": "jni.status" })),
+        "jni.lastError" => return Some(json!({ "kind": "jni.last_error" })),
         "swift.available" => return Some(json!({ "kind": "swift.available" })),
         "swift.protocols" => return Some(json!({ "kind": "swift.protocols", "moduleName": null, "query": null })),
         "swift.typeSourceKinds" => return Some(json!({ "kind": "swift.type_kinds" })),
@@ -319,6 +359,63 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(class_name) = command.strip_prefix("objc.findClassExists ") {
+        return Some(json!({
+            "kind": "objc.class_exists",
+            "className": class_name.trim(),
+        }));
+    }
+
+    if let Some(protocol_name) = command.strip_prefix("objc.protocolExists ") {
+        return Some(json!({
+            "kind": "objc.protocol_exists",
+            "protocolName": protocol_name.trim(),
+        }));
+    }
+
+    if let Some(protocol_name) = command.strip_prefix("objc.findProtocolExists ") {
+        return Some(json!({
+            "kind": "objc.protocol_exists",
+            "protocolName": protocol_name.trim(),
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.classConforms ") {
+        let (class_name, protocol_name) = parse_objc_member_info(raw)?;
+        return Some(json!({
+            "kind": "objc.class_conforms",
+            "className": class_name,
+            "protocolName": protocol_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.findClassConforms ") {
+        let (class_name, protocol_name) = parse_objc_member_info(raw)?;
+        return Some(json!({
+            "kind": "objc.class_conforms",
+            "className": class_name,
+            "protocolName": protocol_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.protocolConforms ") {
+        let (protocol_name, parent_protocol_name) = parse_objc_member_info(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_conforms",
+            "protocolName": protocol_name,
+            "parentProtocolName": parent_protocol_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.findProtocolConforms ") {
+        let (protocol_name, parent_protocol_name) = parse_objc_member_info(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_conforms",
+            "protocolName": protocol_name,
+            "parentProtocolName": parent_protocol_name,
+        }));
+    }
+
     if let Some(class_name) = command.strip_prefix("objc.classProtocols ") {
         let (class_name, filter) = parse_objc_protocol_list_owner(class_name)?;
         return Some(json!({
@@ -333,6 +430,24 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "objc.class_protocols",
             "className": class_name,
+            "filter": filter,
+        }));
+    }
+
+    if let Some(protocol_name) = command.strip_prefix("objc.protocolOwners ") {
+        let (protocol_name, filter) = parse_objc_protocol_list_owner(protocol_name)?;
+        return Some(json!({
+            "kind": "objc.protocol_owners",
+            "protocolName": protocol_name,
+            "filter": filter,
+        }));
+    }
+
+    if let Some(protocol_name) = command.strip_prefix("objc.findProtocolOwners ") {
+        let (protocol_name, filter) = parse_objc_protocol_list_owner(protocol_name)?;
+        return Some(json!({
+            "kind": "objc.protocol_owners",
+            "protocolName": protocol_name,
             "filter": filter,
         }));
     }
@@ -504,7 +619,24 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(selector_name) = command.strip_prefix("objc.findSelector ") {
+        return Some(json!({
+            "kind": "objc.selector",
+            "selectorName": selector_name.trim(),
+        }));
+    }
+
     if let Some(raw) = command.strip_prefix("objc.methodImp ") {
+        let (class_name, selector_name, is_class_method) = parse_objc_method_target(raw)?;
+        return Some(json!({
+            "kind": "objc.method_imp",
+            "className": class_name,
+            "selectorName": selector_name,
+            "isClassMethod": is_class_method,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.findMethodImp ") {
         let (class_name, selector_name, is_class_method) = parse_objc_method_target(raw)?;
         return Some(json!({
             "kind": "objc.method_imp",
@@ -545,6 +677,22 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         return Some(json!({
             "kind": "objc.class_image",
             "className": class_name.trim(),
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.protocolImage ") {
+        let protocol_name = parse_objc_protocol_info(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_image",
+            "protocolName": protocol_name,
+        }));
+    }
+
+    if let Some(raw) = command.strip_prefix("objc.findProtocolImage ") {
+        let protocol_name = parse_objc_protocol_info(raw)?;
+        return Some(json!({
+            "kind": "objc.protocol_image",
+            "protocolName": protocol_name,
         }));
     }
 
@@ -717,6 +865,13 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(module_name) = command.strip_prefix("native.findBase ") {
+        return Some(json!({
+            "kind": "native.base",
+            "moduleName": module_name.trim(),
+        }));
+    }
+
     if let Some(module_name) = command.strip_prefix("native.imageInfo ") {
         let module_name = module_name.trim();
         if module_name.is_empty() {
@@ -753,7 +908,21 @@ fn parse_runtime_dispatch_legacy_command(command: &str) -> Option<Value> {
         }));
     }
 
+    if let Some(address) = command.strip_prefix("native.findImage ") {
+        return Some(json!({
+            "kind": "native.image",
+            "address": address.trim(),
+        }));
+    }
+
     if let Some(address) = command.strip_prefix("native.symbol ") {
+        return Some(json!({
+            "kind": "native.symbol",
+            "address": address.trim(),
+        }));
+    }
+
+    if let Some(address) = command.strip_prefix("native.findSymbol ") {
         return Some(json!({
             "kind": "native.symbol",
             "address": address.trim(),
@@ -2251,6 +2420,10 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
+            AgentCommand::from_legacy("native.findBase libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
             AgentCommand::from_legacy("native.imageInfo libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
@@ -2445,6 +2618,100 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert_eq!(
+            AgentCommand::from_legacy("objc.classExists NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_exists",
+                    "className": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findClassExists NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_exists",
+                    "className": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolExists NSCopying"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_exists",
+                    "protocolName": "NSCopying",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolExists NSCopying"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_exists",
+                    "protocolName": "NSCopying",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.selector init"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.selector",
+                    "selectorName": "init",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findSelector init"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.selector",
+                    "selectorName": "init",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.classConforms NSObject NSCopying"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_conforms",
+                    "className": "NSObject",
+                    "protocolName": "NSCopying",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findClassConforms NSObject NSCopying"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_conforms",
+                    "className": "NSObject",
+                    "protocolName": "NSCopying",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolConforms NSCopying NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_conforms",
+                    "protocolName": "NSCopying",
+                    "parentProtocolName": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolConforms NSCopying NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_conforms",
+                    "protocolName": "NSCopying",
+                    "parentProtocolName": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("objc.classProtocols NSObject"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
@@ -2470,6 +2737,36 @@ mod tests {
                 spec: json!({
                     "kind": "objc.class_protocols",
                     "className": "NSObject",
+                    "filter": "NS",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolOwners NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_owners",
+                    "protocolName": "NSObject",
+                    "filter": null,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolOwners NSObject NS"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_owners",
+                    "protocolName": "NSObject",
+                    "filter": "NS",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolOwners NSObject NS"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_owners",
+                    "protocolName": "NSObject",
                     "filter": "NS",
                 })
             })
@@ -2712,6 +3009,14 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("objc.classImage NSObject"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.protocolImage NSObject"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findProtocolImage NSObject"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -3060,10 +3365,7 @@ mod tests {
     #[test]
     fn native_find_info_aliases_match_canonical_specs() {
         let alias_pairs = [
-            (
-                "native.findImageInfo DemoBinary",
-                "native.imageInfo DemoBinary",
-            ),
+            ("native.findImageInfo DemoBinary", "native.imageInfo DemoBinary"),
             ("native.findSymbolInfo malloc", "native.symbolInfo malloc"),
             (
                 "native.findSymbolInfo DemoBinary -- malloc",
@@ -3097,6 +3399,10 @@ mod tests {
                 "native.findLoadCommandInfo DemoBinary -- LC_UUID",
                 "native.loadCommandInfo DemoBinary -- LC_UUID",
             ),
+            ("native.findBase DemoBinary", "native.base DemoBinary"),
+            ("native.findMainImage", "native.mainImage"),
+            ("native.findImage 0x1234", "native.image 0x1234"),
+            ("native.findSymbol 0x1234", "native.symbol 0x1234"),
             ("native.findDyldInfo DemoBinary", "native.dyldInfo DemoBinary"),
         ];
 
@@ -3113,11 +3419,28 @@ mod tests {
     fn objc_find_aliases_match_canonical_specs() {
         let alias_pairs = [
             ("objc.findClasses UIView", "objc.classes UIView"),
+            (
+                "objc.findClassExists UIViewController",
+                "objc.classExists UIViewController",
+            ),
             ("objc.findProtocols NS", "objc.protocols NS"),
+            (
+                "objc.findProtocolExists UIStateRestoring",
+                "objc.protocolExists UIStateRestoring",
+            ),
+            (
+                "objc.findClassConforms UIViewController UIStateRestoring",
+                "objc.classConforms UIViewController UIStateRestoring",
+            ),
+            (
+                "objc.findProtocolConforms UIStateRestoring NSObject",
+                "objc.protocolConforms UIStateRestoring NSObject",
+            ),
             (
                 "objc.findClassProtocols UIViewController UI",
                 "objc.classProtocols UIViewController UI",
             ),
+            ("objc.findProtocolOwners NSObject NS", "objc.protocolOwners NSObject NS"),
             (
                 "objc.findClassInfo UIViewController meta",
                 "objc.classInfo UIViewController meta",
@@ -3143,13 +3466,28 @@ mod tests {
                 "objc.findProtocolPropertyInfo NSObject description",
                 "objc.protocolPropertyInfo NSObject description",
             ),
-            ("objc.findSuperclass UIViewController", "objc.superclass UIViewController"),
-            ("objc.findClassChain UIViewController", "objc.classChain UIViewController"),
+            (
+                "objc.findSuperclass UIViewController",
+                "objc.superclass UIViewController",
+            ),
+            (
+                "objc.findClassChain UIViewController",
+                "objc.classChain UIViewController",
+            ),
+            ("objc.findSelector viewDidLoad:", "objc.selector viewDidLoad:"),
+            (
+                "objc.findMethodImp UIViewController viewDidLoad",
+                "objc.methodImp UIViewController viewDidLoad",
+            ),
             (
                 "objc.findMethodInfo UIViewController viewDidLoad",
                 "objc.methodInfo UIViewController viewDidLoad",
             ),
-            ("objc.findClassImage UIViewController", "objc.classImage UIViewController"),
+            (
+                "objc.findClassImage UIViewController",
+                "objc.classImage UIViewController",
+            ),
+            ("objc.findProtocolImage NSObject", "objc.protocolImage NSObject"),
             (
                 "objc.findMethodImage UIViewController viewDidLoad",
                 "objc.methodImage UIViewController viewDidLoad",
@@ -3163,13 +3501,19 @@ mod tests {
                 "objc.ivarInfo UIViewController _viewControllerFlags",
             ),
             ("objc.findSelectorName 0x1234", "objc.selectorName 0x1234"),
+            ("objc.findObjectClassName 0x1234", "objc.objectClassName 0x1234"),
             (
-                "objc.findObjectClassName 0x1234",
-                "objc.objectClassName 0x1234",
+                "objc.findMethods UIViewController viewDidLoad",
+                "objc.methods UIViewController viewDidLoad",
             ),
-            ("objc.findMethods UIViewController viewDidLoad", "objc.methods UIViewController viewDidLoad"),
-            ("objc.findProperties UIViewController view", "objc.properties UIViewController view"),
-            ("objc.findIvars UIViewController view", "objc.ivars UIViewController view"),
+            (
+                "objc.findProperties UIViewController view",
+                "objc.properties UIViewController view",
+            ),
+            (
+                "objc.findIvars UIViewController view",
+                "objc.ivars UIViewController view",
+            ),
             ("objc.findMethodOwners viewDidLoad", "objc.methodOwners viewDidLoad"),
         ];
 
@@ -3200,11 +3544,11 @@ mod tests {
                 "swift.findTypesOfKind metadata-accessor ViewController",
                 "swift.typesOfKind metadata-accessor ViewController",
             ),
+            ("swift.findMethodOwners viewDidLoad", "swift.methodOwners viewDidLoad"),
             (
-                "swift.findMethodOwners viewDidLoad",
-                "swift.methodOwners viewDidLoad",
+                "swift.findTypeMethods ViewController",
+                "swift.typeMethods ViewController",
             ),
-            ("swift.findTypeMethods ViewController", "swift.typeMethods ViewController"),
             (
                 "swift.findMethods ViewController viewDidLoad",
                 "swift.methods ViewController viewDidLoad",
@@ -3219,7 +3563,10 @@ mod tests {
                 "swift.findMethodInfo ViewController viewDidLoad",
                 "swift.methodInfo ViewController viewDidLoad",
             ),
-            ("swift.findMetadataInfo ViewController", "swift.metadataInfo ViewController"),
+            (
+                "swift.findMetadataInfo ViewController",
+                "swift.metadataInfo ViewController",
+            ),
             (
                 "swift.findVtableInfo ViewController viewDidLoad",
                 "swift.vtableInfo ViewController viewDidLoad",
@@ -3269,14 +3616,26 @@ mod tests {
                 "swift.findSymbolInfo Demo -- ViewController",
                 "swift.symbolInfo Demo -- ViewController",
             ),
-            ("swift.findSymbols Demo -- ViewController", "swift.symbols Demo -- ViewController"),
-            ("swift.findProtocols Demo -- Renderable", "swift.protocols Demo -- Renderable"),
+            (
+                "swift.findSymbols Demo -- ViewController",
+                "swift.symbols Demo -- ViewController",
+            ),
+            (
+                "swift.findProtocols Demo -- Renderable",
+                "swift.protocols Demo -- Renderable",
+            ),
             (
                 "swift.findConformances Demo -- ViewController",
                 "swift.conformances Demo -- ViewController",
             ),
-            ("swift.findMetadata Demo -- ViewController", "swift.metadata Demo -- ViewController"),
-            ("swift.findVtable Demo -- ViewController", "swift.vtable Demo -- ViewController"),
+            (
+                "swift.findMetadata Demo -- ViewController",
+                "swift.metadata Demo -- ViewController",
+            ),
+            (
+                "swift.findVtable Demo -- ViewController",
+                "swift.vtable Demo -- ViewController",
+            ),
             (
                 "swift.findWitnessTable Demo -- Renderable",
                 "swift.witnessTable Demo -- Renderable",
@@ -3285,7 +3644,10 @@ mod tests {
                 "swift.findTypeLayout Demo -- ViewController",
                 "swift.typeLayout Demo -- ViewController",
             ),
-            ("swift.findTypes Demo -- ViewController", "swift.types Demo -- ViewController"),
+            (
+                "swift.findTypes Demo -- ViewController",
+                "swift.types Demo -- ViewController",
+            ),
             (
                 "swift.findTypesOfKind Demo -- metadata-accessor ViewController",
                 "swift.typesOfKind Demo -- metadata-accessor ViewController",
@@ -3324,6 +3686,90 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("native.findMainImage"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.main_image",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.instrumentation"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.instrumentation",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("qbdi.status"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "qbdi.status",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("qbdi.info"),
+            AgentCommand::from_legacy("qbdi.status")
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("qbdi.methods"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "qbdi.methods",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("qbdi.lastError"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "qbdi.last_error",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("java.status"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "java.status",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("java.info"),
+            AgentCommand::from_legacy("java.status")
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("java.lastError"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "java.last_error",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("jni.status"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "jni.status",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("jni.info"),
+            AgentCommand::from_legacy("jni.status")
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("jni.lastError"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "jni.last_error",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("native.hookenv"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
@@ -3340,6 +3786,15 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("native.findBase libsystem_malloc.dylib"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.base",
+                    "moduleName": "libsystem_malloc.dylib",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("native.image 0x1234"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
@@ -3349,7 +3804,25 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("native.findImage 0x1234"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.image",
+                    "address": "0x1234",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("native.symbol 0x1234"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.symbol",
+                    "address": "0x1234",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findSymbol 0x1234"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
                     "kind": "native.symbol",
@@ -3415,7 +3888,63 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("objc.findClassExists UIView"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_exists",
+                    "className": "UIView",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolExists UIKeyInput"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_exists",
+                    "protocolName": "UIKeyInput",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolImage UIKeyInput"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_image",
+                    "protocolName": "UIKeyInput",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.classConforms UIView UIKeyInput"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_conforms",
+                    "className": "UIView",
+                    "protocolName": "UIKeyInput",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolConforms UIKeyInput NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_conforms",
+                    "protocolName": "UIKeyInput",
+                    "parentProtocolName": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("objc.selector viewDidLoad:"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.selector",
+                    "selectorName": "viewDidLoad:",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findSelector viewDidLoad:"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
                     "kind": "objc.selector",
@@ -3435,7 +3964,29 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("objc.findMethodImp UIViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.method_imp",
+                    "className": "UIViewController",
+                    "selectorName": "viewDidLoad",
+                    "isClassMethod": false,
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("objc.methodImp UIViewController viewDidLoad meta"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.method_imp",
+                    "className": "UIViewController",
+                    "selectorName": "viewDidLoad",
+                    "isClassMethod": true,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findMethodImp UIViewController viewDidLoad meta"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
                     "kind": "objc.method_imp",
@@ -3582,6 +4133,54 @@ mod tests {
             })
         );
         assert_eq!(
+            AgentCommand::from_legacy("objc.protocolImage  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "objc.protocolImage  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolImage  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "objc.findProtocolImage  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.classConforms NSObject"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "objc.classConforms NSObject".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findClassConforms NSObject"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "objc.findClassConforms NSObject".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolConforms NSObject"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "objc.protocolConforms NSObject".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolConforms NSObject"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "objc.findProtocolConforms NSObject".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolOwners  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "objc.protocolOwners  ".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolOwners  "),
+            Some(AgentCommand::RuntimeHandle {
+                command: "objc.findProtocolOwners  ".into(),
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("native.linkedit  "),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.linkedit  ".into(),
@@ -3699,6 +4298,12 @@ mod tests {
             AgentCommand::from_legacy("native.findSegmentInfo libsystem_malloc.dylib"),
             Some(AgentCommand::RuntimeHandle {
                 command: "native.findSegmentInfo libsystem_malloc.dylib".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findMethodImp NSObject"),
+            Some(AgentCommand::RuntimeHandle {
+                command: "objc.findMethodImp NSObject".into(),
             })
         );
         assert_eq!(

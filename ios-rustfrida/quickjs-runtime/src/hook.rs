@@ -29,6 +29,9 @@ use std::time::{Duration, Instant};
 
 const MAX_CALL_NATIVE_ARGS: usize = 6;
 const MIN_VALID_CALL_TARGET: u64 = 0x1_0000;
+const HOOK_NORMAL: i32 = 0;
+const HOOK_WXSHADOW: i32 = 1;
+const HOOK_RECOMP: i32 = 2;
 
 #[cfg(quickjs_hook_engine)]
 const EXECUTABLE_POOL_SIZE: usize = 128 * 1024;
@@ -104,6 +107,27 @@ enum HookMode {
 enum AttachPhase {
     Enter,
     Leave,
+}
+
+#[cfg(quickjs_hook_engine)]
+unsafe fn parse_hook_stealth_arg(
+    ctx: *mut ffi::JSContext,
+    value: JSValue,
+    api_name: &str,
+) -> Result<bool, ffi::JSValue> {
+    if let Some(mode) = value.to_i64(ctx) {
+        return match mode {
+            HOOK_NORMAL => Ok(false),
+            HOOK_WXSHADOW => Ok(true),
+            HOOK_RECOMP => Err(js_throw_internal_error(
+                ctx,
+                &format!("{api_name} Hook.RECOMP is Android-only; iOS currently uses ARM64 hook engine without recomp page mode"),
+            )),
+            _ => Ok(false),
+        };
+    }
+
+    Ok(value.to_bool().unwrap_or(false))
 }
 
 #[cfg(quickjs_hook_engine)]
@@ -216,7 +240,10 @@ unsafe extern "C" fn js_hook(
     }
 
     let stealth = if argc >= 3 {
-        JSValue(*argv.add(2)).to_bool().unwrap_or(false)
+        match parse_hook_stealth_arg(ctx, JSValue(*argv.add(2)), "hook()") {
+            Ok(value) => value,
+            Err(err) => return err,
+        }
     } else {
         false
     };
@@ -277,6 +304,18 @@ unsafe extern "C" fn js_hook(
     js_throw_internal_error(
         ctx,
         "hook() is currently only available when quickjs-runtime is built for ARM64 with the native hook engine enabled",
+    )
+}
+
+unsafe extern "C" fn js_recomp_hook(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    _argc: i32,
+    _argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    js_throw_internal_error(
+        ctx,
+        "recompHook() is Android-only; iOS currently uses ARM64 hook engine without recomp page mode",
     )
 }
 
@@ -359,7 +398,10 @@ unsafe extern "C" fn js_interceptor_attach(
     };
 
     let stealth = if argc >= 3 {
-        JSValue(*argv.add(2)).to_bool().unwrap_or(false)
+        match parse_hook_stealth_arg(ctx, JSValue(*argv.add(2)), "Interceptor.attach()") {
+            Ok(value) => value,
+            Err(err) => return err,
+        }
     } else {
         false
     };
@@ -449,6 +491,38 @@ unsafe extern "C" fn js_interceptor_detach_all(
     )
 }
 
+unsafe extern "C" fn js_diag_alloc_near(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return js_throw_type_error(ctx, "diagAllocNear(addr) requires 1 address argument");
+    }
+
+    let target = match extract_pointer_address(ctx, JSValue(*argv), "diagAllocNear") {
+        Ok(target) => target,
+        Err(err) => return err,
+    };
+
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "available", JSValue::bool(false));
+    result.set_property(ctx, "platform", JSValue::string(ctx, "ios"));
+    result.set_property(ctx, "backend", JSValue::string(ctx, "arm64-hook-engine"));
+    result.set_property(ctx, "androidReferenceApi", JSValue::string(ctx, "diagAllocNear"));
+    result.set_property(ctx, "target", JSValue::string(ctx, &format!("0x{target:x}")));
+    result.set_property(
+        ctx,
+        "reason",
+        JSValue::string(
+            ctx,
+            "Android hook_alloc_near diagnostics are not exposed on iOS; use native.instrumentation/native.hookenv for iOS hook backend status",
+        ),
+    );
+    result.raw()
+}
+
 #[cfg(quickjs_hook_engine)]
 unsafe extern "C" fn js_attach_handle_detach(
     ctx: *mut ffi::JSContext,
@@ -477,12 +551,28 @@ pub(crate) fn register_hook_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, global.raw(), "callNative", js_call_native, 1);
         add_cfunction_to_object(ctx_ptr, global.raw(), "hook", js_hook, 2);
         add_cfunction_to_object(ctx_ptr, global.raw(), "unhook", js_unhook, 1);
+        add_cfunction_to_object(ctx_ptr, global.raw(), "recompHook", js_recomp_hook, 2);
+        add_cfunction_to_object(ctx_ptr, global.raw(), "diagAllocNear", js_diag_alloc_near, 1);
         add_cfunction_to_object(ctx_ptr, interceptor.raw(), "attach", js_interceptor_attach, 2);
         add_cfunction_to_object(ctx_ptr, interceptor.raw(), "replace", js_hook, 2);
         add_cfunction_to_object(ctx_ptr, interceptor.raw(), "revert", js_unhook, 1);
         add_cfunction_to_object(ctx_ptr, interceptor.raw(), "detachAll", js_interceptor_detach_all, 0);
     }
 
+    let hook = ctx.new_object();
+    hook.set_property(ctx.as_ptr(), "NORMAL", JSValue::int(HOOK_NORMAL));
+    hook.set_property(ctx.as_ptr(), "WXSHADOW", JSValue::int(HOOK_WXSHADOW));
+    hook.set_property(ctx.as_ptr(), "RECOMP", JSValue::int(HOOK_RECOMP));
+    hook.set_property(
+        ctx.as_ptr(),
+        "backend",
+        JSValue::string(ctx.as_ptr(), "arm64-hook-engine"),
+    );
+    hook.set_property(ctx.as_ptr(), "recompAvailable", JSValue::bool(false));
+    hook.set_property(ctx.as_ptr(), "wxShadowAvailable", JSValue::bool(true));
+    hook.set_property(ctx.as_ptr(), "androidRecompCompatible", JSValue::bool(false));
+
+    global.set_property(ctx.as_ptr(), "Hook", hook);
     global.set_property(ctx.as_ptr(), "Interceptor", interceptor);
     global.free(ctx.as_ptr());
 }

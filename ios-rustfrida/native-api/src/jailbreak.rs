@@ -36,10 +36,7 @@ impl HookEnvironmentReport {
     }
 
     pub fn filesystem_path_count(&self) -> usize {
-        self.backends
-            .iter()
-            .map(|backend| backend.filesystem_paths.len())
-            .sum()
+        self.backends.iter().map(|backend| backend.filesystem_paths.len()).sum()
     }
 
     pub fn conflict_state(&self) -> &'static str {
@@ -276,14 +273,18 @@ pub fn hook_environment_recommended_actions(
 ) -> Vec<HookRecommendedAction> {
     let loaded_backend_detected = report.loaded_backend_count() > 0;
     let filesystem_candidates_detected = report.filesystem_only_backend_count() > 0;
-    let mode = decision
-        .map(HookStrategyDecision::command_mode)
-        .unwrap_or("allowed");
+    let mode = decision.map(HookStrategyDecision::command_mode).unwrap_or("allowed");
     let reason = decision.and_then(|item| item.reason.clone());
 
     let mut actions = [
-        ("bootstrap", decision.map(|item| item.bootstrap_injection_allowed()).unwrap_or(true)),
-        ("query", decision.map(|item| item.query_commands_allowed()).unwrap_or(true)),
+        (
+            "bootstrap",
+            decision.map(|item| item.bootstrap_injection_allowed()).unwrap_or(true),
+        ),
+        (
+            "query",
+            decision.map(|item| item.query_commands_allowed()).unwrap_or(true),
+        ),
         (
             "hook-install",
             decision
@@ -292,11 +293,12 @@ pub fn hook_environment_recommended_actions(
         ),
         (
             "hook-status",
-            decision
-                .map(|item| item.hook_status_commands_allowed())
-                .unwrap_or(true),
+            decision.map(|item| item.hook_status_commands_allowed()).unwrap_or(true),
         ),
-        ("hook-stop", decision.map(|item| item.hook_stop_commands_allowed()).unwrap_or(true)),
+        (
+            "hook-stop",
+            decision.map(|item| item.hook_stop_commands_allowed()).unwrap_or(true),
+        ),
     ]
     .into_iter()
     .map(|(command_group, allowed)| HookRecommendedAction {
@@ -665,7 +667,8 @@ fn recommendation_for_action(
                 "blocked by cleanup-only mode; use status/stop for cleanup or relax IOS_RUSTFRIDA_HOOK_POLICY".into()
             }
             ("blocked", _) => {
-                "blocked by current hook policy; relax IOS_RUSTFRIDA_HOOK_POLICY only if coexistence risk is acceptable".into()
+                "blocked by current hook policy; relax IOS_RUSTFRIDA_HOOK_POLICY only if coexistence risk is acceptable"
+                    .into()
             }
             _ => "blocked by current hook strategy".into(),
         };
@@ -676,7 +679,8 @@ fn recommendation_for_action(
             "allowed in cleanup-only mode; use these commands to inspect and recover hook state".into()
         }
         (_, "hook-install") if loaded_backend_detected => {
-            "allowed but risky with external backend loaded; validate on a sacrificial target before production apps".into()
+            "allowed but risky with external backend loaded; validate on a sacrificial target before production apps"
+                .into()
         }
         (_, "hook-install") if filesystem_candidates_detected => {
             "allowed; backend files exist on disk but no known backend image is loaded in this process".into()
@@ -1021,7 +1025,9 @@ mod tests {
         };
         let decision = resolve_hook_strategy_with_report(&report, HookPolicy::QueryOnlyExternalLoaded);
         let recommendations = hook_environment_recommendations(&report, Some(&decision));
-        assert!(recommendations.iter().any(|line| line.contains("inline hooks are disabled")));
+        assert!(recommendations
+            .iter()
+            .any(|line| line.contains("inline hooks are disabled")));
     }
 
     #[test]

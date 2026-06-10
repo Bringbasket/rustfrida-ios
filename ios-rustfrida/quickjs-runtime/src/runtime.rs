@@ -15,6 +15,8 @@ mod imp {
     use crate::debug_symbol::register_debug_symbol_api;
     use crate::ffi;
     use crate::hook::{cleanup_hook_backend, enter_runtime_js, register_hook_api};
+    use crate::java::register_java_api;
+    use crate::jni::register_jni_api;
     use crate::memory::register_memory_api;
     use crate::module::register_module_api;
     use crate::native::register_native_api;
@@ -22,6 +24,7 @@ mod imp {
     use crate::objc::register_objc_api;
     use crate::pac::register_pac_api;
     use crate::ptr::register_ptr;
+    use crate::qbdi::register_qbdi_api;
     use crate::swift::register_swift_api;
     use common::{Error, Result};
     use std::collections::BTreeSet;
@@ -86,12 +89,15 @@ mod imp {
             register_console(&context);
             register_ptr(&context);
             register_hook_api(&context);
+            register_java_api(&context);
+            register_jni_api(&context);
             register_debug_symbol_api(&context);
             register_memory_api(&context);
             register_native_api(&context);
             register_objc_api(&context);
             register_module_api(&context);
             register_pac_api(&context);
+            register_qbdi_api(&context);
             register_swift_api(&context);
 
             let bootstrap = self.bootstrap_script();
@@ -204,6 +210,269 @@ globalThis.PAC = globalThis.PAC || { available: false };
 globalThis.Swift = globalThis.Swift || { available: true };
 globalThis.Module = globalThis.Module || {};
 globalThis.Memory = globalThis.Memory || {};
+globalThis.Hook = globalThis.Hook || { NORMAL: 0, WXSHADOW: 1, RECOMP: 2, backend: 'arm64-hook-engine', recompAvailable: false, wxShadowAvailable: true, androidRecompCompatible: false };
+globalThis.qbdi = globalThis.qbdi || {
+    available: false,
+    platform: 'ios',
+    backend: 'unsupported-ios',
+    androidReferenceBackend: 'QBDI',
+    iosAlternativeBackend: 'arm64-hook-engine',
+    compatible: false,
+    qbdiVmAvailable: false,
+    qbdiHelperAvailable: false,
+    virtualStackAvailable: false,
+    registerStateApiAvailable: false,
+    memoryAccessTraceAvailable: false,
+    traceBundleExportAvailable: false,
+    recommendedPath: 'trace-stalker-inline-hook',
+    lastError: function() { return 'QBDI VM APIs are not available on iOS; use trace/stalker/hfl/jhook/shook via the ARM64 hook engine'; },
+    MEMORY_READ: 1,
+    MEMORY_WRITE: 2,
+    MEMORY_READ_WRITE: 3,
+    REG_RETURN: 0,
+    REG_BP: 29,
+    REG_LR: 30,
+    REG_SP: 31,
+    REG_FLAG: 32,
+    REG_PC: 33,
+    status: function() {
+        const unsupportedMethods = [
+            'newVM', 'destroyVM', 'addInstrumentedRange', 'addInstrumentedModule',
+            'addInstrumentedModuleFromAddr', 'instrumentAllExecutableMaps',
+            'removeInstrumentedRange', 'removeAllInstrumentedRanges',
+            'deleteAllInstrumentations', 'recordMemoryAccess', 'allocateVirtualStack',
+            'clearVirtualStacks', 'simulateCall', 'run', 'call', 'switchStackAndCall',
+            'getGPR', 'setGPR', 'getFPR', 'setFPR', 'getErrno', 'setErrno',
+            'setTraceBundleMetadata', 'registerTraceCallbacks', 'unregisterTraceCallbacks'
+        ];
+        const constants = {
+            MEMORY_READ: 1, MEMORY_WRITE: 2, MEMORY_READ_WRITE: 3, REG_RETURN: 0,
+            REG_BP: 29, REG_LR: 30, REG_SP: 31, REG_FLAG: 32, REG_PC: 33
+        };
+        return {
+            available: false,
+            platform: 'ios',
+            backend: 'unsupported-ios',
+            androidReferenceBackend: 'QBDI',
+            iosAlternativeBackend: 'arm64-hook-engine',
+            compatible: false,
+            qbdiVmAvailable: false,
+            qbdiHelperAvailable: false,
+            virtualStackAvailable: false,
+            registerStateApiAvailable: false,
+            memoryAccessTraceAvailable: false,
+            traceBundleExportAvailable: false,
+            recommendedPath: 'trace-stalker-inline-hook',
+            lastError: this.lastError(),
+            supportedCommandCount: 4,
+            supportedCommands: ['qbdi.status', 'qbdi.info', 'qbdi.methods', 'qbdi.lastError'],
+            constantCount: 9,
+            constants: constants,
+            supportedMethodCount: 0,
+            unsupportedMethodCount: unsupportedMethods.length,
+            unsupportedMethods: unsupportedMethods,
+            methodDescriptorCount: unsupportedMethods.length,
+            methodDescriptors: unsupportedMethods.map(function(name) {
+                return { name: name, arity: 0, category: 'android-qbdi', available: false, androidOnly: true, commandJsonEligible: false, replacement: 'trace/stalker/hfl/jhook/shook', message: 'QBDI VM APIs are not available on iOS' };
+            })
+        };
+    },
+    info: function() { return this.status(); },
+    methods: function() { return this.status().methodDescriptors; },
+    shutdown: function() { return false; }
+};
+(function() {
+    const unsupported = function() { throw new Error('QBDI VM APIs are not available on iOS; use trace/stalker/hfl/jhook/shook via the ARM64 hook engine'); };
+    for (const name of qbdi.status().unsupportedMethods) {
+        qbdi[name] = qbdi[name] || unsupported;
+    }
+})();
+globalThis.Java = globalThis.Java || {
+    available: false,
+    platform: 'ios',
+    backend: 'unsupported-ios',
+    androidReferenceBackend: 'ART/JNI',
+    iosAlternativeRuntime: 'ObjC/Swift',
+    compatible: false,
+    lastError: function() { return 'Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'; },
+    status: function() { return {
+        available: false,
+        platform: 'ios',
+        backend: 'unsupported-ios',
+        androidReferenceBackend: 'ART/JNI',
+        androidReferencePath: 'rustFrida-master/quickjs-hook/src/jsapi/java',
+        iosAlternativeRuntime: 'ObjC/Swift',
+        compatible: false,
+        classLoaderReady: false,
+        artRuntimeAvailable: false,
+        jniAvailable: false,
+        hookApiAvailable: false,
+        classLoaderEnumerationAvailable: false,
+        methodEnumerationAvailable: false,
+        fieldAccessAvailable: false,
+        objectInvocationAvailable: false,
+        deoptAvailable: false,
+        supportedMethodCount: 0,
+        recommendedPath: 'objc-swift-native',
+        lastError: this.lastError(),
+        recommendedApis: ['ObjC.classes', 'ObjC.methods', 'Swift.types', 'Swift.methods', 'Native.images', 'Interceptor.attach'],
+        unsupportedMethods: [
+            'perform', 'performNow', 'ready', 'use', 'hook', 'unhook', 'choose', 'cast',
+            'array', 'retain', 'dispose', 'registerClass', 'openClassFile', 'enumerateMethods',
+            'scheduleOnMainThread', 'enumerateLoadedClasses', 'classLoaders',
+            'findClassWithLoader', 'setClassLoader', 'setStealth', '_classLoaders',
+            '_findClassWithLoader', '_setClassLoader', '_updateClassLoader', 'deopt',
+            'deoptimizeBootImage', 'deoptimizeEverything', 'deoptimizeMethod',
+            '_artRouterDebug', '_methods', '_invokeMethod', '_invokeStaticMethod',
+            '_newObject', '_getFieldAuto', '_setFieldAuto', 'getField', '_inspectArtMethod',
+            '_setForcedInterpretOnly', '_initArtController'
+        ],
+        unsupportedMethodCount: 39
+    }; },
+    info: function() { return this.status(); },
+    isAvailable: function() { return false; },
+    _isClassLoaderReady: function() { return false; },
+    _reprobeClassLoader: function() { return false; },
+    enumerateLoadedClasses: function() { return []; },
+    enumerateClassLoaders: function() { return []; },
+    classLoaders: function() { return []; },
+    _classLoaders: function() { return []; },
+    getStealth: function() { return 0; },
+    perform: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    performNow: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    ready: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    use: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    hook: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    unhook: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    choose: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    cast: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    array: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    retain: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    dispose: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    registerClass: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    openClassFile: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    enumerateMethods: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    scheduleOnMainThread: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    findClassWithLoader: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    setClassLoader: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    setStealth: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _findClassWithLoader: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _setClassLoader: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _updateClassLoader: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    deopt: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    deoptimizeBootImage: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    deoptimizeEverything: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    deoptimizeMethod: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _artRouterDebug: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _methods: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _invokeMethod: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _invokeStaticMethod: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _newObject: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _getFieldAuto: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _setFieldAuto: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    getField: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _inspectArtMethod: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _setForcedInterpretOnly: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); },
+    _initArtController: function() { throw new Error('Java/ART APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'); }
+};
+globalThis.Jni = globalThis.Jni || {
+    available: false,
+    platform: 'ios',
+    backend: 'unsupported-ios',
+    androidReferenceBackend: 'JNIEnv',
+    iosAlternativeRuntime: 'ObjC/Swift',
+    compatible: false,
+    lastError: function() { return 'Jni/JNIEnv APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS'; },
+    status: function() { return { available: false, platform: 'ios', backend: 'unsupported-ios', androidReferenceBackend: 'JNIEnv', androidReferencePath: 'rustFrida-master/quickjs-hook/src/jsapi/jni', iosAlternativeRuntime: 'ObjC/Swift', compatible: false, threadEnvAvailable: false, helperEnvAvailable: false, recommendedPath: 'objc-swift-native', lastError: this.lastError(), functionAddressAvailable: false, functionTableAvailable: false, metadataTableAvailable: true, supportedFunctionCount: 0, unsupportedFunctionCount: 89, tableEntryCount: 89, jniFunctionCount: 89, functionMetadataAvailable: true, helperStructReadersAvailable: false }; },
+    info: function() { return this.status(); },
+    isAvailable: function() { return false; },
+    _threadEnv: function() { return null; }
+};
+(function() {
+    const unsupported = function() {
+        throw new Error('Jni/JNIEnv APIs are Android-only; use ObjC, Swift, Native, and Interceptor APIs on iOS');
+    };
+    const names = [
+        'DefineClass', 'FindClass', 'FromReflectedMethod', 'FromReflectedField', 'ToReflectedMethod',
+        'GetSuperclass', 'IsAssignableFrom', 'ToReflectedField', 'Throw', 'ThrowNew',
+        'ExceptionOccurred', 'ExceptionDescribe', 'ExceptionClear', 'FatalError',
+        'PushLocalFrame', 'PopLocalFrame', 'NewGlobalRef', 'DeleteGlobalRef',
+        'DeleteLocalRef', 'IsSameObject', 'NewLocalRef', 'EnsureLocalCapacity',
+        'AllocObject', 'NewObjectA', 'GetObjectClass', 'IsInstanceOf', 'GetMethodID',
+        'CallObjectMethodA', 'CallBooleanMethodA', 'CallByteMethodA', 'CallCharMethodA',
+        'CallShortMethodA', 'CallIntMethodA', 'CallLongMethodA', 'CallFloatMethodA',
+        'CallDoubleMethodA', 'CallVoidMethodA', 'CallNonvirtualObjectMethodA',
+        'CallNonvirtualBooleanMethodA', 'CallNonvirtualIntMethodA', 'CallNonvirtualLongMethodA',
+        'CallNonvirtualFloatMethodA', 'CallNonvirtualDoubleMethodA', 'CallNonvirtualVoidMethodA',
+        'GetFieldID', 'GetObjectField', 'GetBooleanField', 'GetByteField', 'GetCharField',
+        'GetShortField', 'GetIntField', 'GetLongField', 'GetFloatField', 'GetDoubleField',
+        'GetStaticMethodID', 'CallStaticObjectMethodA', 'CallStaticBooleanMethodA',
+        'CallStaticByteMethodA', 'CallStaticCharMethodA', 'CallStaticShortMethodA',
+        'CallStaticIntMethodA', 'CallStaticLongMethodA', 'CallStaticFloatMethodA',
+        'CallStaticDoubleMethodA', 'CallStaticVoidMethodA', 'GetStaticFieldID',
+        'GetStaticObjectField', 'GetStaticBooleanField', 'GetStaticByteField',
+        'GetStaticCharField', 'GetStaticShortField', 'GetStaticIntField', 'GetStaticLongField',
+        'GetStaticFloatField', 'GetStaticDoubleField', 'NewStringUTF', 'GetStringUTFChars',
+        'ReleaseStringUTFChars', 'GetArrayLength', 'NewObjectArray', 'GetObjectArrayElement',
+        'SetObjectArrayElement', 'RegisterNatives', 'UnregisterNatives', 'MonitorEnter',
+        'MonitorExit', 'GetJavaVM', 'ExceptionCheck', 'GetObjectRefType'
+    ];
+    const indexes = [
+        5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+        21, 22, 23, 24, 25, 26, 27, 30, 31, 32, 33, 36, 39, 42, 45, 48,
+        51, 54, 57, 60, 63, 66, 69, 81, 84, 87, 90, 93, 94, 95, 96, 97,
+        98, 99, 100, 101, 102, 103, 113, 116, 119, 122, 125, 128, 131,
+        134, 137, 140, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152,
+        153, 167, 169, 170, 171, 172, 173, 174, 215, 216, 217, 218, 219,
+        228, 232
+    ];
+    const makeEntry = function(name, position) {
+        return {
+            name: name,
+            index: indexes[position] === undefined ? position : indexes[position],
+            address: null,
+            available: false,
+            platform: 'ios',
+            backend: 'unsupported-ios'
+        };
+    };
+    const findEntry = function(name) {
+        const position = names.indexOf(String(name));
+        return position === -1 ? null : makeEntry(names[position], position);
+    };
+    Jni.jniFunctionNames = Jni.jniFunctionNames || names;
+    Jni.entries = Jni.entries || function() { return names.map(makeEntry); };
+    Jni.functions = Jni.functions || Jni.entries;
+    Jni.find = Jni.find || findEntry;
+    Jni.function = Jni.function || findEntry;
+    if (!Jni.table) {
+        Jni.table = {};
+        for (let index = 0; index < names.length; index++) {
+            Jni.table[names[index]] = makeEntry(names[index], index);
+        }
+    }
+    Jni.helper = Jni.helper || {
+        pointerSize: 8,
+        sizeof: { pointer: 8, jvalue: 8, JNINativeMethod: 24 },
+        env: { ptr: null },
+        structs: {
+            JNINativeMethod: { size: 24, read: unsupported, readArray: unsupported },
+            jvalue: { size: 8, read: unsupported, readArray: unsupported }
+        }
+    };
+    for (const name of ['addr', 'call']) {
+        Jni[name] = Jni[name] || unsupported;
+    }
+    for (const name of names) {
+        Jni[name] = Jni[name] || unsupported;
+    }
+})();
+globalThis.recompHook = globalThis.recompHook || function() {
+    throw new Error('recompHook() is Android-only; iOS currently uses ARM64 hook engine without recomp page mode');
+};
+globalThis.diagAllocNear = globalThis.diagAllocNear || function(target) {
+    return { available: false, platform: 'ios', backend: 'arm64-hook-engine', androidReferenceApi: 'diagAllocNear', target: String(target), reason: 'Android hook_alloc_near diagnostics are not exposed on iOS; use native.instrumentation/native.hookenv for iOS hook backend status' };
+};
 globalThis.Interceptor = globalThis.Interceptor || {};
 globalThis.Interceptor.replace = globalThis.Interceptor.replace || function(target, callback, stealth) {
     return hook(target, callback, stealth);
@@ -301,6 +570,8 @@ undefined;
             "DebugSymbol",
             "hook",
             "Interceptor",
+            "Java",
+            "Jni",
             "Memory",
             "Module",
             "Native",
@@ -365,6 +636,15 @@ undefined;
             runtime.initialize().expect("init runtime");
             let candidates = runtime.complete("cons");
             assert!(candidates.iter().any(|item| item == "console"));
+            let qbdi_candidates = runtime.complete("qb");
+            assert!(qbdi_candidates.iter().any(|item| item == "qbdi"));
+            let qbdi_method_candidates = runtime.complete("qbdi.r");
+            assert!(qbdi_method_candidates.iter().any(|item| item == "run"));
+            assert!(qbdi_method_candidates
+                .iter()
+                .any(|item| item == "registerTraceCallbacks"));
+            let jni_candidates = runtime.complete("Jn");
+            assert!(jni_candidates.iter().any(|item| item == "Jni"));
         }
 
         #[test]
@@ -384,6 +664,168 @@ undefined;
             );
             assert_eq!(runtime.eval("typeof hook").expect("hook type"), "function");
             assert_eq!(runtime.eval("typeof unhook").expect("unhook type"), "function");
+            assert_eq!(runtime.eval("typeof Java").expect("Java object type"), "object");
+            assert_eq!(runtime.eval("Java.available").expect("Java availability"), "false");
+            assert_eq!(runtime.eval("Java.backend").expect("Java backend"), "unsupported-ios");
+            assert_eq!(
+                runtime
+                    .eval("Java.status().androidReferenceBackend")
+                    .expect("Java android reference backend"),
+                "ART/JNI"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Java.status().androidReferencePath")
+                    .expect("Java android reference path"),
+                "rustFrida-master/quickjs-hook/src/jsapi/java"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Java.status().recommendedApis.indexOf('ObjC.methods') !== -1 && Java.status().unsupportedMethods.indexOf('_artRouterDebug') !== -1 && Java.status().unsupportedMethods.indexOf('cast') !== -1 && Java.status().unsupportedMethods.indexOf('openClassFile') !== -1")
+                    .expect("Java status compatibility arrays"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Java.status().artRuntimeAvailable + ':' + Java.status().jniAvailable + ':' + Java.status().hookApiAvailable + ':' + Java.status().methodEnumerationAvailable + ':' + Java.status().supportedMethodCount + ':' + (Java.status().unsupportedMethodCount === Java.status().unsupportedMethods.length)")
+                    .expect("Java status runtime capability flags"),
+                "false:false:false:false:0:true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Java.info().backend + ':' + Java.info().androidReferenceBackend")
+                    .expect("Java info alias"),
+                "unsupported-ios:ART/JNI"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Java.classLoaders().length")
+                    .expect("Java classLoaders compatibility result"),
+                "0"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Java._classLoaders().length")
+                    .expect("Java _classLoaders compatibility result"),
+                "0"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Java._artRouterDebug + ':' + typeof Java.getField + ':' + typeof Java._inspectArtMethod + ':' + typeof Java.cast + ':' + typeof Java.openClassFile")
+                    .expect("Java Android internal compatibility methods"),
+                "function:function:function:function:function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { try { Java.use('android.app.Activity'); return false; } catch (e) { return String(e).indexOf('Android-only') !== -1; } })()")
+                    .expect("Java.use unsupported message"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { try { Java.getField(ptr('0x1'), 'java.lang.String', 'value', '[B'); return false; } catch (e) { return String(e).indexOf('Android-only') !== -1; } })()")
+                    .expect("Java.getField unsupported message"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { try { Java.cast(ptr('0x1'), 'java.lang.String'); return false; } catch (e) { return String(e).indexOf('Android-only') !== -1; } })()")
+                    .expect("Java.cast unsupported message"),
+                "true"
+            );
+            assert_eq!(runtime.eval("typeof Jni").expect("Jni object type"), "object");
+            assert_eq!(runtime.eval("Jni.available").expect("Jni availability"), "false");
+            assert_eq!(runtime.eval("Jni.backend").expect("Jni backend"), "unsupported-ios");
+            assert_eq!(
+                runtime
+                    .eval("Jni.status().androidReferenceBackend")
+                    .expect("Jni android reference backend"),
+                "JNIEnv"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Jni.status().metadataTableAvailable + ':' + Jni.status().functionTableAvailable + ':' + Jni.status().jniFunctionCount + ':' + Jni.status().tableEntryCount + ':' + Jni.status().unsupportedFunctionCount")
+                    .expect("Jni status table metadata"),
+                "true:false:89:89:89"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Jni.functions().length")
+                    .expect("Jni functions compatibility result"),
+                "89"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Jni.entries().length")
+                    .expect("Jni entries compatibility result"),
+                "89"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Jni.find('FindClass').index + ':' + Jni.table.RegisterNatives.index + ':' + Jni.function('ExceptionCheck').available")
+                    .expect("Jni metadata compatibility result"),
+                "6:215:false"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Jni.info().backend + ':' + Jni.info().androidReferenceBackend")
+                    .expect("Jni info alias"),
+                "unsupported-ios:JNIEnv"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Jni.helper.pointerSize + ':' + Jni.helper.sizeof.JNINativeMethod")
+                    .expect("Jni helper compatibility result"),
+                "8:24"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Jni.FindClass + ':' + typeof Jni.RegisterNatives + ':' + typeof Jni.table")
+                    .expect("Jni named function compatibility result"),
+                "function:function:object"
+            );
+            assert_eq!(
+                runtime.eval("Jni._threadEnv() === null").expect("Jni thread env"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { try { Jni._className(ptr('0x1'), ptr('0x2')); return false; } catch (e) { return String(e).indexOf('Android-only') !== -1; } })()")
+                    .expect("Jni._className unsupported message"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { try { Jni.FindClass(ptr('0x1'), 'java/lang/String'); return false; } catch (e) { return String(e).indexOf('Android-only') !== -1; } })()")
+                    .expect("Jni.FindClass unsupported message"),
+                "true"
+            );
+            assert_eq!(runtime.eval("typeof recompHook").expect("recompHook type"), "function");
+            assert_eq!(
+                runtime.eval("typeof diagAllocNear").expect("diagAllocNear type"),
+                "function"
+            );
+            assert_eq!(runtime.eval("Hook.NORMAL").expect("Hook.NORMAL"), "0");
+            assert_eq!(runtime.eval("Hook.WXSHADOW").expect("Hook.WXSHADOW"), "1");
+            assert_eq!(runtime.eval("Hook.RECOMP").expect("Hook.RECOMP"), "2");
+            assert_eq!(
+                runtime
+                    .eval("Hook.backend + ':' + Hook.recompAvailable")
+                    .expect("Hook backend summary"),
+                "arm64-hook-engine:false"
+            );
+            assert_eq!(
+                runtime
+                    .eval("diagAllocNear(ptr('0x1234')).available")
+                    .expect("diagAllocNear compatibility result"),
+                "false"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { try { recompHook(ptr('0x1234'), function() {}); return false; } catch (e) { return String(e).indexOf('Android-only') !== -1; } })()")
+                    .expect("recompHook unsupported message"),
+                "true"
+            );
             assert_eq!(
                 runtime
                     .eval("typeof Interceptor.attach")
@@ -395,6 +837,77 @@ undefined;
                     .eval("typeof Interceptor.detachAll")
                     .expect("Interceptor.detachAll type"),
                 "function"
+            );
+            assert_eq!(runtime.eval("typeof qbdi").expect("qbdi object type"), "object");
+            assert_eq!(runtime.eval("qbdi.available").expect("qbdi availability"), "false");
+            assert_eq!(runtime.eval("qbdi.backend").expect("qbdi backend"), "unsupported-ios");
+            assert_eq!(
+                runtime
+                    .eval("qbdi.androidReferenceBackend")
+                    .expect("qbdi android reference backend"),
+                "QBDI"
+            );
+            assert_eq!(
+                runtime
+                    .eval("qbdi.iosAlternativeBackend")
+                    .expect("qbdi ios alternative backend"),
+                "arm64-hook-engine"
+            );
+            assert_eq!(
+                runtime
+                    .eval("qbdi.status().backend + ':' + qbdi.info().supportedCommands.indexOf('qbdi.info') + ':' + qbdi.status().constants.REG_PC")
+                    .expect("qbdi status object"),
+                "unsupported-ios:1:33"
+            );
+            assert_eq!(
+                runtime
+                    .eval("qbdi.status().qbdiVmAvailable + ':' + qbdi.status().qbdiHelperAvailable + ':' + qbdi.status().virtualStackAvailable + ':' + qbdi.status().registerStateApiAvailable + ':' + qbdi.status().memoryAccessTraceAvailable + ':' + qbdi.status().traceBundleExportAvailable + ':' + qbdi.status().supportedMethodCount")
+                    .expect("qbdi capability flags"),
+                "false:false:false:false:false:false:0"
+            );
+            assert_eq!(
+                runtime
+                    .eval("qbdi.status().supportedCommands.indexOf('qbdi.methods') !== -1 && qbdi.status().methodDescriptorCount === qbdi.methods().length && qbdi.methods()[0].name === 'newVM'")
+                    .expect("qbdi method descriptors"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("qbdi.status().unsupportedMethods.indexOf('newVM') !== -1 && qbdi.status().unsupportedMethodCount === qbdi.status().unsupportedMethods.length")
+                    .expect("qbdi unsupported method status"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("[qbdi.MEMORY_READ, qbdi.MEMORY_WRITE, qbdi.MEMORY_READ_WRITE].join(':')")
+                    .expect("qbdi memory access constants"),
+                "1:2:3"
+            );
+            assert_eq!(
+                runtime
+                    .eval("[qbdi.REG_RETURN, qbdi.REG_BP, qbdi.REG_LR, qbdi.REG_SP, qbdi.REG_FLAG, qbdi.REG_PC].join(':')")
+                    .expect("qbdi register constants"),
+                "0:29:30:31:32:33"
+            );
+            assert_eq!(runtime.eval("typeof qbdi.newVM").expect("qbdi newVM type"), "function");
+            assert_eq!(
+                runtime
+                    .eval("typeof qbdi.registerTraceCallbacks")
+                    .expect("qbdi trace callback type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("qbdi.lastError().indexOf('QBDI VM APIs are not available on iOS') !== -1")
+                    .expect("qbdi last error"),
+                "true"
+            );
+            assert_eq!(runtime.eval("qbdi.shutdown()").expect("qbdi shutdown"), "false");
+            assert_eq!(
+                runtime
+                    .eval("(function() { try { qbdi.newVM(); return false; } catch (e) { return String(e).indexOf('QBDI VM APIs are not available on iOS') !== -1; } })()")
+                    .expect("qbdi unsupported call error"),
+                "true"
             );
             assert_eq!(
                 runtime.eval("ObjC.classExists('NSObject')").expect("objc classExists"),
@@ -424,6 +937,54 @@ undefined;
                 runtime
                     .eval("typeof ObjC.findClassProtocols")
                     .expect("objc findClassProtocols type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.protocolOwners")
+                    .expect("objc protocolOwners type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findProtocolOwners")
+                    .expect("objc findProtocolOwners type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.protocolExists")
+                    .expect("objc protocolExists type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findProtocolExists")
+                    .expect("objc findProtocolExists type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.classConforms")
+                    .expect("objc classConforms type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findClassConforms")
+                    .expect("objc findClassConforms type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.protocolConforms")
+                    .expect("objc protocolConforms type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findProtocolConforms")
+                    .expect("objc findProtocolConforms type"),
                 "function"
             );
             assert_eq!(
@@ -553,6 +1114,12 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findMethodImp")
+                    .expect("objc findMethodImp type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof ObjC.methodInfo").expect("objc methodInfo type"),
                 "function"
             );
@@ -610,6 +1177,18 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof ObjC.protocolImage")
+                    .expect("objc protocolImage type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findProtocolImage")
+                    .expect("objc findProtocolImage type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof ObjC.methodImage").expect("objc methodImage type"),
                 "function"
             );
@@ -631,6 +1210,18 @@ undefined;
                 runtime
                     .eval("typeof ObjC.findMethodOwners")
                     .expect("objc findMethodOwners type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findClassExists")
+                    .expect("objc findClassExists type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof ObjC.findSelector")
+                    .expect("objc findSelector type"),
                 "function"
             );
             assert_eq!(
@@ -676,6 +1267,14 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
+                        "(function() { const value = ObjC.protocolImage('NSObject'); return ObjC.available ? (value === null || value.indexOf('/') !== -1) : value === null; })()"
+                    )
+                    .expect("objc protocolImage"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
                         "(function() { const value = ObjC.methodImage('NSObject', 'init'); return ObjC.available ? (value === null || value.indexOf('/') !== -1) : value === null; })()"
                     )
                     .expect("objc methodImage"),
@@ -701,6 +1300,12 @@ undefined;
                             const findProtocolMethodInfo = ObjC.findProtocolMethodInfo('NSObject', 'description', false, false);
                             const protocolPropertyInfo = ObjC.protocolPropertyInfo('NSObject', 'description');
                             const findProtocolPropertyInfo = ObjC.findProtocolPropertyInfo('NSObject', 'description');
+                            const protocolOwners = ObjC.protocolOwners('NSObject', 'NS');
+                            const findProtocolOwners = ObjC.findProtocolOwners('NSObject', 'NS');
+                            const classConforms = ObjC.classConforms('NSObject', 'NSCopying');
+                            const findClassConforms = ObjC.findClassConforms('NSObject', 'NSCopying');
+                            const protocolConforms = ObjC.protocolConforms('NSCopying', 'NSObject');
+                            const findProtocolConforms = ObjC.findProtocolConforms('NSCopying', 'NSObject');
                             const methodInfo = ObjC.methodInfo('NSObject', 'init');
                             const findMethodInfo = ObjC.findMethodInfo('NSObject', 'init');
                             const propertyInfo = ObjC.propertyInfo('NSObject', 'description');
@@ -711,9 +1316,17 @@ undefined;
                                 ((protocolInfo === null && findProtocolInfo === null) || (protocolInfo !== null && findProtocolInfo !== null && protocolInfo.protocolName === findProtocolInfo.protocolName && protocolInfo.protocolPointer.toString() === findProtocolInfo.protocolPointer.toString())) &&
                                 ((protocolMethodInfo === null && findProtocolMethodInfo === null) || (protocolMethodInfo !== null && findProtocolMethodInfo !== null && protocolMethodInfo.selector === findProtocolMethodInfo.selector && protocolMethodInfo.typeEncoding === findProtocolMethodInfo.typeEncoding)) &&
                                 ((protocolPropertyInfo === null && findProtocolPropertyInfo === null) || (protocolPropertyInfo !== null && findProtocolPropertyInfo !== null && protocolPropertyInfo.name === findProtocolPropertyInfo.name && protocolPropertyInfo.attributes === findProtocolPropertyInfo.attributes)) &&
+                                JSON.stringify(protocolOwners) === JSON.stringify(findProtocolOwners) &&
+                                classConforms === findClassConforms &&
+                                protocolConforms === findProtocolConforms &&
                                 ObjC.findSuperclass('NSObject') === ObjC.superclass('NSObject') &&
                                 ObjC.findClassChain('NSObject').join('\\n') === ObjC.classChain('NSObject').join('\\n') &&
+                                ObjC.findClassExists('NSObject') === ObjC.classExists('NSObject') &&
+                                ObjC.findProtocolExists('NSCopying') === ObjC.protocolExists('NSCopying') &&
+                                ObjC.findSelector('init') === ObjC.selector('init') &&
+                                ObjC.findMethodImp('NSObject', 'init') === ObjC.methodImp('NSObject', 'init') &&
                                 ObjC.findClassImage('NSObject') === ObjC.classImage('NSObject') &&
+                                ObjC.findProtocolImage('NSObject') === ObjC.protocolImage('NSObject') &&
                                 ((methodInfo === null && findMethodInfo === null) || (methodInfo !== null && findMethodInfo !== null && methodInfo.selector === findMethodInfo.selector && methodInfo.typeEncoding === findMethodInfo.typeEncoding)) &&
                                 ObjC.findMethodImage('NSObject', 'init') === ObjC.methodImage('NSObject', 'init') &&
                                 ((propertyInfo === null && findPropertyInfo === null) || (propertyInfo !== null && findPropertyInfo !== null && propertyInfo.name === findPropertyInfo.name && propertyInfo.attributes === findPropertyInfo.attributes)) &&
@@ -1398,6 +2011,44 @@ undefined;
         }
 
         #[test]
+        fn find_aliases_match_canonical_js_functions() {
+            let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+            let mut runtime = QuickJsRuntime::new();
+            runtime.initialize().expect("init runtime");
+
+            for object_name in ["ObjC", "Native", "Swift"] {
+                let script = format!(
+                    "(function() {{
+                        const obj = globalThis['{object_name}'];
+                        if (obj === null || typeof obj !== 'object') {{
+                            return 'object-missing';
+                        }}
+                        const findKeys = Object.getOwnPropertyNames(obj).filter((key) => key.startsWith('find') && key.length > 4);
+                        if (findKeys.length === 0) {{
+                            return 'no-find-keys';
+                        }}
+                        for (const findKey of findKeys) {{
+                            const remainder = findKey.slice(4);
+                            const canonical = remainder.charAt(0).toLowerCase() + remainder.slice(1);
+                            if (typeof obj[findKey] !== 'function') {{
+                                return `${{findKey}}:find-not-function`;
+                            }}
+                            if (typeof obj[canonical] !== 'function') {{
+                                return `${{findKey}}:${{canonical}}:canonical-not-function`;
+                            }}
+                        }}
+                        return 'ok';
+                    }})()"
+                );
+                assert_eq!(
+                    runtime.eval(&script).expect("find alias canonical parity"),
+                    "ok",
+                    "find alias mismatch on {object_name}"
+                );
+            }
+        }
+
+        #[test]
         fn module_finds_exports() {
             let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
             let mut runtime = QuickJsRuntime::new();
@@ -1430,6 +2081,10 @@ undefined;
             assert!(!bootstrap.contains("not implemented on iOS yet"));
             assert!(bootstrap.contains("Interceptor.attach() is unavailable in this build"));
             assert!(bootstrap.contains("Interceptor.detachAll() is unavailable in this build"));
+            assert!(bootstrap.contains("globalThis.qbdi = globalThis.qbdi ||"));
+            assert!(bootstrap.contains("qbdiVmAvailable: false"));
+            assert!(bootstrap.contains("artRuntimeAvailable: false"));
+            assert!(bootstrap.contains("metadataTableAvailable: true"));
         }
 
         #[test]
@@ -1493,7 +2148,17 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof Native.findBase").expect("native find base type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof Native.mainImage").expect("native mainImage type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findMainImage")
+                    .expect("native find mainImage type"),
                 "function"
             );
             assert_eq!(
@@ -1501,7 +2166,17 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime.eval("typeof Native.findImage").expect("native find image type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof Native.symbol").expect("native symbol type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findSymbol")
+                    .expect("native find symbol type"),
                 "function"
             );
             assert_eq!(
@@ -1547,6 +2222,24 @@ undefined;
                 "function"
             );
             assert_eq!(
+                runtime
+                    .eval("typeof Native.findDependencies")
+                    .expect("native find dependencies type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findImports")
+                    .expect("native find imports type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findRpaths")
+                    .expect("native find rpaths type"),
+                "function"
+            );
+            assert_eq!(
                 runtime.eval("typeof Native.imageInfo").expect("native image info type"),
                 "function"
             );
@@ -1572,6 +2265,88 @@ undefined;
                 runtime
                     .eval("typeof Native.findLoadCommands")
                     .expect("native find load commands type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findEncryptionInfo")
+                    .expect("native find encryption info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findDyldInfo")
+                    .expect("native find dyld info type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findEntryPoint")
+                    .expect("native find entry point type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findSourceVersion")
+                    .expect("native find source version type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findBuildVersion")
+                    .expect("native find build version type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findDylinker")
+                    .expect("native find dylinker type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findInstallName")
+                    .expect("native find install name type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findLinkedit")
+                    .expect("native find linkedit type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findFunctionStarts")
+                    .expect("native find function starts type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findCodeSignature")
+                    .expect("native find code signature type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findDataInCode")
+                    .expect("native find data in code type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findExportsTrie")
+                    .expect("native find exports trie type"),
+                "function"
+            );
+            assert_eq!(
+                runtime
+                    .eval("typeof Native.findChainedFixups")
+                    .expect("native find chained fixups type"),
+                "function"
+            );
+            assert_eq!(
+                runtime.eval("typeof Native.findUuid").expect("native find uuid type"),
                 "function"
             );
             assert_eq!(
@@ -1612,6 +2387,71 @@ undefined;
                 runtime
                     .eval("Array.isArray(Native.detectHookEnvironment().backends)")
                     .expect("native hook env backends"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const nativeOk =
+                                Native.instrumentationBackend === 'arm64-hook-engine' &&
+                                Native.androidReferenceInstrumentationBackend === 'QBDI' &&
+                                Native.qbdiCompatible === false &&
+                                Native.qbdiAvailable === false &&
+                                Native.traceAvailable === true &&
+                                Native.stalkerAvailable === true &&
+                                Native.recommendedInstrumentationPath === 'trace-stalker-inline-hook' &&
+                                typeof Native.instrumentation === 'object' &&
+                                Native.instrumentation !== null &&
+                                Native.instrumentation.backend === Native.instrumentationBackend &&
+                                Native.instrumentation.androidReferenceBackend === 'QBDI' &&
+                                Native.instrumentation.qbdiCompatible === false &&
+                                Native.instrumentation.qbdiApiPorted === false &&
+                                Array.isArray(Native.instrumentation.recommendedCommands) &&
+                                Native.instrumentation.recommendedCommands.indexOf('trace <target>') !== -1 &&
+                                Array.isArray(Native.instrumentation.unsupportedQbdiApis) &&
+                                Native.instrumentation.unsupportedQbdiApis.indexOf('qbdi.newVM') !== -1;
+                            const report = Native.detectHookEnvironment();
+                            const reportOk =
+                                report.instrumentationBackend === 'arm64-hook-engine' &&
+                                report.androidReferenceInstrumentationBackend === 'QBDI' &&
+                                report.qbdiCompatible === false &&
+                                report.qbdiAvailable === false &&
+                                report.traceAvailable === true &&
+                                report.stalkerAvailable === true &&
+                                report.recommendedInstrumentationPath === 'trace-stalker-inline-hook' &&
+                                typeof report.instrumentation === 'object' &&
+                                report.instrumentation !== null &&
+                                report.instrumentation.backend === report.instrumentationBackend &&
+                                report.instrumentation.androidReferenceBackend === 'QBDI' &&
+                                report.instrumentation.qbdiCompatible === false &&
+                                report.instrumentation.recommendedCommands.indexOf('stalker <target>') !== -1;
+                            return nativeOk && reportOk;
+                        })()"#,
+                    )
+                    .expect("native instrumentation parity fields"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() {
+                            const main = Native.mainImage();
+                            if (main === null) {
+                                return Native.findMainImage() === null;
+                            }
+                            const imageAliasMatches = Native.findMainImage().path === main.path;
+                            const baseAliasMatches = Native.findBase(main.name) === Native.base(main.name);
+                            const malloc = Module.findExportByName(null, 'malloc');
+                            if (malloc === null) {
+                                return imageAliasMatches && baseAliasMatches;
+                            }
+                            const imageByAddressAliasMatches = JSON.stringify(Native.findImage(malloc)) === JSON.stringify(Native.image(malloc));
+                            const symbolByAddressAliasMatches = JSON.stringify(Native.findSymbol(malloc)) === JSON.stringify(Native.symbol(malloc));
+                            return imageAliasMatches && baseAliasMatches && imageByAddressAliasMatches && symbolByAddressAliasMatches;
+                        })()"
+                    )
+                    .expect("native base/mainImage/image/symbol aliases"),
                 "true"
             );
             assert_eq!(
@@ -4256,6 +5096,24 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("Array.isArray(Native.findDependencies('libsystem_malloc.dylib'))")
+                    .expect("native find dependencies"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(Native.findImports('libsystem_malloc.dylib'))")
+                    .expect("native find imports"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("Array.isArray(Native.findRpaths('libsystem_malloc.dylib'))")
+                    .expect("native find rpaths"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("Array.isArray(Native.findSegments('libsystem_malloc.dylib'))")
                     .expect("native find segments"),
                 "true"
@@ -4348,9 +5206,26 @@ undefined;
                                 Native.findDependencyInfo('libsystem_malloc.dylib', 'libSystem.B.dylib') === Native.dependencyInfo('libsystem_malloc.dylib', 'libSystem.B.dylib') &&
                                 Native.findRpathInfo('libsystem_malloc.dylib', '@loader_path') === Native.rpathInfo('libsystem_malloc.dylib', '@loader_path') &&
                                 Native.findImportInfo('libsystem_malloc.dylib', 'malloc') === Native.importInfo('libsystem_malloc.dylib', 'malloc') &&
+                                JSON.stringify(Native.findDependencies('libsystem_malloc.dylib')) === JSON.stringify(Native.dependencies('libsystem_malloc.dylib')) &&
+                                JSON.stringify(Native.findImports('libsystem_malloc.dylib')) === JSON.stringify(Native.imports('libsystem_malloc.dylib')) &&
+                                JSON.stringify(Native.findRpaths('libsystem_malloc.dylib')) === JSON.stringify(Native.rpaths('libsystem_malloc.dylib')) &&
                                 Native.findSegmentInfo('libsystem_malloc.dylib', '__TEXT') === Native.segmentInfo('libsystem_malloc.dylib', '__TEXT') &&
                                 Native.findSectionInfo('libsystem_malloc.dylib', '__TEXT', '__text') === Native.sectionInfo('libsystem_malloc.dylib', '__TEXT', '__text') &&
-                                Native.findLoadCommandInfo('libsystem_malloc.dylib', 'LC_UUID') === Native.loadCommandInfo('libsystem_malloc.dylib', 'LC_UUID');
+                                Native.findLoadCommandInfo('libsystem_malloc.dylib', 'LC_UUID') === Native.loadCommandInfo('libsystem_malloc.dylib', 'LC_UUID') &&
+                                Native.findEncryptionInfo('libsystem_malloc.dylib') === Native.encryptionInfo('libsystem_malloc.dylib') &&
+                                Native.findDyldInfo('libsystem_malloc.dylib') === Native.dyldInfo('libsystem_malloc.dylib') &&
+                                Native.findEntryPoint('libsystem_malloc.dylib') === Native.entryPoint('libsystem_malloc.dylib') &&
+                                Native.findSourceVersion('libsystem_malloc.dylib') === Native.sourceVersion('libsystem_malloc.dylib') &&
+                                Native.findBuildVersion('libsystem_malloc.dylib') === Native.buildVersion('libsystem_malloc.dylib') &&
+                                Native.findDylinker('libsystem_malloc.dylib') === Native.dylinker('libsystem_malloc.dylib') &&
+                                Native.findInstallName('libsystem_malloc.dylib') === Native.installName('libsystem_malloc.dylib') &&
+                                Native.findLinkedit('libsystem_malloc.dylib') === Native.linkedit('libsystem_malloc.dylib') &&
+                                Native.findFunctionStarts('libsystem_malloc.dylib') === Native.functionStarts('libsystem_malloc.dylib') &&
+                                Native.findCodeSignature('libsystem_malloc.dylib') === Native.codeSignature('libsystem_malloc.dylib') &&
+                                Native.findDataInCode('libsystem_malloc.dylib') === Native.dataInCode('libsystem_malloc.dylib') &&
+                                Native.findExportsTrie('libsystem_malloc.dylib') === Native.exportsTrie('libsystem_malloc.dylib') &&
+                                Native.findChainedFixups('libsystem_malloc.dylib') === Native.chainedFixups('libsystem_malloc.dylib') &&
+                                Native.findUuid('libsystem_malloc.dylib') === Native.uuid('libsystem_malloc.dylib');
                         })()"
                     )
                     .expect("native info aliases"),
@@ -4892,7 +5767,11 @@ undefined;
                                 __iosRustFridaAgentApi.handle('objc.findProtocolPropertyInfo NSObject description') === __iosRustFridaAgentApi.handle('objc.protocolPropertyInfo NSObject description') &&
                                 __iosRustFridaAgentApi.handle('objc.findSuperclass NSObject') === __iosRustFridaAgentApi.handle('objc.superclass NSObject') &&
                                 __iosRustFridaAgentApi.handle('objc.findClassChain NSObject') === __iosRustFridaAgentApi.handle('objc.classChain NSObject') &&
+                                __iosRustFridaAgentApi.handle('objc.findClassExists NSObject') === __iosRustFridaAgentApi.handle('objc.classExists NSObject') &&
+                                __iosRustFridaAgentApi.handle('objc.findSelector init') === __iosRustFridaAgentApi.handle('objc.selector init') &&
+                                __iosRustFridaAgentApi.handle('objc.findMethodImp NSObject init') === __iosRustFridaAgentApi.handle('objc.methodImp NSObject init') &&
                                 __iosRustFridaAgentApi.handle('objc.findClassImage NSObject') === __iosRustFridaAgentApi.handle('objc.classImage NSObject') &&
+                                __iosRustFridaAgentApi.handle('objc.findProtocolImage NSObject') === __iosRustFridaAgentApi.handle('objc.protocolImage NSObject') &&
                                 __iosRustFridaAgentApi.handle('objc.findMethodInfo NSObject init') === __iosRustFridaAgentApi.handle('objc.methodInfo NSObject init') &&
                                 __iosRustFridaAgentApi.handle('objc.findMethodImage NSObject init') === __iosRustFridaAgentApi.handle('objc.methodImage NSObject init') &&
                                 __iosRustFridaAgentApi.handle('objc.findPropertyInfo NSObject description') === __iosRustFridaAgentApi.handle('objc.propertyInfo NSObject description') &&
@@ -4909,6 +5788,10 @@ undefined;
                     .eval(
                         "(function() {
                             return __iosRustFridaAgentApi.handle('objc.findClassProtocols NSObject NS') === __iosRustFridaAgentApi.handle('objc.classProtocols NSObject NS') &&
+                                __iosRustFridaAgentApi.handle('objc.findProtocolExists NSCopying') === __iosRustFridaAgentApi.handle('objc.protocolExists NSCopying') &&
+                                __iosRustFridaAgentApi.handle('objc.findClassConforms NSObject NSCopying') === __iosRustFridaAgentApi.handle('objc.classConforms NSObject NSCopying') &&
+                                __iosRustFridaAgentApi.handle('objc.findProtocolConforms NSCopying NSObject') === __iosRustFridaAgentApi.handle('objc.protocolConforms NSCopying NSObject') &&
+                                __iosRustFridaAgentApi.handle('objc.findProtocolOwners NSObject NS') === __iosRustFridaAgentApi.handle('objc.protocolOwners NSObject NS') &&
                                 __iosRustFridaAgentApi.handle('objc.findProtocolProtocols NSObject NS') === __iosRustFridaAgentApi.handle('objc.protocolProtocols NSObject NS') &&
                                 __iosRustFridaAgentApi.handle('objc.findProtocolMethods NSObject optional class description') === __iosRustFridaAgentApi.handle('objc.protocolMethods NSObject optional class description') &&
                                 __iosRustFridaAgentApi.handle('objc.findProtocolProperties NSObject description') === __iosRustFridaAgentApi.handle('objc.protocolProperties NSObject description') &&
@@ -4991,6 +5874,62 @@ undefined;
                 runtime
                     .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.classProtocols NSObject NS'); const right = __iosRustFridaAgentApi.handle('objc.findClassProtocols NSObject NS'); return left === right; })()")
                     .expect("agent objc findClassProtocols alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.protocolExists NSCopying'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_exists', protocolName: 'NSCopying' }); return value === result.text && result.protocolName === 'NSCopying' && typeof result.exists === 'boolean' && typeof result.resolved === 'boolean'; })()"
+                    )
+                    .expect("agent objc protocolExists"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.protocolExists NSCopying'); const right = __iosRustFridaAgentApi.handle('objc.findProtocolExists NSCopying'); return left === right; })()")
+                    .expect("agent objc findProtocolExists alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.classConforms NSObject NSCopying'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_conforms', className: 'NSObject', protocolName: 'NSCopying' }); return value === result.text && result.className === 'NSObject' && result.protocolName === 'NSCopying' && typeof result.conforms === 'boolean' && typeof result.classExists === 'boolean' && typeof result.hasProtocolInfo === 'boolean' && typeof result.resolved === 'boolean'; })()"
+                    )
+                    .expect("agent objc classConforms"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.classConforms NSObject NSCopying'); const right = __iosRustFridaAgentApi.handle('objc.findClassConforms NSObject NSCopying'); return left === right; })()")
+                    .expect("agent objc findClassConforms alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.protocolConforms NSCopying NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_conforms', protocolName: 'NSCopying', parentProtocolName: 'NSObject' }); return value === result.text && result.protocolName === 'NSCopying' && result.parentProtocolName === 'NSObject' && typeof result.conforms === 'boolean' && typeof result.hasProtocolInfo === 'boolean' && typeof result.hasParentProtocolInfo === 'boolean' && typeof result.resolved === 'boolean'; })()"
+                    )
+                    .expect("agent objc protocolConforms"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.protocolConforms NSCopying NSObject'); const right = __iosRustFridaAgentApi.handle('objc.findProtocolConforms NSCopying NSObject'); return left === right; })()")
+                    .expect("agent objc findProtocolConforms alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.protocolOwners NSObject NS'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_owners', protocolName: 'NSObject', filter: 'NS' }); return value === result.text && result.filter === 'NS' && result.hasFilter === true && typeof result.hasClasses === 'boolean' && typeof result.hasProtocolInfo === 'boolean' && typeof result.resolved === 'boolean' && result.count === result.classes.length; })()"
+                    )
+                    .expect("agent objc protocolOwners"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.protocolOwners NSObject NS'); const right = __iosRustFridaAgentApi.handle('objc.findProtocolOwners NSObject NS'); return left === right; })()")
+                    .expect("agent objc findProtocolOwners alias"),
                 "true"
             );
             assert_eq!(
@@ -5117,6 +6056,12 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.classExists NSObject'); const right = __iosRustFridaAgentApi.handle('objc.findClassExists NSObject'); return left === right; })()")
+                    .expect("agent objc findClassExists alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.selector init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.selector', selectorName: 'init' }); return value === result.text && typeof result.hasPointer === 'boolean' && typeof result.resolved === 'boolean' && ((result.pointer === null && result.hasPointer === false && result.resolved === false && result.resolvedSelectorName === null && result.resolvedPointer === null && result.text === '<null>') || (typeof result.pointer === 'string' && result.hasPointer === true && result.resolved === true && result.resolvedSelectorName === 'init' && result.resolvedPointer === result.pointer)); })()"
                     )
@@ -5125,10 +6070,24 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.selector init'); const right = __iosRustFridaAgentApi.handle('objc.findSelector init'); return left === right; })()")
+                    .expect("agent objc findSelector alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval(
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.classImage NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_image', className: 'NSObject' }); return value === result.text && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedClassName === null && result.resolvedImagePath === null) || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedClassName === result.className && result.resolvedImagePath === result.imagePath)); })()"
                     )
                     .expect("agent objc classImage"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        "(function() { const value = __iosRustFridaAgentApi.handle('objc.protocolImage NSObject'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_image', protocolName: 'NSObject' }); return value === result.text && typeof result.hasImagePath === 'boolean' && typeof result.resolved === 'boolean' && ((result.imagePath === null && result.hasImagePath === false && result.resolved === false && result.resolvedProtocolName === null && result.resolvedImagePath === null) || (typeof result.imagePath === 'string' && result.hasImagePath === true && result.resolved === true && result.resolvedProtocolName === result.protocolName && result.resolvedImagePath === result.imagePath)); })()"
+                    )
+                    .expect("agent objc protocolImage"),
                 "true"
             );
             assert_eq!(
@@ -5145,6 +6104,12 @@ undefined;
                         "(function() { const value = __iosRustFridaAgentApi.handle('objc.methodImp NSObject init'); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.method_imp', className: 'NSObject', selectorName: 'init', isClassMethod: false }); return value === result.text && typeof result.hasImp === 'boolean' && typeof result.resolved === 'boolean' && ((result.imp === null && result.hasImp === false && result.resolved === false && result.resolvedClassName === null && result.resolvedSelectorName === null && result.resolvedImp === null) || (typeof result.imp === 'string' && result.hasImp === true && result.resolved === true && result.resolvedClassName === result.className && result.resolvedSelectorName === result.selectorName && result.resolvedImp === result.imp)); })()"
                     )
                     .expect("agent objc methodImp"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const left = __iosRustFridaAgentApi.handle('objc.methodImp NSObject init'); const right = __iosRustFridaAgentApi.handle('objc.findMethodImp NSObject init'); return left === right; })()")
+                    .expect("agent objc findMethodImp alias"),
                 "true"
             );
             assert_eq!(
@@ -21493,6 +22458,192 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval(
+                        r#"(function() {
+                            const value = __iosRustFridaAgentApi.handle('native.instrumentation');
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.instrumentation' });
+                            return result.kind === 'native.instrumentation' &&
+                                result.report === Native.instrumentation &&
+                                value === result.text &&
+                                value.indexOf('backend=arm64-hook-engine') !== -1 &&
+                                value.indexOf('android_reference_backend=QBDI') !== -1 &&
+                                value.indexOf('qbdi_compatible=false') !== -1 &&
+                                value.indexOf('recommended_command trace <target>') !== -1 &&
+                                value.indexOf('unsupported_qbdi_api qbdi.newVM') !== -1;
+                        })()"#,
+                    )
+                    .expect("agent native instrumentation"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const value = __iosRustFridaAgentApi.handle('qbdi.status');
+                            const alias = __iosRustFridaAgentApi.handle('qbdi.info');
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'qbdi.status' });
+                            const methods = __iosRustFridaAgentApi.handleSpecResult({ kind: 'qbdi.methods' });
+                            const methodsText = __iosRustFridaAgentApi.handle('qbdi.methods');
+                            const lastError = __iosRustFridaAgentApi.handle('qbdi.lastError');
+                            return result.kind === 'qbdi.status' &&
+                                value === alias &&
+                                value === result.text &&
+                                result.report.available === false &&
+                                result.report.backend === 'unsupported-ios' &&
+                                result.report.androidReferenceBackend === 'QBDI' &&
+                                result.report.iosAlternativeBackend === 'arm64-hook-engine' &&
+                                result.report.qbdiVmAvailable === false &&
+                                result.report.qbdiHelperAvailable === false &&
+                                result.report.virtualStackAvailable === false &&
+                                result.report.registerStateApiAvailable === false &&
+                                result.report.memoryAccessTraceAvailable === false &&
+                                result.report.traceBundleExportAvailable === false &&
+                                result.report.supportedMethodCount === 0 &&
+                                result.report.supportedCommandCount === 4 &&
+                                result.report.supportedCommands.indexOf('qbdi.methods') !== -1 &&
+                                result.report.supportedCommands.indexOf('qbdi.info') !== -1 &&
+                                result.report.constantCount === 9 &&
+                                result.report.constants.MEMORY_READ === 1 &&
+                                result.report.constants.MEMORY_WRITE === 2 &&
+                                result.report.constants.MEMORY_READ_WRITE === 3 &&
+                                result.report.constants.REG_BP === 29 &&
+                                result.report.constants.REG_LR === 30 &&
+                                result.report.constants.REG_SP === 31 &&
+                                result.report.constants.REG_FLAG === 32 &&
+                                result.report.constants.REG_PC === 33 &&
+                                result.report.unsupportedMethodCount === result.report.unsupportedMethods.length &&
+                                result.report.unsupportedMethodCount === 25 &&
+                                result.report.unsupportedMethods.indexOf('newVM') !== -1 &&
+                                result.report.methodDescriptorCount === 25 &&
+                                result.report.methodDescriptors[0].name === 'newVM' &&
+                                result.report.methodDescriptors[0].available === false &&
+                                methods.kind === 'qbdi.methods' &&
+                                methods.report.count === 25 &&
+                                methods.report.availableMethodCount === 0 &&
+                                methods.report.androidOnlyCount === 25 &&
+                                methods.report.names.indexOf('registerTraceCallbacks') !== -1 &&
+                                value.indexOf('available=false') !== -1 &&
+                                value.indexOf('backend=unsupported-ios') !== -1 &&
+                                value.indexOf('qbdi_vm_available=false') !== -1 &&
+                                value.indexOf('qbdi_helper_available=false') !== -1 &&
+                                value.indexOf('virtual_stack_available=false') !== -1 &&
+                                value.indexOf('register_state_api_available=false') !== -1 &&
+                                value.indexOf('memory_access_trace_available=false') !== -1 &&
+                                value.indexOf('trace_bundle_export_available=false') !== -1 &&
+                                value.indexOf('supported_method_count=0') !== -1 &&
+                                value.indexOf('supported_command qbdi.methods') !== -1 &&
+                                value.indexOf('supported_command qbdi.info') !== -1 &&
+                                value.indexOf('method_descriptor newVM') !== -1 &&
+                                value.indexOf('constant REG_PC=33') !== -1 &&
+                                value.indexOf('unsupported_method newVM') !== -1 &&
+                                methodsText.indexOf('method_count=25') !== -1 &&
+                                methodsText.indexOf('method newVM') !== -1 &&
+                                lastError.indexOf('QBDI VM APIs are not available on iOS') !== -1;
+                        })()"#,
+                    )
+                    .expect("agent qbdi status"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const value = __iosRustFridaAgentApi.handle('java.status');
+                            const alias = __iosRustFridaAgentApi.handle('java.info');
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'java.status' });
+                            const lastError = __iosRustFridaAgentApi.handle('java.lastError');
+                            return result.kind === 'java.status' &&
+                                value === alias &&
+                                value === result.text &&
+                                result.report.available === false &&
+                                result.report.backend === 'unsupported-ios' &&
+                                result.report.androidReferenceBackend === 'ART/JNI' &&
+                                result.report.androidReferencePath === 'rustFrida-master/quickjs-hook/src/jsapi/java' &&
+                                result.report.iosAlternativeRuntime === 'ObjC/Swift' &&
+                                result.report.artRuntimeAvailable === false &&
+                                result.report.jniAvailable === false &&
+                                result.report.hookApiAvailable === false &&
+                                result.report.classLoaderEnumerationAvailable === false &&
+                                result.report.methodEnumerationAvailable === false &&
+                                result.report.fieldAccessAvailable === false &&
+                                result.report.objectInvocationAvailable === false &&
+                                result.report.deoptAvailable === false &&
+                                result.report.supportedMethodCount === 0 &&
+                                result.report.unsupportedMethodCount === result.report.unsupportedMethods.length &&
+                                result.report.supportedCommandCount === 3 &&
+                                result.report.supportedCommands.indexOf('java.info') !== -1 &&
+                                result.report.unsupportedMethods.indexOf('use') !== -1 &&
+                                result.report.unsupportedMethods.indexOf('_artRouterDebug') !== -1 &&
+                                result.report.unsupportedMethods.indexOf('getField') !== -1 &&
+                                value.indexOf('available=false') !== -1 &&
+                                value.indexOf('backend=unsupported-ios') !== -1 &&
+                                value.indexOf('android_reference_path=rustFrida-master/quickjs-hook/src/jsapi/java') !== -1 &&
+                                value.indexOf('art_runtime_available=false') !== -1 &&
+                                value.indexOf('jni_available=false') !== -1 &&
+                                value.indexOf('hook_api_available=false') !== -1 &&
+                                value.indexOf('supported_method_count=0') !== -1 &&
+                                value.indexOf('supported_command java.info') !== -1 &&
+                                value.indexOf('unsupported_method use') !== -1 &&
+                                value.indexOf('unsupported_method getField') !== -1 &&
+                                lastError.indexOf('Java/ART APIs are Android-only') !== -1;
+                        })()"#,
+                    )
+                    .expect("agent java status"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval(
+                        r#"(function() {
+                            const value = __iosRustFridaAgentApi.handle('jni.status');
+                            const alias = __iosRustFridaAgentApi.handle('jni.info');
+                            const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'jni.status' });
+                            const lastError = __iosRustFridaAgentApi.handle('jni.lastError');
+                            return result.kind === 'jni.status' &&
+                                value === alias &&
+                                value === result.text &&
+                                result.report.available === false &&
+                                result.report.backend === 'unsupported-ios' &&
+                                result.report.androidReferenceBackend === 'JNIEnv' &&
+                                result.report.androidReferencePath === 'rustFrida-master/quickjs-hook/src/jsapi/jni' &&
+                                result.report.iosAlternativeRuntime === 'ObjC/Swift' &&
+                                result.report.helperEnvAvailable === false &&
+                                result.report.supportedCommandCount === 3 &&
+                                result.report.supportedCommands.indexOf('jni.info') !== -1 &&
+                                result.report.metadataTableAvailable === true &&
+                                result.report.functionTableAvailable === false &&
+                                result.report.functionAddressAvailable === false &&
+                                result.report.jniFunctionCount === 89 &&
+                                result.report.tableEntryCount === 89 &&
+                                result.report.supportedFunctionCount === 0 &&
+                                result.report.unsupportedFunctionCount === 89 &&
+                                result.report.functionMetadataAvailable === true &&
+                                result.report.helperStructReadersAvailable === true &&
+                                result.report.supportedHelpers.indexOf('Jni.helper.structs.JNINativeMethod.read') !== -1 &&
+                                result.report.supportedHelpers.indexOf('Jni.helper.structs.jvalue.readArray') !== -1 &&
+                                result.report.unsupportedMethods.indexOf('_threadEnv') !== -1 &&
+                                result.report.unsupportedMethods.indexOf('entries') === -1 &&
+                                result.report.unsupportedMethods.indexOf('find') === -1 &&
+                                result.report.unsupportedMethods.indexOf('helper') === -1 &&
+                                value.indexOf('available=false') !== -1 &&
+                                value.indexOf('backend=unsupported-ios') !== -1 &&
+                                value.indexOf('android_reference_path=rustFrida-master/quickjs-hook/src/jsapi/jni') !== -1 &&
+                                value.indexOf('supported_command jni.info') !== -1 &&
+                                value.indexOf('metadata_table_available=true') !== -1 &&
+                                value.indexOf('function_table_available=false') !== -1 &&
+                                value.indexOf('jni_function_count=89') !== -1 &&
+                                value.indexOf('unsupported_function_count=89') !== -1 &&
+                                value.indexOf('function_metadata_available=true') !== -1 &&
+                                value.indexOf('unsupported_method _threadEnv') !== -1 &&
+                                value.indexOf('unsupported_method entries') === -1 &&
+                                lastError.indexOf('Jni/JNIEnv APIs are Android-only') !== -1;
+                        })()"#,
+                    )
+                    .expect("agent jni status"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const left = __iosRustFridaAgentApi.handle('native.hookenv'); const right = __iosRustFridaAgentApi.handle('native.detectHookEnvironment'); return left === right; })()")
                     .expect("agent native detectHookEnvironment alias"),
                 "true"
@@ -21665,6 +22816,17 @@ undefined;
                                 typeof report.filesystemCaution === 'boolean' &&
                                 typeof report.coexistenceMode === 'string' &&
                                 typeof report.coexistenceRecommendation === 'string' &&
+                                report.instrumentationBackend === 'arm64-hook-engine' &&
+                                report.instrumentationBackendDisplayName === 'ARM64 hook engine' &&
+                                report.androidReferenceInstrumentationBackend === 'QBDI' &&
+                                report.qbdiCompatible === false &&
+                                report.qbdiAvailable === false &&
+                                report.traceAvailable === true &&
+                                report.stalkerAvailable === true &&
+                                report.recommendedInstrumentationPath === 'trace-stalker-inline-hook' &&
+                                typeof report.instrumentation === 'object' &&
+                                report.instrumentation !== null &&
+                                report.instrumentation.unsupportedQbdiApis.indexOf('qbdi.run') !== -1 &&
                                 typeof report.coexistenceLayerAvailable === 'boolean' &&
                                 typeof report.coexistenceLayerRequired === 'boolean' &&
                                 typeof report.coexistenceLayerStatus === 'string' &&
@@ -21694,6 +22856,12 @@ undefined;
                                 typeof report.hookInstallCommandsAllowed === 'boolean' &&
                                 typeof report.hookStatusCommandsAllowed === 'boolean' &&
                                 typeof report.hookStopCommandsAllowed === 'boolean' &&
+                                value.indexOf('instrumentation_backend=arm64-hook-engine') !== -1 &&
+                                value.indexOf('android_reference_instrumentation_backend=QBDI') !== -1 &&
+                                value.indexOf('qbdi_compatible=false') !== -1 &&
+                                value.indexOf('trace_available=true') !== -1 &&
+                                value.indexOf('stalker_available=true') !== -1 &&
+                                value.indexOf('recommended_instrumentation_path=trace-stalker-inline-hook') !== -1 &&
                                 value.indexOf('conflict_state=') !== -1 &&
                                 value.indexOf('risk_level=') !== -1;
                         })()"#,
@@ -21703,7 +22871,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.hookenv'); return value.indexOf('conflict_state=') !== -1 && value.indexOf('risk_level=') !== -1 && value.indexOf('command_mode=') !== -1 && value.indexOf('coexistence_mode=') !== -1 && value.indexOf('coexistence_recommendation=') !== -1 && value.indexOf('recommended_action ') !== -1 && value.indexOf('next_action ') !== -1 && value.indexOf('suggested_sequence ') !== -1 && value.indexOf('next_action_template ') !== -1 && value.indexOf('recommended_action_count=') !== -1 && value.indexOf('allowed_action_count=') !== -1 && value.indexOf('blocked_action_count=') !== -1 && value.indexOf('next_action_template_count=') !== -1 && value.indexOf('next_action_command_json_template_count=') !== -1 && value.indexOf('key=') !== -1 && value.indexOf('priority=') !== -1 && value.indexOf('backend_count=') !== -1 && value.indexOf('loaded_backend_count=') !== -1 && value.indexOf('active_backend_display_name=') !== -1 && value.indexOf('hook_install_commands_allowed=') !== -1 && value.indexOf('query_commands_allowed=') !== -1; })()")
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handle('native.hookenv'); return value.indexOf('conflict_state=') !== -1 && value.indexOf('risk_level=') !== -1 && value.indexOf('command_mode=') !== -1 && value.indexOf('coexistence_mode=') !== -1 && value.indexOf('coexistence_recommendation=') !== -1 && value.indexOf('instrumentation_backend=arm64-hook-engine') !== -1 && value.indexOf('android_reference_instrumentation_backend=QBDI') !== -1 && value.indexOf('recommended_action ') !== -1 && value.indexOf('next_action ') !== -1 && value.indexOf('suggested_sequence ') !== -1 && value.indexOf('next_action_template ') !== -1 && value.indexOf('recommended_action_count=') !== -1 && value.indexOf('allowed_action_count=') !== -1 && value.indexOf('blocked_action_count=') !== -1 && value.indexOf('next_action_template_count=') !== -1 && value.indexOf('next_action_command_json_template_count=') !== -1 && value.indexOf('key=') !== -1 && value.indexOf('priority=') !== -1 && value.indexOf('backend_count=') !== -1 && value.indexOf('loaded_backend_count=') !== -1 && value.indexOf('active_backend_display_name=') !== -1 && value.indexOf('hook_install_commands_allowed=') !== -1 && value.indexOf('query_commands_allowed=') !== -1; })()")
                     .expect("agent native hook env summary"),
                 "true"
             );
@@ -21721,6 +22889,18 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { return __iosRustFridaAgentApi.handle('native.findMainImage') === __iosRustFridaAgentApi.handle('native.mainImage'); })()")
+                    .expect("agent native findMainImage alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; return __iosRustFridaAgentApi.handle('native.findBase ' + base) === __iosRustFridaAgentApi.handle('native.base ' + base); })()")
+                    .expect("agent native findBase alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const main = __iosRustFridaAgentApi.handle('native.mainImage'); if (main === '<null>') { return true; } const path = main.split(' ').slice(2).join(' '); const base = path.split('/').filter(Boolean).pop() || path; const filtered = __iosRustFridaAgentApi.handle('native.images ' + base); return filtered.indexOf(base) !== -1; })()")
                     .expect("agent native images filtered"),
                 "true"
@@ -21729,6 +22909,18 @@ undefined;
                 runtime
                     .eval("(function() { const malloc = Module.findExportByName(null, 'malloc'); return __iosRustFridaAgentApi.handle('native.image ' + malloc.toString()).indexOf('slide=') !== -1; })()")
                     .expect("agent native image by address"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const malloc = Module.findExportByName(null, 'malloc'); if (malloc === null) { return true; } return __iosRustFridaAgentApi.handle('native.findImage ' + malloc.toString()) === __iosRustFridaAgentApi.handle('native.image ' + malloc.toString()); })()")
+                    .expect("agent native findImage alias"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const malloc = Module.findExportByName(null, 'malloc'); if (malloc === null) { return true; } return __iosRustFridaAgentApi.handle('native.findSymbol ' + malloc.toString()) === __iosRustFridaAgentApi.handle('native.symbol ' + malloc.toString()); })()")
+                    .expect("agent native findSymbol alias"),
                 "true"
             );
             assert_eq!(
@@ -21854,6 +23046,10 @@ undefined;
                     .eval(
                         "(function() {
                             return __iosRustFridaAgentApi.handle('native.findDyldInfo DemoBinary') === __iosRustFridaAgentApi.handle('native.dyldInfo DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findBase DemoBinary') === __iosRustFridaAgentApi.handle('native.base DemoBinary') &&
+                                __iosRustFridaAgentApi.handle('native.findMainImage') === __iosRustFridaAgentApi.handle('native.mainImage') &&
+                                __iosRustFridaAgentApi.handle('native.findImage 0x1234') === __iosRustFridaAgentApi.handle('native.image 0x1234') &&
+                                __iosRustFridaAgentApi.handle('native.findSymbol 0x1234') === __iosRustFridaAgentApi.handle('native.symbol 0x1234') &&
                                 __iosRustFridaAgentApi.handle('native.findEncryptionInfo DemoBinary') === __iosRustFridaAgentApi.handle('native.encryptionInfo DemoBinary') &&
                                 __iosRustFridaAgentApi.handle('native.findEntryPoint DemoBinary') === __iosRustFridaAgentApi.handle('native.entryPoint DemoBinary') &&
                                 __iosRustFridaAgentApi.handle('native.findLinkedit DemoBinary') === __iosRustFridaAgentApi.handle('native.linkedit DemoBinary') &&
@@ -22416,6 +23612,24 @@ undefined;
             );
             assert_eq!(
                 runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.protocol_exists', protocolName: 'NSCopying' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_exists', protocolName: 'NSCopying' }); return value === result.text; })()")
+                    .expect("agent spec objc protocolExists"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.class_conforms', className: 'NSObject', protocolName: 'NSCopying' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_conforms', className: 'NSObject', protocolName: 'NSCopying' }); return value === result.text; })()")
+                    .expect("agent spec objc classConforms"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.protocol_conforms', protocolName: 'NSCopying', parentProtocolName: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_conforms', protocolName: 'NSCopying', parentProtocolName: 'NSObject' }); return value === result.text; })()")
+                    .expect("agent spec objc protocolConforms"),
+                "true"
+            );
+            assert_eq!(
+                runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_info', className: 'NSObject', isMetaClass: true }); return value === result.text; })()")
                     .expect("agent spec objc classInfo"),
                 "true"
@@ -22466,6 +23680,12 @@ undefined;
                 runtime
                     .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.class_image', className: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.class_image', className: 'NSObject' }); return value === result.text; })()")
                     .expect("agent spec objc classImage"),
+                "true"
+            );
+            assert_eq!(
+                runtime
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'objc.protocol_image', protocolName: 'NSObject' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'objc.protocol_image', protocolName: 'NSObject' }); return value === result.text; })()")
+                    .expect("agent spec objc protocolImage"),
                 "true"
             );
             assert_eq!(
@@ -22712,6 +23932,84 @@ undefined;
         }
 
         #[test]
+        fn jni_helper_struct_readers_parse_memory() {
+            let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+            let mut runtime = QuickJsRuntime::new();
+            runtime.initialize().expect("init runtime");
+
+            let page_size = 0x1000usize;
+            let mapping = unsafe {
+                libc::mmap(
+                    std::ptr::null_mut(),
+                    page_size,
+                    libc::PROT_READ | libc::PROT_WRITE,
+                    libc::MAP_PRIVATE | libc::MAP_ANON,
+                    -1,
+                    0,
+                )
+            };
+            assert_ne!(mapping, libc::MAP_FAILED, "mmap test buffer");
+
+            let addr = mapping as usize;
+            let native_method_addr = addr + 0x100;
+            let native_name_addr = addr + 0x180;
+            let native_sig_addr = addr + 0x1a0;
+            let jvalue_addr = addr + 0x200;
+            unsafe {
+                std::ptr::copy_nonoverlapping(b"nativeFoo\0".as_ptr(), native_name_addr as *mut u8, 10);
+                std::ptr::copy_nonoverlapping(b"(I)V\0".as_ptr(), native_sig_addr as *mut u8, 5);
+                std::ptr::write_unaligned(native_method_addr as *mut u64, native_name_addr as u64);
+                std::ptr::write_unaligned((native_method_addr + 8) as *mut u64, native_sig_addr as u64);
+                std::ptr::write_unaligned((native_method_addr + 16) as *mut u64, 0x1234_5678u64);
+
+                std::ptr::write_unaligned(jvalue_addr as *mut u8, 1u8);
+                std::ptr::write_unaligned((jvalue_addr + 8) as *mut u8, 0xfeu8);
+                std::ptr::write_unaligned((jvalue_addr + 16) as *mut u16, 65u16);
+                std::ptr::write_unaligned((jvalue_addr + 24) as *mut u16, 0xfffeu16);
+                std::ptr::write_unaligned((jvalue_addr + 32) as *mut u32, 0xffff_fffeu32);
+                std::ptr::write_unaligned((jvalue_addr + 40) as *mut u64, 0xffff_ffff_ffff_fffeu64);
+                std::ptr::write_unaligned((jvalue_addr + 48) as *mut u32, 1.5f32.to_bits());
+                std::ptr::write_unaligned((jvalue_addr + 56) as *mut u64, 2.25f64.to_bits());
+                std::ptr::write_unaligned((jvalue_addr + 64) as *mut u64, 0xabcdefu64);
+            }
+
+            let script = format!(
+                r#"(function() {{
+                    const nativeMethod = Jni.helper.structs.JNINativeMethod.read(ptr('0x{native_method_addr:x}'));
+                    const nativeMethods = Jni.helper.structs.JNINativeMethod.readArray(ptr('0x{native_method_addr:x}'), 1);
+                    const values = Jni.helper.structs.jvalue.readArray(ptr('0x{jvalue_addr:x}'), '(ZBCSIJFDLjava/lang/Object;)V');
+                    const intValue = Jni.helper.structs.jvalue.read(ptr('0x{:x}'), 'I');
+                    const pair = Jni.helper.structs.jvalue.readArray(ptr('0x{:x}'), ['I', 'J']);
+                    return nativeMethod.name === 'nativeFoo' &&
+                        nativeMethod.sig === '(I)V' &&
+                        nativeMethod.fnPtr.toString() === '0x12345678' &&
+                        nativeMethods.length === 1 &&
+                        nativeMethods[0].name === 'nativeFoo' &&
+                        values.length === 9 &&
+                        values[0] === true &&
+                        values[1] === -2 &&
+                        values[2] === 65 &&
+                        values[3] === -2 &&
+                        values[4] === -2 &&
+                        values[5].toString() === '-2' &&
+                        Math.abs(values[6] - 1.5) < 0.0001 &&
+                        Math.abs(values[7] - 2.25) < 0.0001 &&
+                        values[8].toString() === '0xabcdef' &&
+                        intValue === -2 &&
+                        pair.length === 2 &&
+                        pair[0] === -2 &&
+                        pair[1].toString() === '-2';
+                }})()"#,
+                jvalue_addr + 32,
+                jvalue_addr + 32,
+            );
+            assert_eq!(runtime.eval(&script).expect("read JNI helper structs"), "true");
+            unsafe {
+                libc::munmap(mapping, page_size);
+            }
+        }
+
+        #[test]
         fn call_native_invokes_strlen() {
             let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
             let mut runtime = QuickJsRuntime::new();
@@ -22764,13 +24062,18 @@ mod imp {
                     "callNative",
                     "console",
                     "DebugSymbol",
+                    "diagAllocNear",
                     "hook",
+                    "Hook",
                     "Interceptor",
+                    "Java",
+                    "Jni",
                     "Memory",
                     "Module",
                     "Native",
                     "ObjC",
                     "PAC",
+                    "recompHook",
                     "Swift",
                     "ptr",
                     "unhook",

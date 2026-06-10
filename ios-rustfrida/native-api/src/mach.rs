@@ -4,14 +4,14 @@ use std::time::{Duration, Instant};
 
 use common::{Error, Result};
 
+use crate::jailbreak::{detect_hook_environment_from_image_names, resolve_hook_strategy_for_report};
 use crate::{
     configured_bootstrap_wait_timeout_ms, current_hook_policy, rebase_loader_symbols_to_images,
     validate_thread_bootstrap_symbol_for_target, BootstrapImage, BootstrapResultReport, BootstrapStatus,
-    HookEnvironmentReport, ImageInfo, InjectionPlan, InjectionTarget, InjectionTargetPreflightReport,
-    InjectionTrace, LoaderSymbolRole, RemoteProtectionOutcome, RemoteThreadTerminationOutcome,
-    ResolvedLoaderSymbol, ThreadBootstrapKind, ThreadCreatePlan,
+    HookEnvironmentReport, ImageInfo, InjectionPlan, InjectionTarget, InjectionTargetPreflightReport, InjectionTrace,
+    LoaderSymbolRole, RemoteProtectionOutcome, RemoteThreadTerminationOutcome, ResolvedLoaderSymbol,
+    ThreadBootstrapKind, ThreadCreatePlan,
 };
-use crate::jailbreak::{detect_hook_environment_from_image_names, resolve_hook_strategy_for_report};
 
 type KernReturn = i32;
 type MachPort = u32;

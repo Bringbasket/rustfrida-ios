@@ -143,6 +143,18 @@ impl ObjcApi {
         platform::class_exists(name)
     }
 
+    pub fn protocol_exists(&self, name: &str) -> bool {
+        platform::protocol_exists(name)
+    }
+
+    pub fn class_conforms_to_protocol(&self, class_name: &str, protocol_name: &str) -> bool {
+        platform::class_conforms_to_protocol(class_name, protocol_name)
+    }
+
+    pub fn protocol_conforms_to_protocol(&self, protocol_name: &str, parent_protocol_name: &str) -> bool {
+        platform::protocol_conforms_to_protocol(protocol_name, parent_protocol_name)
+    }
+
     pub fn enumerate_classes(&self) -> Result<Vec<String>> {
         platform::enumerate_classes()
     }
@@ -171,20 +183,60 @@ impl ObjcApi {
         platform::find_class_protocols(class_name, query)
     }
 
+    pub fn protocol_owners(&self, protocol_name: &str) -> Result<Vec<String>> {
+        platform::protocol_owners(protocol_name)
+    }
+
+    pub fn find_protocol_owners(&self, protocol_name: &str, query: &str) -> Result<Vec<String>> {
+        platform::find_protocol_owners(protocol_name, query)
+    }
+
     pub fn superclass(&self, class_name: &str) -> Result<Option<String>> {
-        platform::superclass(class_name)
+        match platform::superclass(class_name)? {
+            Some(superclass) => Ok(Some(superclass)),
+            None => {
+                let Some(resolved_class_name) = unique_string_match(platform::find_classes(class_name)?) else {
+                    return Ok(None);
+                };
+                platform::superclass(&resolved_class_name)
+            }
+        }
     }
 
     pub fn class_chain(&self, class_name: &str) -> Result<Vec<String>> {
-        platform::class_chain(class_name)
+        let chain = platform::class_chain(class_name)?;
+        if !chain.is_empty() {
+            return Ok(chain);
+        }
+
+        let Some(resolved_class_name) = unique_string_match(platform::find_classes(class_name)?) else {
+            return Ok(Vec::new());
+        };
+        platform::class_chain(&resolved_class_name)
     }
 
     pub fn class_info(&self, class_name: &str, is_meta_class: bool) -> Result<Option<ObjcClassInfo>> {
-        platform::class_info(class_name, is_meta_class)
+        match platform::class_info(class_name, is_meta_class)? {
+            Some(info) => Ok(Some(info)),
+            None => {
+                let Some(resolved_class_name) = unique_string_match(platform::find_classes(class_name)?) else {
+                    return Ok(None);
+                };
+                platform::class_info(&resolved_class_name, is_meta_class)
+            }
+        }
     }
 
     pub fn protocol_info(&self, protocol_name: &str) -> Result<Option<ObjcProtocolInfo>> {
-        platform::protocol_info(protocol_name)
+        match platform::protocol_info(protocol_name)? {
+            Some(info) => Ok(Some(info)),
+            None => {
+                let Some(resolved_protocol_name) = unique_string_match(platform::find_protocols(protocol_name)?) else {
+                    return Ok(None);
+                };
+                platform::protocol_info(&resolved_protocol_name)
+            }
+        }
     }
 
     pub fn protocol_methods(
@@ -213,7 +265,29 @@ impl ObjcApi {
         is_required: bool,
         is_instance_method: bool,
     ) -> Result<Option<ObjcProtocolMethodDetail>> {
-        platform::protocol_method_info(protocol_name, selector_name, is_required, is_instance_method)
+        match platform::protocol_method_info(protocol_name, selector_name, is_required, is_instance_method)? {
+            Some(info) => Ok(Some(info)),
+            None => {
+                let resolved_protocol_name = match unique_string_match(platform::find_protocols(protocol_name)?) {
+                    Some(name) => name,
+                    None => protocol_name.trim().to_string(),
+                };
+                let Some(resolved_selector_name) = unique_protocol_method_selector(platform::find_protocol_methods(
+                    &resolved_protocol_name,
+                    selector_name,
+                    is_required,
+                    is_instance_method,
+                )?) else {
+                    return Ok(None);
+                };
+                platform::protocol_method_info(
+                    &resolved_protocol_name,
+                    &resolved_selector_name,
+                    is_required,
+                    is_instance_method,
+                )
+            }
+        }
     }
 
     pub fn protocol_properties(&self, protocol_name: &str) -> Result<Vec<ObjcProtocolPropertyInfo>> {
@@ -229,7 +303,22 @@ impl ObjcApi {
         protocol_name: &str,
         property_name: &str,
     ) -> Result<Option<ObjcProtocolPropertyDetail>> {
-        platform::protocol_property_info(protocol_name, property_name)
+        match platform::protocol_property_info(protocol_name, property_name)? {
+            Some(info) => Ok(Some(info)),
+            None => {
+                let resolved_protocol_name = match unique_string_match(platform::find_protocols(protocol_name)?) {
+                    Some(name) => name,
+                    None => protocol_name.trim().to_string(),
+                };
+                let Some(resolved_property_name) = unique_protocol_property_name(platform::find_protocol_properties(
+                    &resolved_protocol_name,
+                    property_name,
+                )?) else {
+                    return Ok(None);
+                };
+                platform::protocol_property_info(&resolved_protocol_name, &resolved_property_name)
+            }
+        }
     }
 
     pub fn protocol_protocols(&self, protocol_name: &str) -> Result<Vec<String>> {
@@ -250,7 +339,23 @@ impl ObjcApi {
         property_name: &str,
         is_class_property: bool,
     ) -> Result<Option<ObjcPropertyDetail>> {
-        platform::property_info(class_name, property_name, is_class_property)
+        match platform::property_info(class_name, property_name, is_class_property)? {
+            Some(info) => Ok(Some(info)),
+            None => {
+                let resolved_class_name = match unique_string_match(platform::find_classes(class_name)?) {
+                    Some(name) => name,
+                    None => class_name.trim().to_string(),
+                };
+                let Some(resolved_property_name) = unique_property_name(platform::find_properties(
+                    &resolved_class_name,
+                    property_name,
+                    is_class_property,
+                )?) else {
+                    return Ok(None);
+                };
+                platform::property_info(&resolved_class_name, &resolved_property_name, is_class_property)
+            }
+        }
     }
 
     pub fn find_properties(
@@ -267,7 +372,20 @@ impl ObjcApi {
     }
 
     pub fn ivar_info(&self, class_name: &str, ivar_name: &str) -> Result<Option<ObjcIvarDetail>> {
-        platform::ivar_info(class_name, ivar_name)
+        match platform::ivar_info(class_name, ivar_name)? {
+            Some(info) => Ok(Some(info)),
+            None => {
+                let resolved_class_name = match unique_string_match(platform::find_classes(class_name)?) {
+                    Some(name) => name,
+                    None => class_name.trim().to_string(),
+                };
+                let Some(resolved_ivar_name) = unique_ivar_name(platform::find_ivars(&resolved_class_name, ivar_name)?)
+                else {
+                    return Ok(None);
+                };
+                platform::ivar_info(&resolved_class_name, &resolved_ivar_name)
+            }
+        }
     }
 
     pub fn find_ivars(&self, class_name: &str, query: &str) -> Result<Vec<ObjcIvarInfo>> {
@@ -275,7 +393,23 @@ impl ObjcApi {
     }
 
     pub fn method_imp(&self, class_name: &str, selector_name: &str, is_class_method: bool) -> Result<Option<usize>> {
-        platform::method_imp(class_name, selector_name, is_class_method)
+        match platform::method_imp(class_name, selector_name, is_class_method)? {
+            Some(imp) => Ok(Some(imp)),
+            None => {
+                let resolved_class_name = match unique_string_match(platform::find_classes(class_name)?) {
+                    Some(name) => name,
+                    None => class_name.trim().to_string(),
+                };
+                let Some(resolved_selector_name) = unique_method_selector(platform::find_methods(
+                    &resolved_class_name,
+                    selector_name,
+                    is_class_method,
+                )?) else {
+                    return Ok(None);
+                };
+                platform::method_imp(&resolved_class_name, &resolved_selector_name, is_class_method)
+            }
+        }
     }
 
     pub fn method_info(
@@ -284,7 +418,23 @@ impl ObjcApi {
         selector_name: &str,
         is_class_method: bool,
     ) -> Result<Option<ObjcMethodDetail>> {
-        platform::method_info(class_name, selector_name, is_class_method)
+        match platform::method_info(class_name, selector_name, is_class_method)? {
+            Some(info) => Ok(Some(info)),
+            None => {
+                let resolved_class_name = match unique_string_match(platform::find_classes(class_name)?) {
+                    Some(name) => name,
+                    None => class_name.trim().to_string(),
+                };
+                let Some(resolved_selector_name) = unique_method_selector(platform::find_methods(
+                    &resolved_class_name,
+                    selector_name,
+                    is_class_method,
+                )?) else {
+                    return Ok(None);
+                };
+                platform::method_info(&resolved_class_name, &resolved_selector_name, is_class_method)
+            }
+        }
     }
 
     pub fn enumerate_methods(&self, class_name: &str, is_class_method: bool) -> Result<Vec<ObjcMethodInfo>> {
@@ -300,11 +450,47 @@ impl ObjcApi {
     }
 
     pub fn class_image(&self, class_name: &str) -> Result<Option<String>> {
-        platform::class_image(class_name)
+        match platform::class_image(class_name)? {
+            Some(path) => Ok(Some(path)),
+            None => {
+                let Some(resolved_class_name) = unique_string_match(platform::find_classes(class_name)?) else {
+                    return Ok(None);
+                };
+                platform::class_image(&resolved_class_name)
+            }
+        }
+    }
+
+    pub fn protocol_image(&self, protocol_name: &str) -> Result<Option<String>> {
+        match platform::protocol_image(protocol_name)? {
+            Some(path) => Ok(Some(path)),
+            None => {
+                let Some(resolved_protocol_name) = unique_string_match(platform::find_protocols(protocol_name)?) else {
+                    return Ok(None);
+                };
+                platform::protocol_image(&resolved_protocol_name)
+            }
+        }
     }
 
     pub fn method_image(&self, class_name: &str, selector_name: &str, is_class_method: bool) -> Result<Option<String>> {
-        platform::method_image(class_name, selector_name, is_class_method)
+        match platform::method_image(class_name, selector_name, is_class_method)? {
+            Some(path) => Ok(Some(path)),
+            None => {
+                let resolved_class_name = match unique_string_match(platform::find_classes(class_name)?) {
+                    Some(name) => name,
+                    None => class_name.trim().to_string(),
+                };
+                let Some(resolved_selector_name) = unique_method_selector(platform::find_methods(
+                    &resolved_class_name,
+                    selector_name,
+                    is_class_method,
+                )?) else {
+                    return Ok(None);
+                };
+                platform::method_image(&resolved_class_name, &resolved_selector_name, is_class_method)
+            }
+        }
     }
 
     pub fn selector_name(&self, selector: usize) -> Result<Option<String>> {
@@ -316,8 +502,56 @@ impl ObjcApi {
     }
 }
 
+fn unique_string_match(values: Vec<String>) -> Option<String> {
+    if values.len() == 1 {
+        values.into_iter().next()
+    } else {
+        None
+    }
+}
+
+fn unique_method_selector(methods: Vec<ObjcMethodInfo>) -> Option<String> {
+    if methods.len() == 1 {
+        methods.into_iter().next().map(|method| method.selector_name)
+    } else {
+        None
+    }
+}
+
+fn unique_protocol_method_selector(methods: Vec<ObjcProtocolMethodInfo>) -> Option<String> {
+    if methods.len() == 1 {
+        methods.into_iter().next().map(|method| method.selector_name)
+    } else {
+        None
+    }
+}
+
+fn unique_property_name(properties: Vec<ObjcPropertyInfo>) -> Option<String> {
+    if properties.len() == 1 {
+        properties.into_iter().next().map(|property| property.property_name)
+    } else {
+        None
+    }
+}
+
+fn unique_protocol_property_name(properties: Vec<ObjcProtocolPropertyInfo>) -> Option<String> {
+    if properties.len() == 1 {
+        properties.into_iter().next().map(|property| property.property_name)
+    } else {
+        None
+    }
+}
+
+fn unique_ivar_name(ivars: Vec<ObjcIvarInfo>) -> Option<String> {
+    if ivars.len() == 1 {
+        ivars.into_iter().next().map(|ivar| ivar.ivar_name)
+    } else {
+        None
+    }
+}
+
 #[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
-fn query_matches_class_name(class_name: &str, query: &str) -> bool {
+pub fn query_matches_class_name(class_name: &str, query: &str) -> bool {
     let trimmed = query.trim();
     if trimmed.is_empty() {
         return false;
@@ -327,7 +561,7 @@ fn query_matches_class_name(class_name: &str, query: &str) -> bool {
 }
 
 #[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
-fn query_matches_method_name(selector_name: &str, query: &str) -> bool {
+pub fn query_matches_method_name(selector_name: &str, query: &str) -> bool {
     let trimmed = query.trim();
     if trimmed.is_empty() {
         return false;
@@ -339,7 +573,7 @@ fn query_matches_method_name(selector_name: &str, query: &str) -> bool {
 }
 
 #[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
-fn query_matches_property_name(property_name: &str, query: &str) -> bool {
+pub fn query_matches_property_name(property_name: &str, query: &str) -> bool {
     let trimmed = query.trim();
     if trimmed.is_empty() {
         return false;
@@ -351,7 +585,7 @@ fn query_matches_property_name(property_name: &str, query: &str) -> bool {
 }
 
 #[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
-fn query_matches_ivar_name(ivar_name: &str, query: &str) -> bool {
+pub fn query_matches_ivar_name(ivar_name: &str, query: &str) -> bool {
     let trimmed = query.trim();
     if trimmed.is_empty() {
         return false;
@@ -380,6 +614,8 @@ mod platform {
         fn objc_getProtocol(name: *const c_char) -> *mut c_void;
         fn objc_copyProtocolList(out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyProtocolList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
+        fn class_conformsToProtocol(cls: *const c_void, proto: *const c_void) -> i8;
+        fn protocol_conformsToProtocol(proto: *const c_void, other: *const c_void) -> i8;
         fn class_copyPropertyList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
         fn class_copyIvarList(cls: *const c_void, out_count: *mut u32) -> *mut *mut c_void;
         fn protocol_copyMethodDescriptionList(
@@ -444,6 +680,75 @@ mod platform {
             return false;
         };
         unsafe { !objc_getClass(name.as_ptr()).is_null() }
+    }
+
+    pub fn protocol_exists(name: &str) -> bool {
+        let name = name.trim();
+        if name.is_empty() {
+            return false;
+        }
+        let Ok(name) = CString::new(name) else {
+            return false;
+        };
+        unsafe { !objc_getProtocol(name.as_ptr()).is_null() }
+    }
+
+    pub fn class_conforms_to_protocol(class_name: &str, protocol_name: &str) -> bool {
+        let class_name = class_name.trim();
+        if class_name.is_empty() {
+            return false;
+        }
+        let protocol_name = protocol_name.trim();
+        if protocol_name.is_empty() {
+            return false;
+        }
+
+        let Ok(class_name) = CString::new(class_name) else {
+            return false;
+        };
+        let Ok(protocol_name) = CString::new(protocol_name) else {
+            return false;
+        };
+
+        let class = unsafe { objc_getClass(class_name.as_ptr()) };
+        if class.is_null() {
+            return false;
+        }
+        let protocol = unsafe { objc_getProtocol(protocol_name.as_ptr()) };
+        if protocol.is_null() {
+            return false;
+        }
+
+        unsafe { class_conformsToProtocol(class, protocol) != 0 }
+    }
+
+    pub fn protocol_conforms_to_protocol(protocol_name: &str, parent_protocol_name: &str) -> bool {
+        let protocol_name = protocol_name.trim();
+        if protocol_name.is_empty() {
+            return false;
+        }
+        let parent_protocol_name = parent_protocol_name.trim();
+        if parent_protocol_name.is_empty() {
+            return false;
+        }
+
+        let Ok(protocol_name) = CString::new(protocol_name) else {
+            return false;
+        };
+        let Ok(parent_protocol_name) = CString::new(parent_protocol_name) else {
+            return false;
+        };
+
+        let protocol = unsafe { objc_getProtocol(protocol_name.as_ptr()) };
+        if protocol.is_null() {
+            return false;
+        }
+        let parent_protocol = unsafe { objc_getProtocol(parent_protocol_name.as_ptr()) };
+        if parent_protocol.is_null() {
+            return false;
+        }
+
+        unsafe { protocol_conformsToProtocol(protocol, parent_protocol) != 0 }
     }
 
     pub fn enumerate_classes() -> Result<Vec<String>> {
@@ -572,6 +877,61 @@ mod platform {
         let mut protocols = class_protocols(class_name)?;
         protocols.retain(|name| query_matches_class_name(name, trimmed));
         Ok(protocols)
+    }
+
+    pub fn protocol_owners(protocol_name: &str) -> Result<Vec<String>> {
+        let protocol_name = protocol_name.trim();
+        if protocol_name.is_empty() {
+            return Err(Error::InvalidArgument("protocol name must not be empty".into()));
+        }
+
+        let protocol_name_c = CString::new(protocol_name)
+            .map_err(|_| Error::InvalidArgument("protocol name contains interior NUL".into()))?;
+        let protocol = unsafe { objc_getProtocol(protocol_name_c.as_ptr()) };
+        if protocol.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let mut count = 0u32;
+        let list = unsafe { objc_copyClassList(&mut count as *mut u32) };
+        if list.is_null() {
+            return Ok(Vec::new());
+        }
+
+        let slice = unsafe { std::slice::from_raw_parts(list, count as usize) };
+        let mut owners = Vec::new();
+        for class in slice {
+            if class.is_null() {
+                continue;
+            }
+
+            if unsafe { class_conformsToProtocol(*class as *const c_void, protocol as *const c_void) } == 0 {
+                continue;
+            }
+
+            let name = unsafe { class_getName(*class as *const c_void) };
+            if name.is_null() {
+                continue;
+            }
+
+            owners.push(unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned());
+        }
+
+        unsafe { libc::free(list.cast()) };
+        owners.sort();
+        owners.dedup();
+        Ok(owners)
+    }
+
+    pub fn find_protocol_owners(protocol_name: &str, query: &str) -> Result<Vec<String>> {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return Err(Error::InvalidArgument("class query must not be empty".into()));
+        }
+
+        let mut owners = protocol_owners(protocol_name)?;
+        owners.retain(|name| query_matches_class_name(name, trimmed));
+        Ok(owners)
     }
 
     pub fn superclass(class_name: &str) -> Result<Option<String>> {
@@ -938,7 +1298,9 @@ mod platform {
     pub fn find_protocol_properties(protocol_name: &str, query: &str) -> Result<Vec<ObjcProtocolPropertyInfo>> {
         let trimmed = query.trim();
         if trimmed.is_empty() {
-            return Err(Error::InvalidArgument("protocol property query must not be empty".into()));
+            return Err(Error::InvalidArgument(
+                "protocol property query must not be empty".into(),
+            ));
         }
 
         let mut properties = protocol_properties(protocol_name)?;
@@ -1450,6 +1812,13 @@ mod platform {
         image_path_for_address(class as *const c_void)
     }
 
+    pub fn protocol_image(protocol_name: &str) -> Result<Option<String>> {
+        let Some(info) = protocol_info(protocol_name)? else {
+            return Ok(None);
+        };
+        Ok(info.image_path)
+    }
+
     pub fn method_image(class_name: &str, selector_name: &str, is_class_method: bool) -> Result<Option<String>> {
         let Some(address) = method_imp(class_name, selector_name, is_class_method)? else {
             return Ok(None);
@@ -1712,6 +2081,18 @@ mod platform {
         false
     }
 
+    pub fn protocol_exists(_name: &str) -> bool {
+        false
+    }
+
+    pub fn class_conforms_to_protocol(_class_name: &str, _protocol_name: &str) -> bool {
+        false
+    }
+
+    pub fn protocol_conforms_to_protocol(_protocol_name: &str, _parent_protocol_name: &str) -> bool {
+        false
+    }
+
     pub fn enumerate_classes() -> Result<Vec<String>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
@@ -1749,6 +2130,18 @@ mod platform {
     }
 
     pub fn find_class_protocols(_class_name: &str, _query: &str) -> Result<Vec<String>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn protocol_owners(_protocol_name: &str) -> Result<Vec<String>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
+    pub fn find_protocol_owners(_protocol_name: &str, _query: &str) -> Result<Vec<String>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
         ))
@@ -1923,6 +2316,12 @@ mod platform {
         ))
     }
 
+    pub fn protocol_image(_protocol_name: &str) -> Result<Option<String>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
+
     pub fn method_image(_class_name: &str, _selector_name: &str, _is_class_method: bool) -> Result<Option<String>> {
         Err(common::Error::Unsupported(
             "Objective-C runtime is only available on Apple targets".into(),
@@ -2015,6 +2414,39 @@ mod tests {
     fn find_class_protocols_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .find_class_protocols("NSObject", "NS")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn protocol_owners_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .protocol_owners("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn find_protocol_owners_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .find_protocol_owners("NSObject", "NS")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn selector_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .selector("init")
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(err
             .to_string()
@@ -2232,6 +2664,17 @@ mod tests {
 
     #[cfg(not(any(target_os = "ios", target_os = "macos")))]
     #[test]
+    fn method_imp_is_unsupported_on_non_apple_targets() {
+        let err = ObjcApi::new()
+            .method_imp("NSObject", "init", false)
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
     fn method_info_is_unsupported_on_non_apple_targets() {
         let err = ObjcApi::new()
             .method_info("NSObject", "init", false)
@@ -2262,10 +2705,35 @@ mod tests {
             .to_string()
             .contains("Objective-C runtime is only available on Apple targets"));
 
+        let protocol_err = ObjcApi::new()
+            .protocol_image("NSObject")
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(protocol_err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+
         let method_err = ObjcApi::new()
             .method_image("NSObject", "init", false)
             .expect_err("non-Apple targets should not expose ObjC runtime");
         assert!(method_err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn selector_name_and_object_class_name_are_unsupported_on_non_apple_targets() {
+        let selector_err = ObjcApi::new()
+            .selector_name(0x1234)
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(selector_err
+            .to_string()
+            .contains("Objective-C runtime is only available on Apple targets"));
+
+        let object_err = ObjcApi::new()
+            .object_class_name(0x1234)
+            .expect_err("non-Apple targets should not expose ObjC runtime");
+        assert!(object_err
             .to_string()
             .contains("Objective-C runtime is only available on Apple targets"));
     }

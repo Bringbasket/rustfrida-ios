@@ -369,15 +369,24 @@ fn hook_arm64e_recovery_summary_to_json(
     trace: Option<&InjectionTrace>,
 ) -> Value {
     let arm64e_summary = arm64e_runtime_summary_to_json(preflight, trace);
-    let override_required_for_fallback = arm64e_summary["overrideRequiredForFallback"]
-        .as_bool()
-        .unwrap_or(false);
+    let override_required_for_fallback = arm64e_summary["overrideRequiredForFallback"].as_bool().unwrap_or(false);
 
     if !override_required_for_fallback {
         return Value::Null;
     }
 
     let commands = arm64e_readonly_recovery_commands();
+    let command_json_templates = commands
+        .iter()
+        .map(|template| command_json_template_entry(template))
+        .collect::<Vec<_>>();
+    let command_json_instruction_template_count = command_json_templates
+        .iter()
+        .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+        .count();
+    let command_json_executable_template_count = command_json_templates
+        .len()
+        .saturating_sub(command_json_instruction_template_count);
     json!({
         "strategy": "arm64e-query-only-until-override",
         "arm64eConstrained": true,
@@ -393,8 +402,26 @@ fn hook_arm64e_recovery_summary_to_json(
         "nextStepPhase": "query",
         "overrideEnv": "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK",
         "commandCount": commands.len(),
-        "commands": commands,
         "firstCommand": commands.first().cloned(),
+        "lastCommand": commands.last().cloned(),
+        "commands": commands,
+        "commandJsonTemplateCount": command_json_templates.len(),
+        "commandJsonInstructionTemplateCount": command_json_instruction_template_count,
+        "commandJsonExecutableTemplateCount": command_json_executable_template_count,
+        "commandJsonEligibleTemplateCount": command_json_eligible_count(&command_json_templates),
+        "commandJsonTemplateCommands": command_json_template_commands(&command_json_templates),
+        "commandJsonEligibleTemplateCommands": command_json_eligible_template_commands(&command_json_templates),
+        "phaseOrder": command_phase_order(&command_json_templates),
+        "phaseCount": command_phase_order(&command_json_templates).len(),
+        "firstCommandJsonTemplate": command_json_templates.first().cloned(),
+        "lastCommandJsonTemplate": command_json_templates.last().cloned(),
+        "firstEligibleCommand": first_eligible_command_json_template(&command_json_templates)
+            .get("command")
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned),
+        "firstEligibleCommandJsonTemplate": first_eligible_command_json_template(&command_json_templates),
+        "firstExecutableCommandJsonTemplate": first_executable_command_json_template(&command_json_templates),
+        "commandJsonTemplates": command_json_templates,
     })
 }
 
@@ -965,6 +992,11 @@ fn hook_coexistence_to_json_with_arm64e(
         "backendAdaptation": backend_adaptation.clone(),
         "backendAdaptationMode": backend_adaptation.get("mode").cloned(),
         "backendAdaptationAlignment": backend_adaptation.get("alignment").cloned(),
+        "backendAdaptationFamilyAlignment": backend_adaptation.get("backendFamilyAlignment").cloned(),
+        "backendAdaptationFamilyRouteKey": backend_adaptation.get("backendFamilyRouteKey").cloned(),
+        "backendAdaptationFamilyRouteSummary": backend_adaptation
+            .get("backendFamilyRouteSummary")
+            .cloned(),
         "backendAdaptationBias": backend_adaptation.get("recommendedActionBias").cloned(),
         "backendAdaptationSummary": backend_adaptation.get("summary").cloned(),
         "queryCommandsAllowed": hook_effective_allowed_for(actions, "hook.query"),
@@ -1165,11 +1197,7 @@ fn hook_coexistence_to_json_with_arm64e(
 
 #[cfg(unix)]
 fn hook_coexistence_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
-    hook_coexistence_to_json_with_arm64e(
-        actions,
-        backend_matrix,
-        HookAutomationArm64eContext::default(),
-    )
+    hook_coexistence_to_json_with_arm64e(actions, backend_matrix, HookAutomationArm64eContext::default())
 }
 
 #[cfg(unix)]
@@ -1324,7 +1352,33 @@ fn conflict_resolution_chain_entry(index: usize, group_key: &str, phase: &str, r
 }
 
 #[cfg(unix)]
-fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
+fn conflict_resolution_default_escalation_candidates(preferred_group_key: &str) -> Vec<String> {
+    let mut candidates = match preferred_group_key {
+        "query" => vec!["conflict-query", "conflict-preflight", "conflict-cleanup"],
+        "preflight" => vec!["conflict-preflight", "conflict-query", "conflict-cleanup"],
+        "cleanup" => vec!["conflict-cleanup", "conflict-query", "conflict-preflight"],
+        _ => vec!["conflict-query", "conflict-preflight", "conflict-cleanup"],
+    }
+    .into_iter()
+    .map(ToOwned::to_owned)
+    .collect::<Vec<_>>();
+    let mut seen = BTreeSet::<String>::new();
+    candidates.retain(|key| seen.insert(key.clone()));
+    candidates
+}
+
+#[cfg(unix)]
+fn prioritize_escalation_candidates(candidates: &mut Vec<String>, priority_order: &[String]) {
+    candidates.sort_by_key(|key| {
+        priority_order
+            .iter()
+            .position(|candidate| candidate == key)
+            .unwrap_or(priority_order.len())
+    });
+}
+
+#[cfg(unix)]
+fn conflict_resolution_routing_to_json(chain: &[Value], preferred_group_key: &str) -> Value {
     use std::collections::BTreeMap;
 
     if chain.is_empty() {
@@ -1448,6 +1502,7 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 .map(|key| (key.to_string(), recommendation.clone()))
         })
         .collect::<BTreeMap<_, _>>();
+    let default_escalation_candidates = conflict_resolution_default_escalation_candidates(preferred_group_key);
     let mut error_code_routing_candidates = BTreeMap::<String, Vec<String>>::new();
     for recommendation in &escalation_recommendations {
         let Some(key) = recommendation.get("key").and_then(Value::as_str) else {
@@ -1468,6 +1523,9 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 candidates.push(key.to_string());
             }
         }
+    }
+    for candidates in error_code_routing_candidates.values_mut() {
+        prioritize_escalation_candidates(candidates, &default_escalation_candidates);
     }
     let error_code_routing =
         error_code_routing_candidates
@@ -1585,8 +1643,10 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             map.insert(error_code, value);
             map
         });
-    let routing_decision_default = escalation_recommendations
-        .first()
+    let routing_decision_default = default_escalation_candidates
+        .iter()
+        .find_map(|key| escalation_recommendation_by_key.get(key).cloned())
+        .or_else(|| escalation_recommendations.first().cloned())
         .map(|item| {
             let recommended_escalation_key = item.get("key").cloned().unwrap_or(Value::Null);
             let recommended_phase = item.get("phase").cloned().unwrap_or(Value::Null);
@@ -1842,35 +1902,28 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         routing_decision_ready_example_query_only_blocked_by_source != "none";
     let routing_decision_ready_example_query_only_available =
         routing_decision_ready_example_query_only_result.is_some();
-    let routing_decision_ready_example_query_only_matched =
-        routing_decision_ready_example_query_only_result
-            .as_ref()
-            .and_then(|entry| entry.get("matched"))
-            .and_then(Value::as_bool)
-            .unwrap_or(false);
-    let routing_decision_ready_example_query_only_used_default =
-        routing_decision_ready_example_query_only_result
-            .as_ref()
-            .and_then(|entry| entry.get("usedDefault"))
-            .and_then(Value::as_bool)
-            .unwrap_or(!routing_decision_ready_example_query_only_available);
-    let routing_decision_ready_example_query_only_reason =
-        routing_decision_ready_example_query_only_result
-            .as_ref()
-            .and_then(|entry| entry.get("reason"))
-            .and_then(Value::as_str)
-            .map(ToOwned::to_owned)
-            .or_else(|| {
-                (!routing_decision_ready_example_query_only_available)
-                    .then(|| "missing-error-code".to_string())
-            });
-    let routing_decision_ready_example_query_only_phase =
-        routing_decision_ready_example_query_only_result
-            .as_ref()
-            .and_then(|entry| entry.get("effective"))
-            .and_then(|entry| entry.get("phase"))
-            .and_then(Value::as_str)
-            .map(ToOwned::to_owned);
+    let routing_decision_ready_example_query_only_matched = routing_decision_ready_example_query_only_result
+        .as_ref()
+        .and_then(|entry| entry.get("matched"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    let routing_decision_ready_example_query_only_used_default = routing_decision_ready_example_query_only_result
+        .as_ref()
+        .and_then(|entry| entry.get("usedDefault"))
+        .and_then(Value::as_bool)
+        .unwrap_or(!routing_decision_ready_example_query_only_available);
+    let routing_decision_ready_example_query_only_reason = routing_decision_ready_example_query_only_result
+        .as_ref()
+        .and_then(|entry| entry.get("reason"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned)
+        .or_else(|| (!routing_decision_ready_example_query_only_available).then(|| "missing-error-code".to_string()));
+    let routing_decision_ready_example_query_only_phase = routing_decision_ready_example_query_only_result
+        .as_ref()
+        .and_then(|entry| entry.get("effective"))
+        .and_then(|entry| entry.get("phase"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned);
     let routing_decision_ready_example_query_only_effective_escalation_key =
         routing_decision_ready_example_query_only_result
             .as_ref()
@@ -2044,9 +2097,7 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
                 }
                 let command_json_instruction_template_count = command_json_templates
                     .iter()
-                    .filter(|template| {
-                        template.get("kind").and_then(Value::as_str) == Some("instruction")
-                    })
+                    .filter(|template| template.get("kind").and_then(Value::as_str) == Some("instruction"))
                     .count();
                 let command_json_executable_template_count = command_json_templates
                     .len()
@@ -2172,11 +2223,10 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
         .cloned()
         .unwrap_or(Value::Null);
-    let routing_decision_ready_example_query_only_phase_result =
-        routing_decision_ready_example_query_only_phase
-            .as_ref()
-            .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
-            .cloned();
+    let routing_decision_ready_example_query_only_phase_result = routing_decision_ready_example_query_only_phase
+        .as_ref()
+        .and_then(|phase| routing_decision_ready_phase_resolve_index.get(phase))
+        .cloned();
     let routing_decision_ready_example_query_only_phase_available =
         routing_decision_ready_example_query_only_phase_result.is_some();
     let routing_decision_ready_example_query_only_phase_matched =
@@ -2191,16 +2241,12 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
             .and_then(|entry| entry.get("usedDefault"))
             .and_then(Value::as_bool)
             .unwrap_or(!routing_decision_ready_example_query_only_phase_available);
-    let routing_decision_ready_example_query_only_phase_reason =
-        routing_decision_ready_example_query_only_phase_result
-            .as_ref()
-            .and_then(|entry| entry.get("reason"))
-            .and_then(Value::as_str)
-            .map(ToOwned::to_owned)
-            .or_else(|| {
-                (!routing_decision_ready_example_query_only_phase_available)
-                    .then(|| "missing-phase".to_string())
-            });
+    let routing_decision_ready_example_query_only_phase_reason = routing_decision_ready_example_query_only_phase_result
+        .as_ref()
+        .and_then(|entry| entry.get("reason"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned)
+        .or_else(|| (!routing_decision_ready_example_query_only_phase_available).then(|| "missing-phase".to_string()));
     let routing_decision_ready_example_query_only_would_use_query_phase =
         routing_decision_ready_example_query_only_phase_result
             .as_ref()
@@ -2314,11 +2360,10 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         .get("queryOnlyInstallFailure")
         .cloned()
         .unwrap_or(Value::Null);
-    let routing_decision_ready_phase_resolve_query_only_example =
-        routing_decision_ready_phase_resolve_examples
-            .get("queryOnlyInstallFailure")
-            .cloned()
-            .unwrap_or(Value::Null);
+    let routing_decision_ready_phase_resolve_query_only_example = routing_decision_ready_phase_resolve_examples
+        .get("queryOnlyInstallFailure")
+        .cloned()
+        .unwrap_or(Value::Null);
     let routing_decision_ready = json!({
         "lookupRule": "index[errorCode] || default",
         "entryCount": error_code_routing_entries.len(),
@@ -3207,6 +3252,8 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
     let routing_decision = json!({
         "lookupKey": "errorCode",
         "policy": "first-candidate-by-chain-order",
+        "defaultEscalationCandidateCount": default_escalation_candidates.len(),
+        "defaultEscalationCandidates": default_escalation_candidates.clone(),
         "entryCount": error_code_routing_entries.len(),
         "entries": error_code_routing_entries.clone(),
         "defaultRecommendedEscalationKey": routing_decision_default
@@ -3254,19 +3301,16 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         "phaseErrorCodes": phase_error_codes,
         "escalationRecommendationCount": escalation_recommendations.len(),
         "escalationRecommendations": escalation_recommendations.clone(),
-        "suggestedEscalationKey": escalation_recommendations
-            .first()
-            .and_then(|item| item.get("key"))
+        "suggestedEscalationKey": routing_decision_default
+            .get("recommendedEscalationKey")
             .cloned()
             .unwrap_or(Value::Null),
-        "suggestedActionPhase": escalation_recommendations
-            .first()
-            .and_then(|item| item.get("actionPhase"))
+        "suggestedActionPhase": routing_decision_default
+            .get("recommendedActionPhase")
             .cloned()
             .unwrap_or(Value::Null),
-        "suggestedActionClass": escalation_recommendations
-            .first()
-            .and_then(|item| item.get("actionClass"))
+        "suggestedActionClass": routing_decision_default
+            .get("recommendedActionClass")
             .cloned()
             .unwrap_or(Value::Null),
         "errorCodeRoutingCount": error_code_routing_entries.len(),
@@ -3276,6 +3320,169 @@ fn conflict_resolution_routing_to_json(chain: &[Value]) -> Value {
         "errorCodeRoutingEntries": error_code_routing_entries,
         "routingDecision": routing_decision,
     })
+}
+
+#[cfg(unix)]
+fn hook_backend_family_key(backend_id: &str) -> String {
+    let normalized = backend_id.trim().to_ascii_lowercase();
+    if normalized.is_empty() {
+        return "unknown".into();
+    }
+    if normalized.contains("ellekit") {
+        "ellekit".into()
+    } else if normalized.contains("substrate")
+        || normalized.contains("mobilesubstrate")
+        || normalized.contains("cydiasubstrate")
+    {
+        "substrate".into()
+    } else if normalized.contains("substitute") {
+        "substitute".into()
+    } else if normalized.contains("libhooker") {
+        "libhooker".into()
+    } else {
+        normalized
+    }
+}
+
+#[cfg(unix)]
+fn hook_backend_family_keys(ids: &[String]) -> Vec<String> {
+    ids.iter()
+        .map(|id| hook_backend_family_key(id))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>()
+}
+
+#[cfg(unix)]
+fn merge_hook_backend_family_groups(groups: &[&[String]]) -> Vec<String> {
+    groups
+        .iter()
+        .flat_map(|group| group.iter().cloned())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>()
+}
+
+#[cfg(unix)]
+fn hook_backend_family_alignment(
+    controller_loaded_families: &[String],
+    target_loaded_families: &[String],
+    filesystem_only_families: &[String],
+) -> &'static str {
+    let controller_set = controller_loaded_families.iter().cloned().collect::<BTreeSet<_>>();
+    let target_set = target_loaded_families.iter().cloned().collect::<BTreeSet<_>>();
+    if controller_set.is_empty() && target_set.is_empty() {
+        if filesystem_only_families.is_empty() {
+            return "none";
+        }
+        return "filesystem-only";
+    }
+    if !controller_set.is_empty() && target_set.is_empty() {
+        return "controller-only";
+    }
+    if controller_set.is_empty() && !target_set.is_empty() {
+        return "target-only";
+    }
+    if controller_set == target_set {
+        if controller_set.len() <= 1 {
+            return "aligned-single-family";
+        }
+        return "aligned-multi-family";
+    }
+    if controller_set.iter().any(|family| target_set.contains(family)) {
+        return "partially-aligned";
+    }
+    "disjoint"
+}
+
+#[cfg(unix)]
+fn hook_backend_family_route_key(
+    command_mode: &str,
+    recommended_action_bias: &str,
+    backend_family_alignment: &str,
+) -> &'static str {
+    if command_mode == "blocked" {
+        return "blocked";
+    }
+    match recommended_action_bias {
+        "cleanup" => "cleanup-only",
+        "preflight" => "preflight-before-inline",
+        "install" => "install-direct",
+        "query" => match backend_family_alignment {
+            "aligned-single-family" | "aligned-multi-family" => "query-shared-runtime",
+            "controller-only" | "target-only" => "query-single-sided-runtime",
+            "partially-aligned" => "query-sidecar-alignment",
+            "disjoint" => "query-conflict-resolution",
+            "filesystem-only" => "query-filesystem-candidates",
+            _ => "query-observe",
+        },
+        _ => "observe",
+    }
+}
+
+#[cfg(unix)]
+fn hook_backend_family_route_summary(route_key: &str) -> &'static str {
+    match route_key {
+        "blocked" => "no compatible backend family route is currently available",
+        "cleanup-only" => "cleanup-only policy is active; recover hook state before adaptation",
+        "preflight-before-inline" => "filesystem-only backend families detected; refresh diagnostics before install",
+        "install-direct" => "no external backend family is loaded; inline install can proceed directly",
+        "query-shared-runtime" => {
+            "shared backend family runtime is loaded on both sides; query before changing hook state"
+        }
+        "query-single-sided-runtime" => {
+            "backend family runtime is only loaded on one side; query until both sides are aligned"
+        }
+        "query-sidecar-alignment" => {
+            "a shared backend family exists with sidecar families; query and preflight before adaptation"
+        }
+        "query-conflict-resolution" => {
+            "controller and target backend families are disjoint; run conflict-resolution query/preflight flow"
+        }
+        "query-filesystem-candidates" => {
+            "only filesystem backend families are visible; confirm runtime visibility via preflight"
+        }
+        _ => "observe backend families before choosing an adaptation route",
+    }
+}
+
+#[cfg(unix)]
+fn hook_automation_route_default_escalation_candidates(
+    backend_family_route_key: &str,
+    command_mode: &str,
+    arm64e_query_only_until_override: bool,
+) -> Vec<String> {
+    let mut candidates = Vec::<&'static str>::new();
+    if arm64e_query_only_until_override {
+        candidates.push("arm64e-query-only-path");
+    }
+    match backend_family_route_key {
+        "query-shared-runtime"
+        | "query-single-sided-runtime"
+        | "query-sidecar-alignment"
+        | "query-conflict-resolution" => {
+            candidates.extend(["query-only-path", "preflight-refresh", "policy-review"]);
+        }
+        "preflight-before-inline" | "query-filesystem-candidates" => {
+            candidates.extend(["preflight-refresh", "query-only-path", "policy-review"]);
+        }
+        "cleanup-only" => {
+            if command_mode == "cleanup-only" {
+                candidates.extend(["policy-review", "preflight-refresh", "query-only-path"]);
+            } else {
+                candidates.extend(["preflight-refresh", "policy-review", "query-only-path"]);
+            }
+        }
+        _ => {
+            candidates.extend(["preflight-refresh", "query-only-path", "policy-review"]);
+        }
+    }
+    let mut seen = BTreeSet::<&'static str>::new();
+    candidates
+        .into_iter()
+        .filter(|key| seen.insert(*key))
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>()
 }
 
 #[cfg(unix)]
@@ -3304,6 +3511,26 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         json_string_array_field(backend_matrix, "loadedOnlyInControllerBackendIds");
     let target_loaded_only_backend_ids = json_string_array_field(backend_matrix, "loadedOnlyInTargetBackendIds");
     let filesystem_only_backend_ids = json_string_array_field(backend_matrix, "filesystemOnlyBackendIds");
+    let shared_loaded_backend_families = hook_backend_family_keys(&shared_loaded_backend_ids);
+    let controller_loaded_only_backend_families = hook_backend_family_keys(&controller_loaded_only_backend_ids);
+    let target_loaded_only_backend_families = hook_backend_family_keys(&target_loaded_only_backend_ids);
+    let filesystem_only_backend_families = hook_backend_family_keys(&filesystem_only_backend_ids);
+    let controller_loaded_backend_families = merge_hook_backend_family_groups(&[
+        &shared_loaded_backend_families,
+        &controller_loaded_only_backend_families,
+    ]);
+    let target_loaded_backend_families =
+        merge_hook_backend_family_groups(&[&shared_loaded_backend_families, &target_loaded_only_backend_families]);
+    let loaded_backend_families = merge_hook_backend_family_groups(&[
+        &shared_loaded_backend_families,
+        &controller_loaded_only_backend_families,
+        &target_loaded_only_backend_families,
+    ]);
+    let backend_family_alignment = hook_backend_family_alignment(
+        &controller_loaded_backend_families,
+        &target_loaded_backend_families,
+        &filesystem_only_backend_families,
+    );
 
     let alignment = match topology_kind {
         "clean" => "clean",
@@ -3354,6 +3581,9 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
     } else {
         "observe"
     };
+    let backend_family_route_key =
+        hook_backend_family_route_key(command_mode, recommended_action_bias, backend_family_alignment);
+    let backend_family_route_summary = hook_backend_family_route_summary(backend_family_route_key);
     let summary = match recommended_action_bias {
         "blocked" => "no compatible hook path is currently available",
         "cleanup" => "current policy only allows cleanup or status commands; stop existing hooks before retrying",
@@ -3415,6 +3645,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         .flatten()
         .filter_map(|entry| {
             let backend_id = entry.get("id").and_then(Value::as_str)?;
+            let backend_family = hook_backend_family_key(backend_id);
             let display_name = entry
                 .get("displayName")
                 .and_then(Value::as_str)
@@ -3535,6 +3766,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .unwrap_or(Value::Null);
             Some(json!({
                 "backendId": backend_id,
+                "backendFamily": backend_family,
                 "displayName": display_name,
                 "scope": scope,
                 "state": state,
@@ -3814,7 +4046,7 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         })
     };
     let preferred_conflict_resolution_routing =
-        conflict_resolution_routing_to_json(&preferred_conflict_resolution_chain);
+        conflict_resolution_routing_to_json(&preferred_conflict_resolution_chain, conflict_resolution_group_key);
     let preferred_conflict_resolution_step_chain = preferred_conflict_resolution_chain
         .iter()
         .enumerate()
@@ -3934,7 +4166,11 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .unwrap_or(0);
             let conflict_command_json_executable_template_count = conflict_resolution_command_json_templates
                 .as_array()
-                .map(|items| items.len().saturating_sub(conflict_command_json_instruction_template_count))
+                .map(|items| {
+                    items
+                        .len()
+                        .saturating_sub(conflict_command_json_instruction_template_count)
+                })
                 .unwrap_or(0);
             let preferred_conflict_resolution_chain = preferred_conflict_resolution_chain.clone();
             let conflict_primary_command_json_template = conflict_resolution_command_json_templates
@@ -3952,6 +4188,13 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                     .get(target_backend_id)
                     .cloned()
                     .unwrap_or_else(|| target_backend_id.clone());
+                let controller_backend_family = hook_backend_family_key(controller_backend_id);
+                let target_backend_family = hook_backend_family_key(target_backend_id);
+                let backend_family_conflict_kind = if controller_backend_family == target_backend_family {
+                    "same-family"
+                } else {
+                    "cross-family"
+                };
                 json!({
                     "pairKey": format!("{controller_backend_id}->{target_backend_id}"),
                     "scope": "split-process",
@@ -3960,6 +4203,15 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                     "secondBackendId": target_backend_id,
                     "secondBackendDisplayName": target_display_name,
                     "backendIds": [controller_backend_id, target_backend_id],
+                    "backendFamilies": [
+                        controller_backend_family.clone(),
+                        target_backend_family.clone()
+                    ],
+                    "firstBackendFamily": controller_backend_family.clone(),
+                    "secondBackendFamily": target_backend_family.clone(),
+                    "controllerBackendFamily": controller_backend_family,
+                    "targetBackendFamily": target_backend_family,
+                    "familyConflictKind": backend_family_conflict_kind,
                     "backendDisplayNames": [
                         backend_display_name_by_id
                             .get(controller_backend_id)
@@ -4146,6 +4398,9 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             "source": backend_adaptation_step_chain_source,
             "mode": mode,
             "alignment": alignment,
+            "backendFamilyAlignment": backend_family_alignment,
+            "backendFamilyRouteKey": backend_family_route_key,
+            "backendFamilyRouteSummary": backend_family_route_summary,
             "preferredGroupKey": preferred_group_key,
             "selectedId": backend_adaptation_next_step.get("id").cloned().unwrap_or(Value::Null),
             "selectedSource": backend_adaptation_next_step.get("source").cloned().unwrap_or(Value::Null),
@@ -4273,6 +4528,9 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
     json!({
         "mode": mode,
         "alignment": alignment,
+        "backendFamilyAlignment": backend_family_alignment,
+        "backendFamilyRouteKey": backend_family_route_key,
+        "backendFamilyRouteSummary": backend_family_route_summary,
         "recommendedActionBias": recommended_action_bias,
         "summary": summary,
         "requiresQueryPhase": requires_query_phase,
@@ -4283,10 +4541,24 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
         "controllerLoadedOnlyBackendCount": controller_loaded_only_backend_ids.len(),
         "targetLoadedOnlyBackendCount": target_loaded_only_backend_ids.len(),
         "filesystemOnlyBackendCount": filesystem_only_backend_ids.len(),
+        "loadedBackendFamilyCount": loaded_backend_families.len(),
+        "sharedLoadedBackendFamilyCount": shared_loaded_backend_families.len(),
+        "controllerLoadedOnlyBackendFamilyCount": controller_loaded_only_backend_families.len(),
+        "targetLoadedOnlyBackendFamilyCount": target_loaded_only_backend_families.len(),
+        "filesystemOnlyBackendFamilyCount": filesystem_only_backend_families.len(),
+        "controllerLoadedBackendFamilyCount": controller_loaded_backend_families.len(),
+        "targetLoadedBackendFamilyCount": target_loaded_backend_families.len(),
         "sharedLoadedBackendIds": shared_loaded_backend_ids,
         "controllerLoadedOnlyBackendIds": controller_loaded_only_backend_ids,
         "targetLoadedOnlyBackendIds": target_loaded_only_backend_ids,
         "filesystemOnlyBackendIds": filesystem_only_backend_ids,
+        "loadedBackendFamilies": loaded_backend_families,
+        "sharedLoadedBackendFamilies": shared_loaded_backend_families,
+        "controllerLoadedOnlyBackendFamilies": controller_loaded_only_backend_families,
+        "targetLoadedOnlyBackendFamilies": target_loaded_only_backend_families,
+        "filesystemOnlyBackendFamilies": filesystem_only_backend_families,
+        "controllerLoadedBackendFamilies": controller_loaded_backend_families,
+        "targetLoadedBackendFamilies": target_loaded_backend_families,
         "queryTemplates": query_group.get("templates").cloned().unwrap_or(Value::Null),
         "queryTemplateCount": query_group.get("templateCount").cloned().unwrap_or(Value::Null),
         "queryCommandJsonTemplates": query_group
@@ -4410,6 +4682,18 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .unwrap_or(Value::Null),
         "executionAlignment": backend_adaptation_execution_summary
             .get("alignment")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionBackendFamilyAlignment": backend_adaptation_execution_summary
+            .get("backendFamilyAlignment")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionBackendFamilyRouteKey": backend_adaptation_execution_summary
+            .get("backendFamilyRouteKey")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "executionBackendFamilyRouteSummary": backend_adaptation_execution_summary
+            .get("backendFamilyRouteSummary")
             .cloned()
             .unwrap_or(Value::Null),
         "executionPreferredGroupKey": backend_adaptation_execution_summary
@@ -4980,6 +5264,10 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
             .as_ref()
             .and_then(|item| item.get("backendId"))
             .cloned(),
+        "preferredBackendFamily": preferred_backend_recommendation
+            .as_ref()
+            .and_then(|item| item.get("backendFamily"))
+            .cloned(),
         "preferredBackendDisplayName": preferred_backend_recommendation
             .as_ref()
             .and_then(|item| item.get("displayName"))
@@ -5238,6 +5526,24 @@ fn hook_backend_adaptation_to_json(backend_matrix: &Value, preferred_path: &str,
                 .get("routingDecision")
                 .and_then(|value| value.get("ready"))
                 .and_then(|value| value.get("defaultEscalationKey"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionDefaultEscalationCandidateCount": if has_preferred_conflict_resolution_plan {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("defaultEscalationCandidateCount"))
+                .cloned()
+                .unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        },
+        "preferredConflictResolutionDefaultEscalationCandidates": if has_preferred_conflict_resolution_plan {
+            preferred_conflict_resolution_routing
+                .get("routingDecision")
+                .and_then(|value| value.get("defaultEscalationCandidates"))
                 .cloned()
                 .unwrap_or(Value::Null)
         } else {
@@ -8804,7 +9110,10 @@ fn hook_query_templates() -> Vec<String> {
         "native.symbol <address>".to_string(),
         "objc.classInfo <class> [meta]".to_string(),
         "objc.protocols <filter>".to_string(),
+        "objc.classConforms <class> <protocol>".to_string(),
+        "objc.protocolConforms <protocol> <parent-protocol>".to_string(),
         "objc.classProtocols <class> [filter]".to_string(),
+        "objc.protocolOwners <protocol> [filter]".to_string(),
         "objc.protocolInfo <protocol>".to_string(),
         "objc.protocolProtocols <protocol> [filter]".to_string(),
         "objc.protocolMethods <protocol> [required] [instance] [filter]".to_string(),
@@ -8814,6 +9123,7 @@ fn hook_query_templates() -> Vec<String> {
         "objc.superclass <class>".to_string(),
         "objc.classChain <class>".to_string(),
         "objc.classExists <name>".to_string(),
+        "objc.protocolExists <name>".to_string(),
         "objc.selector <name>".to_string(),
         "objc.methodInfo <class> <selector> [meta]".to_string(),
         "objc.propertyInfo <class> <property> [meta]".to_string(),
@@ -8821,6 +9131,7 @@ fn hook_query_templates() -> Vec<String> {
         "objc.properties <class> [meta] [filter]".to_string(),
         "objc.ivars <class> [filter]".to_string(),
         "objc.classImage <class>".to_string(),
+        "objc.protocolImage <protocol>".to_string(),
         "objc.methodImage <class> <selector> [meta]".to_string(),
         "objc.methodImp <class> <selector> [meta]".to_string(),
         "objc.methodOwners <selector> [meta]".to_string(),
@@ -8877,7 +9188,18 @@ fn hook_query_templates() -> Vec<String> {
         "pac.arm64e".to_string(),
         "pac.strip <address>".to_string(),
         "pac.stripdata <address>".to_string(),
+        "qbdi.status".to_string(),
+        "qbdi.info".to_string(),
+        "qbdi.methods".to_string(),
+        "qbdi.lastError".to_string(),
+        "java.status".to_string(),
+        "java.info".to_string(),
+        "java.lastError".to_string(),
+        "jni.status".to_string(),
+        "jni.info".to_string(),
+        "jni.lastError".to_string(),
         "native.mainImage".to_string(),
+        "native.instrumentation".to_string(),
     ]
 }
 
@@ -8889,14 +9211,10 @@ struct HookAutomationArm64eContext {
 
 #[cfg(unix)]
 impl HookAutomationArm64eContext {
-    fn from_runtime(
-        preflight: &InjectionTargetPreflightReport,
-        trace: Option<&InjectionTrace>,
-    ) -> Self {
+    fn from_runtime(preflight: &InjectionTargetPreflightReport, trace: Option<&InjectionTrace>) -> Self {
         let arm64e_summary = arm64e_runtime_summary_to_json(preflight, trace);
         Self {
-            query_only_until_override: arm64e_summary["overrideRequiredForFallback"].as_bool()
-                == Some(true),
+            query_only_until_override: arm64e_summary["overrideRequiredForFallback"].as_bool() == Some(true),
         }
     }
 
@@ -9137,6 +9455,9 @@ fn command_template_phase(command: &str) -> &'static str {
         || command.starts_with("native.")
         || command.starts_with("swift.")
         || command.starts_with("pac.")
+        || command.starts_with("qbdi.")
+        || command.starts_with("java.")
+        || command.starts_with("jni.")
     {
         "query"
     } else if command.starts_with("trace ")
@@ -9241,6 +9562,9 @@ fn command_json_template_entry(template: &str) -> Value {
         || command.starts_with("native.")
         || command.starts_with("swift.")
         || command.starts_with("pac.")
+        || command.starts_with("qbdi.")
+        || command.starts_with("java.")
+        || command.starts_with("jni.")
         || command.starts_with("trace ")
         || command.starts_with("stalker ")
         || command.starts_with("jhook ")
@@ -9297,6 +9621,51 @@ fn command_json_eligible_count(command_json_templates: &[Value]) -> usize {
                 .unwrap_or(false)
         })
         .count()
+}
+
+#[cfg(unix)]
+fn command_json_template_commands(command_json_templates: &[Value]) -> Vec<String> {
+    command_json_templates
+        .iter()
+        .filter_map(|entry| entry.get("command").and_then(Value::as_str).map(ToOwned::to_owned))
+        .collect()
+}
+
+#[cfg(unix)]
+fn command_json_eligible_template_commands(command_json_templates: &[Value]) -> Vec<String> {
+    command_json_templates
+        .iter()
+        .filter(|entry| {
+            entry
+                .get("commandJsonEligible")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+        })
+        .filter_map(|entry| entry.get("command").and_then(Value::as_str).map(ToOwned::to_owned))
+        .collect()
+}
+
+#[cfg(unix)]
+fn first_executable_command_json_template(command_json_templates: &[Value]) -> Value {
+    command_json_templates
+        .iter()
+        .find(|entry| entry.get("kind").and_then(Value::as_str) != Some("instruction"))
+        .cloned()
+        .unwrap_or(Value::Null)
+}
+
+#[cfg(unix)]
+fn first_eligible_command_json_template(command_json_templates: &[Value]) -> Value {
+    command_json_templates
+        .iter()
+        .find(|entry| {
+            entry
+                .get("commandJsonEligible")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+        })
+        .cloned()
+        .unwrap_or(Value::Null)
 }
 
 #[cfg(unix)]
@@ -9363,6 +9732,10 @@ fn hook_automation_to_json_with_arm64e(
     };
     let preferred_path = arm64e_context.preferred_path_override(preferred_path);
     let backend_adaptation = hook_backend_adaptation_to_json(backend_matrix, preferred_path, command_mode);
+    let backend_family_route_key = backend_adaptation
+        .get("backendFamilyRouteKey")
+        .and_then(Value::as_str)
+        .unwrap_or("observe");
 
     let mode_rank = |action_key: &str| -> u8 {
         match command_mode {
@@ -9911,15 +10284,13 @@ fn hook_automation_to_json_with_arm64e(
         .iter()
         .map(|template| command_json_template_entry(template))
         .collect::<Vec<_>>();
-    let escalation_preflight_command_json_instruction_template_count =
-        escalation_preflight_command_json_templates
-            .iter()
-            .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
-            .count();
-    let escalation_preflight_command_json_executable_template_count =
-        escalation_preflight_command_json_templates
-            .len()
-            .saturating_sub(escalation_preflight_command_json_instruction_template_count);
+    let escalation_preflight_command_json_instruction_template_count = escalation_preflight_command_json_templates
+        .iter()
+        .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+        .count();
+    let escalation_preflight_command_json_executable_template_count = escalation_preflight_command_json_templates
+        .len()
+        .saturating_sub(escalation_preflight_command_json_instruction_template_count);
     let escalation_preflight_error_codes = vec![
         "hook-fallback-preflight-failed",
         "hook-fallback-inject-failed",
@@ -9974,15 +10345,13 @@ fn hook_automation_to_json_with_arm64e(
             .iter()
             .map(|template| command_json_template_entry(template))
             .collect::<Vec<_>>();
-        let escalation_policy_command_json_instruction_template_count =
-            escalation_policy_command_json_templates
-                .iter()
-                .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
-                .count();
-        let escalation_policy_command_json_executable_template_count =
-            escalation_policy_command_json_templates
-                .len()
-                .saturating_sub(escalation_policy_command_json_instruction_template_count);
+        let escalation_policy_command_json_instruction_template_count = escalation_policy_command_json_templates
+            .iter()
+            .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+            .count();
+        let escalation_policy_command_json_executable_template_count = escalation_policy_command_json_templates
+            .len()
+            .saturating_sub(escalation_policy_command_json_instruction_template_count);
         let escalation_policy_error_codes = vec!["hook-fallback-diagnose-failed", "hook-fallback-diagnose-timeout"];
         escalation_recommendations.push(json!({
             "key": "policy-review",
@@ -10003,6 +10372,11 @@ fn hook_automation_to_json_with_arm64e(
             "commandJsonEligibleTemplateCount": command_json_eligible_count(&escalation_policy_command_json_templates),
         }));
     }
+    let route_default_escalation_candidates = hook_automation_route_default_escalation_candidates(
+        backend_family_route_key,
+        command_mode,
+        arm64e_context.query_only_until_override,
+    );
     let mut error_code_routing_candidates = BTreeMap::<String, Vec<String>>::new();
     for recommendation in &escalation_recommendations {
         let Some(key) = recommendation.get("key").and_then(Value::as_str) else {
@@ -10026,6 +10400,9 @@ fn hook_automation_to_json_with_arm64e(
                 candidates.push(key.to_string());
             }
         }
+    }
+    for candidates in error_code_routing_candidates.values_mut() {
+        prioritize_escalation_candidates(candidates, &route_default_escalation_candidates);
     }
     let error_code_routing =
         error_code_routing_candidates
@@ -10288,7 +10665,10 @@ fn hook_automation_to_json_with_arm64e(
             map.insert(error_code, value);
             map
         });
-    let default_recommendation = escalation_recommendations.first().cloned();
+    let default_recommendation = route_default_escalation_candidates
+        .iter()
+        .find_map(|key| escalation_recommendation_by_key.get(key).cloned())
+        .or_else(|| escalation_recommendations.first().cloned());
     let default_recommended_escalation_key = default_recommendation
         .as_ref()
         .and_then(|item| item.get("key"))
@@ -10838,9 +11218,7 @@ fn hook_automation_to_json_with_arm64e(
             let templates = templates.into_iter().collect::<Vec<_>>();
             let command_json_instruction_template_count = command_json_templates
                 .iter()
-                .filter(|template| {
-                    template.get("kind").and_then(Value::as_str) == Some("instruction")
-                })
+                .filter(|template| template.get("kind").and_then(Value::as_str) == Some("instruction"))
                 .count();
             let command_json_executable_template_count = command_json_templates
                 .len()
@@ -13440,6 +13818,8 @@ fn hook_automation_to_json_with_arm64e(
     let routing_decision = json!({
         "lookupKey": "errorCode",
         "policy": "first-candidate-by-escalation-order",
+        "defaultEscalationCandidateCount": route_default_escalation_candidates.len(),
+        "defaultEscalationCandidates": route_default_escalation_candidates.clone(),
         "entryCount": error_code_routing_entries.len(),
         "entries": error_code_routing_entries.clone(),
         "index": routing_decision_index,
@@ -13538,19 +13918,15 @@ fn hook_automation_to_json_with_arm64e(
             "steps": fallback_steps,
             "escalationRecommendationCount": escalation_recommendations.len(),
             "escalationRecommendations": escalation_recommendations.clone(),
-            "suggestedEscalationKey": escalation_recommendations
-                .first()
-                .and_then(|item| item.get("key"))
-                .and_then(Value::as_str)
-                .map(ToOwned::to_owned),
-            "suggestedActionPhase": escalation_recommendations
-                .first()
-                .and_then(|item| item.get("actionPhase"))
+            "defaultEscalationCandidateCount": route_default_escalation_candidates.len(),
+            "defaultEscalationCandidates": route_default_escalation_candidates.clone(),
+            "suggestedEscalationKey": default_recommended_escalation_key.clone(),
+            "suggestedActionPhase": routing_decision_default
+                .get("recommendedActionPhase")
                 .cloned()
                 .unwrap_or(Value::Null),
-            "suggestedActionClass": escalation_recommendations
-                .first()
-                .and_then(|item| item.get("actionClass"))
+            "suggestedActionClass": routing_decision_default
+                .get("recommendedActionClass")
                 .cloned()
                 .unwrap_or(Value::Null),
             "errorCodeRoutingCount": error_code_routing_entries.len(),
@@ -13881,6 +14257,11 @@ fn hook_automation_to_json_with_arm64e(
         "backendAdaptation": backend_adaptation.clone(),
         "backendAdaptationMode": backend_adaptation.get("mode").cloned(),
         "backendAdaptationAlignment": backend_adaptation.get("alignment").cloned(),
+        "backendAdaptationFamilyAlignment": backend_adaptation.get("backendFamilyAlignment").cloned(),
+        "backendAdaptationFamilyRouteKey": backend_adaptation.get("backendFamilyRouteKey").cloned(),
+        "backendAdaptationFamilyRouteSummary": backend_adaptation
+            .get("backendFamilyRouteSummary")
+            .cloned(),
         "backendAdaptationBias": backend_adaptation.get("recommendedActionBias").cloned(),
         "backendAdaptationSummary": backend_adaptation.get("summary").cloned(),
         "loadedExternalBackendCount": total_loaded_backend_count,
@@ -14100,11 +14481,7 @@ fn hook_automation_to_json_with_arm64e(
 
 #[cfg(unix)]
 fn hook_automation_to_json(actions: &[HookEffectiveAction], backend_matrix: &Value) -> Value {
-    hook_automation_to_json_with_arm64e(
-        actions,
-        backend_matrix,
-        HookAutomationArm64eContext::default(),
-    )
+    hook_automation_to_json_with_arm64e(actions, backend_matrix, HookAutomationArm64eContext::default())
 }
 
 #[cfg(unix)]
@@ -14453,6 +14830,15 @@ fn hook_environment_to_json(
         "filesystemCaution": strategy.map(|item| item.filesystem_caution()),
         "coexistenceMode": coexistence_mode,
         "coexistenceRecommendation": coexistence_recommendation,
+        "instrumentation": ios_instrumentation_capability_to_json(),
+        "instrumentationBackend": "arm64-hook-engine",
+        "instrumentationBackendDisplayName": "ARM64 hook engine",
+        "androidReferenceInstrumentationBackend": "QBDI",
+        "qbdiCompatible": false,
+        "qbdiAvailable": false,
+        "traceAvailable": true,
+        "stalkerAvailable": true,
+        "recommendedInstrumentationPath": "trace-stalker-inline-hook",
         "coexistenceLayerAvailable": coexistence_layer.available,
         "coexistenceLayerRequired": coexistence_layer.required,
         "coexistenceLayerStatus": coexistence_layer.status,
@@ -14482,6 +14868,43 @@ fn hook_environment_to_json(
             .collect::<Vec<_>>(),
         "backends": report.backends.iter().map(hook_backend_to_json).collect::<Vec<_>>(),
         "warnings": report.warnings,
+    })
+}
+
+#[cfg(unix)]
+fn ios_instrumentation_capability_to_json() -> Value {
+    json!({
+        "platform": "ios",
+        "backend": "arm64-hook-engine",
+        "backendDisplayName": "ARM64 hook engine",
+        "androidReferenceBackend": "QBDI",
+        "androidReferencePath": "rustFrida-master/qbdi-helper + quickjs-hook/src/jsapi/hook_api/qbdi.rs",
+        "qbdiCompatible": false,
+        "qbdiAvailable": false,
+        "qbdiApiPorted": false,
+        "inlineHookAvailable": true,
+        "traceAvailable": true,
+        "stalkerAvailable": true,
+        "hflAvailable": true,
+        "virtualStackAvailable": false,
+        "registerStateApiAvailable": false,
+        "memoryAccessTraceAvailable": false,
+        "recommendedPath": "trace-stalker-inline-hook",
+        "recommendedCommands": [
+            "trace <target>",
+            "stalker <target>",
+            "hfl <module> <offset>",
+            "jhook <class> <selector> [meta]",
+            "shook <type> <method>",
+        ],
+        "unsupportedQbdiApis": [
+            "qbdi.newVM",
+            "qbdi.run",
+            "qbdi.call",
+            "qbdi.getGPR/setGPR",
+            "qbdi.registerTraceCallbacks",
+        ],
+        "summary": "Android QBDI VM APIs are not ported to iOS; use ARM64 hook engine based trace/stalker/HFL/JHook/Shook flows.",
     })
 }
 
@@ -14689,8 +15112,8 @@ fn injection_plan_to_json(plan: &InjectionPlan) -> Value {
 fn arm64e_preflight_summary_to_json(report: &InjectionTargetPreflightReport) -> Value {
     let preferred_thread_bootstrap_kind = native_api::ThreadBootstrapKind::PthreadCreateFromMachThread;
     let preferred_thread_bootstrap_resolved = report.thread_bootstrap_kind == preferred_thread_bootstrap_kind;
-    let fallback_thread_bootstrap_detected = matches!(report.target_uses_arm64e, Some(true))
-        && !preferred_thread_bootstrap_resolved;
+    let fallback_thread_bootstrap_detected =
+        matches!(report.target_uses_arm64e, Some(true)) && !preferred_thread_bootstrap_resolved;
     let injection_ready = match report.target_uses_arm64e {
         Some(true) => preferred_thread_bootstrap_resolved,
         Some(false) => true,
@@ -14754,10 +15177,7 @@ fn arm64e_preflight_summary_to_json(report: &InjectionTargetPreflightReport) -> 
 }
 
 #[cfg(unix)]
-fn arm64e_runtime_summary_to_json(
-    preflight: &InjectionTargetPreflightReport,
-    trace: Option<&InjectionTrace>,
-) -> Value {
+fn arm64e_runtime_summary_to_json(preflight: &InjectionTargetPreflightReport, trace: Option<&InjectionTrace>) -> Value {
     let mut summary = arm64e_preflight_summary_to_json(preflight);
     let Some(summary_obj) = summary.as_object_mut() else {
         return summary;
@@ -14771,10 +15191,7 @@ fn arm64e_runtime_summary_to_json(
                 "traceThreadBootstrapKind".into(),
                 Value::String(trace.thread_bootstrap_kind.as_str().into()),
             );
-            summary_obj.insert(
-                "traceBootstrapTimedOut".into(),
-                Value::Bool(trace.bootstrap_timed_out),
-            );
+            summary_obj.insert("traceBootstrapTimedOut".into(), Value::Bool(trace.bootstrap_timed_out));
             summary_obj.insert(
                 "traceThreadTermination".into(),
                 Value::String(trace.thread_termination.as_str().into()),
@@ -14790,7 +15207,8 @@ fn arm64e_runtime_summary_to_json(
             );
             summary_obj.insert(
                 "traceBootstrapStatus".into(),
-                trace.bootstrap_report
+                trace
+                    .bootstrap_report
                     .as_ref()
                     .map(|report| Value::String(report.status.as_str().into()))
                     .unwrap_or(Value::Null),
@@ -15853,8 +16271,7 @@ fn failure_diagnostics_to_json(
             hook_command_mode = hook_effective_command_mode
                 .clone()
                 .or_else(|| legacy_command_mode.clone());
-            controller_command_mode_source =
-                normalize_hook_command_mode_source(parsed.controller_command_mode_source);
+            controller_command_mode_source = normalize_hook_command_mode_source(parsed.controller_command_mode_source);
             target_command_mode_source = normalize_hook_command_mode_source(parsed.target_command_mode_source);
             controller_inline_hook_risk = normalize_hook_inline_risk(parsed.controller_inline_hook_risk);
             target_inline_hook_risk = normalize_hook_inline_risk(parsed.target_inline_hook_risk);
@@ -16018,7 +16435,9 @@ fn failure_diagnostics_to_json(
                 ),
                 Some("topology") => push_unique_hint(
                     &mut hints,
-                    format!("{scope} hook decision is topology-forced; inspect loaded external backends in that process"),
+                    format!(
+                        "{scope} hook decision is topology-forced; inspect loaded external backends in that process"
+                    ),
                 ),
                 Some("filesystem") => push_unique_hint(
                     &mut hints,
@@ -18909,8 +19328,14 @@ fn controller_help_runtime_command_synopsis() -> &'static [&'static str] {
         "objc.findClasses <query>",
         "objc.protocols",
         "objc.protocols [filter]",
+        "objc.classConforms <class> <protocol>",
+        "objc.findClassConforms <class> <protocol>",
+        "objc.protocolConforms <protocol> <parent-protocol>",
+        "objc.findProtocolConforms <protocol> <parent-protocol>",
         "objc.classProtocols <class> [filter]",
         "objc.findClassProtocols <class> <query>",
+        "objc.protocolOwners <protocol> [filter]",
+        "objc.findProtocolOwners <protocol> <query>",
         "objc.classInfo <class> [meta]",
         "objc.protocolInfo <protocol>",
         "objc.protocolProtocols <protocol> [filter]",
@@ -18924,11 +19349,18 @@ fn controller_help_runtime_command_synopsis() -> &'static [&'static str] {
         "objc.superclass <class>",
         "objc.classChain <class>",
         "objc.classExists <name>",
+        "objc.findClassExists <name>",
+        "objc.protocolExists <name>",
+        "objc.findProtocolExists <name>",
         "objc.selector <name>",
+        "objc.findSelector <name>",
         "objc.classImage <class>",
+        "objc.protocolImage <protocol>",
+        "objc.findProtocolImage <protocol>",
         "objc.selectorName <selector>",
         "objc.objectClassName <object>",
         "objc.methodImp <class> <selector> [meta]",
+        "objc.findMethodImp <class> <selector> [meta]",
         "objc.methodInfo <class> <selector> [meta]",
         "objc.propertyInfo <class> <property> [meta]",
         "objc.ivarInfo <class> <ivar>",
@@ -18937,9 +19369,9 @@ fn controller_help_runtime_command_synopsis() -> &'static [&'static str] {
         "objc.methods <class> [meta] [filter]",
         "objc.properties <class> [meta] [filter]",
         "objc.ivars <class> [filter]",
-        "objc.findClassInfo/findProtocolInfo/findProtocolMethodInfo/findProtocolPropertyInfo/findSuperclass/findClassChain/findClassImage/findMethodInfo/findMethodImage/findPropertyInfo/findIvarInfo/findSelectorName/findObjectClassName ... (info aliases)",
+        "objc.findClassInfo/findProtocolInfo/findProtocolMethodInfo/findProtocolPropertyInfo/findSuperclass/findClassChain/findClassExists/findSelector/findClassImage/findProtocolImage/findMethodImp/findMethodInfo/findMethodImage/findPropertyInfo/findIvarInfo/findSelectorName/findObjectClassName ... (info aliases)",
         "objc.findMethods/findProperties/findIvars/findMethodOwners/findProtocols ... (query aliases)",
-        "native.base <module>",
+        "native.base <module>|native.findBase <module>",
         "native.imageInfo <module>",
         "native.export <symbol>|native.export <module> -- <symbol>",
         "native.exports <module>|native.exports <module> -- <query>",
@@ -18975,9 +19407,10 @@ fn controller_help_runtime_command_synopsis() -> &'static [&'static str] {
         "native.findImageInfo/findSymbolInfo/findExportInfo/findDependencyInfo/findRpathInfo/findImportInfo/findSegmentInfo/findSectionInfo/findLoadCommandInfo ... (info aliases)",
         "native.findSymbols/findExports/findDependencies/findEncryptionInfo/findEntryPoint/findDyldInfo/findLinkedit/findFunctionStarts/findCodeSignature/findDataInCode/findExportsTrie/findChainedFixups/findSourceVersion/findBuildVersion/findDylinker/findInstallName/findUuid/findRpaths/findImports/findSegments/findSections/findLoadCommands ... (aliases)",
         "native.images [filter]",
-        "native.mainImage",
-        "native.image <address>",
-        "native.symbol <address>",
+        "native.mainImage|native.findMainImage",
+        "native.instrumentation",
+        "native.image <address>|native.findImage <address>",
+        "native.symbol <address>|native.findSymbol <address>",
         "native.hookenv|native.detectHookEnvironment",
         "pac.available",
         "pac.arm64e|pac.isProcessArm64e",
@@ -18985,6 +19418,13 @@ fn controller_help_runtime_command_synopsis() -> &'static [&'static str] {
         "pac.images [filter]|pac.arm64eImages [filter]",
         "pac.strip <address>",
         "pac.stripdata <address>|pac.stripData <address>",
+        "qbdi.status|qbdi.info",
+        "qbdi.methods",
+        "qbdi.lastError",
+        "java.status|java.info",
+        "java.lastError",
+        "jni.status|jni.info",
+        "jni.lastError",
         "swift.available",
         "swift.demangle <mangled-symbol>",
         "swift.symbolInfo <symbol>|swift.symbolInfo <module> -- <symbol>",
@@ -19124,21 +19564,18 @@ fn command_arm64e_safety_to_json(
     let preferred_thread_bootstrap_resolved = arm64e_summary["preferredThreadBootstrapResolved"]
         .as_bool()
         .unwrap_or(false);
-    let override_required_for_fallback = arm64e_summary["overrideRequiredForFallback"]
-        .as_bool()
-        .unwrap_or(false);
+    let override_required_for_fallback = arm64e_summary["overrideRequiredForFallback"].as_bool().unwrap_or(false);
 
     let (classification, risk_level, recommended_action, recommended_action_phase) = match target_uses_arm64e {
-        Some(true) if requires_inline_hooks == Some(true) && override_required_for_fallback => (
-            "blocked-without-override",
-            "high",
-            "query-only-until-override",
-            "query",
-        ),
+        Some(true) if requires_inline_hooks == Some(true) && override_required_for_fallback => {
+            ("blocked-without-override", "high", "query-only-until-override", "query")
+        }
         Some(true) if requires_inline_hooks == Some(true) && preferred_thread_bootstrap_resolved => {
             ("inline-risky", "elevated", "run-with-caution", "hook-install")
         }
-        Some(true) if requires_inline_hooks == Some(true) => ("inline-risky", "elevated", "preflight-more", "preflight"),
+        Some(true) if requires_inline_hooks == Some(true) => {
+            ("inline-risky", "elevated", "preflight-more", "preflight")
+        }
         Some(true) if is_pac_command => ("safe-readonly-pac", "low", "run", "query"),
         Some(true) => ("safe-readonly", "low", "run", "query"),
         Some(false) if requires_inline_hooks == Some(true) => ("standard-inline", "normal", "run", "hook-install"),
@@ -19169,9 +19606,7 @@ fn command_error_recovery_to_json(
     trace: Option<&InjectionTrace>,
 ) -> Value {
     let arm64e_safety = command_arm64e_safety_to_json(command, preflight, trace);
-    let override_required_for_fallback = arm64e_safety["overrideRequiredForFallback"]
-        .as_bool()
-        .unwrap_or(false);
+    let override_required_for_fallback = arm64e_safety["overrideRequiredForFallback"].as_bool().unwrap_or(false);
     let requires_inline_hooks = arm64e_safety["requiresInlineHooks"].as_bool().unwrap_or(false);
     let hook_blocked = matches!(err, Error::State(message) if message.contains("hook-effective-blocked"));
 
@@ -19181,6 +19616,13 @@ fn command_error_recovery_to_json(
             .iter()
             .map(|template| command_json_template_entry(template))
             .collect::<Vec<_>>();
+        let command_json_instruction_template_count = command_json_templates
+            .iter()
+            .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+            .count();
+        let command_json_executable_template_count = command_json_templates
+            .len()
+            .saturating_sub(command_json_instruction_template_count);
 
         return json!({
             "strategy": "arm64e-query-only-until-override",
@@ -19201,7 +19643,23 @@ fn command_error_recovery_to_json(
             "commandCount": commands.len(),
             "commands": commands,
             "firstCommand": commands.first().cloned(),
+            "lastCommand": commands.last().cloned(),
             "commandJsonTemplateCount": command_json_templates.len(),
+            "commandJsonInstructionTemplateCount": command_json_instruction_template_count,
+            "commandJsonExecutableTemplateCount": command_json_executable_template_count,
+            "commandJsonEligibleTemplateCount": command_json_eligible_count(&command_json_templates),
+            "commandJsonTemplateCommands": command_json_template_commands(&command_json_templates),
+            "commandJsonEligibleTemplateCommands": command_json_eligible_template_commands(&command_json_templates),
+            "phaseOrder": command_phase_order(&command_json_templates),
+            "phaseCount": command_phase_order(&command_json_templates).len(),
+            "firstCommandJsonTemplate": command_json_templates.first().cloned(),
+            "lastCommandJsonTemplate": command_json_templates.last().cloned(),
+            "firstEligibleCommand": first_eligible_command_json_template(&command_json_templates)
+                .get("command")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned),
+            "firstEligibleCommandJsonTemplate": first_eligible_command_json_template(&command_json_templates),
+            "firstExecutableCommandJsonTemplate": first_executable_command_json_template(&command_json_templates),
             "commandJsonTemplates": command_json_templates,
         });
     }
@@ -19216,9 +19674,7 @@ fn hook_failure_recovery_to_json(
     trace: Option<&InjectionTrace>,
 ) -> Value {
     let arm64e_summary = arm64e_runtime_summary_to_json(preflight, trace);
-    let override_required_for_fallback = arm64e_summary["overrideRequiredForFallback"]
-        .as_bool()
-        .unwrap_or(false);
+    let override_required_for_fallback = arm64e_summary["overrideRequiredForFallback"].as_bool().unwrap_or(false);
 
     if override_required_for_fallback && hook_action_key == Some("hook.install") {
         let commands = arm64e_readonly_recovery_commands();
@@ -19226,6 +19682,13 @@ fn hook_failure_recovery_to_json(
             .iter()
             .map(|template| command_json_template_entry(template))
             .collect::<Vec<_>>();
+        let command_json_instruction_template_count = command_json_templates
+            .iter()
+            .filter(|entry| entry.get("kind").and_then(Value::as_str) == Some("instruction"))
+            .count();
+        let command_json_executable_template_count = command_json_templates
+            .len()
+            .saturating_sub(command_json_instruction_template_count);
 
         return json!({
             "strategy": "arm64e-query-only-until-override",
@@ -19245,7 +19708,23 @@ fn hook_failure_recovery_to_json(
             "commandCount": commands.len(),
             "commands": commands,
             "firstCommand": commands.first().cloned(),
+            "lastCommand": commands.last().cloned(),
             "commandJsonTemplateCount": command_json_templates.len(),
+            "commandJsonInstructionTemplateCount": command_json_instruction_template_count,
+            "commandJsonExecutableTemplateCount": command_json_executable_template_count,
+            "commandJsonEligibleTemplateCount": command_json_eligible_count(&command_json_templates),
+            "commandJsonTemplateCommands": command_json_template_commands(&command_json_templates),
+            "commandJsonEligibleTemplateCommands": command_json_eligible_template_commands(&command_json_templates),
+            "phaseOrder": command_phase_order(&command_json_templates),
+            "phaseCount": command_phase_order(&command_json_templates).len(),
+            "firstCommandJsonTemplate": command_json_templates.first().cloned(),
+            "lastCommandJsonTemplate": command_json_templates.last().cloned(),
+            "firstEligibleCommand": first_eligible_command_json_template(&command_json_templates)
+                .get("command")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned),
+            "firstEligibleCommandJsonTemplate": first_eligible_command_json_template(&command_json_templates),
+            "firstExecutableCommandJsonTemplate": first_executable_command_json_template(&command_json_templates),
             "commandJsonTemplates": command_json_templates,
         });
     }
@@ -19302,10 +19781,7 @@ fn render_command_error_json(command: &str, err: &Error, logs: &[String]) -> Val
 }
 
 #[cfg(unix)]
-fn render_command_outcome_json_with_context(
-    outcome: &CommandOutcome,
-    context: &CommandJsonContext<'_>,
-) -> Value {
+fn render_command_outcome_json_with_context(outcome: &CommandOutcome, context: &CommandJsonContext<'_>) -> Value {
     let recovery_summary = hook_arm64e_recovery_summary_to_json(context.preflight, context.trace);
     let mut rendered = render_command_outcome_json(outcome)
         .as_object()
@@ -19409,26 +19885,24 @@ fn event_name(event: &AgentEvent) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        analyze_doctor_report, build_hfl_spec, build_jhook_spec, build_shook_spec, build_stalker_spec,
-        build_trace_spec, command_json_template_entry, command_template_group_to_json,
-        command_requests_inline_hook_install,
-        command_required_capability,
-        command_requires_inline_hooks, ensure_inline_hooks_allowed_for_command, hook_action_command_templates,
-        controller_help_control_command_synopsis,
-        controller_help_hook_command_synopsis,
-        controller_help_runtime_command_synopsis,
-        hook_automation_suggested_sequence, hook_query_templates,
+        analyze_doctor_report, arm64e_preflight_summary_to_json, build_hfl_spec, build_jhook_spec, build_shook_spec,
+        build_stalker_spec, build_trace_spec, command_json_template_entry, command_requests_inline_hook_install,
+        command_required_capability, command_requires_inline_hooks, command_template_group_to_json,
+        conflict_resolution_default_escalation_candidates, controller_help_control_command_synopsis,
+        controller_help_hook_command_synopsis, controller_help_runtime_command_synopsis,
+        ensure_inline_hooks_allowed_for_command, hook_action_command_templates,
+        hook_automation_route_default_escalation_candidates, hook_automation_suggested_sequence,
         hook_automation_to_json, hook_automation_to_json_with_arm64e, hook_backend_matrix_to_json,
         hook_effective_actions, hook_effective_actions_to_json, hook_effective_to_json,
-        hook_environment_requires_notice, hook_environment_to_json, parse_hfl_command, parse_jhook_command,
-        parse_shook_command, parse_stalker_command, parse_trace_command, print_injection_preflight,
-        quote_js_string, render_bootstrap_summary, render_command_error_json, routing_phase_action_class,
-        render_command_error_json_with_context, render_command_outcome_json, render_command_outcome_json_with_context,
-        render_image_list_json, render_injection_environment, render_injection_result_json, render_loader_symbol,
-        render_preflight_json, arm64e_preflight_summary_to_json, HookAutomationArm64eContext,
-        CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, HookEffectiveAction, NativeHookTarget,
-        HookCommandCapability, NativeLogArgument, NativeLogReturn, NativeLogTemplate, NativeValueFormat,
-        ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
+        hook_environment_requires_notice, hook_environment_to_json, hook_query_templates, parse_hfl_command,
+        parse_jhook_command, parse_shook_command, parse_stalker_command, parse_trace_command,
+        print_injection_preflight, prioritize_escalation_candidates, quote_js_string, render_bootstrap_summary,
+        render_command_error_json, render_command_error_json_with_context, render_command_outcome_json,
+        render_command_outcome_json_with_context, render_image_list_json, render_injection_environment,
+        render_injection_result_json, render_loader_symbol, render_preflight_json, routing_phase_action_class,
+        CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, HookAutomationArm64eContext,
+        HookCommandCapability, HookEffectiveAction, NativeHookTarget, NativeLogArgument, NativeLogReturn,
+        NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
     };
     use common::{
         AgentCommand, ControllerConfig, Error, Hello, InjectionMode, DEFAULT_AGENT_PATH, DEFAULT_AGENT_PATH_ROOTFUL,
@@ -19442,7 +19916,7 @@ mod tests {
         ThreadCreatePlan,
     };
     use serde_json::{json, Value};
-    use std::collections::HashSet;
+    use std::collections::{BTreeSet, HashSet};
     use std::path::Path;
 
     fn materialize_help_template(template: &str) -> String {
@@ -19503,10 +19977,7 @@ mod tests {
         command.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 
-    fn materialized_help_commands(
-        synopsis_lines: &[&str],
-        skip_alias_summary: bool,
-    ) -> (HashSet<String>, Vec<String>) {
+    fn materialized_help_commands(synopsis_lines: &[&str], skip_alias_summary: bool) -> (HashSet<String>, Vec<String>) {
         let mut commands = HashSet::new();
         let mut duplicates = Vec::new();
         for synopsis in synopsis_lines {
@@ -19526,15 +19997,97 @@ mod tests {
         (commands, duplicates)
     }
 
+    fn discover_find_alias_prefixes_from_common_parser() -> BTreeSet<String> {
+        let source = include_str!("../../common/src/command.rs");
+        let mut prefixes = BTreeSet::new();
+
+        for line in source.lines() {
+            if let Some(start) = line.find("strip_prefix(\"") {
+                let remainder = &line[start + "strip_prefix(\"".len()..];
+                if let Some(end) = remainder.find("\")") {
+                    let prefix = remainder[..end].trim_end();
+                    if prefix.starts_with("objc.find")
+                        || prefix.starts_with("native.find")
+                        || prefix.starts_with("swift.find")
+                    {
+                        prefixes.insert(prefix.to_string());
+                    }
+                }
+            }
+            if let Some(start) = line.find("== \"") {
+                let remainder = &line[start + "== \"".len()..];
+                if let Some(end) = remainder.find('"') {
+                    let prefix = remainder[..end].trim_end();
+                    if prefix.starts_with("objc.find")
+                        || prefix.starts_with("native.find")
+                        || prefix.starts_with("swift.find")
+                    {
+                        prefixes.insert(prefix.to_string());
+                    }
+                }
+            }
+        }
+
+        prefixes
+    }
+
+    fn runtime_help_mentions_find_alias(help_line: &str, prefix: &str) -> bool {
+        if help_line.contains(prefix) {
+            return true;
+        }
+
+        let compressed_suffix = if let Some(suffix) = prefix.strip_prefix("native.find") {
+            Some(format!("find{suffix}"))
+        } else if let Some(suffix) = prefix.strip_prefix("objc.find") {
+            Some(format!("find{suffix}"))
+        } else if let Some(suffix) = prefix.strip_prefix("swift.find") {
+            Some(format!("find{suffix}"))
+        } else {
+            None
+        };
+
+        match compressed_suffix {
+            Some(suffix) => help_line.contains(&suffix),
+            None => false,
+        }
+    }
+
+    fn readme_mentions_find_alias(prefix: &str) -> bool {
+        let readme = include_str!("../../../README.md");
+        if readme.contains(prefix) {
+            return true;
+        }
+
+        let compressed_suffix = if let Some(suffix) = prefix.strip_prefix("native.find") {
+            Some(format!("find{suffix}"))
+        } else if let Some(suffix) = prefix.strip_prefix("objc.find") {
+            Some(format!("find{suffix}"))
+        } else if let Some(suffix) = prefix.strip_prefix("swift.find") {
+            Some(format!("find{suffix}"))
+        } else {
+            None
+        };
+
+        match compressed_suffix {
+            Some(suffix) => readme.contains(&suffix),
+            None => false,
+        }
+    }
+
     fn materialized_runtime_help_commands() -> HashSet<String> {
-        let (commands, _duplicates) =
-            materialized_help_commands(controller_help_runtime_command_synopsis(), true);
+        let (commands, _duplicates) = materialized_help_commands(controller_help_runtime_command_synopsis(), true);
         commands
     }
 
     fn materialized_hook_action_templates() -> Vec<String> {
         let mut templates = HashSet::<String>::new();
-        let action_keys = ["hook.query", "hook.bootstrap", "hook.install", "hook.status", "hook.stop"];
+        let action_keys = [
+            "hook.query",
+            "hook.bootstrap",
+            "hook.install",
+            "hook.status",
+            "hook.stop",
+        ];
         let preferred_paths = [
             "inline-safe",
             "inline-cautious",
@@ -19556,6 +20109,85 @@ mod tests {
         let mut sorted = templates.into_iter().collect::<Vec<_>>();
         sorted.sort_unstable();
         sorted
+    }
+
+    #[test]
+    fn hook_automation_route_default_escalation_candidates_query_routes_prefer_query_only_path() {
+        let candidates =
+            hook_automation_route_default_escalation_candidates("query-conflict-resolution", "query-only", false);
+        assert_eq!(candidates.first().map(String::as_str), Some("query-only-path"));
+        assert_eq!(candidates.get(1).map(String::as_str), Some("preflight-refresh"));
+        assert!(candidates.iter().any(|key| *key == "policy-review"));
+    }
+
+    #[test]
+    fn hook_automation_route_default_escalation_candidates_preflight_routes_prefer_preflight_refresh() {
+        let candidates =
+            hook_automation_route_default_escalation_candidates("preflight-before-inline", "allowed", false);
+        assert_eq!(candidates.first().map(String::as_str), Some("preflight-refresh"));
+        assert_eq!(candidates.get(1).map(String::as_str), Some("query-only-path"));
+    }
+
+    #[test]
+    fn hook_automation_route_default_escalation_candidates_arm64e_prefers_arm64e_query_only_path() {
+        let candidates =
+            hook_automation_route_default_escalation_candidates("query-single-sided-runtime", "query-only", true);
+        assert_eq!(candidates.first().map(String::as_str), Some("arm64e-query-only-path"));
+        assert_eq!(candidates.get(1).map(String::as_str), Some("query-only-path"));
+        assert!(candidates.iter().any(|key| *key == "preflight-refresh"));
+    }
+
+    #[test]
+    fn conflict_resolution_default_escalation_candidates_follow_preferred_group_key() {
+        assert_eq!(
+            conflict_resolution_default_escalation_candidates("query"),
+            vec![
+                "conflict-query".to_string(),
+                "conflict-preflight".to_string(),
+                "conflict-cleanup".to_string(),
+            ]
+        );
+        assert_eq!(
+            conflict_resolution_default_escalation_candidates("preflight"),
+            vec![
+                "conflict-preflight".to_string(),
+                "conflict-query".to_string(),
+                "conflict-cleanup".to_string(),
+            ]
+        );
+        assert_eq!(
+            conflict_resolution_default_escalation_candidates("cleanup"),
+            vec![
+                "conflict-cleanup".to_string(),
+                "conflict-query".to_string(),
+                "conflict-preflight".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn prioritize_escalation_candidates_moves_route_preferred_key_first() {
+        let priority_order = vec![
+            "query-only-path".to_string(),
+            "preflight-refresh".to_string(),
+            "policy-review".to_string(),
+        ];
+        let mut candidates = vec![
+            "preflight-refresh".to_string(),
+            "query-only-path".to_string(),
+            "policy-review".to_string(),
+        ];
+
+        prioritize_escalation_candidates(&mut candidates, &priority_order);
+
+        assert_eq!(
+            candidates,
+            vec![
+                "query-only-path".to_string(),
+                "preflight-refresh".to_string(),
+                "policy-review".to_string(),
+            ]
+        );
     }
 
     fn command_shape(command: &str) -> (String, bool) {
@@ -19589,10 +20221,7 @@ mod tests {
                             map.contains_key(&instruction_key),
                             "missing {instruction_key} at {path}"
                         );
-                        assert!(
-                            map.contains_key(&executable_key),
-                            "missing {executable_key} at {path}"
-                        );
+                        assert!(map.contains_key(&executable_key), "missing {executable_key} at {path}");
                     }
                 }
                 for (key, child) in map {
@@ -19617,42 +20246,48 @@ mod tests {
     fn assert_backend_adaptation_alias_fields_match_nested(rendered: &Value, rendered_name: &str) {
         let adaptation = &rendered["backendAdaptation"];
         assert_eq!(
-            rendered["backendAdaptationMode"],
-            adaptation["mode"],
+            rendered["backendAdaptationMode"], adaptation["mode"],
             "{rendered_name}.backendAdaptationModeAlias"
         );
         assert_eq!(
-            rendered["backendAdaptationAlignment"],
-            adaptation["alignment"],
+            rendered["backendAdaptationAlignment"], adaptation["alignment"],
             "{rendered_name}.backendAdaptationAlignmentAlias"
         );
         assert_eq!(
-            rendered["backendAdaptationBias"],
-            adaptation["recommendedActionBias"],
+            rendered["backendAdaptationFamilyAlignment"], adaptation["backendFamilyAlignment"],
+            "{rendered_name}.backendAdaptationFamilyAlignmentAlias"
+        );
+        assert_eq!(
+            rendered["backendAdaptationFamilyRouteKey"], adaptation["backendFamilyRouteKey"],
+            "{rendered_name}.backendAdaptationFamilyRouteKeyAlias"
+        );
+        assert_eq!(
+            rendered["backendAdaptationFamilyRouteSummary"], adaptation["backendFamilyRouteSummary"],
+            "{rendered_name}.backendAdaptationFamilyRouteSummaryAlias"
+        );
+        assert_eq!(
+            rendered["backendAdaptationBias"], adaptation["recommendedActionBias"],
             "{rendered_name}.backendAdaptationBiasAlias"
         );
         assert_eq!(
-            rendered["backendAdaptationSummary"],
-            adaptation["summary"],
+            rendered["backendAdaptationSummary"], adaptation["summary"],
             "{rendered_name}.backendAdaptationSummaryAlias"
         );
     }
 
-    fn assert_hook_coexistence_and_automation_core_fields_match(
-        coexistence: &Value,
-        automation: &Value,
-        name: &str,
-    ) {
+    fn assert_hook_coexistence_and_automation_core_fields_match(coexistence: &Value, automation: &Value, name: &str) {
         assert_backend_adaptation_alias_fields_match_nested(coexistence, &format!("{name}.coexistence"));
         assert_backend_adaptation_alias_fields_match_nested(automation, &format!("{name}.automation"));
         assert_eq!(
-            coexistence["backendAdaptation"],
-            automation["backendAdaptation"],
+            coexistence["backendAdaptation"], automation["backendAdaptation"],
             "{name}.backendAdaptationParity"
         );
         for key in [
             "backendAdaptationMode",
             "backendAdaptationAlignment",
+            "backendAdaptationFamilyAlignment",
+            "backendAdaptationFamilyRouteKey",
+            "backendAdaptationFamilyRouteSummary",
             "backendAdaptationBias",
             "backendAdaptationSummary",
             "nextActionKey",
@@ -19684,8 +20319,7 @@ mod tests {
         assert_backend_adaptation_alias_fields_match_nested(coexistence, &format!("{name}.coexistence"));
         assert_backend_adaptation_alias_fields_match_nested(automation, &format!("{name}.automation"));
         assert_eq!(
-            coexistence["backendAdaptation"],
-            automation["backendAdaptation"],
+            coexistence["backendAdaptation"], automation["backendAdaptation"],
             "{name}.backendAdaptationParity"
         );
         for key in [
@@ -19701,13 +20335,11 @@ mod tests {
 
     fn assert_recovery_summary_aliases(rendered: &Value, name: &str) {
         assert_eq!(
-            rendered["hookRecoverySummary"],
-            rendered["recoverySummary"],
+            rendered["hookRecoverySummary"], rendered["recoverySummary"],
             "{name}.hookRecoverySummaryAlias"
         );
         assert_eq!(
-            rendered["hookRecoverySummary"],
-            rendered["arm64eRecoverySummary"],
+            rendered["hookRecoverySummary"], rendered["arm64eRecoverySummary"],
             "{name}.arm64eRecoverySummaryAlias"
         );
     }
@@ -19765,13 +20397,22 @@ mod tests {
 
     #[test]
     fn hook_query_templates_route_to_runtime_dispatch() {
-        for template in hook_query_templates() {
+        let templates = hook_query_templates();
+        for expected in ["qbdi.info", "qbdi.methods", "java.info", "jni.info"] {
+            assert!(
+                templates.iter().any(|template| template == expected),
+                "query templates should include runtime info alias: {expected}"
+            );
+        }
+        for template in templates {
             let entry = command_json_template_entry(&template);
             assert_eq!(entry["phase"], "query", "template should stay query phase: {template}");
-            assert_eq!(entry["kind"], "runtime-command", "template should stay runtime kind: {template}");
             assert_eq!(
-                entry["commandJsonEligible"],
-                true,
+                entry["kind"], "runtime-command",
+                "template should stay runtime kind: {template}"
+            );
+            assert_eq!(
+                entry["commandJsonEligible"], true,
                 "query template should stay command-json eligible: {template}"
             );
 
@@ -19859,9 +20500,7 @@ mod tests {
                 .as_str()
                 .expect("command json entry should include command");
             let materialized_command = materialize_help_template(&template);
-            let kind = entry["kind"]
-                .as_str()
-                .expect("command json entry should include kind");
+            let kind = entry["kind"].as_str().expect("command json entry should include kind");
             let command_json_eligible = entry["commandJsonEligible"]
                 .as_bool()
                 .expect("command json entry should include commandJsonEligible");
@@ -19884,8 +20523,7 @@ mod tests {
                     command_json_eligible,
                     "runtime template should stay command-json eligible: {template}"
                 );
-                if command_required_capability(&materialized_command)
-                    .expect("runtime command capability check")
+                if command_required_capability(&materialized_command).expect("runtime command capability check")
                     == Some(HookCommandCapability::Query)
                 {
                     assert!(
@@ -19921,12 +20559,8 @@ mod tests {
         );
 
         for entry in entries {
-            let command = entry["command"]
-                .as_str()
-                .expect("entry should include command");
-            let kind = entry["kind"]
-                .as_str()
-                .expect("entry should include kind");
+            let command = entry["command"].as_str().expect("entry should include command");
+            let kind = entry["kind"].as_str().expect("entry should include kind");
             let command_json_eligible = entry["commandJsonEligible"]
                 .as_bool()
                 .expect("entry should include commandJsonEligible");
@@ -20035,8 +20669,8 @@ mod tests {
                     "hook help command should map to hook capability: {command}"
                 );
 
-                let installs = command_requests_inline_hook_install(&command)
-                    .expect("hook install intent should parse");
+                let installs =
+                    command_requests_inline_hook_install(&command).expect("hook install intent should parse");
                 if installs {
                     assert_eq!(
                         capability,
@@ -20083,16 +20717,10 @@ mod tests {
 
                 let capability = command_required_capability(&command).expect("control capability");
                 match command.as_str() {
-                    "exit" => assert_eq!(
-                        capability,
-                        None,
-                        "exit should bypass hook capability routing"
-                    ),
-                    _ if command.starts_with("jscomplete ") => assert_eq!(
-                        capability,
-                        None,
-                        "jscomplete should bypass hook capability routing"
-                    ),
+                    "exit" => assert_eq!(capability, None, "exit should bypass hook capability routing"),
+                    _ if command.starts_with("jscomplete ") => {
+                        assert_eq!(capability, None, "jscomplete should bypass hook capability routing")
+                    }
                     _ => assert_eq!(
                         capability,
                         Some(HookCommandCapability::Query),
@@ -20107,7 +20735,10 @@ mod tests {
     fn query_only_suggested_sequence_stays_query_capability() {
         for preferred_path in ["query-only", "arm64e-query-only"] {
             let commands = hook_automation_suggested_sequence(preferred_path);
-            assert!(!commands.is_empty(), "query-only suggested sequence should not be empty");
+            assert!(
+                !commands.is_empty(),
+                "query-only suggested sequence should not be empty"
+            );
 
             for command in commands {
                 assert_eq!(
@@ -20182,6 +20813,41 @@ mod tests {
                 spec: json!({
                     "kind": "native.dyld_info",
                     "moduleName": "DemoBinary",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findBase DemoBinary"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.base",
+                    "moduleName": "DemoBinary",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findMainImage"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.main_image",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findImage 0x1234"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.image",
+                    "address": "0x1234",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("native.findSymbol 0x1234"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "native.symbol",
+                    "address": "0x1234",
                 })
             })
         );
@@ -20310,6 +20976,112 @@ mod tests {
                     "kind": "objc.class_protocols",
                     "className": "UIViewController",
                     "filter": "UI",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.classExists NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_exists",
+                    "className": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findClassExists NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_exists",
+                    "className": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolExists NSCopying"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_exists",
+                    "protocolName": "NSCopying",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolExists NSCopying"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_exists",
+                    "protocolName": "NSCopying",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.classConforms NSObject NSCopying"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_conforms",
+                    "className": "NSObject",
+                    "protocolName": "NSCopying",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findClassConforms NSObject NSCopying"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.class_conforms",
+                    "className": "NSObject",
+                    "protocolName": "NSCopying",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolConforms NSCopying NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_conforms",
+                    "protocolName": "NSCopying",
+                    "parentProtocolName": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolConforms NSCopying NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_conforms",
+                    "protocolName": "NSCopying",
+                    "parentProtocolName": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolOwners NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_owners",
+                    "protocolName": "NSObject",
+                    "filter": null,
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.protocolOwners NSObject NS"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_owners",
+                    "protocolName": "NSObject",
+                    "filter": "NS",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolOwners NSObject NS"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_owners",
+                    "protocolName": "NSObject",
+                    "filter": "NS",
                 })
             })
         );
@@ -20526,6 +21298,24 @@ mod tests {
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert_eq!(
+            AgentCommand::from_legacy("objc.protocolImage NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_image",
+                    "protocolName": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy("objc.findProtocolImage NSObject"),
+            Some(AgentCommand::RuntimeDispatch {
+                spec: json!({
+                    "kind": "objc.protocol_image",
+                    "protocolName": "NSObject",
+                })
+            })
+        );
+        assert_eq!(
             AgentCommand::from_legacy("objc.methodInfo UIViewController viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch {
                 spec: json!({
@@ -20575,6 +21365,18 @@ mod tests {
         ));
         assert!(matches!(
             AgentCommand::from_legacy("objc.findMethodImage UIViewController viewDidLoad"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.selector init"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findSelector init"),
+            Some(AgentCommand::RuntimeDispatch { .. })
+        ));
+        assert!(matches!(
+            AgentCommand::from_legacy("objc.findMethodImp UIViewController viewDidLoad"),
             Some(AgentCommand::RuntimeDispatch { .. })
         ));
         assert!(matches!(
@@ -21027,10 +21829,7 @@ mod tests {
     #[test]
     fn legacy_native_find_info_aliases_match_canonical_specs() {
         let alias_pairs = [
-            (
-                "native.findImageInfo DemoBinary",
-                "native.imageInfo DemoBinary",
-            ),
+            ("native.findImageInfo DemoBinary", "native.imageInfo DemoBinary"),
             ("native.findSymbolInfo malloc", "native.symbolInfo malloc"),
             (
                 "native.findSymbolInfo DemoBinary -- malloc",
@@ -21064,6 +21863,10 @@ mod tests {
                 "native.findLoadCommandInfo DemoBinary -- LC_UUID",
                 "native.loadCommandInfo DemoBinary -- LC_UUID",
             ),
+            ("native.findBase DemoBinary", "native.base DemoBinary"),
+            ("native.findMainImage", "native.mainImage"),
+            ("native.findImage 0x1234", "native.image 0x1234"),
+            ("native.findSymbol 0x1234", "native.symbol 0x1234"),
             ("native.findDyldInfo DemoBinary", "native.dyldInfo DemoBinary"),
         ];
 
@@ -21081,15 +21884,44 @@ mod tests {
         let alias_pairs = [
             ("objc.findClasses UIView", "objc.classes UIView"),
             (
+                "objc.findClassExists UIViewController",
+                "objc.classExists UIViewController",
+            ),
+            (
+                "objc.findProtocolExists UIStateRestoring",
+                "objc.protocolExists UIStateRestoring",
+            ),
+            (
+                "objc.findClassConforms UIViewController UIStateRestoring",
+                "objc.classConforms UIViewController UIStateRestoring",
+            ),
+            (
+                "objc.findProtocolConforms UIStateRestoring NSObject",
+                "objc.protocolConforms UIStateRestoring NSObject",
+            ),
+            (
                 "objc.findMethodInfo UIViewController viewDidLoad",
                 "objc.methodInfo UIViewController viewDidLoad",
             ),
             (
+                "objc.findMethodImp UIViewController viewDidLoad",
+                "objc.methodImp UIViewController viewDidLoad",
+            ),
+            ("objc.findSelector viewDidLoad:", "objc.selector viewDidLoad:"),
+            (
                 "objc.findProtocolMethods NSObject optional class description",
                 "objc.protocolMethods NSObject optional class description",
             ),
-            ("objc.findClassImage UIViewController", "objc.classImage UIViewController"),
-            ("objc.findMethodImage UIViewController viewDidLoad", "objc.methodImage UIViewController viewDidLoad"),
+            ("objc.findProtocolOwners NSObject NS", "objc.protocolOwners NSObject NS"),
+            (
+                "objc.findClassImage UIViewController",
+                "objc.classImage UIViewController",
+            ),
+            ("objc.findProtocolImage NSObject", "objc.protocolImage NSObject"),
+            (
+                "objc.findMethodImage UIViewController viewDidLoad",
+                "objc.methodImage UIViewController viewDidLoad",
+            ),
             ("swift.findTypes ViewController", "swift.types ViewController"),
             (
                 "swift.findMethods ViewController viewDidLoad",
@@ -21101,12 +21933,18 @@ mod tests {
                 "swift.findConformanceInfo ViewController Renderable",
                 "swift.conformanceInfo ViewController Renderable",
             ),
-            ("swift.findMetadataInfo ViewController", "swift.metadataInfo ViewController"),
+            (
+                "swift.findMetadataInfo ViewController",
+                "swift.metadataInfo ViewController",
+            ),
             (
                 "swift.findTypeLayoutInfo ViewController",
                 "swift.typeLayoutInfo ViewController",
             ),
-            ("swift.findTypes Demo -- ViewController", "swift.types Demo -- ViewController"),
+            (
+                "swift.findTypes Demo -- ViewController",
+                "swift.types Demo -- ViewController",
+            ),
             (
                 "swift.findMethods Demo -- ViewController viewDidLoad",
                 "swift.methods Demo -- ViewController viewDidLoad",
@@ -21140,9 +21978,26 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.classes UIView"));
         assert!(!command_requires_inline_hooks("objc.findClasses UIView"));
         assert!(!command_requires_inline_hooks("objc.protocols NS"));
+        assert!(!command_requires_inline_hooks("objc.findProtocols NS"));
+        assert!(!command_requires_inline_hooks("objc.classExists UIView"));
+        assert!(!command_requires_inline_hooks("objc.findClassExists UIView"));
+        assert!(!command_requires_inline_hooks("objc.protocolExists UIKeyInput"));
+        assert!(!command_requires_inline_hooks("objc.findProtocolExists UIKeyInput"));
+        assert!(!command_requires_inline_hooks("objc.classConforms UIView UIKeyInput"));
+        assert!(!command_requires_inline_hooks(
+            "objc.findClassConforms UIView UIKeyInput"
+        ));
+        assert!(!command_requires_inline_hooks(
+            "objc.protocolConforms UIKeyInput NSObject"
+        ));
+        assert!(!command_requires_inline_hooks(
+            "objc.findProtocolConforms UIKeyInput NSObject"
+        ));
         assert!(!command_requires_inline_hooks("objc.classProtocols UIView"));
         assert!(!command_requires_inline_hooks("objc.classProtocols UIView UI"));
         assert!(!command_requires_inline_hooks("objc.findClassProtocols UIView UI"));
+        assert!(!command_requires_inline_hooks("objc.protocolOwners NSObject"));
+        assert!(!command_requires_inline_hooks("objc.findProtocolOwners NSObject NS"));
         assert!(!command_requires_inline_hooks("objc.classInfo UIView meta"));
         assert!(!command_requires_inline_hooks("objc.findClassInfo UIView meta"));
         assert!(!command_requires_inline_hooks("objc.protocolInfo NSObject"));
@@ -21182,16 +22037,24 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.findSuperclass UIView"));
         assert!(!command_requires_inline_hooks("objc.classChain UIView"));
         assert!(!command_requires_inline_hooks("objc.findClassChain UIView"));
+        assert!(!command_requires_inline_hooks("objc.selector init"));
+        assert!(!command_requires_inline_hooks("objc.findSelector init"));
         assert!(!command_requires_inline_hooks("objc.properties UIView meta delegate"));
         assert!(!command_requires_inline_hooks("objc.propertyInfo UIView view"));
         assert!(!command_requires_inline_hooks("objc.findPropertyInfo UIView view"));
         assert!(!command_requires_inline_hooks("objc.ivarInfo UIView _viewFlags"));
         assert!(!command_requires_inline_hooks("objc.findIvarInfo UIView _viewFlags"));
         assert!(!command_requires_inline_hooks("objc.ivars UIView delegate"));
+        assert!(!command_requires_inline_hooks("objc.findIvars UIView delegate"));
+        assert!(!command_requires_inline_hooks("objc.findProperties UIView delegate"));
         assert!(!command_requires_inline_hooks("objc.findMethods UIView init"));
+        assert!(!command_requires_inline_hooks("objc.findMethodOwners init"));
+        assert!(!command_requires_inline_hooks("objc.findMethodImp UIView viewDidLoad"));
         assert!(!command_requires_inline_hooks("objc.methodInfo UIView viewDidLoad"));
         assert!(!command_requires_inline_hooks("objc.findMethodInfo UIView viewDidLoad"));
         assert!(!command_requires_inline_hooks("objc.findClassImage UIView"));
+        assert!(!command_requires_inline_hooks("objc.protocolImage NSObject"));
+        assert!(!command_requires_inline_hooks("objc.findProtocolImage NSObject"));
         assert!(!command_requires_inline_hooks(
             "objc.findMethodImage UIView viewDidLoad"
         ));
@@ -21199,13 +22062,43 @@ mod tests {
         assert!(!command_requires_inline_hooks("objc.findObjectClassName 0x1234"));
         assert!(!command_requires_inline_hooks("native.imageInfo UIKit"));
         assert!(!command_requires_inline_hooks("native.findImageInfo UIKit"));
+        assert!(!command_requires_inline_hooks("native.findBase UIKit"));
+        assert!(!command_requires_inline_hooks("native.findMainImage"));
+        assert!(!command_requires_inline_hooks("native.findImage 0x1234"));
+        assert!(!command_requires_inline_hooks("native.findSymbol 0x1234"));
         assert!(!command_requires_inline_hooks("native.images UIKit"));
         assert!(!command_requires_inline_hooks("native.dependencies UIKit"));
+        assert!(!command_requires_inline_hooks("native.findDependencies UIKit"));
         assert!(!command_requires_inline_hooks("native.findSymbols malloc"));
         assert!(!command_requires_inline_hooks("native.findDyldInfo UIKit"));
+        assert!(!command_requires_inline_hooks("native.findEntryPoint UIKit"));
+        assert!(!command_requires_inline_hooks("native.findEncryptionInfo UIKit"));
+        assert!(!command_requires_inline_hooks("native.findLinkedit UIKit"));
+        assert!(!command_requires_inline_hooks("native.findFunctionStarts UIKit"));
+        assert!(!command_requires_inline_hooks("native.findCodeSignature UIKit"));
+        assert!(!command_requires_inline_hooks("native.findDataInCode UIKit"));
+        assert!(!command_requires_inline_hooks("native.findExportsTrie UIKit"));
+        assert!(!command_requires_inline_hooks("native.findChainedFixups UIKit"));
+        assert!(!command_requires_inline_hooks("native.findSourceVersion UIKit"));
+        assert!(!command_requires_inline_hooks("native.findBuildVersion UIKit"));
+        assert!(!command_requires_inline_hooks("native.findDylinker UIKit"));
+        assert!(!command_requires_inline_hooks("native.findInstallName UIKit"));
+        assert!(!command_requires_inline_hooks("native.findUuid UIKit"));
         assert!(!command_requires_inline_hooks("native.findLoadCommands UIKit"));
+        assert!(!command_requires_inline_hooks("native.findExports UIKit"));
         assert!(!command_requires_inline_hooks("native.loadCommands UIKit"));
+        assert!(!command_requires_inline_hooks("native.instrumentation"));
         assert!(!command_requires_inline_hooks("native.detectHookEnvironment"));
+        assert!(!command_requires_inline_hooks("qbdi.status"));
+        assert!(!command_requires_inline_hooks("qbdi.info"));
+        assert!(!command_requires_inline_hooks("qbdi.methods"));
+        assert!(!command_requires_inline_hooks("qbdi.lastError"));
+        assert!(!command_requires_inline_hooks("java.status"));
+        assert!(!command_requires_inline_hooks("java.info"));
+        assert!(!command_requires_inline_hooks("java.lastError"));
+        assert!(!command_requires_inline_hooks("jni.status"));
+        assert!(!command_requires_inline_hooks("jni.info"));
+        assert!(!command_requires_inline_hooks("jni.lastError"));
         assert!(!command_requires_inline_hooks("pac.isProcessArm64e"));
         assert!(!command_requires_inline_hooks("pac.isImageArm64e UIKit"));
         assert!(!command_requires_inline_hooks("pac.arm64eImages UIKit"));
@@ -21234,6 +22127,7 @@ mod tests {
         assert!(!command_requires_inline_hooks("native.installName UIKit"));
         assert!(!command_requires_inline_hooks("native.uuid UIKit"));
         assert!(!command_requires_inline_hooks("native.rpaths UIKit"));
+        assert!(!command_requires_inline_hooks("native.findRpaths UIKit"));
         assert!(!command_requires_inline_hooks("native.rpathInfo UIKit -- @loader_path"));
         assert!(!command_requires_inline_hooks(
             "native.findRpathInfo UIKit -- @loader_path"
@@ -21253,8 +22147,10 @@ mod tests {
         assert!(!command_requires_inline_hooks(
             "native.findSectionInfo UIKit -- __TEXT __text"
         ));
+        assert!(!command_requires_inline_hooks("native.findSections UIKit"));
         assert!(!command_requires_inline_hooks("native.segmentInfo UIKit -- __TEXT"));
         assert!(!command_requires_inline_hooks("native.findSegmentInfo UIKit -- __TEXT"));
+        assert!(!command_requires_inline_hooks("native.findSegments UIKit"));
         assert!(!command_requires_inline_hooks("native.symbolInfo malloc"));
         assert!(!command_requires_inline_hooks("native.findSymbolInfo malloc"));
         assert!(!command_requires_inline_hooks("swift.protocolInfo Renderable"));
@@ -21276,11 +22172,15 @@ mod tests {
         assert!(!command_requires_inline_hooks("swift.symbolInfo ViewController"));
         assert!(!command_requires_inline_hooks("swift.findSymbolInfo ViewController"));
         assert!(!command_requires_inline_hooks("swift.protocols"));
+        assert!(!command_requires_inline_hooks("swift.findProtocols"));
         assert!(!command_requires_inline_hooks("swift.conformances ViewController"));
+        assert!(!command_requires_inline_hooks("swift.findConformances ViewController"));
         assert!(!command_requires_inline_hooks("swift.metadata ViewController"));
+        assert!(!command_requires_inline_hooks("swift.findMetadata ViewController"));
         assert!(!command_requires_inline_hooks("swift.metadataInfo ViewController"));
         assert!(!command_requires_inline_hooks("swift.findMetadataInfo ViewController"));
         assert!(!command_requires_inline_hooks("swift.vtable ViewController"));
+        assert!(!command_requires_inline_hooks("swift.findVtable ViewController"));
         assert!(!command_requires_inline_hooks(
             "swift.vtableInfo ViewController viewDidLoad"
         ));
@@ -21288,6 +22188,7 @@ mod tests {
             "swift.findVtableInfo ViewController viewDidLoad"
         ));
         assert!(!command_requires_inline_hooks("swift.witnessTable Renderable"));
+        assert!(!command_requires_inline_hooks("swift.findWitnessTable Renderable"));
         assert!(!command_requires_inline_hooks(
             "swift.witnessTableInfo ViewController Renderable"
         ));
@@ -21295,6 +22196,7 @@ mod tests {
             "swift.findWitnessTableInfo ViewController Renderable"
         ));
         assert!(!command_requires_inline_hooks("swift.typeLayout ViewController"));
+        assert!(!command_requires_inline_hooks("swift.findTypeLayout ViewController"));
         assert!(!command_requires_inline_hooks("swift.typeLayoutInfo ViewController"));
         assert!(!command_requires_inline_hooks(
             "swift.findTypeLayoutInfo ViewController"
@@ -21302,8 +22204,86 @@ mod tests {
         assert!(!command_requires_inline_hooks("swift.types ViewController"));
         assert!(!command_requires_inline_hooks("swift.findTypes ViewController"));
         assert!(!command_requires_inline_hooks(
+            "swift.findTypesOfKind metadata-accessor ViewController"
+        ));
+        assert!(!command_requires_inline_hooks("swift.findMethodOwners viewDidLoad"));
+        assert!(!command_requires_inline_hooks("swift.findTypeMethods ViewController"));
+        assert!(!command_requires_inline_hooks("swift.findSymbols ViewController"));
+        assert!(!command_requires_inline_hooks(
             "swift.findMethods ViewController viewDidLoad"
         ));
+    }
+
+    #[test]
+    fn find_aliases_from_common_are_query_only_and_documented_in_help() {
+        let prefixes = discover_find_alias_prefixes_from_common_parser();
+        assert!(
+            !prefixes.is_empty(),
+            "expected discoverable find aliases in common parser"
+        );
+
+        let runtime_help = controller_help_runtime_command_synopsis();
+        let mut missing_in_help = Vec::new();
+
+        for prefix in &prefixes {
+            assert!(
+                !command_requires_inline_hooks(prefix),
+                "{prefix} should stay query-only"
+            );
+            if !runtime_help
+                .iter()
+                .any(|line| runtime_help_mentions_find_alias(line, prefix))
+            {
+                missing_in_help.push(prefix.clone());
+            }
+        }
+
+        assert!(
+            missing_in_help.is_empty(),
+            "runtime help missing find aliases: {:?}",
+            missing_in_help
+        );
+    }
+
+    #[test]
+    fn find_aliases_from_common_are_documented_in_readme() {
+        let prefixes = discover_find_alias_prefixes_from_common_parser();
+        assert!(
+            !prefixes.is_empty(),
+            "expected discoverable find aliases in common parser"
+        );
+
+        let missing: Vec<_> = prefixes
+            .iter()
+            .filter(|prefix| !readme_mentions_find_alias(prefix))
+            .cloned()
+            .collect();
+
+        assert!(missing.is_empty(), "README missing find aliases: {:?}", missing);
+    }
+
+    #[test]
+    fn find_aliases_from_common_require_query_capability() {
+        let prefixes = discover_find_alias_prefixes_from_common_parser();
+        assert!(
+            !prefixes.is_empty(),
+            "expected discoverable find aliases in common parser"
+        );
+
+        let mut mismatches = Vec::new();
+        for prefix in prefixes {
+            match command_required_capability(&prefix) {
+                Ok(Some(HookCommandCapability::Query)) => {}
+                Ok(other) => mismatches.push(format!("{prefix} -> {:?}", other)),
+                Err(err) => mismatches.push(format!("{prefix} -> error: {err}")),
+            }
+        }
+
+        assert!(
+            mismatches.is_empty(),
+            "find aliases should map to query capability: {:?}",
+            mismatches
+        );
     }
 
     #[test]
@@ -21780,7 +22760,10 @@ mod tests {
         assert_eq!(rendered["environment"]["hookStrategy"]["commandMode"], "allowed");
         assert_eq!(rendered["environment"]["hookSummary"]["commandMode"], "allowed");
         assert_eq!(rendered["environment"]["hookSummary"]["commandModeSource"], "topology");
-        assert_eq!(rendered["environment"]["hookSummary"]["backendPressure"], "external-loaded");
+        assert_eq!(
+            rendered["environment"]["hookSummary"]["backendPressure"],
+            "external-loaded"
+        );
         assert_eq!(rendered["environment"]["hookSummary"]["inlineHookRisk"], "risky");
         assert_eq!(rendered["environment"]["hookSummary"]["coexistenceRequired"], true);
         assert_eq!(rendered["environment"]["hookSummary"]["nextActionKey"], "hook.query");
@@ -21794,6 +22777,33 @@ mod tests {
         assert_eq!(
             rendered["environment"]["hookEnvironment"]["coexistenceRecommendation"],
             "external backend already loaded; prefer query/status first, then inline install only if necessary"
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["instrumentationBackend"],
+            "arm64-hook-engine"
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["androidReferenceInstrumentationBackend"],
+            "QBDI"
+        );
+        assert_eq!(rendered["environment"]["hookEnvironment"]["qbdiCompatible"], false);
+        assert_eq!(rendered["environment"]["hookEnvironment"]["traceAvailable"], true);
+        assert_eq!(rendered["environment"]["hookEnvironment"]["stalkerAvailable"], true);
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["recommendedInstrumentationPath"],
+            "trace-stalker-inline-hook"
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["instrumentation"]["backend"],
+            "arm64-hook-engine"
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["instrumentation"]["androidReferenceBackend"],
+            "QBDI"
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["instrumentation"]["qbdiApiPorted"],
+            false
         );
         assert_eq!(
             rendered["environment"]["hookEnvironment"]["coexistenceLayerStatus"],
@@ -21843,7 +22853,10 @@ mod tests {
         assert_eq!(rendered["preflight"]["arm64eSummary"]["status"], "arm64e");
         assert_eq!(rendered["preflight"]["arm64eSummary"]["queryCommandsSafe"], true);
         assert_eq!(rendered["preflight"]["arm64eSummary"]["pacQueriesSafe"], true);
-        assert_eq!(rendered["preflight"]["arm64eSummary"]["inlineHookInstallRisk"], "elevated");
+        assert_eq!(
+            rendered["preflight"]["arm64eSummary"]["inlineHookInstallRisk"],
+            "elevated"
+        );
         assert_eq!(
             rendered["preflight"]["arm64eSummary"]["preferredThreadBootstrapResolved"],
             true
@@ -21852,12 +22865,21 @@ mod tests {
             rendered["preflight"]["arm64eSummary"]["fallbackThreadBootstrapDetected"],
             false
         );
-        assert_eq!(rendered["preflight"]["arm64eSummary"]["overrideRequiredForFallback"], false);
+        assert_eq!(
+            rendered["preflight"]["arm64eSummary"]["overrideRequiredForFallback"],
+            false
+        );
         assert_eq!(rendered["preflight"]["arm64eSummary"]["recommendedAction"], "inject");
         assert_eq!(rendered["preflight"]["targetHookSummary"]["commandMode"], "allowed");
-        assert_eq!(rendered["preflight"]["targetHookSummary"]["commandModeSource"], "topology");
+        assert_eq!(
+            rendered["preflight"]["targetHookSummary"]["commandModeSource"],
+            "topology"
+        );
         assert_eq!(rendered["preflight"]["targetHookSummary"]["inlineHookRisk"], "risky");
-        assert_eq!(rendered["preflight"]["targetHookSummary"]["nextActionKey"], "hook.query");
+        assert_eq!(
+            rendered["preflight"]["targetHookSummary"]["nextActionKey"],
+            "hook.query"
+        );
         assert!(rendered["preflight"]["targetHookSummary"]["recoverySummary"].is_null());
         assert!(rendered["hook"]["recoverySummary"].is_null());
         assert!(rendered["hook"]["controller"]["recoverySummary"].is_null());
@@ -21942,7 +22964,10 @@ mod tests {
         let doctor = analyze_doctor_report(&config, 42, Path::new("/tmp/iosrf.sock"), &environment, &preflight);
         let rendered = render_preflight_json(&config, 42, "/tmp/iosrf.sock", &plan, &environment, &preflight, &doctor);
 
-        assert_eq!(rendered["preflight"]["arm64eSummary"]["overrideRequiredForFallback"], true);
+        assert_eq!(
+            rendered["preflight"]["arm64eSummary"]["overrideRequiredForFallback"],
+            true
+        );
         assert_eq!(rendered["hook"]["automation"]["preferredPath"], "arm64e-query-only");
         assert_eq!(rendered["hook"]["automation"]["arm64eConstrainedQueryOnly"], true);
         assert_eq!(
@@ -22104,10 +23129,7 @@ mod tests {
         assert_eq!(rendered["preferredThreadBootstrapResolved"], false);
         assert_eq!(rendered["fallbackThreadBootstrapDetected"], true);
         assert_eq!(rendered["overrideRequiredForFallback"], true);
-        assert_eq!(
-            rendered["overrideEnv"],
-            "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
-        );
+        assert_eq!(rendered["overrideEnv"], "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK");
         assert_eq!(rendered["injectionReady"], false);
         assert_eq!(rendered["recommendedAction"], "query-only-until-override");
         assert_eq!(rendered["recommendedActionClass"], "readonly-diagnostics");
@@ -22287,7 +23309,10 @@ mod tests {
             "render_command_outcome_json_with_context_reports_arm64e_readonly_safety",
         );
         assert_eq!(rendered["hookRecoverySummary"]["firstCommand"], "native.hookenv");
-        assert_eq!(rendered["recoverySummary"]["strategy"], "arm64e-query-only-until-override");
+        assert_eq!(
+            rendered["recoverySummary"]["strategy"],
+            "arm64e-query-only-until-override"
+        );
         assert_eq!(rendered["arm64eRecoverySummary"]["nextActionPhase"], "query");
     }
 
@@ -22524,7 +23549,7 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["backendAdaptation"]["queryTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["backendAdaptation"]["inlineInstallReadyNow"],
@@ -22556,10 +23581,13 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["readyToRun"], true);
-        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"], 121);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonInstructionTemplateCount"],
@@ -22567,7 +23595,7 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStepId"],
@@ -23095,10 +24123,7 @@ mod tests {
             rendered["hook"]["automation"]["nextActionPlan"]["actionKey"],
             "hook.query"
         );
-        assert_eq!(
-            rendered["hook"]["automation"]["nextActionPlan"]["actionPhase"],
-            "query"
-        );
+        assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["actionPhase"], "query");
         assert_eq!(
             rendered["hook"]["automation"]["nextActionPlan"]["actionClass"],
             "readonly-diagnostics"
@@ -23107,14 +24132,17 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["readyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["prerequisiteCount"], 0);
-        assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 121);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionTemplateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionTemplates"][0],
             "objc.classes <filter>"
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonInstructionTemplateCount"],
@@ -23122,7 +24150,7 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["cliArgs"][4],
@@ -23178,7 +24206,7 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonInstructionTemplateCount"],
@@ -23186,7 +24214,7 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonTemplates"][0]["cliArgs"][2],
@@ -23203,11 +24231,11 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["templateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonInstructionTemplateCount"],
@@ -23215,11 +24243,11 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionRank"], 0);
         assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionIndex"], 0);
@@ -23250,6 +24278,19 @@ mod tests {
         assert_eq!(
             rendered["environment"]["hookEnvironment"]["coexistenceRecommendation"],
             "inline hooks are allowed and no external backend is loaded"
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["instrumentationBackend"],
+            "arm64-hook-engine"
+        );
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["androidReferenceInstrumentationBackend"],
+            "QBDI"
+        );
+        assert_eq!(rendered["environment"]["hookEnvironment"]["qbdiAvailable"], false);
+        assert_eq!(
+            rendered["environment"]["hookEnvironment"]["instrumentation"]["recommendedPath"],
+            "trace-stalker-inline-hook"
         );
         assert_eq!(
             rendered["environment"]["hookEnvironment"]["coexistenceLayerStatus"],
@@ -23509,7 +24550,10 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
         assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
 
-        assert_eq!(rendered["arm64eCommandSafety"]["classification"], "blocked-without-override");
+        assert_eq!(
+            rendered["arm64eCommandSafety"]["classification"],
+            "blocked-without-override"
+        );
         assert_eq!(rendered["recovery"]["strategy"], "arm64e-query-only-until-override");
         assert_eq!(rendered["recovery"]["arm64eConstrained"], true);
         assert_eq!(rendered["recovery"]["hookBlocked"], true);
@@ -23715,10 +24759,7 @@ mod tests {
             "pthread-create-from-mach-thread"
         );
         assert_eq!(rendered["arm64eSummary"]["traceTargetArm64eMatchesPreflight"], true);
-        assert_eq!(
-            rendered["arm64eSummary"]["traceThreadBootstrapMatchesPreflight"],
-            true
-        );
+        assert_eq!(rendered["arm64eSummary"]["traceThreadBootstrapMatchesPreflight"], true);
         assert_eq!(rendered["arm64eSummary"]["traceBootstrapStatus"], "agent-running");
         assert_eq!(rendered["hook"]["controller"]["commandMode"], "allowed");
         assert_eq!(rendered["hook"]["target"]["commandMode"], "allowed");
@@ -23762,10 +24803,13 @@ mod tests {
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["allowed"], true);
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["readyToRun"], true);
-        assert_eq!(rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"], 121);
+        assert_eq!(
+            rendered["hook"]["coexistence"]["nextActionPlan"]["templateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonInstructionTemplateCount"],
@@ -23773,7 +24817,7 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextActionPlan"]["commandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["coexistence"]["nextStepId"],
@@ -24255,14 +25299,17 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["branch"], "run");
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["readyToRun"], true);
         assert_eq!(rendered["hook"]["automation"]["nextActionPlan"]["prerequisiteCount"], 0);
-        assert_eq!(rendered["hook"]["automation"]["nextActionTemplateCount"], 121);
+        assert_eq!(
+            rendered["hook"]["automation"]["nextActionTemplateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionTemplates"][0],
             "objc.classes <filter>"
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonInstructionTemplateCount"],
@@ -24270,7 +25317,7 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["commandTemplates"][0]["commandJsonTemplates"][0]["cliArgs"][4],
@@ -24326,7 +25373,7 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonInstructionTemplateCount"],
@@ -24334,7 +25381,7 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["nextActionCommandJsonTemplates"][0]["cliArgs"][2],
@@ -24351,11 +25398,11 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["templateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonInstructionTemplateCount"],
@@ -24363,11 +25410,11 @@ mod tests {
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             rendered["hook"]["automation"]["actionBranches"][0]["commandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionRank"], 0);
         assert_eq!(rendered["hook"]["automation"]["actionBranches"][0]["executionIndex"], 0);
@@ -24632,11 +25679,20 @@ mod tests {
         assert_eq!(query_branch["branch"], "skip-target-policy");
         assert_eq!(query_branch["selectedAsNext"], false);
         assert_eq!(query_branch["readyToRun"], false);
-        assert_eq!(query_branch["templateCount"], 121);
-        assert_eq!(query_branch["commandJsonTemplateCount"], 121);
+        assert_eq!(query_branch["templateCount"], hook_query_templates().len() as i64);
+        assert_eq!(
+            query_branch["commandJsonTemplateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(query_branch["commandJsonInstructionTemplateCount"], 0);
-        assert_eq!(query_branch["commandJsonExecutableTemplateCount"], 121);
-        assert_eq!(query_branch["commandJsonEligibleTemplateCount"], 121);
+        assert_eq!(
+            query_branch["commandJsonExecutableTemplateCount"],
+            hook_query_templates().len() as i64
+        );
+        assert_eq!(
+            query_branch["commandJsonEligibleTemplateCount"],
+            hook_query_templates().len() as i64
+        );
         let status_branch = branches
             .iter()
             .find(|item| item["actionKey"] == "hook.status")
@@ -24843,11 +25899,7 @@ mod tests {
         let automation = hook_automation_to_json(&actions, &backend_matrix);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &coexistence,
-            &automation,
-            "blocked",
-        );
+        assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, "blocked");
 
         assert_eq!(coexistence["commandMode"], "blocked");
         assert_eq!(automation["commandMode"], "blocked");
@@ -24870,8 +25922,14 @@ mod tests {
         assert_eq!(automation["fallbackPlan"]["trigger"], "next-action-not-ready");
         assert_eq!(automation["fallbackPlan"]["nextStepChainSource"], "fallback-plan");
         assert_eq!(automation["fallbackPlan"]["nextStepChainCount"], 2);
-        assert_eq!(automation["fallbackPlan"]["nextStepChain"][0]["source"], "fallback-plan");
-        assert_eq!(automation["fallbackPlan"]["nextStepChain"][0]["command"], "native.hookenv");
+        assert_eq!(
+            automation["fallbackPlan"]["nextStepChain"][0]["source"],
+            "fallback-plan"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["nextStepChain"][0]["command"],
+            "native.hookenv"
+        );
         assert_eq!(
             automation["fallbackPlan"]["nextStepChain"][1]["command"],
             "controller --preflight-only --preflight-json"
@@ -24900,16 +25958,11 @@ mod tests {
         let arm64e_context = HookAutomationArm64eContext {
             query_only_until_override: true,
         };
-        let coexistence =
-            super::hook_coexistence_to_json_with_arm64e(&actions, &backend_matrix, arm64e_context);
+        let coexistence = super::hook_coexistence_to_json_with_arm64e(&actions, &backend_matrix, arm64e_context);
         let automation = hook_automation_to_json_with_arm64e(&actions, &backend_matrix, arm64e_context);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &coexistence,
-            &automation,
-            "arm64e-query-only",
-        );
+        assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, "arm64e-query-only");
 
         assert_eq!(coexistence["preferredPath"], "arm64e-query-only");
         assert_eq!(automation["preferredPath"], "arm64e-query-only");
@@ -24965,11 +26018,7 @@ mod tests {
         let automation = hook_automation_to_json(&actions, &backend_matrix);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &coexistence,
-            &automation,
-            "cleanup-only",
-        );
+        assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, "cleanup-only");
 
         assert_eq!(coexistence["commandMode"], "cleanup-only");
         assert_eq!(automation["commandMode"], "cleanup-only");
@@ -25035,11 +26084,7 @@ mod tests {
         let automation = hook_automation_to_json(&actions, &backend_matrix);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &coexistence,
-            &automation,
-            "query-only",
-        );
+        assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, "query-only");
 
         assert_eq!(coexistence["commandMode"], "query-only");
         assert_eq!(automation["commandMode"], "query-only");
@@ -25087,109 +26132,102 @@ mod tests {
             assert_eq!(coexistence["commandMode"], expected_command_mode, "{name}.commandMode");
             assert_eq!(automation["commandMode"], expected_command_mode, "{name}.commandMode");
             assert_eq!(
-                coexistence["preferredPath"],
-                expected_preferred_path,
+                coexistence["preferredPath"], expected_preferred_path,
                 "{name}.preferredPath"
             );
             assert_eq!(
-                automation["preferredPath"],
-                expected_preferred_path,
+                automation["preferredPath"], expected_preferred_path,
                 "{name}.preferredPath"
             );
             assert_eq!(
-                coexistence["backendAdaptationMode"],
-                expected_adaptation_mode,
+                coexistence["backendAdaptationMode"], expected_adaptation_mode,
                 "{name}.backendAdaptationMode"
             );
             assert_eq!(
-                automation["backendAdaptationMode"],
-                expected_adaptation_mode,
+                automation["backendAdaptationMode"], expected_adaptation_mode,
                 "{name}.backendAdaptationMode"
             );
             assert_eq!(
-                coexistence["backendAdaptationAlignment"],
-                expected_adaptation_alignment,
+                coexistence["backendAdaptationAlignment"], expected_adaptation_alignment,
                 "{name}.backendAdaptationAlignment"
             );
             assert_eq!(
-                automation["backendAdaptationAlignment"],
-                expected_adaptation_alignment,
+                automation["backendAdaptationAlignment"], expected_adaptation_alignment,
                 "{name}.backendAdaptationAlignment"
             );
             assert_eq!(
-                coexistence["backendAdaptationBias"],
-                expected_adaptation_bias,
+                coexistence["backendAdaptationBias"], expected_adaptation_bias,
                 "{name}.backendAdaptationBias"
             );
             assert_eq!(
-                automation["backendAdaptationBias"],
-                expected_adaptation_bias,
+                automation["backendAdaptationBias"], expected_adaptation_bias,
                 "{name}.backendAdaptationBias"
             );
 
             assert_eq!(
-                coexistence["nextActionKey"],
-                expected_next_action_key,
+                coexistence["nextActionKey"], expected_next_action_key,
                 "{name}.nextActionKey"
             );
             assert_eq!(
-                automation["nextActionKey"],
-                expected_next_action_key,
+                automation["nextActionKey"], expected_next_action_key,
                 "{name}.nextActionKey"
             );
 
             if expected_has_fallback_plan {
                 assert_eq!(
-                    coexistence["nextStepChain"][0]["command"],
-                    expected_next_command,
+                    coexistence["nextStepChain"][0]["command"], expected_next_command,
                     "{name}.coexistence.nextStepChain[0].command"
                 );
                 assert_eq!(
-                    coexistence["nextStepChain"][0]["phase"],
-                    expected_next_phase,
+                    coexistence["nextStepChain"][0]["phase"], expected_next_phase,
                     "{name}.coexistence.nextStepChain[0].phase"
                 );
-                assert_eq!(coexistence["nextStepChainSource"], "next-action", "{name}.coexistence.chain");
-                assert_eq!(automation["nextStepChainSource"], "fallback-plan", "{name}.automation.chain");
+                assert_eq!(
+                    coexistence["nextStepChainSource"], "next-action",
+                    "{name}.coexistence.chain"
+                );
+                assert_eq!(
+                    automation["nextStepChainSource"], "fallback-plan",
+                    "{name}.automation.chain"
+                );
                 assert_eq!(automation["hasFallbackPlan"], true, "{name}.automation.fallback");
                 assert_eq!(
-                    automation["fallbackPlan"]["trigger"],
-                    "next-action-not-ready",
+                    automation["fallbackPlan"]["trigger"], "next-action-not-ready",
                     "{name}.automation.fallbackTrigger"
                 );
                 assert_eq!(
-                    automation["nextStepChain"][0]["command"],
-                    "native.hookenv",
+                    automation["nextStepChain"][0]["command"], "native.hookenv",
                     "{name}.automation.nextStepChain[0].command"
                 );
                 assert_eq!(
-                    automation["nextStepChain"][0]["phase"],
-                    "diagnose",
+                    automation["nextStepChain"][0]["phase"], "diagnose",
                     "{name}.automation.nextStepChain[0].phase"
                 );
             } else {
                 assert_eq!(
-                    coexistence["nextStepChain"][0]["command"],
-                    expected_next_command,
+                    coexistence["nextStepChain"][0]["command"], expected_next_command,
                     "{name}.nextStepChain[0].command"
                 );
                 assert_eq!(
-                    automation["nextStepChain"][0]["command"],
-                    expected_next_command,
+                    automation["nextStepChain"][0]["command"], expected_next_command,
                     "{name}.nextStepChain[0].command"
                 );
                 assert_eq!(
-                    coexistence["nextStepChain"][0]["phase"],
-                    expected_next_phase,
+                    coexistence["nextStepChain"][0]["phase"], expected_next_phase,
                     "{name}.nextStepChain[0].phase"
                 );
                 assert_eq!(
-                    automation["nextStepChain"][0]["phase"],
-                    expected_next_phase,
+                    automation["nextStepChain"][0]["phase"], expected_next_phase,
                     "{name}.nextStepChain[0].phase"
                 );
-                assert_eq!(coexistence["nextStepChainSource"], "next-action", "{name}.coexistence.chain");
-                assert_eq!(automation["nextStepChainSource"], "next-action", "{name}.automation.chain");
+                assert_eq!(
+                    coexistence["nextStepChainSource"], "next-action",
+                    "{name}.coexistence.chain"
+                );
+                assert_eq!(
+                    automation["nextStepChainSource"], "next-action",
+                    "{name}.automation.chain"
+                );
                 assert_eq!(automation["hasFallbackPlan"], false, "{name}.automation.fallback");
                 assert!(automation["fallbackPlan"].is_null(), "{name}.automation.fallbackNull");
             }
@@ -25397,8 +26435,7 @@ mod tests {
             &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
             &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
         );
-        let filesystem_coexistence =
-            super::hook_coexistence_to_json(&filesystem_actions, &filesystem_backend_matrix);
+        let filesystem_coexistence = super::hook_coexistence_to_json(&filesystem_actions, &filesystem_backend_matrix);
         let filesystem_automation = hook_automation_to_json(&filesystem_actions, &filesystem_backend_matrix);
         assert_core_alignment(
             "filesystem-only-preflight",
@@ -25533,8 +26570,7 @@ mod tests {
         let blocked_coexistence = super::hook_coexistence_to_json(&blocked_actions, &clean_backend_matrix);
         let blocked_automation = hook_automation_to_json(&blocked_actions, &clean_backend_matrix);
         assert_eq!(
-            blocked_coexistence["backendAdaptation"],
-            blocked_automation["backendAdaptation"],
+            blocked_coexistence["backendAdaptation"], blocked_automation["backendAdaptation"],
             "blocked"
         );
 
@@ -25559,8 +26595,7 @@ mod tests {
         let cleanup_coexistence = super::hook_coexistence_to_json(&cleanup_actions, &clean_backend_matrix);
         let cleanup_automation = hook_automation_to_json(&cleanup_actions, &clean_backend_matrix);
         assert_eq!(
-            cleanup_coexistence["backendAdaptation"],
-            cleanup_automation["backendAdaptation"],
+            cleanup_coexistence["backendAdaptation"], cleanup_automation["backendAdaptation"],
             "cleanup-only"
         );
 
@@ -25599,8 +26634,7 @@ mod tests {
         let query_coexistence = super::hook_coexistence_to_json(&query_actions, &query_backend_matrix);
         let query_automation = hook_automation_to_json(&query_actions, &query_backend_matrix);
         assert_eq!(
-            query_coexistence["backendAdaptation"],
-            query_automation["backendAdaptation"],
+            query_coexistence["backendAdaptation"], query_automation["backendAdaptation"],
             "query-only"
         );
 
@@ -25626,12 +26660,10 @@ mod tests {
             &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
             &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
         );
-        let filesystem_coexistence =
-            super::hook_coexistence_to_json(&filesystem_actions, &filesystem_backend_matrix);
+        let filesystem_coexistence = super::hook_coexistence_to_json(&filesystem_actions, &filesystem_backend_matrix);
         let filesystem_automation = hook_automation_to_json(&filesystem_actions, &filesystem_backend_matrix);
         assert_eq!(
-            filesystem_coexistence["backendAdaptation"],
-            filesystem_automation["backendAdaptation"],
+            filesystem_coexistence["backendAdaptation"], filesystem_automation["backendAdaptation"],
             "filesystem-only-preflight"
         );
 
@@ -25654,8 +26686,7 @@ mod tests {
         let arm64e_automation =
             hook_automation_to_json_with_arm64e(&arm64e_actions, &clean_backend_matrix, arm64e_context);
         assert_eq!(
-            arm64e_coexistence["backendAdaptation"],
-            arm64e_automation["backendAdaptation"],
+            arm64e_coexistence["backendAdaptation"], arm64e_automation["backendAdaptation"],
             "arm64e-query-only"
         );
     }
@@ -25667,18 +26698,15 @@ mod tests {
             let adaptation = &rendered["backendAdaptation"];
             assert_eq!(rendered["backendAdaptationMode"], adaptation["mode"], "{name}.mode");
             assert_eq!(
-                rendered["backendAdaptationAlignment"],
-                adaptation["alignment"],
+                rendered["backendAdaptationAlignment"], adaptation["alignment"],
                 "{name}.alignment"
             );
             assert_eq!(
-                rendered["backendAdaptationBias"],
-                adaptation["recommendedActionBias"],
+                rendered["backendAdaptationBias"], adaptation["recommendedActionBias"],
                 "{name}.bias"
             );
             assert_eq!(
-                rendered["backendAdaptationSummary"],
-                adaptation["summary"],
+                rendered["backendAdaptationSummary"], adaptation["summary"],
                 "{name}.summary"
             );
         };
@@ -25728,8 +26756,7 @@ mod tests {
             &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
             &hook_environment_recommended_actions(&filesystem_report, Some(&filesystem_strategy)),
         );
-        let filesystem_coexistence =
-            super::hook_coexistence_to_json(&filesystem_actions, &filesystem_backend_matrix);
+        let filesystem_coexistence = super::hook_coexistence_to_json(&filesystem_actions, &filesystem_backend_matrix);
         let filesystem_automation = hook_automation_to_json(&filesystem_actions, &filesystem_backend_matrix);
         assert_alias_fields("filesystem-only-preflight.coexistence", &filesystem_coexistence);
         assert_alias_fields("filesystem-only-preflight.automation", &filesystem_automation);
@@ -26524,6 +27551,14 @@ mod tests {
             automation["fallbackPlan"]["suggestedEscalationKey"],
             "preflight-refresh"
         );
+        assert_eq!(
+            automation["fallbackPlan"]["defaultEscalationCandidateCount"],
+            automation["fallbackPlan"]["routingDecision"]["defaultEscalationCandidateCount"]
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["defaultEscalationCandidates"],
+            automation["fallbackPlan"]["routingDecision"]["defaultEscalationCandidates"]
+        );
         assert_eq!(automation["fallbackPlan"]["suggestedActionPhase"], "preflight");
         assert_eq!(automation["fallbackPlan"]["suggestedActionClass"], "preflight");
         assert_eq!(automation["fallbackPlan"]["errorCodeRoutingCount"], 6);
@@ -26566,11 +27601,13 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["effectiveActionPhase"],
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]
+                ["effectiveActionPhase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]["effectiveActionClass"],
+            automation["fallbackPlan"]["errorCodeRoutingResolved"]["hook-fallback-preflight-failed"]
+                ["effectiveActionClass"],
             "preflight"
         );
         assert_eq!(
@@ -26609,19 +27646,25 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["errorCodeRoutingEntries"][0]
-                ["recommendedCommandJsonInstructionTemplateCount"],
+            automation["fallbackPlan"]["errorCodeRoutingEntries"][0]["recommendedCommandJsonInstructionTemplateCount"],
             0
         );
         assert_eq!(
-            automation["fallbackPlan"]["errorCodeRoutingEntries"][0]
-                ["recommendedCommandJsonExecutableTemplateCount"],
+            automation["fallbackPlan"]["errorCodeRoutingEntries"][0]["recommendedCommandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(automation["fallbackPlan"]["routingDecision"]["lookupKey"], "errorCode");
         assert_eq!(
             automation["fallbackPlan"]["routingDecision"]["policy"],
             "first-candidate-by-escalation-order"
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultEscalationCandidateCount"],
+            3
+        );
+        assert_eq!(
+            automation["fallbackPlan"]["routingDecision"]["defaultEscalationCandidates"],
+            json!(["preflight-refresh", "query-only-path", "policy-review"])
         );
         assert_eq!(automation["fallbackPlan"]["routingDecision"]["entryCount"], 6);
         assert_eq!(
@@ -26701,13 +27744,11 @@ mod tests {
             1
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["default"]
-                ["recommendedCommandJsonInstructionTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["default"]["recommendedCommandJsonInstructionTemplateCount"],
             0
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["default"]
-                ["recommendedCommandJsonExecutableTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["default"]["recommendedCommandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(
@@ -26773,13 +27814,11 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleKnownResultEffectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResultEffectiveActionPhase"],
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleKnownResultEffectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleKnownResultEffectiveActionClass"],
             "preflight"
         );
         assert_eq!(
@@ -26840,13 +27879,11 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleMissingResultEffectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResultEffectiveActionPhase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleMissingResultEffectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleMissingResultEffectiveActionClass"],
             "preflight"
         );
         assert_eq!(
@@ -27222,13 +28259,11 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleKnownEffectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownEffectiveActionPhase"],
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleKnownEffectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleKnownEffectiveActionClass"],
             "preflight"
         );
         assert_eq!(
@@ -27293,13 +28328,11 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleMissingEffectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingEffectiveActionPhase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleMissingEffectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleMissingEffectiveActionClass"],
             "preflight"
         );
         assert_eq!(
@@ -27921,13 +28954,11 @@ mod tests {
             1
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]
-                ["commandJsonInstructionTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["commandJsonInstructionTemplateCount"],
             0
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]
-                ["commandJsonExecutableTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["default"]["commandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(
@@ -28123,12 +29154,14 @@ mod tests {
             "missing-error-code"
         );
         assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyEffectivePhase"].is_null());
-        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]
-            ["queryOnlyEffectiveActionPhase"]
-            .is_null());
-        assert!(automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]
-            ["queryOnlyEffectiveActionClass"]
-            .is_null());
+        assert!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyEffectiveActionClass"]
+                .is_null()
+        );
         assert!(
             automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyEffectiveEscalationKey"]
                 .is_null()
@@ -28715,13 +29748,11 @@ mod tests {
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyEffectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyEffectiveActionPhase"],
             json!(null)
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyEffectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyEffectiveActionClass"],
             json!(null)
         );
         assert_eq!(
@@ -28821,13 +29852,11 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["default"]
-                ["effectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["default"]["effectiveActionPhase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["default"]
-                ["effectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolve"]["default"]["effectiveActionClass"],
             "preflight"
         );
         assert_eq!(
@@ -28885,13 +29914,11 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]
-                ["effectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["effectiveActionPhase"],
             "preflight"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]
-                ["effectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["default"]["effectiveActionClass"],
             "preflight"
         );
         assert_eq!(
@@ -29070,13 +30097,11 @@ mod tests {
             1
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phasePreflightCommandJsonInstructionTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonInstructionTemplateCount"],
             0
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phasePreflightCommandJsonExecutableTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phasePreflightCommandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(
@@ -29198,13 +30223,11 @@ mod tests {
             1
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseDiagnoseCommandJsonInstructionTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonInstructionTemplateCount"],
             0
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseDiagnoseCommandJsonExecutableTemplateCount"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseDiagnoseCommandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(
@@ -29384,13 +30407,11 @@ mod tests {
             "controller-cli"
         );
         assert_eq!(
-            automation["fallbackPlan"]["escalationRecommendations"][0]
-                ["commandJsonInstructionTemplateCount"],
+            automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonInstructionTemplateCount"],
             0
         );
         assert_eq!(
-            automation["fallbackPlan"]["escalationRecommendations"][0]
-                ["commandJsonExecutableTemplateCount"],
+            automation["fallbackPlan"]["escalationRecommendations"][0]["commandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(
@@ -29459,13 +30480,11 @@ mod tests {
             "diagnose"
         );
         assert_eq!(
-            automation["fallbackPlan"]["escalationRecommendations"][1]
-                ["commandJsonInstructionTemplateCount"],
+            automation["fallbackPlan"]["escalationRecommendations"][1]["commandJsonInstructionTemplateCount"],
             0
         );
         assert_eq!(
-            automation["fallbackPlan"]["escalationRecommendations"][1]
-                ["commandJsonExecutableTemplateCount"],
+            automation["fallbackPlan"]["escalationRecommendations"][1]["commandJsonExecutableTemplateCount"],
             1
         );
         assert_eq!(
@@ -29617,21 +30636,17 @@ mod tests {
         let automation = hook_automation_to_json(&actions, &backend_matrix);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
-        assert_backend_adaptation_alias_fields_match_nested(
-            &coexistence,
-            "query-only-install-failure.coexistence",
-        );
-        assert_backend_adaptation_alias_fields_match_nested(
-            &automation,
-            "query-only-install-failure.automation",
-        );
+        assert_backend_adaptation_alias_fields_match_nested(&coexistence, "query-only-install-failure.coexistence");
+        assert_backend_adaptation_alias_fields_match_nested(&automation, "query-only-install-failure.automation");
         assert_eq!(
-            coexistence["backendAdaptation"],
-            automation["backendAdaptation"],
+            coexistence["backendAdaptation"], automation["backendAdaptation"],
             "query-only-install-failure.backendAdaptationParity"
         );
         assert_eq!(coexistence["preferredPath"], automation["preferredPath"]);
-        assert_eq!(coexistence["nextStepRequiresFallback"], automation["nextStepRequiresFallback"]);
+        assert_eq!(
+            coexistence["nextStepRequiresFallback"],
+            automation["nextStepRequiresFallback"]
+        );
         assert_eq!(coexistence["nextStepChainSource"], "next-action");
         assert_eq!(automation["nextStepChainSource"], "fallback-plan");
         assert_eq!(automation["hasFallbackPlan"], true);
@@ -29777,13 +30792,11 @@ mod tests {
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleQueryOnlyResultEffectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResultEffectiveActionPhase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["resolveExampleQueryOnlyResultEffectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolveExampleQueryOnlyResultEffectiveActionClass"],
             "readonly-diagnostics"
         );
         assert_eq!(
@@ -29933,23 +30946,19 @@ mod tests {
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["queryOnlyPhaseResolveEffectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveEffectiveActionPhase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["queryOnlyPhaseResolveEffectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveEffectiveActionClass"],
             "readonly-diagnostics"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["queryOnlyPhaseResolveResultEffectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffectiveActionPhase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["queryOnlyPhaseResolveResultEffectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["queryOnlyPhaseResolveResultEffectiveActionClass"],
             "readonly-diagnostics"
         );
         assert_eq!(
@@ -29957,13 +30966,11 @@ mod tests {
             "query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]
-                ["queryOnlyResultEffectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyResultEffectiveActionPhase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]
-                ["queryOnlyResultEffectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["resolve"]["queryOnlyResultEffectiveActionClass"],
             "readonly-diagnostics"
         );
         assert_eq!(
@@ -30091,13 +31098,11 @@ mod tests {
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyEffectiveActionPhase"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyEffectiveActionPhase"],
             "query"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]
-                ["phaseResolveExampleQueryOnlyEffectiveActionClass"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyEffectiveActionClass"],
             "readonly-diagnostics"
         );
         assert_eq!(
@@ -30194,17 +31199,10 @@ mod tests {
         let automation = hook_automation_to_json(&actions, &backend_matrix);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
-        assert_backend_adaptation_alias_fields_match_nested(
-            &coexistence,
-            "query-only-empty-actions.coexistence",
-        );
-        assert_backend_adaptation_alias_fields_match_nested(
-            &automation,
-            "query-only-empty-actions.automation",
-        );
+        assert_backend_adaptation_alias_fields_match_nested(&coexistence, "query-only-empty-actions.coexistence");
+        assert_backend_adaptation_alias_fields_match_nested(&automation, "query-only-empty-actions.automation");
         assert_eq!(
-            coexistence["backendAdaptation"],
-            automation["backendAdaptation"],
+            coexistence["backendAdaptation"], automation["backendAdaptation"],
             "query-only-empty-actions.backendAdaptationParity"
         );
         assert_eq!(coexistence["preferredPath"], automation["preferredPath"]);
@@ -30537,7 +31535,10 @@ mod tests {
         assert_eq!(coexistence["backendAdaptationAlignment"], "split");
         assert_eq!(coexistence["backendAdaptationBias"], "query");
         assert_eq!(coexistence["backendAdaptation"]["preferredGroupKey"], "query");
-        assert_eq!(coexistence["backendAdaptation"]["preferredTemplateCount"], 121);
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredTemplateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(coexistence["backendAdaptation"]["executionKind"], "conflict-resolution");
         assert_eq!(
             coexistence["backendAdaptation"]["executionSelectedId"],
@@ -30634,11 +31635,11 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["backendSpecificCommandJsonTemplateCount"],
-            244
+            (hook_query_templates().len() * 2 + 2) as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["backendSpecificCommandJsonEligibleTemplateCount"],
-            243
+            (hook_query_templates().len() * 2 + 1) as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["backendSpecificCommandJsonInstructionTemplateCount"],
@@ -30646,7 +31647,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["backendSpecificCommandJsonExecutableTemplateCount"],
-            244
+            (hook_query_templates().len() * 2 + 2) as i64
         );
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendId"], "ellekit");
         assert_eq!(coexistence["backendAdaptation"]["preferredBackendScope"], "controller");
@@ -30674,14 +31675,17 @@ mod tests {
             coexistence["backendAdaptation"]["preferredBackendSuggestedPhase"],
             "query"
         );
-        assert_eq!(coexistence["backendAdaptation"]["preferredBackendTemplateCount"], 121);
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredBackendTemplateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendTemplates"],
             coexistence["backendAdaptation"]["preferredBackendRecommendation"]["templates"]
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendCommandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendCommandJsonTemplates"],
@@ -30689,7 +31693,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendCommandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendCommandJsonInstructionTemplateCount"],
@@ -30697,7 +31701,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendCommandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
@@ -30726,11 +31730,11 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["conflictBackendPairCount"], 1);
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairCommandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairCommandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairCommandJsonInstructionTemplateCount"],
@@ -30738,7 +31742,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairCommandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["pairKey"],
@@ -30786,15 +31790,15 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["templateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["commandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["commandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["commandJsonInstructionTemplateCount"],
@@ -30802,7 +31806,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["commandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["conflictBackendPairs"][0]["primaryCommandJsonTemplateCommand"],
@@ -30838,7 +31842,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairTemplates"],
@@ -30846,7 +31850,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonTemplates"],
@@ -30854,7 +31858,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonInstructionTemplateCount"],
@@ -30862,7 +31866,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairCommandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictBackendPairPrimaryCommandJsonTemplateCommand"],
@@ -30882,11 +31886,11 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"],
@@ -30894,7 +31898,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonInstructionTemplateCount"],
@@ -31074,6 +32078,26 @@ mod tests {
             "conflict-query"
         );
         assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]
+                ["defaultEscalationCandidateCount"],
+            3
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]
+                ["defaultEscalationCandidates"],
+            json!(["conflict-query", "conflict-preflight", "conflict-cleanup"])
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultEscalationCandidateCount"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]
+                ["defaultEscalationCandidateCount"]
+        );
+        assert_eq!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultEscalationCandidates"],
+            coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]
+                ["defaultEscalationCandidates"]
+        );
+        assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]["index"]
                 ["hook-fallback-query-failed"]["effectiveEscalationKey"],
             "conflict-query"
@@ -31132,7 +32156,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultTemplates"],
@@ -31145,11 +32169,11 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonInstructionTemplateCount"],
@@ -31354,11 +32378,13 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffectiveActionPhase"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleKnownResultEffectiveActionPhase"],
             "preflight"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownResultEffectiveActionClass"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleKnownResultEffectiveActionClass"],
             "preflight"
         );
         assert_eq!(
@@ -31389,11 +32415,13 @@ mod tests {
             "readonly-diagnostics"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffectiveActionPhase"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleMissingResultEffectiveActionPhase"],
             "query"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffectiveActionClass"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleMissingResultEffectiveActionClass"],
             "readonly-diagnostics"
         );
         assert_eq!(
@@ -31670,11 +32698,13 @@ mod tests {
             preferred_conflict_ready["resolveExampleQueryOnlyResultEffective"]["effectiveActionClass"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveActionPhase"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveActionPhase"],
             preferred_conflict_ready["resolveExampleQueryOnlyResultEffective"]["effectiveActionPhase"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveActionClass"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveActionClass"],
             preferred_conflict_ready["resolveExampleQueryOnlyResultEffective"]["effectiveActionClass"]
         );
         assert_eq!(
@@ -31923,11 +32953,13 @@ mod tests {
             preferred_conflict_ready["phaseResolveExampleQueryOnlyEffectivePhase"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveActionPhase"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveActionPhase"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyEffectivePhase"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveActionClass"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveActionClass"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyEffectivePhase"]
                 .as_str()
                 .map(routing_phase_action_class)
@@ -32235,7 +33267,7 @@ mod tests {
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
                 ["phaseQueryTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQuery"]["phase"],
@@ -32259,7 +33291,7 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplates"],
@@ -32271,11 +33303,11 @@ mod tests {
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
@@ -32290,7 +33322,8 @@ mod tests {
                 ["commandJsonExecutableTemplateCount"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonInstructionTemplateCount"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseQueryCommandJsonInstructionTemplateCount"],
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseQuery"]
                 ["commandJsonInstructionTemplateCount"]
         );
@@ -32427,11 +33460,13 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveActionPhase"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveActionPhase"],
             "preflight"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveActionClass"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveActionClass"],
             "preflight"
         );
         assert_eq!(
@@ -32470,12 +33505,14 @@ mod tests {
                 ["phaseResolveExampleMissingEffectivePhase"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingEffectiveActionPhase"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleMissingEffectiveActionPhase"],
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
                 ["phaseResolveExampleMissingEffectivePhase"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingEffectiveActionClass"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleMissingEffectiveActionClass"],
             coexistence["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
                 ["phaseResolveExampleMissingEffectivePhase"]
                 .as_str()
@@ -32490,11 +33527,13 @@ mod tests {
                 ["phaseResolveExampleMissingEffectiveEscalationKey"]
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveActionPhase"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveActionPhase"],
             "query"
         );
         assert_eq!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveActionClass"],
+            coexistence["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveActionClass"],
             "readonly-diagnostics"
         );
         assert_eq!(
@@ -32513,7 +33552,10 @@ mod tests {
         assert_eq!(coexistence["backendAdaptation"]["requiresQueryPhase"], true);
         assert_eq!(coexistence["backendAdaptation"]["inlineInstallReadyNow"], false);
         assert_eq!(coexistence["nextActionKey"], "hook.query");
-        assert_eq!(coexistence["nextActionTemplateCount"], 121);
+        assert_eq!(
+            coexistence["nextActionTemplateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(coexistence["nextActionTemplates"][0], "objc.classes <filter>");
         assert_eq!(automation["baseCommandMode"], "allowed");
         assert_eq!(automation["effectiveCommandMode"], "query-only");
@@ -32529,7 +33571,10 @@ mod tests {
         assert_eq!(automation["backendAdaptationAlignment"], "split");
         assert_eq!(automation["backendAdaptationBias"], "query");
         assert_eq!(automation["backendAdaptation"]["preferredGroupKey"], "query");
-        assert_eq!(automation["backendAdaptation"]["preferredTemplateCount"], 121);
+        assert_eq!(
+            automation["backendAdaptation"]["preferredTemplateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(
             automation["backendAdaptation"]["executionSource"],
             "preferred-conflict-resolution-chain"
@@ -32610,11 +33655,11 @@ mod tests {
         assert_eq!(automation["backendAdaptation"]["conflictBackendPairCount"], 1);
         assert_eq!(
             automation["backendAdaptation"]["conflictBackendPairCommandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             automation["backendAdaptation"]["conflictBackendPairCommandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             automation["backendAdaptation"]["conflictBackendPairCommandJsonInstructionTemplateCount"],
@@ -32622,7 +33667,7 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["conflictBackendPairCommandJsonExecutableTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredBackendPrimaryCommandJsonTemplateCommand"],
@@ -32778,7 +33823,7 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultTemplates"],
@@ -32791,11 +33836,11 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonInstructionTemplateCount"],
@@ -32963,11 +34008,13 @@ mod tests {
                 ["resolveExampleMissingResultEffective"]
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffectiveActionPhase"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleMissingResultEffectiveActionPhase"],
             "query"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingResultEffectiveActionClass"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleMissingResultEffectiveActionClass"],
             "readonly-diagnostics"
         );
         assert_eq!(
@@ -33094,7 +34141,7 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryTemplates"],
@@ -33106,11 +34153,11 @@ mod tests {
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseQueryCommandJsonEligibleTemplateCount"],
-            121
+            hook_query_templates().len() as i64
         );
         assert_eq!(
             automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"]
@@ -33287,10 +34334,7 @@ mod tests {
         );
         let preferred_conflict_ready =
             &automation["backendAdaptation"]["preferredConflictResolutionRouting"]["routingDecision"]["ready"];
-        assert_eq!(
-            preferred_conflict_ready["resolveDefaultEffectiveActionPhase"],
-            "query"
-        );
+        assert_eq!(preferred_conflict_ready["resolveDefaultEffectiveActionPhase"], "query");
         assert_eq!(
             preferred_conflict_ready["resolveDefaultEffectiveActionClass"],
             "readonly-diagnostics"
@@ -33604,11 +34648,13 @@ mod tests {
             preferred_conflict_ready["resolveExampleQueryOnlyResultEffective"]["effectiveActionClass"]
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveActionPhase"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveActionPhase"],
             preferred_conflict_ready["resolveExampleQueryOnlyResultEffective"]["effectiveActionPhase"]
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveActionClass"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionResolveExampleQueryOnlyResultEffectiveActionClass"],
             preferred_conflict_ready["resolveExampleQueryOnlyResultEffective"]["effectiveActionClass"]
         );
         assert_eq!(
@@ -33857,11 +34903,13 @@ mod tests {
             preferred_conflict_ready["phaseResolveExampleQueryOnlyEffectivePhase"]
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveActionPhase"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveActionPhase"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyEffectivePhase"]
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveActionClass"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleQueryOnlyEffectiveActionClass"],
             preferred_conflict_ready["phaseResolveExampleQueryOnlyEffectivePhase"]
                 .as_str()
                 .map(routing_phase_action_class)
@@ -34021,11 +35069,13 @@ mod tests {
             "preflight"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveActionPhase"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveActionPhase"],
             "preflight"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveActionClass"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleKnownResultEffectiveActionClass"],
             "preflight"
         );
         assert_eq!(
@@ -34051,19 +35101,23 @@ mod tests {
                 ["phaseResolveExampleMissingResultEffective"]
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveActionPhase"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveActionPhase"],
             "query"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveActionClass"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleMissingResultEffectiveActionClass"],
             "readonly-diagnostics"
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingEffectiveActionPhase"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleMissingEffectiveActionPhase"],
             automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingEffectivePhase"]
         );
         assert_eq!(
-            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingEffectiveActionClass"],
+            automation["backendAdaptation"]
+                ["preferredConflictResolutionPhaseResolveExampleMissingEffectiveActionClass"],
             automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveExampleMissingEffectivePhase"]
                 .as_str()
                 .map(routing_phase_action_class)
@@ -34136,11 +35190,20 @@ mod tests {
         assert_eq!(automation["nextActionPlan"]["allowed"], true);
         assert_eq!(automation["nextActionPlan"]["branch"], "run");
         assert_eq!(automation["nextActionPlan"]["readyToRun"], true);
-        assert_eq!(automation["nextActionTemplateCount"], 121);
+        assert_eq!(
+            automation["nextActionTemplateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(automation["nextActionTemplates"][0], "objc.classes <filter>");
-        assert_eq!(automation["nextActionCommandJsonTemplateCount"], 121);
+        assert_eq!(
+            automation["nextActionCommandJsonTemplateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(automation["nextActionCommandJsonInstructionTemplateCount"], 0);
-        assert_eq!(automation["nextActionCommandJsonExecutableTemplateCount"], 121);
+        assert_eq!(
+            automation["nextActionCommandJsonExecutableTemplateCount"],
+            hook_query_templates().len() as i64
+        );
         assert_eq!(
             automation["nextActionCommandJsonTemplates"][0]["command"],
             "objc.classes <filter>"
@@ -34276,15 +35339,8 @@ mod tests {
 
             assert_command_json_template_kind_count_pairs(&coexistence, &format!("{name}.coexistence"));
             assert_command_json_template_kind_count_pairs(&automation, &format!("{name}.automation"));
-            assert_hook_coexistence_and_automation_core_fields_match(
-                &coexistence,
-                &automation,
-                name,
-            );
-            assert_command_json_template_kind_count_pairs(
-                &automation_arm64e,
-                &format!("{name}.automationArm64e"),
-            );
+            assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, name);
+            assert_command_json_template_kind_count_pairs(&automation_arm64e, &format!("{name}.automationArm64e"));
         }
     }
 
@@ -34328,24 +35384,17 @@ mod tests {
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &coexistence,
-            &automation,
-            "controller-loaded-only",
-        );
+        assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, "controller-loaded-only");
         assert_eq!(
-            coexistence["nextStepChainSource"],
-            "next-action",
+            coexistence["nextStepChainSource"], "next-action",
             "controller-loaded-only.coexistence.chain"
         );
         assert_eq!(
-            automation["nextStepChainSource"],
-            "next-action",
+            automation["nextStepChainSource"], "next-action",
             "controller-loaded-only.automation.chain"
         );
         assert_eq!(
-            automation["hasFallbackPlan"],
-            false,
+            automation["hasFallbackPlan"], false,
             "controller-loaded-only.automation.fallback"
         );
         assert!(
@@ -34357,6 +35406,10 @@ mod tests {
             assert_command_json_template_kind_count_pairs(rendered, "controller-loaded-only.rendered");
             let adaptation = &rendered["backendAdaptation"];
             assert_eq!(adaptation["preferredGroupKey"], "query");
+            assert_eq!(adaptation["backendFamilyAlignment"], "controller-only");
+            assert_eq!(adaptation["backendFamilyRouteKey"], "query-single-sided-runtime");
+            assert_eq!(adaptation["controllerLoadedBackendFamilies"], json!(["ellekit"]));
+            assert_eq!(adaptation["targetLoadedBackendFamilies"], json!([]));
             assert_eq!(
                 adaptation["queryCommandJsonInstructionTemplateCount"],
                 adaptation["queryGroup"]["commandJsonInstructionTemplateCount"]
@@ -34468,24 +35521,17 @@ mod tests {
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &coexistence,
-            &automation,
-            "target-loaded-only",
-        );
+        assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, "target-loaded-only");
         assert_eq!(
-            coexistence["nextStepChainSource"],
-            "next-action",
+            coexistence["nextStepChainSource"], "next-action",
             "target-loaded-only.coexistence.chain"
         );
         assert_eq!(
-            automation["nextStepChainSource"],
-            "next-action",
+            automation["nextStepChainSource"], "next-action",
             "target-loaded-only.automation.chain"
         );
         assert_eq!(
-            automation["hasFallbackPlan"],
-            false,
+            automation["hasFallbackPlan"], false,
             "target-loaded-only.automation.fallback"
         );
         assert!(
@@ -34497,6 +35543,10 @@ mod tests {
             assert_command_json_template_kind_count_pairs(rendered, "target-loaded-only.rendered");
             let adaptation = &rendered["backendAdaptation"];
             assert_eq!(adaptation["preferredGroupKey"], "query");
+            assert_eq!(adaptation["backendFamilyAlignment"], "target-only");
+            assert_eq!(adaptation["backendFamilyRouteKey"], "query-single-sided-runtime");
+            assert_eq!(adaptation["controllerLoadedBackendFamilies"], json!([]));
+            assert_eq!(adaptation["targetLoadedBackendFamilies"], json!(["ellekit"]));
             assert_eq!(adaptation["conflictBackendPairCount"], 0);
             assert!(adaptation["preferredConflictBackendPair"].is_null());
             assert_eq!(adaptation["preferredConflictResolutionGroupKey"], "query");
@@ -34590,6 +35640,7 @@ mod tests {
                 },
                 "shared-plus-controller-loaded",
                 "controller-leading",
+                "partially-aligned",
                 1u64,
                 1u64,
                 0u64,
@@ -34626,6 +35677,7 @@ mod tests {
                 },
                 "shared-plus-target-loaded",
                 "target-leading",
+                "partially-aligned",
                 1u64,
                 0u64,
                 1u64,
@@ -34646,6 +35698,7 @@ mod tests {
             target_report,
             expected_topology,
             expected_alignment,
+            expected_family_alignment,
             expected_shared_loaded,
             expected_controller_only_loaded,
             expected_target_only_loaded,
@@ -34658,13 +35711,15 @@ mod tests {
             let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
             let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
             let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
-            assert_hook_coexistence_and_automation_core_fields_match(
-                &coexistence,
-                &automation,
-                name,
+            assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, name);
+            assert_eq!(
+                coexistence["nextStepChainSource"], "next-action",
+                "{name}.coexistence.chain"
             );
-            assert_eq!(coexistence["nextStepChainSource"], "next-action", "{name}.coexistence.chain");
-            assert_eq!(automation["nextStepChainSource"], "next-action", "{name}.automation.chain");
+            assert_eq!(
+                automation["nextStepChainSource"], "next-action",
+                "{name}.automation.chain"
+            );
             assert_eq!(automation["hasFallbackPlan"], false, "{name}.automation.fallback");
             assert!(automation["fallbackPlan"].is_null(), "{name}.automation.fallbackNull");
 
@@ -34672,23 +35727,25 @@ mod tests {
                 assert_command_json_template_kind_count_pairs(rendered, &format!("{name}.rendered"));
                 let adaptation = &rendered["backendAdaptation"];
                 assert_eq!(
-                    rendered["backendAdaptationMode"],
-                    "shared-runtime-with-sidecar-query-first",
+                    rendered["backendAdaptationMode"], "shared-runtime-with-sidecar-query-first",
                     "{name}"
                 );
                 assert_eq!(rendered["backendAdaptationAlignment"], expected_alignment, "{name}");
                 assert_eq!(adaptation["recommendedActionBias"], "query", "{name}");
                 assert_eq!(adaptation["requiresQueryPhase"], true, "{name}");
                 assert_eq!(adaptation["preferredGroupKey"], "query", "{name}");
+                assert_eq!(
+                    adaptation["backendFamilyAlignment"], expected_family_alignment,
+                    "{name}"
+                );
+                assert_eq!(adaptation["backendFamilyRouteKey"], "query-sidecar-alignment", "{name}");
                 assert_eq!(adaptation["sharedLoadedBackendCount"], expected_shared_loaded, "{name}");
                 assert_eq!(
-                    adaptation["controllerLoadedOnlyBackendCount"],
-                    expected_controller_only_loaded,
+                    adaptation["controllerLoadedOnlyBackendCount"], expected_controller_only_loaded,
                     "{name}"
                 );
                 assert_eq!(
-                    adaptation["targetLoadedOnlyBackendCount"],
-                    expected_target_only_loaded,
+                    adaptation["targetLoadedOnlyBackendCount"], expected_target_only_loaded,
                     "{name}"
                 );
                 assert_eq!(adaptation["conflictBackendPairCount"], 0, "{name}");
@@ -34751,24 +35808,17 @@ mod tests {
         let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
         let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
         let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &coexistence,
-            &automation,
-            "shared-and-split-loaded",
-        );
+        assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, "shared-and-split-loaded");
         assert_eq!(
-            coexistence["nextStepChainSource"],
-            "next-action",
+            coexistence["nextStepChainSource"], "next-action",
             "shared-and-split-loaded.coexistence.chain"
         );
         assert_eq!(
-            automation["nextStepChainSource"],
-            "next-action",
+            automation["nextStepChainSource"], "next-action",
             "shared-and-split-loaded.automation.chain"
         );
         assert_eq!(
-            automation["hasFallbackPlan"],
-            false,
+            automation["hasFallbackPlan"], false,
             "shared-and-split-loaded.automation.fallback"
         );
         assert!(
@@ -34784,6 +35834,8 @@ mod tests {
             assert_eq!(adaptation["recommendedActionBias"], "query");
             assert_eq!(adaptation["requiresQueryPhase"], true);
             assert_eq!(adaptation["preferredGroupKey"], "query");
+            assert_eq!(adaptation["backendFamilyAlignment"], "partially-aligned");
+            assert_eq!(adaptation["backendFamilyRouteKey"], "query-sidecar-alignment");
             assert_eq!(adaptation["sharedLoadedBackendCount"], 1);
             assert_eq!(adaptation["controllerLoadedOnlyBackendCount"], 1);
             assert_eq!(adaptation["targetLoadedOnlyBackendCount"], 1);
@@ -34821,6 +35873,8 @@ mod tests {
                 "install",
                 0u64,
                 false,
+                "none",
+                "install-direct",
             ),
             (
                 "filesystem-only",
@@ -34858,6 +35912,8 @@ mod tests {
                 "preflight",
                 0u64,
                 false,
+                "filesystem-only",
+                "preflight-before-inline",
             ),
             (
                 "shared-loaded",
@@ -34895,6 +35951,8 @@ mod tests {
                 "query",
                 0u64,
                 false,
+                "aligned-single-family",
+                "query-shared-runtime",
             ),
             (
                 "split-loaded",
@@ -34932,6 +35990,8 @@ mod tests {
                 "query",
                 1u64,
                 true,
+                "disjoint",
+                "query-conflict-resolution",
             ),
         ];
 
@@ -34947,24 +36007,27 @@ mod tests {
             expected_preferred_group_key,
             expected_conflict_backend_pair_count,
             expected_has_preferred_conflict_backend_pair,
+            expected_backend_family_alignment,
+            expected_backend_family_route_key,
         ) in scenarios
         {
             let backend_matrix = hook_backend_matrix_to_json(&controller_report, &target_report);
             assert_eq!(backend_matrix["topology"]["kind"], expected_topology, "{name}");
 
-            let controller_actions =
-                hook_environment_recommended_actions(&controller_report, Some(&strategy));
+            let controller_actions = hook_environment_recommended_actions(&controller_report, Some(&strategy));
             let target_actions = hook_environment_recommended_actions(&target_report, Some(&strategy));
             let effective_actions = hook_effective_actions(&controller_actions, &target_actions);
             let coexistence = super::hook_coexistence_to_json(&effective_actions, &backend_matrix);
             let automation = hook_automation_to_json(&effective_actions, &backend_matrix);
-            assert_hook_coexistence_and_automation_core_fields_match(
-                &coexistence,
-                &automation,
-                name,
+            assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, name);
+            assert_eq!(
+                coexistence["nextStepChainSource"], "next-action",
+                "{name}.coexistence.chain"
             );
-            assert_eq!(coexistence["nextStepChainSource"], "next-action", "{name}.coexistence.chain");
-            assert_eq!(automation["nextStepChainSource"], "next-action", "{name}.automation.chain");
+            assert_eq!(
+                automation["nextStepChainSource"], "next-action",
+                "{name}.automation.chain"
+            );
             assert_eq!(automation["hasFallbackPlan"], false, "{name}.automation.fallback");
             assert!(automation["fallbackPlan"].is_null(), "{name}.automation.fallbackNull");
 
@@ -34979,8 +36042,15 @@ mod tests {
                 assert_eq!(adaptation["recommendedActionBias"], expected_bias, "{name}");
                 assert_eq!(adaptation["preferredGroupKey"], expected_preferred_group_key, "{name}");
                 assert_eq!(
-                    adaptation["conflictBackendPairCount"],
-                    expected_conflict_backend_pair_count,
+                    adaptation["backendFamilyAlignment"], expected_backend_family_alignment,
+                    "{name}"
+                );
+                assert_eq!(
+                    adaptation["backendFamilyRouteKey"], expected_backend_family_route_key,
+                    "{name}"
+                );
+                assert_eq!(
+                    adaptation["conflictBackendPairCount"], expected_conflict_backend_pair_count,
                     "{name}"
                 );
                 assert_eq!(
@@ -35022,15 +36092,23 @@ mod tests {
         );
         let cleanup_coexistence = super::hook_coexistence_to_json(&cleanup_actions, &backend_matrix);
         let cleanup_automation = hook_automation_to_json(&cleanup_actions, &backend_matrix);
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &cleanup_coexistence,
-            &cleanup_automation,
-            "cleanup",
+        assert_hook_coexistence_and_automation_core_fields_match(&cleanup_coexistence, &cleanup_automation, "cleanup");
+        assert_eq!(
+            cleanup_coexistence["nextStepChainSource"], "next-action",
+            "cleanup.coexistence.chain"
         );
-        assert_eq!(cleanup_coexistence["nextStepChainSource"], "next-action", "cleanup.coexistence.chain");
-        assert_eq!(cleanup_automation["nextStepChainSource"], "next-action", "cleanup.automation.chain");
-        assert_eq!(cleanup_automation["hasFallbackPlan"], false, "cleanup.automation.fallback");
-        assert!(cleanup_automation["fallbackPlan"].is_null(), "cleanup.automation.fallbackNull");
+        assert_eq!(
+            cleanup_automation["nextStepChainSource"], "next-action",
+            "cleanup.automation.chain"
+        );
+        assert_eq!(
+            cleanup_automation["hasFallbackPlan"], false,
+            "cleanup.automation.fallback"
+        );
+        assert!(
+            cleanup_automation["fallbackPlan"].is_null(),
+            "cleanup.automation.fallbackNull"
+        );
         for rendered in [&cleanup_coexistence, &cleanup_automation] {
             assert_command_json_template_kind_count_pairs(rendered, "cleanup.rendered");
             let adaptation = &rendered["backendAdaptation"];
@@ -35121,22 +36199,25 @@ mod tests {
         ];
         let blocked_coexistence = super::hook_coexistence_to_json(&blocked_actions, &backend_matrix);
         let blocked_automation = hook_automation_to_json(&blocked_actions, &backend_matrix);
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &blocked_coexistence,
-            &blocked_automation,
-            "blocked",
-        );
-        assert_eq!(blocked_coexistence["nextStepChainSource"], "next-action", "blocked.coexistence.chain");
-        assert_eq!(blocked_automation["nextStepChainSource"], "fallback-plan", "blocked.automation.chain");
-        assert_eq!(blocked_automation["hasFallbackPlan"], true, "blocked.automation.fallback");
+        assert_hook_coexistence_and_automation_core_fields_match(&blocked_coexistence, &blocked_automation, "blocked");
         assert_eq!(
-            blocked_automation["fallbackPlan"]["trigger"],
-            "next-action-not-ready",
+            blocked_coexistence["nextStepChainSource"], "next-action",
+            "blocked.coexistence.chain"
+        );
+        assert_eq!(
+            blocked_automation["nextStepChainSource"], "fallback-plan",
+            "blocked.automation.chain"
+        );
+        assert_eq!(
+            blocked_automation["hasFallbackPlan"], true,
+            "blocked.automation.fallback"
+        );
+        assert_eq!(
+            blocked_automation["fallbackPlan"]["trigger"], "next-action-not-ready",
             "blocked.automation.fallbackTrigger"
         );
         assert_eq!(
-            blocked_automation["nextStepChain"][0]["command"],
-            "native.hookenv",
+            blocked_automation["nextStepChain"][0]["command"], "native.hookenv",
             "blocked.automation.chainCommand"
         );
         assert_command_json_template_kind_count_pairs(&blocked_automation, "blocked.automation");
@@ -35178,15 +36259,23 @@ mod tests {
                 query_only_until_override: true,
             },
         );
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &arm64e_coexistence,
-            &arm64e_automation,
-            "arm64e",
+        assert_hook_coexistence_and_automation_core_fields_match(&arm64e_coexistence, &arm64e_automation, "arm64e");
+        assert_eq!(
+            arm64e_coexistence["nextStepChainSource"], "next-action",
+            "arm64e.coexistence.chain"
         );
-        assert_eq!(arm64e_coexistence["nextStepChainSource"], "next-action", "arm64e.coexistence.chain");
-        assert_eq!(arm64e_automation["nextStepChainSource"], "next-action", "arm64e.automation.chain");
-        assert_eq!(arm64e_automation["hasFallbackPlan"], false, "arm64e.automation.fallback");
-        assert!(arm64e_automation["fallbackPlan"].is_null(), "arm64e.automation.fallbackNull");
+        assert_eq!(
+            arm64e_automation["nextStepChainSource"], "next-action",
+            "arm64e.automation.chain"
+        );
+        assert_eq!(
+            arm64e_automation["hasFallbackPlan"], false,
+            "arm64e.automation.fallback"
+        );
+        assert!(
+            arm64e_automation["fallbackPlan"].is_null(),
+            "arm64e.automation.fallbackNull"
+        );
         assert_command_json_template_kind_count_pairs(&arm64e_coexistence, "arm64e.coexistence");
         assert_command_json_template_kind_count_pairs(&arm64e_automation, "arm64e.automation");
         let arm64e_adaptation = &arm64e_automation["backendAdaptation"];
@@ -35537,11 +36626,7 @@ mod tests {
         let automation = hook_automation_to_json(&effective_actions, &rendered);
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &coexistence,
-            &automation,
-            "filesystem-only",
-        );
+        assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, "filesystem-only");
 
         assert_eq!(coexistence["mode"], "inline-cautious");
         assert_eq!(coexistence["strategy"], "filesystem-candidate-cautious");
@@ -35774,8 +36859,7 @@ mod tests {
                 .is_null()
         );
         assert!(
-            coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonExecutableTemplateCount"]
-                .is_null()
+            coexistence["backendAdaptation"]["preferredConflictResolutionCommandJsonExecutableTemplateCount"].is_null()
         );
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionChain"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionNextStep"].is_null());
@@ -35793,6 +36877,10 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionSuggestedActionPhase"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionSuggestedActionClass"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultEscalationKey"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionDefaultEscalationCandidateCount"].is_null()
+        );
+        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultEscalationCandidates"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultActionPhase"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultActionClass"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultEffectiveEscalationKey"].is_null());
@@ -35810,16 +36898,12 @@ mod tests {
             coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"]
                 .is_null()
         );
-        assert!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionDefaultCommandJsonInstructionTemplateCount"]
-                .is_null()
-        );
-        assert!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionDefaultCommandJsonExecutableTemplateCount"]
-                .is_null()
-        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionDefaultCommandJsonInstructionTemplateCount"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionDefaultCommandJsonExecutableTemplateCount"]
+            .is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplate"].is_null());
         assert!(
@@ -35855,8 +36939,12 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultMatched"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultUsedDefault"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveActionPhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveActionClass"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveActionPhase"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveActionClass"].is_null()
+        );
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveEscalationKey"]
                 .is_null()
@@ -35873,8 +36961,12 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveKnownUsedDefault"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveKnownReason"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectiveActionPhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectiveActionClass"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectiveActionPhase"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectiveActionClass"].is_null()
+        );
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectiveEscalationKey"].is_null()
         );
@@ -35886,8 +36978,14 @@ mod tests {
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownEffectivePhase"].is_null()
         );
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownEffectiveActionPhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownEffectiveActionClass"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownEffectiveActionClass"]
+                .is_null()
+        );
         assert!(coexistence["backendAdaptation"]
             ["preferredConflictResolutionResolveExampleKnownEffectiveEscalationKey"]
             .is_null());
@@ -35916,8 +37014,12 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveMissingUsedDefault"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveMissingReason"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectiveActionPhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectiveActionClass"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectiveActionPhase"].is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectiveActionClass"].is_null()
+        );
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectiveEscalationKey"]
                 .is_null()
@@ -35934,8 +37036,12 @@ mod tests {
             coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingEffectivePhase"]
                 .is_null()
         );
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingEffectiveActionPhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingEffectiveActionClass"].is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleMissingEffectiveActionPhase"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleMissingEffectiveActionClass"]
+            .is_null());
         assert!(coexistence["backendAdaptation"]
             ["preferredConflictResolutionResolveExampleMissingEffectiveEscalationKey"]
             .is_null());
@@ -36033,8 +37139,14 @@ mod tests {
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultUsedDefault"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultReason"].is_null());
         assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectivePhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveActionPhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveActionClass"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveActionClass"]
+                .is_null()
+        );
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveEscalationKey"]
                 .is_null()
@@ -36051,8 +37163,14 @@ mod tests {
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectivePhase"].is_null()
         );
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveActionPhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveActionClass"].is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveActionClass"]
+                .is_null()
+        );
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey"]
                 .is_null()
@@ -36071,8 +37189,12 @@ mod tests {
             coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectivePhase"]
                 .is_null()
         );
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectiveActionPhase"].is_null());
-        assert!(coexistence["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectiveActionClass"].is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyResolveResultEffectiveActionPhase"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyResolveResultEffectiveActionClass"]
+            .is_null());
         assert!(coexistence["backendAdaptation"]
             ["preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey"]
             .is_null());
@@ -36092,12 +37214,14 @@ mod tests {
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectivePhase"].is_null()
         );
-        assert!(coexistence["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveDefaultEffectiveActionPhase"]
-            .is_null());
-        assert!(coexistence["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveDefaultEffectiveActionClass"]
-            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectiveActionClass"]
+                .is_null()
+        );
         assert!(coexistence["backendAdaptation"]
             ["preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey"]
             .is_null());
@@ -36120,12 +37244,14 @@ mod tests {
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownEffectivePhase"].is_null()
         );
-        assert!(coexistence["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveKnownEffectiveActionPhase"]
-            .is_null());
-        assert!(coexistence["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveKnownEffectiveActionClass"]
-            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownEffectiveActionClass"]
+                .is_null()
+        );
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownEffectiveEscalationKey"]
                 .is_null()
@@ -36184,12 +37310,14 @@ mod tests {
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveMissingEffectivePhase"].is_null()
         );
-        assert!(coexistence["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveMissingEffectiveActionPhase"]
-            .is_null());
-        assert!(coexistence["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveMissingEffectiveActionClass"]
-            .is_null());
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveMissingEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            coexistence["backendAdaptation"]["preferredConflictResolutionPhaseResolveMissingEffectiveActionClass"]
+                .is_null()
+        );
         assert!(coexistence["backendAdaptation"]
             ["preferredConflictResolutionPhaseResolveMissingEffectiveEscalationKey"]
             .is_null());
@@ -36456,16 +37584,12 @@ mod tests {
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount"]
                 .is_null()
         );
-        assert!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseCleanupCommandJsonInstructionTemplateCount"]
-                .is_null()
-        );
-        assert!(
-            coexistence["backendAdaptation"]
-                ["preferredConflictResolutionPhaseCleanupCommandJsonExecutableTemplateCount"]
-                .is_null()
-        );
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseCleanupCommandJsonInstructionTemplateCount"]
+            .is_null());
+        assert!(coexistence["backendAdaptation"]
+            ["preferredConflictResolutionPhaseCleanupCommandJsonExecutableTemplateCount"]
+            .is_null());
         assert!(
             coexistence["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplates"].is_null()
         );
@@ -36647,8 +37771,7 @@ mod tests {
                 .is_null()
         );
         assert!(
-            automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonExecutableTemplateCount"]
-                .is_null()
+            automation["backendAdaptation"]["preferredConflictBackendPairCommandJsonExecutableTemplateCount"].is_null()
         );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionCommandJsonTemplateCount"].is_null());
@@ -36656,17 +37779,19 @@ mod tests {
             automation["backendAdaptation"]["preferredConflictResolutionCommandJsonEligibleTemplateCount"].is_null()
         );
         assert!(
-            automation["backendAdaptation"]["preferredConflictResolutionCommandJsonInstructionTemplateCount"]
-                .is_null()
+            automation["backendAdaptation"]["preferredConflictResolutionCommandJsonInstructionTemplateCount"].is_null()
         );
         assert!(
-            automation["backendAdaptation"]["preferredConflictResolutionCommandJsonExecutableTemplateCount"]
-                .is_null()
+            automation["backendAdaptation"]["preferredConflictResolutionCommandJsonExecutableTemplateCount"].is_null()
         );
         assert!(automation["backendAdaptation"]["preferredConflictResolutionSuggestedEscalationKey"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionSuggestedActionPhase"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionSuggestedActionClass"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultEscalationKey"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionDefaultEscalationCandidateCount"].is_null()
+        );
+        assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultEscalationCandidates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultActionPhase"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultActionClass"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultEffectiveEscalationKey"].is_null());
@@ -36684,16 +37809,12 @@ mod tests {
             automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonEligibleTemplateCount"]
                 .is_null()
         );
-        assert!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionDefaultCommandJsonInstructionTemplateCount"]
-                .is_null()
-        );
-        assert!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionDefaultCommandJsonExecutableTemplateCount"]
-                .is_null()
-        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionDefaultCommandJsonInstructionTemplateCount"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionDefaultCommandJsonExecutableTemplateCount"]
+            .is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplates"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionDefaultCommandJsonTemplate"].is_null());
         assert!(
@@ -36726,8 +37847,12 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultMatched"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultUsedDefault"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveActionPhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveActionClass"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveActionPhase"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveActionClass"].is_null()
+        );
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionResolveDefaultEffectiveEscalationKey"]
                 .is_null()
@@ -36744,8 +37869,12 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveKnownUsedDefault"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveKnownReason"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectiveActionPhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectiveActionClass"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectiveActionPhase"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectiveActionClass"].is_null()
+        );
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionResolveKnownEffectiveEscalationKey"].is_null()
         );
@@ -36755,8 +37884,14 @@ mod tests {
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownEffectivePhase"].is_null()
         );
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownEffectiveActionPhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownEffectiveActionClass"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveExampleKnownEffectiveActionClass"]
+                .is_null()
+        );
         assert!(automation["backendAdaptation"]
             ["preferredConflictResolutionResolveExampleKnownEffectiveEscalationKey"]
             .is_null());
@@ -36785,8 +37920,12 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveMissingUsedDefault"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveMissingReason"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectiveActionPhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectiveActionClass"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectiveActionPhase"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectiveActionClass"].is_null()
+        );
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionResolveMissingEffectiveEscalationKey"]
                 .is_null()
@@ -36802,8 +37941,12 @@ mod tests {
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingEffectivePhase"].is_null()
         );
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingEffectiveActionPhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionResolveExampleMissingEffectiveActionClass"].is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleMissingEffectiveActionPhase"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionResolveExampleMissingEffectiveActionClass"]
+            .is_null());
         assert!(automation["backendAdaptation"]
             ["preferredConflictResolutionResolveExampleMissingEffectiveEscalationKey"]
             .is_null());
@@ -36898,8 +38041,12 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultUsedDefault"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultReason"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveActionPhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveActionClass"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveActionPhase"].is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveActionClass"].is_null()
+        );
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResultEffectiveEscalationKey"]
                 .is_null()
@@ -36914,8 +38061,14 @@ mod tests {
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveUsedDefault"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveReason"].is_null());
         assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectivePhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveActionPhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveActionClass"].is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveActionClass"]
+                .is_null()
+        );
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveEffectiveEscalationKey"]
                 .is_null()
@@ -36934,8 +38087,12 @@ mod tests {
             automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectivePhase"]
                 .is_null()
         );
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectiveActionPhase"].is_null());
-        assert!(automation["backendAdaptation"]["preferredConflictResolutionQueryOnlyResolveResultEffectiveActionClass"].is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyResolveResultEffectiveActionPhase"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionQueryOnlyResolveResultEffectiveActionClass"]
+            .is_null());
         assert!(automation["backendAdaptation"]
             ["preferredConflictResolutionQueryOnlyResolveResultEffectiveEscalationKey"]
             .is_null());
@@ -36953,12 +38110,14 @@ mod tests {
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectivePhase"].is_null()
         );
-        assert!(automation["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveDefaultEffectiveActionPhase"]
-            .is_null());
-        assert!(automation["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveDefaultEffectiveActionClass"]
-            .is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveDefaultEffectiveActionClass"]
+                .is_null()
+        );
         assert!(automation["backendAdaptation"]
             ["preferredConflictResolutionPhaseResolveDefaultEffectiveEscalationKey"]
             .is_null());
@@ -36979,12 +38138,14 @@ mod tests {
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownEffectivePhase"].is_null()
         );
-        assert!(automation["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveKnownEffectiveActionPhase"]
-            .is_null());
-        assert!(automation["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveKnownEffectiveActionClass"]
-            .is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownEffectiveActionClass"]
+                .is_null()
+        );
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveKnownEffectiveEscalationKey"]
                 .is_null()
@@ -37038,12 +38199,14 @@ mod tests {
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveMissingEffectivePhase"].is_null()
         );
-        assert!(automation["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveMissingEffectiveActionPhase"]
-            .is_null());
-        assert!(automation["backendAdaptation"]
-            ["preferredConflictResolutionPhaseResolveMissingEffectiveActionClass"]
-            .is_null());
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveMissingEffectiveActionPhase"]
+                .is_null()
+        );
+        assert!(
+            automation["backendAdaptation"]["preferredConflictResolutionPhaseResolveMissingEffectiveActionClass"]
+                .is_null()
+        );
         assert!(automation["backendAdaptation"]
             ["preferredConflictResolutionPhaseResolveMissingEffectiveEscalationKey"]
             .is_null());
@@ -37298,16 +38461,12 @@ mod tests {
             automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplateCount"]
                 .is_null()
         );
-        assert!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseCleanupCommandJsonInstructionTemplateCount"]
-                .is_null()
-        );
-        assert!(
-            automation["backendAdaptation"]
-                ["preferredConflictResolutionPhaseCleanupCommandJsonExecutableTemplateCount"]
-                .is_null()
-        );
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseCleanupCommandJsonInstructionTemplateCount"]
+            .is_null());
+        assert!(automation["backendAdaptation"]
+            ["preferredConflictResolutionPhaseCleanupCommandJsonExecutableTemplateCount"]
+            .is_null());
         assert!(
             automation["backendAdaptation"]["preferredConflictResolutionPhaseCleanupCommandJsonTemplates"].is_null()
         );
@@ -37466,10 +38625,7 @@ mod tests {
         let templates = hook_action_command_templates("hook.bootstrap", "arm64e-query-only");
         assert_eq!(templates.len(), 2);
         assert_eq!(templates[0], "native.hookenv");
-        assert_eq!(
-            templates[1],
-            "controller --preflight-only --preflight-json --pid <pid>"
-        );
+        assert_eq!(templates[1], "controller --preflight-only --preflight-json --pid <pid>");
         assert!(!templates.iter().any(|item| item.contains("--inject-json")));
     }
 
@@ -37508,11 +38664,7 @@ mod tests {
         );
         assert_command_json_template_kind_count_pairs(&coexistence, "coexistence");
         assert_command_json_template_kind_count_pairs(&automation, "automation");
-        assert_hook_coexistence_and_automation_core_fields_match(
-            &coexistence,
-            &automation,
-            "arm64e-query-only",
-        );
+        assert_hook_coexistence_and_automation_core_fields_match(&coexistence, &automation, "arm64e-query-only");
         assert_eq!(coexistence["nextStepChainSource"], "next-action");
         assert_eq!(automation["nextStepChainSource"], "next-action");
         assert_eq!(automation["hasFallbackPlan"], false);
@@ -37545,13 +38697,11 @@ mod tests {
             bootstrap_templates["templates"][1],
             "controller --preflight-only --preflight-json --pid <pid>"
         );
-        assert!(
-            bootstrap_templates["templates"]
-                .as_array()
-                .expect("bootstrap template array")
-                .iter()
-                .all(|item| item.as_str().unwrap_or_default() != "controller --inject-json --pid <pid>")
-        );
+        assert!(bootstrap_templates["templates"]
+            .as_array()
+            .expect("bootstrap template array")
+            .iter()
+            .all(|item| item.as_str().unwrap_or_default() != "controller --inject-json --pid <pid>"));
 
         let install_templates = templates
             .iter()
@@ -37650,13 +38800,11 @@ mod tests {
             "arm64e-fallback",
         );
         assert_ne!(
-            coexistence["nextActionKey"],
-            automation["nextActionKey"],
+            coexistence["nextActionKey"], automation["nextActionKey"],
             "arm64e-fallback.nextActionKey should diverge between views"
         );
         assert_ne!(
-            coexistence["nextStepCommand"],
-            automation["nextStepCommand"],
+            coexistence["nextStepCommand"], automation["nextStepCommand"],
             "arm64e-fallback.nextStepCommand should diverge between views"
         );
         assert_eq!(coexistence["nextStepChainSource"], "next-action");
@@ -37719,11 +38867,13 @@ mod tests {
             "arm64e-query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyEffectiveEscalationKey"],
             "arm64e-query-only-path"
         );
         assert_eq!(
-            automation["fallbackPlan"]["routingDecision"]["ready"]["phaseResolveExampleQueryOnlyResultEffectiveEscalationKey"],
+            automation["fallbackPlan"]["routingDecision"]["ready"]
+                ["phaseResolveExampleQueryOnlyResultEffectiveEscalationKey"],
             "arm64e-query-only-path"
         );
     }
@@ -39071,6 +40221,59 @@ mod tests {
             rendered["arm64eSummary"]["overrideEnv"],
             "IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK"
         );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["commandJsonTemplateCount"],
+            rendered["arm64eRecoverySummary"]["commandCount"]
+        );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["commandJsonTemplates"][0]["command"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["commandJsonTemplateCommands"][0],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["commandJsonEligibleTemplateCommands"][0],
+            "native.hookenv"
+        );
+        assert_eq!(rendered["arm64eRecoverySummary"]["phaseOrder"][0], "diagnose");
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["phaseCount"],
+            rendered["arm64eRecoverySummary"]["phaseOrder"]
+                .as_array()
+                .expect("phase order")
+                .len()
+        );
+        assert!(rendered["arm64eRecoverySummary"]["phaseOrder"]
+            .as_array()
+            .expect("phase order")
+            .iter()
+            .any(|item| item.as_str() == Some("query")));
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["firstEligibleCommand"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["firstCommandJsonTemplate"]["command"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["firstEligibleCommandJsonTemplate"]["command"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["firstExecutableCommandJsonTemplate"]["command"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["lastCommandJsonTemplate"]["command"],
+            rendered["arm64eRecoverySummary"]["lastCommand"]
+        );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["commandJsonTemplates"][1]["command"],
+            "pac.available"
+        );
         assert_eq!(rendered["diagnostics"]["arm64eSummary"]["status"], "arm64e");
         assert_eq!(
             rendered["diagnostics"]["arm64eSummary"]["overrideRequiredForFallback"],
@@ -39187,11 +40390,69 @@ mod tests {
         assert_eq!(rendered["hook"]["automation"]["hasFallbackPlan"], false);
         assert!(rendered["hook"]["automation"]["fallbackPlan"].is_null());
 
-        assert_eq!(rendered["diagnostics"]["arm64eSummary"]["overrideRequiredForFallback"], true);
-        assert_eq!(rendered["hookRecoverySummary"]["strategy"], "arm64e-query-only-until-override");
+        assert_eq!(
+            rendered["diagnostics"]["arm64eSummary"]["overrideRequiredForFallback"],
+            true
+        );
+        assert_eq!(
+            rendered["hookRecoverySummary"]["strategy"],
+            "arm64e-query-only-until-override"
+        );
         assert_eq!(rendered["recoverySummary"]["firstCommand"], "native.hookenv");
         assert_eq!(rendered["arm64eRecoverySummary"]["nextActionKey"], "hook.query");
-        assert_eq!(rendered["diagnostics"]["recovery"]["strategy"], "arm64e-query-only-until-override");
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["commandJsonTemplateCount"],
+            rendered["arm64eRecoverySummary"]["commandCount"]
+        );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["commandJsonTemplates"][0]["command"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["commandJsonTemplateCommands"][0],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["commandJsonEligibleTemplateCommands"][0],
+            "native.hookenv"
+        );
+        assert_eq!(rendered["arm64eRecoverySummary"]["phaseOrder"][0], "diagnose");
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["phaseCount"],
+            rendered["arm64eRecoverySummary"]["phaseOrder"]
+                .as_array()
+                .expect("phase order")
+                .len()
+        );
+        assert!(rendered["arm64eRecoverySummary"]["phaseOrder"]
+            .as_array()
+            .expect("phase order")
+            .iter()
+            .any(|item| item.as_str() == Some("query")));
+        assert_eq!(
+            rendered["arm64eRecoverySummary"]["firstEligibleCommand"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["recovery"]["firstExecutableCommandJsonTemplate"]["command"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["recovery"]["firstEligibleCommandJsonTemplate"]["command"],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["recovery"]["lastCommandJsonTemplate"]["command"],
+            rendered["diagnostics"]["recovery"]["lastCommand"]
+        );
+        assert_eq!(
+            rendered["diagnostics"]["recovery"]["commandJsonEligibleTemplateCommands"][0],
+            "native.hookenv"
+        );
+        assert_eq!(
+            rendered["diagnostics"]["recovery"]["strategy"],
+            "arm64e-query-only-until-override"
+        );
         assert_eq!(rendered["diagnostics"]["recovery"]["readonlyOnly"], true);
         assert_eq!(rendered["diagnostics"]["recovery"]["appliesToHookInstall"], true);
         assert_eq!(rendered["diagnostics"]["recovery"]["nextActionKey"], "hook.query");
@@ -39205,8 +40466,14 @@ mod tests {
             "arm64e-query-only-until-override"
         );
         assert_eq!(rendered["diagnostics"]["hook"]["recovery"]["readonlyOnly"], true);
-        assert_eq!(rendered["diagnostics"]["hook"]["recovery"]["appliesToHookInstall"], true);
-        assert_eq!(rendered["diagnostics"]["hook"]["recovery"]["nextActionKey"], "hook.query");
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["recovery"]["appliesToHookInstall"],
+            true
+        );
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["recovery"]["nextActionKey"],
+            "hook.query"
+        );
         assert_eq!(rendered["diagnostics"]["hook"]["recovery"]["nextActionPhase"], "query");
         assert_eq!(
             rendered["diagnostics"]["hook"]["recovery"]["overrideEnv"],
@@ -39224,7 +40491,10 @@ mod tests {
             rendered["diagnostics"]["hook"]["recovery"]["recommendedActionPhase"],
             "query"
         );
-        assert_eq!(rendered["diagnostics"]["hook"]["recovery"]["firstCommand"], "native.hookenv");
+        assert_eq!(
+            rendered["diagnostics"]["hook"]["recovery"]["firstCommand"],
+            "native.hookenv"
+        );
         assert_eq!(
             rendered["diagnostics"]["hook"]["recovery"]["commandJsonTemplates"][0]["command"],
             "native.hookenv"

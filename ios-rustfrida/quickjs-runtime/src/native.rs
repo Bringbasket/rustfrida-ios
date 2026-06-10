@@ -6,22 +6,23 @@ use crate::util::{
 };
 use crate::value::JSValue;
 use native_api::{
-    detect_hook_environment, enumerate_images, find_export_by_name, find_image_build_version, find_image_by_address,
-    find_image_by_name, find_image_chained_fixups, find_image_code_signature, find_image_data_in_code,
-    find_image_dependencies, find_image_dyld_info, find_image_dylinker, find_image_encryption_info,
-    find_image_entry_point, find_image_exports, find_image_exports_trie, find_image_function_starts,
-    find_image_imports, find_image_install_name, find_image_linkedit_info, find_image_load_commands, find_image_rpaths,
-    find_image_sections, find_image_segments, find_image_source_version, find_image_uuid, find_native_symbols,
-    find_symbol_by_address, hook_coexistence_layer_status, hook_environment_recommendations,
-    hook_environment_recommended_actions, image_build_version_support_available,
-    image_chained_fixups_support_available, image_code_signature_support_available,
-    image_data_in_code_support_available, image_dependency_support_available, image_dyld_info_support_available,
-    image_dylinker_support_available, image_encryption_info_support_available, image_entry_point_support_available,
-    image_exports_trie_support_available, image_function_starts_support_available, image_import_support_available,
-    image_install_name_support_available, image_linkedit_info_support_available, image_load_command_support_available,
-    image_rpath_support_available, image_section_support_available, image_segment_support_available,
-    image_source_version_support_available, image_uuid_support_available, native_export_support_available,
-    native_symbol_support_available, resolve_hook_strategy,
+    dependency_path_or_name_matches, detect_hook_environment, enumerate_images, find_export_by_name,
+    find_image_build_version, find_image_by_address, find_image_by_name, find_image_chained_fixups,
+    find_image_code_signature, find_image_data_in_code, find_image_dependencies, find_image_dyld_info,
+    find_image_dylinker, find_image_encryption_info, find_image_entry_point, find_image_exports,
+    find_image_exports_trie, find_image_function_starts, find_image_imports, find_image_install_name,
+    find_image_linkedit_info, find_image_load_commands, find_image_rpaths, find_image_sections, find_image_segments,
+    find_image_source_version, find_image_uuid, find_native_symbols, find_symbol_by_address,
+    hook_coexistence_layer_status, hook_environment_recommendations, hook_environment_recommended_actions,
+    image_build_version_support_available, image_chained_fixups_support_available,
+    image_code_signature_support_available, image_data_in_code_support_available, image_dependency_support_available,
+    image_dyld_info_support_available, image_dylinker_support_available, image_encryption_info_support_available,
+    image_entry_point_support_available, image_exports_trie_support_available, image_function_starts_support_available,
+    image_import_support_available, image_install_name_support_available, image_linkedit_info_support_available,
+    image_load_command_support_available, image_rpath_support_available, image_section_support_available,
+    image_segment_support_available, image_source_version_support_available, image_uuid_support_available,
+    native_export_support_available, native_symbol_support_available, resolve_hook_strategy,
+    rpath_path_or_name_matches, section_name_matches, segment_name_matches,
 };
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -40,6 +41,71 @@ unsafe fn string_vec_to_js_array(ctx: *mut ffi::JSContext, items: &[String]) -> 
         ffi::JS_SetPropertyUint32(ctx, array, index as u32, JSValue::string(ctx, item).raw());
     }
     array
+}
+
+unsafe fn instrumentation_capability_to_js(ctx: *mut ffi::JSContext) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    let recommended_commands = vec![
+        "trace <target>".to_string(),
+        "stalker <target>".to_string(),
+        "hfl <module> <offset>".to_string(),
+        "jhook <class> <selector> [meta]".to_string(),
+        "shook <type> <method>".to_string(),
+    ];
+    let unsupported_qbdi_apis = vec![
+        "qbdi.newVM".to_string(),
+        "qbdi.run".to_string(),
+        "qbdi.call".to_string(),
+        "qbdi.getGPR/setGPR".to_string(),
+        "qbdi.registerTraceCallbacks".to_string(),
+    ];
+
+    result.set_property(ctx, "platform", JSValue::string(ctx, "ios"));
+    result.set_property(ctx, "backend", JSValue::string(ctx, "arm64-hook-engine"));
+    result.set_property(ctx, "backendDisplayName", JSValue::string(ctx, "ARM64 hook engine"));
+    result.set_property(ctx, "androidReferenceBackend", JSValue::string(ctx, "QBDI"));
+    result.set_property(
+        ctx,
+        "androidReferencePath",
+        JSValue::string(
+            ctx,
+            "rustFrida-master/qbdi-helper + quickjs-hook/src/jsapi/hook_api/qbdi.rs",
+        ),
+    );
+    result.set_property(ctx, "qbdiCompatible", JSValue::bool(false));
+    result.set_property(ctx, "qbdiAvailable", JSValue::bool(false));
+    result.set_property(ctx, "qbdiApiPorted", JSValue::bool(false));
+    result.set_property(ctx, "inlineHookAvailable", JSValue::bool(true));
+    result.set_property(ctx, "traceAvailable", JSValue::bool(true));
+    result.set_property(ctx, "stalkerAvailable", JSValue::bool(true));
+    result.set_property(ctx, "hflAvailable", JSValue::bool(true));
+    result.set_property(ctx, "virtualStackAvailable", JSValue::bool(false));
+    result.set_property(ctx, "registerStateApiAvailable", JSValue::bool(false));
+    result.set_property(ctx, "memoryAccessTraceAvailable", JSValue::bool(false));
+    result.set_property(
+        ctx,
+        "recommendedPath",
+        JSValue::string(ctx, "trace-stalker-inline-hook"),
+    );
+    result.set_property(
+        ctx,
+        "summary",
+        JSValue::string(
+            ctx,
+            "Android QBDI VM APIs are not ported to iOS; use ARM64 hook engine based trace/stalker/HFL/JHook/Shook flows.",
+        ),
+    );
+    result.set_property(
+        ctx,
+        "recommendedCommands",
+        JSValue(string_vec_to_js_array(ctx, &recommended_commands)),
+    );
+    result.set_property(
+        ctx,
+        "unsupportedQbdiApis",
+        JSValue(string_vec_to_js_array(ctx, &unsupported_qbdi_apis)),
+    );
+    result.raw()
 }
 
 unsafe fn js_array_first(item: JSValue, ctx: *mut ffi::JSContext) -> JSValue {
@@ -6075,6 +6141,27 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     result.set_property(ctx, "preferredPath", JSValue::string(ctx, coexistence_mode));
     result.set_property(ctx, "autoDowngradedToQueryOnly", JSValue::bool(false));
     result.set_property(ctx, "autoDowngradeReason", JSValue::null());
+    result.set_property(ctx, "instrumentation", JSValue(instrumentation_capability_to_js(ctx)));
+    result.set_property(ctx, "instrumentationBackend", JSValue::string(ctx, "arm64-hook-engine"));
+    result.set_property(
+        ctx,
+        "instrumentationBackendDisplayName",
+        JSValue::string(ctx, "ARM64 hook engine"),
+    );
+    result.set_property(
+        ctx,
+        "androidReferenceInstrumentationBackend",
+        JSValue::string(ctx, "QBDI"),
+    );
+    result.set_property(ctx, "qbdiCompatible", JSValue::bool(false));
+    result.set_property(ctx, "qbdiAvailable", JSValue::bool(false));
+    result.set_property(ctx, "traceAvailable", JSValue::bool(true));
+    result.set_property(ctx, "stalkerAvailable", JSValue::bool(true));
+    result.set_property(
+        ctx,
+        "recommendedInstrumentationPath",
+        JSValue::string(ctx, "trace-stalker-inline-hook"),
+    );
     result.set_property(ctx, "backendAdaptation", backend_adaptation);
     result.set_property(
         ctx,
@@ -6196,9 +6283,17 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
             "commandModeSource",
             JSValue::string(ctx, decision.command_mode_source()),
         );
-        result.set_property(ctx, "backendPressure", JSValue::string(ctx, decision.backend_pressure()));
+        result.set_property(
+            ctx,
+            "backendPressure",
+            JSValue::string(ctx, decision.backend_pressure()),
+        );
         result.set_property(ctx, "inlineHookRisk", JSValue::string(ctx, decision.inline_hook_risk()));
-        result.set_property(ctx, "coexistenceRequired", JSValue::bool(decision.coexistence_required()));
+        result.set_property(
+            ctx,
+            "coexistenceRequired",
+            JSValue::bool(decision.coexistence_required()),
+        );
         result.set_property(ctx, "policyForced", JSValue::bool(decision.policy_forced()));
         result.set_property(ctx, "topologyForced", JSValue::bool(decision.topology_forced()));
         result.set_property(ctx, "filesystemCaution", JSValue::bool(decision.filesystem_caution()));
@@ -11354,15 +11449,10 @@ unsafe extern "C" fn js_native_dependency_info(
         Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
     };
 
-    match dependencies.into_iter().find(|dependency| {
-        dependency.path == path_or_name
-            || dependency
-                .path
-                .rsplit('/')
-                .next()
-                .map(|name| name == path_or_name)
-                .unwrap_or(false)
-    }) {
+    match dependencies
+        .into_iter()
+        .find(|dependency| dependency_path_or_name_matches(&dependency.path, &path_or_name))
+    {
         Some(dependency) => image_dependency_to_js(ctx, &dependency),
         None => JSValue::null().raw(),
     }
@@ -11869,7 +11959,10 @@ unsafe extern "C" fn js_native_rpath_info(
         Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
     };
 
-    match rpaths.into_iter().find(|rpath| rpath.path == path) {
+    match rpaths
+        .into_iter()
+        .find(|rpath| rpath_path_or_name_matches(&rpath.path, &path))
+    {
         Some(rpath) => image_rpath_to_js(ctx, &rpath),
         None => JSValue::null().raw(),
     }
@@ -12035,7 +12128,7 @@ unsafe extern "C" fn js_native_segment_info(
 
     match segments
         .into_iter()
-        .find(|segment| segment.segment_name == segment_name)
+        .find(|segment| segment_name_matches(&segment.segment_name, &segment_name))
     {
         Some(segment) => image_segment_to_js(ctx, &segment),
         None => JSValue::null().raw(),
@@ -12121,10 +12214,14 @@ unsafe extern "C" fn js_native_section_info(
         Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
     };
 
-    match sections
-        .into_iter()
-        .find(|section| section.segment_name == segment_name && section.section_name == section_name)
-    {
+    match sections.into_iter().find(|section| {
+        section_name_matches(
+            &section.segment_name,
+            &section.section_name,
+            &segment_name,
+            &section_name,
+        )
+    }) {
         Some(section) => image_section_to_js(ctx, &section),
         None => JSValue::null().raw(),
     }
@@ -12141,6 +12238,22 @@ fn parse_load_command_query(query: &str) -> Option<u64> {
     }
 
     trimmed.parse::<u64>().ok()
+}
+
+fn normalize_load_command_name_for_query(name: &str) -> String {
+    let trimmed = name.trim();
+    let without_prefix = trimmed
+        .strip_prefix("LC_")
+        .or_else(|| trimmed.strip_prefix("lc_"))
+        .or_else(|| trimmed.strip_prefix("LC-"))
+        .or_else(|| trimmed.strip_prefix("lc-"))
+        .unwrap_or(trimmed);
+    let without_required = without_prefix.strip_suffix("_REQ_DYLD").unwrap_or(without_prefix);
+    without_required
+        .chars()
+        .filter(|ch| ch.is_ascii_alphanumeric())
+        .map(|ch| ch.to_ascii_lowercase())
+        .collect()
 }
 
 fn load_command_matches_query(command: &native_api::ImageLoadCommand, query: &str) -> bool {
@@ -12162,6 +12275,8 @@ fn load_command_matches_query(command: &native_api::ImageLoadCommand, query: &st
     }
 
     command.command_name.eq_ignore_ascii_case(trimmed)
+        || normalize_load_command_name_for_query(&command.command_name)
+            == normalize_load_command_name_for_query(trimmed)
 }
 
 unsafe extern "C" fn js_native_load_command_info(
@@ -12218,6 +12333,28 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
     let native = ctx.new_object();
     native.set_property(ctx.as_ptr(), "platform", JSValue::string(ctx.as_ptr(), "ios"));
     native.set_property(ctx.as_ptr(), "backend", JSValue::string(ctx.as_ptr(), "mach"));
+    native.set_property(ctx.as_ptr(), "instrumentation", unsafe {
+        JSValue(instrumentation_capability_to_js(ctx.as_ptr()))
+    });
+    native.set_property(
+        ctx.as_ptr(),
+        "instrumentationBackend",
+        JSValue::string(ctx.as_ptr(), "arm64-hook-engine"),
+    );
+    native.set_property(
+        ctx.as_ptr(),
+        "androidReferenceInstrumentationBackend",
+        JSValue::string(ctx.as_ptr(), "QBDI"),
+    );
+    native.set_property(ctx.as_ptr(), "qbdiCompatible", JSValue::bool(false));
+    native.set_property(ctx.as_ptr(), "qbdiAvailable", JSValue::bool(false));
+    native.set_property(ctx.as_ptr(), "traceAvailable", JSValue::bool(true));
+    native.set_property(ctx.as_ptr(), "stalkerAvailable", JSValue::bool(true));
+    native.set_property(
+        ctx.as_ptr(),
+        "recommendedInstrumentationPath",
+        JSValue::string(ctx.as_ptr(), "trace-stalker-inline-hook"),
+    );
     native.set_property(
         ctx.as_ptr(),
         "symbolSupportAvailable",
@@ -12341,9 +12478,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "images", js_native_images, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "export", js_native_export, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "base", js_native_base, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findBase", js_native_base, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "mainImage", js_native_main_image, 0);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findMainImage", js_native_main_image, 0);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "image", js_native_image, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findImage", js_native_image, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbol", js_native_symbol, 1);
+        add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSymbol", js_native_symbol, 1);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "findSymbols", js_native_find_symbols, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbols", js_native_find_symbols, 2);
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "symbolInfo", js_native_symbol_info, 2);
@@ -12566,4 +12707,38 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
 
     global.set_property(ctx.as_ptr(), "Native", native);
     global.free(ctx.as_ptr());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_load_command(name: &str, command: u32, index: usize) -> native_api::ImageLoadCommand {
+        native_api::ImageLoadCommand {
+            module_name: "Demo".to_string(),
+            module_base: 0x1000,
+            index,
+            command,
+            command_size: 0x30,
+            command_offset: 0x20,
+            command_name: name.to_string(),
+            detail: Some("raw".to_string()),
+        }
+    }
+
+    #[test]
+    fn load_command_query_matches_normalized_names_numbers_and_indexes() {
+        let dyld = sample_load_command("LC_DYLD_INFO_ONLY", 0x8000_0022, 7);
+        assert!(load_command_matches_query(&dyld, "LC_DYLD_INFO_ONLY"));
+        assert!(load_command_matches_query(&dyld, "dyld_info_only"));
+        assert!(load_command_matches_query(&dyld, "dyld-info-only"));
+        assert!(load_command_matches_query(&dyld, "0x80000022"));
+        assert!(load_command_matches_query(&dyld, "0x22"));
+        assert!(load_command_matches_query(&dyld, "7"));
+
+        let uuid = sample_load_command("LC_UUID", 0x1b, 2);
+        assert!(load_command_matches_query(&uuid, "uuid"));
+        assert!(load_command_matches_query(&uuid, "LC-UUID"));
+        assert!(!load_command_matches_query(&uuid, "dyld_info_only"));
+    }
 }

@@ -76,6 +76,7 @@ fn parse_code_signature_blob_header(bytes: &[u8]) -> Result<(u32, String, u32, O
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use common::{Error, Result};
+    use std::mem::size_of;
 
     use super::{checked_add_usize, parse_code_signature_blob_header};
     use crate::{enumerate_images, image_name_matches, ImageCodeSignature, ImageInfo};
@@ -161,25 +162,43 @@ mod platform {
         let mut linkedit_segment = None;
         let mut code_signature = None;
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             match load.cmd {
                 LC_SEGMENT_64 => {
+                    if command_size < size_of::<SegmentCommand64>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
                     let segment = unsafe { &*(command_ptr as *const SegmentCommand64) };
                     if segment_name(segment) == "__LINKEDIT" {
                         linkedit_segment = Some(segment);
                     }
                 }
                 LC_CODE_SIGNATURE => {
+                    if command_size < size_of::<LinkeditDataCommand>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
                     code_signature = Some(unsafe { &*(command_ptr as *const LinkeditDataCommand) });
                 }
                 _ => {}
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 
@@ -270,9 +289,7 @@ mod tests {
 
     #[test]
     fn parses_superblob_header_fields() {
-        let bytes = [
-            0xfa, 0xde, 0x0c, 0xc0, 0x00, 0x00, 0x01, 0x20, 0x00, 0x00, 0x00, 0x03,
-        ];
+        let bytes = [0xfa, 0xde, 0x0c, 0xc0, 0x00, 0x00, 0x01, 0x20, 0x00, 0x00, 0x00, 0x03];
         let (magic, magic_name, length, count) = parse_code_signature_blob_header(&bytes).expect("parse");
         assert_eq!(magic, 0xfade0cc0);
         assert_eq!(magic_name, "CSMAGIC_EMBEDDED_SIGNATURE");

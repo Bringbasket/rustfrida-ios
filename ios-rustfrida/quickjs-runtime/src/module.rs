@@ -31,8 +31,16 @@ unsafe fn image_to_js(ctx: *mut ffi::JSContext, image: &ImageInfo) -> ffi::JSVal
     object.set_property(ctx, "name", JSValue::string(ctx, basename));
     object.set_property(ctx, "path", JSValue::string(ctx, &image.name));
     object.set_property(ctx, "base", create_native_pointer(ctx, image.base as u64));
-    object.set_property(ctx, "slide", JSValue(js_i64_to_js_number_or_bigint(ctx, image.slide as i64)));
-    object.set_property(ctx, "size", JSValue(js_u64_to_js_number_or_bigint(ctx, image.size as u64)));
+    object.set_property(
+        ctx,
+        "slide",
+        JSValue(js_i64_to_js_number_or_bigint(ctx, image.slide as i64)),
+    );
+    object.set_property(
+        ctx,
+        "size",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, image.size as u64)),
+    );
     object.raw()
 }
 

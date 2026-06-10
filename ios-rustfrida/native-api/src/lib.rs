@@ -41,7 +41,9 @@ pub use code_signature::{find_image_code_signature, image_code_signature_support
 pub use data_in_code::{
     find_image_data_in_code, image_data_in_code_support_available, ImageDataInCode, ImageDataInCodeEntry,
 };
-pub use deps::{find_image_dependencies, image_dependency_support_available, ImageDependency};
+pub use deps::{
+    dependency_path_or_name_matches, find_image_dependencies, image_dependency_support_available, ImageDependency,
+};
 pub use dyld_info::{find_image_dyld_info, image_dyld_info_support_available, ImageDyldInfo};
 pub use dylinker::{find_image_dylinker, image_dylinker_support_available, ImageDylinker};
 pub use encryption_info::{find_image_encryption_info, image_encryption_info_support_available, ImageEncryptionInfo};
@@ -63,9 +65,9 @@ pub use injection::{
 pub use install_name::{find_image_install_name, image_install_name_support_available, ImageInstallName};
 pub use jailbreak::{
     current_hook_policy, detect_hook_environment, hook_coexistence_layer_status,
-    hook_coexistence_layer_status_for_mode, hook_environment_recommendations,
-    hook_environment_recommended_actions, resolve_hook_strategy, HookBackendInfo,
-    HookCoexistenceLayerStatus, HookEnvironmentReport, HookPolicy, HookRecommendedAction, HookStrategyDecision,
+    hook_coexistence_layer_status_for_mode, hook_environment_recommendations, hook_environment_recommended_actions,
+    resolve_hook_strategy, HookBackendInfo, HookCoexistenceLayerStatus, HookEnvironmentReport, HookPolicy,
+    HookRecommendedAction, HookStrategyDecision,
 };
 pub use linkedit::{find_image_linkedit_info, image_linkedit_info_support_available, ImageLinkeditInfo};
 pub use loadcmds::{find_image_load_commands, image_load_command_support_available, ImageLoadCommand};
@@ -73,14 +75,15 @@ pub use pac::{
     current_process_uses_arm64e, enumerate_arm64e_images, image_uses_arm64e, normalize_code_pointer,
     pac_support_available, strip_code_pointer, strip_data_pointer,
 };
-pub use rpaths::{find_image_rpaths, image_rpath_support_available, ImageRpath};
-pub use sections::{find_image_sections, image_section_support_available, ImageSection};
-pub use segments::{find_image_segments, image_segment_support_available, ImageSegment};
+pub use rpaths::{find_image_rpaths, image_rpath_support_available, rpath_path_or_name_matches, ImageRpath};
+pub use sections::{find_image_sections, image_section_support_available, section_name_matches, ImageSection};
+pub use segments::{find_image_segments, image_segment_support_available, segment_name_matches, ImageSegment};
 pub use source_version::{find_image_source_version, image_source_version_support_available, ImageSourceVersion};
 pub use swift::{
     find_swift_conformances, find_swift_metadata, find_swift_method_owners, find_swift_methods, find_swift_protocols,
     find_swift_symbols, find_swift_type_layouts, find_swift_type_methods, find_swift_types, find_swift_types_of_kind,
-    find_swift_vtable, find_swift_witness_tables, swift_demangle_symbol, swift_support_available,
+    find_swift_vtable, find_swift_witness_tables, swift_conformance_names_match, swift_demangle_symbol,
+    swift_member_name_matches, swift_protocol_name_matches, swift_support_available, swift_type_name_matches,
     swift_type_source_kinds, SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout,
     SwiftVtableEntry, SwiftWitnessTable,
 };
@@ -346,6 +349,7 @@ pub(crate) fn validate_thread_bootstrap_symbol_for_target(
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use std::ffi::{CStr, CString};
+    use std::mem::size_of;
     use std::os::raw::{c_char, c_void};
 
     use common::Result;
@@ -471,10 +475,27 @@ mod platform {
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
         let mut min_runtime_start = None::<u128>;
         let mut max_runtime_end = None::<u128>;
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
 
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             if load.cmd == LC_SEGMENT_64 {
+                if command_size < size_of::<SegmentCommand64>() {
+                    consumed += command_size;
+                    command_ptr = unsafe { command_ptr.add(command_size) };
+                    continue;
+                }
+
                 let segment = unsafe { &*(command_ptr as *const SegmentCommand64) };
                 let runtime_start = i128::from(segment.vmaddr) + (slide as i128);
                 let runtime_end = runtime_start + i128::from(segment.vmsize);
@@ -494,10 +515,7 @@ mod platform {
                 }
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 

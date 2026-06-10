@@ -20,6 +20,10 @@ pub fn find_image_dependencies(module_name: &str, query: Option<&str>) -> Result
     platform::find_image_dependencies(module_name, query)
 }
 
+pub fn dependency_path_or_name_matches(path: &str, query: &str) -> bool {
+    query_matches_dependency(path, query)
+}
+
 #[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
 fn query_matches_dependency(path: &str, query: &str) -> bool {
     let trimmed = query.trim();
@@ -28,12 +32,58 @@ fn query_matches_dependency(path: &str, query: &str) -> bool {
     }
 
     let needle = trimmed.to_ascii_lowercase();
-    path.to_ascii_lowercase().contains(&needle)
+    dependency_search_terms(path)
+        .into_iter()
+        .any(|term| term.contains(&needle))
+}
+
+fn dependency_search_terms(path: &str) -> Vec<String> {
+    let trimmed = path.trim();
+    let mut terms = Vec::new();
+    push_unique_lowercase(&mut terms, trimmed);
+
+    let basename = trimmed.rsplit('/').next().unwrap_or(trimmed);
+    push_unique_lowercase(&mut terms, basename);
+
+    if let Some(framework_name) = framework_name_from_path(trimmed) {
+        push_unique_lowercase(&mut terms, framework_name);
+    }
+
+    if let Some(stem) = basename.strip_suffix(".dylib") {
+        push_unique_lowercase(&mut terms, stem);
+        if let Some(without_lib) = stem.strip_prefix("lib") {
+            push_unique_lowercase(&mut terms, without_lib);
+            if let Some((base, _suffix)) = without_lib.split_once('.') {
+                push_unique_lowercase(&mut terms, base);
+            }
+        }
+        if let Some((base, _suffix)) = stem.split_once('.') {
+            push_unique_lowercase(&mut terms, base);
+        }
+    }
+
+    terms
+}
+
+fn framework_name_from_path(path: &str) -> Option<&str> {
+    path.split('/')
+        .find_map(|component| component.strip_suffix(".framework"))
+}
+
+fn push_unique_lowercase(terms: &mut Vec<String>, value: &str) {
+    if value.is_empty() {
+        return;
+    }
+    let normalized = value.to_ascii_lowercase();
+    if !terms.iter().any(|term| term == &normalized) {
+        terms.push(normalized);
+    }
 }
 
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use common::{Error, Result};
+    use std::mem::size_of;
 
     use crate::{enumerate_images, image_name_matches, ImageDependency, ImageInfo};
 
@@ -116,14 +166,31 @@ mod platform {
         let mut dependencies = Vec::new();
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
         let mut ordinal = 0usize;
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
 
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             match load.cmd {
                 LC_LOAD_DYLIB | LC_LOAD_WEAK_DYLIB | LC_REEXPORT_DYLIB | LC_LOAD_UPWARD_DYLIB => {
+                    if command_size < size_of::<DylibCommand>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
+
                     ordinal += 1;
                     let command = unsafe { &*(command_ptr as *const DylibCommand) };
-                    let bytes = unsafe { std::slice::from_raw_parts(command_ptr, load.cmdsize as usize) };
+                    let bytes = unsafe { std::slice::from_raw_parts(command_ptr, command_size) };
                     let path = read_command_string(bytes, command.dylib.name).unwrap_or_default();
                     if query
                         .map(|query| query_matches_dependency(&path, query))
@@ -144,10 +211,7 @@ mod platform {
                 _ => {}
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 
@@ -208,7 +272,7 @@ mod platform {
 
 #[cfg(test)]
 mod tests {
-    use super::{find_image_dependencies, query_matches_dependency};
+    use super::{dependency_path_or_name_matches, find_image_dependencies, query_matches_dependency};
 
     #[test]
     fn dependency_query_matches_substrings() {
@@ -218,6 +282,32 @@ mod tests {
             "uikit"
         ));
         assert!(!query_matches_dependency("/usr/lib/libSystem.B.dylib", "uikit"));
+    }
+
+    #[test]
+    fn dependency_query_matches_normalized_install_names() {
+        assert!(dependency_path_or_name_matches(
+            "/System/Library/Frameworks/UIKit.framework/UIKit",
+            "UIKit"
+        ));
+        assert!(dependency_path_or_name_matches(
+            "/System/Library/Frameworks/UIKit.framework/UIKit",
+            "UIKit.framework"
+        ));
+        assert!(dependency_path_or_name_matches(
+            "/usr/lib/libobjc.A.dylib",
+            "libobjc.A.dylib"
+        ));
+        assert!(dependency_path_or_name_matches("/usr/lib/libobjc.A.dylib", "libobjc.A"));
+        assert!(dependency_path_or_name_matches("/usr/lib/libobjc.A.dylib", "objc.A"));
+        assert!(dependency_path_or_name_matches("/usr/lib/libobjc.A.dylib", "objc"));
+        assert!(dependency_path_or_name_matches("/usr/lib/libSystem.B.dylib", "System"));
+        assert!(dependency_path_or_name_matches("/usr/lib/libSystem.B.dylib", "system"));
+        assert!(dependency_path_or_name_matches("@rpath/Foo.framework/Foo", "Foo"));
+        assert!(!dependency_path_or_name_matches(
+            "/System/Library/Frameworks/UIKit.framework/UIKit",
+            "Foundation"
+        ));
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "macos")))]

@@ -162,6 +162,27 @@ pub fn find_swift_methods(module_name: Option<&str>, type_name: &str, method_que
     platform::find_swift_methods(module_name, type_name, method_query)
 }
 
+pub fn swift_type_name_matches(type_name: &str, query: &str) -> bool {
+    query_matches_swift_type(type_name, query)
+}
+
+pub fn swift_protocol_name_matches(protocol_name: &str, query: &str) -> bool {
+    query_matches_swift_type(protocol_name, query)
+}
+
+pub fn swift_conformance_names_match(
+    type_name: &str,
+    protocol_name: &str,
+    type_query: &str,
+    protocol_query: &str,
+) -> bool {
+    query_matches_swift_type(type_name, type_query) && query_matches_swift_type(protocol_name, protocol_query)
+}
+
+pub fn swift_member_name_matches(member_name: &str, query: &str) -> bool {
+    query_matches_swift_member_name(member_name, query)
+}
+
 #[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
 fn normalize_symbol_name(symbol_name: &str) -> &str {
     symbol_name.strip_prefix('_').unwrap_or(symbol_name)
@@ -591,6 +612,7 @@ fn normalize_swift_type_source_kind(kind: &str) -> Option<&'static str> {
 mod platform {
     use std::collections::BTreeMap;
     use std::ffi::{CStr, CString};
+    use std::mem::size_of;
     use std::os::raw::{c_char, c_void};
 
     use common::{Error, Result};
@@ -1241,27 +1263,47 @@ mod platform {
         let mut linkedit_segment = None;
         let mut symtab = None;
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
 
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             match load.cmd {
                 LC_SEGMENT_64 => {
+                    if command_size < size_of::<SegmentCommand64>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
+
                     let segment = unsafe { &*(command_ptr as *const SegmentCommand64) };
                     if segment_name(segment) == "__LINKEDIT" {
                         linkedit_segment = Some(segment);
                     }
                 }
                 LC_SYMTAB => {
+                    if command_size < size_of::<SymtabCommand>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
+
                     let table = unsafe { &*(command_ptr as *const SymtabCommand) };
                     symtab = Some(table);
                 }
                 _ => {}
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 
@@ -1514,6 +1556,7 @@ mod tests {
         infer_swift_conformance_source_kind, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
         looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_conformance_query,
         query_matches_swift_member_name, query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
+        swift_conformance_names_match, swift_member_name_matches, swift_protocol_name_matches, swift_type_name_matches,
     };
 
     #[test]
@@ -1645,6 +1688,25 @@ mod tests {
         assert!(query_matches_swift_type("Demo.ViewController", "viewcontroller"));
         assert!(query_matches_swift_type("Demo.ViewController", "demo.view"));
         assert!(!query_matches_swift_type("Demo.ViewController", "appdelegate"));
+    }
+
+    #[test]
+    fn public_swift_info_matchers_accept_partial_names() {
+        assert!(swift_type_name_matches("Demo.ViewController", "ViewController"));
+        assert!(swift_protocol_name_matches("Demo.Renderable", "renderable"));
+        assert!(swift_conformance_names_match(
+            "Demo.ViewController",
+            "Demo.Renderable",
+            "viewcontroller",
+            "render"
+        ));
+        assert!(swift_member_name_matches("viewDidLoad", "didload"));
+        assert!(!swift_conformance_names_match(
+            "Demo.ViewController",
+            "Demo.Renderable",
+            "viewcontroller",
+            "hashable"
+        ));
     }
 
     #[test]

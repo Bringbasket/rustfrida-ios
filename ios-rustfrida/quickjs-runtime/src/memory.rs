@@ -354,7 +354,7 @@ fn proc_maps_entries(maps: &str) -> impl Iterator<Item = ProcMapEntry<'_>> + '_ 
     maps.lines().filter_map(parse_proc_map_line)
 }
 
-fn is_addr_accessible(addr: u64, size: usize) -> bool {
+pub(crate) fn is_addr_accessible(addr: u64, size: usize) -> bool {
     if addr == 0 || size == 0 {
         return false;
     }

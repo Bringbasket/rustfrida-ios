@@ -78,6 +78,7 @@ fn decode_data_in_code_entries(module_base: usize, bytes: &[u8]) -> Result<Vec<I
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use common::{Error, Result};
+    use std::mem::size_of;
 
     use super::{checked_add_usize, decode_data_in_code_entries};
     use crate::{enumerate_images, image_name_matches, ImageDataInCode, ImageInfo};
@@ -163,25 +164,43 @@ mod platform {
         let mut linkedit_segment = None;
         let mut data_in_code = None;
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             match load.cmd {
                 LC_SEGMENT_64 => {
+                    if command_size < size_of::<SegmentCommand64>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
                     let segment = unsafe { &*(command_ptr as *const SegmentCommand64) };
                     if segment_name(segment) == "__LINKEDIT" {
                         linkedit_segment = Some(segment);
                     }
                 }
                 LC_DATA_IN_CODE => {
+                    if command_size < size_of::<LinkeditDataCommand>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
                     data_in_code = Some(unsafe { &*(command_ptr as *const LinkeditDataCommand) });
                 }
                 _ => {}
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 
@@ -263,8 +282,7 @@ mod tests {
     #[test]
     fn decodes_data_in_code_entries() {
         let bytes = [
-            0x10, 0x00, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00, 0x40, 0x00, 0x00, 0x00, 0x10, 0x00,
-            0x04, 0x00,
+            0x10, 0x00, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00, 0x40, 0x00, 0x00, 0x00, 0x10, 0x00, 0x04, 0x00,
         ];
         let entries = decode_data_in_code_entries(0x1000, &bytes).expect("decode");
         assert_eq!(entries.len(), 2);

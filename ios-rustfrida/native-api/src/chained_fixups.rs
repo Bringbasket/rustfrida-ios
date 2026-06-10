@@ -308,11 +308,7 @@ fn parse_chained_fixups_segments(bytes: &[u8], starts_offset: u32) -> Result<Vec
         let page_size = read_le_u16(bytes, segment_offset + 4, "dyld chained fixups page_size")?;
         let pointer_format = read_le_u16(bytes, segment_offset + 6, "dyld chained fixups pointer_format")?;
         let segment_vm_offset = read_le_u64(bytes, segment_offset + 8, "dyld chained fixups segment_offset")?;
-        let max_valid_pointer = read_le_u32(
-            bytes,
-            segment_offset + 16,
-            "dyld chained fixups max_valid_pointer",
-        )?;
+        let max_valid_pointer = read_le_u32(bytes, segment_offset + 16, "dyld chained fixups max_valid_pointer")?;
         let page_count = read_le_u16(bytes, segment_offset + 20, "dyld chained fixups page_count")?;
         let (pages, fixup_page_count, multi_page_count) =
             parse_chained_fixups_pages(bytes, segment_offset, segment_end, page_count)?;
@@ -364,11 +360,7 @@ fn parse_chained_fixups_imports(
     for index in 0..imports_count as usize {
         match imports_format {
             1 => {
-                let raw = read_le_u32(
-                    bytes,
-                    imports_offset + index * 4,
-                    "dyld chained fixups import entry",
-                )?;
+                let raw = read_le_u32(bytes, imports_offset + index * 4, "dyld chained fixups import entry")?;
                 let lib_ordinal_raw = u64::from(raw & 0xff);
                 let weak_import = ((raw >> 8) & 1) != 0;
                 let name_offset = raw >> 9;
@@ -430,6 +422,7 @@ fn parse_chained_fixups_imports(
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use common::{Error, Result};
+    use std::mem::size_of;
 
     use super::{
         checked_add_usize, imports_format_name, parse_chained_fixups_imports, parse_chained_fixups_segments,
@@ -520,26 +513,44 @@ mod platform {
         let mut linkedit_segment = None;
         let mut chained_fixups = None;
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             let normalized_cmd = load.cmd & !LC_REQ_DYLD;
             match normalized_cmd {
                 LC_SEGMENT_64 => {
+                    if command_size < size_of::<SegmentCommand64>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
                     let segment = unsafe { &*(command_ptr as *const SegmentCommand64) };
                     if segment_name(segment) == "__LINKEDIT" {
                         linkedit_segment = Some(segment);
                     }
                 }
                 cmd if cmd == LC_DYLD_CHAINED_FIXUPS || cmd == LC_DYLD_CHAINED_FIXUPS_ALT => {
+                    if command_size < size_of::<LinkeditDataCommand>() {
+                        consumed += command_size;
+                        command_ptr = unsafe { command_ptr.add(command_size) };
+                        continue;
+                    }
                     chained_fixups = Some(unsafe { &*(command_ptr as *const LinkeditDataCommand) });
                 }
                 _ => {}
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 
@@ -774,8 +785,8 @@ mod tests {
     #[cfg(not(any(target_os = "ios", target_os = "macos")))]
     #[test]
     fn non_apple_chained_fixups_reports_unsupported() {
-        let err = find_image_chained_fixups("libsystem_malloc.dylib")
-            .expect_err("non-apple platforms should be unsupported");
+        let err =
+            find_image_chained_fixups("libsystem_malloc.dylib").expect_err("non-apple platforms should be unsupported");
         assert!(err.to_string().contains("Apple targets"));
     }
 }

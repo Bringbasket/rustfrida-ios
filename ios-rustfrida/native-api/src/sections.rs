@@ -21,9 +21,29 @@ pub fn find_image_sections(module_name: &str) -> Result<Vec<ImageSection>> {
     platform::find_image_sections(module_name)
 }
 
+pub fn section_name_matches(segment_name: &str, section_name: &str, segment_query: &str, section_query: &str) -> bool {
+    if !segment_name.trim().eq_ignore_ascii_case(segment_query.trim()) {
+        return false;
+    }
+
+    let section_query = normalized_section_query(section_query);
+    section_name.trim().eq_ignore_ascii_case(section_query)
+}
+
+fn normalized_section_query(query: &str) -> &str {
+    let trimmed = query.trim();
+    trimmed
+        .rsplit_once('.')
+        .or_else(|| trimmed.rsplit_once(','))
+        .map(|(_segment, section)| section.trim())
+        .filter(|section| !section.is_empty())
+        .unwrap_or(trimmed)
+}
+
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use common::{Error, Result};
+    use std::mem::size_of;
 
     use crate::{enumerate_images, image_name_matches, ImageInfo, ImageSection};
 
@@ -114,16 +134,36 @@ mod platform {
 
         let mut sections = Vec::new();
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
 
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             if load.cmd == LC_SEGMENT_64 {
+                if command_size < size_of::<SegmentCommand64>() {
+                    consumed += command_size;
+                    command_ptr = unsafe { command_ptr.add(command_size) };
+                    continue;
+                }
+
                 let segment = unsafe { &*(command_ptr as *const SegmentCommand64) };
                 let segment_name = fixed_string(&segment.segname);
-                let section_ptr = unsafe { (command_ptr as *const u8).add(std::mem::size_of::<SegmentCommand64>()) }
-                    as *const Section64;
+                let section_bytes = command_size.saturating_sub(size_of::<SegmentCommand64>());
+                let available_sections = section_bytes / size_of::<Section64>();
+                let section_count = (segment.nsects as usize).min(available_sections);
+                let section_ptr =
+                    unsafe { (command_ptr as *const u8).add(size_of::<SegmentCommand64>()) } as *const Section64;
 
-                for index in 0..segment.nsects as usize {
+                for index in 0..section_count {
                     let section = unsafe { &*section_ptr.add(index) };
                     sections.push(ImageSection {
                         module_name: image.name.clone(),
@@ -143,10 +183,7 @@ mod platform {
                 }
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 
@@ -188,7 +225,16 @@ mod platform {
 
 #[cfg(test)]
 mod tests {
-    use super::find_image_sections;
+    use super::{find_image_sections, section_name_matches};
+
+    #[test]
+    fn section_name_matching_accepts_case_and_full_names() {
+        assert!(section_name_matches("__TEXT", "__text", "__text", "__TEXT.__text"));
+        assert!(section_name_matches("__TEXT", "__text", "__TEXT", "__TEXT,__text"));
+        assert!(section_name_matches("__DATA_CONST", "__got", "__data_const", "__got"));
+        assert!(!section_name_matches("__TEXT", "__text", "__DATA", "__text"));
+        assert!(!section_name_matches("__TEXT", "__text", "__TEXT", "__cstring"));
+    }
 
     #[cfg(not(any(target_os = "ios", target_os = "macos")))]
     #[test]

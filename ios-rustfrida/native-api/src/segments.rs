@@ -21,9 +21,14 @@ pub fn find_image_segments(module_name: &str) -> Result<Vec<ImageSegment>> {
     platform::find_image_segments(module_name)
 }
 
+pub fn segment_name_matches(segment_name: &str, query: &str) -> bool {
+    segment_name.trim().eq_ignore_ascii_case(query.trim())
+}
+
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use common::{Error, Result};
+    use std::mem::size_of;
 
     use crate::{enumerate_images, image_name_matches, ImageInfo, ImageSegment};
 
@@ -98,10 +103,27 @@ mod platform {
 
         let mut segments = Vec::new();
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
 
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             if load.cmd == LC_SEGMENT_64 {
+                if command_size < size_of::<SegmentCommand64>() {
+                    consumed += command_size;
+                    command_ptr = unsafe { command_ptr.add(command_size) };
+                    continue;
+                }
+
                 let segment = unsafe { &*(command_ptr as *const SegmentCommand64) };
                 segments.push(ImageSegment {
                     module_name: image.name.clone(),
@@ -116,10 +138,7 @@ mod platform {
                 });
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 
@@ -165,7 +184,14 @@ mod platform {
 
 #[cfg(test)]
 mod tests {
-    use super::find_image_segments;
+    use super::{find_image_segments, segment_name_matches};
+
+    #[test]
+    fn segment_name_matching_is_case_insensitive() {
+        assert!(segment_name_matches("__TEXT", "__text"));
+        assert!(segment_name_matches("__DATA_CONST", "__data_const"));
+        assert!(!segment_name_matches("__TEXT", "__DATA"));
+    }
 
     #[cfg(not(any(target_os = "ios", target_os = "macos")))]
     #[test]

@@ -102,11 +102,26 @@ mod platform {
         }
 
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             if load.cmd == LC_BUILD_VERSION {
+                if command_size < size_of::<BuildVersionCommand>() {
+                    return Ok(None);
+                }
+
                 let command = unsafe { &*(command_ptr as *const BuildVersionCommand) };
-                let bytes = unsafe { std::slice::from_raw_parts(command_ptr, load.cmdsize as usize) };
+                let bytes = unsafe { std::slice::from_raw_parts(command_ptr, command_size) };
                 return Ok(Some(ImageBuildVersion {
                     module_name: image.name.clone(),
                     module_base: image.base,
@@ -117,10 +132,7 @@ mod platform {
                 }));
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 

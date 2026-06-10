@@ -15,6 +15,10 @@ pub fn find_image_rpaths(module_name: &str, query: Option<&str>) -> Result<Vec<I
     platform::find_image_rpaths(module_name, query)
 }
 
+pub fn rpath_path_or_name_matches(path: &str, query: &str) -> bool {
+    query_matches_rpath(path, query)
+}
+
 #[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
 fn query_matches_rpath(path: &str, query: &str) -> bool {
     let trimmed = query.trim();
@@ -22,12 +26,41 @@ fn query_matches_rpath(path: &str, query: &str) -> bool {
         return false;
     }
 
-    path.to_ascii_lowercase().contains(&trimmed.to_ascii_lowercase())
+    let needle = trimmed.to_ascii_lowercase();
+    rpath_search_terms(path).into_iter().any(|term| term.contains(&needle))
+}
+
+fn rpath_search_terms(path: &str) -> Vec<String> {
+    let trimmed = path.trim();
+    let mut terms = Vec::new();
+    push_unique_lowercase(&mut terms, trimmed);
+
+    for token in ["@loader_path/", "@executable_path/", "@rpath/"] {
+        if let Some(without_token) = trimmed.strip_prefix(token) {
+            push_unique_lowercase(&mut terms, without_token);
+        }
+    }
+
+    let basename = trimmed.rsplit('/').next().unwrap_or(trimmed);
+    push_unique_lowercase(&mut terms, basename);
+
+    terms
+}
+
+fn push_unique_lowercase(terms: &mut Vec<String>, value: &str) {
+    if value.is_empty() {
+        return;
+    }
+    let normalized = value.to_ascii_lowercase();
+    if !terms.iter().any(|term| term == &normalized) {
+        terms.push(normalized);
+    }
 }
 
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod platform {
     use common::{Error, Result};
+    use std::mem::size_of;
 
     use crate::{enumerate_images, image_name_matches, ImageInfo, ImageRpath};
 
@@ -98,12 +131,29 @@ mod platform {
 
         let mut rpaths = Vec::new();
         let mut command_ptr = unsafe { header_ptr_after_header(header) };
+        let command_region_size = header.sizeofcmds as usize;
+        let mut consumed = 0usize;
 
         for _ in 0..header.ncmds {
+            if consumed.saturating_add(size_of::<LoadCommand>()) > command_region_size {
+                break;
+            }
+
             let load = unsafe { &*(command_ptr as *const LoadCommand) };
+            let command_size = load.cmdsize as usize;
+            if command_size < size_of::<LoadCommand>() || consumed.saturating_add(command_size) > command_region_size {
+                break;
+            }
+
             if load.cmd == LC_RPATH {
+                if command_size < size_of::<RpathCommand>() {
+                    consumed += command_size;
+                    command_ptr = unsafe { command_ptr.add(command_size) };
+                    continue;
+                }
+
                 let command = unsafe { &*(command_ptr as *const RpathCommand) };
-                let bytes = unsafe { std::slice::from_raw_parts(command_ptr, load.cmdsize as usize) };
+                let bytes = unsafe { std::slice::from_raw_parts(command_ptr, command_size) };
                 let path = read_command_string(bytes, command.path).unwrap_or_default();
                 if query.map(|query| query_matches_rpath(&path, query)).unwrap_or(true) {
                     rpaths.push(ImageRpath {
@@ -114,10 +164,7 @@ mod platform {
                 }
             }
 
-            let command_size = load.cmdsize as usize;
-            if command_size == 0 {
-                break;
-            }
+            consumed += command_size;
             command_ptr = unsafe { command_ptr.add(command_size) };
         }
 
@@ -168,13 +215,28 @@ mod platform {
 
 #[cfg(test)]
 mod tests {
-    use super::{find_image_rpaths, query_matches_rpath};
+    use super::{find_image_rpaths, query_matches_rpath, rpath_path_or_name_matches};
 
     #[test]
     fn rpath_query_matches_substrings() {
         assert!(query_matches_rpath("@loader_path/Frameworks", "frameworks"));
         assert!(query_matches_rpath("@executable_path/Frameworks", "EXECUTABLE_PATH"));
         assert!(!query_matches_rpath("@loader_path/Frameworks", "plugins"));
+    }
+
+    #[test]
+    fn rpath_query_matches_token_stripped_paths() {
+        assert!(rpath_path_or_name_matches(
+            "@loader_path/Frameworks",
+            "loader_path/Frameworks"
+        ));
+        assert!(rpath_path_or_name_matches("@loader_path/Frameworks", "Frameworks"));
+        assert!(rpath_path_or_name_matches("@executable_path/PlugIns", "PlugIns"));
+        assert!(rpath_path_or_name_matches(
+            "@rpath/Nested/Frameworks",
+            "Nested/Frameworks"
+        ));
+        assert!(!rpath_path_or_name_matches("@loader_path/Frameworks", "Libraries"));
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "macos")))]
