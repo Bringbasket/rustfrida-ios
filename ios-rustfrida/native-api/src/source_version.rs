@@ -20,9 +20,9 @@ mod platform {
     use common::{Error, Result};
     use std::mem::size_of;
 
+    use crate::macho_load_commands::LC_SOURCE_VERSION;
     use crate::{enumerate_images, image_name_matches, ImageInfo, ImageSourceVersion};
 
-    const LC_SOURCE_VERSION: u32 = 0x2b;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]

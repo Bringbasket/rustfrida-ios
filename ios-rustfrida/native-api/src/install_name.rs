@@ -23,9 +23,9 @@ mod platform {
     use common::{Error, Result};
     use std::mem::size_of;
 
+    use crate::macho_load_commands::LC_ID_DYLIB;
     use crate::{enumerate_images, image_name_matches, ImageInfo, ImageInstallName};
 
-    const LC_ID_DYLIB: u32 = 0xd;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]

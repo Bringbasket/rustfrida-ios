@@ -31,11 +31,9 @@ mod platform {
     use common::{Error, Result};
     use std::mem::size_of;
 
+    use crate::macho_load_commands::{load_command_name, LC_DYLD_INFO, LC_DYLD_INFO_ONLY};
     use crate::{enumerate_images, image_name_matches, ImageDyldInfo, ImageInfo};
 
-    const LC_DYLD_INFO: u32 = 0x22;
-    const LC_DYLD_INFO_ONLY: u32 = 0x23;
-    const LC_REQ_DYLD: u32 = 0x8000_0000;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]
@@ -119,8 +117,7 @@ mod platform {
                 break;
             }
 
-            let normalized_cmd = load.cmd & !LC_REQ_DYLD;
-            if normalized_cmd == LC_DYLD_INFO || normalized_cmd == LC_DYLD_INFO_ONLY {
+            if matches!(load.cmd, LC_DYLD_INFO | LC_DYLD_INFO_ONLY) {
                 if command_size < size_of::<DyldInfoCommand>() {
                     return Ok(None);
                 }
@@ -130,7 +127,7 @@ mod platform {
                     module_name: image.name.clone(),
                     module_base: image.base,
                     command: load.cmd,
-                    command_name: command_name(load.cmd).into(),
+                    command_name: load_command_name(load.cmd).into(),
                     rebase_off: command.rebase_off,
                     rebase_size: command.rebase_size,
                     bind_off: command.bind_off,
@@ -153,14 +150,6 @@ mod platform {
 
     unsafe fn header_ptr_after_header(header: &MachHeader64) -> *const u8 {
         (header as *const MachHeader64).add(1) as *const u8
-    }
-
-    fn command_name(cmd: u32) -> &'static str {
-        match cmd & !LC_REQ_DYLD {
-            LC_DYLD_INFO => "LC_DYLD_INFO",
-            LC_DYLD_INFO_ONLY => "LC_DYLD_INFO_ONLY",
-            _ => "LC_UNKNOWN",
-        }
     }
 }
 

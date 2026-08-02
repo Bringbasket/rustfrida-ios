@@ -81,10 +81,9 @@ mod platform {
     use std::mem::size_of;
 
     use super::{checked_add_usize, decode_data_in_code_entries};
+    use crate::macho_load_commands::{LC_DATA_IN_CODE, LC_SEGMENT_64};
     use crate::{enumerate_images, image_name_matches, ImageDataInCode, ImageInfo};
 
-    const LC_SEGMENT_64: u32 = 0x19;
-    const LC_DATA_IN_CODE: u32 = 0x29;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]

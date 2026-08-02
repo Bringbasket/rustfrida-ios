@@ -230,12 +230,9 @@ mod platform {
     use std::mem::size_of;
 
     use super::{checked_add_usize, decode_exports_trie};
+    use crate::macho_load_commands::{LC_DYLD_EXPORTS_TRIE, LC_SEGMENT_64};
     use crate::{enumerate_images, image_name_matches, ImageExportsTrie, ImageInfo};
 
-    const LC_SEGMENT_64: u32 = 0x19;
-    const LC_DYLD_EXPORTS_TRIE: u32 = 0x34;
-    const LC_DYLD_EXPORTS_TRIE_ALT: u32 = 0x33;
-    const LC_REQ_DYLD: u32 = 0x8000_0000;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]
@@ -328,8 +325,7 @@ mod platform {
                 break;
             }
 
-            let normalized_cmd = load.cmd & !LC_REQ_DYLD;
-            match normalized_cmd {
+            match load.cmd {
                 LC_SEGMENT_64 => {
                     if command_size < size_of::<SegmentCommand64>() {
                         consumed += command_size;
@@ -341,7 +337,7 @@ mod platform {
                         linkedit_segment = Some(segment);
                     }
                 }
-                cmd if cmd == LC_DYLD_EXPORTS_TRIE || cmd == LC_DYLD_EXPORTS_TRIE_ALT => {
+                LC_DYLD_EXPORTS_TRIE => {
                     if command_size < size_of::<LinkeditDataCommand>() {
                         consumed += command_size;
                         command_ptr = unsafe { command_ptr.add(command_size) };

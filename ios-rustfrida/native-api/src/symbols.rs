@@ -297,12 +297,11 @@ mod platform {
     use common::{Error, Result};
     use std::mem::size_of;
 
+    use crate::macho_load_commands::{LC_SEGMENT_64, LC_SYMTAB};
     use crate::{enumerate_images, image_name_matches, ImageInfo, ImageSymbol, NativeSymbol};
 
     use super::{checked_linkedit_file_range, parse_nlist_symbols, read_u32, read_u64, MachSection, NLIST_64_SIZE};
 
-    const LC_SEGMENT_64: u32 = 0x19;
-    const LC_SYMTAB: u32 = 0x2;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
     const LOAD_COMMAND_SIZE: usize = 8;
     const SEGMENT_COMMAND_64_SIZE: usize = 72;

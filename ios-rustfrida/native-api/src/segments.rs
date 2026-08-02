@@ -30,9 +30,9 @@ mod platform {
     use common::{Error, Result};
     use std::mem::size_of;
 
+    use crate::macho_load_commands::LC_SEGMENT_64;
     use crate::{enumerate_images, image_name_matches, ImageInfo, ImageSegment};
 
-    const LC_SEGMENT_64: u32 = 0x19;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]

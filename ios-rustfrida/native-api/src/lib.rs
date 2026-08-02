@@ -20,6 +20,7 @@ mod linkedit;
 mod loadcmds;
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 mod mach;
+mod macho_load_commands;
 mod pac;
 mod rpaths;
 mod sections;
@@ -380,6 +381,7 @@ mod platform {
     use common::Result;
 
     use crate::jailbreak::resolve_hook_strategy_for_report;
+    use crate::macho_load_commands::LC_SEGMENT_64;
     use crate::{
         current_hook_policy, dry_run_remote_injection_enabled, image_name_matches,
         injection::{build_injection_plan, LoaderSymbolRole, ResolvedLoaderSymbol},
@@ -393,7 +395,6 @@ mod platform {
         fn _dyld_get_image_vmaddr_slide(index: u32) -> isize;
     }
 
-    const LC_SEGMENT_64: u32 = 0x19;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]

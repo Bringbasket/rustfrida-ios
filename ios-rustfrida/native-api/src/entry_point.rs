@@ -21,9 +21,9 @@ mod platform {
     use common::{Error, Result};
     use std::mem::size_of;
 
+    use crate::macho_load_commands::LC_MAIN;
     use crate::{enumerate_images, image_name_matches, ImageEntryPoint, ImageInfo};
 
-    const LC_MAIN: u32 = 0x29;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]

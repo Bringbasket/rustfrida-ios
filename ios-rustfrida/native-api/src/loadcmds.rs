@@ -26,34 +26,16 @@ mod platform {
     use std::mem::size_of;
     use std::slice;
 
+    use crate::macho_load_commands::{
+        load_command_name, LC_BUILD_VERSION, LC_DYLD_CHAINED_FIXUPS, LC_DYLD_EXPORTS_TRIE, LC_DYLD_INFO,
+        LC_DYLD_INFO_ONLY, LC_DYSYMTAB, LC_ENCRYPTION_INFO_64, LC_ID_DYLIB, LC_ID_DYLINKER, LC_LOAD_DYLIB,
+        LC_LOAD_DYLINKER, LC_LOAD_UPWARD_DYLIB, LC_LOAD_WEAK_DYLIB, LC_MAIN, LC_REEXPORT_DYLIB, LC_RPATH,
+        LC_SEGMENT_64, LC_SOURCE_VERSION, LC_SYMTAB, LC_UUID, LC_VERSION_MIN_IPHONEOS, LC_VERSION_MIN_MACOSX,
+        LC_VERSION_MIN_TVOS, LC_VERSION_MIN_WATCHOS,
+    };
     use crate::{enumerate_images, image_name_matches, ImageInfo, ImageLoadCommand};
 
-    const LC_SEGMENT_64: u32 = 0x19;
-    const LC_SYMTAB: u32 = 0x2;
-    const LC_DYSYMTAB: u32 = 0xb;
-    const LC_LOAD_DYLIB: u32 = 0xc;
-    const LC_ID_DYLIB: u32 = 0xd;
-    const LC_LOAD_DYLINKER: u32 = 0xe;
-    const LC_ID_DYLINKER: u32 = 0xf;
-    const LC_LOAD_WEAK_DYLIB: u32 = 0x18;
-    const LC_UUID: u32 = 0x1b;
-    const LC_RPATH: u32 = 0x1c;
-    const LC_REEXPORT_DYLIB: u32 = 0x1f;
-    const LC_DYLD_INFO: u32 = 0x22;
-    const LC_DYLD_INFO_ONLY: u32 = 0x23;
-    const LC_LOAD_UPWARD_DYLIB: u32 = 0x24;
-    const LC_VERSION_MIN_MACOSX: u32 = 0x25;
-    const LC_VERSION_MIN_IPHONEOS: u32 = 0x26;
-    const LC_MAIN: u32 = 0x29;
-    const LC_SOURCE_VERSION: u32 = 0x2b;
-    const LC_ENCRYPTION_INFO_64: u32 = 0x2d;
-    const LC_VERSION_MIN_TVOS: u32 = 0x30;
-    const LC_VERSION_MIN_WATCHOS: u32 = 0x31;
-    const LC_BUILD_VERSION: u32 = 0x33;
-    const LC_DYLD_EXPORTS_TRIE: u32 = 0x34;
-    const LC_DYLD_CHAINED_FIXUPS: u32 = 0x35;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
-    const LC_REQ_DYLD: u32 = 0x8000_0000;
 
     #[derive(Clone, Copy)]
     #[repr(C)]
@@ -292,7 +274,7 @@ mod platform {
                 command: load.cmd,
                 command_size: load.cmdsize,
                 command_offset,
-                command_name: command_name(load.cmd).to_string(),
+                command_name: load_command_name(load.cmd).to_string(),
                 detail: parse_command_detail(command_bytes),
             });
 
@@ -320,7 +302,7 @@ mod platform {
 
     fn parse_command_detail(bytes: &[u8]) -> Option<String> {
         let load = read_struct::<LoadCommand>(bytes)?;
-        match load.cmd & !LC_REQ_DYLD {
+        match load.cmd {
             LC_SEGMENT_64 => {
                 let segment = read_struct::<SegmentCommand64>(bytes)?;
                 Some(format!(
@@ -570,65 +552,6 @@ mod platform {
             _ => "tool",
         }
     }
-
-    fn command_name(cmd: u32) -> &'static str {
-        match cmd & !LC_REQ_DYLD {
-            0x1 => "LC_SEGMENT",
-            0x2 => "LC_SYMTAB",
-            0x4 => "LC_THREAD",
-            0x5 => "LC_UNIXTHREAD",
-            0x6 => "LC_LOADFVMLIB",
-            0x7 => "LC_IDFVMLIB",
-            0x8 => "LC_IDENT",
-            0x9 => "LC_FVMFILE",
-            0xa => "LC_PREPAGE",
-            0xb => "LC_DYSYMTAB",
-            0xc => "LC_LOAD_DYLIB",
-            0xd => "LC_ID_DYLIB",
-            0xe => "LC_LOAD_DYLINKER",
-            0xf => "LC_ID_DYLINKER",
-            0x10 => "LC_PREBOUND_DYLIB",
-            0x11 => "LC_ROUTINES",
-            0x12 => "LC_SUB_FRAMEWORK",
-            0x13 => "LC_SUB_UMBRELLA",
-            0x14 => "LC_SUB_CLIENT",
-            0x15 => "LC_SUB_LIBRARY",
-            0x16 => "LC_TWOLEVEL_HINTS",
-            0x17 => "LC_PREBIND_CKSUM",
-            0x18 => "LC_LOAD_WEAK_DYLIB",
-            0x19 => "LC_SEGMENT_64",
-            0x1a => "LC_ROUTINES_64",
-            0x1b => "LC_UUID",
-            0x1c => "LC_RPATH",
-            0x1d => "LC_CODE_SIGNATURE",
-            0x1e => "LC_SEGMENT_SPLIT_INFO",
-            0x1f => "LC_REEXPORT_DYLIB",
-            0x20 => "LC_LAZY_LOAD_DYLIB",
-            0x21 => "LC_ENCRYPTION_INFO",
-            0x22 => "LC_DYLD_INFO",
-            0x23 => "LC_DYLD_INFO_ONLY",
-            0x24 => "LC_LOAD_UPWARD_DYLIB",
-            0x25 => "LC_VERSION_MIN_MACOSX",
-            0x26 => "LC_VERSION_MIN_IPHONEOS",
-            0x27 => "LC_FUNCTION_STARTS",
-            0x28 => "LC_DYLD_ENVIRONMENT",
-            0x29 => "LC_MAIN",
-            0x2a => "LC_DATA_IN_CODE",
-            0x2b => "LC_SOURCE_VERSION",
-            0x2c => "LC_DYLIB_CODE_SIGN_DRS",
-            0x2d => "LC_ENCRYPTION_INFO_64",
-            0x2e => "LC_LINKER_OPTION",
-            0x2f => "LC_LINKER_OPTIMIZATION_HINT",
-            0x30 => "LC_VERSION_MIN_TVOS",
-            0x31 => "LC_VERSION_MIN_WATCHOS",
-            0x32 => "LC_NOTE",
-            0x33 => "LC_BUILD_VERSION",
-            0x34 => "LC_DYLD_EXPORTS_TRIE",
-            0x35 => "LC_DYLD_CHAINED_FIXUPS",
-            0x36 => "LC_FILESET_ENTRY",
-            _ => "LC_UNKNOWN",
-        }
-    }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "macos")))]
@@ -657,6 +580,66 @@ mod platform {
 #[cfg(test)]
 mod tests {
     use super::find_image_load_commands;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn current_macos_image_uses_canonical_commands_across_parsers() {
+        use crate::macho_load_commands::{
+            LC_BUILD_VERSION, LC_DYLD_CHAINED_FIXUPS, LC_DYLD_EXPORTS_TRIE, LC_FUNCTION_STARTS, LC_MAIN,
+            LC_SOURCE_VERSION,
+        };
+        use crate::{
+            find_image_build_version, find_image_chained_fixups, find_image_entry_point, find_image_exports_trie,
+            find_image_function_starts, find_image_source_version,
+        };
+
+        let executable = std::env::current_exe().expect("current executable");
+        let full_name = executable.to_string_lossy();
+        let mut module_name = full_name.as_ref();
+        let mut commands = find_image_load_commands(module_name).expect("enumerate current image commands");
+        if commands.is_empty() {
+            module_name = executable
+                .file_name()
+                .and_then(|name| name.to_str())
+                .expect("executable basename");
+            commands = find_image_load_commands(module_name).expect("enumerate current image commands by basename");
+        }
+
+        assert!(!commands.is_empty(), "current test image must be visible to dyld");
+        assert!(commands
+            .iter()
+            .any(|command| command.command == LC_MAIN && command.command_name == "LC_MAIN"));
+        assert!(find_image_entry_point(module_name)
+            .expect("entry-point parser")
+            .is_some());
+        assert!(commands
+            .iter()
+            .any(|command| command.command == LC_BUILD_VERSION && command.command_name == "LC_BUILD_VERSION"));
+        assert!(find_image_build_version(module_name)
+            .expect("build-version parser")
+            .is_some());
+
+        if commands.iter().any(|command| command.command == LC_SOURCE_VERSION) {
+            assert!(find_image_source_version(module_name)
+                .expect("source-version parser")
+                .is_some());
+        }
+        if commands.iter().any(|command| command.command == LC_FUNCTION_STARTS) {
+            assert!(find_image_function_starts(module_name)
+                .expect("function-starts parser")
+                .is_some());
+        }
+        if commands.iter().any(|command| command.command == LC_DYLD_EXPORTS_TRIE) {
+            assert!(find_image_exports_trie(module_name)
+                .expect("exports-trie parser")
+                .is_some());
+        }
+        if commands.iter().any(|command| command.command == LC_DYLD_CHAINED_FIXUPS) {
+            assert!(find_image_chained_fixups(module_name)
+                .expect("chained-fixups parser")
+                .is_some());
+        }
+    }
 
     #[cfg(not(any(target_os = "ios", target_os = "macos")))]
     #[test]

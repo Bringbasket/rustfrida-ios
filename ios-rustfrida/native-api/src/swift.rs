@@ -835,6 +835,7 @@ mod platform {
 
     use common::{Error, Result};
 
+    use crate::macho_load_commands::{LC_SEGMENT_64, LC_SYMTAB};
     use crate::{
         enumerate_images, image_name_matches, ImageInfo, SwiftConformance, SwiftLiveObjectInfo, SwiftObjectOwnership,
         SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout, SwiftVtableEntry, SwiftWitnessTable,
@@ -849,8 +850,6 @@ mod platform {
         swift_type_source_kinds, validate_swift_metadata_identity, SWIFT_ABI_CALL_UNSUPPORTED_REASON,
     };
 
-    const LC_SEGMENT_64: u32 = 0x19;
-    const LC_SYMTAB: u32 = 0x2;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
     const N_STAB: u8 = 0xe0;
     const VM_PROT_READ: libc::vm_prot_t = 1;

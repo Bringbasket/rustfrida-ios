@@ -32,12 +32,11 @@ mod platform {
     use common::{Error, Result};
     use std::mem::size_of;
 
+    use crate::macho_load_commands::{LC_SEGMENT_64, LC_SYMTAB};
     use crate::{enumerate_images, image_name_matches, ImageInfo, NativeSymbol};
 
     use super::query_matches_symbol;
 
-    const LC_SEGMENT_64: u32 = 0x19;
-    const LC_SYMTAB: u32 = 0x2;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
     const N_STAB: u8 = 0xe0;
     const N_EXT: u8 = 0x01;

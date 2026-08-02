@@ -11761,10 +11761,10 @@ undefined;
                             Native.loadCommands = function() {
                                 return [
                                     { moduleName: 'Demo', moduleBase: 0x180000000n, index: 0, name: 'LC_LOAD_DYLIB', cmd: 0xcn, cmdsize: 56, offset: 0x100n, detail: 'name=@rpath/DemoKit.framework/DemoKit current=1.2.3 compat=1.0.0 timestamp=7' },
-                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 1, name: 'LC_RPATH', cmd: 0x1cn, cmdsize: 32, offset: 0x138n, detail: 'path=@loader_path/Frameworks' },
-                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 2, name: 'LC_DYLD_INFO_ONLY', cmd: 0x80000023n, cmdsize: 48, offset: 0x158n, detail: 'rebase=0x1000/0x20 bind=0x1020/0x10 weak=0x1030/0x0 lazy=0x1030/0x8 export=0x1038/0x18' },
-                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 3, name: 'LC_BUILD_VERSION', cmd: 0x33n, cmdsize: 32, offset: 0x188n, detail: 'platform=ios minos=15.0.0 sdk=17.0.0 tools=clang:15.0.0,swift:5.9.0' },
-                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 4, name: 'LC_DYLD_EXPORTS_TRIE', cmd: 0x34n, cmdsize: 16, offset: 0x1a8n, detail: 'dataoff=0x2000 datasize=0x180' },
+                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 1, name: 'LC_RPATH', cmd: 0x8000001cn, cmdsize: 32, offset: 0x138n, detail: 'path=@loader_path/Frameworks' },
+                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 2, name: 'LC_DYLD_INFO_ONLY', cmd: 0x80000022n, cmdsize: 48, offset: 0x158n, detail: 'rebase=0x1000/0x20 bind=0x1020/0x10 weak=0x1030/0x0 lazy=0x1030/0x8 export=0x1038/0x18' },
+                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 3, name: 'LC_BUILD_VERSION', cmd: 0x32n, cmdsize: 32, offset: 0x188n, detail: 'platform=ios minos=15.0.0 sdk=17.0.0 tools=clang:15.0.0,swift:5.9.0' },
+                                    { moduleName: 'Demo', moduleBase: 0x180000000n, index: 4, name: 'LC_DYLD_EXPORTS_TRIE', cmd: 0x80000033n, cmdsize: 16, offset: 0x1a8n, detail: 'dataoff=0x2000 datasize=0x180' },
                                     { moduleName: 'Demo', moduleBase: 0x180000000n, index: 5, name: 'LC_UUID', cmd: 0x1bn, cmdsize: 24, offset: 0x1b8n, detail: 'uuid=12345678-1234-1234-1234-1234567890ab' },
                                 ];
                             };
@@ -11784,14 +11784,15 @@ undefined;
                                     && result.timestampedCommandCount === 1
                                     && result.dataRangeCommandCount === 1
                                     && result.dyldRegionCommandCount === 1
+                                    && result.reqDyldCommandCount === 3
                                     && Array.isArray(result.commandFamilies)
                                     && result.commandFamilies.some((entry) => entry.commandFamily === 'dylib' && entry.count === 1 && entry.pathCount === 1 && entry.versionedCount === 1)
                                     && result.commandFamilies.some((entry) => entry.commandFamily === 'dyld-info' && entry.count === 1 && entry.reqDyldCount === 1)
                                     && result.commands.some((entry) => entry.name === 'LC_LOAD_DYLIB' && entry.pathKind === 'rpath' && entry.hasCurrentVersion === true && entry.timestamp === 7)
-                                    && result.commands.some((entry) => entry.name === 'LC_RPATH' && entry.usesLoaderPath === true)
-                                    && result.commands.some((entry) => entry.name === 'LC_DYLD_INFO_ONLY' && entry.hasDyldRegions === true && entry.dyldRegionCount === 5 && entry.nonEmptyDyldRegionCount === 4)
-                                    && result.commands.some((entry) => entry.name === 'LC_BUILD_VERSION' && entry.platform === 'ios' && entry.minOs === '15.0.0' && entry.sdk === '17.0.0' && entry.toolCount === 2)
-                                    && result.commands.some((entry) => entry.name === 'LC_DYLD_EXPORTS_TRIE' && entry.hasDataRange === true && entry.dataEndHex === '0x2180')
+                                    && result.commands.some((entry) => entry.name === 'LC_RPATH' && entry.cmdHex === '0x8000001c' && entry.cmdBaseHex === '0x1c' && entry.isReqDyld === true && entry.usesLoaderPath === true)
+                                    && result.commands.some((entry) => entry.name === 'LC_DYLD_INFO_ONLY' && entry.cmdHex === '0x80000022' && entry.cmdBaseHex === '0x22' && entry.isReqDyld === true && entry.hasDyldRegions === true && entry.dyldRegionCount === 5 && entry.nonEmptyDyldRegionCount === 4)
+                                    && result.commands.some((entry) => entry.name === 'LC_BUILD_VERSION' && entry.cmdHex === '0x32' && entry.cmdBaseHex === '0x32' && entry.isReqDyld === false && entry.platform === 'ios' && entry.minOs === '15.0.0' && entry.sdk === '17.0.0' && entry.toolCount === 2)
+                                    && result.commands.some((entry) => entry.name === 'LC_DYLD_EXPORTS_TRIE' && entry.cmdHex === '0x80000033' && entry.cmdBaseHex === '0x33' && entry.isReqDyld === true && entry.hasDataRange === true && entry.dataEndHex === '0x2180')
                                     && result.commands.some((entry) => entry.name === 'LC_UUID' && entry.hasUuid === true && entry.uuidLength === 36);
                             } finally {
                                 Native.loadCommands = original;
@@ -11807,7 +11808,7 @@ undefined;
                         "(function() {
                             const original = Native.loadCommandInfo;
                             Native.loadCommandInfo = function() {
-                                return { moduleName: 'Demo', moduleBase: 0x180000000n, index: 2, name: 'LC_DYLD_INFO_ONLY', cmd: 0x80000023n, cmdsize: 48, offset: 0x158n, detail: 'rebase=0x1000/0x20 bind=0x1020/0x10 weak=0x1030/0x0 lazy=0x1030/0x8 export=0x1038/0x18' };
+                                return { moduleName: 'Demo', moduleBase: 0x180000000n, index: 2, name: 'LC_DYLD_INFO_ONLY', cmd: 0x80000022n, cmdsize: 48, offset: 0x158n, detail: 'rebase=0x1000/0x20 bind=0x1020/0x10 weak=0x1030/0x0 lazy=0x1030/0x8 export=0x1038/0x18' };
                             };
                             try {
                                 const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.load_command_info', moduleName: 'Demo', commandOrIndex: 'LC_DYLD_INFO_ONLY' });
@@ -12200,7 +12201,7 @@ undefined;
                                     moduleBase: 0x180000000n,
                                     index: 4,
                                     name: 'LC_DYLD_EXPORTS_TRIE',
-                                    cmd: 0x33n,
+                                    cmd: 0x80000033n,
                                     cmdsize: 16,
                                     offset: 0x1a8n,
                                     detail: 'dataoff=0x2000 datasize=0x180'
@@ -12244,7 +12245,7 @@ undefined;
                                     moduleBase: 0x180000000n,
                                     index: 4,
                                     name: 'LC_DYLD_EXPORTS_TRIE',
-                                    cmd: 0x33n,
+                                    cmd: 0x80000033n,
                                     cmdsize: 16,
                                     offset: 0x1a8n,
                                     detail: 'dataoff=0x2000 datasize=0x180'
@@ -12813,7 +12814,7 @@ undefined;
                                         moduleBase: 0x180000000n,
                                         index: 4,
                                         name: 'LC_DYLD_EXPORTS_TRIE',
-                                        cmd: 0x33n,
+                                        cmd: 0x80000033n,
                                         cmdsize: 16,
                                         offset: 0x1a8n,
                                         detail: 'dataoff=0x2000 datasize=0x180'

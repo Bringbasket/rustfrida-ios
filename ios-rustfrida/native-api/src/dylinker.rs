@@ -21,10 +21,9 @@ mod platform {
     use common::{Error, Result};
     use std::mem::size_of;
 
+    use crate::macho_load_commands::{LC_ID_DYLINKER, LC_LOAD_DYLINKER};
     use crate::{enumerate_images, image_name_matches, ImageDylinker, ImageInfo};
 
-    const LC_LOAD_DYLINKER: u32 = 0xe;
-    const LC_ID_DYLINKER: u32 = 0xf;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]

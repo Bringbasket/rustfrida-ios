@@ -44,18 +44,14 @@ mod platform {
     use std::mem::size_of;
     use std::ptr;
 
+    use crate::macho_load_commands::{
+        LC_DYSYMTAB, LC_LAZY_LOAD_DYLIB, LC_LOAD_DYLIB, LC_LOAD_UPWARD_DYLIB, LC_LOAD_WEAK_DYLIB, LC_REEXPORT_DYLIB,
+        LC_SEGMENT_64, LC_SYMTAB,
+    };
     use crate::{enumerate_images, image_name_matches, ImageImport, ImageInfo};
 
     use super::query_matches_symbol;
 
-    const LC_LOAD_DYLIB: u32 = 0xc;
-    const LC_LOAD_WEAK_DYLIB: u32 = 0x8000_0018;
-    const LC_REEXPORT_DYLIB: u32 = 0x8000_001f;
-    const LC_LAZY_LOAD_DYLIB: u32 = 0x20;
-    const LC_LOAD_UPWARD_DYLIB: u32 = 0x8000_0023;
-    const LC_DYSYMTAB: u32 = 0xb;
-    const LC_SYMTAB: u32 = 0x2;
-    const LC_SEGMENT_64: u32 = 0x19;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
     const SECTION_TYPE: u32 = 0x0000_00ff;
     const S_NON_LAZY_SYMBOL_POINTERS: u32 = 0x6;

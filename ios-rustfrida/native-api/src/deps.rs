@@ -85,14 +85,11 @@ mod platform {
     use common::{Error, Result};
     use std::mem::size_of;
 
+    use crate::macho_load_commands::{LC_LOAD_DYLIB, LC_LOAD_UPWARD_DYLIB, LC_LOAD_WEAK_DYLIB, LC_REEXPORT_DYLIB};
     use crate::{enumerate_images, image_name_matches, ImageDependency, ImageInfo};
 
     use super::query_matches_dependency;
 
-    const LC_LOAD_DYLIB: u32 = 0xc;
-    const LC_LOAD_WEAK_DYLIB: u32 = 0x18;
-    const LC_REEXPORT_DYLIB: u32 = 0x1f;
-    const LC_LOAD_UPWARD_DYLIB: u32 = 0x24;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]

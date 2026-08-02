@@ -428,12 +428,9 @@ mod platform {
         checked_add_usize, imports_format_name, parse_chained_fixups_imports, parse_chained_fixups_segments,
         symbols_format_name, ImageChainedFixups,
     };
+    use crate::macho_load_commands::{LC_DYLD_CHAINED_FIXUPS, LC_SEGMENT_64};
     use crate::{enumerate_images, image_name_matches, ImageInfo};
 
-    const LC_SEGMENT_64: u32 = 0x19;
-    const LC_DYLD_CHAINED_FIXUPS: u32 = 0x35;
-    const LC_DYLD_CHAINED_FIXUPS_ALT: u32 = 0x34;
-    const LC_REQ_DYLD: u32 = 0x8000_0000;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]
@@ -526,8 +523,7 @@ mod platform {
                 break;
             }
 
-            let normalized_cmd = load.cmd & !LC_REQ_DYLD;
-            match normalized_cmd {
+            match load.cmd {
                 LC_SEGMENT_64 => {
                     if command_size < size_of::<SegmentCommand64>() {
                         consumed += command_size;
@@ -539,7 +535,7 @@ mod platform {
                         linkedit_segment = Some(segment);
                     }
                 }
-                cmd if cmd == LC_DYLD_CHAINED_FIXUPS || cmd == LC_DYLD_CHAINED_FIXUPS_ALT => {
+                LC_DYLD_CHAINED_FIXUPS => {
                     if command_size < size_of::<LinkeditDataCommand>() {
                         consumed += command_size;
                         command_ptr = unsafe { command_ptr.add(command_size) };

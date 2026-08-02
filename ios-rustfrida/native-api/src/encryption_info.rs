@@ -22,9 +22,9 @@ mod platform {
     use common::{Error, Result};
     use std::mem::size_of;
 
+    use crate::macho_load_commands::LC_ENCRYPTION_INFO_64;
     use crate::{enumerate_images, image_name_matches, ImageEncryptionInfo, ImageInfo};
 
-    const LC_ENCRYPTION_INFO_64: u32 = 0x2d;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
 
     #[repr(C)]
