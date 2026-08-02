@@ -24286,7 +24286,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.method_owners', moduleName: null, methodName: 'viewDidLoad' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_owners', moduleName: null, methodName: 'viewDidLoad' }); return value === result.text; })()")
+                    .eval("(function() { const value = __iosRustFridaAgentApi.handleSpec({ kind: 'swift.method_owners', moduleName: null, query: 'viewDidLoad' }); const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'swift.method_owners', moduleName: null, query: 'viewDidLoad' }); return value === result.text && result.query === 'viewDidLoad' && result.hasQuery === true; })()")
                     .expect("agent spec swift method owners"),
                 "true"
             );
