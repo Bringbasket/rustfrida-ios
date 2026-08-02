@@ -137,7 +137,7 @@ mod platform {
 
     #[cfg(not(all(target_arch = "aarch64", target_feature = "paca", target_feature = "pacg")))]
     fn strip_instruction_pointer_best_effort(address: usize) -> usize {
-        address
+        canonicalize_apple_user_pointer(address)
     }
 
     #[cfg(all(target_arch = "aarch64", target_feature = "paca", target_feature = "pacg"))]
@@ -151,6 +151,16 @@ mod platform {
 
     #[cfg(not(all(target_arch = "aarch64", target_feature = "paca", target_feature = "pacg")))]
     fn strip_data_pointer_best_effort(address: usize) -> usize {
+        canonicalize_apple_user_pointer(address)
+    }
+
+    fn canonicalize_apple_user_pointer(address: usize) -> usize {
+        #[cfg(target_arch = "aarch64")]
+        {
+            return address & 0x0000_ffff_ffff_ffff;
+        }
+
+        #[cfg(not(target_arch = "aarch64"))]
         address
     }
 }

@@ -74,10 +74,12 @@ typedef struct {
     size_t exec_mem_used;           /* Used bytes */
     HookEntry* hooks;               /* Linked list of hooks */
     HookEntry* free_list;           /* Freed entries for reuse */
+    HookEntry* retired_list;        /* Removed entries awaiting callback quiescence */
     HookRedirectEntry* redirects;   /* Linked list of redirect hooks */
     pthread_mutex_t lock;           /* Thread safety lock */
     size_t exec_mem_page_size;      /* Page size for mprotect */
     int initialized;                /* Initialization flag */
+    int lock_initialized;           /* Mutex remains valid across cleanup */
 } HookEngine;
 
 /*
@@ -120,6 +122,14 @@ int hook_attach(void* target, HookCallback on_enter, HookCallback on_leave, void
 int hook_remove(void* target);
 
 /*
+ * Move removed hook entries into the reusable free list.
+ *
+ * The caller must only invoke this after all callbacks and attach-mode original
+ * calls that could still be executing retired thunks have completed.
+ */
+void hook_reclaim_retired(void);
+
+/*
  * Get the trampoline for a hooked function
  *
  * @param target        Original function address
@@ -127,10 +137,11 @@ int hook_remove(void* target);
  */
 void* hook_get_trampoline(void* target);
 
-/*
- * Cleanup and free all hooks
- */
-void hook_engine_cleanup(void);
+/* Wait until generated thunk entry/exit critical sections are quiescent. */
+int hook_engine_wait_for_quiescence(uint32_t timeout_ms);
+
+/* Cleanup and free all hooks. Returns 0 only after a quiescent cleanup. */
+int hook_engine_cleanup(void);
 
 /* Internal functions - exposed for advanced use */
 

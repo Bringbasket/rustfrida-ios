@@ -26,8 +26,9 @@ static void* generate_redirect_thunk(void* original_entry,
 
     uint64_t stack_size = 352;
 
-    /* Generated thunks act like normal functions on arm64e and must sign LR. */
-    hook_writer_put_thunk_entry_pac(&w);
+    /* This path tail-calls the original entry and never returns through the
+     * thunk, so it must preserve the caller's LR rather than PAC-sign it. */
+    emit_thunk_activity_enter(&w);
 
     /* Save HookContext (no trampoline for redirect mode) */
     emit_save_hook_context(&w, (uint64_t)original_entry, 0);
@@ -57,8 +58,8 @@ static void* generate_redirect_thunk(void* original_entry,
     /* Deallocate stack */
     arm64_writer_put_add_reg_reg_imm(&w, ARM64_REG_SP, ARM64_REG_SP, stack_size);
 
-    /* Tail-call to original entry: BR x16 (NOT BLR — preserves caller's LR) */
-    arm64_writer_put_br_reg(&w, ARM64_REG_X16);
+    /* Decrement and tail-call from permanent image text. X16 is the target. */
+    emit_thunk_activity_leave_and_branch(&w);
 
     arm64_writer_flush(&w);
 
@@ -193,10 +194,10 @@ static void* generate_native_hook_thunk(HookCallback on_enter,
     Arm64Writer w;
     arm64_writer_init(&w, thunk_mem, (uint64_t)thunk_mem, THUNK_ALLOC_SIZE);
 
-    uint64_t stack_size = 352;
-
+    /* The shared epilogue uses the same 352-byte context frame. */
     /* Generated thunks act like normal functions on arm64e and must sign LR. */
     hook_writer_put_thunk_entry_pac(&w);
+    emit_thunk_activity_enter(&w);
 
     /* Save HookContext (pc=0: not meaningful for native hooks, no trampoline) */
     emit_save_hook_context(&w, 0, 0);
@@ -204,7 +205,7 @@ static void* generate_native_hook_thunk(HookCallback on_enter,
     /* Call on_enter(ctx, user_data) */
     emit_callback_call(&w, on_enter, user_data);
 
-    /* Restore x0 + LR, deallocate stack, RET */
+    /* Restore x0 + LR, deallocate stack, then leave through image text. */
     emit_replace_epilogue(&w);
 
     arm64_writer_flush(&w);

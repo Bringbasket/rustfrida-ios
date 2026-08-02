@@ -21,7 +21,7 @@ use native_api::{
     image_import_support_available, image_install_name_support_available, image_linkedit_info_support_available,
     image_load_command_support_available, image_rpath_support_available, image_section_support_available,
     image_segment_support_available, image_source_version_support_available, image_uuid_support_available,
-    native_export_support_available, native_symbol_support_available, resolve_hook_strategy,
+    ios_stalker_capabilities, native_export_support_available, native_symbol_support_available, resolve_hook_strategy,
     rpath_path_or_name_matches, section_name_matches, segment_name_matches,
 };
 use std::collections::BTreeMap;
@@ -41,6 +41,53 @@ unsafe fn string_vec_to_js_array(ctx: *mut ffi::JSContext, items: &[String]) -> 
         ffi::JS_SetPropertyUint32(ctx, array, index as u32, JSValue::string(ctx, item).raw());
     }
     array
+}
+
+unsafe fn stalker_capabilities_to_js(ctx: *mut ffi::JSContext) -> ffi::JSValue {
+    let capabilities = ios_stalker_capabilities();
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "platform", JSValue::string(ctx, capabilities.platform));
+    result.set_property(ctx, "backend", JSValue::string(ctx, capabilities.backend));
+    result.set_property(ctx, "mode", JSValue::string(ctx, capabilities.mode));
+    result.set_property(ctx, "available", JSValue::bool(capabilities.available));
+    result.set_property(ctx, "instructionLevel", JSValue::bool(capabilities.instruction_level));
+    result.set_property(ctx, "basicBlockEvents", JSValue::bool(capabilities.basic_block_events));
+    result.set_property(ctx, "eventSink", JSValue::bool(capabilities.event_sink));
+    result.set_property(ctx, "threadFollow", JSValue::bool(capabilities.thread_follow));
+    result.set_property(
+        ctx,
+        "targetFunctionHook",
+        JSValue::bool(capabilities.target_function_hook),
+    );
+    result.set_property(ctx, "callReturnHook", JSValue::bool(capabilities.call_return_hook));
+    result.set_property(ctx, "excludeRanges", JSValue::bool(capabilities.exclude_ranges));
+    result.set_property(ctx, "flush", JSValue::bool(capabilities.flush));
+    result.set_property(ctx, "garbageCollect", JSValue::bool(capabilities.garbage_collect));
+    result.set_property(
+        ctx,
+        "memoryAccessEvents",
+        JSValue::bool(capabilities.memory_access_events),
+    );
+    let missing_operations: Vec<String> = capabilities
+        .missing_operations
+        .iter()
+        .map(|item| (*item).to_string())
+        .collect();
+    result.set_property(
+        ctx,
+        "missingOperations",
+        JSValue(string_vec_to_js_array(ctx, &missing_operations)),
+    );
+    result.raw()
+}
+
+unsafe extern "C" fn js_native_stalker_capabilities(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    _argc: i32,
+    _argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    stalker_capabilities_to_js(ctx)
 }
 
 unsafe fn instrumentation_capability_to_js(ctx: *mut ffi::JSContext) -> ffi::JSValue {
@@ -78,6 +125,7 @@ unsafe fn instrumentation_capability_to_js(ctx: *mut ffi::JSContext) -> ffi::JSV
     result.set_property(ctx, "inlineHookAvailable", JSValue::bool(true));
     result.set_property(ctx, "traceAvailable", JSValue::bool(true));
     result.set_property(ctx, "stalkerAvailable", JSValue::bool(true));
+    result.set_property(ctx, "stalkerCapabilities", JSValue(stalker_capabilities_to_js(ctx)));
     result.set_property(ctx, "hflAvailable", JSValue::bool(true));
     result.set_property(ctx, "virtualStackAvailable", JSValue::bool(false));
     result.set_property(ctx, "registerStateApiAvailable", JSValue::bool(false));
@@ -6157,6 +6205,7 @@ unsafe fn report_to_js(ctx: *mut ffi::JSContext, report: &native_api::HookEnviro
     result.set_property(ctx, "qbdiAvailable", JSValue::bool(false));
     result.set_property(ctx, "traceAvailable", JSValue::bool(true));
     result.set_property(ctx, "stalkerAvailable", JSValue::bool(true));
+    result.set_property(ctx, "stalkerCapabilities", JSValue(stalker_capabilities_to_js(ctx)));
     result.set_property(
         ctx,
         "recommendedInstrumentationPath",
@@ -10082,6 +10131,9 @@ unsafe fn image_import_to_js(ctx: *mut ffi::JSContext, import: &native_api::Imag
     result.set_property(ctx, "moduleName", JSValue::string(ctx, &import.module_name));
     result.set_property(ctx, "moduleBase", create_native_pointer(ctx, import.module_base as u64));
     result.set_property(ctx, "name", JSValue::string(ctx, &import.symbol_name));
+    result.set_property(ctx, "type", JSValue::string(ctx, &import.symbol_type));
+    result.set_property(ctx, "slot", create_native_pointer(ctx, import.slot as u64));
+    result.set_property(ctx, "address", create_native_pointer(ctx, import.address as u64));
     result.set_property(ctx, "dylibOrdinal", JSValue::int(import.dylib_ordinal as i32));
     match &import.dylib_name {
         Some(name) => result.set_property(ctx, "dylibName", JSValue::string(ctx, name)),
@@ -12473,6 +12525,13 @@ pub(crate) fn register_native_api(ctx: &JSContext) {
             native.raw(),
             "detectHookEnvironment",
             js_native_detect_hook_environment,
+            0,
+        );
+        add_cfunction_to_object(
+            ctx.as_ptr(),
+            native.raw(),
+            "stalkerCapabilities",
+            js_native_stalker_capabilities,
             0,
         );
         add_cfunction_to_object(ctx.as_ptr(), native.raw(), "images", js_native_images, 1);

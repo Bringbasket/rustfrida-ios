@@ -4,27 +4,39 @@ pub enum RuntimeStatus {
     Ready,
 }
 
+#[cfg(test)]
+pub(crate) fn test_runtime_lock() -> &'static std::sync::Mutex<()> {
+    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+}
+
 #[cfg(not(quickjs_runtime_stub))]
 mod imp {
     use super::RuntimeStatus;
     use crate::agent_api::bootstrap_agent_api;
+    use crate::cmodule::register_cmodule_api;
     use crate::completion::complete_script;
     use crate::console::{clear_console_callback, register_console, set_console_callback};
     use crate::context::JSContext;
     use crate::controller_api::bootstrap_controller_api;
     use crate::debug_symbol::register_debug_symbol_api;
     use crate::ffi;
+    use crate::file::register_file_api;
     use crate::hook::{cleanup_hook_backend, enter_runtime_js, register_hook_api};
     use crate::java::register_java_api;
     use crate::jni::register_jni_api;
-    use crate::memory::register_memory_api;
-    use crate::module::register_module_api;
+    use crate::memory::{cleanup_memory_allocations, register_memory_api};
+    use crate::module::{cleanup_loaded_modules, register_module_api};
     use crate::native::register_native_api;
+    use crate::native_function::register_native_function_api;
     use crate::native_hooks::bootstrap_native_hooks;
     use crate::objc::register_objc_api;
     use crate::pac::register_pac_api;
+    use crate::process::register_process_api;
     use crate::ptr::register_ptr;
     use crate::qbdi::register_qbdi_api;
+    use crate::rpc::{register_rpc, rpc_dispatch_script};
+    use crate::stalker::register_stalker_api;
     use crate::swift::register_swift_api;
     use common::{Error, Result};
     use std::collections::BTreeSet;
@@ -40,6 +52,7 @@ mod imp {
         last_script: Option<String>,
         engine: Option<QuickJsEngine>,
         pending_logs: Arc<Mutex<Vec<String>>>,
+        console_callback_registered: bool,
     }
 
     struct QuickJsEngine {
@@ -61,6 +74,7 @@ mod imp {
                 last_script: None,
                 engine: None,
                 pending_logs: Arc::new(Mutex::new(Vec::new())),
+                console_callback_registered: false,
             }
         }
 
@@ -86,19 +100,26 @@ mod imp {
                 let mut guard = log_sink.lock().unwrap_or_else(|e| e.into_inner());
                 guard.push(msg.to_string());
             });
+            self.console_callback_registered = true;
             register_console(&context);
+            register_cmodule_api(&context).map_err(Error::State)?;
+            register_file_api(&context);
+            register_rpc(&context).map_err(Error::State)?;
             register_ptr(&context);
+            register_native_function_api(&context).map_err(Error::State)?;
             register_hook_api(&context);
             register_java_api(&context);
             register_jni_api(&context);
             register_debug_symbol_api(&context);
             register_memory_api(&context);
             register_native_api(&context);
-            register_objc_api(&context);
+            register_objc_api(&context).map_err(Error::State)?;
             register_module_api(&context);
+            register_process_api(&context);
             register_pac_api(&context);
             register_qbdi_api(&context);
-            register_swift_api(&context);
+            register_swift_api(&context).map_err(Error::State)?;
+            register_stalker_api(&context).map_err(Error::State)?;
 
             let bootstrap = self.bootstrap_script();
             let _runtime_guard = enter_runtime_js(context.as_ptr());
@@ -143,21 +164,33 @@ mod imp {
             Ok(rendered)
         }
 
+        pub fn dispatch_rpc(&mut self, method: &str, args_json: &str) -> Result<String> {
+            self.eval(&rpc_dispatch_script(method, args_json))
+        }
+
         pub fn cleanup(&mut self) -> Result<String> {
             if self.status != RuntimeStatus::Ready {
                 return Err(Error::State("quickjs runtime is not initialized".into()));
             }
 
+            let runtime = self.engine.as_ref().map(|engine| engine._runtime.as_ptr());
             if let Some(engine) = self.engine.as_ref() {
                 let _runtime_guard = enter_runtime_js(engine.context.as_ptr());
                 cleanup_hook_backend();
+                cleanup_memory_allocations(engine._runtime.as_ptr());
             }
 
             self.engine = None;
+            if let Some(runtime) = runtime {
+                cleanup_loaded_modules(runtime);
+            }
             self.status = RuntimeStatus::Cold;
             self.last_script = None;
             self.pending_logs.lock().unwrap_or_else(|e| e.into_inner()).clear();
-            clear_console_callback();
+            if self.console_callback_registered {
+                clear_console_callback();
+                self.console_callback_registered = false;
+            }
             Ok("cleaned up".into())
         }
 
@@ -210,6 +243,7 @@ globalThis.PAC = globalThis.PAC || { available: false };
 globalThis.Swift = globalThis.Swift || { available: true };
 globalThis.Module = globalThis.Module || {};
 globalThis.Memory = globalThis.Memory || {};
+globalThis.Process = globalThis.Process || {};
 globalThis.Hook = globalThis.Hook || { NORMAL: 0, WXSHADOW: 1, RECOMP: 2, backend: 'arm64-hook-engine', recompAvailable: false, wxShadowAvailable: true, androidRecompCompatible: false };
 globalThis.qbdi = globalThis.qbdi || {
     available: false,
@@ -505,7 +539,9 @@ undefined;
             if self.status == RuntimeStatus::Ready {
                 let _ = self.cleanup();
             }
-            clear_console_callback();
+            if self.console_callback_registered {
+                clear_console_callback();
+            }
         }
     }
 
@@ -565,19 +601,27 @@ undefined;
 
     fn builtin_set() -> BTreeSet<&'static str> {
         BTreeSet::from([
+            "attachNative",
             "callNative",
+            "CModule",
             "console",
             "DebugSymbol",
+            "File",
             "hook",
+            "hookNative",
             "Interceptor",
             "Java",
             "Jni",
             "Memory",
             "Module",
             "Native",
+            "NativeFunction",
             "ObjC",
             "PAC",
+            "Process",
+            "rpc",
             "Swift",
+            "Stalker",
             "ptr",
             "unhook",
         ])
@@ -586,7 +630,7 @@ undefined;
     #[cfg(test)]
     mod tests {
         use super::QuickJsRuntime;
-        use std::sync::{Mutex, OnceLock};
+        use std::sync::Mutex;
 
         fn has_apple_objc_runtime() -> bool {
             cfg!(any(target_os = "macos", target_os = "ios"))
@@ -604,8 +648,7 @@ undefined;
         }
 
         fn test_lock() -> &'static Mutex<()> {
-            static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-            LOCK.get_or_init(|| Mutex::new(()))
+            crate::runtime::test_runtime_lock()
         }
 
         #[test]
@@ -630,12 +673,240 @@ undefined;
         }
 
         #[test]
+        fn file_api_supports_static_and_instance_io() {
+            let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+            let temp_dir = std::env::temp_dir();
+            let suffix = std::process::id();
+            let text_path = temp_dir.join(format!("ios-rustfrida-file-{suffix}-text.txt"));
+            let bytes_path = temp_dir.join(format!("ios-rustfrida-file-{suffix}-bytes.bin"));
+            let instance_path = temp_dir.join(format!("ios-rustfrida-file-{suffix}-instance.bin"));
+            let paths = [&text_path, &bytes_path, &instance_path];
+            for path in paths {
+                let _ = std::fs::remove_file(path);
+            }
+
+            let mut runtime = QuickJsRuntime::new();
+            runtime.initialize().expect("init runtime");
+            let script = r#"
+                (() => {
+                    File.writeAllText(__TEXT_PATH__, "alpha\nbeta");
+                    const textMatches = File.readAllText(__TEXT_PATH__) === "alpha\nbeta";
+
+                    File.writeAllBytes(__BYTES_PATH__, new Uint8Array([0, 1, 127, 255]));
+                    const typedArrayMatches =
+                        Array.from(new Uint8Array(File.readAllBytes(__BYTES_PATH__))).join(",") ===
+                        "0,1,127,255";
+                    File.writeAllBytes(__BYTES_PATH__, [9, 8, 7]);
+                    const arrayMatches =
+                        Array.from(new Uint8Array(File.readAllBytes(__BYTES_PATH__))).join(",") ===
+                        "9,8,7";
+
+                    const file = new File(__INSTANCE_PATH__, "wb+");
+                    file.write("first\n");
+                    file.write(new Uint8Array([115, 101, 99, 111, 110, 100, 10]));
+                    file.flush();
+                    const tellMatches = file.tell() === 13;
+                    const seekSetMatches = file.seek(0, File.SEEK_SET) === 0;
+                    const lineMatches = file.readLine() === "first\n";
+                    const bytesMatch =
+                        Array.from(new Uint8Array(file.readBytes(7))).join(",") ===
+                        "115,101,99,111,110,100,10";
+                    const seekEndMatches = file.seek(-7, File.SEEK_END) === 0;
+                    const tailMatches = file.readText() === "second\n";
+                    file.close();
+                    file.close();
+
+                    let closedErrorMatches = false;
+                    try {
+                        file.tell();
+                    } catch (error) {
+                        closedErrorMatches = String(error).includes("File is closed");
+                    }
+                    const constantsMatch =
+                        File.SEEK_SET === 0 && File.SEEK_CUR === 1 && File.SEEK_END === 2;
+
+                    return [
+                        textMatches,
+                        typedArrayMatches,
+                        arrayMatches,
+                        tellMatches,
+                        seekSetMatches,
+                        lineMatches,
+                        bytesMatch,
+                        seekEndMatches,
+                        tailMatches,
+                        closedErrorMatches,
+                        constantsMatch,
+                    ].join("|");
+                })()
+            "#
+            .replace("__TEXT_PATH__", &format!("{:?}", text_path.to_string_lossy()))
+            .replace("__BYTES_PATH__", &format!("{:?}", bytes_path.to_string_lossy()))
+            .replace("__INSTANCE_PATH__", &format!("{:?}", instance_path.to_string_lossy()));
+
+            let result = runtime.eval(&script);
+            for path in paths {
+                let _ = std::fs::remove_file(path);
+            }
+            assert_eq!(
+                result.expect("exercise File API"),
+                "true|true|true|true|true|true|true|true|true|true|true"
+            );
+        }
+
+        #[test]
+        fn rpc_exports_dispatch_json_results() {
+            let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+            let mut runtime = QuickJsRuntime::new();
+            runtime.initialize().expect("init runtime");
+
+            runtime
+                .eval(
+                    r#"
+                    rpc.exports = {
+                        add(a, b) { return a + b; },
+                        describe(value) { return { value, doubled: value * 2 }; },
+                        noResult() {},
+                    };
+                    rpc.export('quoted"method', function(value) { return 'hello ' + value; });
+                    undefined
+                    "#,
+                )
+                .expect("register RPC exports");
+
+            assert_eq!(runtime.dispatch_rpc("add", "[20,22]").expect("dispatch add"), "42");
+            assert_eq!(
+                runtime.dispatch_rpc("describe", "[7]").expect("dispatch object"),
+                r#"{"value":7,"doubled":14}"#
+            );
+            assert_eq!(
+                runtime.dispatch_rpc("noResult", "").expect("dispatch undefined"),
+                "null"
+            );
+            assert_eq!(
+                runtime
+                    .dispatch_rpc("quoted\"method", r#"["world"]"#)
+                    .expect("dispatch escaped method"),
+                r#""hello world""#
+            );
+
+            let missing = runtime
+                .dispatch_rpc("missing", "[]")
+                .expect_err("missing RPC export must fail");
+            assert!(missing.to_string().contains("RPC method not found: missing"));
+            let invalid = runtime.dispatch_rpc("add", "{}").expect_err("object args must fail");
+            assert!(invalid.to_string().contains("RPC args must be a JSON array"));
+        }
+
+        #[test]
+        fn process_api_exposes_modules_ranges_and_threads() {
+            let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+            let mut runtime = QuickJsRuntime::new();
+            runtime.initialize().expect("init runtime");
+
+            let result = runtime
+                .eval(
+                    r#"
+                    (() => {
+                        const modules = Process.enumerateModules();
+                        const main = Process.mainModule;
+                        const byName = main === null ? null : Process.findModuleByName(main.name);
+                        const byAddress = main === null ? null : Process.findModuleByAddress(main.base);
+                        const ranges = Process.enumerateRanges();
+                        const readable = Process.enumerateRanges({ protection: 'r--', coalesce: true });
+                        const mainRange = main === null ? null : Process.findRangeByAddress(main.base);
+                        const currentThreadId = Process.getCurrentThreadId();
+                        const threads = Process.enumerateThreads();
+                        const states = ['running', 'stopped', 'waiting', 'uninterruptible', 'halted', 'unknown'];
+                        return [
+                            typeof Process === 'object',
+                            Process.id > 0,
+                            typeof Process.arch === 'string' && Process.arch.length > 0,
+                            Process.platform === 'linux',
+                            Process.pageSize > 0,
+                            Process.pointerSize === 8,
+                            Process.codeSigningPolicy === 'optional',
+                            modules.length > 0,
+                            main !== null && typeof main.name === 'string' && main.base.toString().startsWith('0x'),
+                            byName !== null && byName.path === main.path,
+                            byAddress !== null && byAddress.path === main.path,
+                            ranges.length > 0,
+                            readable.length > 0 && readable.every(range => range.protection[0] === 'r'),
+                            readable.length <= ranges.length,
+                            mainRange !== null && mainRange.size > 0 && mainRange.protection.length === 3,
+                            Array.isArray(Process.enumerateMallocRanges()) && Process.enumerateMallocRanges().length === 0,
+                            typeof Process.getCurrentDir() === 'string' && Process.getCurrentDir().length > 0,
+                            typeof Process.getHomeDir() === 'string' && Process.getHomeDir().length > 0,
+                            typeof Process.getTmpDir() === 'string' && Process.getTmpDir().length > 0,
+                            currentThreadId > 0,
+                            threads.some(thread => String(thread.id) === String(currentThreadId)),
+                            threads.every(thread => states.includes(thread.state)),
+                            typeof Process.isDebuggerAttached() === 'boolean',
+                        ].every(Boolean);
+                    })()
+                    "#,
+                )
+                .expect("exercise Process API");
+            assert_eq!(result, "true");
+        }
+
+        #[test]
+        fn process_api_reports_lookup_and_argument_errors() {
+            let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+            let mut runtime = QuickJsRuntime::new();
+            runtime.initialize().expect("init runtime");
+
+            let result = runtime
+                .eval(
+                    r#"
+                    (() => {
+                        const missing = '__ios_rustfrida_missing_process_module__';
+                        let moduleError = false;
+                        let rangeError = false;
+                        let optionError = false;
+                        let addressError = false;
+                        try { Process.getModuleByName(missing); }
+                        catch (error) { moduleError = String(error).includes('module not found'); }
+                        try { Process.getRangeByAddress(ptr('0x1')); }
+                        catch (error) { rangeError = String(error).includes('range not found'); }
+                        try { Process.enumerateRanges(7); }
+                        catch (error) { optionError = String(error).includes('expected a string or object'); }
+                        try { Process.findModuleByAddress({}); }
+                        catch (error) { addressError = String(error).includes('pointer-like'); }
+                        return Process.findModuleByName(missing) === null &&
+                            Process.findRangeByAddress(ptr('0x1')) === null &&
+                            moduleError && rangeError && optionError && addressError;
+                    })()
+                    "#,
+                )
+                .expect("exercise Process errors");
+            assert_eq!(result, "true");
+        }
+
+        #[test]
         fn complete_global_names() {
             let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
             let mut runtime = QuickJsRuntime::new();
             runtime.initialize().expect("init runtime");
             let candidates = runtime.complete("cons");
             assert!(candidates.iter().any(|item| item == "console"));
+            let file_candidates = runtime.complete("Fi");
+            assert!(file_candidates.iter().any(|item| item == "File"));
+            let file_method_candidates = runtime.complete("File.readAll");
+            assert!(file_method_candidates.iter().any(|item| item == "readAllBytes"));
+            assert!(file_method_candidates.iter().any(|item| item == "readAllText"));
+            let rpc_candidates = runtime.complete("rp");
+            assert!(rpc_candidates.iter().any(|item| item == "rpc"));
+            let rpc_method_candidates = runtime.complete("rpc.ex");
+            assert!(rpc_method_candidates.iter().any(|item| item == "export"));
+            assert!(rpc_method_candidates.iter().any(|item| item == "exports"));
+            let process_candidates = runtime.complete("Pro");
+            assert!(process_candidates.iter().any(|item| item == "Process"));
+            let process_method_candidates = runtime.complete("Process.findModule");
+            assert!(process_method_candidates.iter().any(|item| item == "findModuleByName"));
+            assert!(process_method_candidates
+                .iter()
+                .any(|item| item == "findModuleByAddress"));
             let qbdi_candidates = runtime.complete("qb");
             assert!(qbdi_candidates.iter().any(|item| item == "qbdi"));
             let qbdi_method_candidates = runtime.complete("qbdi.r");
@@ -656,6 +927,10 @@ undefined;
             let objc_available = if has_apple_objc_runtime() { "true" } else { "false" };
             assert_eq!(runtime.eval("ObjC.available").expect("objc available"), objc_available);
             assert_eq!(runtime.eval("typeof callNative").expect("callNative type"), "function");
+            assert_eq!(
+                runtime.eval("typeof NativeFunction").expect("NativeFunction type"),
+                "function"
+            );
             assert_eq!(
                 runtime
                     .eval("typeof DebugSymbol.fromAddress")
@@ -801,6 +1076,25 @@ undefined;
                 "true"
             );
             assert_eq!(runtime.eval("typeof recompHook").expect("recompHook type"), "function");
+            assert_eq!(runtime.eval("typeof hookNative").expect("hookNative type"), "function");
+            assert_eq!(
+                runtime.eval("typeof attachNative").expect("attachNative type"),
+                "function"
+            );
+            #[cfg(not(quickjs_hook_engine))]
+            assert_eq!(
+                runtime
+                    .eval("(function() { try { hookNative(); return false; } catch (e) { return String(e).indexOf('native hook engine enabled') !== -1; } })()")
+                    .expect("hookNative unsupported message"),
+                "true"
+            );
+            #[cfg(not(quickjs_hook_engine))]
+            assert_eq!(
+                runtime
+                    .eval("(function() { try { attachNative(); return false; } catch (e) { return String(e).indexOf('native hook engine enabled') !== -1; } })()")
+                    .expect("attachNative unsupported message"),
+                "true"
+            );
             assert_eq!(
                 runtime.eval("typeof diagAllocNear").expect("diagAllocNear type"),
                 "function"
@@ -917,6 +1211,39 @@ undefined;
                 runtime.eval("typeof ObjC.findClasses").expect("objc findClasses type"),
                 "function"
             );
+            assert_eq!(
+                runtime.eval("typeof ObjC.chooseSync").expect("objc chooseSync type"),
+                "function"
+            );
+            assert_eq!(
+                runtime.eval("typeof ObjC.choose").expect("objc choose type"),
+                "function"
+            );
+            #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+            {
+                assert_eq!(
+                    runtime
+                        .eval("Array.isArray(ObjC.chooseSync('NSObject', { maxCount: 1 }))")
+                        .expect("objc chooseSync non-Apple result"),
+                    "true"
+                );
+                assert_eq!(
+                    runtime
+                        .eval("(function() { let complete = 0; ObjC.choose('NSObject', { onMatch() { throw new Error('unexpected match'); }, onComplete() { complete++; } }, { maxCount: 1 }); return complete === 1; })()")
+                        .expect("objc choose non-Apple completion"),
+                    "true"
+                );
+                assert!(runtime
+                    .eval("ObjC.chooseSync('NSObject', { maxCount: 65537 })")
+                    .expect_err("objc choose maxCount bound")
+                    .to_string()
+                    .contains("maxCount"));
+                assert!(runtime
+                    .eval("ObjC.choose('NSObject', {})")
+                    .expect_err("objc choose onMatch validation")
+                    .to_string()
+                    .contains("onMatch"));
+            }
             assert_eq!(
                 runtime.eval("typeof ObjC.protocols").expect("objc protocols type"),
                 "function"
@@ -2075,6 +2402,45 @@ undefined;
         }
 
         #[test]
+        #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+        fn module_advanced_apis_have_stable_non_apple_contracts() {
+            let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+            let mut runtime = QuickJsRuntime::new();
+            runtime.initialize().expect("init runtime");
+
+            let result = runtime
+                .eval(
+                    r#"
+                    (() => {
+                        const methods = [
+                            'enumerateExports',
+                            'enumerateImports',
+                            'enumerateSymbols',
+                            'enumerateRanges',
+                            'load',
+                        ];
+                        const registered = methods.every((name) => typeof Module[name] === 'function');
+                        const emptyResults = [
+                            Module.enumerateExports('missing-module'),
+                            Module.enumerateImports('missing-module'),
+                            Module.enumerateSymbols('missing-module'),
+                            Module.enumerateRanges('missing-module', 'r-x'),
+                        ].every((value) => Array.isArray(value) && value.length === 0);
+                        let loadUnsupported = false;
+                        try {
+                            Module.load('/missing/module.dylib');
+                        } catch (error) {
+                            loadUnsupported = String(error).includes('only supported on Apple targets');
+                        }
+                        return registered && emptyResults && loadUnsupported;
+                    })()
+                    "#,
+                )
+                .expect("exercise advanced Module APIs");
+            assert_eq!(result, "true");
+        }
+
+        #[test]
         fn bootstrap_script_uses_unavailable_interceptor_fallback_messages() {
             let runtime = QuickJsRuntime::new();
             let bootstrap = runtime.bootstrap_script();
@@ -2400,6 +2766,7 @@ undefined;
                                 Native.qbdiAvailable === false &&
                                 Native.traceAvailable === true &&
                                 Native.stalkerAvailable === true &&
+                                typeof Native.stalkerCapabilities === 'function' &&
                                 Native.recommendedInstrumentationPath === 'trace-stalker-inline-hook' &&
                                 typeof Native.instrumentation === 'object' &&
                                 Native.instrumentation !== null &&
@@ -2407,6 +2774,13 @@ undefined;
                                 Native.instrumentation.androidReferenceBackend === 'QBDI' &&
                                 Native.instrumentation.qbdiCompatible === false &&
                                 Native.instrumentation.qbdiApiPorted === false &&
+                                Native.instrumentation.stalkerCapabilities.mode === 'thread-follow-event-sink' &&
+                                Native.instrumentation.stalkerCapabilities.targetFunctionHook === true &&
+                                Native.instrumentation.stalkerCapabilities.instructionLevel === false &&
+                                Native.instrumentation.stalkerCapabilities.threadFollow === true &&
+                                Native.instrumentation.stalkerCapabilities.missingOperations.indexOf('Transformer') !== -1 &&
+                                Native.stalkerCapabilities().backend === 'apple-pthread-event-sink' &&
+                                Native.stalkerCapabilities().basicBlockEvents === false &&
                                 Array.isArray(Native.instrumentation.recommendedCommands) &&
                                 Native.instrumentation.recommendedCommands.indexOf('trace <target>') !== -1 &&
                                 Array.isArray(Native.instrumentation.unsupportedQbdiApis) &&
@@ -24032,6 +24406,16 @@ undefined;
             assert!(runtime.take_pending_logs().is_empty());
             let err = runtime.eval("1 + 1").expect_err("eval after cleanup must fail");
             assert!(err.to_string().contains("not initialized"));
+
+            runtime.initialize().expect("reinitialize runtime");
+            assert_eq!(
+                runtime
+                    .eval(
+                        "Memory.allocUtf8String('reinitialized').readCString() + ':' + (Interceptor.flush() === undefined)",
+                    )
+                    .expect("exercise APIs after reinitialize"),
+                "reinitialized:true"
+            );
         }
     }
 }
@@ -24059,11 +24443,14 @@ mod imp {
             Self {
                 status: RuntimeStatus::Cold,
                 builtins: BTreeSet::from([
+                    "attachNative",
                     "callNative",
                     "console",
                     "DebugSymbol",
                     "diagAllocNear",
+                    "File",
                     "hook",
+                    "hookNative",
                     "Hook",
                     "Interceptor",
                     "Java",
@@ -24071,9 +24458,12 @@ mod imp {
                     "Memory",
                     "Module",
                     "Native",
+                    "NativeFunction",
                     "ObjC",
                     "PAC",
+                    "Process",
                     "recompHook",
+                    "rpc",
                     "Swift",
                     "ptr",
                     "unhook",
@@ -24096,6 +24486,14 @@ mod imp {
             self.last_script = Some(script.trim().to_string());
             Err(Error::Unsupported(
                 "quickjs backend is stubbed for this target/build host; build on macOS or provide an Apple SDK-backed C toolchain to compile the real QuickJS runtime".into(),
+            ))
+        }
+
+        pub fn dispatch_rpc(&mut self, method: &str, args_json: &str) -> Result<String> {
+            let _ = (method, args_json);
+            Err(Error::Unsupported(
+                "quickjs backend is stubbed for this target/build host; RPC dispatch requires the real QuickJS runtime"
+                    .into(),
             ))
         }
 

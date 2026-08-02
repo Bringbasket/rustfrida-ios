@@ -116,6 +116,28 @@ void free_entry(HookEntry* entry) {
     g_engine.free_list = entry;
 }
 
+void retire_entry(HookEntry* entry) {
+    entry->next = g_engine.retired_list;
+    g_engine.retired_list = entry;
+}
+
+void hook_reclaim_retired(void) {
+    pthread_mutex_lock(&g_engine.lock);
+    if (!g_engine.initialized ||
+        __atomic_load_n(&g_hook_active_thunks, __ATOMIC_ACQUIRE) != 0) {
+        pthread_mutex_unlock(&g_engine.lock);
+        return;
+    }
+    HookEntry* entry = g_engine.retired_list;
+    g_engine.retired_list = NULL;
+    while (entry) {
+        HookEntry* next = entry->next;
+        free_entry(entry);
+        entry = next;
+    }
+    pthread_mutex_unlock(&g_engine.lock);
+}
+
 /* --- Cache flush --- */
 
 void hook_flush_cache(void* start, size_t size) {

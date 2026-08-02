@@ -62,6 +62,7 @@ mod platform {
         ntools: u32,
     }
 
+    #[derive(Clone, Copy)]
     #[repr(C)]
     struct BuildToolVersion {
         tool: u32,

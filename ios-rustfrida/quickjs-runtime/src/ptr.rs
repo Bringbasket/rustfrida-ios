@@ -231,6 +231,7 @@ pub(crate) fn register_ptr(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, proto, "toJSON", native_pointer_to_string, 0);
         add_cfunction_to_object(ctx_ptr, proto, "toNumber", native_pointer_to_number, 0);
         add_cfunction_to_object(ctx_ptr, proto, "toInt", native_pointer_to_number, 0);
+        crate::memory::register_native_pointer_memory_methods(ctx_ptr, proto);
         ffi::JS_SetClassProto(ctx_ptr, class_id, proto);
     }
 

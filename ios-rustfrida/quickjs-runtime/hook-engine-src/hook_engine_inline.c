@@ -8,6 +8,98 @@
 
 #include "hook_engine_internal.h"
 
+/* Keep the generated-code lifetime count inside the thunk itself. A Rust
+ * callback guard is necessarily too late, and attach mode remains in the
+ * original function after onEnter returns. */
+static void emit_activity_increment(Arm64Writer* w) {
+    /* Preserve the three scratch registers used by the LL/SC sequence. */
+    arm64_writer_put_stp_reg_reg_reg_offset(w, ARM64_REG_X15, ARM64_REG_X16,
+                                             ARM64_REG_SP, -16, ARM64_INDEX_PRE_ADJUST);
+    arm64_writer_put_stp_reg_reg_reg_offset(w, ARM64_REG_X17, ARM64_REG_XZR,
+                                             ARM64_REG_SP, -16, ARM64_INDEX_PRE_ADJUST);
+
+    arm64_writer_put_ldr_reg_address(w, ARM64_REG_X15, (uint64_t)&g_hook_active_thunks);
+    uint64_t retry = arm64_writer_new_label_id(w);
+    arm64_writer_put_label(w, retry);
+    /* LDAXR X16, [X15] */
+    arm64_writer_put_insn(w, 0xC8DFFC00 | (15u << 5) | 16u);
+    arm64_writer_put_add_reg_reg_imm(w, ARM64_REG_X16, ARM64_REG_X16, 1);
+    /* STLXR W17, X16, [X15] */
+    arm64_writer_put_insn(w, 0xC800FC00 | (17u << 16) | (15u << 5) | 16u);
+    arm64_writer_put_cbnz_reg_label(w, ARM64_REG_W17, retry);
+
+    arm64_writer_put_ldp_reg_reg_reg_offset(w, ARM64_REG_X17, ARM64_REG_XZR,
+                                             ARM64_REG_SP, 16, ARM64_INDEX_POST_ADJUST);
+    arm64_writer_put_ldp_reg_reg_reg_offset(w, ARM64_REG_X15, ARM64_REG_X16,
+                                             ARM64_REG_SP, 16, ARM64_INDEX_POST_ADJUST);
+}
+
+void emit_thunk_activity_enter(Arm64Writer* w) {
+    emit_activity_increment(w);
+}
+
+/* Register contracts for the permanent exit helpers:
+ *
+ * return: X17 = &g_hook_active_thunks. X15/X16 may be clobbered at ABI return.
+ * branch: X16 = branch target, X17 = &g_hook_active_thunks. The generated thunk
+ *         saves X14/X15 before entering the helper, which restores them before
+ *         the final BR. X16/X17 are the ABI intra-procedure scratch registers.
+ *
+ * The decrement happens in image text, followed only by image-text restore and
+ * control-transfer instructions. Once the count reaches zero, reclaiming or
+ * unmapping generated code cannot invalidate the current thread's PC.
+ */
+__attribute__((naked, noinline, used))
+static void hook_thunk_leave_and_return(void) {
+    __asm__ volatile(
+        "1:\n"
+        "ldaxr  x15, [x17]\n"
+        "sub    x15, x15, #1\n"
+        "stlxr  w16, x15, [x17]\n"
+        "cbnz   w16, 1b\n"
+#if defined(__APPLE__)
+        /* PACIASP is a compatibility HINT on non-PAuth cores; AUTIASP + RET
+         * therefore works on both arm64 and arm64e. */
+        "autiasp\n"
+#endif
+        "ret\n"
+    );
+}
+
+__attribute__((naked, noinline, used))
+static void hook_thunk_leave_and_branch(void) {
+    __asm__ volatile(
+        "1:\n"
+        "ldaxr  x14, [x17]\n"
+        "sub    x14, x14, #1\n"
+        "stlxr  w15, x14, [x17]\n"
+        "cbnz   w15, 1b\n"
+        "ldp    x14, x15, [sp], #16\n"
+        "br     x16\n"
+    );
+}
+
+void emit_thunk_activity_leave_and_return(Arm64Writer* w) {
+    arm64_writer_put_ldr_reg_u64(w, ARM64_REG_X17,
+                                  (uint64_t)(uintptr_t)&g_hook_active_thunks);
+    arm64_writer_put_ldr_reg_u64(
+        w, ARM64_REG_X16,
+        hook_normalize_code_u64((uint64_t)(uintptr_t)hook_thunk_leave_and_return));
+    arm64_writer_put_br_reg(w, ARM64_REG_X16);
+}
+
+void emit_thunk_activity_leave_and_branch(Arm64Writer* w) {
+    /* Preserve the restored x14/x15 values across the static helper. */
+    arm64_writer_put_stp_reg_reg_reg_offset(w, ARM64_REG_X14, ARM64_REG_X15,
+                                             ARM64_REG_SP, -16, ARM64_INDEX_PRE_ADJUST);
+    arm64_writer_put_ldr_reg_u64(w, ARM64_REG_X17,
+                                  (uint64_t)(uintptr_t)&g_hook_active_thunks);
+    arm64_writer_put_ldr_reg_u64(
+        w, ARM64_REG_X15,
+        hook_normalize_code_u64((uint64_t)(uintptr_t)hook_thunk_leave_and_branch));
+    arm64_writer_put_br_reg(w, ARM64_REG_X15);
+}
+
 /* --- Simple replacement hook (hook_install) --- */
 
 void* hook_install(void* target, void* replacement, int stealth) {
@@ -117,8 +209,8 @@ void emit_replace_epilogue(Arm64Writer* w) {
     /* Deallocate stack (352 bytes) */
     arm64_writer_put_add_reg_reg_imm(w, ARM64_REG_SP, ARM64_REG_SP, 352);
 
-    /* Return to caller, authenticating thunk LR on Apple arm64e-capable targets. */
-    hook_writer_put_thunk_return(w);
+    /* Decrement and return from permanent image text. */
+    emit_thunk_activity_leave_and_return(w);
 }
 
 void emit_restore_caller_regs(Arm64Writer* w) {
@@ -165,6 +257,7 @@ void* generate_attach_thunk(HookEntry* entry, HookCallback on_enter,
 
     /* Generated thunks act like normal functions on arm64e and must sign LR. */
     hook_writer_put_thunk_entry_pac(&w);
+    emit_thunk_activity_enter(&w);
 
     /* Save HookContext (no trampoline for attach mode) */
     emit_save_hook_context(&w, (uint64_t)entry->target, 0);
@@ -210,8 +303,8 @@ void* generate_attach_thunk(HookEntry* entry, HookCallback on_enter,
     /* Deallocate stack */
     arm64_writer_put_add_reg_reg_imm(&w, ARM64_REG_SP, ARM64_REG_SP, stack_size);
 
-    /* Return, authenticating the LR we signed on entry when available. */
-    hook_writer_put_thunk_return(&w);
+    /* Decrement and return from permanent image text. */
+    emit_thunk_activity_leave_and_return(&w);
 
     /* Flush any pending labels */
     arm64_writer_flush(&w);
@@ -301,10 +394,9 @@ static void* generate_replace_thunk(HookEntry* entry, HookCallback on_enter,
     Arm64Writer w;
     arm64_writer_init(&w, thunk_mem, (uint64_t)thunk_mem, THUNK_ALLOC_SIZE);
 
-    uint64_t stack_size = 352;
-
     /* Generated thunks act like normal functions on arm64e and must sign LR. */
     hook_writer_put_thunk_entry_pac(&w);
+    emit_thunk_activity_enter(&w);
 
     /* Save HookContext with trampoline address */
     emit_save_hook_context(&w, (uint64_t)entry->target, (uint64_t)entry->trampoline);
@@ -312,7 +404,7 @@ static void* generate_replace_thunk(HookEntry* entry, HookCallback on_enter,
     /* Call on_enter callback */
     emit_callback_call(&w, on_enter, user_data);
 
-    /* Restore x0 + LR, deallocate stack, RET */
+    /* Restore x0 + LR, deallocate stack, then leave through image text. */
     emit_replace_epilogue(&w);
 
     /* Flush any pending labels */
@@ -490,8 +582,9 @@ int hook_remove(void* target) {
                 g_engine.hooks = entry->next;
             }
 
-            /* Move to free list for reuse instead of discarding */
-            free_entry(entry);
+            /* Keep generated code stable until the host confirms callbacks and
+             * attach-mode original calls have left this thunk. */
+            retire_entry(entry);
 
             pthread_mutex_unlock(&g_engine.lock);
             return HOOK_OK;

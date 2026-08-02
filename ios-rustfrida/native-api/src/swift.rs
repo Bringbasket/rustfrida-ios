@@ -15,6 +15,12 @@ pub struct SwiftType {
     pub module_name: String,
     pub module_base: usize,
     pub type_name: String,
+    pub type_representation: String,
+    pub object_representation: String,
+    pub abi_argument_kind: String,
+    pub abi_pass_mode: String,
+    pub abi_call_supported: bool,
+    pub abi_call_reason: String,
     pub source_symbol_name: String,
     pub source_demangled_name: Option<String>,
     pub source_kind: String,
@@ -87,6 +93,201 @@ pub struct SwiftTypeLayout {
     pub associated_type_descriptors: Vec<SwiftType>,
     pub vtable_entries: Vec<SwiftVtableEntry>,
     pub witness_tables: Vec<SwiftWitnessTable>,
+}
+
+/// Ownership carried by a live Swift class-object handle.
+///
+/// `Borrowed` does not change the native reference count, `Adopt` consumes one
+/// reference already owned by the caller, and `Retain` creates a new strong
+/// reference before the handle is exposed to the script runtime.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SwiftObjectOwnership {
+    Borrowed,
+    Adopt,
+    Retain,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SwiftLiveObjectInfo {
+    pub object_address: usize,
+    pub metadata_address: usize,
+    /// `true` when the metadata address came from the object's first word.
+    pub metadata_inferred: bool,
+    /// `true` after the first-word identity check; this is not full metadata or ABI validation.
+    pub metadata_verified: bool,
+    pub ownership: SwiftObjectOwnership,
+    pub retain_available: bool,
+    pub release_available: bool,
+}
+
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SwiftMetadataIdentity {
+    address: usize,
+    inferred: bool,
+    verified: bool,
+}
+
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+fn validate_swift_metadata_identity(observed: usize, supplied: Option<usize>) -> Result<SwiftMetadataIdentity> {
+    let address = supplied.unwrap_or(observed);
+    if address == 0 {
+        return Err(common::Error::State("Swift object metadata identity is null".into()));
+    }
+    if !address.is_multiple_of(std::mem::size_of::<usize>()) {
+        return Err(common::Error::InvalidArgument(format!(
+            "Swift metadata address {address:#x} is not aligned to {} bytes",
+            std::mem::size_of::<usize>()
+        )));
+    }
+    if let Some(expected) = supplied {
+        if expected != observed {
+            return Err(common::Error::InvalidArgument(format!(
+                "Swift metadata address {expected:#x} does not match object first word {observed:#x}"
+            )));
+        }
+    }
+    Ok(SwiftMetadataIdentity {
+        address,
+        inferred: supplied.is_none(),
+        verified: true,
+    })
+}
+
+/// Resolve the first-word metadata identity of a Swift class object and
+/// report the runtime retain/release boundary available in the current image.
+/// The caller must still supply a valid live class-object address.
+pub fn inspect_swift_live_object(
+    object_address: usize,
+    metadata_address: Option<usize>,
+    ownership: SwiftObjectOwnership,
+) -> Result<SwiftLiveObjectInfo> {
+    platform::inspect_swift_live_object(object_address, metadata_address, ownership)
+}
+
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+const SWIFT_ABI_CALL_UNSUPPORTED_REASON: &str =
+    "Swift runtime calls require verified metadata, ownership conventions, generic context, and hidden ABI arguments";
+
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SwiftTypeAbiMetadata {
+    type_representation: &'static str,
+    object_representation: &'static str,
+    argument_kind: &'static str,
+    pass_mode: &'static str,
+}
+
+#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
+fn swift_type_abi_metadata(type_name: &str) -> SwiftTypeAbiMetadata {
+    let compact = type_name.trim();
+    let unqualified = compact.strip_prefix("Swift.").unwrap_or(compact);
+    let base = compact.rsplit('.').next().unwrap_or(compact);
+
+    if compact.is_empty() {
+        return SwiftTypeAbiMetadata {
+            type_representation: "unknown",
+            object_representation: "unknown",
+            argument_kind: "unsupported",
+            pass_mode: "unknown",
+        };
+    }
+    if compact == "()" || matches!(base, "Void" | "Never") {
+        return SwiftTypeAbiMetadata {
+            type_representation: "void",
+            object_representation: "none",
+            argument_kind: "void",
+            pass_mode: "none",
+        };
+    }
+    if compact.ends_with(".Type") || compact.ends_with(".Protocol") {
+        return SwiftTypeAbiMetadata {
+            type_representation: "metatype",
+            object_representation: "metadata-pointer",
+            argument_kind: "metatype",
+            pass_mode: "direct-pointer",
+        };
+    }
+    if compact == "Any" || compact == "AnyObject" || compact.starts_with("any ") {
+        return SwiftTypeAbiMetadata {
+            type_representation: "existential",
+            object_representation: "existential-container",
+            argument_kind: "existential",
+            pass_mode: "metadata-dependent",
+        };
+    }
+    if compact.contains("->") {
+        return SwiftTypeAbiMetadata {
+            type_representation: "function",
+            object_representation: "thick-function",
+            argument_kind: "function",
+            pass_mode: "context-dependent",
+        };
+    }
+    if compact.starts_with('(') && compact.ends_with(')') {
+        return SwiftTypeAbiMetadata {
+            type_representation: "tuple",
+            object_representation: "inline-value",
+            argument_kind: "aggregate",
+            pass_mode: "layout-dependent",
+        };
+    }
+    if unqualified.starts_with("UnsafePointer<")
+        || unqualified.starts_with("UnsafeMutablePointer<")
+        || unqualified.starts_with("AutoreleasingUnsafeMutablePointer<")
+        || matches!(base, "OpaquePointer" | "UnsafeRawPointer" | "UnsafeMutableRawPointer")
+    {
+        return SwiftTypeAbiMetadata {
+            type_representation: "pointer",
+            object_representation: "raw-pointer",
+            argument_kind: "pointer",
+            pass_mode: "direct-pointer",
+        };
+    }
+    if matches!(
+        base,
+        "Bool"
+            | "Int"
+            | "Int8"
+            | "Int16"
+            | "Int32"
+            | "Int64"
+            | "UInt"
+            | "UInt8"
+            | "UInt16"
+            | "UInt32"
+            | "UInt64"
+            | "Float"
+            | "Double"
+            | "Float16"
+            | "Float80"
+    ) {
+        return SwiftTypeAbiMetadata {
+            type_representation: "scalar",
+            object_representation: "inline-value",
+            argument_kind: if base.starts_with("Float") || base == "Double" {
+                "floating-point"
+            } else {
+                "integer"
+            },
+            pass_mode: "direct-scalar",
+        };
+    }
+    if compact.starts_with("some ") {
+        return SwiftTypeAbiMetadata {
+            type_representation: "opaque-result",
+            object_representation: "metadata-dependent",
+            argument_kind: "opaque-value",
+            pass_mode: "metadata-dependent",
+        };
+    }
+
+    SwiftTypeAbiMetadata {
+        type_representation: "nominal",
+        object_representation: "metadata-dependent",
+        argument_kind: "nominal-value-or-reference",
+        pass_mode: "metadata-dependent",
+    }
 }
 
 pub fn swift_support_available() -> bool {
@@ -618,8 +819,8 @@ mod platform {
     use common::{Error, Result};
 
     use crate::{
-        enumerate_images, image_name_matches, ImageInfo, SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType,
-        SwiftTypeLayout, SwiftVtableEntry, SwiftWitnessTable,
+        enumerate_images, image_name_matches, ImageInfo, SwiftConformance, SwiftLiveObjectInfo, SwiftObjectOwnership,
+        SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout, SwiftVtableEntry, SwiftWitnessTable,
     };
 
     use super::{
@@ -628,13 +829,56 @@ mod platform {
         infer_swift_conformance_source_kind, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
         looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_conformance_query,
         query_matches_swift_member_name, query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
-        swift_type_source_kinds,
+        swift_type_abi_metadata, swift_type_source_kinds, validate_swift_metadata_identity,
+        SWIFT_ABI_CALL_UNSUPPORTED_REASON,
     };
 
     const LC_SEGMENT_64: u32 = 0x19;
     const LC_SYMTAB: u32 = 0x2;
     const MH_MAGIC_64: u32 = 0xfeedfacf;
     const N_STAB: u8 = 0xe0;
+    const VM_PROT_READ: libc::vm_prot_t = 1;
+
+    #[repr(C, packed(4))]
+    #[derive(Default)]
+    struct VmRegionSubmapInfo64 {
+        protection: libc::vm_prot_t,
+        max_protection: libc::vm_prot_t,
+        inheritance: libc::vm_inherit_t,
+        offset: libc::memory_object_offset_t,
+        user_tag: libc::c_uint,
+        pages_resident: libc::c_uint,
+        pages_shared_now_private: libc::c_uint,
+        pages_swapped_out: libc::c_uint,
+        pages_dirtied: libc::c_uint,
+        ref_count: libc::c_uint,
+        shadow_depth: libc::c_ushort,
+        external_pager: libc::c_uchar,
+        share_mode: libc::c_uchar,
+        is_submap: libc::boolean_t,
+        behavior: libc::c_int,
+        object_id: libc::c_uint,
+        user_wired_count: libc::c_ushort,
+        flags: libc::c_ushort,
+        pages_reusable: libc::c_uint,
+        object_id_full: u64,
+    }
+
+    const VM_REGION_SUBMAP_INFO_COUNT_64: libc::mach_msg_type_number_t =
+        (size_of::<VmRegionSubmapInfo64>() / size_of::<libc::natural_t>()) as libc::mach_msg_type_number_t;
+
+    extern "C" {
+        static mach_task_self_: libc::mach_port_t;
+
+        fn mach_vm_region_recurse(
+            target_task: libc::vm_map_t,
+            address: *mut libc::mach_vm_address_t,
+            size: *mut libc::mach_vm_size_t,
+            nesting_depth: *mut libc::natural_t,
+            info: *mut libc::integer_t,
+            info_count: *mut libc::mach_msg_type_number_t,
+        ) -> libc::kern_return_t;
+    }
 
     #[repr(C)]
     struct MachHeader64 {
@@ -689,9 +933,133 @@ mod platform {
     }
 
     type SwiftDemangleFn = unsafe extern "C" fn(*const c_char, usize, *mut c_char, *mut usize, u32) -> *mut c_char;
-
     pub fn swift_support_available() -> bool {
         true
+    }
+
+    fn lookup_runtime_symbol(name: &str) -> Option<usize> {
+        let symbol = CString::new(name).ok()?;
+        let address = unsafe { libc::dlsym(libc::RTLD_DEFAULT, symbol.as_ptr()) };
+        (!address.is_null()).then_some(address as usize)
+    }
+
+    pub fn inspect_swift_live_object(
+        object_address: usize,
+        metadata_address: Option<usize>,
+        ownership: SwiftObjectOwnership,
+    ) -> Result<SwiftLiveObjectInfo> {
+        if object_address == 0 {
+            return Err(Error::InvalidArgument("Swift object address must not be null".into()));
+        }
+        if !object_address.is_multiple_of(size_of::<usize>()) {
+            return Err(Error::InvalidArgument(format!(
+                "Swift object address {object_address:#x} is not aligned to {} bytes",
+                size_of::<usize>()
+            )));
+        }
+        ensure_readable(object_address, size_of::<usize>())?;
+        let observed_metadata = unsafe { (object_address as *const usize).read_unaligned() };
+        let metadata_identity = validate_swift_metadata_identity(observed_metadata, metadata_address)?;
+
+        let retain_available = lookup_runtime_symbol("swift_retain").is_some();
+        let release_available = lookup_runtime_symbol("swift_release").is_some();
+        if matches!(ownership, SwiftObjectOwnership::Retain) && !retain_available {
+            return Err(Error::Unsupported(
+                "swift_retain is not exported by the loaded Swift runtime".into(),
+            ));
+        }
+        if matches!(ownership, SwiftObjectOwnership::Adopt | SwiftObjectOwnership::Retain) && !release_available {
+            return Err(Error::Unsupported(
+                "swift_release is not exported by the loaded Swift runtime".into(),
+            ));
+        }
+
+        Ok(SwiftLiveObjectInfo {
+            object_address,
+            metadata_address: metadata_identity.address,
+            metadata_inferred: metadata_identity.inferred,
+            metadata_verified: metadata_identity.verified,
+            ownership,
+            retain_available,
+            release_available,
+        })
+    }
+
+    fn ensure_readable(address: usize, length: usize) -> Result<()> {
+        let end = address
+            .checked_add(length)
+            .ok_or_else(|| Error::InvalidArgument("Swift object metadata range overflow".into()))?;
+        let mut cursor = address;
+        while cursor < end {
+            let region = readable_region_at(cursor)?;
+            if region.start > cursor || region.end <= cursor {
+                return Err(Error::State(format!(
+                    "Swift object metadata range has an unmapped gap at {cursor:#x}"
+                )));
+            }
+            if region.protection & VM_PROT_READ == 0 {
+                return Err(Error::State(format!(
+                    "Swift object metadata region {:#x}..{:#x} is not readable",
+                    region.start, region.end
+                )));
+            }
+            let next = region.end.min(end);
+            if next <= cursor {
+                return Err(Error::State(
+                    "Swift object metadata region query made no progress".into(),
+                ));
+            }
+            cursor = next;
+        }
+        Ok(())
+    }
+
+    struct ReadableRegion {
+        start: usize,
+        end: usize,
+        protection: libc::vm_prot_t,
+    }
+
+    fn readable_region_at(cursor: usize) -> Result<ReadableRegion> {
+        let mut nesting_depth = 0;
+        loop {
+            let mut address = cursor as libc::mach_vm_address_t;
+            let mut size = 0 as libc::mach_vm_size_t;
+            let mut info = VmRegionSubmapInfo64::default();
+            let mut info_count = VM_REGION_SUBMAP_INFO_COUNT_64;
+            let result = unsafe {
+                mach_vm_region_recurse(
+                    mach_task_self_,
+                    &mut address,
+                    &mut size,
+                    &mut nesting_depth,
+                    &mut info as *mut VmRegionSubmapInfo64 as *mut libc::integer_t,
+                    &mut info_count,
+                )
+            };
+            if result != 0 || size == 0 {
+                return Err(Error::State(format!(
+                    "mach_vm_region_recurse failed at {cursor:#x}: kern_return={result}"
+                )));
+            }
+            if info.is_submap != 0 {
+                nesting_depth = nesting_depth
+                    .checked_add(1)
+                    .ok_or_else(|| Error::State("Mach VM nesting depth overflow".into()))?;
+                continue;
+            }
+            let start =
+                usize::try_from(address).map_err(|_| Error::State("Mach region start does not fit usize".into()))?;
+            let size = usize::try_from(size).map_err(|_| Error::State("Mach region size does not fit usize".into()))?;
+            let end = start
+                .checked_add(size)
+                .ok_or_else(|| Error::State("Mach region range overflow".into()))?;
+            return Ok(ReadableRegion {
+                start,
+                end,
+                protection: info.protection,
+            });
+        }
     }
 
     pub fn swift_demangle_symbol(symbol_name: &str) -> Result<Option<String>> {
@@ -735,11 +1103,18 @@ mod platform {
                     return None;
                 }
                 let source_kind = infer_swift_type_source_kind(symbol.demangled_name.as_deref()).to_string();
+                let abi = swift_type_abi_metadata(&type_name);
 
                 Some(SwiftType {
                     module_name: symbol.module_name,
                     module_base: symbol.module_base,
                     type_name,
+                    type_representation: abi.type_representation.to_string(),
+                    object_representation: abi.object_representation.to_string(),
+                    abi_argument_kind: abi.argument_kind.to_string(),
+                    abi_pass_mode: abi.pass_mode.to_string(),
+                    abi_call_supported: false,
+                    abi_call_reason: SWIFT_ABI_CALL_UNSUPPORTED_REASON.to_string(),
                     source_symbol_name: symbol.symbol_name,
                     source_demangled_name: symbol.demangled_name,
                     source_kind,
@@ -805,11 +1180,18 @@ mod platform {
                 ) {
                     return None;
                 }
+                let abi = swift_type_abi_metadata(&type_name);
 
                 Some(SwiftType {
                     module_name: symbol.module_name,
                     module_base: symbol.module_base,
                     type_name,
+                    type_representation: abi.type_representation.to_string(),
+                    object_representation: abi.object_representation.to_string(),
+                    abi_argument_kind: abi.argument_kind.to_string(),
+                    abi_pass_mode: abi.pass_mode.to_string(),
+                    abi_call_supported: false,
+                    abi_call_reason: SWIFT_ABI_CALL_UNSUPPORTED_REASON.to_string(),
                     source_symbol_name: symbol.symbol_name,
                     source_demangled_name: symbol.demangled_name,
                     source_kind: source_kind.to_string(),
@@ -962,10 +1344,17 @@ mod platform {
                     ) {
                         let layout =
                             ensure_type_layout(&mut layouts, &symbol.module_name, symbol.module_base, &type_name);
+                        let abi = swift_type_abi_metadata(&type_name);
                         let type_info = SwiftType {
                             module_name: symbol.module_name.clone(),
                             module_base: symbol.module_base,
                             type_name,
+                            type_representation: abi.type_representation.to_string(),
+                            object_representation: abi.object_representation.to_string(),
+                            abi_argument_kind: abi.argument_kind.to_string(),
+                            abi_pass_mode: abi.pass_mode.to_string(),
+                            abi_call_supported: false,
+                            abi_call_reason: SWIFT_ABI_CALL_UNSUPPORTED_REASON.to_string(),
                             source_symbol_name: symbol.symbol_name.clone(),
                             source_demangled_name: symbol.demangled_name.clone(),
                             source_kind: source_kind.to_string(),
@@ -1126,11 +1515,18 @@ mod platform {
                 if !query_matches_swift_member_name(&member_name, trimmed) {
                     return None;
                 }
+                let abi = swift_type_abi_metadata(&owner_type);
 
                 Some(SwiftType {
                     module_name: symbol.module_name,
                     module_base: symbol.module_base,
                     type_name: owner_type,
+                    type_representation: abi.type_representation.to_string(),
+                    object_representation: abi.object_representation.to_string(),
+                    abi_argument_kind: abi.argument_kind.to_string(),
+                    abi_pass_mode: abi.pass_mode.to_string(),
+                    abi_call_supported: false,
+                    abi_call_reason: SWIFT_ABI_CALL_UNSUPPORTED_REASON.to_string(),
                     source_symbol_name: symbol.symbol_name,
                     source_demangled_name: symbol.demangled_name,
                     source_kind: "member".to_string(),
@@ -1346,22 +1742,22 @@ mod platform {
             });
         }
 
-        fn dedup_and_sort_conformances(matches: &mut Vec<SwiftConformance>) {
-            matches.sort_by(|left, right| {
-                left.module_name
-                    .cmp(&right.module_name)
-                    .then(left.type_name.cmp(&right.type_name))
-                    .then(left.protocol_name.cmp(&right.protocol_name))
-                    .then(left.source_symbol_name.cmp(&right.source_symbol_name))
-            });
-            matches.dedup_by(|left, right| {
-                left.module_name == right.module_name
-                    && left.type_name == right.type_name
-                    && left.protocol_name == right.protocol_name
-            });
-        }
-
         Ok(matches)
+    }
+
+    fn dedup_and_sort_conformances(matches: &mut Vec<SwiftConformance>) {
+        matches.sort_by(|left, right| {
+            left.module_name
+                .cmp(&right.module_name)
+                .then(left.type_name.cmp(&right.type_name))
+                .then(left.protocol_name.cmp(&right.protocol_name))
+                .then(left.source_symbol_name.cmp(&right.source_symbol_name))
+        });
+        matches.dedup_by(|left, right| {
+            left.module_name == right.module_name
+                && left.type_name == right.type_name
+                && left.protocol_name == right.protocol_name
+        });
     }
 
     unsafe fn header_ptr_after_header(header: &MachHeader64) -> *const u8 {
@@ -1453,12 +1849,23 @@ mod platform {
 mod platform {
     use common::{Error, Result};
 
-    use crate::{
-        SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout, SwiftVtableEntry, SwiftWitnessTable,
+    use super::{
+        SwiftConformance, SwiftLiveObjectInfo, SwiftObjectOwnership, SwiftProtocol, SwiftSymbol, SwiftType,
+        SwiftTypeLayout, SwiftVtableEntry, SwiftWitnessTable,
     };
 
     pub fn swift_support_available() -> bool {
         false
+    }
+
+    pub fn inspect_swift_live_object(
+        _object_address: usize,
+        _metadata_address: Option<usize>,
+        _ownership: SwiftObjectOwnership,
+    ) -> Result<SwiftLiveObjectInfo> {
+        Err(Error::Unsupported(
+            "Swift live object inspection is only available on Apple targets".into(),
+        ))
     }
 
     pub fn swift_demangle_symbol(_symbol_name: &str) -> Result<Option<String>> {
@@ -1556,8 +1963,25 @@ mod tests {
         infer_swift_conformance_source_kind, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
         looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_conformance_query,
         query_matches_swift_member_name, query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
-        swift_conformance_names_match, swift_member_name_matches, swift_protocol_name_matches, swift_type_name_matches,
+        swift_conformance_names_match, swift_member_name_matches, swift_protocol_name_matches, swift_type_abi_metadata,
+        swift_type_name_matches, validate_swift_metadata_identity,
     };
+
+    #[test]
+    fn validates_swift_metadata_identity_and_source() {
+        let inferred = validate_swift_metadata_identity(0x1000, None).expect("infer metadata");
+        assert_eq!(inferred.address, 0x1000);
+        assert!(inferred.inferred);
+        assert!(inferred.verified);
+
+        let explicit = validate_swift_metadata_identity(0x1000, Some(0x1000)).expect("verify metadata");
+        assert_eq!(explicit.address, 0x1000);
+        assert!(!explicit.inferred);
+        assert!(explicit.verified);
+
+        let mismatch = validate_swift_metadata_identity(0x1000, Some(0x2000)).unwrap_err();
+        assert!(mismatch.to_string().contains("does not match object first word 0x1000"));
+    }
 
     #[test]
     fn detects_swift_mangled_names() {
@@ -1850,5 +2274,44 @@ mod tests {
         );
         assert!(query_matches_swift_member_name("viewDidLoad", "didload"));
         assert!(!query_matches_swift_member_name("viewDidLoad", "appdelegate"));
+    }
+
+    #[test]
+    fn classifies_swift_type_and_object_representations_conservatively() {
+        let scalar = swift_type_abi_metadata("Swift.Int64");
+        assert_eq!(scalar.type_representation, "scalar");
+        assert_eq!(scalar.object_representation, "inline-value");
+        assert_eq!(scalar.argument_kind, "integer");
+        assert_eq!(scalar.pass_mode, "direct-scalar");
+
+        let pointer = swift_type_abi_metadata("Swift.UnsafeMutablePointer<Swift.Int>");
+        assert_eq!(pointer.object_representation, "raw-pointer");
+        assert_eq!(pointer.pass_mode, "direct-pointer");
+
+        let existential = swift_type_abi_metadata("any Demo.Renderable");
+        assert_eq!(existential.type_representation, "existential");
+        assert_eq!(existential.object_representation, "existential-container");
+        assert_eq!(existential.pass_mode, "metadata-dependent");
+
+        let nominal = swift_type_abi_metadata("Demo.ViewController");
+        assert_eq!(nominal.type_representation, "nominal");
+        assert_eq!(nominal.object_representation, "metadata-dependent");
+        assert_eq!(nominal.argument_kind, "nominal-value-or-reference");
+    }
+
+    #[test]
+    fn classifies_hidden_context_swift_abi_shapes_without_claiming_calls() {
+        let metatype = swift_type_abi_metadata("Demo.ViewController.Type");
+        assert_eq!(metatype.argument_kind, "metatype");
+        assert_eq!(metatype.object_representation, "metadata-pointer");
+
+        let function = swift_type_abi_metadata("(Swift.Int) -> Swift.String");
+        assert_eq!(function.argument_kind, "function");
+        assert_eq!(function.object_representation, "thick-function");
+        assert_eq!(function.pass_mode, "context-dependent");
+
+        let tuple = swift_type_abi_metadata("(Swift.Int, Swift.Int)");
+        assert_eq!(tuple.argument_kind, "aggregate");
+        assert_eq!(tuple.pass_mode, "layout-dependent");
     }
 }

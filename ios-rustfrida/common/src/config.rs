@@ -17,6 +17,7 @@ pub struct ControllerConfig {
     pub spawn_command: Option<String>,
     pub command: Option<String>,
     pub command_json: bool,
+    pub rpc_bind: Option<String>,
     pub list_images_json: bool,
     pub preflight_only: bool,
     pub preflight_json: bool,
@@ -57,6 +58,18 @@ impl ControllerConfig {
                         return Err(crate::Error::InvalidArgument("command must not be empty".into()));
                     }
                 }
+                if let Some(rpc_bind) = &self.rpc_bind {
+                    if rpc_bind.trim().is_empty() {
+                        return Err(crate::Error::InvalidArgument(
+                            "RPC bind address must not be empty".into(),
+                        ));
+                    }
+                    if self.command.is_some() {
+                        return Err(crate::Error::InvalidArgument(
+                            "HTTP RPC server mode cannot be combined with a single command".into(),
+                        ));
+                    }
+                }
                 Ok(())
             }
         }
@@ -92,6 +105,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -129,5 +143,26 @@ mod tests {
 
         let err = config.validate().expect_err("empty command should fail");
         assert!(err.to_string().contains("command must not be empty"));
+    }
+
+    #[test]
+    fn validate_rejects_empty_rpc_bind_address() {
+        let mut config = base_config();
+        config.rpc_bind = Some("   ".into());
+
+        let err = config.validate().expect_err("empty RPC bind should fail");
+        assert!(err.to_string().contains("RPC bind address"));
+    }
+
+    #[test]
+    fn validate_rejects_rpc_server_with_single_command() {
+        let mut config = base_config();
+        config.command = Some("native.images".into());
+        config.rpc_bind = Some("127.0.0.1:9191".into());
+
+        let err = config
+            .validate()
+            .expect_err("RPC server and single command should conflict");
+        assert!(err.to_string().contains("cannot be combined"));
     }
 }

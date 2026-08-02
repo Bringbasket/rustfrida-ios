@@ -1,4 +1,15 @@
+pub mod object_bridge;
+
+pub use object_bridge::{
+    BridgeError, BridgeResult, IvarAccess, IvarSlot, ObjcClass, ObjcException, ObjcExceptionBoundary, ObjcObject,
+    ObjcSelector, ObjectBridge, ObjectBridgeCapabilities, PendingObjcClass, PropertyKvo, PropertyOwnership, ScalarKind,
+    ScalarValue, SynthesizedPropertyOptions, MAX_MESSAGE_ARGUMENTS, MAX_SYNTHESIZED_PROPERTY_NAME_LENGTH,
+};
+
 use common::Result;
+
+pub const DEFAULT_MAX_INSTANCE_COUNT: usize = 4096;
+pub const MAX_INSTANCE_COUNT: usize = 65536;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjcMethodInfo {
@@ -500,6 +511,27 @@ impl ObjcApi {
     pub fn object_class_name(&self, object: usize) -> Result<Option<String>> {
         platform::object_class_name(object)
     }
+
+    pub fn choose_instances(&self, class_name: &str, include_subclasses: bool, max_count: usize) -> Result<Vec<usize>> {
+        let class_name = class_name.trim();
+        if class_name.is_empty() {
+            return Err(common::Error::InvalidArgument("class name must not be empty".into()));
+        }
+        if class_name.as_bytes().contains(&0) {
+            return Err(common::Error::InvalidArgument(
+                "class name contains interior NUL".into(),
+            ));
+        }
+        if max_count > MAX_INSTANCE_COUNT {
+            return Err(common::Error::InvalidArgument(format!(
+                "max instance count must be <= {MAX_INSTANCE_COUNT}"
+            )));
+        }
+        if max_count == 0 {
+            return Ok(Vec::new());
+        }
+        platform::choose_instances(class_name, include_subclasses, max_count)
+    }
 }
 
 fn unique_string_match(values: Vec<String>) -> Option<String> {
@@ -647,6 +679,13 @@ mod platform {
         fn sel_registerName(name: *const c_char) -> *const c_void;
         fn sel_getName(sel: *const c_void) -> *const c_char;
         fn dladdr(addr: *const c_void, info: *mut DlInfo) -> i32;
+        fn rf_objc_choose_instances(
+            class_name: *const c_char,
+            include_subclasses: i32,
+            max_count: usize,
+            matches: *mut usize,
+            match_count: *mut usize,
+        ) -> i32;
     }
 
     #[repr(C)]
@@ -2045,6 +2084,29 @@ mod platform {
         Ok(Some(unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned()))
     }
 
+    pub fn choose_instances(class_name: &str, include_subclasses: bool, max_count: usize) -> Result<Vec<usize>> {
+        let class_name =
+            CString::new(class_name).map_err(|_| Error::InvalidArgument("class name contains interior NUL".into()))?;
+        let mut matches = vec![0usize; max_count];
+        let mut match_count = 0usize;
+        let status = unsafe {
+            rf_objc_choose_instances(
+                class_name.as_ptr(),
+                i32::from(include_subclasses),
+                max_count,
+                matches.as_mut_ptr(),
+                &mut match_count,
+            )
+        };
+        if status != 0 {
+            return Err(Error::State(format!(
+                "Objective-C instance enumeration failed: status={status}"
+            )));
+        }
+        matches.truncate(match_count.min(max_count));
+        Ok(matches)
+    }
+
     fn image_path_for_address(address: *const c_void) -> Result<Option<String>> {
         if address.is_null() {
             return Ok(None);
@@ -2339,13 +2401,19 @@ mod platform {
             "Objective-C runtime is only available on Apple targets".into(),
         ))
     }
+
+    pub fn choose_instances(_class_name: &str, _include_subclasses: bool, _max_count: usize) -> Result<Vec<usize>> {
+        Err(common::Error::Unsupported(
+            "Objective-C runtime is only available on Apple targets".into(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         query_matches_class_name, query_matches_ivar_name, query_matches_method_name, query_matches_property_name,
-        ObjcApi,
+        ObjcApi, DEFAULT_MAX_INSTANCE_COUNT, MAX_INSTANCE_COUNT,
     };
 
     #[test]
@@ -2374,6 +2442,30 @@ mod tests {
         assert!(query_matches_ivar_name("_delegate", "dele"));
         assert!(query_matches_ivar_name("_delegate", "LEG"));
         assert!(!query_matches_ivar_name("_delegate", "window"));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn instance_enumeration_is_bounded_and_platform_stable() {
+        let api = ObjcApi::new();
+        assert_eq!(DEFAULT_MAX_INSTANCE_COUNT, 4096);
+        assert_eq!(MAX_INSTANCE_COUNT, 65536);
+        assert!(api
+            .choose_instances("NSObject", false, 0)
+            .expect("zero limit should short-circuit")
+            .is_empty());
+        assert!(matches!(
+            api.choose_instances("NSObject", false, 1),
+            Err(common::Error::Unsupported(_))
+        ));
+        assert!(matches!(
+            api.choose_instances("NSObject", false, MAX_INSTANCE_COUNT + 1),
+            Err(common::Error::InvalidArgument(_))
+        ));
+        assert!(matches!(
+            api.choose_instances("", false, 1),
+            Err(common::Error::InvalidArgument(_))
+        ));
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "macos")))]

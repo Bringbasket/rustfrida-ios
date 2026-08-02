@@ -3,6 +3,177 @@ use serde_json::{json, Value};
 
 use crate::{Error, Result};
 
+const EXTERNAL_HOOK_ID_MAX_LEN: usize = 128;
+const EXTERNAL_HOOK_IMAGE_MAX_LEN: usize = 4096;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExternalHookCommandOperation {
+    Install,
+    Replace,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExternalHookExecuteRequest {
+    pub request_id: String,
+    pub owner_id: String,
+    pub operation: ExternalHookCommandOperation,
+    pub backend_image: String,
+    pub target: u64,
+    pub replacement: u64,
+}
+
+impl ExternalHookExecuteRequest {
+    pub fn validate(&self) -> Result<()> {
+        validate_external_hook_id("request_id", &self.request_id)?;
+        validate_external_hook_id("owner_id", &self.owner_id)?;
+        let image = self.backend_image.trim();
+        if image.is_empty() {
+            return Err(Error::InvalidArgument(
+                "external hook backend_image must not be empty".into(),
+            ));
+        }
+        if image.len() > EXTERNAL_HOOK_IMAGE_MAX_LEN || image.as_bytes().contains(&0) {
+            return Err(Error::InvalidArgument(
+                "external hook backend_image is too long or contains a NUL byte".into(),
+            ));
+        }
+        if self.target == 0 {
+            return Err(Error::InvalidArgument("external hook target must be non-zero".into()));
+        }
+        if self.replacement == 0 {
+            return Err(Error::InvalidArgument(
+                "external hook replacement must be non-zero".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExternalHookStatusRequest {
+    pub owner_id: String,
+}
+
+impl ExternalHookStatusRequest {
+    pub fn validate(&self) -> Result<()> {
+        validate_external_hook_id("owner_id", &self.owner_id)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExternalHookActionRequest {
+    pub owner_id: String,
+    pub token: u64,
+}
+
+impl ExternalHookActionRequest {
+    pub fn validate(&self) -> Result<()> {
+        validate_external_hook_id("owner_id", &self.owner_id)?;
+        if self.token == 0 {
+            return Err(Error::InvalidArgument("external hook token must be non-zero".into()));
+        }
+        Ok(())
+    }
+}
+
+fn validate_external_hook_id(field: &str, value: &str) -> Result<()> {
+    if value.is_empty()
+        || value.len() > EXTERNAL_HOOK_ID_MAX_LEN
+        || !value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b':' | b'-'))
+    {
+        return Err(Error::InvalidArgument(format!(
+            "external hook {field} must be 1..={EXTERNAL_HOOK_ID_MAX_LEN} ASCII identifier characters"
+        )));
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExternalHookOwnershipState {
+    Owned,
+    Released,
+    Orphaned,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExternalHookTargetState {
+    Installed,
+    Restored,
+    Uncertain,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExternalHookReceipt {
+    pub request_id: String,
+    pub owner_id: String,
+    pub token: Option<u64>,
+    pub backend: String,
+    pub backend_image: String,
+    pub operation: ExternalHookCommandOperation,
+    pub target: u64,
+    pub replacement: u64,
+    pub original: Option<u64>,
+    pub native_result: Option<i32>,
+    pub ownership: ExternalHookOwnershipState,
+    pub target_state: ExternalHookTargetState,
+    pub native_uninstall_available: bool,
+    pub last_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExternalHookErrorCode {
+    RequestIdConflict,
+    NotFound,
+    OwnerMismatch,
+    DuplicateToken,
+    ExecutionFailed,
+    TargetStateUncertain,
+    NativeUninstallUnavailable,
+    AlreadyReleased,
+    AdapterFailed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ExternalHookReply {
+    Execute {
+        receipt: ExternalHookReceipt,
+        replayed: bool,
+    },
+    Status {
+        owner_id: String,
+        hooks: Vec<ExternalHookReceipt>,
+    },
+    Release {
+        receipt: ExternalHookReceipt,
+        changed: bool,
+    },
+    Uninstall {
+        receipt: ExternalHookReceipt,
+        changed: bool,
+    },
+    Error {
+        code: ExternalHookErrorCode,
+        message: String,
+        request_id: Option<String>,
+        token: Option<u64>,
+        receipt: Option<ExternalHookReceipt>,
+        replayed: bool,
+    },
+}
+
+impl ExternalHookReply {
+    pub fn is_error(&self) -> bool {
+        matches!(self, Self::Error { .. })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AgentCommand {
@@ -12,11 +183,16 @@ pub enum AgentCommand {
     LoadJs { script: String },
     JsEval { script: String },
     JsComplete { prefix: String },
+    RpcCall { method: String, args_json: String },
     RuntimeHandle { command: String },
     RuntimeDispatch { spec: Value },
     RuntimeDispatchResult { spec: Value },
     ControllerDispatch { spec: Value },
     ControllerDispatchResult { spec: Value },
+    ExternalHookExecute { request: ExternalHookExecuteRequest },
+    ExternalHookStatus { request: ExternalHookStatusRequest },
+    ExternalHookRelease { request: ExternalHookActionRequest },
+    ExternalHookUninstall { request: ExternalHookActionRequest },
     Exit,
 }
 
@@ -26,7 +202,19 @@ impl AgentCommand {
     }
 
     pub fn decode(payload: &[u8]) -> Result<Self> {
-        serde_json::from_slice(payload).map_err(|err| Error::Protocol(format!("failed to decode agent command: {err}")))
+        let command: Self = serde_json::from_slice(payload)
+            .map_err(|err| Error::Protocol(format!("failed to decode agent command: {err}")))?;
+        command.validate()?;
+        Ok(command)
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        match self {
+            Self::ExternalHookExecute { request } => request.validate(),
+            Self::ExternalHookStatus { request } => request.validate(),
+            Self::ExternalHookRelease { request } | Self::ExternalHookUninstall { request } => request.validate(),
+            _ => Ok(()),
+        }
     }
 
     pub fn from_legacy(command: &str) -> Option<Self> {
@@ -57,6 +245,10 @@ impl AgentCommand {
                 prefix: prefix.to_string(),
             });
         }
+        if let Some(raw) = command.strip_prefix("rpccall ") {
+            let (method, args_json) = parse_rpc_call(raw)?;
+            return Some(Self::RpcCall { method, args_json });
+        }
         if let Some(spec) = parse_runtime_dispatch_legacy_command(command) {
             return Some(Self::RuntimeDispatch { spec });
         }
@@ -67,6 +259,25 @@ impl AgentCommand {
         }
         None
     }
+}
+
+fn parse_rpc_call(raw: &str) -> Option<(String, String)> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let method_end = trimmed.find(char::is_whitespace).unwrap_or(trimmed.len());
+    let method = trimmed[..method_end].to_string();
+    let args_json = trimmed[method_end..].trim();
+    Some((
+        method,
+        if args_json.is_empty() {
+            "[]".to_string()
+        } else {
+            args_json.to_string()
+        },
+    ))
 }
 
 fn is_runtime_handle_legacy_command(command: &str) -> bool {
@@ -2365,7 +2576,11 @@ fn normalize_optional_module(value: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::AgentCommand;
+    use super::{
+        AgentCommand, ExternalHookActionRequest, ExternalHookCommandOperation, ExternalHookErrorCode,
+        ExternalHookExecuteRequest, ExternalHookOwnershipState, ExternalHookReceipt, ExternalHookReply,
+        ExternalHookTargetState,
+    };
     use serde_json::json;
 
     #[test]
@@ -2390,6 +2605,80 @@ mod tests {
         let payload = runtime_result_command.encode().expect("encode runtime result");
         let decoded = AgentCommand::decode(&payload).expect("decode runtime result");
         assert_eq!(decoded, runtime_result_command);
+
+        let rpc_command = AgentCommand::RpcCall {
+            method: "add".into(),
+            args_json: "[1,2]".into(),
+        };
+        let payload = rpc_command.encode().expect("encode RPC call");
+        let decoded = AgentCommand::decode(&payload).expect("decode RPC call");
+        assert_eq!(decoded, rpc_command);
+
+        let hook_command = AgentCommand::ExternalHookExecute {
+            request: ExternalHookExecuteRequest {
+                request_id: "req-1".into(),
+                owner_id: "session:7".into(),
+                operation: ExternalHookCommandOperation::Replace,
+                backend_image: "/var/jb/usr/lib/libellekit.dylib".into(),
+                target: 0x1000,
+                replacement: 0x2000,
+            },
+        };
+        let payload = hook_command.encode().expect("encode external hook");
+        let decoded = AgentCommand::decode(&payload).expect("decode external hook");
+        assert_eq!(decoded, hook_command);
+
+        let reply = ExternalHookReply::Error {
+            code: ExternalHookErrorCode::TargetStateUncertain,
+            message: "backend call may have modified target".into(),
+            request_id: Some("req-1".into()),
+            token: None,
+            receipt: Some(ExternalHookReceipt {
+                request_id: "req-1".into(),
+                owner_id: "session:7".into(),
+                token: None,
+                backend: "ellekit".into(),
+                backend_image: "/var/jb/usr/lib/libellekit.dylib".into(),
+                operation: ExternalHookCommandOperation::Replace,
+                target: 0x1000,
+                replacement: 0x2000,
+                original: None,
+                native_result: None,
+                ownership: ExternalHookOwnershipState::Orphaned,
+                target_state: ExternalHookTargetState::Uncertain,
+                native_uninstall_available: false,
+                last_error: Some("backend call may have modified target".into()),
+            }),
+            replayed: false,
+        };
+        let encoded = serde_json::to_vec(&reply).expect("encode external hook reply");
+        let decoded: ExternalHookReply = serde_json::from_slice(&encoded).expect("decode external hook reply");
+        assert_eq!(decoded, reply);
+    }
+
+    #[test]
+    fn external_hook_commands_reject_invalid_identity_and_addresses() {
+        let invalid = AgentCommand::ExternalHookExecute {
+            request: ExternalHookExecuteRequest {
+                request_id: "bad id".into(),
+                owner_id: "session:7".into(),
+                operation: ExternalHookCommandOperation::Install,
+                backend_image: "backend".into(),
+                target: 0,
+                replacement: 1,
+            },
+        };
+        assert!(invalid.validate().is_err());
+        let encoded = serde_json::to_vec(&invalid).expect("encode invalid command");
+        assert!(AgentCommand::decode(&encoded).is_err());
+
+        let invalid_action = AgentCommand::ExternalHookRelease {
+            request: ExternalHookActionRequest {
+                owner_id: "session:7".into(),
+                token: 0,
+            },
+        };
+        assert!(invalid_action.validate().is_err());
     }
 
     #[test]
@@ -2397,6 +2686,20 @@ mod tests {
         assert_eq!(AgentCommand::from_legacy("ping"), Some(AgentCommand::Ping));
         assert_eq!(AgentCommand::from_legacy("jsinit"), Some(AgentCommand::JsInit));
         assert_eq!(AgentCommand::from_legacy("jsclean"), Some(AgentCommand::JsClean));
+        assert_eq!(
+            AgentCommand::from_legacy("rpccall ping"),
+            Some(AgentCommand::RpcCall {
+                method: "ping".into(),
+                args_json: "[]".into(),
+            })
+        );
+        assert_eq!(
+            AgentCommand::from_legacy(r#"rpccall add [1, 2]"#),
+            Some(AgentCommand::RpcCall {
+                method: "add".into(),
+                args_json: "[1, 2]".into(),
+            })
+        );
         assert_eq!(
             AgentCommand::from_legacy("loadjs console.log(1)"),
             Some(AgentCommand::LoadJs {

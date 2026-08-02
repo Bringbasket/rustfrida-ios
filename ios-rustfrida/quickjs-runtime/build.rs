@@ -5,6 +5,7 @@ use std::process::Command;
 fn main() {
     println!("cargo:rustc-check-cfg=cfg(quickjs_runtime_stub)");
     println!("cargo:rustc-check-cfg=cfg(quickjs_hook_engine)");
+    println!("cargo:rustc-check-cfg=cfg(quickjs_cmodule)");
     println!("cargo:rerun-if-env-changed=QUICKJS_SRC_DIR");
     println!("cargo:rerun-if-env-changed=QUICKJS_RUNTIME_FORCE_STUB");
     println!("cargo:rerun-if-env-changed=SDKROOT");
@@ -12,6 +13,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET");
     println!("cargo:rerun-if-changed=src/quickjs_wrapper.c");
     println!("cargo:rerun-if-changed=src/quickjs_wrapper.h");
+    println!("cargo:rerun-if-changed=src/native_call_aarch64.S");
     println!("cargo:rerun-if-changed=build.rs");
 
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing CARGO_MANIFEST_DIR"));
@@ -33,6 +35,79 @@ fn main() {
 
     build_quickjs(&manifest_dir, &quickjs_src, &target);
     build_hook_engine(&manifest_dir, &target);
+    build_cmodule(&manifest_dir, &target);
+}
+
+fn build_cmodule(manifest_dir: &Path, target: &str) {
+    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("missing OUT_DIR"));
+    if !target.contains("apple") {
+        return;
+    }
+
+    let source_dir = manifest_dir.join("cmodule-src");
+    let Some(tinycc) = source_dir.join("libtcc.c").exists().then_some(source_dir) else {
+        println!("cargo:warning=CModule TinyCC sources not found; CModule stays unavailable");
+        return;
+    };
+
+    let config_dir = out_dir.join("cmodule-tinycc-config");
+    std::fs::create_dir_all(&config_dir).expect("create CModule TinyCC config directory");
+    std::fs::write(
+        config_dir.join("config.h"),
+        "#ifndef RF_TINYCC_CONFIG_H\n#define RF_TINYCC_CONFIG_H\n#define TCC_VERSION \"0.9.27-rf\"\n#define CONFIG_TCCDIR \"/rf\"\n#endif\n",
+    )
+    .expect("write CModule TinyCC config");
+
+    let mut build = cc::Build::new();
+    build
+        .file(tinycc.join("libtcc.c"))
+        .include(&tinycc)
+        .include(&config_dir)
+        .opt_level(2)
+        .flag("-fPIC")
+        .flag("-fno-exceptions")
+        .flag("-DONE_SOURCE=1")
+        .flag("-DCONFIG_TCCBOOT")
+        .flag("-DTCC_TARGET_MACHO")
+        .warnings(false);
+
+    if target.contains("aarch64") {
+        build.flag("-DTCC_TARGET_ARM64");
+    } else if target.contains("x86_64") {
+        build.flag("-DTCC_TARGET_X86_64");
+    } else {
+        println!("cargo:warning=CModule TinyCC has no code generator for target {target}");
+        return;
+    }
+    if let Some(flag) = apple_min_version_flag(target) {
+        build.flag(&flag);
+    }
+    build.compile("quickjs_runtime_cmodule_tinycc");
+
+    cc::Build::new()
+        .file(manifest_dir.join("src/cmodule_cache.c"))
+        .flag("-fPIC")
+        .warnings(false)
+        .compile("quickjs_runtime_cmodule_cache");
+
+    for file in [
+        "libtcc.c",
+        "libtcc.h",
+        "tcc.h",
+        "tccpp.c",
+        "tccgen.c",
+        "tccelf.c",
+        "tccrun.c",
+        "tccmacho.c",
+        "arm64-gen.c",
+        "arm64-link.c",
+        "x86_64-gen.c",
+        "x86_64-link.c",
+    ] {
+        println!("cargo:rerun-if-changed={}", tinycc.join(file).display());
+    }
+    println!("cargo:rerun-if-changed=src/cmodule_cache.c");
+    println!("cargo:rustc-cfg=quickjs_cmodule");
 }
 
 fn build_quickjs(manifest_dir: &Path, quickjs_src: &Path, target: &str) {
@@ -77,7 +152,7 @@ fn build_quickjs(manifest_dir: &Path, quickjs_src: &Path, target: &str) {
         .opt_level(2)
         .flag("-fPIC")
         .flag("-fno-exceptions")
-        .flag(&format!("-DCONFIG_VERSION=\"{}\"", quickjs_version))
+        .flag(format!("-DCONFIG_VERSION=\"{}\"", quickjs_version))
         .flag("-D_GNU_SOURCE")
         .flag_if_supported("-Wno-implicit-const-int-float-conversion")
         .warnings(false);
@@ -89,6 +164,10 @@ fn build_quickjs(manifest_dir: &Path, quickjs_src: &Path, target: &str) {
 
     if target.contains("android") {
         build.flag("-DANDROID");
+    }
+
+    if target.starts_with("aarch64-apple-") {
+        build.file(src_dir.join("native_call_aarch64.S"));
     }
 
     if let Some(flag) = apple_min_version_flag(target) {

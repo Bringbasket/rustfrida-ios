@@ -1,5 +1,6 @@
 use crate::context::JSContext;
 use crate::ffi;
+use crate::objc_object::{create_retained_object_wrapper, register_objc_object_api};
 use crate::ptr::create_native_pointer;
 use crate::util::{
     add_cfunction_to_object, js_throw_internal_error, js_throw_type_error, js_u64_to_js_number_or_bigint,
@@ -10,7 +11,7 @@ use common::Error as CommonError;
 use objc_api::{
     ObjcApi, ObjcClassInfo, ObjcIvarDetail, ObjcIvarInfo, ObjcMethodDetail, ObjcMethodInfo, ObjcPropertyDetail,
     ObjcPropertyInfo, ObjcProtocolInfo, ObjcProtocolMethodDetail, ObjcProtocolMethodInfo, ObjcProtocolPropertyDetail,
-    ObjcProtocolPropertyInfo,
+    ObjcProtocolPropertyInfo, DEFAULT_MAX_INSTANCE_COUNT, MAX_INSTANCE_COUNT,
 };
 
 unsafe fn pointer_arg_to_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &str) -> Result<u64, ffi::JSValue> {
@@ -73,6 +74,265 @@ unsafe fn parse_objc_bool_and_query_args(
     }
 
     Ok((flag, query))
+}
+
+fn parse_choose_max_count(ctx: *mut ffi::JSContext, value: JSValue) -> Result<usize, String> {
+    if unsafe { ffi::qjs_is_big_int(ctx, value.raw()) } != 0 {
+        let signed = value
+            .to_i64(ctx)
+            .ok_or_else(|| "ObjC.choose options.maxCount must fit a non-negative integer".to_string())?;
+        if signed < 0 {
+            return Err("ObjC.choose options.maxCount must be non-negative".into());
+        }
+        return usize::try_from(signed).map_err(|_| "ObjC.choose options.maxCount is out of range".into());
+    }
+
+    let number = value
+        .to_float()
+        .ok_or_else(|| "ObjC.choose options.maxCount must be an integer Number or BigInt".to_string())?;
+    if !number.is_finite() || number.fract() != 0.0 || number < 0.0 {
+        return Err("ObjC.choose options.maxCount must be a non-negative finite integer".into());
+    }
+    if number > MAX_INSTANCE_COUNT as f64 {
+        return Err(format!("ObjC.choose options.maxCount must be <= {MAX_INSTANCE_COUNT}"));
+    }
+    Ok(number as usize)
+}
+
+unsafe fn parse_choose_options(ctx: *mut ffi::JSContext, value: JSValue) -> Result<(bool, usize), ffi::JSValue> {
+    if value.is_null() || value.is_undefined() {
+        return Ok((false, DEFAULT_MAX_INSTANCE_COUNT));
+    }
+    if !value.is_object() {
+        return Err(js_throw_type_error(
+            ctx,
+            "ObjC.choose options must be an object when provided",
+        ));
+    }
+
+    let include_value = value.get_property(ctx, "includeSubclasses");
+    if include_value.is_exception() {
+        return Err(include_value.raw());
+    }
+    let include_subclasses = if include_value.is_null() || include_value.is_undefined() {
+        false
+    } else {
+        match include_value.to_bool() {
+            Some(flag) => flag,
+            None => {
+                include_value.free(ctx);
+                return Err(js_throw_type_error(
+                    ctx,
+                    "ObjC.choose options.includeSubclasses must be a boolean",
+                ));
+            }
+        }
+    };
+    include_value.free(ctx);
+
+    let max_value = value.get_property(ctx, "maxCount");
+    if max_value.is_exception() {
+        return Err(max_value.raw());
+    }
+    if max_value.is_null() || max_value.is_undefined() {
+        max_value.free(ctx);
+        return Ok((include_subclasses, DEFAULT_MAX_INSTANCE_COUNT));
+    }
+    let max_count = parse_choose_max_count(ctx, max_value)
+        .and_then(|max_count| {
+            if max_count > MAX_INSTANCE_COUNT {
+                Err(format!("ObjC.choose options.maxCount must be <= {MAX_INSTANCE_COUNT}"))
+            } else {
+                Ok(max_count)
+            }
+        })
+        .map_err(|message| js_throw_type_error(ctx, &message));
+    max_value.free(ctx);
+    max_count.map(|max_count| (include_subclasses, max_count))
+}
+
+fn choose_instances(class_name: &str, include_subclasses: bool, max_count: usize) -> Result<Vec<usize>, CommonError> {
+    ObjcApi::new().choose_instances(class_name, include_subclasses, max_count)
+}
+
+unsafe extern "C" fn js_objc_choose_sync(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.chooseSync(className[, options]) requires a class-name string",
+    ) {
+        Ok(value) if !value.trim().is_empty() => value,
+        Ok(_) => return js_throw_type_error(ctx, "ObjC.chooseSync className must not be empty"),
+        Err(err) => return err,
+    };
+    let options = if argc >= 2 {
+        JSValue(*argv.add(1))
+    } else {
+        JSValue::undefined()
+    };
+    let (include_subclasses, max_count) = match parse_choose_options(ctx, options) {
+        Ok(value) => value,
+        Err(err) => return err,
+    };
+
+    let instances = match choose_instances(&class_name, include_subclasses, max_count) {
+        Ok(instances) => instances,
+        Err(CommonError::Unsupported(_)) => Vec::new(),
+        Err(CommonError::InvalidArgument(message)) => return js_throw_type_error(ctx, &message),
+        Err(err) => return js_throw_internal_error(ctx, &err.to_string()),
+    };
+
+    let array = ffi::JS_NewArray(ctx);
+    let mut output_index = 0u32;
+    for raw in instances {
+        let wrapper = match create_retained_object_wrapper(ctx, raw) {
+            Ok(wrapper) => wrapper,
+            Err(_) => continue,
+        };
+        if JSValue(wrapper).is_exception() {
+            JSValue(array).free(ctx);
+            return wrapper;
+        }
+        if ffi::JS_SetPropertyUint32(ctx, array, output_index, wrapper) < 0 {
+            JSValue(array).free(ctx);
+            return ffi::JS_GetException(ctx);
+        }
+        output_index = output_index.saturating_add(1);
+    }
+    array
+}
+
+unsafe extern "C" fn js_objc_choose(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_name = match require_string_arg(
+        ctx,
+        argc,
+        argv,
+        0,
+        "ObjC.choose(className, callbacks[, options]) requires a class-name string",
+    ) {
+        Ok(value) if !value.trim().is_empty() => value,
+        Ok(_) => return js_throw_type_error(ctx, "ObjC.choose className must not be empty"),
+        Err(err) => return err,
+    };
+    if argc < 2 {
+        return js_throw_type_error(ctx, "ObjC.choose(className, callbacks) requires a callbacks object");
+    }
+    let callbacks = JSValue(*argv.add(1));
+    if !callbacks.is_object() {
+        return js_throw_type_error(ctx, "ObjC.choose callbacks must be an object");
+    }
+    let on_match = callbacks.get_property(ctx, "onMatch");
+    if on_match.is_exception() {
+        return on_match.raw();
+    }
+    if !on_match.is_function(ctx) {
+        on_match.free(ctx);
+        return js_throw_type_error(ctx, "ObjC.choose callbacks.onMatch must be a function");
+    }
+    let on_complete_value = callbacks.get_property(ctx, "onComplete");
+    if on_complete_value.is_exception() {
+        on_match.free(ctx);
+        return on_complete_value.raw();
+    }
+    let on_complete = if on_complete_value.is_null() || on_complete_value.is_undefined() {
+        on_complete_value.free(ctx);
+        None
+    } else if on_complete_value.is_function(ctx) {
+        Some(on_complete_value)
+    } else {
+        on_match.free(ctx);
+        on_complete_value.free(ctx);
+        return js_throw_type_error(ctx, "ObjC.choose callbacks.onComplete must be a function when provided");
+    };
+
+    let options = if argc >= 3 {
+        JSValue(*argv.add(2))
+    } else {
+        JSValue::undefined()
+    };
+    let (include_subclasses, max_count) = match parse_choose_options(ctx, options) {
+        Ok(value) => value,
+        Err(err) => {
+            on_match.free(ctx);
+            if let Some(on_complete) = on_complete {
+                on_complete.free(ctx);
+            }
+            return err;
+        }
+    };
+
+    let instances = match choose_instances(&class_name, include_subclasses, max_count) {
+        Ok(instances) => instances,
+        Err(CommonError::Unsupported(_)) => Vec::new(),
+        Err(CommonError::InvalidArgument(message)) => {
+            on_match.free(ctx);
+            if let Some(on_complete) = on_complete {
+                on_complete.free(ctx);
+            }
+            return js_throw_type_error(ctx, &message);
+        }
+        Err(err) => {
+            on_match.free(ctx);
+            if let Some(on_complete) = on_complete {
+                on_complete.free(ctx);
+            }
+            return js_throw_internal_error(ctx, &err.to_string());
+        }
+    };
+
+    for raw in instances {
+        let wrapper = match create_retained_object_wrapper(ctx, raw) {
+            Ok(wrapper) => wrapper,
+            Err(_) => continue,
+        };
+        if JSValue(wrapper).is_exception() {
+            on_match.free(ctx);
+            if let Some(on_complete) = on_complete {
+                on_complete.free(ctx);
+            }
+            return wrapper;
+        }
+        let mut args = [wrapper];
+        let result_raw = ffi::JS_Call(ctx, on_match.raw(), callbacks.raw(), 1, args.as_mut_ptr());
+        JSValue(wrapper).free(ctx);
+        let result = JSValue(result_raw);
+        if result.is_exception() {
+            on_match.free(ctx);
+            if let Some(on_complete) = on_complete {
+                on_complete.free(ctx);
+            }
+            return result_raw;
+        }
+        let stop = result.is_string() && result.to_string(ctx).as_deref() == Some("stop");
+        result.free(ctx);
+        if stop {
+            break;
+        }
+    }
+
+    on_match.free(ctx);
+    if let Some(on_complete) = on_complete {
+        let result_raw = ffi::JS_Call(ctx, on_complete.raw(), callbacks.raw(), 0, std::ptr::null_mut());
+        on_complete.free(ctx);
+        let result = JSValue(result_raw);
+        if result.is_exception() {
+            return result_raw;
+        }
+        result.free(ctx);
+    }
+    JSValue::undefined().raw()
 }
 
 unsafe extern "C" fn js_objc_classes(
@@ -1691,7 +1951,7 @@ unsafe extern "C" fn js_objc_object_class_name(
     }
 }
 
-pub(crate) fn register_objc_api(ctx: &JSContext) {
+pub(crate) fn register_objc_api(ctx: &JSContext) -> Result<(), String> {
     let global = ctx.global_object();
     let objc = ctx.new_object();
     let api = ObjcApi::new();
@@ -1702,6 +1962,8 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         let ctx_ptr = ctx.as_ptr();
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classes", js_objc_classes, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findClasses", js_objc_find_classes, 1);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "chooseSync", js_objc_choose_sync, 2);
+        add_cfunction_to_object(ctx_ptr, objc.raw(), "choose", js_objc_choose, 3);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "protocols", js_objc_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findProtocols", js_objc_find_protocols, 1);
         add_cfunction_to_object(ctx_ptr, objc.raw(), "classProtocols", js_objc_class_protocols, 1);
@@ -1812,6 +2074,9 @@ pub(crate) fn register_objc_api(ctx: &JSContext) {
         add_cfunction_to_object(ctx_ptr, objc.raw(), "findObjectClassName", js_objc_object_class_name, 1);
     }
 
+    register_objc_object_api(ctx, objc.raw())?;
+
     global.set_property(ctx.as_ptr(), "ObjC", objc);
     global.free(ctx.as_ptr());
+    Ok(())
 }

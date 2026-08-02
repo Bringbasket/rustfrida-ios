@@ -193,7 +193,8 @@ static void emit_art_router_found_path(Arm64Writer* w, uint64_t lbl_found,
     arm64_writer_put_ldr_reg_reg_offset(w, ARM64_REG_X17, ARM64_REG_X0, (int64_t)quickcode_offset);
     emit_art_router_restore_fp(w);
     arm64_writer_put_add_reg_reg_imm(w, ARM64_REG_SP, ARM64_REG_SP, 16);
-    arm64_writer_put_br_reg(w, ARM64_REG_X17);
+    arm64_writer_put_mov_reg_reg(w, ARM64_REG_X16, ARM64_REG_X17);
+    emit_thunk_activity_leave_and_branch(w);
 }
 
 /* Not-found path: label → debug counters → restore FP → restore X16/X17 →
@@ -211,9 +212,9 @@ static void emit_art_router_not_found_path(Arm64Writer* w, uint64_t lbl_not_foun
     arm64_writer_put_ldp_reg_reg_reg_offset(w, ARM64_REG_X16, ARM64_REG_X17,
                                              ARM64_REG_SP, 16, ARM64_INDEX_POST_ADJUST);
 
-    /* Jump to fallback target (X17 clobbered, but it's IPC scratch) */
-    arm64_writer_put_ldr_reg_u64(w, ARM64_REG_X17, fallback_target);
-    arm64_writer_put_br_reg(w, ARM64_REG_X17);
+    /* Jump to fallback target (X16/X17 are IPC scratch registers). */
+    arm64_writer_put_ldr_reg_u64(w, ARM64_REG_X16, fallback_target);
+    emit_thunk_activity_leave_and_branch(w);
 }
 
 /* ============================================================================
@@ -231,6 +232,7 @@ static size_t generate_art_router_thunk(void* thunk_mem, size_t thunk_alloc,
     Arm64Writer w;
     arm64_writer_init(&w, thunk_mem, (uint64_t)thunk_mem, thunk_alloc);
 
+    emit_thunk_activity_enter(&w);
     emit_art_router_prologue(&w);
 
     uint64_t lbl_found, lbl_not_found;
@@ -423,6 +425,7 @@ void* hook_create_art_router_stub(uint64_t fallback_target,
     Arm64Writer w;
     arm64_writer_init(&w, stub_mem, (uint64_t)stub_mem, stub_alloc);
 
+    emit_thunk_activity_enter(&w);
     emit_art_router_prologue(&w);
 
     uint64_t lbl_found, lbl_not_found;

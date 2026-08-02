@@ -1,12 +1,15 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
+    ffi::c_void,
     fs,
     io::{self, ErrorKind, IsTerminal, Write},
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
+use common::command::{ExternalHookExecuteRequest, ExternalHookReceipt};
 use common::{
     decode_event, read_frame, write_frame, AgentCommand, AgentEvent, ControllerConfig, Error, Hello, InjectionMode,
     Result, DEFAULT_AGENT_PATH, DEFAULT_AGENT_PATH_ROOTFUL, FRAME_KIND_CMD, FRAME_KIND_CMD_JSON,
@@ -20,12 +23,22 @@ use native_api::{
 };
 use serde_json::{json, Map, Value};
 
-use crate::launch::spawn_target;
+use crate::{
+    http_rpc::{self, RpcBackend, RpcFailure, RpcSession},
+    server::SessionRegistry,
+    server_frontend::{AttachRequest, AttachTarget, LaunchReservation, LauncherFailure, SessionLauncher, SpawnRequest},
+    session::{Session, SessionCommandBackend, SessionCommandFailure, SessionHookError, SessionId},
+    suspended_spawn::SuspendedSpawn,
+};
 
 const DARWIN_SOCKADDR_UN_PATH_MAX: usize = 103;
 const SOCKET_ACCEPT_POLL_INTERVAL: Duration = Duration::from_millis(25);
 const CONTROLLER_PROMPT: &str = "iosrf> ";
 const JS_PROMPT: &str = "js> ";
+const HTTP_RPC_LIVENESS_INTERVAL: Duration = Duration::from_secs(5);
+const HTTP_RPC_HEALTH_TIMEOUT: Duration = Duration::from_secs(2);
+const HTTP_RPC_DETACH_TIMEOUT: Duration = Duration::from_secs(2);
+const HTTP_RPC_MAX_CLEANUP_ATTEMPTS: usize = 3;
 
 #[cfg(unix)]
 use std::os::unix::net::{UnixListener, UnixStream};
@@ -158,6 +171,478 @@ impl CommandOutcome {
 struct ControllerSocket {
     path: PathBuf,
     listener: UnixListener,
+}
+
+#[cfg(unix)]
+#[derive(Clone)]
+struct ActiveAgentCommandContext {
+    injection_environment: InjectionEnvironmentReport,
+    preflight: InjectionTargetPreflightReport,
+}
+
+#[cfg(unix)]
+struct ActiveAgentRpcBackend {
+    stream: Mutex<UnixStream>,
+    command_context: Option<ActiveAgentCommandContext>,
+}
+
+#[cfg(unix)]
+#[derive(Clone)]
+pub(crate) struct ControllerSessionLauncher {
+    agent_path: String,
+    entry_symbol: String,
+    connect_timeout_secs: u64,
+}
+
+#[cfg(unix)]
+impl ControllerSessionLauncher {
+    pub(crate) fn from_config(config: &ControllerConfig) -> Self {
+        Self {
+            agent_path: config.agent_path.clone(),
+            entry_symbol: config.entry_symbol.clone(),
+            connect_timeout_secs: config.connect_timeout_secs,
+        }
+    }
+
+    fn config_for(
+        &self,
+        mode: InjectionMode,
+        pid: Option<i32>,
+        bundle_id: Option<String>,
+        script_path: Option<String>,
+    ) -> ControllerConfig {
+        ControllerConfig {
+            mode,
+            pid,
+            bundle_id,
+            spawn_command: None,
+            command: None,
+            command_json: false,
+            rpc_bind: None,
+            list_images_json: false,
+            preflight_only: false,
+            preflight_json: false,
+            inject_json: false,
+            agent_path: self.agent_path.clone(),
+            entry_symbol: self.entry_symbol.clone(),
+            script_path,
+            socket_path: None,
+            connect_timeout_secs: self.connect_timeout_secs,
+        }
+    }
+
+    fn launch_async(
+        &self,
+        reservation: LaunchReservation,
+        config: ControllerConfig,
+        label: String,
+    ) -> std::result::Result<(), LauncherFailure> {
+        thread::Builder::new()
+            .name(format!("iosrf-session-{}", reservation.id()))
+            .spawn(move || match connect_agent_session(&config) {
+                Ok((pid, backend)) => {
+                    if let Err(error) = reservation.complete(pid, label, backend) {
+                        let _ = reservation.fail(error.to_string());
+                    }
+                }
+                Err(error) => {
+                    let _ = reservation.fail(error.to_string());
+                }
+            })
+            .map(|_| ())
+            .map_err(|error| LauncherFailure::new(format!("failed to start session launcher: {error}")))
+    }
+}
+
+#[cfg(unix)]
+impl SessionLauncher for ControllerSessionLauncher {
+    fn attach(
+        &self,
+        reservation: LaunchReservation,
+        request: AttachRequest,
+    ) -> std::result::Result<(), LauncherFailure> {
+        let pid = match request.target {
+            AttachTarget::Pid(pid) => pid,
+            AttachTarget::Name(name) => crate::process_lookup::find_pid_by_name(&name)
+                .map_err(|error| LauncherFailure::new(error.to_string()))?,
+        };
+        let config = self.config_for(InjectionMode::Attach, Some(pid), None, request.script);
+        self.launch_async(reservation, config, format!("pid-{pid}"))
+    }
+
+    fn spawn(&self, reservation: LaunchReservation, request: SpawnRequest) -> std::result::Result<(), LauncherFailure> {
+        let label = request.target.clone();
+        let config = self.config_for(InjectionMode::Spawn, None, Some(request.target), request.script);
+        self.launch_async(reservation, config, label)
+    }
+}
+
+#[cfg(unix)]
+impl SessionCommandBackend for ActiveAgentRpcBackend {
+    fn rpc_call(
+        &self,
+        method: &str,
+        args: &Value,
+        timeout: Duration,
+    ) -> std::result::Result<Value, SessionCommandFailure> {
+        if method.trim().is_empty() {
+            return Err(SessionCommandFailure::BadRequest("RPC method must not be empty".into()));
+        }
+
+        let mut stream = self
+            .stream
+            .lock()
+            .map_err(|_| SessionCommandFailure::Unavailable("active agent session lock is poisoned".into()))?;
+        stream
+            .set_read_timeout(Some(timeout))
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("failed to set agent read timeout: {err}")))?;
+        stream
+            .set_write_timeout(Some(timeout))
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("failed to set agent write timeout: {err}")))?;
+
+        let command = AgentCommand::RpcCall {
+            method: method.to_string(),
+            args_json: args.to_string(),
+        };
+        match send_eval_command_json(&mut stream, &command)
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("agent RPC transport failed: {err}")))?
+        {
+            EvalReply::Ok(payload) => serde_json::from_str(&payload).map_err(|err| {
+                SessionCommandFailure::Unavailable(format!("agent RPC `{method}` returned invalid JSON: {err}"))
+            }),
+            EvalReply::Err(payload) => Err(SessionCommandFailure::Internal(format!(
+                "agent RPC `{method}` failed: {payload}"
+            ))),
+        }
+    }
+
+    fn execute_command(&self, command: &str, timeout: Duration) -> std::result::Result<Value, SessionCommandFailure> {
+        let context = self.command_context.as_ref().ok_or_else(|| {
+            SessionCommandFailure::BadRequest("controller commands are unavailable for this session".into())
+        })?;
+        let mut stream = self
+            .stream
+            .lock()
+            .map_err(|_| SessionCommandFailure::Unavailable("active agent session lock is poisoned".into()))?;
+        stream
+            .set_read_timeout(Some(timeout))
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("failed to set agent read timeout: {err}")))?;
+        stream
+            .set_write_timeout(Some(timeout))
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("failed to set agent write timeout: {err}")))?;
+
+        execute_single_command(
+            &mut stream,
+            command,
+            true,
+            &context.injection_environment,
+            &context.preflight,
+        )
+        .map(|outcome| render_command_outcome_json(&outcome))
+        .map_err(|err| SessionCommandFailure::Internal(err.to_string()))
+    }
+
+    fn external_hook_command(
+        &self,
+        command: &AgentCommand,
+        timeout: Duration,
+    ) -> std::result::Result<Value, SessionCommandFailure> {
+        let mut stream = self
+            .stream
+            .lock()
+            .map_err(|_| SessionCommandFailure::Unavailable("active agent session lock is poisoned".into()))?;
+        stream
+            .set_read_timeout(Some(timeout))
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("failed to set agent read timeout: {err}")))?;
+        stream
+            .set_write_timeout(Some(timeout))
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("failed to set agent write timeout: {err}")))?;
+
+        let payload = match send_eval_command_json(&mut stream, command)
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("external hook transport failed: {err}")))?
+        {
+            EvalReply::Ok(payload) | EvalReply::Err(payload) => payload,
+        };
+        serde_json::from_str(&payload)
+            .map_err(|err| SessionCommandFailure::Internal(format!("external hook reply is not valid JSON: {err}")))
+    }
+
+    fn health_check(&self, timeout: Duration) -> std::result::Result<(), SessionCommandFailure> {
+        let mut stream = self
+            .stream
+            .lock()
+            .map_err(|_| SessionCommandFailure::Unavailable("active agent session lock is poisoned".into()))?;
+        stream
+            .set_read_timeout(Some(timeout))
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("failed to set agent read timeout: {err}")))?;
+        stream
+            .set_write_timeout(Some(timeout))
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("failed to set agent write timeout: {err}")))?;
+
+        match send_eval_command_json(&mut stream, &AgentCommand::Ping)
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("agent health transport failed: {err}")))?
+        {
+            EvalReply::Ok(_) => Ok(()),
+            EvalReply::Err(payload) => Err(SessionCommandFailure::Unavailable(format!(
+                "agent health check failed: {payload}"
+            ))),
+        }
+    }
+
+    fn detach(&self, timeout: Duration) -> std::result::Result<(), SessionCommandFailure> {
+        let mut stream = self
+            .stream
+            .lock()
+            .map_err(|_| SessionCommandFailure::Unavailable("active agent session lock is poisoned".into()))?;
+        stream
+            .set_write_timeout(Some(timeout))
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("failed to set agent write timeout: {err}")))?;
+        send_command_json(&mut stream, &AgentCommand::Exit)
+            .map_err(|err| SessionCommandFailure::Unavailable(format!("agent detach transport failed: {err}")))
+    }
+}
+
+/// Adopt a result produced by the external adapter at the controller/session
+/// boundary. The caller must pass the exact decision used for execution; the
+/// session validates backend/operation identity before retaining the result.
+#[cfg(unix)]
+pub(crate) fn adopt_external_hook_result(
+    session: &Session,
+    decision: native_api::AdapterDecision,
+    handle: native_api::HookExecutionResult,
+) -> std::result::Result<u64, SessionHookError> {
+    session.adopt_external_hook(decision, handle)
+}
+
+/// Execute an agent-owned external install/replace and transfer its receipt
+/// into the controller session lease table. This is the production entry
+/// point for the remote command path; native pointers remain in the target
+/// process and are never dereferenced by the controller.
+#[cfg(unix)]
+pub(crate) fn execute_remote_external_hook_for_session(
+    session: &Session,
+    request: ExternalHookExecuteRequest,
+    timeout: Duration,
+) -> std::result::Result<ExternalHookReceipt, SessionHookError> {
+    session.execute_external_hook(request, timeout)
+}
+
+/// Execute an already-bound external adapter operation and transfer its token
+/// into session ownership in one step. No uninstall symbol is inferred here;
+/// cleanup remains the session's explicit lease-release operation.
+#[cfg(unix)]
+pub(crate) unsafe fn execute_external_hook_for_session(
+    session: &Session,
+    decision: &native_api::AdapterDecision,
+    backend: &native_api::ResolvedHookBackend,
+    target: *mut c_void,
+    replacement: *mut c_void,
+) -> std::result::Result<u64, SessionHookError> {
+    let handle = unsafe { native_api::execute_external_hook_backend(decision, backend, target, replacement) }.map_err(
+        |error| SessionHookError::Execution {
+            message: error.to_string(),
+            target_state_uncertain: error.target_state_uncertain(),
+        },
+    )?;
+    adopt_external_hook_result(session, *decision, handle)
+}
+
+#[cfg(unix)]
+struct SessionRegistryRpcBackend {
+    registry: Arc<SessionRegistry>,
+}
+
+#[cfg(unix)]
+impl RpcBackend for SessionRegistryRpcBackend {
+    fn list_sessions(&self) -> std::result::Result<Vec<RpcSession>, RpcFailure> {
+        Ok(self
+            .registry
+            .list()
+            .into_iter()
+            .map(|session| {
+                let status = session.status();
+                RpcSession::new(session.id.to_string(), session.pid, session.label, status)
+            })
+            .collect())
+    }
+
+    fn rpc_call(
+        &self,
+        session_id: &str,
+        method: &str,
+        args: &Value,
+        timeout: Duration,
+    ) -> std::result::Result<Value, RpcFailure> {
+        let id = session_id
+            .parse::<SessionId>()
+            .map_err(|err| RpcFailure::NotFound(format!("session `{session_id}` not found: {err}")))?;
+        let session = self
+            .registry
+            .get(id)
+            .ok_or_else(|| RpcFailure::NotFound(format!("session `{session_id}` not found")))?;
+        let result = session.rpc_call(method, args, timeout);
+        // Internal is also used for an agent-side RPC application error; only
+        // an unavailable command transport is evidence for registry cleanup.
+        if let Err(failure @ SessionCommandFailure::Unavailable(_)) = &result {
+            let _ = self.registry.reap_command_transport_failure(&session, failure, timeout);
+        }
+        result.map_err(map_session_command_failure)
+    }
+}
+
+#[cfg(unix)]
+fn map_session_command_failure(failure: SessionCommandFailure) -> RpcFailure {
+    match failure {
+        SessionCommandFailure::BadRequest(message) => RpcFailure::BadRequest(message),
+        SessionCommandFailure::Unavailable(message) => RpcFailure::Unavailable(message),
+        SessionCommandFailure::Internal(message) => RpcFailure::Internal(message),
+    }
+}
+
+#[cfg(unix)]
+fn run_single_session_liveness(
+    registry: &Arc<SessionRegistry>,
+    session: &Arc<Session>,
+    interval: Duration,
+    health_timeout: Duration,
+    detach_timeout: Duration,
+    max_cleanup_attempts: usize,
+) -> Result<()> {
+    let max_cleanup_attempts = max_cleanup_attempts.max(1);
+    let mut cleanup_attempts = 0;
+    loop {
+        let Some(current) = registry.get(session.id()) else {
+            return Ok(());
+        };
+
+        if current.is_attached() {
+            if let Err(failure) = current.health_check(health_timeout) {
+                if let Some(outcome) = registry.reap_unhealthy(&current, &failure, detach_timeout) {
+                    if outcome.is_clean() {
+                        return Ok(());
+                    }
+                }
+                cleanup_attempts += 1;
+            }
+        } else if let Ok(outcome) = registry.detach(current.id(), detach_timeout) {
+            if outcome.is_clean() {
+                return Ok(());
+            }
+            cleanup_attempts += 1;
+        } else {
+            cleanup_attempts += 1;
+        }
+
+        if cleanup_attempts >= max_cleanup_attempts {
+            return Err(Error::State(format!(
+                "HTTP RPC session {} cleanup remained retryable after {cleanup_attempts} attempts",
+                session.id()
+            )));
+        }
+
+        thread::sleep(interval);
+    }
+}
+
+#[cfg(unix)]
+fn run_http_rpc_server(stream: UnixStream, bind_addr: &str, pid: i32, label: String) -> Result<()> {
+    let registry = Arc::new(SessionRegistry::default());
+    let session_backend: Arc<dyn SessionCommandBackend> = Arc::new(ActiveAgentRpcBackend {
+        stream: Mutex::new(stream),
+        command_context: None,
+    });
+    let session = registry
+        .attach(Some(pid), label, session_backend)
+        .map_err(|err| Error::State(format!("failed to register active RPC session: {err}")))?;
+    let backend: Arc<dyn RpcBackend> = Arc::new(SessionRegistryRpcBackend {
+        registry: Arc::clone(&registry),
+    });
+    let local_addr = http_rpc::start(backend, bind_addr)?;
+    println!("HTTP RPC server listening on http://{local_addr}");
+    println!("RPC session: {} (pid {pid})", session.id());
+
+    run_single_session_liveness(
+        &registry,
+        &session,
+        HTTP_RPC_LIVENESS_INTERVAL,
+        HTTP_RPC_HEALTH_TIMEOUT,
+        HTTP_RPC_DETACH_TIMEOUT,
+        HTTP_RPC_MAX_CLEANUP_ATTEMPTS,
+    )
+}
+
+#[cfg(unix)]
+fn resume_suspended_spawn(spawn: &mut Option<SuspendedSpawn>) -> Result<()> {
+    if let Some(spawn) = spawn.as_mut() {
+        spawn
+            .resume()
+            .map_err(|err| stage_error("suspended spawn resume", err))?;
+    }
+    Ok(())
+}
+
+/// Establish one long-lived agent connection for server mode.
+///
+/// The single-session controller keeps reporting and interactive rendering in
+/// `run_controller`; server sessions only need the shared injection stages and
+/// a backend that owns the connected stream. Keeping this path separate also
+/// ensures one session's preflight policy is never reused for another target.
+#[cfg(unix)]
+fn connect_agent_session(config: &ControllerConfig) -> Result<(Option<i32>, Arc<dyn SessionCommandBackend>)> {
+    config.validate()?;
+
+    let mut suspended_spawn = None;
+    let pid = match config.mode {
+        InjectionMode::Attach => config.pid.expect("validated attach pid"),
+        InjectionMode::Spawn => {
+            let spawn = SuspendedSpawn::launch_bundle(
+                config.bundle_id.as_deref().expect("validated spawn bundle id"),
+                config.spawn_command.as_deref(),
+            )?;
+            let pid = spawn.pid();
+            suspended_spawn = Some(spawn);
+            pid
+        }
+    };
+
+    let socket_path_buf = resolve_socket_path(config, pid)?;
+    let socket_path = socket_path_buf.to_string_lossy().into_owned();
+    let target = InjectionTarget {
+        pid,
+        dylib_path: config.agent_path.clone(),
+        entry_symbol: config.entry_symbol.clone(),
+        socket_path,
+    };
+    let injection_environment = probe_injection_environment()?;
+    let injector = MachInjector;
+    let _plan = injector.plan(&target)?;
+    let preflight = injector.preflight(&target)?;
+    let script = config.script_path.as_deref().map(fs::read_to_string).transpose()?;
+
+    let socket = ControllerSocket::bind_path(socket_path_buf)?;
+    injector.inject_trace_with_preflight(&target, &preflight)?;
+    let mut stream = socket.accept(Duration::from_secs(config.connect_timeout_secs))?;
+
+    expect_hello(&mut stream).map_err(|err| stage_error("agent hello", err))?;
+    expect_eval_ok_json(&mut stream, &AgentCommand::Ping).map_err(|err| stage_error("agent ping", err))?;
+    let _ = fetch_hook_environment_notice(&mut stream, None)
+        .map_err(|err| stage_error("agent hook environment query", err))?;
+
+    if let Some(script) = script {
+        expect_eval_ok_json(&mut stream, &AgentCommand::JsInit).map_err(|err| stage_error("agent jsinit", err))?;
+        expect_eval_ok_json(&mut stream, &AgentCommand::LoadJs { script })
+            .map_err(|err| stage_error("agent loadjs", err))?;
+    }
+
+    resume_suspended_spawn(&mut suspended_spawn)?;
+    let backend: Arc<dyn SessionCommandBackend> = Arc::new(ActiveAgentRpcBackend {
+        stream: Mutex::new(stream),
+        command_context: Some(ActiveAgentCommandContext {
+            injection_environment,
+            preflight,
+        }),
+    });
+    Ok((Some(pid), backend))
 }
 
 #[cfg(unix)]
@@ -16773,12 +17258,18 @@ pub fn run_controller(config: &ControllerConfig, list_images: bool) -> Result<()
         return Ok(());
     }
 
+    let mut suspended_spawn = None;
     let pid = match config.mode {
         InjectionMode::Attach => config.pid.expect("validated pid"),
-        InjectionMode::Spawn => spawn_target(
-            config.bundle_id.as_deref().expect("validated bundle id"),
-            config.spawn_command.as_deref(),
-        )?,
+        InjectionMode::Spawn => {
+            let spawn = SuspendedSpawn::launch_bundle(
+                config.bundle_id.as_deref().expect("validated bundle id"),
+                config.spawn_command.as_deref(),
+            )?;
+            let pid = spawn.pid();
+            suspended_spawn = Some(spawn);
+            pid
+        }
     };
 
     let socket_path_buf = resolve_socket_path(config, pid)?;
@@ -16799,6 +17290,7 @@ pub fn run_controller(config: &ControllerConfig, list_images: bool) -> Result<()
     let emit_command_json = config.command_json && config.command.is_some();
 
     if config.preflight_only && config.preflight_json {
+        resume_suspended_spawn(&mut suspended_spawn)?;
         let rendered = render_preflight_json(
             config,
             pid,
@@ -16860,6 +17352,7 @@ pub fn run_controller(config: &ControllerConfig, list_images: bool) -> Result<()
     }
 
     if config.preflight_only {
+        resume_suspended_spawn(&mut suspended_spawn)?;
         println!("preflight-only requested; skipping remote bootstrap, agent handshake, and interactive controller");
         return Ok(());
     }
@@ -17169,6 +17662,7 @@ pub fn run_controller(config: &ControllerConfig, list_images: bool) -> Result<()
                 );
             }
 
+            resume_suspended_spawn(&mut suspended_spawn)?;
             let _ = send_command_json(&mut stream, &AgentCommand::Exit);
             Ok(())
         })();
@@ -17220,6 +17714,7 @@ pub fn run_controller(config: &ControllerConfig, list_images: bool) -> Result<()
                 );
             }
 
+            resume_suspended_spawn(&mut suspended_spawn)?;
             let mut outcome = execute_single_command(&mut stream, command, true, &injection_environment, &preflight)?;
             if !agent_logs.is_empty() {
                 let mut combined_logs = std::mem::take(&mut agent_logs);
@@ -17301,6 +17796,13 @@ pub fn run_controller(config: &ControllerConfig, list_images: bool) -> Result<()
                 print_reply_payload("loadjs", load_result.trim());
             }
         }
+
+        resume_suspended_spawn(&mut suspended_spawn)?;
+    }
+
+    if let Some(bind_addr) = config.rpc_bind.as_deref() {
+        let label = config.bundle_id.clone().unwrap_or_else(|| format!("pid-{pid}"));
+        return run_http_rpc_server(stream, bind_addr, pid, label);
     }
 
     if let Some(command) = config.command.as_deref() {
@@ -19315,6 +19817,7 @@ fn controller_help_control_command_synopsis() -> &'static [&'static str] {
         "loadjs <script>",
         "jseval <expr>",
         "jscomplete <prefix>",
+        "rpccall <method> [args-json]",
         "jsrepl",
         "exit",
     ]
@@ -19900,13 +20403,18 @@ mod tests {
         render_command_error_json, render_command_error_json_with_context, render_command_outcome_json,
         render_command_outcome_json_with_context, render_image_list_json, render_injection_environment,
         render_injection_result_json, render_loader_symbol, render_preflight_json, routing_phase_action_class,
-        CommandJsonContext, CommandOutcome, CommandOutcomeKind, HflCommand, HookAutomationArm64eContext,
-        HookCommandCapability, HookEffectiveAction, NativeHookTarget, NativeLogArgument, NativeLogReturn,
-        NativeLogTemplate, NativeValueFormat, ObjcHookCommand, StalkerCommand, SwiftHookCommand, TraceCommand,
+        run_single_session_liveness, ActiveAgentRpcBackend, CommandJsonContext, CommandOutcome, CommandOutcomeKind,
+        HflCommand, HookAutomationArm64eContext, HookCommandCapability, HookEffectiveAction, NativeHookTarget,
+        NativeLogArgument, NativeLogReturn, NativeLogTemplate, NativeValueFormat, ObjcHookCommand,
+        SessionRegistryRpcBackend, StalkerCommand, SwiftHookCommand, TraceCommand,
     };
+    use crate::http_rpc::{RpcBackend, RpcFailure};
+    use crate::server::SessionRegistry;
+    use crate::session::SessionCommandBackend;
+    use crate::session::{SessionCommandFailure, SessionState};
     use common::{
-        AgentCommand, ControllerConfig, Error, Hello, InjectionMode, DEFAULT_AGENT_PATH, DEFAULT_AGENT_PATH_ROOTFUL,
-        LEGACY_AGENT_PATH_ROOTFUL,
+        read_frame, write_frame, AgentCommand, ControllerConfig, Error, Hello, InjectionMode, DEFAULT_AGENT_PATH,
+        DEFAULT_AGENT_PATH_ROOTFUL, FRAME_KIND_CMD_JSON, FRAME_KIND_EVAL_OK, LEGACY_AGENT_PATH_ROOTFUL,
     };
     use native_api::{
         hook_environment_recommended_actions, Arm64ThreadState, BootstrapResultReport, BootstrapStatus,
@@ -19917,7 +20425,235 @@ mod tests {
     };
     use serde_json::{json, Value};
     use std::collections::{BTreeSet, HashSet};
+    use std::os::unix::net::UnixStream;
     use std::path::Path;
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Mutex,
+    };
+    use std::thread;
+    use std::time::Duration;
+
+    struct MockSessionBackend {
+        rpc_failure: Option<SessionCommandFailure>,
+        health_failure: Option<SessionCommandFailure>,
+        fail_detaches: usize,
+        detach_calls: AtomicUsize,
+    }
+
+    impl MockSessionBackend {
+        fn new(
+            rpc_failure: Option<SessionCommandFailure>,
+            health_failure: Option<SessionCommandFailure>,
+            fail_detaches: usize,
+        ) -> Arc<Self> {
+            Arc::new(Self {
+                rpc_failure,
+                health_failure,
+                fail_detaches,
+                detach_calls: AtomicUsize::new(0),
+            })
+        }
+    }
+
+    impl SessionCommandBackend for MockSessionBackend {
+        fn rpc_call(&self, _method: &str, args: &Value, _timeout: Duration) -> Result<Value, SessionCommandFailure> {
+            match &self.rpc_failure {
+                Some(failure) => Err(failure.clone()),
+                None => Ok(args.clone()),
+            }
+        }
+
+        fn health_check(&self, _timeout: Duration) -> Result<(), SessionCommandFailure> {
+            match &self.health_failure {
+                Some(failure) => Err(failure.clone()),
+                None => Ok(()),
+            }
+        }
+
+        fn detach(&self, _timeout: Duration) -> Result<(), SessionCommandFailure> {
+            let attempt = self.detach_calls.fetch_add(1, Ordering::SeqCst) + 1;
+            if attempt <= self.fail_detaches {
+                Err(SessionCommandFailure::Unavailable(format!(
+                    "mock detach attempt {attempt} failed"
+                )))
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    #[test]
+    fn session_registry_rpc_transport_failure_reconciles_and_removes_session() {
+        let session_backend = MockSessionBackend::new(
+            Some(SessionCommandFailure::Unavailable("agent stream closed".into())),
+            None,
+            0,
+        );
+        let registry = Arc::new(SessionRegistry::default());
+        let session = registry
+            .attach(Some(42), "transport", session_backend.clone())
+            .expect("register session");
+        let backend = SessionRegistryRpcBackend {
+            registry: Arc::clone(&registry),
+        };
+
+        assert!(matches!(
+            backend.rpc_call(&session.id().to_string(), "echo", &json!({}), Duration::from_millis(50)),
+            Err(RpcFailure::Unavailable(_))
+        ));
+        assert!(registry.is_empty());
+        assert_eq!(session.state(), SessionState::Detached);
+        assert_eq!(session_backend.detach_calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn session_registry_rpc_application_failure_keeps_healthy_session() {
+        let session_backend = MockSessionBackend::new(
+            Some(SessionCommandFailure::Internal("rpc method failed".into())),
+            None,
+            0,
+        );
+        let registry = Arc::new(SessionRegistry::default());
+        let session = registry
+            .attach(Some(42), "application-error", session_backend.clone())
+            .expect("register session");
+        let backend = SessionRegistryRpcBackend {
+            registry: Arc::clone(&registry),
+        };
+
+        assert!(matches!(
+            backend.rpc_call(&session.id().to_string(), "echo", &json!({}), Duration::from_millis(50)),
+            Err(RpcFailure::Internal(_))
+        ));
+        assert_eq!(registry.len(), 1);
+        assert_eq!(session.state(), SessionState::Attached);
+        assert_eq!(session_backend.detach_calls.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn single_session_liveness_retries_failed_cleanup() {
+        let session_backend = MockSessionBackend::new(
+            None,
+            Some(SessionCommandFailure::Unavailable("health failed".into())),
+            1,
+        );
+        let registry = Arc::new(SessionRegistry::default());
+        let session = registry
+            .attach(Some(42), "retry-cleanup", session_backend.clone())
+            .expect("register session");
+
+        run_single_session_liveness(
+            &registry,
+            &session,
+            Duration::from_millis(1),
+            Duration::from_millis(10),
+            Duration::from_millis(10),
+            3,
+        )
+        .expect("second cleanup attempt should succeed");
+
+        assert!(registry.is_empty());
+        assert_eq!(session_backend.detach_calls.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn active_agent_health_check_sends_ping_and_accepts_eval_ok() {
+        let (controller_stream, mut agent_stream) = UnixStream::pair().expect("Unix stream pair");
+        let agent = thread::spawn(move || {
+            let (kind, payload) = read_frame(&mut agent_stream).expect("health command frame");
+            assert_eq!(kind, FRAME_KIND_CMD_JSON);
+            assert_eq!(
+                AgentCommand::decode(&payload).expect("health command"),
+                AgentCommand::Ping
+            );
+            write_frame(&mut agent_stream, FRAME_KIND_EVAL_OK, b"pong").expect("health reply frame");
+        });
+        let backend = ActiveAgentRpcBackend {
+            stream: Mutex::new(controller_stream),
+            command_context: None,
+        };
+
+        backend
+            .health_check(Duration::from_secs(1))
+            .expect("eval-ok ping is healthy");
+        agent.join().expect("agent thread");
+    }
+
+    #[test]
+    fn single_session_liveness_has_bounded_exit_when_transport_cannot_cleanup() {
+        let (controller_stream, agent_stream) = UnixStream::pair().expect("Unix stream pair");
+        drop(agent_stream);
+        let session_backend: Arc<dyn SessionCommandBackend> = Arc::new(ActiveAgentRpcBackend {
+            stream: Mutex::new(controller_stream),
+            command_context: None,
+        });
+        let registry = Arc::new(SessionRegistry::default());
+        let session = registry
+            .attach(Some(42), "closed", session_backend)
+            .expect("register session");
+
+        let result = run_single_session_liveness(
+            &registry,
+            &session,
+            Duration::from_millis(1),
+            Duration::from_millis(10),
+            Duration::from_millis(10),
+            2,
+        );
+
+        assert!(result.is_err());
+        assert_eq!(registry.len(), 1);
+        assert_eq!(session.state(), SessionState::Failed);
+    }
+
+    #[test]
+    fn session_registry_rpc_backend_dispatches_stable_session_id() {
+        let (controller_stream, mut agent_stream) = UnixStream::pair().expect("Unix stream pair");
+        let agent = thread::spawn(move || {
+            let (kind, payload) = read_frame(&mut agent_stream).expect("RPC command frame");
+            assert_eq!(kind, FRAME_KIND_CMD_JSON);
+            assert_eq!(
+                AgentCommand::decode(&payload).expect("RPC command"),
+                AgentCommand::RpcCall {
+                    method: "add".into(),
+                    args_json: "[20,22]".into(),
+                }
+            );
+            write_frame(&mut agent_stream, FRAME_KIND_EVAL_OK, b"42").expect("RPC reply frame");
+        });
+        let session_backend: Arc<dyn SessionCommandBackend> = Arc::new(ActiveAgentRpcBackend {
+            stream: Mutex::new(controller_stream),
+            command_context: None,
+        });
+        let registry = Arc::new(SessionRegistry::default());
+        let session = registry
+            .attach(Some(42), "test", session_backend)
+            .expect("register session");
+        let backend = SessionRegistryRpcBackend { registry };
+
+        let sessions = backend.list_sessions().expect("session list");
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].id, session.id().to_string());
+        assert_eq!(sessions[0].pid, Some(42));
+        assert_eq!(
+            backend
+                .rpc_call(
+                    &session.id().to_string(),
+                    "add",
+                    &json!([20, 22]),
+                    Duration::from_secs(1)
+                )
+                .expect("RPC result"),
+            json!(42)
+        );
+        agent.join().expect("agent thread");
+
+        assert!(matches!(
+            backend.rpc_call("999", "add", &json!([]), Duration::from_secs(1)),
+            Err(RpcFailure::NotFound(_))
+        ));
+    }
 
     fn materialize_help_template(template: &str) -> String {
         let mut command = template
@@ -19952,6 +20688,7 @@ mod tests {
             ("<mangled-symbol>", "_$s5Demo14ViewControllerC11viewDidLoadyyF"),
             ("<type>", "ViewController"),
             ("<method>", "viewDidLoad"),
+            ("[args-json]", "[1,2]"),
             ("<member>", "viewDidLoad"),
             ("<kind>", "metadata-accessor"),
             ("<type|protocol>", "ViewController"),
@@ -20759,6 +21496,13 @@ mod tests {
         assert_eq!(AgentCommand::from_legacy("ping"), Some(AgentCommand::Ping));
         assert_eq!(AgentCommand::from_legacy("jsinit"), Some(AgentCommand::JsInit));
         assert_eq!(AgentCommand::from_legacy("jsclean"), Some(AgentCommand::JsClean));
+        assert_eq!(
+            AgentCommand::from_legacy("rpccall add [1,2]"),
+            Some(AgentCommand::RpcCall {
+                method: "add".into(),
+                args_json: "[1,2]".into(),
+            })
+        );
         assert_eq!(
             AgentCommand::from_legacy("loadjs console.log(1)"),
             Some(AgentCommand::LoadJs {
@@ -22665,6 +23409,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: true,
             preflight_json: true,
@@ -22911,6 +23656,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: true,
             preflight_json: true,
@@ -23164,6 +23910,7 @@ mod tests {
             spawn_command: None,
             command: Some("pac.images UIKit".into()),
             command_json: true,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -23378,6 +24125,7 @@ mod tests {
             spawn_command: None,
             command: Some("objc.classes UIView".into()),
             command_json: true,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -24451,6 +25199,7 @@ mod tests {
             spawn_command: None,
             command: Some("trace UIViewController".into()),
             command_json: true,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -24597,6 +25346,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -38887,6 +39637,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -38997,6 +39748,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -39094,6 +39846,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -39191,6 +39944,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -39288,6 +40042,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -39980,6 +40735,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -40136,6 +40892,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -40298,6 +41055,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,
@@ -40518,6 +41276,7 @@ mod tests {
             spawn_command: None,
             command: None,
             command_json: false,
+            rpc_bind: None,
             list_images_json: false,
             preflight_only: false,
             preflight_json: false,

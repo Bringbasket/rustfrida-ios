@@ -1,14 +1,22 @@
 #![recursion_limit = "2048"]
 
 mod args;
+mod http_rpc;
 mod injection;
 mod launch;
+mod process_lookup;
+mod server;
+mod server_frontend;
+mod server_runtime;
+mod session;
+mod suspended_spawn;
 
 use args::Args;
 use clap::Parser;
 use common::{ControllerConfig, Error, InjectionMode, DEFAULT_AGENT_PATH};
-use injection::run_controller;
+use injection::{run_controller, ControllerSessionLauncher};
 use serde_json::{json, Value};
+use std::sync::Arc;
 
 fn error_kind_label(err: &Error) -> &'static str {
     match err {
@@ -37,19 +45,42 @@ fn print_structured_error(err: &Error) {
 
 fn main() {
     let args = Args::parse();
+    let structured_errors = args.list_images_json || args.preflight_json || args.inject_json || args.command_json;
+    let result = run(args);
+
+    if let Err(err) = result {
+        if structured_errors {
+            print_structured_error(&err);
+        } else {
+            eprintln!("{err}");
+        }
+        std::process::exit(1);
+    }
+}
+
+fn run(args: Args) -> common::Result<()> {
+    if args.server {
+        return run_server(args);
+    }
+
     let mode = if args.spawn {
         InjectionMode::Spawn
     } else {
         InjectionMode::Attach
     };
     let list_images = args.list_images;
+    let pid = match args.name.as_deref() {
+        Some(name) => Some(process_lookup::find_pid_by_name(name)?),
+        None => args.pid,
+    };
     let config = ControllerConfig {
         mode,
-        pid: args.pid,
+        pid,
         bundle_id: args.bundle_id,
         spawn_command: args.spawn_command,
         command: args.command,
         command_json: args.command_json,
+        rpc_bind: args.rpc_port,
         list_images_json: args.list_images_json,
         preflight_only: args.preflight_only,
         preflight_json: args.preflight_json,
@@ -61,20 +92,40 @@ fn main() {
         connect_timeout_secs: args.connect_timeout,
     };
 
-    let result = if list_images {
+    if list_images {
         run_controller(&config, true)
     } else {
         config.validate().and_then(|_| run_controller(&config, false))
-    };
-
-    if let Err(err) = result {
-        if args.list_images_json || args.preflight_json || args.inject_json || args.command_json {
-            print_structured_error(&err);
-        } else {
-            eprintln!("{err}");
-        }
-        std::process::exit(1);
     }
+}
+
+fn run_server(args: Args) -> common::Result<()> {
+    let config = ControllerConfig {
+        mode: InjectionMode::Attach,
+        pid: Some(1),
+        bundle_id: None,
+        spawn_command: None,
+        command: None,
+        command_json: false,
+        rpc_bind: None,
+        list_images_json: false,
+        preflight_only: false,
+        preflight_json: false,
+        inject_json: false,
+        agent_path: args.agent_path.unwrap_or_else(|| DEFAULT_AGENT_PATH.into()),
+        entry_symbol: args.entry_symbol,
+        script_path: None,
+        socket_path: None,
+        connect_timeout_secs: args.connect_timeout,
+    };
+    let registry = Arc::new(
+        server::SessionRegistry::with_capacity(args.max_sessions)
+            .map_err(|error| Error::State(format!("failed to create session registry: {error}")))?,
+    );
+    let launcher = Arc::new(ControllerSessionLauncher::from_config(&config));
+    server_runtime::run_stdio_with_launcher(registry, launcher, server_runtime::ServerRuntimeOptions::default())
+        .map(|_| ())
+        .map_err(Error::Io)
 }
 
 #[cfg(test)]

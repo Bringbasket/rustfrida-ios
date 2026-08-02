@@ -30,14 +30,20 @@ scripts/package-agent-deb.sh rootless
 scripts/package-agent-deb.sh rootful
 scripts/install-agent-deb-jailbreak.sh root@iphone.local
 BUILD_DEB=1 scripts/package-artifacts.sh
+scripts/check-apple-cross-build.sh
 
 # Apple host 才能跑：controller dyld / preflight / inject / command
 cargo run -p controller -- --pid 1234 --preflight-only
+cargo run -p controller -- --name SpringBoard --preflight-only
 cargo run -p controller -- --pid 1234 --preflight-only --preflight-json
 cargo run -p controller -- --list-images --list-images-json
 cargo run -p controller -- --pid 1234 --inject-json
 cargo run -p controller -- --pid 1234 --command "objc.classes UIView"
 cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-json
+cargo run -p controller -- --pid 1234 --script rpc.js --command "rpccall add [20,22]"
+cargo run -p controller -- --pid 1234 --script rpc.js --rpc-port 127.0.0.1:9191
+curl http://127.0.0.1:9191/sessions
+curl -X POST http://127.0.0.1:9191/rpc/1/add -d '[20,22]'
 ```
 
 主机平台要求：
@@ -50,6 +56,8 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 最近补上的 iOS 运行时能力：
 
 - `ObjC.methods(className[, isClassMethod][, query])`
+- `ObjC.chooseSync(className[, options])`，支持 `includeSubclasses` / `maxCount`
+- `ObjC.choose(className, { onMatch, onComplete }[, options])`，支持 `onMatch` 返回 `"stop"`
 - `ObjC.findMethods(className, query[, isClassMethod])`
 - `ObjC.findMethodOwners(query[, isClassMethod])`
 - `ObjC.methodOwners(query[, isClassMethod])`
@@ -155,6 +163,18 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Swift.symbols(query[, moduleName])`
 - `Swift.findSymbolInfo(symbolName[, moduleName])`
 - `Swift.symbolInfo(symbolName[, moduleName])`
+- `Swift.status()` / `Swift.capabilities()` / `Swift.lastError()`
+- `Swift.typeRepresentation(typeName)`
+- `Swift.objectRepresentation(typeName)`
+- `Swift.classifyAbiArgument(typeName)` / `Swift.abiArgument(typeName)`
+- `Swift.classifyAbiArguments(typeNames)` / `Swift.abiArguments(typeNames)`
+- `Swift.object(pointer[, metadata[, options]])` / `Swift.metadataOf(object)`
+- `Swift.thinFunction(...)` / `Swift.invoke(...)` / `Swift.call(...)`
+- `Stalker.capabilities()` / `Stalker.status()` / `Stalker.info()`
+- `Stalker.functionLevelStatus()` / `Stalker.functionLevelStop()`
+- `Stalker.transform()` / `Stalker.transformBasicBlock()`
+- `Stalker.generateEvents()` / `Stalker.recordBlock()`
+- `CModule.capabilities()` / `CModule.status()` / `CModule.lastError()`
 - `Native.base(moduleName)`
 - `Native.findBase(moduleName)`
 - `Native.images([filter])`
@@ -227,6 +247,28 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `Native.loadCommands(moduleName)`
 - `Native.findLoadCommandInfo(moduleName, commandOrIndex)`
 - `Native.loadCommandInfo(moduleName, commandOrIndex)`
+- `Module.enumerateExports / enumerateImports / enumerateSymbols / enumerateRanges`
+- `Module.load(path)`（Apple target；handle 按 QuickJS runtime 清理）
+- `Memory.alloc / allocUtf8String / protect / flushCodeCache / writeBytes`
+- `NativePointer#read* / write* / writeBytes / protect / flushCodeCache`
+- `Memory.writest / NativePointer#writest`（iOS 上显式返回 Android RECOMP-only unsupported）
+- `new NativeFunction(address, returnType, argumentTypes)`（支持整数、bool、pointer、float、double；结构体/数组按值和 variadic 显式 unsupported，与 Android 参考实现的标量范围一致）
+- `hookNative(target, callbackPtr, userData?, mode?)`（native callback ABI：`void callback(HookContext *, void *)`；成功返回原函数 trampoline）
+- `attachNative(target, callbackPtr, userData?, mode?)`
+- `attachNative(target, { onEnter?, onLeave?, data?, mode? })`
+- `Interceptor.attach` 的 `onEnter(args)` / `onLeave(retval)` / 共享 invocation `this`
+- `Interceptor.flush()`
+- `new File(filePath, mode)`
+- `File#tell / seek / readBytes / readText / readLine / write / flush / close`
+- `File.readAllBytes / readAllText / writeAllBytes / writeAllText`
+- `File.SEEK_SET / File.SEEK_CUR / File.SEEK_END`
+- `rpc.exports = { method() { ... } }`
+- `rpc.export(name, fn)`
+- `rpccall <method> [args-json]`
+- `Process.id / arch / platform / pageSize / pointerSize / codeSigningPolicy / mainModule`
+- `Process.enumerateModules / findModuleByName / getModuleByName / findModuleByAddress / getModuleByAddress`
+- `Process.enumerateRanges / findRangeByAddress / getRangeByAddress / enumerateMallocRanges`
+- `Process.getCurrentDir / getHomeDir / getTmpDir / getCurrentThreadId / isDebuggerAttached / enumerateThreads`
 - `Hook.NORMAL / Hook.WXSHADOW / Hook.RECOMP`
 - `recompHook(ptr, callback)`（iOS 上显式返回 Android-only unsupported）
 - `diagAllocNear(ptr)`（iOS 上返回 ARM64 hook engine 兼容诊断）
@@ -534,7 +576,7 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - `pac.available / pac.arm64e / pac.image / pac.strip / pac.stripdata` 这组 PAC 单项查询现在也补了统一顶层状态字段，例如 `resolved / hasImage / resolvedModuleName / strippedAddress / changed`，脚本侧判定模块是否命中、以及 strip 前后地址是否变化时不必只看文本。
 - 在这之上，`pac.available / pac.arm64e / pac.image` 现在也继续补了 `resolvedAvailable / resolvedArm64e` 这类直接值字段，脚本侧做 capability / arm64e 判定时不必再在主字段和 resolved 语义之间自己对齐。
 - `pac.images` 结果现在也会额外补 `firstImagePath / lastImagePath / uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNameList / pathKindList / imageNames / pathKinds` 这类摘要，适合脚本先看当前 `arm64e` 风险面主要集中在哪类镜像路径，而不必自己再对 PAC 镜像列表做一轮聚合。
-- `quickjs-runtime` 里的 `callNative()` 现在明确沿用 canonical code pointer 路径，避免 PAC 场景下把已规范化的入口又当成 raw 指针处理。
+- `quickjs-runtime` 里的 `callNative()` 和 `NativeFunction` 现在明确沿用 canonical code pointer 路径，避免 PAC 场景下把已规范化的入口又当成 raw 指针处理。Apple AArch64 在编译器启用 `paca/pacg` 时使用 `xpaci/xpacd`，默认 target 则与内置 hook engine 一致保守保留当前 Apple 用户态低 48 位；这仍需 arm64e 真机验证，不能等同于完整 authenticated branch 支持。
 - Mach 注入链路现在会回读远程 bootstrap 状态；可用 `IOS_RUSTFRIDA_BOOTSTRAP_WAIT_MS` 控制轮询等待时长，设为 `0` 表示关闭等待。
 - Mach bootstrap 远程内存现已拆成代码段和参数/状态段，分别走 `RX` / `RW` 权限，不再依赖单块 `RWX` payload。
 - 远程 Mach 内存分配现在按页对齐申请，并在 `mach_vm_protect` 上带降级处理，减少真机上因页粒度或 `set_maximum` 差异导致的失败。
@@ -587,10 +629,28 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - 同一个单进程 runtime 口径下，顶层 `backendPressure` 也已补上，值域目前固定对齐 controller 的一部分：`controller / filesystem-only / none`。这里的 `controller` 表示“当前宿主进程已经加载外部 backend”，不是在声称 runtime 里真的存在 controller/target 两端拆分。
 - 顶层 `backendMatrix` 现在也提供了单进程兼容形状：会输出 `entries / entryCount / loadedInControllerCount / loadedInTargetCount / loadedInBothCount / filesystemOnlyInEitherCount / sharedBackendIds / controllerOnlyBackendIds / targetOnlyBackendIds / loadedInBothBackendIds / loadedOnlyInControllerBackendIds / loadedOnlyInTargetBackendIds / filesystemOnlyBackendIds / topology`。其中 `target* / shared* / loadedInBoth*` 在 runtime 口径下按单进程语义固定为 `0/[]/false`，`controller*` 表示当前宿主进程视角。
 - 这组 hook 环境根对象现在不只 runtime `Native.detectHookEnvironment()` 有，controller 的 `environment.hookEnvironment / preflight.targetHookEnvironment` 也已经对齐补了 `filesystemOnlyBackendIds / loadedBackendIds / backendCount / backendIds / activeBackendDisplayName / backendDisplayNames / loadedBackendDisplayNames / filesystemOnlyBackendDisplayNames / loadedExternalBackendCount / recommendations`；脚本在 runtime 单进程查询和 controller JSON 之间切换时，不必再维护两套 backend 摘要字段映射。
+- QuickJS runtime 现在已实际移植 Android 上游 `rustFrida-master/quickjs-hook/src/jsapi/file.rs` 的全局 `File` API；支持同步文本/二进制整文件读写、`ArrayBuffer / TypedArray / Array<number>` 字节输入，以及实例级 `tell / seek / readBytes / readText / readLine / write / flush / close` 和 `SEEK_SET / SEEK_CUR / SEEK_END` 常量。这是 iOS/Linux 通用的真实实现，不是 unsupported 兼容占位。
+- QuickJS runtime 现在也已实际移植 Android 上游 `rustFrida-master/quickjs-hook/src/jsapi/rpc.rs` 的 `rpc.exports / rpc.export / __rpc_dispatch` 核心语义，并补了 `QuickJsRuntime::dispatch_rpc()`、结构化 `AgentCommand::RpcCall` 和 controller `rpccall <method> [args-json]`；返回值按上游规则经过 `JSON.stringify`，`undefined` 返回 `null`，缺失方法和非 JSON array 参数会明确报错。controller 也已补上 Android 同名的 `--rpc-port <PORT|ADDR>` HTTP 包装层，支持 `GET /health`、`GET /sessions` 和 `POST /rpc/<session>/<method>`；`session.rs/server.rs` 提供有界并发 registry、单调稳定 ID、attach/detach 状态机、每 session 命令串行化、断开门控和后台 `ping` 健康探针自动回收，HTTP 已按 registry 路由。单 session HTTP RPC 还会通过 agent `Ping` 做 liveness 检查，transport failure 进入 registry reconcile/detach 路径；cleanup 保留可重试 owner，并在连续失败达到上限后有界退出，不再永久盲 park。`--server [--max-sessions N]` 持续 stdio 前端支持动态 `attach/spawn/list|sessions/use/detach/detachall` 管理和真实 launcher 接线；server `exit` 只有在本轮 detach 全部 clean 且 registry 为空时才关闭，运行摘要累计 health/exit 阶段的 clean detach 数量；`--rpc-port` 入口仍面向单目标 HTTP RPC。
+- spawn 模式现在通过 `controller/src/suspended_spawn.rs` 持有明确的 `Suspending/Suspended/Running/Terminating/Terminated` 生命周期：未恢复时任一步失败都会终止目标；注入、agent handshake 和 `JsInit/LoadJs` 完成后才恢复。Apple executable 后端使用 `POSIX_SPAWN_START_SUSPENDED`，Linux host 用 fork-stop-exec 覆盖状态机测试；Simulator bundle-id 启动只使用 `xcrun simctl launch --wait-for-debugger`，并校验进程确实处于暂停状态。物理设备要求 v2 `runtime-dynamic` FrontBoard/scene provider 在 `before-first-user-instruction` 阶段交付 gate，状态严格校验 `held/released/terminated`；真实 provider 与真机验收仍待完成。
+- bundle suspended 协议现在把 bundle、PID、provider 和 gate ID 绑定，resume 后必须收到 provider 的 `released` 确认；失败、超时或未交付状态会终止目标。controller 已移除启动后 `SIGSTOP` 伪装和旧 helper 的兼容回退，避免把进程启动后的暂停窗口误写成真正的 start-suspended。
+- 外部 hook backend 适配现在新增了独立的保守决策模型：会标准化 ElleKit / Substrate / Substitute / libhooker，并覆盖 query/install/attach/uninstall/cleanup/replace、loaded/filesystem-only、冲突数量、arm64e、policy 和 override。决策会给出 capability、command mode、execution boundary、policy/executable 状态和稳定 reason code；`query-only` 保留查询/清理，`cleanup-only` 只保留内部 owned-hook cleanup。Apple FFI install/replace 会在 native 调用前分配唯一非零 token，并以 backend image lease 保持句柄存活；`release` 首次成功、重复调用幂等，未释放句柄的 uninstall 明确返回 `NativeUninstallUnavailable`，不宣称目标已恢复。controller/session/registry 现在已提供 `adopt_external_hook`、`release_external_hook`、`uninstall_external_hook`、`cleanup_external_hooks` 及 attach failure、health failure、detach、Drop 清理；agent 侧另有实际的 `ExternalHookExecute/Status/Release/Uninstall` command/receipt 路径。`Session::execute_external_hook`、`RemoteExternalHookLease`、`SessionRegistry::execute_external_hook` 和 injection entry 已完成源码/静态接线，controller tests 已通过；controller remote lease 的远程 command、receipt 转移和产品级调用链已完成源码/静态接线，待 Apple runtime/真机验收。四种已确认 ABI 没有公开 native uninstall。
+- agent-owned external-hook 状态现在由 `ExternalHookRegistry` 持有：execute request 使用 `request_id` 和 `owner_id`，重复 request 可 replay、冲突会拒绝，status 按 owner 过滤；receipt 保留 token/backend/operation/target/original/native result、`ownership=owned|released|orphaned`、`target_state=installed|restored|uncertain`、native uninstall 能力和最后错误。目标状态不确定时保留 orphan receipt 供 status/replay 继续观察；agent 侧命令/receipt 语义、controller remote lease 转移和产品级调用链已完成源码/静态接线，待 Apple runtime/真机验收。
+- QuickJS runtime 现在已对齐 Android 上游 `rustFrida-master/quickjs-hook/src/jsapi/module/process_api.rs` 的只读全局 `Process` API：模块、内存 range、目录、当前线程、线程枚举和 debugger 状态查询均已接入；Linux host 使用 `/proc/self/maps`、`/proc/self/task` 和 `TracerPid`，iOS/macOS 使用 dyld image、`mach_vm_region_recurse`、`task_threads/thread_info`、`pthread_threadid_np` 和 `csops(CS_OPS_STATUS)`。`Process.platform` 在 Apple 目标返回 Frida 兼容的 `darwin`；`enumerateMallocRanges()` 与当前 Android 上游一致暂时返回空数组。
+- controller 现在支持 `--name <PROCESS_NAME>` 按进程名 Attach：Apple 端通过 libproc 枚举并按 executable name、完整 path 或 path basename 精确匹配，唯一命中后会重新校验 PID identity；多命中、进程退出和 PID 复用都会拒绝并给出稳定错误。`--name` 与 `--pid/--bundle-id/--spawn` 互斥，非 Apple host 明确提示改用 `--pid`。
+- QuickJS runtime 现在已对齐 Android 上游 `rustFrida-master/quickjs-hook/src/jsapi/memory/` 的常用 Memory/NativePointer 表面：支持有界的 `alloc/allocUtf8String`、ArrayBuffer/TypedArray/number array `writeBytes`、严格权限字符串 `protect`、平台化 `flushCodeCache`，以及 NativePointer 实例读写方法。Apple 写入会按 Mach VM region 查询、临时改权、失败回滚并恢复原权限；`writest` 依赖 Android RECOMP stealth-2，因此保留同名入口并明确 unsupported。分配按 QuickJS runtime 隔离，在 runtime cleanup 时统一释放。
+- `Module` 现在已补 `enumerateExports/enumerateImports/enumerateSymbols/enumerateRanges/load`：Mach-O 地址会按 dyld slide 转成运行时地址，range 会保留 protection 和 file metadata，`Module.load` 使用 `dlopen(RTLD_NOW|RTLD_LOCAL)` 并按 runtime 逆序卸载。`Module.enumerateImports()` 以及 `Native.findImports/importInfo()` 现在会返回 Mach-O indirect symbol 对应的 GOT `slot`、当前解析 `address`、pointer 类型和 dylib ordinal。`enumerateSymbols` 已覆盖本地/非导出 `N_SECT` 符号，区分 `N_SECT/N_ABS/N_UNDF/N_PBUD/N_INDR`，对定义符号应用 dyld slide、按 instruction section flags 区分 function/variable、只移除一个 ABI 下划线并按规范化名称去重；load-command、segment、section、`__LINKEDIT`、nlist 和字符串表边界均已校验。Apple runtime 行为仍待真机验收。
+- `Interceptor.attach` 现在提供 Frida 风格的 `onEnter(args[0..7])`、`onLeave(retval)`、`retval.replace/toInt32/toUInt32/toString` 和 enter/leave 共享 `this`，并用 thread-local invocation 栈处理递归；`Interceptor.flush()` 与同步 ARM64 hook engine 语义一致为 no-op。当前 retval 与 Android 参考实现一样以整数/指针返回寄存器 `x0` 为核心；FPR、向量和结构体 hook 回调上下文不属于 `NativeFunction` 调用桥。
+- QuickJS runtime 的 `NativeFunction(address, returnType, argumentTypes)` 已静态对齐 Android 参考实现的标量类型：支持 `bool`、8/16/32/64 位有符号/无符号整数、pointer、float 和 double。整数/pointer 与浮点参数分别独立分配到 `x0..x7` 和 `v0..v7`，两类溢出参数按声明顺序使用 Apple arm64 的自然大小/对齐紧凑栈布局，最多允许 256 个栈参数；汇编桥同时捕获 `x0` 与 `v0`，64 位整数返回 BigInt，float/double 返回 Number。调用前仍会规范化 PAC code pointer 并检查目标页可执行。结构体/数组按值和 variadic 会明确拒绝，Android 参考仓库也未实现这两类签名；Apple 真机混合寄存器/栈调用仍待最终验收。
 - iOS 对标 Android QBDI 的口径现在也显式暴露在 `Native.instrumentation`、`Native.detectHookEnvironment().instrumentation`、controller `hookEnvironment.instrumentation` 里：`androidReferenceBackend=QBDI`，iOS 当前 `backend=arm64-hook-engine`，`qbdiCompatible/qbdiAvailable/qbdiApiPorted=false`，推荐路径是 `trace/stalker/hfl/jhook/shook`；这能让自动化脚本直接区分“Android QBDI VM API 尚未移植”和“iOS 走 ARM64 hook engine 控制命令”。
 - 为了兼容 Android 脚本的能力探测，iOS runtime 现在也提供全局 `qbdi` 对象；它会明确返回 `available=false / backend=unsupported-ios / iosAlternativeBackend=arm64-hook-engine`，并保留 Android 版同名的 `MEMORY_READ / MEMORY_WRITE / MEMORY_READ_WRITE / REG_RETURN / REG_BP / REG_LR / REG_SP / REG_FLAG / REG_PC` 常量以及 `newVM/run/call/getGPR/registerTraceCallbacks/lastError/shutdown/status/info` 等常见方法名。`qbdi.status()` / `qbdi.info()` 会返回结构化的常量、supported command 和 unsupported method 摘要，并额外给出 `qbdiVmAvailable=false / qbdiHelperAvailable=false / virtualStackAvailable=false / registerStateApiAvailable=false / memoryAccessTraceAvailable=false / traceBundleExportAvailable=false / supportedMethodCount=0`，方便脚本区分“Android QBDI VM/helper 未移植”和“iOS 应走 ARM64 hook engine 的 trace/stalker/HFL/JHook/Shook”。除 `lastError()`、`shutdown()`、`status()`、`info()` 外，QBDI VM 方法会抛出清晰的 unsupported 错误，避免旧脚本因为 `qbdi` 未定义而直接失败。
 - 对应命令面也补了只读查询：`qbdi.status` / `qbdi.info` 会输出 iOS 上 QBDI 的 unsupported 状态、Android 参考后端、iOS 替代后端、Android 兼容常量和不支持的方法列表；`qbdi.lastError` 直接输出同一条 unsupported 原因。这三条都按 query 命令处理，不会触发 inline hook。
 - Android hook API 里的 `Hook.NORMAL / Hook.WXSHADOW / Hook.RECOMP` 常量现在也在 iOS runtime 暴露出来；`hook(..., Hook.WXSHADOW)` 会继续映射到 iOS ARM64 hook engine 的 stealth 参数，`Hook.RECOMP` / `recompHook()` 会明确报 Android-only unsupported，`diagAllocNear()` 则返回一份 iOS 兼容诊断对象，避免 Android 脚本探测这些入口时直接遇到未定义。
+- ObjC object wrapper 现在新增 typed `getProperty(name, type)` / `setProperty(name, type, value)` 便利入口；getter 调用属性 selector，setter 按 Objective-C 规则生成 `setXxx:`，仍复用现有 scalar 类型检查和 bridge 错误契约。`ObjC.registerClass(spec)` 的动态属性 accessor 现在会按 type encoding 精确读写 1/2/4/8 字节标量和指针，property 支持显式 `getter` / `setter`、`atomic: true` 和 `kvo: 'automatic' | 'manual'`，KVO 默认 `automatic`，并生成 Objective-C runtime 的 `G` / `S` / `V` metadata；`N` metadata 仅为 nonatomic property 写入。resolver 会从对象动态类开始逐层调用 `class_copyPropertyList`，因此可解析继承属性和 KVO 动态子类。默认 setter 解析已修复大小写反推问题，`setTitle:` 现在会正确定位 `_title`；getter 必须为 0 个冒号、setter 必须仅含一个末尾冒号，`readOnly: true` 与显式 setter 的冲突、manual KVO 与 readonly 的冲突、selector 中的逗号以及与当前类或继承方法的 accessor selector collision 都会在 class mutation 前校验。manual KVO 使用 declaring-property instance marker、幂等安装的 metaclass `+automaticallyNotifiesObserversForKey:` override 和 declaring-metaclass TLS super 转发；每层嵌套 `will/did` TLS frame 复用同一枚 `+1 NSString` key，custom/atomic/weak property 均复用同一 setter wrapper。KVO capability 与 255-byte key 上限会前置校验；进入 runtime property/KVO mutation 后发生失败会 poison pending class 并阻止后续 registration。atomic retain/copy object 通过 `objc_getProperty` / `objc_setProperty` 访问，atomic scalar 与 assign pointer 的 1/2/4/8 字节读写通过 `objc_copyStruct` 完成；weak 继续使用 zeroing weak runtime。动态 object property 已支持 `assign/retain(strong)/copy/weak`，retain/copy/weak backing ivar 由每个动态类一次性合成的 `dealloc` 清理并沿 superclass 链转发，用户自定义 `dealloc` 冲突会返回稳定 class-mutation 错误。Apple exception shim 已包住 retain/release、message dispatch 和 ivar/property 访问，`ObjC.chooseSync` / `ObjC.choose` 已接入有界 heap enumeration、retained wrapper 和回调停止语义。KVO shim 已通过 arm64 iOS 与 x86_64 macOS 的 `-Werror` 编译，Apple Cargo cross 也已通过；ObjC property synthesis 已完成静态实现，atomic/KVO 真机 runtime 尚待验收。
+- `native-api/src/stalker.rs` 现在提供与 Android Frida Gum 对齐的 Stalker 事件类型、mask、排除区间、follow/unfollow、activate/deactivate、flush、GC、有限事件队列和丢弃计数，并新增 bounded basic-block static transform 与 caller-supplied execution trace 的 `Compile/Block/Exec/Call/Ret` event generation。QuickJS 新增 `Native.stalkerTransform/Native.stalkerGenerateEvents` 以及 `Stalker.transform/transformBasicBlock/generateEvents/recordBlock`；能力报告明确 `staticParse=true`、`boundedBasicBlockTransform=true`、`eventGeneration=true`、`transformMode=static-only`、`eventGenerationMode=caller-supplied-execution-trace`，而 `targetThreadInstrumentation/targetThreadInstructionRewrite/instrumented` 仍为 false。当前仍没有生产 target-thread instruction rewrite、真实 transformer/callout 或 instruction event backend。
+- QuickJS 现在提供全局 `CModule(source[, symbols])` 和 `CModule.capabilities/status/info/lastError`。Apple backend 已接入 TinyCC 编译、Mach-O linker、`MAP_JIT` executable mapping、imports/exports、`findSymbol`、finalizer 和 `dropMetadata`；源码、导入符号数量、名称、NUL、重复项和指针值仍先经过真实校验。`quickjs_cmodule` 的 x86_64 host forced-backend smoke 为 7/7，实际导出函数返回 `42`，ARM64 codegen 的 C 编译也已通过；Apple host/device 的 `MAP_JIT` 运行验收仍待完成，Linux 普通构建继续按平台报告 `unavailable`。
+- 当前工作树测试计数记录：`controller` 256、`common` 13、`agent` 6、`native-api` 165、`objc-api` 48、`quickjs-runtime` 80，workspace 全量 host 测试 `568` 项全部通过。此前记录的 `563`（其中 `controller` 251）、`537`（其中 `controller` 229）和更早的 `532`（其中 `controller` 224）均为旧阶段快照。Apple cross-check `5/5`、CModule forced-backend smoke `7/7` 且实际函数返回 `42` 属于既有 host/static 与交叉编译门禁记录，不替代 Apple host/device 的 `MAP_JIT`、注入、hook、KVO、Swift ownership 或真实 provider 验收。
+- Swift 查询层现在新增保守的类型/对象/ABI 参数分类：`Swift.typeRepresentation/objectRepresentation/classifyAbiArgument(s)` 会区分 scalar、pointer、metatype、existential、thick-function、tuple、opaque-result 和 nominal metadata-dependent 形状。`Swift.metadataOf(object)` / `Swift.object(pointer, metadata?, options?)` 会先验证对象对齐、Mach VM 可读区域，并要求显式 metadata 与对象首字 metadata identity 一致；结果记录 `metadataInferred/metadataVerified` 与 `borrowed/adopt/retain` ownership。wrapper 提供 `metadata/isType/typeName/ownership/status/isDisposed/retain/dispose/toPointer`，`dispose()` 幂等且 finalizer 不重复释放。对经过 `abi: 'c-compatible', verified: true` 标记的 thin Swift/C ABI，`Swift.thinFunction()`、`Swift.invoke()`、`Swift.call()` 已复用 `NativeFunction` 支持标量、浮点和指针调用；泛型、async、throws、隐藏上下文、间接返回和 full object ABI 仍会明确拒绝。`Swift.status()` 会分别报告 `thinAbiCallAvailable`、`liveObjectWrapperAvailable` 与仍关闭的 full object ABI；`SwiftType` 结果也会携带 `typeRepresentation / objectRepresentation / abiArgumentKind / abiPassMode / abiCallSupported / abiCallReason`。
+- Android 的 `hookNative/attachNative` 表面现在也已接入 iOS QuickJS runtime：两者接收已有的 native callback pointer 和原样 `userData`，不会把 JS function 编译成 native closure，也不会额外虚构 Android 没有的 `NativeCallback` global。`hookNative` 返回 trampoline；`attachNative` 同时支持单个 onEnter 指针和 `{ onEnter, onLeave, data, mode }`。iOS 继续支持 `Hook.NORMAL/WXSHADOW`，`Hook.RECOMP` 明确返回 Android-only unsupported。native attach 会用内部 enter/leave wrapper 覆盖整个原函数调用周期；生成 thunk 在 C 入口维护原子活跃计数，最终 decrement + return/branch 已移到 dylib 常驻文本 helper，计数归零后不会再执行可能被复用或 `munmap` 的池内指令；redirect 尾调用也会保留原始 LR，不再对不经过本 thunk 返回的 LR 额外签名。JS callback 使用每次安装独立的 dispatch storage，卸载后的 thunk 先进入 retired 队列，等待完整 thunk 和 callback quiescence 后才允许复用。runtime cleanup 只清理当前 QuickJS runtime 所有的 hook，其他 runtime 仍有 hook 时保留 backend pool；Apple ARM64/arm64e 实际回调、并发 detach 和 WXSHADOW 仍待真机验收。
 - Android Java/ART API 也补了 iOS 兼容探测层：`Java.available=false`，`Java.status()` / `Java.info()` / `java.status` 会返回 `backend=unsupported-ios`、Android 参考路径 `rustFrida-master/quickjs-hook/src/jsapi/java`、iOS 替代路径 `ObjC/Swift/Native`，并明确给出 `artRuntimeAvailable=false / jniAvailable=false / hookApiAvailable=false / classLoaderEnumerationAvailable=false / methodEnumerationAvailable=false / fieldAccessAvailable=false / objectInvocationAvailable=false / deoptAvailable=false / supportedMethodCount=0 / unsupportedMethodCount` 这批能力位；`Java.use/perform/performNow/hook/deopt*`、Frida 风格入口 `Java.cast / Java.array / Java.retain / Java.dispose / Java.registerClass / Java.openClassFile / Java.enumerateMethods / Java.scheduleOnMainThread`，以及 Android 版内部入口 `_artRouterDebug / getField / _inspectArtMethod / _setForcedInterpretOnly / _initArtController / _updateClassLoader / _classLoaders / _findClassWithLoader / _setClassLoader` 等都会保留方法名并明确报 Android-only unsupported；这样 Android 脚本可以先做能力探测，不会因为 `Java` 未定义或内部探测入口缺失直接失败。
 - Android Jni/JNIEnv API 也补了 iOS 兼容探测层：`Jni.available=false`，`Jni.status()` / `Jni.info()` / `jni.status` 会返回 `backend=unsupported-ios`、Android 参考路径 `rustFrida-master/quickjs-hook/src/jsapi/jni`、iOS 替代路径 `ObjC/Swift/Native`；状态里会明确区分 `metadataTableAvailable=true` 和 `functionTableAvailable=false / functionAddressAvailable=false / helperEnvAvailable=false`，并给出 `jniFunctionCount / tableEntryCount / supportedFunctionCount / unsupportedFunctionCount`，方便脚本判断“JNI 名称/索引元数据可用，但真实 JNIEnv 调用不可用”。`Jni.entries()` / `Jni.functions()` / `Jni.find(name)` / `Jni.function(name)` / `Jni.table` 现在会返回 Android `jni_boot.js` 同名 JNI 函数元数据（含 vtable `index`、`address=null`、`available=false`），便于脚本复用 JNI 函数名和索引探测。`Jni._threadEnv / _className / addr / call` 等需要真实 Android JNIEnv 的入口保留方法名并明确报 Android-only unsupported；`Jni.FindClass / RegisterNatives / ExceptionCheck` 这类 Android `jni_boot.js` 通过 Proxy 暴露的 JNI 函数名也会作为 unsupported 函数存在。`Jni.helper.structs.JNINativeMethod.read/readArray` 和 `Jni.helper.structs.jvalue.read/readArray` 现在则会按 Android 版结构解析语义真实读取内存，方便复用 RegisterNatives 参数、jvalue 参数数组这类纯结构解析脚本。这样依赖 `Jni` 名字空间的 Android 脚本可以先做能力探测，不会因为全局对象缺失直接失败。
 - 同时 `backends[*]` 条目本身现在也开始统一字段名：runtime 补了 `displayName`，controller 补了 `name`，两边都带 `loaded / presentOnFilesystem / filesystemOnly / loadedImageCount / filesystemPathCount / loadedImages / filesystemPaths`；脚本不必再为 `name` 和 `displayName` 分两套兼容分支。
@@ -683,4 +743,4 @@ cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-
 - hook strategy 被本地或目标进程的外部 backend 阻断时，错误信息现在会直接附带 hook environment 摘要：active backend、各 backend 的 loaded image / filesystem path 计数、warning 数量，减少真机上只看到 `blocked` 但不知道是谁在挡路的情况。
 - bootstrap 失败摘要现在会附带按状态映射的诊断提示，例如 `dlopen/dlsym/socket/connect/entry-returned/pending` 各自对应的优先排查方向，便于真机联调时快速定位是 dylib、导出符号、还是 controller socket 回连问题。
 - `task_for_pid` 失败时现在会追加常见排查方向：越狱/root 上下文、`task_for_pid` 相关 entitlement/exception、目标进程平台保护限制。
-- 还没完成的仍包括：完整越狱注入链路真机验证、外部 hook backend 适配层、完整 arm64e/PAC 真机兼容性收尾。
+- 还没完成的仍包括：物理设备 bundle/scene 的 v2 runtime-dynamic FrontBoard/scene provider 与真机 gate 验收、Swift full object ABI 与泛型/隐藏 ABI、真正的 target-thread 指令级 Stalker backend、Apple host/device 的 CModule `MAP_JIT` 运行验收，以及 controller remote lease 的 Apple runtime/真机验收和生产 token 回收时序。controller lease adoption/release/uninstall/cleanup API、agent-owned external-hook command/receipt 状态、remote lease 转移和产品级调用链、Stalker bounded static transform/event generation、Swift ownership/dispose/metadata identity wrapper 和 adapter FFI boundary 已完成源码/静态接线；四种已确认 external backend ABI 没有公开 native uninstall，当前保持明确的 `NativeUninstallUnavailable` 边界，不把它写成已实现能力。Simulator `simctl --wait-for-debugger` gate、CModule Apple TinyCC/Mach-O backend 的静态与 host smoke、Swift thin ABI 子集、ObjC typed property accessor/retain/copy/weak 生命周期/exception containment/动态类注册/有界 heap enumeration 核心、Module 本地/非导出 nlist 与 import slot/address 解析已经完成静态收口；完整越狱注入、arm64e/PAC、ObjC zeroing weak、ObjC automatic/manual KVO notification 与 super forwarding、hook callback/detach 和第三方 backend 真实运行仍待 Apple host/真机验收。

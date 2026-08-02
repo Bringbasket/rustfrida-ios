@@ -17,6 +17,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <errno.h>
+#include <time.h>
 
 /* wxshadow prctl operations - two-step shadow page patching:
  *   1. PATCH: create shadow + write data + activate (--x) in one step
@@ -96,6 +97,7 @@ static inline void hook_writer_put_thunk_return(Arm64Writer* w) {
 /* --- Shared state (defined in hook_engine.c) --- */
 extern HookEngine g_engine;
 extern HookLogFn g_log_fn;
+extern volatile uint64_t g_hook_active_thunks;
 
 /* --- ART router globals (defined in hook_engine_art.c) --- */
 extern ArtRouterEntry g_art_router_table[ART_ROUTER_TABLE_MAX];
@@ -105,12 +107,20 @@ extern volatile uint64_t g_art_router_miss_count;
 /* --- Diagnostic log (hook_engine.c) --- */
 void hook_log(const char* fmt, ...);
 
+/* Generated thunks increment the activity count inline. Their final decrement
+ * and control transfer run from permanent image text so a zero count means no
+ * thread can still be executing reclaimable pool code. */
+void emit_thunk_activity_enter(Arm64Writer* w);
+void emit_thunk_activity_leave_and_return(Arm64Writer* w);
+void emit_thunk_activity_leave_and_branch(Arm64Writer* w);
+
 /* --- Memory management (hook_engine_mem.c) --- */
 int page_has_read_perm(uintptr_t addr);
 int read_target_safe(void* target, void* buf, size_t len);
 void restore_page_rx(uintptr_t page_start);
 HookEntry* alloc_entry(void);
 void free_entry(HookEntry* entry);
+void retire_entry(HookEntry* entry);
 int wxshadow_patch(void* addr, const void* buf, size_t len);
 int wxshadow_release(void* addr);
 int write_jump_back(void* dst, void* target, uint32_t written_regs);
@@ -187,7 +197,8 @@ void emit_save_hook_context(Arm64Writer* w, uint64_t target_pc, uint64_t trampol
 void emit_callback_call(Arm64Writer* w, HookCallback callback, void* user_data);
 
 /*
- * Emit replace-mode epilogue: restore x0 + LR, deallocate 352-byte stack, RET.
+ * Emit replace-mode epilogue: restore x0 + LR, deallocate the 352-byte stack,
+ * then branch to the permanent activity-decrement/return helper.
  *
  * Shared by generate_replace_thunk (inline hook) and generate_native_hook_thunk (Java hook).
  */

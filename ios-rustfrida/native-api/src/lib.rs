@@ -10,6 +10,8 @@ mod entry_point;
 mod exports;
 mod exports_trie;
 mod function_starts;
+mod hook_backend_adapter;
+mod hook_backend_ffi;
 mod imports;
 mod injection;
 mod install_name;
@@ -23,6 +25,7 @@ mod rpaths;
 mod sections;
 mod segments;
 mod source_version;
+mod stalker;
 mod swift;
 mod symbols;
 mod uuid;
@@ -55,6 +58,18 @@ pub use exports_trie::{
 pub use function_starts::{
     find_image_function_starts, image_function_starts_support_available, ImageFunctionStart, ImageFunctionStarts,
 };
+pub use hook_backend_adapter::{
+    bind_external_hook_backend, decide_hook_backend_adapter, execute_external_hook_backend, AdapterCommandMode,
+    AdapterDecision, AdapterDecisionInput, AdapterKind, AdapterOverride, AdapterPolicy, BackendPresence,
+    CapabilityLevel, DecisionOutcome, DecisionReasonCode, ExecutionBoundary, ExternalHookExecutionError,
+    HookBackendCapabilities, HookBackendKind, HookOperation, RecommendedAction,
+};
+pub use hook_backend_ffi::{
+    parse_backend_image, probe_loaded_backend_image, probe_loaded_hook_backends, resolve_loaded_hook_backend,
+    CapabilityProbeState, ExternalHookBackendKind, ExternalHookOperation, HookBackendCapabilityProbe,
+    HookBackendFfiError, HookBackendProbe, HookExecutionResult, OperationCapabilityProbe, ResolvedHookBackend,
+    ResolvedSymbolProbe, ELLEKIT_ABI_SOURCE, LIBHOOKER_ABI_SOURCE, SUBSTITUTE_ABI_SOURCE, SUBSTRATE_ABI_SOURCE,
+};
 pub use imports::{find_image_imports, image_import_support_available, ImageImport};
 pub use injection::{
     Arm64ThreadLaunch, Arm64ThreadState, BootstrapImage, BootstrapResultReport, BootstrapStatus, InjectionPlan,
@@ -79,15 +94,24 @@ pub use rpaths::{find_image_rpaths, image_rpath_support_available, rpath_path_or
 pub use sections::{find_image_sections, image_section_support_available, section_name_matches, ImageSection};
 pub use segments::{find_image_segments, image_segment_support_available, segment_name_matches, ImageSegment};
 pub use source_version::{find_image_source_version, image_source_version_support_available, ImageSourceVersion};
+pub use stalker::{
+    current_stalker_thread_id, ios_stalker_capabilities, stalker_backend_status, stalker_event_sink,
+    stalker_flush_thread, stalker_follow_thread, stalker_garbage_collect_thread, stalker_unfollow_thread,
+    StalkerBackendStatus, StalkerCapabilities, StalkerConfig, StalkerEvent, StalkerEventKind, StalkerEventMask,
+    StalkerRange, StalkerSession, StalkerSessionState, StalkerThreadStatus, DEFAULT_STALKER_QUEUE_CAPACITY,
+    IOS_STALKER_MISSING_OPERATIONS, MAX_STALKER_QUEUE_CAPACITY,
+};
 pub use swift::{
     find_swift_conformances, find_swift_metadata, find_swift_method_owners, find_swift_methods, find_swift_protocols,
     find_swift_symbols, find_swift_type_layouts, find_swift_type_methods, find_swift_types, find_swift_types_of_kind,
-    find_swift_vtable, find_swift_witness_tables, swift_conformance_names_match, swift_demangle_symbol,
-    swift_member_name_matches, swift_protocol_name_matches, swift_support_available, swift_type_name_matches,
-    swift_type_source_kinds, SwiftConformance, SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout,
-    SwiftVtableEntry, SwiftWitnessTable,
+    find_swift_vtable, find_swift_witness_tables, inspect_swift_live_object, swift_conformance_names_match,
+    swift_demangle_symbol, swift_member_name_matches, swift_protocol_name_matches, swift_support_available,
+    swift_type_name_matches, swift_type_source_kinds, SwiftConformance, SwiftLiveObjectInfo, SwiftObjectOwnership,
+    SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout, SwiftVtableEntry, SwiftWitnessTable,
 };
-pub use symbols::{find_native_symbols, native_symbol_support_available, NativeSymbol};
+pub use symbols::{
+    find_image_symbols, find_native_symbols, native_symbol_support_available, ImageSymbol, NativeSymbol,
+};
 pub use uuid::{find_image_uuid, image_uuid_support_available, ImageUuid};
 
 pub const DEFAULT_BOOTSTRAP_WAIT_MS: u64 = 3_000;

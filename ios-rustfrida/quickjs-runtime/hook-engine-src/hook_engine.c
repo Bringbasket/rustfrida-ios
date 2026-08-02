@@ -13,6 +13,7 @@
 
 /* Global engine state */
 HookEngine g_engine = {0};
+volatile uint64_t g_hook_active_thunks = 0;
 
 /* --- Diagnostic log infrastructure --- */
 
@@ -47,9 +48,14 @@ int hook_engine_init(void* exec_mem, size_t size) {
     g_engine.exec_mem_used = 0;
     g_engine.hooks = NULL;
     g_engine.free_list = NULL;
+    g_engine.retired_list = NULL;
     g_engine.redirects = NULL;
     g_engine.exec_mem_page_size = (size_t)sysconf(_SC_PAGESIZE);
-    pthread_mutex_init(&g_engine.lock, NULL);
+    if (!g_engine.lock_initialized) {
+        pthread_mutex_init(&g_engine.lock, NULL);
+        g_engine.lock_initialized = 1;
+    }
+    __atomic_store_n(&g_hook_active_thunks, 0, __ATOMIC_RELEASE);
     g_engine.initialized = 1;
 
     return 0;
@@ -65,14 +71,53 @@ HookEntry* find_hook(void* target) {
     return NULL;
 }
 
+int hook_engine_wait_for_quiescence(uint32_t timeout_ms) {
+    struct timespec start;
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    for (;;) {
+        if (__atomic_load_n(&g_hook_active_thunks, __ATOMIC_ACQUIRE) == 0) {
+            /* A thread may already have fetched the branch into a thunk while
+             * the target was being restored. Give that instruction pipeline a
+             * short grace interval before the pool can be unmapped/reused. */
+            struct timespec grace = {0, 1000000L};
+            nanosleep(&grace, NULL);
+            if (__atomic_load_n(&g_hook_active_thunks, __ATOMIC_ACQUIRE) == 0) {
+                return 1;
+            }
+        }
+
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        int64_t sec = (int64_t)now.tv_sec - (int64_t)start.tv_sec;
+        int64_t nsec = (int64_t)now.tv_nsec - (int64_t)start.tv_nsec;
+        if (nsec < 0) {
+            sec--;
+            nsec += 1000000000LL;
+        }
+        uint64_t elapsed_ns = (uint64_t)sec * 1000000000ULL + (uint64_t)nsec;
+        if (elapsed_ns >= (uint64_t)timeout_ms * 1000000ULL) {
+            return 0;
+        }
+
+        struct timespec pause = {0, 1000000L};
+        nanosleep(&pause, NULL);
+    }
+}
+
 /* Cleanup all hooks */
-void hook_engine_cleanup(void) {
-    if (!g_engine.initialized) return;
+int hook_engine_cleanup(void) {
+    if (!g_engine.initialized) return 0;
+    if (!hook_engine_wait_for_quiescence(200)) {
+        hook_log("hook_engine_cleanup: active generated thunks did not quiesce");
+        return -1;
+    }
 
     pthread_mutex_lock(&g_engine.lock);
 
     /* Count hooks on both lists for diagnostics */
-    int hooks_count = 0, free_count = 0, stealth_hooks = 0, stealth_free = 0;
+    int hooks_count = 0, free_count = 0, retired_count = 0;
+    int stealth_hooks = 0, stealth_free = 0, stealth_retired = 0;
     for (HookEntry* e = g_engine.hooks; e; e = e->next) {
         hooks_count++;
         if (e->stealth) stealth_hooks++;
@@ -81,8 +126,12 @@ void hook_engine_cleanup(void) {
         free_count++;
         if (e->stealth) stealth_free++;
     }
-    hook_log("hook_engine_cleanup: hooks=%d (stealth=%d), free_list=%d (stealth=%d)",
-             hooks_count, stealth_hooks, free_count, stealth_free);
+    for (HookEntry* e = g_engine.retired_list; e; e = e->next) {
+        retired_count++;
+        if (e->stealth) stealth_retired++;
+    }
+    hook_log("hook_engine_cleanup: hooks=%d (stealth=%d), free_list=%d (stealth=%d), retired=%d (stealth=%d)",
+             hooks_count, stealth_hooks, free_count, stealth_free, retired_count, stealth_retired);
 
     /* Restore each live hook individually. Stealth hooks must be released
      * using the exact patch start address passed during PATCH. */
@@ -117,10 +166,14 @@ void hook_engine_cleanup(void) {
     /* Reset state — the list pointers are now dangling (pool about to be unmapped) */
     g_engine.hooks = NULL;
     g_engine.free_list = NULL;
+    g_engine.retired_list = NULL;
     g_engine.redirects = NULL;
     g_engine.exec_mem_used = 0;
     g_engine.initialized = 0;
 
     pthread_mutex_unlock(&g_engine.lock);
-    pthread_mutex_destroy(&g_engine.lock);
+
+    /* Do not destroy the global mutex here. A late cleanup/reclaim caller may
+     * have observed the old initialized state and still be about to lock it. */
+    return 0;
 }

@@ -48,7 +48,7 @@ const JS_MAX_SAFE_INTEGER: u64 = (1u64 << 53) - 1;
 pub(crate) unsafe fn set_js_u64_property(ctx: *mut ffi::JSContext, obj: ffi::JSValue, name: &str, value: u64) {
     let cname = CString::new(name).unwrap();
     let atom = ffi::JS_NewAtom(ctx, cname.as_ptr());
-    let val = ffi::JS_NewBigUint64(ctx, value);
+    let val = js_u64_to_js_number_or_bigint(ctx, value);
     ffi::qjs_set_property(ctx, obj, atom, val);
     ffi::JS_FreeAtom(ctx, atom);
 }
