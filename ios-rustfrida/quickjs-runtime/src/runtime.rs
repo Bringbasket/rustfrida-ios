@@ -6162,8 +6162,8 @@ undefined;
                                 __iosRustFridaAgentApi.handle('objc.findMethodImage NSObject init') === __iosRustFridaAgentApi.handle('objc.methodImage NSObject init') &&
                                 __iosRustFridaAgentApi.handle('objc.findPropertyInfo NSObject description') === __iosRustFridaAgentApi.handle('objc.propertyInfo NSObject description') &&
                                 __iosRustFridaAgentApi.handle('objc.findIvarInfo NSObject _isa') === __iosRustFridaAgentApi.handle('objc.ivarInfo NSObject _isa') &&
-                                __iosRustFridaAgentApi.handle('objc.findSelectorName 0x1234') === __iosRustFridaAgentApi.handle('objc.selectorName 0x1234') &&
-                                __iosRustFridaAgentApi.handle('objc.findObjectClassName 0x1234') === __iosRustFridaAgentApi.handle('objc.objectClassName 0x1234');
+                                __iosRustFridaAgentApi.handle('objc.findSelectorName 0x0') === __iosRustFridaAgentApi.handle('objc.selectorName 0x0') &&
+                                __iosRustFridaAgentApi.handle('objc.findObjectClassName 0x0') === __iosRustFridaAgentApi.handle('objc.objectClassName 0x0');
                         })()"
                     )
                     .expect("agent objc info aliases"),

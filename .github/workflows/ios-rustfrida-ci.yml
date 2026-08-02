@@ -83,13 +83,6 @@ jobs:
       - name: Host tests on macOS
         run: |
           cargo test -p native-api --target "${{ steps.host.outputs.triple }}"
-          cargo test -p quickjs-runtime --target "${{ steps.host.outputs.triple }}" --no-run
-          quickjs_test_binary="$(find "target/${{ steps.host.outputs.triple }}/debug/deps" -type f -name 'quickjs_runtime-*' -perm -111 | head -n 1)"
-          test -n "$quickjs_test_binary"
-          lldb --batch \
-            -o "run runtime::imp::tests::agent_helpers_route_basic_queries --exact --nocapture --test-threads=1" \
-            -o "thread backtrace all" \
-            -- "$quickjs_test_binary"
           cargo test -p quickjs-runtime --target "${{ steps.host.outputs.triple }}" -- --test-threads=1
 
       - name: iOS simulator check
