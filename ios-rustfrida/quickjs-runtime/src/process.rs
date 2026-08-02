@@ -289,7 +289,7 @@ struct VmRegionSubmapInfo64 {
 }
 
 #[cfg(any(target_os = "ios", target_os = "macos"))]
-const _: [(); 80] = [(); std::mem::size_of::<VmRegionSubmapInfo64>()];
+const _: [(); 76] = [(); std::mem::size_of::<VmRegionSubmapInfo64>()];
 
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 const VM_REGION_SUBMAP_INFO_COUNT_64: libc::mach_msg_type_number_t = (std::mem::size_of::<VmRegionSubmapInfo64>()
@@ -448,7 +448,7 @@ fn process_current_thread_id() -> u64 {
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 fn process_current_thread_id() -> u64 {
     let mut thread_id = 0u64;
-    let result = unsafe { libc::pthread_threadid_np(std::ptr::null_mut(), &mut thread_id) };
+    let result = unsafe { libc::pthread_threadid_np(0, &mut thread_id) };
     if result == 0 {
         thread_id
     } else {

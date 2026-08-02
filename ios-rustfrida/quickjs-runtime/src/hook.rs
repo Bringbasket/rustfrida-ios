@@ -42,6 +42,25 @@ const HOOK_NORMAL: i32 = 0;
 const HOOK_WXSHADOW: i32 = 1;
 const HOOK_RECOMP: i32 = 2;
 
+#[cfg(any(quickjs_hook_engine, test))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum HookStealthArg {
+    Normal,
+    WxShadow,
+    Recomp,
+    Unknown,
+}
+
+#[cfg(any(quickjs_hook_engine, test))]
+fn classify_hook_stealth_arg(mode: i64) -> HookStealthArg {
+    match i32::try_from(mode).ok() {
+        Some(HOOK_NORMAL) => HookStealthArg::Normal,
+        Some(HOOK_WXSHADOW) => HookStealthArg::WxShadow,
+        Some(HOOK_RECOMP) => HookStealthArg::Recomp,
+        _ => HookStealthArg::Unknown,
+    }
+}
+
 #[cfg(quickjs_hook_engine)]
 const INTERCEPTOR_ENTER_HELPER: &str = "__iosRustFridaInterceptorEnter";
 #[cfg(quickjs_hook_engine)]
@@ -281,14 +300,14 @@ unsafe fn parse_hook_stealth_arg(
     api_name: &str,
 ) -> Result<bool, ffi::JSValue> {
     if let Some(mode) = value.to_i64(ctx) {
-        return match mode {
-            HOOK_NORMAL => Ok(false),
-            HOOK_WXSHADOW => Ok(true),
-            HOOK_RECOMP => Err(js_throw_internal_error(
+        return match classify_hook_stealth_arg(mode) {
+            HookStealthArg::Normal => Ok(false),
+            HookStealthArg::WxShadow => Ok(true),
+            HookStealthArg::Recomp => Err(js_throw_internal_error(
                 ctx,
                 &format!("{api_name} Hook.RECOMP is Android-only; iOS currently uses ARM64 hook engine without recomp page mode"),
             )),
-            _ => Ok(false),
+            HookStealthArg::Unknown => Ok(false),
         };
     }
 
@@ -2381,8 +2400,9 @@ fn hook_error_message(code: i32) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        discard_local_invocation_frames, invocation_push, invocation_take, invocation_values, register_hook_api,
-        store_invocation_value, take_invocation_value, take_invocation_values, InvocationFrame, DEFERRED_INVOCATIONS,
+        classify_hook_stealth_arg, discard_local_invocation_frames, invocation_push, invocation_take,
+        invocation_values, register_hook_api, store_invocation_value, take_invocation_value, take_invocation_values,
+        HookStealthArg, InvocationFrame, DEFERRED_INVOCATIONS, HOOK_NORMAL, HOOK_RECOMP, HOOK_WXSHADOW,
         INVOCATION_STACK,
     };
     use crate::context::JSContext;
@@ -2393,6 +2413,27 @@ mod tests {
     fn test_lock() -> &'static Mutex<()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
         LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    #[test]
+    fn hook_stealth_modes_accept_i64_values_without_changing_js_constants() {
+        assert_eq!(
+            classify_hook_stealth_arg(i64::from(HOOK_NORMAL)),
+            HookStealthArg::Normal
+        );
+        assert_eq!(
+            classify_hook_stealth_arg(i64::from(HOOK_WXSHADOW)),
+            HookStealthArg::WxShadow
+        );
+        assert_eq!(
+            classify_hook_stealth_arg(i64::from(HOOK_RECOMP)),
+            HookStealthArg::Recomp
+        );
+        assert_eq!(classify_hook_stealth_arg(-1), HookStealthArg::Unknown);
+        assert_eq!(
+            classify_hook_stealth_arg(i64::from(i32::MAX) + 1),
+            HookStealthArg::Unknown
+        );
     }
 
     #[test]
