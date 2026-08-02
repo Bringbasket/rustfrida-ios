@@ -1622,7 +1622,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const value = ObjC.methodInfo('NSObject', 'init'); return value === null || (typeof value.selector === 'string' && Array.isArray(value.selectorParts) && typeof value.selectorPartCount === 'number' && typeof value.hasSelectorArguments === 'boolean' && typeof value.isUnarySelector === 'boolean' && typeof value.isKeywordSelector === 'boolean' && typeof value.typeEncoding === 'string' && typeof value.isClassMethod === 'boolean'); })()"
+                        "(function() { const value = ObjC.methodInfo('NSObject', 'init'); return value === null || (typeof value.className === 'string' && typeof value.selector === 'string' && typeof value.methodPointer === 'object' && typeof value.imp === 'object' && typeof value.typeEncoding === 'string' && typeof value.isClassMethod === 'boolean' && (value.imagePath === null || typeof value.imagePath === 'string')); })()"
                     )
                     .expect("objc methodInfo"),
                 "true"
@@ -1647,6 +1647,10 @@ undefined;
                             const findProtocolConforms = ObjC.findProtocolConforms('NSCopying', 'NSObject');
                             const methodInfo = ObjC.methodInfo('NSObject', 'init');
                             const findMethodInfo = ObjC.findMethodInfo('NSObject', 'init');
+                            const selector = ObjC.selector('init');
+                            const findSelector = ObjC.findSelector('init');
+                            const methodImp = ObjC.methodImp('NSObject', 'init');
+                            const findMethodImp = ObjC.findMethodImp('NSObject', 'init');
                             const propertyInfo = ObjC.propertyInfo('NSObject', 'description');
                             const findPropertyInfo = ObjC.findPropertyInfo('NSObject', 'description');
                             const ivarInfo = ObjC.ivarInfo('NSObject', '_isa');
@@ -1662,8 +1666,8 @@ undefined;
                                 ObjC.findClassChain('NSObject').join('\\n') === ObjC.classChain('NSObject').join('\\n') &&
                                 ObjC.findClassExists('NSObject') === ObjC.classExists('NSObject') &&
                                 ObjC.findProtocolExists('NSCopying') === ObjC.protocolExists('NSCopying') &&
-                                ObjC.findSelector('init') === ObjC.selector('init') &&
-                                ObjC.findMethodImp('NSObject', 'init') === ObjC.methodImp('NSObject', 'init') &&
+                                ((selector === null && findSelector === null) || (selector !== null && findSelector !== null && selector.toString() === findSelector.toString())) &&
+                                ((methodImp === null && findMethodImp === null) || (methodImp !== null && findMethodImp !== null && methodImp.toString() === findMethodImp.toString())) &&
                                 ObjC.findClassImage('NSObject') === ObjC.classImage('NSObject') &&
                                 ObjC.findProtocolImage('NSObject') === ObjC.protocolImage('NSObject') &&
                                 ((methodInfo === null && findMethodInfo === null) || (methodInfo !== null && findMethodInfo !== null && methodInfo.selector === findMethodInfo.selector && methodInfo.typeEncoding === findMethodInfo.typeEncoding)) &&
@@ -1691,8 +1695,8 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const methods = ObjC.methods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && Array.isArray(methods[0].argumentTypeNameList) && Array.isArray(methods[0].hiddenArgumentTypeNameList) && methods[0].argumentTypeNameList.length === methods[0].argumentTypeNames.length && typeof methods[0].methodTypeInfo === 'object' && Array.isArray(methods[0].methodTypeInfo.argumentTypeNameList) && Array.isArray(methods[0].methodTypeInfo.hiddenArgumentTypeNameList) && methods[0].methodTypeInfo.argumentTypeNameList.length === methods[0].methodTypeInfo.argumentTypeNames.length && Array.isArray(methods[0].selectorParts) && typeof methods[0].selectorPartCount === 'number' && typeof methods[0].hasSelectorArguments === 'boolean' && typeof methods[0].isUnarySelector === 'boolean' && typeof methods[0].isKeywordSelector === 'boolean'); })()")
-                    .expect("objc methods decoded type info"),
+                    .eval("(function() { const methods = ObjC.methods('NSObject'); return methods.length === 0 || (typeof methods[0].className === 'string' && typeof methods[0].selector === 'string' && typeof methods[0].imp === 'object' && typeof methods[0].typeEncoding === 'string' && typeof methods[0].isClassMethod === 'boolean'); })()")
+                    .expect("objc methods native fields"),
                 "true"
             );
             assert_eq!(
@@ -1743,13 +1747,13 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.classInfo('NSObject'); return value === null || (typeof value.className === 'string' && typeof value.isMetaClass === 'boolean' && typeof value.instanceSize === 'number' && typeof value.protocolCount === 'number' && typeof value.instancePropertyCount === 'number' && typeof value.classPropertyCount === 'number' && typeof value.ivarCount === 'number' && typeof value.instanceMethodCount === 'number' && typeof value.classMethodCount === 'number' && typeof value.totalPropertyCount === 'number' && typeof value.totalMethodCount === 'number' && typeof value.hasSuperclass === 'boolean' && typeof value.isRootClass === 'boolean' && typeof value.hasProtocols === 'boolean' && typeof value.hasProperties === 'boolean' && typeof value.hasIvars === 'boolean' && typeof value.hasMethods === 'boolean' && typeof value.hasImagePath === 'boolean'); })()")
+                    .eval("(function() { const value = ObjC.classInfo('NSObject'); return value === null || (typeof value.className === 'string' && typeof value.classPointer === 'object' && typeof value.isMetaClass === 'boolean' && typeof value.instanceSize === 'number' && typeof value.protocolCount === 'number' && typeof value.instancePropertyCount === 'number' && typeof value.classPropertyCount === 'number' && typeof value.ivarCount === 'number' && typeof value.instanceMethodCount === 'number' && typeof value.classMethodCount === 'number' && (value.superclassName === null || typeof value.superclassName === 'string') && (value.superclassPointer === null || typeof value.superclassPointer === 'object') && (value.imagePath === null || typeof value.imagePath === 'string')); })()")
                     .expect("objc classInfo"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.protocolInfo('NSObject'); return value === null || (typeof value.protocolName === 'string' && Array.isArray(value.adoptedProtocols) && typeof value.propertyCount === 'number' && typeof value.totalMethodCount === 'number' && typeof value.adoptedProtocolCount === 'number' && typeof value.hasRequiredMethods === 'boolean' && typeof value.hasOptionalMethods === 'boolean' && typeof value.hasInstanceMethods === 'boolean' && typeof value.hasClassMethods === 'boolean' && typeof value.hasProperties === 'boolean' && typeof value.hasAdoptedProtocols === 'boolean' && typeof value.hasImagePath === 'boolean'); })()")
+                    .eval("(function() { const value = ObjC.protocolInfo('NSObject'); return value === null || (typeof value.protocolName === 'string' && typeof value.protocolPointer === 'object' && Array.isArray(value.adoptedProtocols) && typeof value.propertyCount === 'number' && typeof value.totalMethodCount === 'number' && typeof value.adoptedProtocolCount === 'number' && typeof value.hasRequiredMethods === 'boolean' && typeof value.hasOptionalMethods === 'boolean' && typeof value.hasInstanceMethods === 'boolean' && typeof value.hasClassMethods === 'boolean' && typeof value.hasProperties === 'boolean' && typeof value.hasAdoptedProtocols === 'boolean' && (value.imagePath === null || typeof value.imagePath === 'string')); })()")
                     .expect("objc protocolInfo"),
                 "true"
             );
@@ -1785,8 +1789,8 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const methods = ObjC.protocolMethods('NSObject'); return methods.length === 0 || (typeof methods[0].returnTypeName === 'string' && Array.isArray(methods[0].argumentTypeNames) && Array.isArray(methods[0].argumentTypeNameList) && Array.isArray(methods[0].hiddenArgumentTypeNameList) && methods[0].argumentTypeNameList.length === methods[0].argumentTypeNames.length && typeof methods[0].methodTypeInfo === 'object' && Array.isArray(methods[0].methodTypeInfo.argumentTypeNameList) && Array.isArray(methods[0].methodTypeInfo.hiddenArgumentTypeNameList) && methods[0].methodTypeInfo.argumentTypeNameList.length === methods[0].methodTypeInfo.argumentTypeNames.length && Array.isArray(methods[0].selectorParts) && typeof methods[0].selectorPartCount === 'number' && typeof methods[0].hasSelectorArguments === 'boolean' && typeof methods[0].isUnarySelector === 'boolean' && typeof methods[0].isKeywordSelector === 'boolean'); })()")
-                    .expect("objc protocolMethods decoded type info"),
+                    .eval("(function() { const methods = ObjC.protocolMethods('NSObject'); return methods.length === 0 || (typeof methods[0].protocolName === 'string' && typeof methods[0].selector === 'string' && typeof methods[0].typeEncoding === 'string' && typeof methods[0].isRequired === 'boolean' && typeof methods[0].isInstanceMethod === 'boolean'); })()")
+                    .expect("objc protocolMethods native fields"),
                 "true"
             );
             assert_eq!(
@@ -1797,7 +1801,7 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.protocolMethodInfo('NSObject', 'description', false, false); return value === null || (typeof value.selector === 'string' && Array.isArray(value.selectorParts) && typeof value.selectorPartCount === 'number' && typeof value.hasSelectorArguments === 'boolean' && typeof value.isUnarySelector === 'boolean' && typeof value.isKeywordSelector === 'boolean' && typeof value.typeEncoding === 'string' && Array.isArray(value.argumentTypeNames) && Array.isArray(value.argumentTypeNameList) && Array.isArray(value.hiddenArgumentTypeNameList) && value.argumentTypeNameList.length === value.argumentTypeNames.length && typeof value.isRequired === 'boolean' && typeof value.isInstanceMethod === 'boolean'); })()")
+                    .eval("(function() { const value = ObjC.protocolMethodInfo('NSObject', 'description', false, false); return value === null || (typeof value.protocolName === 'string' && typeof value.selector === 'string' && typeof value.typeEncoding === 'string' && typeof value.isRequired === 'boolean' && typeof value.isInstanceMethod === 'boolean' && (value.imagePath === null || typeof value.imagePath === 'string')); })()")
                     .expect("objc protocolMethodInfo"),
                 "true"
             );
@@ -1845,19 +1849,19 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.protocolPropertyInfo('NSObject', 'description'); return value === null || (typeof value.name === 'string' && typeof value.attributes === 'string' && typeof value.isReadwrite === 'boolean' && typeof value.isAtomic === 'boolean' && typeof value.isStrong === 'boolean' && typeof value.isCopy === 'boolean' && typeof value.isWeak === 'boolean' && typeof value.isAssign === 'boolean' && typeof value.hasCustomGetter === 'boolean' && typeof value.hasCustomSetter === 'boolean' && typeof value.hasAccessorCustomization === 'boolean' && typeof value.hasAccessorNames === 'boolean' && typeof value.hasGetterName === 'boolean' && typeof value.hasSetterName === 'boolean' && typeof value.hasBackingIvar === 'boolean' && typeof value.hasOldStyleTypeEncoding === 'boolean' && typeof value.hasOwnershipModifier === 'boolean' && typeof value.hasTypeEncoding === 'boolean' && typeof value.hasTypeName === 'boolean' && typeof value.hasTypeInfo === 'boolean' && typeof value.hasObjectClassName === 'boolean' && typeof value.hasObjectProtocols === 'boolean' && typeof value.hasParsedTokens === 'boolean' && typeof value.objectProtocolCount === 'number' && typeof value.parsedTokenCount === 'number'); })()")
+                    .eval("(function() { const value = ObjC.protocolPropertyInfo('NSObject', 'description'); return value === null || (typeof value.protocolName === 'string' && typeof value.name === 'string' && typeof value.attributes === 'string' && typeof value.propertyPointer === 'object' && (value.imagePath === null || typeof value.imagePath === 'string')); })()")
                     .expect("objc protocolPropertyInfo"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.propertyInfo('NSObject', 'description'); return value === null || (typeof value.name === 'string' && typeof value.attributes === 'string' && typeof value.isClassProperty === 'boolean' && typeof value.isReadwrite === 'boolean' && typeof value.isAtomic === 'boolean' && typeof value.isStrong === 'boolean' && typeof value.isCopy === 'boolean' && typeof value.isWeak === 'boolean' && typeof value.isAssign === 'boolean' && typeof value.hasCustomGetter === 'boolean' && typeof value.hasCustomSetter === 'boolean' && typeof value.hasAccessorCustomization === 'boolean' && typeof value.hasAccessorNames === 'boolean' && typeof value.hasGetterName === 'boolean' && typeof value.hasSetterName === 'boolean' && typeof value.hasBackingIvar === 'boolean' && typeof value.hasOldStyleTypeEncoding === 'boolean' && typeof value.hasOwnershipModifier === 'boolean' && typeof value.hasTypeEncoding === 'boolean' && typeof value.hasTypeName === 'boolean' && typeof value.hasTypeInfo === 'boolean' && typeof value.hasObjectClassName === 'boolean' && typeof value.hasObjectProtocols === 'boolean' && typeof value.hasParsedTokens === 'boolean' && typeof value.objectProtocolCount === 'number' && typeof value.parsedTokenCount === 'number'); })()")
+                    .eval("(function() { const value = ObjC.propertyInfo('NSObject', 'description'); return value === null || (typeof value.className === 'string' && typeof value.name === 'string' && typeof value.attributes === 'string' && typeof value.isClassProperty === 'boolean' && typeof value.propertyPointer === 'object' && (value.imagePath === null || typeof value.imagePath === 'string')); })()")
                     .expect("objc propertyInfo"),
                 "true"
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const value = ObjC.ivarInfo('NSObject', '_isa'); return value === null || (typeof value.name === 'string' && typeof value.typeEncoding === 'string' && typeof value.offset === 'number' && typeof value.kind === 'string' && Array.isArray(value.qualifiers) && Array.isArray(value.qualifierNames) && Array.isArray(value.qualifierNameList) && value.qualifierNameList.length === value.qualifierNames.length && typeof value.qualifierCount === 'number' && typeof value.hasQualifiers === 'boolean' && typeof value.objectProtocolCount === 'number' && typeof value.hasObjectClassName === 'boolean' && (value.pointeeTypeName === null || typeof value.pointeeTypeName === 'string') && typeof value.hasPointeeType === 'boolean' && typeof value.isPointer === 'boolean' && typeof value.isArray === 'boolean' && (value.arrayCount === null || typeof value.arrayCount === 'number') && (value.memberName === null || typeof value.memberName === 'string') && typeof value.hasMemberName === 'boolean'); })()")
+                    .eval("(function() { const value = ObjC.ivarInfo('NSObject', '_isa'); return value === null || (typeof value.className === 'string' && typeof value.name === 'string' && typeof value.typeEncoding === 'string' && (typeof value.offset === 'number' || typeof value.offset === 'bigint') && typeof value.ivarPointer === 'object' && (value.imagePath === null || typeof value.imagePath === 'string')); })()")
                     .expect("objc ivarInfo"),
                 "true"
             );
@@ -1869,8 +1873,8 @@ undefined;
             );
             assert_eq!(
                 runtime
-                    .eval("(function() { const ivars = ObjC.ivars('NSObject'); return ivars.length === 0 || (typeof ivars[0].typeName === 'string' && typeof ivars[0].typeInfo === 'object' && typeof ivars[0].kind === 'string' && Array.isArray(ivars[0].qualifierNameList) && ivars[0].qualifierNameList.length === ivars[0].qualifierNames.length && Array.isArray(ivars[0].typeInfo.qualifierNameList) && ivars[0].typeInfo.qualifierNameList.length === ivars[0].typeInfo.qualifierNames.length && typeof ivars[0].qualifierCount === 'number' && typeof ivars[0].hasQualifiers === 'boolean' && typeof ivars[0].objectProtocolCount === 'number' && typeof ivars[0].hasObjectClassName === 'boolean' && (ivars[0].pointeeTypeName === null || typeof ivars[0].pointeeTypeName === 'string') && typeof ivars[0].hasPointeeType === 'boolean' && typeof ivars[0].isPointer === 'boolean' && typeof ivars[0].isArray === 'boolean' && (ivars[0].arrayCount === null || typeof ivars[0].arrayCount === 'number') && (ivars[0].memberName === null || typeof ivars[0].memberName === 'string') && typeof ivars[0].hasMemberName === 'boolean'); })()")
-                    .expect("objc ivars decoded type info"),
+                    .eval("(function() { const ivars = ObjC.ivars('NSObject'); return ivars.length === 0 || (typeof ivars[0].className === 'string' && typeof ivars[0].name === 'string' && typeof ivars[0].typeEncoding === 'string' && (typeof ivars[0].offset === 'number' || typeof ivars[0].offset === 'bigint')); })()")
+                    .expect("objc ivars native fields"),
                 "true"
             );
             assert_eq!(
@@ -2826,14 +2830,19 @@ undefined;
                             if (main === null) {
                                 return Native.findMainImage() === null;
                             }
-                            const imageAliasMatches = Native.findMainImage().path === main.path;
-                            const baseAliasMatches = Native.findBase(main.name) === Native.base(main.name);
+                            const findMain = Native.findMainImage();
+                            const imageAliasMatches = findMain !== null && findMain.path === main.path;
+                            const base = Native.base(main.name);
+                            const findBase = Native.findBase(main.name);
+                            const baseAliasMatches = (base === null && findBase === null) ||
+                                (base !== null && findBase !== null && base.toString() === findBase.toString());
                             const malloc = Module.findExportByName(null, 'malloc');
                             if (malloc === null) {
                                 return imageAliasMatches && baseAliasMatches;
                             }
-                            const imageByAddressAliasMatches = JSON.stringify(Native.findImage(malloc)) === JSON.stringify(Native.image(malloc));
-                            const symbolByAddressAliasMatches = JSON.stringify(Native.findSymbol(malloc)) === JSON.stringify(Native.symbol(malloc));
+                            const stringify = (value) => JSON.stringify(value, (_key, item) => typeof item === 'bigint' ? item.toString() : item);
+                            const imageByAddressAliasMatches = stringify(Native.findImage(malloc)) === stringify(Native.image(malloc));
+                            const symbolByAddressAliasMatches = stringify(Native.findSymbol(malloc)) === stringify(Native.symbol(malloc));
                             return imageAliasMatches && baseAliasMatches && imageByAddressAliasMatches && symbolByAddressAliasMatches;
                         })()"
                     )
@@ -9446,11 +9455,12 @@ undefined;
                                     && owners.totalInstanceSize === 96
                                     && Array.isArray(owners.imagePathList)
                                     && owners.imagePathList.length === 1
-                                    && owners.imagePathList[0].imagePath === '/Applications/Demo.app/Demo'
+                                    && owners.imagePathList[0] === '/Applications/Demo.app/Demo'
                                     && JSON.stringify(owners.ownerNameList) === JSON.stringify(['DemoView', 'DemoCell'])
                                     && JSON.stringify(owners.selectorNameList) === JSON.stringify(['setTitle:', 'title'])
                                     && Array.isArray(owners.imagePaths)
                                     && owners.imagePaths.length === 1
+                                    && owners.imagePaths[0].imagePath === '/Applications/Demo.app/Demo'
                                     && JSON.stringify(owners.ownerNames) === JSON.stringify(['DemoView', 'DemoCell'])
                                     && JSON.stringify(owners.selectorNames) === JSON.stringify(['setTitle:', 'title'])
                                     && owners.owners.length === 2
@@ -10343,7 +10353,7 @@ undefined;
                                 result.selectorNameList.length === result.selectorNames.length &&
                                 result.ownerNames.length === result.owners.length &&
                                 result.selectorNames.length === result.selectors.length &&
-                                (result.imagePathList.length === 0 || result.imagePathList[0] === result.imagePaths[0]) &&
+                                (result.imagePathList.length === 0 || result.imagePathList[0] === result.imagePaths[0].imagePath) &&
                                 (result.ownerNameList.length === 0 || result.ownerNameList[0] === result.ownerNames[0]) &&
                                 (result.selectorNameList.length === 0 || result.selectorNameList[0] === result.selectorNames[0]) &&
                                 (ownerSummary === null || (

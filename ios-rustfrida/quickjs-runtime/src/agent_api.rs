@@ -7537,7 +7537,7 @@ function handleSpecResult(spec) {
             totalIvarCount: summary.totalIvarCount,
             totalMethodCount: summary.totalMethodCount,
             totalInstanceSize: summary.totalInstanceSize,
-            imagePathList: summary.imagePaths,
+            imagePathList: summary.imagePaths.map((item) => item.imagePath),
             ownerNameList: ownerClassNames,
             selectorNameList: selectors.map((item) => item.selector),
             imagePaths: summary.imagePaths,
