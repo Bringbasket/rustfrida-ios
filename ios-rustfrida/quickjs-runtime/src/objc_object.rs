@@ -1681,12 +1681,34 @@ mod tests {
         with_context(|context| {
             let value = context
                 .eval(
-                    "(function () { const b = ObjC.objectBridge; return typeof ObjC.object === 'function' && typeof ObjC.class === 'function' && typeof ObjC.registerClass === 'function' && b.available === false && b.exceptionBoundary === 'platform-unavailable' && b.catchesExceptions === false && b.acceptsTaggedPointers === false && b.dynamicClassRegistration === false && b.dynamicPropertySynthesis === false && b.scalarAndPointerDispatch === false && b.maxArguments === 6 && b.ownership === 'retained-finalizer' && b.ivarWriteSemantics === 'raw-no-arc-barrier' && b.propertyOwnership.join(',') === 'assign,retain,copy,weak' && b.propertyAtomicity.join(',') === 'nonatomic,atomic' && b.propertyKvoModes.join(',') === 'automatic,manual' && b.scalarTypes.includes('pointer') && b.receiverMethods.includes('dispose') && b.receiverMethods.includes('getProperty') && b.receiverMethods.includes('setProperty'); })()",
+                    "(function () { const b = ObjC.objectBridge; return typeof ObjC.object === 'function' && typeof ObjC.class === 'function' && typeof ObjC.registerClass === 'function' && b.acceptsTaggedPointers === false && b.maxArguments === 6 && b.ownership === 'retained-finalizer' && b.ivarWriteSemantics === 'raw-no-arc-barrier' && b.propertyOwnership.join(',') === 'assign,retain,copy,weak' && b.propertyAtomicity.join(',') === 'nonatomic,atomic' && b.propertyKvoModes.join(',') === 'automatic,manual' && b.scalarTypes.includes('pointer') && b.receiverMethods.includes('dispose') && b.receiverMethods.includes('getProperty') && b.receiverMethods.includes('setProperty'); })()",
                     "<objc-object-test>",
                 )
                 .expect("inspect ObjC object contract");
             assert_eq!(value.to_bool(), Some(true));
             value.free(context.as_ptr());
+
+            let capabilities = ObjectBridge::new().capabilities();
+            let exception_boundary = if capabilities.catches_objc_exceptions {
+                "contained-by-apple-shim"
+            } else {
+                "platform-unavailable"
+            };
+            let platform_contract = format!(
+                "(function () {{ const b = ObjC.objectBridge; return b.available === {available} && b.exceptionBoundary === '{exception_boundary}' && b.catchesExceptions === {catches_exceptions} && b.scalarAndPointerDispatch === {scalar_dispatch} && b.rawIvarAccess === {raw_ivar_access} && b.propertyAccessors === {property_accessors} && b.dynamicClassRegistration === {dynamic_class_registration} && b.dynamicPropertySynthesis === {dynamic_property_synthesis}; }})()",
+                available = capabilities.available,
+                catches_exceptions = capabilities.catches_objc_exceptions,
+                scalar_dispatch = capabilities.supports_scalar_and_pointer_dispatch,
+                raw_ivar_access = capabilities.supports_raw_ivar_access,
+                property_accessors = capabilities.supports_property_accessors,
+                dynamic_class_registration = capabilities.supports_dynamic_class_registration,
+                dynamic_property_synthesis = capabilities.supports_dynamic_property_synthesis,
+            );
+            let platform_value = context
+                .eval(&platform_contract, "<objc-object-platform-test>")
+                .expect("inspect platform ObjC object capabilities");
+            assert_eq!(platform_value.to_bool(), Some(true));
+            platform_value.free(context.as_ptr());
         });
     }
 

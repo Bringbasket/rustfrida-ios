@@ -102,12 +102,13 @@ pub use stalker::{
     IOS_STALKER_MISSING_OPERATIONS, MAX_STALKER_QUEUE_CAPACITY,
 };
 pub use swift::{
-    find_swift_conformances, find_swift_metadata, find_swift_method_owners, find_swift_methods, find_swift_protocols,
-    find_swift_symbols, find_swift_type_layouts, find_swift_type_methods, find_swift_types, find_swift_types_of_kind,
-    find_swift_vtable, find_swift_witness_tables, inspect_swift_live_object, swift_conformance_names_match,
-    swift_demangle_symbol, swift_member_name_matches, swift_protocol_name_matches, swift_support_available,
-    swift_type_name_matches, swift_type_source_kinds, SwiftConformance, SwiftLiveObjectInfo, SwiftObjectOwnership,
-    SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout, SwiftVtableEntry, SwiftWitnessTable,
+    classify_swift_abi_type, find_swift_conformances, find_swift_metadata, find_swift_method_owners,
+    find_swift_methods, find_swift_protocols, find_swift_symbols, find_swift_type_layouts, find_swift_type_methods,
+    find_swift_types, find_swift_types_of_kind, find_swift_vtable, find_swift_witness_tables,
+    inspect_swift_live_object, swift_conformance_names_match, swift_demangle_symbol, swift_member_name_matches,
+    swift_protocol_name_matches, swift_support_available, swift_type_name_matches, swift_type_source_kinds,
+    SwiftAbiTypeInfo, SwiftConformance, SwiftLiveObjectInfo, SwiftObjectOwnership, SwiftProtocol, SwiftSymbol,
+    SwiftType, SwiftTypeLayout, SwiftVtableEntry, SwiftWitnessTable,
 };
 pub use symbols::{
     find_image_symbols, find_native_symbols, native_symbol_support_available, ImageSymbol, NativeSymbol,

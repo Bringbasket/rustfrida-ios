@@ -169,39 +169,45 @@ pub fn inspect_swift_live_object(
 const SWIFT_ABI_CALL_UNSUPPORTED_REASON: &str =
     "Swift runtime calls require verified metadata, ownership conventions, generic context, and hidden ABI arguments";
 
-#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct SwiftTypeAbiMetadata {
-    type_representation: &'static str,
-    object_representation: &'static str,
-    argument_kind: &'static str,
-    pass_mode: &'static str,
+pub struct SwiftAbiTypeInfo {
+    pub type_representation: &'static str,
+    pub object_representation: &'static str,
+    pub argument_kind: &'static str,
+    pub pass_mode: &'static str,
 }
 
-#[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
-fn swift_type_abi_metadata(type_name: &str) -> SwiftTypeAbiMetadata {
+pub fn classify_swift_abi_type(type_name: &str) -> SwiftAbiTypeInfo {
     let compact = type_name.trim();
     let unqualified = compact.strip_prefix("Swift.").unwrap_or(compact);
     let base = compact.rsplit('.').next().unwrap_or(compact);
 
     if compact.is_empty() {
-        return SwiftTypeAbiMetadata {
+        return SwiftAbiTypeInfo {
             type_representation: "unknown",
             object_representation: "unknown",
             argument_kind: "unsupported",
             pass_mode: "unknown",
         };
     }
-    if compact == "()" || matches!(base, "Void" | "Never") {
-        return SwiftTypeAbiMetadata {
+    if compact == "()" || base == "Void" {
+        return SwiftAbiTypeInfo {
             type_representation: "void",
             object_representation: "none",
             argument_kind: "void",
             pass_mode: "none",
         };
     }
+    if base == "Never" {
+        return SwiftAbiTypeInfo {
+            type_representation: "noreturn",
+            object_representation: "none",
+            argument_kind: "noreturn",
+            pass_mode: "unsupported",
+        };
+    }
     if compact.ends_with(".Type") || compact.ends_with(".Protocol") {
-        return SwiftTypeAbiMetadata {
+        return SwiftAbiTypeInfo {
             type_representation: "metatype",
             object_representation: "metadata-pointer",
             argument_kind: "metatype",
@@ -209,7 +215,7 @@ fn swift_type_abi_metadata(type_name: &str) -> SwiftTypeAbiMetadata {
         };
     }
     if compact == "Any" || compact == "AnyObject" || compact.starts_with("any ") {
-        return SwiftTypeAbiMetadata {
+        return SwiftAbiTypeInfo {
             type_representation: "existential",
             object_representation: "existential-container",
             argument_kind: "existential",
@@ -217,7 +223,7 @@ fn swift_type_abi_metadata(type_name: &str) -> SwiftTypeAbiMetadata {
         };
     }
     if compact.contains("->") {
-        return SwiftTypeAbiMetadata {
+        return SwiftAbiTypeInfo {
             type_representation: "function",
             object_representation: "thick-function",
             argument_kind: "function",
@@ -225,7 +231,7 @@ fn swift_type_abi_metadata(type_name: &str) -> SwiftTypeAbiMetadata {
         };
     }
     if compact.starts_with('(') && compact.ends_with(')') {
-        return SwiftTypeAbiMetadata {
+        return SwiftAbiTypeInfo {
             type_representation: "tuple",
             object_representation: "inline-value",
             argument_kind: "aggregate",
@@ -237,7 +243,7 @@ fn swift_type_abi_metadata(type_name: &str) -> SwiftTypeAbiMetadata {
         || unqualified.starts_with("AutoreleasingUnsafeMutablePointer<")
         || matches!(base, "OpaquePointer" | "UnsafeRawPointer" | "UnsafeMutableRawPointer")
     {
-        return SwiftTypeAbiMetadata {
+        return SwiftAbiTypeInfo {
             type_representation: "pointer",
             object_representation: "raw-pointer",
             argument_kind: "pointer",
@@ -261,11 +267,22 @@ fn swift_type_abi_metadata(type_name: &str) -> SwiftTypeAbiMetadata {
             | "Double"
             | "Float16"
             | "Float80"
+            | "CChar"
+            | "CSignedChar"
+            | "CUnsignedChar"
+            | "CShort"
+            | "CUShort"
+            | "CInt"
+            | "CUInt"
+            | "CLong"
+            | "CULong"
+            | "CFloat"
+            | "CDouble"
     ) {
-        return SwiftTypeAbiMetadata {
+        return SwiftAbiTypeInfo {
             type_representation: "scalar",
             object_representation: "inline-value",
-            argument_kind: if base.starts_with("Float") || base == "Double" {
+            argument_kind: if base.starts_with("Float") || matches!(base, "Double" | "CFloat" | "CDouble") {
                 "floating-point"
             } else {
                 "integer"
@@ -274,7 +291,7 @@ fn swift_type_abi_metadata(type_name: &str) -> SwiftTypeAbiMetadata {
         };
     }
     if compact.starts_with("some ") {
-        return SwiftTypeAbiMetadata {
+        return SwiftAbiTypeInfo {
             type_representation: "opaque-result",
             object_representation: "metadata-dependent",
             argument_kind: "opaque-value",
@@ -282,7 +299,7 @@ fn swift_type_abi_metadata(type_name: &str) -> SwiftTypeAbiMetadata {
         };
     }
 
-    SwiftTypeAbiMetadata {
+    SwiftAbiTypeInfo {
         type_representation: "nominal",
         object_representation: "metadata-dependent",
         argument_kind: "nominal-value-or-reference",
@@ -824,13 +841,12 @@ mod platform {
     };
 
     use super::{
-        extract_swift_conformance, extract_swift_member_name, extract_swift_member_owner_type,
+        classify_swift_abi_type, extract_swift_conformance, extract_swift_member_name, extract_swift_member_owner_type,
         extract_swift_protocol_name, extract_swift_type_name, extract_swift_vtable_parts,
         infer_swift_conformance_source_kind, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
         looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_conformance_query,
         query_matches_swift_member_name, query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
-        swift_type_abi_metadata, swift_type_source_kinds, validate_swift_metadata_identity,
-        SWIFT_ABI_CALL_UNSUPPORTED_REASON,
+        swift_type_source_kinds, validate_swift_metadata_identity, SWIFT_ABI_CALL_UNSUPPORTED_REASON,
     };
 
     const LC_SEGMENT_64: u32 = 0x19;
@@ -1103,7 +1119,7 @@ mod platform {
                     return None;
                 }
                 let source_kind = infer_swift_type_source_kind(symbol.demangled_name.as_deref()).to_string();
-                let abi = swift_type_abi_metadata(&type_name);
+                let abi = classify_swift_abi_type(&type_name);
 
                 Some(SwiftType {
                     module_name: symbol.module_name,
@@ -1180,7 +1196,7 @@ mod platform {
                 ) {
                     return None;
                 }
-                let abi = swift_type_abi_metadata(&type_name);
+                let abi = classify_swift_abi_type(&type_name);
 
                 Some(SwiftType {
                     module_name: symbol.module_name,
@@ -1344,7 +1360,7 @@ mod platform {
                     ) {
                         let layout =
                             ensure_type_layout(&mut layouts, &symbol.module_name, symbol.module_base, &type_name);
-                        let abi = swift_type_abi_metadata(&type_name);
+                        let abi = classify_swift_abi_type(&type_name);
                         let type_info = SwiftType {
                             module_name: symbol.module_name.clone(),
                             module_base: symbol.module_base,
@@ -1515,7 +1531,7 @@ mod platform {
                 if !query_matches_swift_member_name(&member_name, trimmed) {
                     return None;
                 }
-                let abi = swift_type_abi_metadata(&owner_type);
+                let abi = classify_swift_abi_type(&owner_type);
 
                 Some(SwiftType {
                     module_name: symbol.module_name,
@@ -1958,13 +1974,13 @@ mod platform {
 #[cfg(test)]
 mod tests {
     use super::{
-        extract_swift_conformance, extract_swift_member_name, extract_swift_member_owner_type,
+        classify_swift_abi_type, extract_swift_conformance, extract_swift_member_name, extract_swift_member_owner_type,
         extract_swift_protocol_name, extract_swift_type_name, extract_swift_vtable_parts,
         infer_swift_conformance_source_kind, infer_swift_protocol_source_kind, infer_swift_type_source_kind,
         looks_like_swift_symbol, normalize_swift_type_source_kind, query_matches_swift_conformance_query,
         query_matches_swift_member_name, query_matches_swift_method, query_matches_swift_type, query_matches_symbol,
-        swift_conformance_names_match, swift_member_name_matches, swift_protocol_name_matches, swift_type_abi_metadata,
-        swift_type_name_matches, validate_swift_metadata_identity,
+        swift_conformance_names_match, swift_member_name_matches, swift_protocol_name_matches, swift_type_name_matches,
+        validate_swift_metadata_identity,
     };
 
     #[test]
@@ -2278,22 +2294,22 @@ mod tests {
 
     #[test]
     fn classifies_swift_type_and_object_representations_conservatively() {
-        let scalar = swift_type_abi_metadata("Swift.Int64");
+        let scalar = classify_swift_abi_type("Swift.Int64");
         assert_eq!(scalar.type_representation, "scalar");
         assert_eq!(scalar.object_representation, "inline-value");
         assert_eq!(scalar.argument_kind, "integer");
         assert_eq!(scalar.pass_mode, "direct-scalar");
 
-        let pointer = swift_type_abi_metadata("Swift.UnsafeMutablePointer<Swift.Int>");
+        let pointer = classify_swift_abi_type("Swift.UnsafeMutablePointer<Swift.Int>");
         assert_eq!(pointer.object_representation, "raw-pointer");
         assert_eq!(pointer.pass_mode, "direct-pointer");
 
-        let existential = swift_type_abi_metadata("any Demo.Renderable");
+        let existential = classify_swift_abi_type("any Demo.Renderable");
         assert_eq!(existential.type_representation, "existential");
         assert_eq!(existential.object_representation, "existential-container");
         assert_eq!(existential.pass_mode, "metadata-dependent");
 
-        let nominal = swift_type_abi_metadata("Demo.ViewController");
+        let nominal = classify_swift_abi_type("Demo.ViewController");
         assert_eq!(nominal.type_representation, "nominal");
         assert_eq!(nominal.object_representation, "metadata-dependent");
         assert_eq!(nominal.argument_kind, "nominal-value-or-reference");
@@ -2301,17 +2317,34 @@ mod tests {
 
     #[test]
     fn classifies_hidden_context_swift_abi_shapes_without_claiming_calls() {
-        let metatype = swift_type_abi_metadata("Demo.ViewController.Type");
+        let metatype = classify_swift_abi_type("Demo.ViewController.Type");
         assert_eq!(metatype.argument_kind, "metatype");
         assert_eq!(metatype.object_representation, "metadata-pointer");
 
-        let function = swift_type_abi_metadata("(Swift.Int) -> Swift.String");
+        let function = classify_swift_abi_type("(Swift.Int) -> Swift.String");
         assert_eq!(function.argument_kind, "function");
         assert_eq!(function.object_representation, "thick-function");
         assert_eq!(function.pass_mode, "context-dependent");
 
-        let tuple = swift_type_abi_metadata("(Swift.Int, Swift.Int)");
+        let tuple = classify_swift_abi_type("(Swift.Int, Swift.Int)");
         assert_eq!(tuple.argument_kind, "aggregate");
         assert_eq!(tuple.pass_mode, "layout-dependent");
+    }
+
+    #[test]
+    fn classifies_swift_scalar_edge_cases_from_one_table() {
+        let cases = [
+            ("Swift.Never", "noreturn", "noreturn", "unsupported"),
+            ("Swift.CInt", "scalar", "integer", "direct-scalar"),
+            ("Swift.Float16", "scalar", "floating-point", "direct-scalar"),
+            ("Swift.Float80", "scalar", "floating-point", "direct-scalar"),
+        ];
+
+        for (type_name, representation, argument_kind, pass_mode) in cases {
+            let info = classify_swift_abi_type(type_name);
+            assert_eq!(info.type_representation, representation, "{type_name}");
+            assert_eq!(info.argument_kind, argument_kind, "{type_name}");
+            assert_eq!(info.pass_mode, pass_mode, "{type_name}");
+        }
     }
 }

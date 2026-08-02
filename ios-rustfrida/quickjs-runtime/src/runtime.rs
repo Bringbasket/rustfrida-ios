@@ -804,6 +804,18 @@ undefined;
             let mut runtime = QuickJsRuntime::new();
             runtime.initialize().expect("init runtime");
 
+            let expected_platform = if cfg!(any(target_os = "ios", target_os = "macos")) {
+                "darwin"
+            } else if cfg!(any(target_os = "linux", target_os = "android")) {
+                "linux"
+            } else {
+                std::env::consts::OS
+            };
+            let platform_matches = runtime
+                .eval(&format!("Process.platform === '{expected_platform}'"))
+                .expect("read Process.platform");
+            assert_eq!(platform_matches, "true");
+
             let result = runtime
                 .eval(
                     r#"
@@ -822,7 +834,7 @@ undefined;
                             typeof Process === 'object',
                             Process.id > 0,
                             typeof Process.arch === 'string' && Process.arch.length > 0,
-                            Process.platform === 'linux',
+                            typeof Process.platform === 'string' && Process.platform.length > 0,
                             Process.pageSize > 0,
                             Process.pointerSize === 8,
                             Process.codeSigningPolicy === 'optional',

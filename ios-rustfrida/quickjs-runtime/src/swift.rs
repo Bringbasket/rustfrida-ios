@@ -7,13 +7,13 @@ use crate::util::{
 use crate::value::JSValue;
 use common::Error as CommonError;
 use native_api::{
-    find_swift_conformances, find_swift_metadata, find_swift_method_owners, find_swift_methods, find_swift_protocols,
-    find_swift_symbols, find_swift_type_layouts, find_swift_type_methods, find_swift_types, find_swift_types_of_kind,
-    find_swift_vtable, find_swift_witness_tables, inspect_swift_live_object, swift_conformance_names_match,
-    swift_demangle_symbol, swift_member_name_matches, swift_protocol_name_matches, swift_support_available,
-    swift_type_name_matches, swift_type_source_kinds, SwiftConformance,
-    SwiftObjectOwnership as NativeSwiftObjectOwnership, SwiftProtocol, SwiftSymbol, SwiftType, SwiftTypeLayout,
-    SwiftVtableEntry, SwiftWitnessTable,
+    classify_swift_abi_type as classify_native_swift_abi_type, find_swift_conformances, find_swift_metadata,
+    find_swift_method_owners, find_swift_methods, find_swift_protocols, find_swift_symbols, find_swift_type_layouts,
+    find_swift_type_methods, find_swift_types, find_swift_types_of_kind, find_swift_vtable, find_swift_witness_tables,
+    inspect_swift_live_object, swift_conformance_names_match, swift_demangle_symbol, swift_member_name_matches,
+    swift_protocol_name_matches, swift_support_available, swift_type_name_matches, swift_type_source_kinds,
+    SwiftConformance, SwiftObjectOwnership as NativeSwiftObjectOwnership, SwiftProtocol, SwiftSymbol, SwiftType,
+    SwiftTypeLayout, SwiftVtableEntry, SwiftWitnessTable,
 };
 use std::ffi::c_void;
 #[cfg(any(target_os = "ios", target_os = "macos"))]
@@ -497,86 +497,14 @@ fn classify_swift_abi_type(type_name: &str) -> Result<SwiftAbiDescriptor, String
     if compact.is_empty() {
         return Err("Swift ABI type name must not be empty".into());
     }
-    let unqualified = compact.strip_prefix("Swift.").unwrap_or(compact);
-    let base = compact.rsplit('.').next().unwrap_or(compact);
-    let shape = if compact == "()" || base == "Void" {
-        ("void", "none", "void", "none")
-    } else if base == "Never" {
-        ("noreturn", "none", "noreturn", "unsupported")
-    } else if compact.ends_with(".Type") || compact.ends_with(".Protocol") {
-        ("metatype", "metadata-pointer", "metatype", "direct-pointer")
-    } else if compact == "Any" || compact == "AnyObject" || compact.starts_with("any ") {
-        (
-            "existential",
-            "existential-container",
-            "existential",
-            "metadata-dependent",
-        )
-    } else if compact.contains("->") {
-        ("function", "thick-function", "function", "context-dependent")
-    } else if compact.starts_with('(') && compact.ends_with(')') {
-        ("tuple", "inline-value", "aggregate", "layout-dependent")
-    } else if unqualified.starts_with("UnsafePointer<")
-        || unqualified.starts_with("UnsafeMutablePointer<")
-        || unqualified.starts_with("AutoreleasingUnsafeMutablePointer<")
-        || matches!(base, "OpaquePointer" | "UnsafeRawPointer" | "UnsafeMutableRawPointer")
-    {
-        ("pointer", "raw-pointer", "pointer", "direct-pointer")
-    } else if matches!(
-        base,
-        "Bool"
-            | "Int"
-            | "Int8"
-            | "Int16"
-            | "Int32"
-            | "Int64"
-            | "UInt"
-            | "UInt8"
-            | "UInt16"
-            | "UInt32"
-            | "UInt64"
-            | "Float"
-            | "Double"
-            | "CChar"
-            | "CSignedChar"
-            | "CUnsignedChar"
-            | "CShort"
-            | "CUShort"
-            | "CInt"
-            | "CUInt"
-            | "CLong"
-            | "CULong"
-            | "CFloat"
-            | "CDouble"
-    ) {
-        let kind = if base.starts_with("Float") || matches!(base, "Double" | "CFloat" | "CDouble") {
-            "floating-point"
-        } else {
-            "integer"
-        };
-        ("scalar", "inline-value", kind, "direct-scalar")
-    } else if compact.starts_with("some ") {
-        (
-            "opaque-result",
-            "metadata-dependent",
-            "opaque-value",
-            "metadata-dependent",
-        )
-    } else {
-        (
-            "nominal",
-            "metadata-dependent",
-            "nominal-value-or-reference",
-            "metadata-dependent",
-        )
-    };
+    let shape = classify_native_swift_abi_type(compact);
 
     Ok(SwiftAbiDescriptor {
         type_name: compact.to_string(),
-        type_representation: shape.0,
-        object_representation: shape.1,
-        argument_kind: shape.2,
-        pass_mode: shape.3,
+        type_representation: shape.type_representation,
+        object_representation: shape.object_representation,
+        argument_kind: shape.argument_kind,
+        pass_mode: shape.pass_mode,
     })
 }
 
@@ -2967,6 +2895,30 @@ mod tests {
         let nominal = classify_swift_abi_type("Demo.ViewController").expect("classify nominal type");
         assert_eq!(nominal.argument_kind, "nominal-value-or-reference");
         assert_eq!(nominal.pass_mode, "metadata-dependent");
+
+        for type_name in [
+            "Swift.Never",
+            "Swift.CInt",
+            "Swift.Float16",
+            "Swift.Float80",
+            "Swift.UnsafePointer<Swift.UInt8>",
+            "any Demo.Renderable",
+            "(Swift.Int) -> Swift.String",
+            "(Swift.Int, Swift.Int)",
+        ] {
+            let native = classify_native_swift_abi_type(type_name);
+            let descriptor = classify_swift_abi_type(type_name).expect("classify canonical Swift type");
+            assert_eq!(
+                descriptor.type_representation, native.type_representation,
+                "{type_name}"
+            );
+            assert_eq!(
+                descriptor.object_representation, native.object_representation,
+                "{type_name}"
+            );
+            assert_eq!(descriptor.argument_kind, native.argument_kind, "{type_name}");
+            assert_eq!(descriptor.pass_mode, native.pass_mode, "{type_name}");
+        }
         assert!(classify_swift_abi_type("  ").unwrap_err().contains("must not be empty"));
     }
 
