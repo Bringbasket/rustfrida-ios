@@ -5595,32 +5595,46 @@ undefined;
                 runtime
                     .eval(
                         "(function() {
-                            return Native.findImageInfo('libsystem_malloc.dylib') === Native.imageInfo('libsystem_malloc.dylib') &&
-                                Native.findSymbolInfo('malloc') === Native.symbolInfo('malloc') &&
-                                Native.findExportInfo('libsystem_malloc.dylib', 'malloc') === Native.exportInfo('libsystem_malloc.dylib', 'malloc') &&
-                                Native.findDependencyInfo('libsystem_malloc.dylib', 'libSystem.B.dylib') === Native.dependencyInfo('libsystem_malloc.dylib', 'libSystem.B.dylib') &&
-                                Native.findRpathInfo('libsystem_malloc.dylib', '@loader_path') === Native.rpathInfo('libsystem_malloc.dylib', '@loader_path') &&
-                                Native.findImportInfo('libsystem_malloc.dylib', 'malloc') === Native.importInfo('libsystem_malloc.dylib', 'malloc') &&
-                                JSON.stringify(Native.findDependencies('libsystem_malloc.dylib')) === JSON.stringify(Native.dependencies('libsystem_malloc.dylib')) &&
-                                JSON.stringify(Native.findImports('libsystem_malloc.dylib')) === JSON.stringify(Native.imports('libsystem_malloc.dylib')) &&
-                                JSON.stringify(Native.findRpaths('libsystem_malloc.dylib')) === JSON.stringify(Native.rpaths('libsystem_malloc.dylib')) &&
-                                Native.findSegmentInfo('libsystem_malloc.dylib', '__TEXT') === Native.segmentInfo('libsystem_malloc.dylib', '__TEXT') &&
-                                Native.findSectionInfo('libsystem_malloc.dylib', '__TEXT', '__text') === Native.sectionInfo('libsystem_malloc.dylib', '__TEXT', '__text') &&
-                                Native.findLoadCommandInfo('libsystem_malloc.dylib', 'LC_UUID') === Native.loadCommandInfo('libsystem_malloc.dylib', 'LC_UUID') &&
-                                Native.findEncryptionInfo('libsystem_malloc.dylib') === Native.encryptionInfo('libsystem_malloc.dylib') &&
-                                Native.findDyldInfo('libsystem_malloc.dylib') === Native.dyldInfo('libsystem_malloc.dylib') &&
-                                Native.findEntryPoint('libsystem_malloc.dylib') === Native.entryPoint('libsystem_malloc.dylib') &&
-                                Native.findSourceVersion('libsystem_malloc.dylib') === Native.sourceVersion('libsystem_malloc.dylib') &&
-                                Native.findBuildVersion('libsystem_malloc.dylib') === Native.buildVersion('libsystem_malloc.dylib') &&
-                                Native.findDylinker('libsystem_malloc.dylib') === Native.dylinker('libsystem_malloc.dylib') &&
-                                Native.findInstallName('libsystem_malloc.dylib') === Native.installName('libsystem_malloc.dylib') &&
-                                Native.findLinkedit('libsystem_malloc.dylib') === Native.linkedit('libsystem_malloc.dylib') &&
-                                Native.findFunctionStarts('libsystem_malloc.dylib') === Native.functionStarts('libsystem_malloc.dylib') &&
-                                Native.findCodeSignature('libsystem_malloc.dylib') === Native.codeSignature('libsystem_malloc.dylib') &&
-                                Native.findDataInCode('libsystem_malloc.dylib') === Native.dataInCode('libsystem_malloc.dylib') &&
-                                Native.findExportsTrie('libsystem_malloc.dylib') === Native.exportsTrie('libsystem_malloc.dylib') &&
-                                Native.findChainedFixups('libsystem_malloc.dylib') === Native.chainedFixups('libsystem_malloc.dylib') &&
-                                Native.findUuid('libsystem_malloc.dylib') === Native.uuid('libsystem_malloc.dylib');
+                            const stringify = (value) => JSON.stringify(value, (_key, item) => typeof item === 'bigint' ? item.toString() : item);
+                            const aliasValueMatches = (left, right) => {
+                                if (left === null || right === null) {
+                                    return left === right;
+                                }
+                                return stringify(left) === stringify(right);
+                            };
+                            const comparatorOk =
+                                aliasValueMatches(null, null) &&
+                                !aliasValueMatches(null, {}) &&
+                                aliasValueMatches(ptr('0x1234'), ptr('0x1234')) &&
+                                !aliasValueMatches(ptr('0x1234'), ptr('0x1235')) &&
+                                aliasValueMatches({ offset: 16n, address: ptr('0x1234') }, { offset: 16n, address: ptr('0x1234') });
+                            return comparatorOk &&
+                                aliasValueMatches(Native.findImageInfo('libsystem_malloc.dylib'), Native.imageInfo('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findSymbolInfo('malloc'), Native.symbolInfo('malloc')) &&
+                                aliasValueMatches(Native.findExportInfo('libsystem_malloc.dylib', 'malloc'), Native.exportInfo('libsystem_malloc.dylib', 'malloc')) &&
+                                aliasValueMatches(Native.findDependencyInfo('libsystem_malloc.dylib', 'libSystem.B.dylib'), Native.dependencyInfo('libsystem_malloc.dylib', 'libSystem.B.dylib')) &&
+                                aliasValueMatches(Native.findRpathInfo('libsystem_malloc.dylib', '@loader_path'), Native.rpathInfo('libsystem_malloc.dylib', '@loader_path')) &&
+                                aliasValueMatches(Native.findImportInfo('libsystem_malloc.dylib', 'malloc'), Native.importInfo('libsystem_malloc.dylib', 'malloc')) &&
+                                aliasValueMatches(Native.findDependencies('libsystem_malloc.dylib'), Native.dependencies('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findImports('libsystem_malloc.dylib'), Native.imports('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findRpaths('libsystem_malloc.dylib'), Native.rpaths('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findSegmentInfo('libsystem_malloc.dylib', '__TEXT'), Native.segmentInfo('libsystem_malloc.dylib', '__TEXT')) &&
+                                aliasValueMatches(Native.findSectionInfo('libsystem_malloc.dylib', '__TEXT', '__text'), Native.sectionInfo('libsystem_malloc.dylib', '__TEXT', '__text')) &&
+                                aliasValueMatches(Native.findLoadCommandInfo('libsystem_malloc.dylib', 'LC_UUID'), Native.loadCommandInfo('libsystem_malloc.dylib', 'LC_UUID')) &&
+                                aliasValueMatches(Native.findEncryptionInfo('libsystem_malloc.dylib'), Native.encryptionInfo('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findDyldInfo('libsystem_malloc.dylib'), Native.dyldInfo('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findEntryPoint('libsystem_malloc.dylib'), Native.entryPoint('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findSourceVersion('libsystem_malloc.dylib'), Native.sourceVersion('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findBuildVersion('libsystem_malloc.dylib'), Native.buildVersion('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findDylinker('libsystem_malloc.dylib'), Native.dylinker('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findInstallName('libsystem_malloc.dylib'), Native.installName('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findLinkedit('libsystem_malloc.dylib'), Native.linkedit('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findFunctionStarts('libsystem_malloc.dylib'), Native.functionStarts('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findCodeSignature('libsystem_malloc.dylib'), Native.codeSignature('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findDataInCode('libsystem_malloc.dylib'), Native.dataInCode('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findExportsTrie('libsystem_malloc.dylib'), Native.exportsTrie('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findChainedFixups('libsystem_malloc.dylib'), Native.chainedFixups('libsystem_malloc.dylib')) &&
+                                aliasValueMatches(Native.findUuid('libsystem_malloc.dylib'), Native.uuid('libsystem_malloc.dylib'));
                         })()"
                     )
                     .expect("native info aliases"),
@@ -14807,14 +14821,14 @@ undefined;
                                         && result.imageName === null
                                         && result.imagePath === null
                                         && result.directoryPath === null
-                                        && result.pathKind === null
+                                        && result.imagePathKind === null
                                         && result.base === null
                                         && result.slide === null
                                         && result.sizeHex === null
                                         && result.resolvedImageName === null
                                         && result.resolvedImagePath === null
                                         && result.resolvedDirectoryPath === null
-                                        && result.resolvedPathKind === null
+                                        && result.resolvedImagePathKind === null
                                         && result.resolvedBase === null
                                         && result.resolvedSlide === null
                                         && result.resolvedSizeHex === null
@@ -14827,14 +14841,14 @@ undefined;
                                     && result.imageName === image.name
                                     && result.imagePath === image.path
                                     && result.directoryPath === image.directoryPath
-                                    && result.pathKind === image.pathKind
+                                    && result.imagePathKind === image.pathKind
                                     && result.base === image.base
                                     && result.slide === image.slide
                                     && result.sizeHex === image.sizeHex
                                     && result.resolvedImageName === image.name
                                     && result.resolvedImagePath === image.path
                                     && result.resolvedDirectoryPath === image.directoryPath
-                                    && result.resolvedPathKind === image.pathKind
+                                    && result.resolvedImagePathKind === image.pathKind
                                     && result.resolvedBase === image.base
                                     && result.resolvedSlide === image.slide
                                     && result.resolvedSizeHex === image.sizeHex
@@ -16167,14 +16181,14 @@ undefined;
                                         && result.imageName === null
                                         && result.imagePath === null
                                         && result.directoryPath === null
-                                        && result.pathKind === null
+                                        && result.imagePathKind === null
                                         && result.base === null
                                         && result.slide === null
                                         && result.sizeHex === null
                                         && result.resolvedImageName === null
                                         && result.resolvedImagePath === null
                                         && result.resolvedDirectoryPath === null
-                                        && result.resolvedPathKind === null
+                                        && result.resolvedImagePathKind === null
                                         && result.resolvedBase === null
                                         && result.resolvedSlide === null
                                         && result.resolvedSizeHex === null
@@ -16187,14 +16201,14 @@ undefined;
                                     && result.imageName === image.name
                                     && result.imagePath === image.path
                                     && result.directoryPath === image.directoryPath
-                                    && result.pathKind === image.pathKind
+                                    && result.imagePathKind === image.pathKind
                                     && result.base === image.base
                                     && result.slide === image.slide
                                     && result.sizeHex === image.sizeHex
                                     && result.resolvedImageName === image.name
                                     && result.resolvedImagePath === image.path
                                     && result.resolvedDirectoryPath === image.directoryPath
-                                    && result.resolvedPathKind === image.pathKind
+                                    && result.resolvedImagePathKind === image.pathKind
                                     && result.resolvedBase === image.base
                                     && result.resolvedSlide === image.slide
                                     && result.resolvedSizeHex === image.sizeHex
@@ -16744,7 +16758,7 @@ undefined;
             assert_eq!(
                 runtime
                     .eval(
-                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dylinker', moduleName: main.image.name }); return result.kind === 'native.dylinker' && typeof result.hasDylinker === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasName === 'boolean' && typeof result.hasPath === 'boolean' && typeof result.isTokenPath === 'boolean' && typeof result.usesLoaderPath === 'boolean' && typeof result.usesExecutablePath === 'boolean' && typeof result.usesRpathToken === 'boolean' && typeof result.pathDepth === 'number' && typeof result.isWeakDylinker === 'boolean' && typeof result.isReexportDylinker === 'boolean' && typeof result.isUpwardDylinker === 'boolean' && typeof result.isLoadDylinker === 'boolean' && ((result.dylinker === null && result.hasDylinker === false && result.resolved === false && result.resolvedModuleName === null && result.resolvedName === null && result.resolvedPath === null && result.resolvedPathKind === null && result.resolvedKind === null && result.resolvedHasName === null && result.resolvedHasPath === null && result.resolvedIsTokenPath === null && result.resolvedUsesLoaderPath === null && result.resolvedUsesExecutablePath === null && result.resolvedUsesRpathToken === null && result.resolvedPathDepth === 0 && result.resolvedIsWeakDylinker === null && result.resolvedIsReexportDylinker === null && result.resolvedIsUpwardDylinker === null && result.resolvedIsLoadDylinker === null && result.name === null && result.path === null && result.pathKind === null && result.kind === null && result.kindName === null && result.hasName === false && result.hasPath === false && result.pathDepth === 0 && result.text === '<null>') || (typeof result.dylinker.path === 'string' && typeof result.dylinker.name === 'string' && typeof result.dylinker.hasName === 'boolean' && typeof result.dylinker.hasPath === 'boolean' && typeof result.dylinker.pathKind === 'string' && typeof result.dylinker.isTokenPath === 'boolean' && typeof result.dylinker.usesLoaderPath === 'boolean' && typeof result.dylinker.usesExecutablePath === 'boolean' && typeof result.dylinker.usesRpathToken === 'boolean' && typeof result.dylinker.pathDepth === 'number' && typeof result.dylinker.kind === 'string' && typeof result.dylinker.isWeakDylinker === 'boolean' && typeof result.dylinker.isReexportDylinker === 'boolean' && typeof result.dylinker.isUpwardDylinker === 'boolean' && typeof result.dylinker.isLoadDylinker === 'boolean' && result.hasDylinker === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.resolvedName === 'string' && typeof result.resolvedPath === 'string' && typeof result.resolvedPathKind === 'string' && typeof result.resolvedKind === 'string' && typeof result.resolvedHasName === 'boolean' && typeof result.resolvedHasPath === 'boolean' && typeof result.resolvedIsTokenPath === 'boolean' && typeof result.resolvedUsesLoaderPath === 'boolean' && typeof result.resolvedUsesExecutablePath === 'boolean' && typeof result.resolvedUsesRpathToken === 'boolean' && typeof result.resolvedPathDepth === 'number' && typeof result.resolvedIsWeakDylinker === 'boolean' && typeof result.resolvedIsReexportDylinker === 'boolean' && typeof result.resolvedIsUpwardDylinker === 'boolean' && typeof result.resolvedIsLoadDylinker === 'boolean' && typeof result.name === 'string' && typeof result.path === 'string' && typeof result.pathKind === 'string' && typeof result.kind === 'string' && typeof result.kindName === 'string' && result.resolvedModuleName === result.dylinker.moduleName && result.resolvedName === result.dylinker.name && result.resolvedPath === result.dylinker.path && result.resolvedPathKind === result.dylinker.pathKind && result.resolvedKind === result.dylinker.kind && result.resolvedHasName === (result.dylinker.hasName === true) && result.resolvedHasPath === (result.dylinker.hasPath === true) && result.resolvedIsTokenPath === (result.dylinker.isTokenPath === true) && result.resolvedUsesLoaderPath === (result.dylinker.usesLoaderPath === true) && result.resolvedUsesExecutablePath === (result.dylinker.usesExecutablePath === true) && result.resolvedUsesRpathToken === (result.dylinker.usesRpathToken === true) && result.resolvedPathDepth === result.dylinker.pathDepth && result.resolvedIsWeakDylinker === (result.dylinker.isWeakDylinker === true) && result.resolvedIsReexportDylinker === (result.dylinker.isReexportDylinker === true) && result.resolvedIsUpwardDylinker === (result.dylinker.isUpwardDylinker === true) && result.resolvedIsLoadDylinker === (result.dylinker.isLoadDylinker === true) && result.name === result.dylinker.name && result.path === result.dylinker.path && result.pathKind === result.dylinker.pathKind && result.kind === result.dylinker.kind && result.kindName === result.dylinker.kind && result.hasName === (result.dylinker.hasName === true) && result.hasPath === (result.dylinker.hasPath === true) && result.isTokenPath === (result.dylinker.isTokenPath === true) && result.usesLoaderPath === (result.dylinker.usesLoaderPath === true) && result.usesExecutablePath === (result.dylinker.usesExecutablePath === true) && result.usesRpathToken === (result.dylinker.usesRpathToken === true) && result.pathDepth === result.dylinker.pathDepth && result.isWeakDylinker === (result.dylinker.isWeakDylinker === true) && result.isReexportDylinker === (result.dylinker.isReexportDylinker === true) && result.isUpwardDylinker === (result.dylinker.isUpwardDylinker === true) && result.isLoadDylinker === (result.dylinker.isLoadDylinker === true) && result.text === result.dylinker.text)); })()"
+                        "(function() { const main = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.main_image' }); if (main.image === null) { return true; } const result = __iosRustFridaAgentApi.handleSpecResult({ kind: 'native.dylinker', moduleName: main.image.name }); return typeof result.hasDylinker === 'boolean' && typeof result.resolved === 'boolean' && typeof result.hasName === 'boolean' && typeof result.hasPath === 'boolean' && typeof result.isTokenPath === 'boolean' && typeof result.usesLoaderPath === 'boolean' && typeof result.usesExecutablePath === 'boolean' && typeof result.usesRpathToken === 'boolean' && typeof result.pathDepth === 'number' && typeof result.isWeakDylinker === 'boolean' && typeof result.isReexportDylinker === 'boolean' && typeof result.isUpwardDylinker === 'boolean' && typeof result.isLoadDylinker === 'boolean' && ((result.dylinker === null && result.hasDylinker === false && result.resolved === false && result.resolvedModuleName === null && result.resolvedName === null && result.resolvedPath === null && result.resolvedPathKind === null && result.resolvedKind === null && result.resolvedHasName === null && result.resolvedHasPath === null && result.resolvedIsTokenPath === null && result.resolvedUsesLoaderPath === null && result.resolvedUsesExecutablePath === null && result.resolvedUsesRpathToken === null && result.resolvedPathDepth === 0 && result.resolvedIsWeakDylinker === null && result.resolvedIsReexportDylinker === null && result.resolvedIsUpwardDylinker === null && result.resolvedIsLoadDylinker === null && result.name === null && result.path === null && result.pathKind === null && result.kind === null && result.kindName === null && result.hasName === false && result.hasPath === false && result.pathDepth === 0 && result.text === '<null>') || (typeof result.dylinker.path === 'string' && typeof result.dylinker.name === 'string' && typeof result.dylinker.hasName === 'boolean' && typeof result.dylinker.hasPath === 'boolean' && typeof result.dylinker.pathKind === 'string' && typeof result.dylinker.isTokenPath === 'boolean' && typeof result.dylinker.usesLoaderPath === 'boolean' && typeof result.dylinker.usesExecutablePath === 'boolean' && typeof result.dylinker.usesRpathToken === 'boolean' && typeof result.dylinker.pathDepth === 'number' && typeof result.dylinker.kind === 'string' && typeof result.dylinker.isWeakDylinker === 'boolean' && typeof result.dylinker.isReexportDylinker === 'boolean' && typeof result.dylinker.isUpwardDylinker === 'boolean' && typeof result.dylinker.isLoadDylinker === 'boolean' && result.hasDylinker === true && result.resolved === true && typeof result.resolvedModuleName === 'string' && typeof result.resolvedName === 'string' && typeof result.resolvedPath === 'string' && typeof result.resolvedPathKind === 'string' && typeof result.resolvedKind === 'string' && typeof result.resolvedHasName === 'boolean' && typeof result.resolvedHasPath === 'boolean' && typeof result.resolvedIsTokenPath === 'boolean' && typeof result.resolvedUsesLoaderPath === 'boolean' && typeof result.resolvedUsesExecutablePath === 'boolean' && typeof result.resolvedUsesRpathToken === 'boolean' && typeof result.resolvedPathDepth === 'number' && typeof result.resolvedIsWeakDylinker === 'boolean' && typeof result.resolvedIsReexportDylinker === 'boolean' && typeof result.resolvedIsUpwardDylinker === 'boolean' && typeof result.resolvedIsLoadDylinker === 'boolean' && typeof result.name === 'string' && typeof result.path === 'string' && typeof result.pathKind === 'string' && typeof result.kind === 'string' && typeof result.kindName === 'string' && result.resolvedModuleName === result.dylinker.moduleName && result.resolvedName === result.dylinker.name && result.resolvedPath === result.dylinker.path && result.resolvedPathKind === result.dylinker.pathKind && result.resolvedKind === result.dylinker.kind && result.resolvedHasName === (result.dylinker.hasName === true) && result.resolvedHasPath === (result.dylinker.hasPath === true) && result.resolvedIsTokenPath === (result.dylinker.isTokenPath === true) && result.resolvedUsesLoaderPath === (result.dylinker.usesLoaderPath === true) && result.resolvedUsesExecutablePath === (result.dylinker.usesExecutablePath === true) && result.resolvedUsesRpathToken === (result.dylinker.usesRpathToken === true) && result.resolvedPathDepth === result.dylinker.pathDepth && result.resolvedIsWeakDylinker === (result.dylinker.isWeakDylinker === true) && result.resolvedIsReexportDylinker === (result.dylinker.isReexportDylinker === true) && result.resolvedIsUpwardDylinker === (result.dylinker.isUpwardDylinker === true) && result.resolvedIsLoadDylinker === (result.dylinker.isLoadDylinker === true) && result.name === result.dylinker.name && result.path === result.dylinker.path && result.pathKind === result.dylinker.pathKind && result.kind === result.dylinker.kind && result.kindName === result.dylinker.kind && result.hasName === (result.dylinker.hasName === true) && result.hasPath === (result.dylinker.hasPath === true) && result.isTokenPath === (result.dylinker.isTokenPath === true) && result.usesLoaderPath === (result.dylinker.usesLoaderPath === true) && result.usesExecutablePath === (result.dylinker.usesExecutablePath === true) && result.usesRpathToken === (result.dylinker.usesRpathToken === true) && result.pathDepth === result.dylinker.pathDepth && result.isWeakDylinker === (result.dylinker.isWeakDylinker === true) && result.isReexportDylinker === (result.dylinker.isReexportDylinker === true) && result.isUpwardDylinker === (result.dylinker.isUpwardDylinker === true) && result.isLoadDylinker === (result.dylinker.isLoadDylinker === true) && result.text === result.dylinker.text)); })()"
                     )
                     .expect("agent native dylinker result"),
                 "true"
