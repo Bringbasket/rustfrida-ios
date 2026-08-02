@@ -45,6 +45,7 @@ jobs:
 
       - name: Host unit tests
         run: |
+          cargo test -p common --target x86_64-unknown-linux-gnu
           cargo test -p native-api --target x86_64-unknown-linux-gnu
           cargo test -p objc-api --target x86_64-unknown-linux-gnu
           cargo test -p quickjs-runtime --target x86_64-unknown-linux-gnu -- --test-threads=1
@@ -82,8 +83,12 @@ jobs:
 
       - name: Host tests on macOS
         run: |
+          cargo test -p common --target "${{ steps.host.outputs.triple }}"
           cargo test -p native-api --target "${{ steps.host.outputs.triple }}"
+          cargo test -p objc-api --target "${{ steps.host.outputs.triple }}"
           cargo test -p quickjs-runtime --target "${{ steps.host.outputs.triple }}" -- --test-threads=1
+          cargo test -p controller --target "${{ steps.host.outputs.triple }}"
+          cargo test -p agent --target "${{ steps.host.outputs.triple }}"
 
       - name: iOS simulator check
         run: cargo check --target aarch64-apple-ios-sim
