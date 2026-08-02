@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install system dependencies
         run: |
@@ -58,10 +58,11 @@ jobs:
   apple-build:
     name: Apple Build (macOS)
     runs-on: macos-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -93,6 +94,9 @@ jobs:
       - name: iOS simulator check
         run: cargo check --target aarch64-apple-ios-sim
 
+      - name: Simulator agent runtime harness
+        run: scripts/run-simulator-harness.sh
+
       - name: Build agent dylib for device
         run: cargo build -p agent --release --target aarch64-apple-ios
 
@@ -100,7 +104,7 @@ jobs:
         run: cargo build -p controller --release --bin ios-rustfrida --target "${{ steps.host.outputs.triple }}"
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ios-rustfrida-artifacts
           path: |

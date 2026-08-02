@@ -2657,6 +2657,39 @@ mod tests {
     }
 
     #[test]
+    fn simulator_harness_json_matches_agent_wire_contract() {
+        let fixtures = [
+            (r#"{"kind":"ping"}"#, AgentCommand::Ping),
+            (r#"{"kind":"js_init"}"#, AgentCommand::JsInit),
+            (
+                r#"{"kind":"load_js","script":"rpc.exports = { add(a, b) { return a + b; } }; 6 * 7"}"#,
+                AgentCommand::LoadJs {
+                    script: "rpc.exports = { add(a, b) { return a + b; } }; 6 * 7".into(),
+                },
+            ),
+            (
+                r#"{"kind":"rpc_call","method":"add","args_json":"[19,23]"}"#,
+                AgentCommand::RpcCall {
+                    method: "add".into(),
+                    args_json: "[19,23]".into(),
+                },
+            ),
+            (
+                r#"{"kind":"js_eval","script":"6 * 7"}"#,
+                AgentCommand::JsEval { script: "6 * 7".into() },
+            ),
+            (r#"{"kind":"exit"}"#, AgentCommand::Exit),
+        ];
+
+        for (payload, expected) in fixtures {
+            assert_eq!(
+                AgentCommand::decode(payload.as_bytes()).expect("decode fixture"),
+                expected
+            );
+        }
+    }
+
+    #[test]
     fn external_hook_commands_reject_invalid_identity_and_addresses() {
         let invalid = AgentCommand::ExternalHookExecute {
             request: ExternalHookExecuteRequest {
