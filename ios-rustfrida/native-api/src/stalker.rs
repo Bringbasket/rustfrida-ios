@@ -87,13 +87,33 @@ pub fn stalker_follow_thread(thread_id: u64, config: StalkerConfig) -> Result<St
     Ok(status)
 }
 
+pub fn stalker_pause_thread(thread_id: u64) -> Result<StalkerThreadStatus> {
+    let mut registry = registry_lock();
+    let session = registry
+        .get_mut(&thread_id)
+        .ok_or_else(|| Error::State(format!("stalker session is not following thread {thread_id}")))?;
+    session.deactivate()?;
+    Ok(stalker_thread_status(thread_id, session))
+}
+
+pub fn stalker_resume_thread(thread_id: u64) -> Result<StalkerThreadStatus> {
+    let mut registry = registry_lock();
+    let session = registry
+        .get_mut(&thread_id)
+        .ok_or_else(|| Error::State(format!("stalker session is not following thread {thread_id}")))?;
+    session.activate()?;
+    Ok(stalker_thread_status(thread_id, session))
+}
+
 pub fn stalker_unfollow_thread(thread_id: u64) -> Result<StalkerThreadStatus> {
     let mut registry = registry_lock();
-    let mut session = registry
-        .remove(&thread_id)
+    let session = registry
+        .get_mut(&thread_id)
         .ok_or_else(|| Error::State(format!("stalker session is not following thread {thread_id}")))?;
     session.unfollow(thread_id)?;
-    Ok(stalker_thread_status(thread_id, &session))
+    let status = stalker_thread_status(thread_id, session);
+    registry.remove(&thread_id);
+    Ok(status)
 }
 
 pub fn stalker_flush_thread(thread_id: u64) -> Result<Vec<StalkerEvent>> {
@@ -140,10 +160,13 @@ pub fn stalker_backend_status() -> StalkerBackendStatus {
         .iter()
         .map(|(thread_id, session)| stalker_thread_status(*thread_id, session))
         .collect::<Vec<_>>();
+    let active = threads
+        .iter()
+        .any(|thread| thread.state == StalkerSessionState::Following);
     StalkerBackendStatus {
         backend: "apple-pthread-event-sink",
         mode: "thread-follow-event-sink",
-        active: !threads.is_empty(),
+        active,
         session_count: threads.len(),
         threads,
     }
@@ -1187,6 +1210,62 @@ mod tests {
         assert!(session.unfollow(7).is_ok());
         assert!(session.garbage_collect().expect("gc"));
         assert!(session.events().is_empty());
+    }
+
+    #[test]
+    fn registry_lifecycle_suppresses_and_resumes_thread_events() {
+        let thread_id = 90_001;
+        let followed = stalker_follow_thread(
+            thread_id,
+            StalkerConfig {
+                event_mask: StalkerEventMask::CALL,
+                ..StalkerConfig::default()
+            },
+        )
+        .expect("follow registry thread");
+        assert_eq!(followed.state, StalkerSessionState::Following);
+
+        let deactivated = stalker_pause_thread(thread_id).expect("pause registry thread");
+        assert_eq!(deactivated.state, StalkerSessionState::Deactivated);
+        assert!(stalker_pause_thread(thread_id).is_err());
+        let paused_backend = stalker_backend_status();
+        assert!(!paused_backend.active);
+        assert_eq!(paused_backend.session_count, 1);
+        assert!(!stalker_event_sink(
+            thread_id,
+            StalkerEvent::Call {
+                location: 0x1000,
+                target: 0x2000,
+                depth: 0,
+            },
+        )
+        .expect("record while deactivated"));
+
+        let activated = stalker_resume_thread(thread_id).expect("resume registry thread");
+        assert_eq!(activated.state, StalkerSessionState::Following);
+        assert!(stalker_resume_thread(thread_id).is_err());
+        assert!(stalker_backend_status().active);
+        assert!(stalker_event_sink(
+            thread_id,
+            StalkerEvent::Call {
+                location: 0x1000,
+                target: 0x2000,
+                depth: 0,
+            },
+        )
+        .expect("record after activate"));
+        assert_eq!(stalker_flush_thread(thread_id).expect("flush registry thread").len(), 1);
+        assert_eq!(
+            stalker_unfollow_thread(thread_id)
+                .expect("unfollow registry thread")
+                .state,
+            StalkerSessionState::Idle
+        );
+        assert!(stalker_unfollow_thread(thread_id).is_err());
+        let stopped_backend = stalker_backend_status();
+        assert!(!stopped_backend.active);
+        assert_eq!(stopped_backend.session_count, 0);
+        assert!(stalker_garbage_collect_thread(thread_id).expect("collect registry thread"));
     }
 
     #[test]

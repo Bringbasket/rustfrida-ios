@@ -97,10 +97,10 @@ pub use segments::{find_image_segments, image_segment_support_available, segment
 pub use source_version::{find_image_source_version, image_source_version_support_available, ImageSourceVersion};
 pub use stalker::{
     current_stalker_thread_id, ios_stalker_capabilities, stalker_backend_status, stalker_event_sink,
-    stalker_flush_thread, stalker_follow_thread, stalker_garbage_collect_thread, stalker_unfollow_thread,
-    StalkerBackendStatus, StalkerCapabilities, StalkerConfig, StalkerEvent, StalkerEventKind, StalkerEventMask,
-    StalkerRange, StalkerSession, StalkerSessionState, StalkerThreadStatus, DEFAULT_STALKER_QUEUE_CAPACITY,
-    IOS_STALKER_MISSING_OPERATIONS, MAX_STALKER_QUEUE_CAPACITY,
+    stalker_flush_thread, stalker_follow_thread, stalker_garbage_collect_thread, stalker_pause_thread,
+    stalker_resume_thread, stalker_unfollow_thread, StalkerBackendStatus, StalkerCapabilities, StalkerConfig,
+    StalkerEvent, StalkerEventKind, StalkerEventMask, StalkerRange, StalkerSession, StalkerSessionState,
+    StalkerThreadStatus, DEFAULT_STALKER_QUEUE_CAPACITY, IOS_STALKER_MISSING_OPERATIONS, MAX_STALKER_QUEUE_CAPACITY,
 };
 pub use swift::{
     classify_swift_abi_type, find_swift_conformances, find_swift_metadata, find_swift_method_owners,

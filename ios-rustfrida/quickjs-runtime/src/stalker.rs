@@ -7,8 +7,9 @@ use crate::util::{
 use crate::value::JSValue;
 use native_api::{
     current_stalker_thread_id, ios_stalker_capabilities, stalker_backend_status, stalker_event_sink,
-    stalker_flush_thread, stalker_follow_thread, stalker_garbage_collect_thread, stalker_unfollow_thread,
-    StalkerConfig, StalkerEvent, StalkerEventMask, StalkerRange, StalkerSession, StalkerSessionState,
+    stalker_flush_thread, stalker_follow_thread, stalker_garbage_collect_thread, stalker_pause_thread,
+    stalker_resume_thread, stalker_unfollow_thread, StalkerConfig, StalkerEvent, StalkerEventMask, StalkerRange,
+    StalkerSession, StalkerSessionState,
 };
 
 const DEFAULT_TRANSFORM_MAX_INSTRUCTIONS: usize = 256;
@@ -21,6 +22,16 @@ fn stalker_error(ctx: *mut ffi::JSContext, error: common::Error) -> ffi::JSValue
         common::Error::InvalidArgument(message) => js_throw_type_error(ctx, &message),
         other => js_throw_internal_error(ctx, &other.to_string()),
     }
+}
+
+unsafe fn with_owned_js_value<T>(
+    ctx: *mut ffi::JSContext,
+    value: JSValue,
+    use_value: impl FnOnce(JSValue) -> Result<T, ffi::JSValue>,
+) -> Result<T, ffi::JSValue> {
+    let result = use_value(value);
+    value.free(ctx);
+    result
 }
 
 unsafe fn js_thread_id(
@@ -37,23 +48,14 @@ unsafe fn js_thread_id(
         return Ok(current);
     }
     let value = JSValue(*argv.add(index));
-    let parsed = if value.is_string() {
-        let text = value.to_string(ctx).unwrap_or_default();
-        let text = text.trim();
-        if let Some(hex) = text.strip_prefix("0x").or_else(|| text.strip_prefix("0X")) {
-            u64::from_str_radix(hex, 16).ok()
-        } else {
-            text.parse::<u64>().ok()
-        }
-    } else {
-        value.to_u64(ctx)
-    };
-    match parsed.filter(|thread_id| *thread_id != 0) {
-        Some(thread_id) => Ok(thread_id),
-        None => Err(js_throw_type_error(
+    let thread_id = js_nonnegative_u64(ctx, value, "Stalker thread id must be a non-zero integer or string")?;
+    if thread_id == 0 {
+        Err(js_throw_type_error(
             ctx,
             "Stalker thread id must be a non-zero integer or string",
-        )),
+        ))
+    } else {
+        Ok(thread_id)
     }
 }
 
@@ -75,47 +77,85 @@ unsafe fn js_options_config(
     }
 
     let mut config = StalkerConfig::default();
-    let event_mask = options.get_property(ctx, "events");
-    if !event_mask.is_undefined() && !event_mask.is_null() {
-        let bits = event_mask
-            .to_u64(ctx)
-            .and_then(|value| u32::try_from(value).ok())
-            .ok_or_else(|| js_throw_type_error(ctx, "Stalker.follow options.events must be a 32-bit mask"))?;
+    if let Some(bits) = with_owned_js_value(ctx, options.get_property(ctx, "events"), |value| {
+        if value.is_undefined() || value.is_null() {
+            Ok(None)
+        } else {
+            js_nonnegative_u64(ctx, value, "Stalker.follow options.events must be a 32-bit mask")
+                .and_then(|value| {
+                    u32::try_from(value)
+                        .map_err(|_| js_throw_type_error(ctx, "Stalker.follow options.events must be a 32-bit mask"))
+                })
+                .map(Some)
+        }
+    })? {
         config.event_mask = StalkerEventMask::from_bits(bits);
     }
-    let queue_capacity = options.get_property(ctx, "queueCapacity");
-    if !queue_capacity.is_undefined() {
-        config.queue_capacity = queue_capacity
-            .to_u64(ctx)
-            .and_then(|value| usize::try_from(value).ok())
-            .ok_or_else(|| js_throw_type_error(ctx, "Stalker.follow options.queueCapacity must be an integer"))?;
-    }
-    let trust_threshold = options.get_property(ctx, "trustThreshold");
-    if !trust_threshold.is_undefined() {
-        config.trust_threshold = trust_threshold
-            .to_i64(ctx)
-            .and_then(|value| i32::try_from(value).ok())
-            .ok_or_else(|| js_throw_type_error(ctx, "Stalker.follow options.trustThreshold must be an int32"))?;
-    }
-    let ranges = options.get_property(ctx, "exclude");
-    if !ranges.is_undefined() && !ranges.is_null() {
-        let length = ranges.get_property(ctx, "length").to_u64(ctx).unwrap_or(0);
-        for index in 0..length {
-            let item = JSValue(ffi::JS_GetPropertyUint32(ctx, ranges.raw(), index as u32));
-            let start = item.get_property(ctx, "start").to_u64(ctx);
-            let end = item.get_property(ctx, "end").to_u64(ctx);
-            let (Some(start), Some(end)) = (start, end) else {
-                item.free(ctx);
-                return Err(js_throw_type_error(
-                    ctx,
-                    "Stalker.follow options.exclude entries need start/end",
-                ));
-            };
-            let range = StalkerRange::new(start, end).map_err(|error| stalker_error(ctx, error))?;
-            config.exclude_ranges.push(range);
-            item.free(ctx);
+    if let Some(queue_capacity) = with_owned_js_value(ctx, options.get_property(ctx, "queueCapacity"), |value| {
+        if value.is_undefined() {
+            Ok(None)
+        } else {
+            js_nonnegative_u64(ctx, value, "Stalker.follow options.queueCapacity must be an integer")
+                .and_then(|value| {
+                    usize::try_from(value).map_err(|_| {
+                        js_throw_type_error(ctx, "Stalker.follow options.queueCapacity must be an integer")
+                    })
+                })
+                .map(Some)
         }
+    })? {
+        config.queue_capacity = queue_capacity;
     }
+    if let Some(trust_threshold) = with_owned_js_value(ctx, options.get_property(ctx, "trustThreshold"), |value| {
+        if value.is_undefined() {
+            Ok(None)
+        } else {
+            value
+                .to_i64(ctx)
+                .and_then(|value| i32::try_from(value).ok())
+                .map(Some)
+                .ok_or_else(|| js_throw_type_error(ctx, "Stalker.follow options.trustThreshold must be an int32"))
+        }
+    })? {
+        config.trust_threshold = trust_threshold;
+    }
+    config.exclude_ranges = with_owned_js_value(ctx, options.get_property(ctx, "exclude"), |ranges| {
+        if ranges.is_undefined() || ranges.is_null() {
+            return Ok(Vec::new());
+        }
+        let length = with_owned_js_value(ctx, ranges.get_property(ctx, "length"), |value| {
+            js_nonnegative_u64(
+                ctx,
+                value,
+                "Stalker.follow options.exclude length must be a non-negative integer",
+            )
+        })?;
+        let length = u32::try_from(length)
+            .map_err(|_| js_throw_range_error(ctx, "Stalker.follow options.exclude length is too large"))?;
+        let mut parsed_ranges = Vec::new();
+        for index in 0..length {
+            let item = JSValue(ffi::JS_GetPropertyUint32(ctx, ranges.raw(), index));
+            let range = with_owned_js_value(ctx, item, |item| {
+                let start = with_owned_js_value(ctx, item.get_property(ctx, "start"), |value| {
+                    js_nonnegative_u64(
+                        ctx,
+                        value,
+                        "Stalker.follow options.exclude entries need non-negative start/end",
+                    )
+                })?;
+                let end = with_owned_js_value(ctx, item.get_property(ctx, "end"), |value| {
+                    js_nonnegative_u64(
+                        ctx,
+                        value,
+                        "Stalker.follow options.exclude entries need non-negative start/end",
+                    )
+                })?;
+                StalkerRange::new(start, end).map_err(|error| stalker_error(ctx, error))
+            })?;
+            parsed_ranges.push(range);
+        }
+        Ok(parsed_ranges)
+    })?;
     Ok(config)
 }
 
@@ -135,7 +175,7 @@ unsafe fn js_nonnegative_u64(ctx: *mut ffi::JSContext, value: JSValue, usage: &s
         let Some(number) = value.to_float() else {
             return Err(js_throw_type_error(ctx, usage));
         };
-        if !number.is_finite() || number < 0.0 || number.fract() != 0.0 || number > u64::MAX as f64 {
+        if !number.is_finite() || number < 0.0 || number.fract() != 0.0 || number >= u64::MAX as f64 {
             return Err(js_throw_type_error(ctx, usage));
         }
         return Ok(number as u64);
@@ -228,35 +268,30 @@ unsafe fn js_transform_options(
         return Err(js_throw_type_error(ctx, "Stalker transform options must be an object"));
     }
 
-    let event_value = options.get_property(ctx, "events");
-    let event_mask = if event_value.is_undefined() || event_value.is_null() {
-        StalkerEventMask::default()
-    } else {
-        let bits = js_nonnegative_u64(ctx, event_value, "Stalker transform events must be a 32-bit mask")?;
-        if bits > u32::MAX as u64 {
-            event_value.free(ctx);
-            return Err(js_throw_type_error(
-                ctx,
-                "Stalker transform events must be a 32-bit mask",
-            ));
+    let event_mask = with_owned_js_value(ctx, options.get_property(ctx, "events"), |value| {
+        if value.is_undefined() || value.is_null() {
+            Ok(StalkerEventMask::default())
+        } else {
+            let bits = js_nonnegative_u64(ctx, value, "Stalker transform events must be a 32-bit mask")?;
+            if bits > u32::MAX as u64 {
+                return Err(js_throw_type_error(
+                    ctx,
+                    "Stalker transform events must be a 32-bit mask",
+                ));
+            }
+            Ok(StalkerEventMask::from_bits(bits as u32))
         }
-        StalkerEventMask::from_bits(bits as u32)
-    };
-    event_value.free(ctx);
+    })?;
 
-    let max_instructions_value = options.get_property(ctx, "maxInstructions");
-    let max_instructions = if max_instructions_value.is_undefined() || max_instructions_value.is_null() {
-        DEFAULT_TRANSFORM_MAX_INSTRUCTIONS
-    } else {
-        let value = js_nonnegative_u64(
-            ctx,
-            max_instructions_value,
-            "Stalker transform maxInstructions must be an integer",
-        )?;
-        usize::try_from(value)
-            .map_err(|_| js_throw_range_error(ctx, "Stalker transform maxInstructions is too large"))?
-    };
-    max_instructions_value.free(ctx);
+    let max_instructions = with_owned_js_value(ctx, options.get_property(ctx, "maxInstructions"), |value| {
+        if value.is_undefined() || value.is_null() {
+            Ok(DEFAULT_TRANSFORM_MAX_INSTRUCTIONS)
+        } else {
+            let value = js_nonnegative_u64(ctx, value, "Stalker transform maxInstructions must be an integer")?;
+            usize::try_from(value)
+                .map_err(|_| js_throw_range_error(ctx, "Stalker transform maxInstructions is too large"))
+        }
+    })?;
     if max_instructions == 0 || max_instructions > MAX_TRANSFORM_INSTRUCTIONS {
         return Err(js_throw_range_error(
             ctx,
@@ -264,14 +299,14 @@ unsafe fn js_transform_options(
         ));
     }
 
-    let max_events_value = options.get_property(ctx, "maxEvents");
-    let max_events = if max_events_value.is_undefined() || max_events_value.is_null() {
-        DEFAULT_GENERATED_EVENT_CAPACITY
-    } else {
-        let value = js_nonnegative_u64(ctx, max_events_value, "Stalker transform maxEvents must be an integer")?;
-        usize::try_from(value).map_err(|_| js_throw_range_error(ctx, "Stalker transform maxEvents is too large"))?
-    };
-    max_events_value.free(ctx);
+    let max_events = with_owned_js_value(ctx, options.get_property(ctx, "maxEvents"), |value| {
+        if value.is_undefined() || value.is_null() {
+            Ok(DEFAULT_GENERATED_EVENT_CAPACITY)
+        } else {
+            let value = js_nonnegative_u64(ctx, value, "Stalker transform maxEvents must be an integer")?;
+            usize::try_from(value).map_err(|_| js_throw_range_error(ctx, "Stalker transform maxEvents is too large"))
+        }
+    })?;
     if max_events == 0 || max_events > MAX_GENERATED_EVENT_CAPACITY {
         return Err(js_throw_range_error(
             ctx,
@@ -471,6 +506,38 @@ unsafe extern "C" fn js_stalker_unfollow(
         Err(error) => return error,
     };
     match stalker_unfollow_thread(thread_id) {
+        Ok(status) => stalker_thread_status_to_js(ctx, &status),
+        Err(error) => stalker_error(ctx, error),
+    }
+}
+
+unsafe extern "C" fn js_stalker_pause_thread(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let thread_id = match js_thread_id(ctx, argc, argv, 0) {
+        Ok(value) => value,
+        Err(error) => return error,
+    };
+    match stalker_pause_thread(thread_id) {
+        Ok(status) => stalker_thread_status_to_js(ctx, &status),
+        Err(error) => stalker_error(ctx, error),
+    }
+}
+
+unsafe extern "C" fn js_stalker_resume_thread(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let thread_id = match js_thread_id(ctx, argc, argv, 0) {
+        Ok(value) => value,
+        Err(error) => return error,
+    };
+    match stalker_resume_thread(thread_id) {
         Ok(status) => stalker_thread_status_to_js(ctx, &status),
         Err(error) => stalker_error(ctx, error),
     }
@@ -1277,6 +1344,14 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         return nativeStalker().stalkerUnfollow(threadId(thread));
     }
 
+    function pauseThread(thread) {
+        return nativeStalker().stalkerPauseThread(threadId(thread));
+    }
+
+    function resumeThread(thread) {
+        return nativeStalker().stalkerResumeThread(threadId(thread));
+    }
+
     function flush(thread) {
         return nativeStalker().stalkerFlush(threadId(thread));
     }
@@ -1415,6 +1490,8 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         lastError: function() { return null; },
         follow: follow,
         unfollow: unfollow,
+        pauseThread: pauseThread,
+        resumeThread: resumeThread,
         exclude: exclude,
         flush: flush,
         garbageCollect: garbageCollect,
@@ -1442,6 +1519,20 @@ pub(crate) fn register_stalker_api(ctx: &JSContext) -> Result<(), String> {
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerThreadId", js_stalker_thread_id, 0);
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerFollow", js_stalker_follow, 2);
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerUnfollow", js_stalker_unfollow, 1);
+            add_cfunction_to_object(
+                ctx.as_ptr(),
+                native.raw(),
+                "stalkerPauseThread",
+                js_stalker_pause_thread,
+                1,
+            );
+            add_cfunction_to_object(
+                ctx.as_ptr(),
+                native.raw(),
+                "stalkerResumeThread",
+                js_stalker_resume_thread,
+                1,
+            );
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerFlush", js_stalker_flush, 1);
             add_cfunction_to_object(
                 ctx.as_ptr(),
@@ -1496,6 +1587,8 @@ mod tests {
         let mut runtime = QuickJsRuntime::new();
         runtime.initialize().expect("init runtime");
         assert_eq!(runtime.eval("typeof Stalker.follow").unwrap(), "function");
+        assert_eq!(runtime.eval("typeof Stalker.pauseThread").unwrap(), "function");
+        assert_eq!(runtime.eval("typeof Stalker.resumeThread").unwrap(), "function");
         assert_eq!(
             runtime.eval("Stalker.capabilities().instructionLevel").unwrap(),
             "false"
@@ -1505,6 +1598,35 @@ mod tests {
         assert_eq!(runtime.eval("Stalker.status().api").unwrap(), "Stalker");
         assert!(runtime.eval("Stalker.follow(1).state").is_ok());
         assert!(runtime.eval("Stalker.unfollow(1).state").is_ok());
+    }
+
+    #[test]
+    fn public_lifecycle_suppresses_events_until_reactivated() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const t = 779; Stalker.follow(t, {events: 1, queueCapacity: 4}); const paused = Stalker.pauseThread(t); const rejected = Stalker.recordEvent(t, {type:'call', location:0x1000, target:0x2000, depth:0}); const resumed = Stalker.resumeThread(t); const accepted = Stalker.recordEvent(t, {type:'call', location:0x1000, target:0x2000, depth:0}); const events = Stalker.flush(t); const stopped = Stalker.unfollow(t); const collected = Stalker.garbageCollect(t); return JSON.stringify({paused:paused.state, rejected:rejected, resumed:resumed.state, accepted:accepted, count:events.length, stopped:stopped.state, collected:collected}); })()",
+            )
+            .expect("exercise public lifecycle");
+        assert_eq!(
+            result,
+            r#"{"paused":"deactivated","rejected":false,"resumed":"following","accepted":true,"count":1,"stopped":"idle","collected":true}"#
+        );
+    }
+
+    #[test]
+    fn public_follow_rejects_negative_and_oversized_numeric_inputs() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const cases = [function() { Stalker.follow(-1); }, function() { Stalker.follow(780, {events:-1}); }, function() { Stalker.follow(781, {queueCapacity:-1}); }, function() { Stalker.follow(782, {exclude:{length:4294967296}}); }, function() { Stalker.follow(783, {exclude:[{start:-1,end:2}]}); }]; return cases.map(function(run) { try { run(); return 'accepted'; } catch (error) { return error.name; } }).join(','); })()",
+            )
+            .expect("reject invalid follow inputs");
+        assert_eq!(result, "TypeError,TypeError,TypeError,RangeError,TypeError");
     }
 
     #[test]

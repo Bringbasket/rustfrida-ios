@@ -306,6 +306,39 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
         XCTAssertNil(jsonError);
         XCTAssertEqualObjects(compoundResult, structuredResult);
 
+        NSDictionary *stalkerLifecycleEval = @{
+            @"kind" : @"js_eval",
+            @"script" : @"(function() { const t = 8801; Stalker.follow(t, {events:12, queueCapacity:8}); const pausedState = Stalker.pauseThread(t); const paused = Stalker.recordBlock(t, [0x20,0x00,0x80,0xd2,0xc0,0x03,0x5f,0xd6], 0x4000, [{address:0x4000},{address:0x4004}], {events:12, maxEvents:8}); const activeState = Stalker.resumeThread(t); const active = Stalker.recordBlock(t, [0x20,0x00,0x80,0xd2,0xc0,0x03,0x5f,0xd6], 0x4000, [{address:0x4000},{address:0x4004}], {events:12, maxEvents:8}); const events = Stalker.flush(t); const stopped = Stalker.unfollow(t); const collected = Stalker.garbageCollect(t); return {paused:pausedState.state, pausedAccepted:paused.acceptedEvents, pausedNotQueued:paused.notQueuedEvents, resumed:activeState.state, resumedAccepted:active.acceptedEvents, eventCount:events.length, unfollowed:stopped.state, collected:collected, instrumented:active.instrumented}; })()"
+        };
+        error = nil;
+        if (!RFSendJSONCommand(sockets[0], stalkerLifecycleEval, &error)) {
+            XCTFail(@"Stalker lifecycle JsEval write failed: %@", error);
+            return;
+        }
+        frame = RFReadFrame(sockets[0], &error);
+        if (frame == nil) {
+            XCTFail(@"Stalker lifecycle JsEval read failed: %@", error);
+            return;
+        }
+        XCTAssertEqual(frame.kind, RFFrameEvalOK);
+        jsonError = nil;
+        id stalkerLifecycleResult = [NSJSONSerialization JSONObjectWithData:frame.payload options:0 error:&jsonError];
+        XCTAssertNil(jsonError);
+        XCTAssertEqualObjects(
+            stalkerLifecycleResult,
+            (@{
+                @"paused" : @"deactivated",
+                @"pausedAccepted" : @0,
+                @"pausedNotQueued" : @3,
+                @"resumed" : @"following",
+                @"resumedAccepted" : @3,
+                @"eventCount" : @3,
+                @"unfollowed" : @"idle",
+                @"collected" : @YES,
+                @"instrumented" : @NO,
+            })
+        );
+
         NSString *cmoduleScript;
 #if defined(__arm64__)
         cmoduleScript = @"const m = new CModule('int answer(void) { return 42; }'); new NativeFunction(m.answer, 'int', [])()";
