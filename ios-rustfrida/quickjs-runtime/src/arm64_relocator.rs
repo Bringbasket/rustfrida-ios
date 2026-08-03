@@ -1,6 +1,8 @@
 use common::{Error, Result};
 
 pub const MAX_ARM64_RELOCATION_INSTRUCTIONS: usize = 4096;
+pub const ARM64_CODE_CACHE_ISLAND_ALIGNMENT: u64 = 16;
+pub const ARM64_CODE_CACHE_ISLAND_SLOT_SIZE: u64 = 64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Arm64RelocationKind {
@@ -95,6 +97,89 @@ pub struct Arm64RelocationPlan {
     pub destination_start: u64,
     pub entries: Vec<Arm64RelocationEntry>,
     pub output: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Arm64CodeCacheBlockStatus {
+    Direct,
+    FallbackReserved,
+}
+
+impl Arm64CodeCacheBlockStatus {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Direct => "direct",
+            Self::FallbackReserved => "fallback-reserved",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Arm64CodeCacheFallbackStrategy {
+    BranchIsland,
+    PcRelativeRewrite,
+}
+
+impl Arm64CodeCacheFallbackStrategy {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::BranchIsland => "branch-island",
+            Self::PcRelativeRewrite => "pc-relative-rewrite",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Arm64CodeCacheBlock {
+    pub index: usize,
+    pub source_start: u64,
+    pub source_end: u64,
+    pub destination_start: u64,
+    pub destination_end: u64,
+    pub instruction_start: usize,
+    pub instruction_count: usize,
+    pub fallback_count: usize,
+    pub status: Arm64CodeCacheBlockStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Arm64CodeCacheFallback {
+    pub instruction_index: usize,
+    pub source_address: u64,
+    pub destination_address: u64,
+    pub kind: Arm64RelocationKind,
+    pub strategy: Arm64CodeCacheFallbackStrategy,
+    pub target: Option<u64>,
+    pub island_start: u64,
+    pub island_end: u64,
+    pub reserved_bytes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Arm64CodeCacheLayoutPlan {
+    pub source_start: u64,
+    pub source_end: u64,
+    pub destination_start: u64,
+    pub code_start: u64,
+    pub code_end: u64,
+    pub code_byte_count: u64,
+    pub island_start: u64,
+    pub island_end: u64,
+    pub island_byte_count: u64,
+    pub total_byte_count: u64,
+    pub entries: Vec<Arm64RelocationEntry>,
+    pub blocks: Vec<Arm64CodeCacheBlock>,
+    pub fallbacks: Vec<Arm64CodeCacheFallback>,
+}
+
+impl Arm64CodeCacheLayoutPlan {
+    pub const fn directly_relocatable(&self) -> bool {
+        self.fallbacks.is_empty()
+    }
+
+    pub const fn requires_fallback(&self) -> bool {
+        !self.directly_relocatable()
+    }
 }
 
 impl Arm64RelocationPlan {
@@ -254,6 +339,179 @@ pub fn plan_arm64_relocation(bytes: &[u8], source_start: u64, destination_start:
             "ARM64 relocation planning is not compiled for this runtime target".into(),
         ))
     }
+}
+
+pub fn plan_arm64_code_cache_layout(
+    bytes: &[u8],
+    source_start: u64,
+    destination_start: u64,
+) -> Result<Arm64CodeCacheLayoutPlan> {
+    let relocation = plan_arm64_relocation(bytes, source_start, destination_start)?;
+    let code_byte_count = u64::try_from(bytes.len())
+        .map_err(|_| Error::InvalidArgument("ARM64 code-cache input length is too large".into()))?;
+    let source_end = checked_layout_end(source_start, code_byte_count, "source")?;
+    let code_end = checked_layout_end(destination_start, code_byte_count, "code")?;
+    let fallback_count = relocation
+        .entries
+        .iter()
+        .filter(|entry| entry.status == Arm64DirectRelocationStatus::OutOfRange)
+        .count();
+    let island_start = if fallback_count == 0 {
+        code_end
+    } else {
+        align_code_cache_address(code_end, ARM64_CODE_CACHE_ISLAND_ALIGNMENT)?
+    };
+
+    let mut fallbacks = Vec::with_capacity(fallback_count);
+    for (instruction_index, entry) in relocation.entries.iter().enumerate() {
+        if entry.status != Arm64DirectRelocationStatus::OutOfRange {
+            continue;
+        }
+        let slot_index = u64::try_from(fallbacks.len())
+            .map_err(|_| Error::InvalidArgument("ARM64 code-cache fallback count is too large".into()))?;
+        let slot_offset = slot_index
+            .checked_mul(ARM64_CODE_CACHE_ISLAND_SLOT_SIZE)
+            .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache island offset overflowed".into()))?;
+        let island_slot_start = checked_layout_end(island_start, slot_offset, "island slot")?;
+        let island_slot_end = checked_layout_end(island_slot_start, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE, "island slot")?;
+        fallbacks.push(Arm64CodeCacheFallback {
+            instruction_index,
+            source_address: entry.source_address,
+            destination_address: entry.destination_address,
+            kind: entry.info.kind,
+            strategy: fallback_strategy(entry.info.kind),
+            target: entry.info.target,
+            island_start: island_slot_start,
+            island_end: island_slot_end,
+            reserved_bytes: ARM64_CODE_CACHE_ISLAND_SLOT_SIZE,
+        });
+    }
+
+    let island_byte_count = u64::try_from(fallbacks.len())
+        .ok()
+        .and_then(|count| count.checked_mul(ARM64_CODE_CACHE_ISLAND_SLOT_SIZE))
+        .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache island size overflowed".into()))?;
+    let island_end = checked_layout_end(island_start, island_byte_count, "island")?;
+    let total_byte_count = island_end
+        .checked_sub(destination_start)
+        .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache total size underflowed".into()))?;
+    let blocks = build_code_cache_blocks(&relocation.entries)?;
+
+    Ok(Arm64CodeCacheLayoutPlan {
+        source_start,
+        source_end,
+        destination_start,
+        code_start: destination_start,
+        code_end,
+        code_byte_count,
+        island_start,
+        island_end,
+        island_byte_count,
+        total_byte_count,
+        entries: relocation.entries,
+        blocks,
+        fallbacks,
+    })
+}
+
+fn build_code_cache_blocks(entries: &[Arm64RelocationEntry]) -> Result<Vec<Arm64CodeCacheBlock>> {
+    let mut blocks = Vec::new();
+    let mut instruction_start = 0usize;
+    for (index, entry) in entries.iter().enumerate() {
+        if terminates_basic_block(entry.info.kind) {
+            blocks.push(code_cache_block(blocks.len(), entries, instruction_start, index + 1)?);
+            instruction_start = index + 1;
+        }
+    }
+    if instruction_start < entries.len() {
+        blocks.push(code_cache_block(
+            blocks.len(),
+            entries,
+            instruction_start,
+            entries.len(),
+        )?);
+    }
+    Ok(blocks)
+}
+
+fn code_cache_block(
+    index: usize,
+    entries: &[Arm64RelocationEntry],
+    instruction_start: usize,
+    instruction_end: usize,
+) -> Result<Arm64CodeCacheBlock> {
+    let first = entries
+        .get(instruction_start)
+        .ok_or_else(|| Error::State("ARM64 code-cache block has no first instruction".into()))?;
+    let last = entries
+        .get(instruction_end.saturating_sub(1))
+        .ok_or_else(|| Error::State("ARM64 code-cache block has no last instruction".into()))?;
+    let source_end = checked_layout_end(last.source_address, 4, "block source")?;
+    let destination_end = checked_layout_end(last.destination_address, 4, "block destination")?;
+    let fallback_count = entries[instruction_start..instruction_end]
+        .iter()
+        .filter(|entry| entry.status == Arm64DirectRelocationStatus::OutOfRange)
+        .count();
+    Ok(Arm64CodeCacheBlock {
+        index,
+        source_start: first.source_address,
+        source_end,
+        destination_start: first.destination_address,
+        destination_end,
+        instruction_start,
+        instruction_count: instruction_end - instruction_start,
+        fallback_count,
+        status: if fallback_count == 0 {
+            Arm64CodeCacheBlockStatus::Direct
+        } else {
+            Arm64CodeCacheBlockStatus::FallbackReserved
+        },
+    })
+}
+
+const fn terminates_basic_block(kind: Arm64RelocationKind) -> bool {
+    matches!(
+        kind,
+        Arm64RelocationKind::Branch
+            | Arm64RelocationKind::ConditionalBranch
+            | Arm64RelocationKind::CompareAndBranchZero
+            | Arm64RelocationKind::CompareAndBranchNonZero
+            | Arm64RelocationKind::TestBitAndBranchZero
+            | Arm64RelocationKind::TestBitAndBranchNonZero
+            | Arm64RelocationKind::BranchRegister
+            | Arm64RelocationKind::Return
+    )
+}
+
+const fn fallback_strategy(kind: Arm64RelocationKind) -> Arm64CodeCacheFallbackStrategy {
+    match kind {
+        Arm64RelocationKind::Branch
+        | Arm64RelocationKind::BranchLink
+        | Arm64RelocationKind::ConditionalBranch
+        | Arm64RelocationKind::CompareAndBranchZero
+        | Arm64RelocationKind::CompareAndBranchNonZero
+        | Arm64RelocationKind::TestBitAndBranchZero
+        | Arm64RelocationKind::TestBitAndBranchNonZero => Arm64CodeCacheFallbackStrategy::BranchIsland,
+        _ => Arm64CodeCacheFallbackStrategy::PcRelativeRewrite,
+    }
+}
+
+fn align_code_cache_address(address: u64, alignment: u64) -> Result<u64> {
+    let mask = alignment - 1;
+    let aligned = address
+        .checked_add(mask)
+        .map(|value| value & !mask)
+        .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache alignment overflowed".into()))?;
+    validate_signed_address(aligned, "ARM64 code-cache aligned address")?;
+    Ok(aligned)
+}
+
+fn checked_layout_end(start: u64, size: u64, role: &str) -> Result<u64> {
+    let end = start
+        .checked_add(size)
+        .ok_or_else(|| Error::InvalidArgument(format!("ARM64 code-cache {role} end overflowed")))?;
+    validate_signed_address(end, &format!("ARM64 code-cache {role} end"))?;
+    Ok(end)
 }
 
 fn validate_relocation_input(bytes: &[u8], source_start: u64, destination_start: u64) -> Result<()> {
@@ -437,6 +695,71 @@ mod tests {
         let oversized = vec![0u8; (MAX_ARM64_RELOCATION_INSTRUCTIONS + 1) * 4];
         assert!(matches!(
             plan_arm64_relocation(&oversized, 0x1000, 0x2000),
+            Err(Error::InvalidArgument(_))
+        ));
+    }
+
+    #[test]
+    fn code_cache_layout_partitions_direct_basic_blocks_without_islands() {
+        let mut input = Vec::new();
+        input.extend_from_slice(&one_word(0xd503_201f));
+        input.extend_from_slice(&one_word(0x1400_0002));
+        input.extend_from_slice(&one_word(0xd503_201f));
+        let layout = plan_arm64_code_cache_layout(&input, 0x1000_0000, 0x1000_8000).expect("layout");
+
+        assert!(layout.directly_relocatable());
+        assert_eq!(layout.code_byte_count, 12);
+        assert_eq!(layout.island_byte_count, 0);
+        assert_eq!(layout.island_start, layout.code_end);
+        assert_eq!(layout.blocks.len(), 2);
+        assert_eq!(layout.blocks[0].instruction_count, 2);
+        assert_eq!(layout.blocks[0].status, Arm64CodeCacheBlockStatus::Direct);
+        assert_eq!(layout.blocks[1].instruction_count, 1);
+    }
+
+    #[test]
+    fn code_cache_layout_reserves_aligned_branch_islands_for_fallbacks() {
+        let mut input = Vec::new();
+        input.extend_from_slice(&one_word(0x1400_0002));
+        input.extend_from_slice(&one_word(0xd503_201f));
+        let layout = plan_arm64_code_cache_layout(&input, 0x1000, 0x1_0000_0000).expect("layout");
+
+        assert!(layout.requires_fallback());
+        assert_eq!(layout.blocks.len(), 2);
+        assert_eq!(layout.blocks[0].status, Arm64CodeCacheBlockStatus::FallbackReserved);
+        assert_eq!(layout.blocks[1].status, Arm64CodeCacheBlockStatus::Direct);
+        assert_eq!(layout.fallbacks.len(), 1);
+        assert_eq!(
+            layout.fallbacks[0].strategy,
+            Arm64CodeCacheFallbackStrategy::BranchIsland
+        );
+        assert_eq!(layout.fallbacks[0].island_start % ARM64_CODE_CACHE_ISLAND_ALIGNMENT, 0);
+        assert_eq!(layout.fallbacks[0].reserved_bytes, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE);
+        assert_eq!(layout.island_byte_count, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE);
+        assert_eq!(layout.total_byte_count, 80);
+
+        let rewrite = plan_arm64_code_cache_layout(&one_word(0x1000_0040), 0x1000, 0x1_0000_0000)
+            .expect("PC-relative rewrite layout");
+        assert_eq!(rewrite.fallbacks.len(), 1);
+        assert_eq!(
+            rewrite.fallbacks[0].strategy,
+            Arm64CodeCacheFallbackStrategy::PcRelativeRewrite
+        );
+        assert_eq!(rewrite.fallbacks[0].reserved_bytes, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE);
+    }
+
+    #[test]
+    fn code_cache_layout_rejects_end_and_island_overflow() {
+        assert!(matches!(
+            plan_arm64_code_cache_layout(&one_word(0xd503_201f), i64::MAX as u64 - 3, 0x2000),
+            Err(Error::InvalidArgument(_))
+        ));
+        assert!(matches!(
+            plan_arm64_code_cache_layout(&one_word(0x1400_0002), 0x1000, i64::MAX as u64 - 3),
+            Err(Error::InvalidArgument(_))
+        ));
+        assert!(matches!(
+            plan_arm64_code_cache_layout(&one_word(0x1400_0002), 0x1000, i64::MAX as u64 - 15),
             Err(Error::InvalidArgument(_))
         ));
     }

@@ -1,5 +1,7 @@
 use crate::arm64_relocator::{
-    arm64_relocator_available, plan_arm64_relocation, Arm64RelocationEntry, Arm64RelocationPlan,
+    arm64_relocator_available, plan_arm64_code_cache_layout, plan_arm64_relocation, Arm64CodeCacheBlock,
+    Arm64CodeCacheFallback, Arm64CodeCacheLayoutPlan, Arm64RelocationEntry, Arm64RelocationPlan,
+    ARM64_CODE_CACHE_ISLAND_ALIGNMENT, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE,
 };
 use crate::context::JSContext;
 use crate::ffi;
@@ -618,6 +620,21 @@ unsafe fn stalker_capabilities_to_js_detailed(ctx: *mut ffi::JSContext) -> ffi::
             },
         ),
     );
+    result.set_property(ctx, "staticCodeCacheLayout", JSValue::bool(arm64_relocator_available()));
+    result.set_property(
+        ctx,
+        "codeCacheLayoutMode",
+        JSValue::string(
+            ctx,
+            if arm64_relocator_available() {
+                "static-only"
+            } else {
+                "unavailable"
+            },
+        ),
+    );
+    result.set_property(ctx, "codeCacheMaterialized", JSValue::bool(false));
+    result.set_property(ctx, "codeCacheExecutable", JSValue::bool(false));
     result.set_property(
         ctx,
         "eventGenerationMode",
@@ -904,6 +921,139 @@ unsafe fn stalker_relocation_plan_to_js(ctx: *mut ffi::JSContext, plan: Arm64Rel
     result.raw()
 }
 
+unsafe fn stalker_code_cache_block_to_js(ctx: *mut ffi::JSContext, block: &Arm64CodeCacheBlock) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(
+        ctx,
+        "index",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, block.index as u64)),
+    );
+    set_js_u64_property(ctx, result.raw(), "sourceStart", block.source_start);
+    set_js_u64_property(ctx, result.raw(), "sourceEnd", block.source_end);
+    set_js_u64_property(ctx, result.raw(), "destinationStart", block.destination_start);
+    set_js_u64_property(ctx, result.raw(), "destinationEnd", block.destination_end);
+    result.set_property(
+        ctx,
+        "instructionStart",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, block.instruction_start as u64)),
+    );
+    result.set_property(
+        ctx,
+        "instructionCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, block.instruction_count as u64)),
+    );
+    result.set_property(
+        ctx,
+        "fallbackCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, block.fallback_count as u64)),
+    );
+    result.set_property(ctx, "status", JSValue::string(ctx, block.status.as_str()));
+    result.raw()
+}
+
+unsafe fn stalker_code_cache_fallback_to_js(
+    ctx: *mut ffi::JSContext,
+    fallback: &Arm64CodeCacheFallback,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(
+        ctx,
+        "instructionIndex",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, fallback.instruction_index as u64)),
+    );
+    set_js_u64_property(ctx, result.raw(), "sourceAddress", fallback.source_address);
+    set_js_u64_property(ctx, result.raw(), "destinationAddress", fallback.destination_address);
+    result.set_property(ctx, "kind", JSValue::string(ctx, fallback.kind.as_str()));
+    result.set_property(ctx, "strategy", JSValue::string(ctx, fallback.strategy.as_str()));
+    match fallback.target {
+        Some(target) => set_js_u64_property(ctx, result.raw(), "target", target),
+        None => {
+            result.set_property(ctx, "target", JSValue::null());
+        }
+    };
+    set_js_u64_property(ctx, result.raw(), "islandStart", fallback.island_start);
+    set_js_u64_property(ctx, result.raw(), "islandEnd", fallback.island_end);
+    set_js_u64_property(ctx, result.raw(), "reservedBytes", fallback.reserved_bytes);
+    result.raw()
+}
+
+unsafe fn stalker_code_cache_layout_to_js(ctx: *mut ffi::JSContext, plan: Arm64CodeCacheLayoutPlan) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "api", JSValue::string(ctx, "Stalker"));
+    result.set_property(ctx, "backend", JSValue::string(ctx, "arm64-static-code-cache-layout"));
+    result.set_property(ctx, "source", JSValue::string(ctx, "hook-engine-arm64-relocator"));
+    result.set_property(ctx, "mode", JSValue::string(ctx, "static-only"));
+    result.set_property(ctx, "staticOnly", JSValue::bool(true));
+    result.set_property(ctx, "materialized", JSValue::bool(false));
+    result.set_property(ctx, "executable", JSValue::bool(false));
+    result.set_property(ctx, "allocatesExecutableMemory", JSValue::bool(false));
+    result.set_property(ctx, "instrumented", JSValue::bool(false));
+    result.set_property(ctx, "targetThreadInstrumented", JSValue::bool(false));
+    result.set_property(ctx, "targetThreadInstructionRewrite", JSValue::bool(false));
+    result.set_property(ctx, "rewritesTargetMemory", JSValue::bool(false));
+    result.set_property(ctx, "staticCodeCacheLayout", JSValue::bool(true));
+    result.set_property(ctx, "codeCacheLayoutMode", JSValue::string(ctx, "static-only"));
+    result.set_property(ctx, "directlyRelocatable", JSValue::bool(plan.directly_relocatable()));
+    result.set_property(ctx, "requiresFallback", JSValue::bool(plan.requires_fallback()));
+    set_js_u64_property(ctx, result.raw(), "sourceStart", plan.source_start);
+    set_js_u64_property(ctx, result.raw(), "sourceEnd", plan.source_end);
+    set_js_u64_property(ctx, result.raw(), "destinationStart", plan.destination_start);
+    set_js_u64_property(ctx, result.raw(), "codeStart", plan.code_start);
+    set_js_u64_property(ctx, result.raw(), "codeEnd", plan.code_end);
+    set_js_u64_property(ctx, result.raw(), "codeByteCount", plan.code_byte_count);
+    set_js_u64_property(ctx, result.raw(), "islandStart", plan.island_start);
+    set_js_u64_property(ctx, result.raw(), "islandEnd", plan.island_end);
+    set_js_u64_property(ctx, result.raw(), "islandByteCount", plan.island_byte_count);
+    set_js_u64_property(ctx, result.raw(), "totalByteCount", plan.total_byte_count);
+    set_js_u64_property(ctx, result.raw(), "islandAlignment", ARM64_CODE_CACHE_ISLAND_ALIGNMENT);
+    set_js_u64_property(ctx, result.raw(), "islandSlotSize", ARM64_CODE_CACHE_ISLAND_SLOT_SIZE);
+    result.set_property(
+        ctx,
+        "instructionCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, plan.entries.len() as u64)),
+    );
+
+    let instructions = ffi::JS_NewArray(ctx);
+    for (index, entry) in plan.entries.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            instructions,
+            index as u32,
+            stalker_relocation_entry_to_js(ctx, entry),
+        );
+    }
+    result.set_property(ctx, "instructions", JSValue(instructions));
+
+    let blocks = ffi::JS_NewArray(ctx);
+    for (index, block) in plan.blocks.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(ctx, blocks, index as u32, stalker_code_cache_block_to_js(ctx, block));
+    }
+    result.set_property(ctx, "blocks", JSValue(blocks));
+    result.set_property(
+        ctx,
+        "blockCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, plan.blocks.len() as u64)),
+    );
+
+    let fallbacks = ffi::JS_NewArray(ctx);
+    for (index, fallback) in plan.fallbacks.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            fallbacks,
+            index as u32,
+            stalker_code_cache_fallback_to_js(ctx, fallback),
+        );
+    }
+    result.set_property(ctx, "fallbacks", JSValue(fallbacks));
+    result.set_property(
+        ctx,
+        "fallbackCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, plan.fallbacks.len() as u64)),
+    );
+    result.set_property(ctx, "output", JSValue::null());
+    result.raw()
+}
+
 unsafe fn stalker_generation_to_js(
     ctx: *mut ffi::JSContext,
     transform: ffi::JSValue,
@@ -1018,6 +1168,44 @@ unsafe extern "C" fn js_stalker_relocate(
     };
     match plan_arm64_relocation(&bytes, source, destination) {
         Ok(plan) => stalker_relocation_plan_to_js(ctx, plan),
+        Err(error) => stalker_error(ctx, error),
+    }
+}
+
+unsafe extern "C" fn js_stalker_layout_code_cache(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 3 {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.layoutCodeCache(bytes, source, destination) requires bytes, source and destination",
+        );
+    }
+    let bytes = match js_byte_input(ctx, JSValue(*argv)) {
+        Ok(bytes) => bytes,
+        Err(error) => return error,
+    };
+    let source = match js_nonnegative_u64(
+        ctx,
+        JSValue(*argv.add(1)),
+        "Stalker.layoutCodeCache source must be an address",
+    ) {
+        Ok(address) => address,
+        Err(error) => return error,
+    };
+    let destination = match js_nonnegative_u64(
+        ctx,
+        JSValue(*argv.add(2)),
+        "Stalker.layoutCodeCache destination must be an address",
+    ) {
+        Ok(address) => address,
+        Err(error) => return error,
+    };
+    match plan_arm64_code_cache_layout(&bytes, source, destination) {
+        Ok(plan) => stalker_code_cache_layout_to_js(ctx, plan),
         Err(error) => stalker_error(ctx, error),
     }
 }
@@ -1440,6 +1628,10 @@ globalThis.Stalker = globalThis.Stalker || (function() {
                 eventGeneration: true,
                 directRelocationPlan: false,
                 directRelocationMode: 'unavailable',
+                staticCodeCacheLayout: false,
+                codeCacheLayoutMode: 'unavailable',
+                codeCacheMaterialized: false,
+                codeCacheExecutable: false,
                 eventGenerationMode: 'caller-supplied-execution-trace',
                 transformMode: 'static-only',
                 targetThreadInstrumentation: false,
@@ -1460,6 +1652,10 @@ globalThis.Stalker = globalThis.Stalker || (function() {
             eventGeneration: native.eventGeneration === true,
             directRelocationPlan: native.directRelocationPlan === true,
             directRelocationMode: native.directRelocationMode || 'unavailable',
+            staticCodeCacheLayout: native.staticCodeCacheLayout === true,
+            codeCacheLayoutMode: native.codeCacheLayoutMode || 'unavailable',
+            codeCacheMaterialized: native.codeCacheMaterialized === true,
+            codeCacheExecutable: native.codeCacheExecutable === true,
             eventGenerationMode: native.eventGenerationMode || null,
             transformMode: native.transformMode || 'static-only',
             targetThreadInstrumentation: native.targetThreadInstrumentation === true,
@@ -1537,6 +1733,10 @@ globalThis.Stalker = globalThis.Stalker || (function() {
 
     function relocate(bytes, source, destination) {
         return nativeStalker().stalkerRelocate(bytes, source, destination);
+    }
+
+    function layoutCodeCache(bytes, source, destination) {
+        return nativeStalker().stalkerLayoutCodeCache(bytes, source, destination);
     }
 
     function generateEvents(bytes, start, execution, options) {
@@ -1657,6 +1857,7 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         transform: transform,
         transformBasicBlock: transform,
         relocate: relocate,
+        layoutCodeCache: layoutCodeCache,
         generateEvents: generateEvents,
         recordBlock: recordBlock,
         captureStart: captureStart,
@@ -1719,6 +1920,13 @@ pub(crate) fn register_stalker_api(ctx: &JSContext) -> Result<(), String> {
             add_cfunction_to_object(
                 ctx.as_ptr(),
                 native.raw(),
+                "stalkerLayoutCodeCache",
+                js_stalker_layout_code_cache,
+                3,
+            );
+            add_cfunction_to_object(
+                ctx.as_ptr(),
+                native.raw(),
                 "stalkerGenerateEvents",
                 js_stalker_generate_events,
                 4,
@@ -1749,6 +1957,7 @@ mod tests {
         assert_eq!(runtime.eval("typeof Stalker.pauseThread").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.resumeThread").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.relocate").unwrap(), "function");
+        assert_eq!(runtime.eval("typeof Stalker.layoutCodeCache").unwrap(), "function");
         assert_eq!(
             runtime.eval("Stalker.capabilities().instructionLevel").unwrap(),
             "false"
@@ -1802,6 +2011,22 @@ mod tests {
         assert_eq!(
             result,
             r#"{"available":true,"nearMethod":"function","nearComplete":true,"nearStatus":"relocated","nearTarget":268435464,"nearOutput":4,"farComplete":false,"farFallback":true,"farStatus":"out-of-range","farOutput":null}"#
+        );
+    }
+
+    #[test]
+    fn public_code_cache_layout_reserves_metadata_without_materializing_code() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const direct = Stalker.layoutCodeCache([0x1f,0x20,0x03,0xd5,0x02,0x00,0x00,0x14,0x1f,0x20,0x03,0xd5], 0x10000000, 0x10008000); const far = Stalker.layoutCodeCache([0x02,0x00,0x00,0x14,0x1f,0x20,0x03,0xd5], 0x1000, 0x100000000); return JSON.stringify({available:Stalker.capabilities().staticCodeCacheLayout, mode:far.codeCacheLayoutMode, materialized:far.materialized, executable:far.executable, allocates:far.allocatesExecutableMemory, directBlocks:direct.blockCount, directFallbacks:direct.fallbackCount, farBlocks:far.blocks.map(function(b) { return b.status; }), farFallbacks:far.fallbackCount, strategy:far.fallbacks[0].strategy, slotSize:far.islandSlotSize, islandBytes:far.islandByteCount, totalBytes:far.totalByteCount, output:far.output}); })()",
+            )
+            .expect("exercise static code-cache layout");
+        assert_eq!(
+            result,
+            r#"{"available":true,"mode":"static-only","materialized":false,"executable":false,"allocates":false,"directBlocks":2,"directFallbacks":0,"farBlocks":["fallback-reserved","direct"],"farFallbacks":1,"strategy":"branch-island","slotSize":64,"islandBytes":64,"totalBytes":80,"output":null}"#
         );
     }
 
@@ -1900,6 +2125,18 @@ mod tests {
             "true"
         );
         assert_eq!(runtime.eval("Stalker.capabilities().eventGeneration").unwrap(), "true");
+        assert_eq!(
+            runtime.eval("Stalker.capabilities().staticCodeCacheLayout").unwrap(),
+            "true"
+        );
+        assert_eq!(
+            runtime.eval("Stalker.capabilities().codeCacheLayoutMode").unwrap(),
+            "static-only"
+        );
+        assert_eq!(
+            runtime.eval("Stalker.capabilities().codeCacheExecutable").unwrap(),
+            "false"
+        );
         assert_eq!(
             runtime.eval("Stalker.capabilities().transformMode").unwrap(),
             "static-only"

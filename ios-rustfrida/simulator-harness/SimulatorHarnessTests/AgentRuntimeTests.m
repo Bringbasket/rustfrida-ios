@@ -341,7 +341,7 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
 
         NSDictionary *stalkerRelocationEval = @{
             @"kind" : @"js_eval",
-            @"script" : @"(function() { const bytes = [0x02,0x00,0x00,0x14]; const near = Stalker.relocate(bytes, 0x10000000, 0x10008000); const far = Stalker.relocate(bytes, 0x1000, 0x100000000); return {available:Stalker.capabilities().directRelocationPlan, nearComplete:near.directlyRelocatable, nearStatus:near.instructions[0].status, nearTarget:near.instructions[0].target, nearOutput:near.output.length, farComplete:far.directlyRelocatable, farFallback:far.requiresFallback, farStatus:far.instructions[0].status, farOutput:far.output}; })()"
+            @"script" : @"(function() { const bytes = [0x02,0x00,0x00,0x14]; const near = Stalker.relocate(bytes, 0x10000000, 0x10008000); const far = Stalker.relocate(bytes, 0x1000, 0x100000000); const layout = Stalker.layoutCodeCache([0x02,0x00,0x00,0x14,0x1f,0x20,0x03,0xd5], 0x1000, 0x100000000); return {available:Stalker.capabilities().directRelocationPlan, layoutAvailable:Stalker.capabilities().staticCodeCacheLayout, nearComplete:near.directlyRelocatable, nearStatus:near.instructions[0].status, nearTarget:near.instructions[0].target, nearOutput:near.output.length, farComplete:far.directlyRelocatable, farFallback:far.requiresFallback, farStatus:far.instructions[0].status, farOutput:far.output, layoutMode:layout.codeCacheLayoutMode, layoutMaterialized:layout.materialized, layoutExecutable:layout.executable, layoutBlockCount:layout.blockCount, layoutFirstBlockStatus:layout.blocks[0].status, layoutFallbackCount:layout.fallbackCount, layoutFallbackStrategy:layout.fallbacks[0].strategy, layoutIslandBytes:layout.islandByteCount, layoutTotalBytes:layout.totalByteCount, layoutOutput:layout.output}; })()"
         };
         error = nil;
         if (!RFSendJSONCommand(sockets[0], stalkerRelocationEval, &error)) {
@@ -361,6 +361,7 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
             stalkerRelocationResult,
             (@{
                 @"available" : @YES,
+                @"layoutAvailable" : @YES,
                 @"nearComplete" : @YES,
                 @"nearStatus" : @"relocated",
                 @"nearTarget" : @268435464,
@@ -369,6 +370,16 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
                 @"farFallback" : @YES,
                 @"farStatus" : @"out-of-range",
                 @"farOutput" : [NSNull null],
+                @"layoutMode" : @"static-only",
+                @"layoutMaterialized" : @NO,
+                @"layoutExecutable" : @NO,
+                @"layoutBlockCount" : @2,
+                @"layoutFirstBlockStatus" : @"fallback-reserved",
+                @"layoutFallbackCount" : @1,
+                @"layoutFallbackStrategy" : @"branch-island",
+                @"layoutIslandBytes" : @64,
+                @"layoutTotalBytes" : @80,
+                @"layoutOutput" : [NSNull null],
             })
         );
 
