@@ -832,18 +832,27 @@ mod tests {
     #[test]
     fn routes_rpc_and_decodes_path_segments() {
         let backend = Arc::new(TestBackend::default());
-        let response = route_request(
-            request("POST", "/rpc/%70rimary/say%20hello", br#"[1,{"x":true}]"#),
-            backend.as_ref(),
-        );
+        let args = json!([
+            "text",
+            null,
+            true,
+            42.5,
+            { "nested": [1, "two", false] },
+            [null, { "deep": true }]
+        ]);
+        let body = serde_json::to_vec(&args).expect("encode RPC args");
+        let response = route_request(request("POST", "/rpc/%70rimary/say%20hello", &body), backend.as_ref());
         assert_eq!(response.status, 200);
-        assert_eq!(response_json(&response)["ok"], true);
+        assert_eq!(
+            response_json(&response),
+            json!({ "ok": true, "result": { "echo": args.clone() } })
+        );
 
         let calls = backend.calls.lock().expect("calls lock");
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].session, "primary");
         assert_eq!(calls[0].method, "say hello");
-        assert_eq!(calls[0].args, json!([1, { "x": true }]));
+        assert_eq!(calls[0].args, args);
         assert_eq!(calls[0].timeout, RPC_CALL_TIMEOUT);
     }
 

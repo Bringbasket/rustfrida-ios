@@ -1302,14 +1302,30 @@ mod tests {
     }
 
     #[test]
-    fn rpc_call_dispatches_registered_export() {
+    fn quickjs_commands_preserve_structured_values_and_dispatch_rpc() {
         let mut state = AgentState::new();
         state.execute_spec(AgentCommand::JsInit).expect("initialize runtime");
-        state
+        let expected = r#"{"object":{"flag":true},"array":[1,{"x":"y"}]}"#;
+
+        match state
             .execute_spec(AgentCommand::LoadJs {
-                script: "rpc.exports = { add(a, b) { return a + b; } }; undefined".into(),
+                script: "rpc.exports = { add(a, b) { return a + b; } }; ({ object: { flag: true }, array: [1, { x: 'y' }] })".into(),
             })
-            .expect("register RPC export");
+            .expect("load structured script")
+        {
+            AgentReply::Eval { result, .. } => assert_eq!(result.expect("LoadJs result"), expected),
+            _ => panic!("unexpected agent reply"),
+        }
+
+        match state
+            .execute_spec(AgentCommand::JsEval {
+                script: "({ object: { flag: true }, array: [1, { x: 'y' }] })".into(),
+            })
+            .expect("evaluate structured expression")
+        {
+            AgentReply::Eval { result, .. } => assert_eq!(result.expect("JsEval result"), expected),
+            _ => panic!("unexpected agent reply"),
+        }
 
         match state.execute("rpccall add [19,23]").expect("dispatch RPC call") {
             AgentReply::Eval { result, .. } => assert_eq!(result.expect("RPC result"), "42"),

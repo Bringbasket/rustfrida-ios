@@ -229,7 +229,7 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
 
         NSDictionary *loadJS = @{
             @"kind" : @"load_js",
-            @"script" : @"rpc.exports = { add(a, b) { return a + b; } }; 6 * 7"
+            @"script" : @"rpc.exports = { add(a, b) { return a + b; }, structured() { return { object: { flag: true }, array: [1, { x: 'y' }] }; } }; 6 * 7"
         };
         error = nil;
         if (!RFSendJSONCommand(sockets[0], loadJS, &error)) {
@@ -261,6 +261,50 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
         }
         XCTAssertEqual(frame.kind, RFFrameEvalOK);
         XCTAssertEqualObjects(RFFrameText(frame), @"42");
+
+        NSDictionary *structuredRPC = @{
+            @"kind" : @"rpc_call",
+            @"method" : @"structured",
+            @"args_json" : @"[]"
+        };
+        error = nil;
+        if (!RFSendJSONCommand(sockets[0], structuredRPC, &error)) {
+            XCTFail(@"Structured RpcCall write failed: %@", error);
+            return;
+        }
+        frame = RFReadFrame(sockets[0], &error);
+        if (frame == nil) {
+            XCTFail(@"Structured RpcCall read failed: %@", error);
+            return;
+        }
+        XCTAssertEqual(frame.kind, RFFrameEvalOK);
+        NSError *jsonError = nil;
+        id structuredResult = [NSJSONSerialization JSONObjectWithData:frame.payload options:0 error:&jsonError];
+        XCTAssertNil(jsonError);
+        XCTAssertEqualObjects(
+            structuredResult,
+            (@{@"object" : @{@"flag" : @YES}, @"array" : @[@1, @{@"x" : @"y"}]})
+        );
+
+        NSDictionary *compoundEval = @{
+            @"kind" : @"js_eval",
+            @"script" : @"({ object: { flag: true }, array: [1, { x: 'y' }] })"
+        };
+        error = nil;
+        if (!RFSendJSONCommand(sockets[0], compoundEval, &error)) {
+            XCTFail(@"Compound JsEval write failed: %@", error);
+            return;
+        }
+        frame = RFReadFrame(sockets[0], &error);
+        if (frame == nil) {
+            XCTFail(@"Compound JsEval read failed: %@", error);
+            return;
+        }
+        XCTAssertEqual(frame.kind, RFFrameEvalOK);
+        jsonError = nil;
+        id compoundResult = [NSJSONSerialization JSONObjectWithData:frame.payload options:0 error:&jsonError];
+        XCTAssertNil(jsonError);
+        XCTAssertEqualObjects(compoundResult, structuredResult);
 
         NSString *cmoduleScript;
 #if defined(__arm64__)

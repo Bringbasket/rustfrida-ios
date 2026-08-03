@@ -38,6 +38,7 @@ mod imp {
     use crate::rpc::{register_rpc, rpc_dispatch_script};
     use crate::stalker::register_stalker_api;
     use crate::swift::register_swift_api;
+    use crate::value::JSValue;
     use common::{Error, Result};
     use std::collections::BTreeSet;
     use std::ptr::NonNull;
@@ -58,6 +59,46 @@ mod imp {
     struct QuickJsEngine {
         context: JSContext,
         _runtime: JSRuntime,
+    }
+
+    fn render_eval_value(context: &JSContext, value: &JSValue) -> Result<String> {
+        let ctx = context.as_ptr();
+        if value.is_undefined() {
+            return Ok("undefined".to_string());
+        }
+
+        if value.is_object() {
+            let is_array = unsafe { ffi::JS_IsArray(ctx, value.raw()) };
+            if is_array < 0 {
+                return Err(Error::State(context.get_exception()));
+            }
+
+            let object_probe = context.new_object();
+            if object_probe.is_exception() {
+                return Err(Error::State(context.get_exception()));
+            }
+            let is_ordinary_object =
+                unsafe { ffi::JS_GetClassID(value.raw()) == ffi::JS_GetClassID(object_probe.raw()) };
+            object_probe.free(ctx);
+
+            if is_array > 0 || is_ordinary_object {
+                let undefined = JSValue::undefined();
+                let json =
+                    JSValue(unsafe { ffi::JS_JSONStringify(ctx, value.raw(), undefined.raw(), undefined.raw()) });
+                if json.is_exception() {
+                    return Err(Error::State(context.get_exception()));
+                }
+                let rendered = if json.is_undefined() {
+                    "undefined".to_string()
+                } else {
+                    json.to_string(ctx).unwrap_or_else(|| "[unprintable]".to_string())
+                };
+                json.free(ctx);
+                return Ok(rendered);
+            }
+        }
+
+        Ok(value.to_string(ctx).unwrap_or_else(|| "[unprintable]".to_string()))
     }
 
     impl Default for QuickJsRuntime {
@@ -153,15 +194,9 @@ mod imp {
             let value = engine.context.eval(trimmed, "<eval>").map_err(Error::State)?;
             while engine.context.execute_pending_job() {}
 
-            let rendered = if value.is_undefined() {
-                "undefined".to_string()
-            } else {
-                value
-                    .to_string(engine.context.as_ptr())
-                    .unwrap_or_else(|| "[unprintable]".to_string())
-            };
+            let rendered = render_eval_value(&engine.context, &value);
             value.free(engine.context.as_ptr());
-            Ok(rendered)
+            rendered
         }
 
         pub fn dispatch_rpc(&mut self, method: &str, args_json: &str) -> Result<String> {
@@ -658,6 +693,68 @@ undefined;
             runtime.initialize().expect("init runtime");
             let result = runtime.eval("1 + 2").expect("eval expression");
             assert_eq!(result, "3");
+        }
+
+        #[test]
+        fn eval_json_encodes_compound_values_without_changing_scalars() {
+            let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+            let mut runtime = QuickJsRuntime::new();
+            runtime.initialize().expect("init runtime");
+
+            let scalar_cases = [
+                (r#""hello""#, "hello"),
+                ("null", "null"),
+                ("true", "true"),
+                ("42.5", "42.5"),
+                ("undefined", "undefined"),
+                ("42n", "42"),
+                ("NaN", "NaN"),
+                ("Infinity", "Infinity"),
+            ];
+            for (script, expected) in scalar_cases {
+                assert_eq!(runtime.eval(script).expect(script), expected, "script: {script}");
+            }
+
+            assert_eq!(
+                runtime
+                    .eval(r#"[1, "two", false, null, { nested: [3, 4] }]"#)
+                    .expect("nested array"),
+                r#"[1,"two",false,null,{"nested":[3,4]}]"#
+            );
+            assert_eq!(
+                runtime
+                    .eval(r#"({ name: "demo", nested: { ok: true }, values: [1, null] })"#)
+                    .expect("nested object"),
+                r#"{"name":"demo","nested":{"ok":true},"values":[1,null]}"#
+            );
+            assert_eq!(
+                runtime
+                    .eval("[NaN, Infinity, -Infinity, undefined]")
+                    .expect("JSON special values"),
+                "[null,null,null,null]"
+            );
+            assert_eq!(
+                runtime
+                    .eval("({ kept: 1, omitted: undefined })")
+                    .expect("undefined object property"),
+                r#"{"kept":1}"#
+            );
+            assert_eq!(runtime.eval("ptr('0x1234')").expect("native pointer"), "0x1234");
+        }
+
+        #[test]
+        fn eval_reports_compound_json_serialization_errors() {
+            let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+            let mut runtime = QuickJsRuntime::new();
+            runtime.initialize().expect("init runtime");
+
+            let cyclic = runtime
+                .eval("(() => { const value = {}; value.self = value; return value; })()")
+                .expect_err("cyclic object must fail");
+            assert!(cyclic.to_string().to_ascii_lowercase().contains("circular"));
+
+            let bigint = runtime.eval("({ value: 42n })").expect_err("compound BigInt must fail");
+            assert!(bigint.to_string().to_ascii_lowercase().contains("bigint"));
         }
 
         #[test]
