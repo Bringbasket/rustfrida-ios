@@ -5,7 +5,7 @@
 本审计直接搜索两端代码、API 注册点和 host/agent 调用链，不以 README 声明作为完成依据。结论如下：
 
 1. iOS 已具备静态闭合的 PID Attach 主链：Mach bootstrap、远程内存写入、远程线程启动、目标内 `dlopen`/entry 调用、Unix socket 握手、QuickJS 初始化、脚本/命令/RPC 分发。该结论是 `complete（静态）`，不是 Apple 真机运行证明。
-2. `File`、`Process`、`rpc.exports` 的 iOS API 表面已达到 Android 基线，并已通过 Linux workspace 测试和 Apple target 交叉检查；Apple runtime 行为仍需 Apple host/真机验收。
+2. `File`、`Process`、`rpc.exports` 的 iOS API 表面已达到 Android 基线，并已通过 Linux workspace 测试和 Apple target 交叉检查；结构化直接求值与嵌套 RPC 还通过了 ARM64 iOS Simulator agent runtime 验收，物理设备行为仍需单独验收。
 3. `Memory`、`Module`、`Interceptor`、按进程名 Attach、`NativeFunction` 标量 ABI、native pointer hook、suspended spawn 生命周期、multi-session/server/断线回收均已静态接线。Simulator `simctl --wait-for-debugger` bundle gate、Stalker bounded static transform/event generation、ObjC typed/custom/atomic/KVO property 与有界 heap choose、Swift ABI 分类及 object ownership/dispose/metadata identity 验证边界、CModule Apple TinyCC/Mach-O backend 和外部 adapter FFI execution boundary 也已接线；其中 CModule JIT 已在 ARM64 macOS host 和 ARM64 iOS Simulator 完成真实运行验收。agent-owned external-hook command/receipt 路径以及 controller remote lease 的远程 command/receipt 转移与产品级调用链已完成源码/静态接线，待 Apple runtime/真机验收。剩余边界是物理设备 FrontBoard/scene provider、真正的 target-thread 指令级 Stalker、Swift full object ABI、物理设备的 CModule `MAP_JIT`/W^X 行为和 controller remote lease 的 Apple runtime/真机行为。
 4. Java/ART、JNI、zygote/USAP、SELinux/property profile、eBPF `watch-so`、Android RECOMP 和当前 iOS QBDI 决策属于平台限定或明确的 `unsupported-by-design`，不应伪装成已完成，也不应默认列入 iOS 必做 backlog。
 5. Android 同名 `--rpc-port` HTTP RPC 已接到有界 `SessionRegistry`：稳定 ID、并发门控、detach 生命周期、Unix frame、HTTP parser/router 和测试均已闭合；单 session HTTP 入口通过 agent `Ping` 做 liveness，transport failure 进入 reconcile/detach，cleanup 失败保留可重试 session/transport，并以有界重试后确定性退出避免永久盲 park。另有 `--server [--max-sessions N]` 持续 stdio 前端，已提供动态 `attach/spawn/list|sessions/use/detach/detachall` 管理入口、真实 launcher 接线和后台 `ping` 健康探针自动回收；`exit` 只有在 detach 报告全部 clean 且 registry 为空时才关闭，运行摘要累计 health/exit 阶段的 clean detach 数量。
@@ -22,7 +22,7 @@ export I=/home/xd/main/rustFrida-git/ios-rustfrida
 export A=/home/xd/main/rustFrida-master
 ```
 
-- iOS 功能基线：`$I`，Git commit `41dba666b8e84fb663d762fa8fe4cc8180142235`，文档更新按该提交及 CI run `30764666695` 审计。
+- iOS 功能基线：`$I`，Git commit `7112f8bfec3313e70e49b2dfe7faef53fca594b9`，文档更新按该提交及 CI run `30805082247` 审计。
 - Android 基线：`$A`，Git HEAD `d0bc03737e593a6d899e4ed4872c5ffd3b6d7221`，审计时工作区干净；相对上一基线仅有 README 修订，无功能代码变化。
 - iOS 工作区处于并发开发状态。本审计按实际可见代码和最终接线结果判定，并以 Linux workspace test、controller transport test 和 Apple target cross-check 作为静态门禁。
 - `complete`：源码实现和注册/调用链已闭合，接口达到该行定义的基线；不代表真机已验证。
@@ -81,7 +81,7 @@ iOS 主要对应目录：host 在 `$I/controller/src/`，Mach/Mach-O/Swift 在 `
 
 | 功能项 | 状态 | Android 代码证据 | iOS 代码证据 | 判定 |
 |---|---|---|---|---|
-| Runtime init/eval/cleanup/completion | `complete` | `$A/quickjs-hook/src/lib.rs`；`runtime.rs`；`$A/agent/src/quickjs_loader.rs` | `$I/quickjs-runtime/src/runtime.rs`；`lib.rs`；`$I/agent/src/lib.rs` | 真后端具备 runtime/context、限制、pending job、日志、补全和清理链。 |
+| Runtime init/eval/cleanup/completion | `complete` | `$A/quickjs-hook/src/lib.rs`；`runtime.rs`；`$A/agent/src/quickjs_loader.rs` | `$I/quickjs-runtime/src/runtime.rs`；`lib.rs`；`$I/agent/src/lib.rs` | 真后端具备 runtime/context、限制、pending job、日志、补全和清理链。直接 `JsEval/LoadJs` 对数组和普通对象输出 JSON，并保留字符串、标量、`undefined` 与原生 wrapper 的既有表示；循环引用和复合 `BigInt` 作为求值错误返回。host runtime 与 agent 命令测试已覆盖成功、JSON 特殊值和失败路径；CI run `30805082247` 的 ARM64 iOS Simulator agent frame 也验证了嵌套 object/array。 |
 | 全局注册总表 | `partial` | `$A/quickjs-hook/src/jsapi/mod.rs`；`hook_api/mod.rs` | `$I/quickjs-runtime/src/runtime.rs` 的 `initialize` | iOS 注册 `console/File/rpc/ptr/Hook/Java/Jni/DebugSymbol/Memory/Native/NativeFunction/ObjC/Module/Process/PAC/qbdi/Swift`，但多个对象仅兼容占位或缺少方法。 |
 | `console`、`ptr` 基础能力 | `complete` | `$A/quickjs-hook/src/jsapi/console.rs`；`ptr.rs` | `$I/quickjs-runtime/src/console.rs`；`ptr.rs` | `ptr` 构造、加减、字符串/数值转换已对齐；内存 prototype 方法另见 Memory 组。 |
 | Apple 扩展 `Native/ObjC/Swift/PAC/DebugSymbol` | `complete` | `$A/quickjs-hook/src/jsapi/module/`；`$A/frida-gum/src/debug_symbol.rs` | `$I/quickjs-runtime/src/native.rs`；`objc.rs`；`swift.rs`；`pac.rs`；`debug_symbol.rs` | 属于 iOS 正向扩展，不要求 Android 同名实现。 |
@@ -160,9 +160,9 @@ iOS 主要对应目录：host 在 `$I/controller/src/`，Mach/Mach-O/Swift 在 `
 
 | 功能项 | 状态 | Android 代码证据 | iOS 代码证据 | 判定 |
 |---|---|---|---|---|
-| `rpc.exports`/`rpc.export`/`__rpc_dispatch` | `complete` | `$A/quickjs-hook/src/jsapi/rpc.rs` | `$I/quickjs-runtime/src/rpc.rs`；`runtime.rs` | QuickJS 注册和 JSON 参数派发基本一致。 |
-| Agent 与单次 CLI `rpccall` | `complete` | `$A/agent/src/communication.rs`；`$A/rust_frida/src/session.rs` | `$I/common/src/command.rs`；`$I/agent/src/lib.rs`；`$I/controller/src/injection.rs` | `RpcCall` 已从 controller 编码到 agent，再进入 `QuickJsRuntime::dispatch_rpc`。 |
-| 单目标 HTTP RPC | `complete` | `$A/rust_frida/src/http_rpc.rs`；`session.rs` | `$I/controller/src/http_rpc.rs`；`session.rs`；`server.rs`；`injection.rs`；`args.rs`；`main.rs` | `--rpc-port`、stable session ID、stream mutex、timeout、HTTP parser/router 和 Unix frame transport test 已闭合；单 session 通过 agent `Ping` 做 liveness，transport failure 进入 registry reconcile/detach，cleanup 失败保留 session/transport 重试入口，并在有界重试后确定性退出。 |
+| `rpc.exports`/`rpc.export`/`__rpc_dispatch` | `complete` | `$A/quickjs-hook/src/jsapi/rpc.rs` | `$I/quickjs-runtime/src/rpc.rs`；`runtime.rs` | QuickJS 注册和 JSON 参数派发一致；nested array/object 返回值只做一次 `JSON.stringify`，`undefined` 返回 `null`。 |
+| Agent 与单次 CLI `rpccall` | `complete` | `$A/agent/src/communication.rs`；`$A/rust_frida/src/session.rs` | `$I/common/src/command.rs`；`$I/agent/src/lib.rs`；`$I/controller/src/injection.rs` | `RpcCall` 已从 controller 编码到 agent，再进入 `QuickJsRuntime::dispatch_rpc`；agent 测试同时覆盖结构化 `LoadJs/JsEval` 和 RPC 标量结果。 |
+| 单目标 HTTP RPC | `complete` | `$A/rust_frida/src/http_rpc.rs`；`session.rs` | `$I/controller/src/http_rpc.rs`；`session.rs`；`server.rs`；`injection.rs`；`args.rs`；`main.rs` | `--rpc-port`、stable session ID、stream mutex、timeout、HTTP parser/router 和 Unix frame transport test 已闭合；HTTP route 测试覆盖 string/null/bool/number、嵌套 object/array 参数及类型化响应，未发生 JSON 二次编码。单 session 通过 agent `Ping` 做 liveness，transport failure 进入 registry reconcile/detach，cleanup 失败保留 session/transport 重试入口，并在有界重试后确定性退出。 |
 | 多 session HTTP/daemon | `partial` | `$A/rust_frida/src/server.rs`；`session.rs`；`http_rpc.rs` | `$I/controller/src/{session.rs,server.rs,server_frontend.rs,server_runtime.rs,http_rpc.rs,injection.rs}` | registry 和 `/sessions`、`/rpc/<session>/<method>` 路由可承载多 session；`--server` stdio 前端已持续创建和管理多个 attach/spawn session，并有后台 `ping` 健康探针自动回收断线 session；`exit` 受 clean-detach + empty-registry gate 约束，摘要累计 health/exit 清理数量；HTTP 入口仍提供单目标 RPC 路由。 |
 
 ## 5. 真正剩余的可开发项
@@ -180,7 +180,7 @@ iOS 主要对应目录：host 在 `$I/controller/src/`，Mach/Mach-O/Swift 在 `
 
 不应列为通用 iOS 代码缺口：Android property profile、SELinux patch、zygote/USAP、eBPF `watch-so`、ART/OAT/JVMTI、JNI 和 RECOMP。对应平台需求应单独立项，不能用同名空 API 追求表面数量。
 
-CI run `30764666695` 的完整 host 测试结果为 Linux `574 passed`、ARM64 macOS `516 passed`。ARM64 macOS host 结果包含真实 CModule 编译、executable mapping、导出执行和释放测试，以及当前镜像的 canonical Mach-O production parser 测试。ARM64 iOS Simulator hosted XCTest `1 passed`，通过 `dlopen/dlsym` 驱动 `HELLO / Ping / JsInit / LoadJs / RPC / CModule / Exit`，CModule 与 RPC 均返回 `42`，`ios_agent_entry` 返回 `0`。device agent dylib 与 macOS controller 也成功构建并上传；真实 provider、物理设备注入、hook、KVO、Swift ownership、controller remote lease 和 agent adapter 生产调用时序仍按下一节验收。
+CI run `30805082247` 的完整 host 测试结果为 Linux `576 passed`、ARM64 macOS `518 passed`。ARM64 macOS host 结果包含真实 CModule 编译、executable mapping、导出执行和释放测试，以及当前镜像的 canonical Mach-O production parser 测试。ARM64 iOS Simulator hosted XCTest `1 passed`，通过 `dlopen/dlsym` 驱动 `HELLO / Ping / JsInit / LoadJs / RPC / structured RPC / structured JsEval / CModule / Exit`；嵌套 object/array 作为 JSON 结构跨 agent frame 保真，CModule 与标量 RPC 均返回 `42`，`ios_agent_entry` 返回 `0`。device agent dylib 与 macOS controller 也成功构建并上传；真实 provider、物理设备注入、hook、KVO、Swift ownership、controller remote lease 和 agent adapter 生产调用时序仍按下一节验收。
 
 ### 5.2 只能 Apple host / 真机验证
 
