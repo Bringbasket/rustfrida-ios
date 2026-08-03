@@ -339,6 +339,39 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
             })
         );
 
+        NSDictionary *stalkerRelocationEval = @{
+            @"kind" : @"js_eval",
+            @"script" : @"(function() { const bytes = [0x02,0x00,0x00,0x14]; const near = Stalker.relocate(bytes, 0x10000000, 0x10008000); const far = Stalker.relocate(bytes, 0x1000, 0x100000000); return {available:Stalker.capabilities().directRelocationPlan, nearComplete:near.directlyRelocatable, nearStatus:near.instructions[0].status, nearTarget:near.instructions[0].target, nearOutput:near.output.length, farComplete:far.directlyRelocatable, farFallback:far.requiresFallback, farStatus:far.instructions[0].status, farOutput:far.output}; })()"
+        };
+        error = nil;
+        if (!RFSendJSONCommand(sockets[0], stalkerRelocationEval, &error)) {
+            XCTFail(@"Stalker relocation JsEval write failed: %@", error);
+            return;
+        }
+        frame = RFReadFrame(sockets[0], &error);
+        if (frame == nil) {
+            XCTFail(@"Stalker relocation JsEval read failed: %@", error);
+            return;
+        }
+        XCTAssertEqual(frame.kind, RFFrameEvalOK);
+        jsonError = nil;
+        id stalkerRelocationResult = [NSJSONSerialization JSONObjectWithData:frame.payload options:0 error:&jsonError];
+        XCTAssertNil(jsonError);
+        XCTAssertEqualObjects(
+            stalkerRelocationResult,
+            (@{
+                @"available" : @YES,
+                @"nearComplete" : @YES,
+                @"nearStatus" : @"relocated",
+                @"nearTarget" : @268435464,
+                @"nearOutput" : @4,
+                @"farComplete" : @NO,
+                @"farFallback" : @YES,
+                @"farStatus" : @"out-of-range",
+                @"farOutput" : [NSNull null],
+            })
+        );
+
         NSString *cmoduleScript;
 #if defined(__arm64__)
         cmoduleScript = @"const m = new CModule('int answer(void) { return 42; }'); new NativeFunction(m.answer, 'int', [])()";

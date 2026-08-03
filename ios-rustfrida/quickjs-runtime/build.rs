@@ -5,6 +5,7 @@ use std::process::Command;
 fn main() {
     println!("cargo:rustc-check-cfg=cfg(quickjs_runtime_stub)");
     println!("cargo:rustc-check-cfg=cfg(quickjs_hook_engine)");
+    println!("cargo:rustc-check-cfg=cfg(quickjs_arm64_relocator)");
     println!("cargo:rustc-check-cfg=cfg(quickjs_cmodule)");
     println!("cargo:rerun-if-env-changed=QUICKJS_SRC_DIR");
     println!("cargo:rerun-if-env-changed=QUICKJS_RUNTIME_FORCE_STUB");
@@ -34,8 +35,51 @@ fn main() {
     };
 
     build_quickjs(&manifest_dir, &quickjs_src, &target);
+    build_arm64_relocator(&manifest_dir, &target);
     build_hook_engine(&manifest_dir, &target);
     build_cmodule(&manifest_dir, &target);
+}
+
+fn build_arm64_relocator(manifest_dir: &Path, target: &str) {
+    let Some(hook_src) = resolve_hook_engine_src(manifest_dir) else {
+        println!("cargo:warning=ARM64 relocator sources not found; static relocation planning stays unavailable");
+        return;
+    };
+
+    for file in [
+        "arm64_writer.c",
+        "arm64_writer.h",
+        "arm64_relocator.c",
+        "arm64_relocator.h",
+        "arm64_common.h",
+    ] {
+        println!("cargo:rerun-if-changed={}", hook_src.join(file).display());
+    }
+    println!("cargo:rerun-if-changed=src/arm64_relocator_bridge.c");
+    println!("cargo:rerun-if-changed=src/arm64_relocator_bridge.h");
+
+    let mut build = cc::Build::new();
+    build
+        .file(manifest_dir.join("src/arm64_relocator_bridge.c"))
+        .include(&hook_src)
+        .include(manifest_dir.join("src"))
+        .opt_level(2)
+        .flag_if_supported("-fPIC")
+        .flag_if_supported("-fno-exceptions")
+        .warnings(false);
+
+    if !supports_hook_engine(target) {
+        build
+            .file(hook_src.join("arm64_writer.c"))
+            .file(hook_src.join("arm64_relocator.c"));
+    }
+
+    if let Some(flag) = apple_min_version_flag(target) {
+        build.flag(&flag);
+    }
+
+    build.compile("quickjs_runtime_arm64_relocator");
+    println!("cargo:rustc-cfg=quickjs_arm64_relocator");
 }
 
 fn build_cmodule(manifest_dir: &Path, target: &str) {

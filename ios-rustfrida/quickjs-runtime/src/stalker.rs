@@ -1,3 +1,6 @@
+use crate::arm64_relocator::{
+    arm64_relocator_available, plan_arm64_relocation, Arm64RelocationEntry, Arm64RelocationPlan,
+};
 use crate::context::JSContext;
 use crate::ffi;
 use crate::util::{
@@ -602,6 +605,19 @@ unsafe fn stalker_capabilities_to_js_detailed(ctx: *mut ffi::JSContext) -> ffi::
         JSValue::bool(capabilities.bounded_basic_block_transform),
     );
     result.set_property(ctx, "eventGeneration", JSValue::bool(capabilities.event_generation));
+    result.set_property(ctx, "directRelocationPlan", JSValue::bool(arm64_relocator_available()));
+    result.set_property(
+        ctx,
+        "directRelocationMode",
+        JSValue::string(
+            ctx,
+            if arm64_relocator_available() {
+                "direct-only"
+            } else {
+                "unavailable"
+            },
+        ),
+    );
     result.set_property(
         ctx,
         "eventGenerationMode",
@@ -789,6 +805,105 @@ unsafe fn stalker_transform_to_js(
     result.raw()
 }
 
+unsafe fn stalker_relocation_entry_to_js(ctx: *mut ffi::JSContext, entry: &Arm64RelocationEntry) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    set_js_u64_property(ctx, result.raw(), "sourceAddress", entry.source_address);
+    set_js_u64_property(ctx, result.raw(), "destinationAddress", entry.destination_address);
+    set_js_u64_property(ctx, result.raw(), "originalWord", entry.original_word as u64);
+    match entry.relocated_word {
+        Some(word) => set_js_u64_property(ctx, result.raw(), "relocatedWord", word as u64),
+        None => {
+            result.set_property(ctx, "relocatedWord", JSValue::null());
+        }
+    };
+    result.set_property(ctx, "kind", JSValue::string(ctx, entry.info.kind.as_str()));
+    result.set_property(ctx, "status", JSValue::string(ctx, entry.status.as_str()));
+    result.set_property(ctx, "pcRelative", JSValue::bool(entry.info.pc_relative));
+    match entry.info.target {
+        Some(target) => set_js_u64_property(ctx, result.raw(), "target", target),
+        None => {
+            result.set_property(ctx, "target", JSValue::null());
+        }
+    };
+    match entry.info.condition {
+        Some(condition) => result.set_property(ctx, "condition", JSValue::int(condition as i32)),
+        None => result.set_property(ctx, "condition", JSValue::null()),
+    };
+    match entry.info.register {
+        Some(register) => result.set_property(ctx, "register", JSValue::int(register)),
+        None => result.set_property(ctx, "register", JSValue::null()),
+    };
+    match entry.info.bit {
+        Some(bit) => result.set_property(ctx, "bit", JSValue::int(bit as i32)),
+        None => result.set_property(ctx, "bit", JSValue::null()),
+    };
+    match entry.info.destination_register {
+        Some(register) => result.set_property(ctx, "destinationRegister", JSValue::int(register)),
+        None => result.set_property(ctx, "destinationRegister", JSValue::null()),
+    };
+    result.set_property(ctx, "signedLoad", JSValue::bool(entry.info.signed_load));
+    match entry.info.floating_size {
+        Some(size) => result.set_property(ctx, "floatingSize", JSValue::int(size as i32)),
+        None => result.set_property(ctx, "floatingSize", JSValue::null()),
+    };
+    result.raw()
+}
+
+unsafe fn stalker_relocation_plan_to_js(ctx: *mut ffi::JSContext, plan: Arm64RelocationPlan) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(ctx, "api", JSValue::string(ctx, "Stalker"));
+    result.set_property(ctx, "backend", JSValue::string(ctx, "arm64-direct-relocator"));
+    result.set_property(ctx, "source", JSValue::string(ctx, "hook-engine-arm64-relocator"));
+    result.set_property(ctx, "mode", JSValue::string(ctx, "static-relocation-plan"));
+    result.set_property(ctx, "staticOnly", JSValue::bool(true));
+    result.set_property(ctx, "instrumented", JSValue::bool(false));
+    result.set_property(ctx, "targetThreadInstrumented", JSValue::bool(false));
+    result.set_property(ctx, "targetThreadInstructionRewrite", JSValue::bool(false));
+    result.set_property(ctx, "rewritesTargetMemory", JSValue::bool(false));
+    result.set_property(ctx, "directRelocationPlan", JSValue::bool(true));
+    result.set_property(ctx, "directRelocationMode", JSValue::string(ctx, "direct-only"));
+    result.set_property(ctx, "directlyRelocatable", JSValue::bool(plan.directly_relocatable()));
+    result.set_property(ctx, "requiresFallback", JSValue::bool(plan.requires_fallback()));
+    set_js_u64_property(ctx, result.raw(), "sourceStart", plan.source_start);
+    set_js_u64_property(ctx, result.raw(), "destinationStart", plan.destination_start);
+    result.set_property(
+        ctx,
+        "instructionCount",
+        JSValue(js_u64_to_js_number_or_bigint(ctx, plan.entries.len() as u64)),
+    );
+
+    let instructions = ffi::JS_NewArray(ctx);
+    for (index, entry) in plan.entries.iter().enumerate() {
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            instructions,
+            index as u32,
+            stalker_relocation_entry_to_js(ctx, entry),
+        );
+    }
+    result.set_property(ctx, "instructions", JSValue(instructions));
+
+    match plan.output {
+        Some(output) => {
+            result.set_property(
+                ctx,
+                "outputByteCount",
+                JSValue(js_u64_to_js_number_or_bigint(ctx, output.len() as u64)),
+            );
+            let bytes = ffi::JS_NewArray(ctx);
+            for (index, byte) in output.iter().enumerate() {
+                ffi::JS_SetPropertyUint32(ctx, bytes, index as u32, JSValue::int(*byte as i32).raw());
+            }
+            result.set_property(ctx, "output", JSValue(bytes));
+        }
+        None => {
+            result.set_property(ctx, "outputByteCount", JSValue::int(0));
+            result.set_property(ctx, "output", JSValue::null());
+        }
+    };
+    result.raw()
+}
+
 unsafe fn stalker_generation_to_js(
     ctx: *mut ffi::JSContext,
     transform: ffi::JSValue,
@@ -871,6 +986,40 @@ unsafe extern "C" fn js_stalker_transform(
         Err(error) => return stalker_error(ctx, error),
     };
     stalker_transform_to_js(ctx, start, bytes.len(), max_instructions, event_mask, transformed)
+}
+
+unsafe extern "C" fn js_stalker_relocate(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 3 {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.relocate(bytes, source, destination) requires bytes, source and destination",
+        );
+    }
+    let bytes = match js_byte_input(ctx, JSValue(*argv)) {
+        Ok(bytes) => bytes,
+        Err(error) => return error,
+    };
+    let source = match js_nonnegative_u64(ctx, JSValue(*argv.add(1)), "Stalker.relocate source must be an address") {
+        Ok(address) => address,
+        Err(error) => return error,
+    };
+    let destination = match js_nonnegative_u64(
+        ctx,
+        JSValue(*argv.add(2)),
+        "Stalker.relocate destination must be an address",
+    ) {
+        Ok(address) => address,
+        Err(error) => return error,
+    };
+    match plan_arm64_relocation(&bytes, source, destination) {
+        Ok(plan) => stalker_relocation_plan_to_js(ctx, plan),
+        Err(error) => stalker_error(ctx, error),
+    }
 }
 
 unsafe extern "C" fn js_stalker_generate_events(
@@ -1289,6 +1438,8 @@ globalThis.Stalker = globalThis.Stalker || (function() {
                 staticParse: true,
                 boundedBasicBlockTransform: true,
                 eventGeneration: true,
+                directRelocationPlan: false,
+                directRelocationMode: 'unavailable',
                 eventGenerationMode: 'caller-supplied-execution-trace',
                 transformMode: 'static-only',
                 targetThreadInstrumentation: false,
@@ -1307,6 +1458,8 @@ globalThis.Stalker = globalThis.Stalker || (function() {
             staticParse: native.staticParse === true,
             boundedBasicBlockTransform: native.boundedBasicBlockTransform === true,
             eventGeneration: native.eventGeneration === true,
+            directRelocationPlan: native.directRelocationPlan === true,
+            directRelocationMode: native.directRelocationMode || 'unavailable',
             eventGenerationMode: native.eventGenerationMode || null,
             transformMode: native.transformMode || 'static-only',
             targetThreadInstrumentation: native.targetThreadInstrumentation === true,
@@ -1380,6 +1533,10 @@ globalThis.Stalker = globalThis.Stalker || (function() {
             start = 0;
         }
         return nativeStalker().stalkerTransform(bytes, start, options || {});
+    }
+
+    function relocate(bytes, source, destination) {
+        return nativeStalker().stalkerRelocate(bytes, source, destination);
     }
 
     function generateEvents(bytes, start, execution, options) {
@@ -1499,6 +1656,7 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         parse: parseArm64,
         transform: transform,
         transformBasicBlock: transform,
+        relocate: relocate,
         generateEvents: generateEvents,
         recordBlock: recordBlock,
         captureStart: captureStart,
@@ -1557,6 +1715,7 @@ pub(crate) fn register_stalker_api(ctx: &JSContext) -> Result<(), String> {
                 0,
             );
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerTransform", js_stalker_transform, 3);
+            add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerRelocate", js_stalker_relocate, 3);
             add_cfunction_to_object(
                 ctx.as_ptr(),
                 native.raw(),
@@ -1589,6 +1748,7 @@ mod tests {
         assert_eq!(runtime.eval("typeof Stalker.follow").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.pauseThread").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.resumeThread").unwrap(), "function");
+        assert_eq!(runtime.eval("typeof Stalker.relocate").unwrap(), "function");
         assert_eq!(
             runtime.eval("Stalker.capabilities().instructionLevel").unwrap(),
             "false"
@@ -1627,6 +1787,22 @@ mod tests {
             )
             .expect("reject invalid follow inputs");
         assert_eq!(result, "TypeError,TypeError,TypeError,RangeError,TypeError");
+    }
+
+    #[test]
+    fn public_relocation_plan_preserves_targets_and_marks_fallbacks() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const bytes = [0x02,0x00,0x00,0x14]; const near = Stalker.relocate(bytes, 0x10000000, 0x10008000); const far = Stalker.relocate(bytes, 0x1000, 0x100000000); return JSON.stringify({available:Stalker.capabilities().directRelocationPlan, nearMethod:typeof Stalker.relocate, nearComplete:near.directlyRelocatable, nearStatus:near.instructions[0].status, nearTarget:near.instructions[0].target, nearOutput:near.output.length, farComplete:far.directlyRelocatable, farFallback:far.requiresFallback, farStatus:far.instructions[0].status, farOutput:far.output}); })()",
+            )
+            .expect("exercise relocation plan");
+        assert_eq!(
+            result,
+            r#"{"available":true,"nearMethod":"function","nearComplete":true,"nearStatus":"relocated","nearTarget":268435464,"nearOutput":4,"farComplete":false,"farFallback":true,"farStatus":"out-of-range","farOutput":null}"#
+        );
     }
 
     #[test]

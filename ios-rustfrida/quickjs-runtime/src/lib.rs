@@ -1,6 +1,8 @@
 #[cfg(not(quickjs_runtime_stub))]
 mod agent_api;
 #[cfg(not(quickjs_runtime_stub))]
+mod arm64_relocator;
+#[cfg(not(quickjs_runtime_stub))]
 mod cmodule;
 #[cfg(not(quickjs_runtime_stub))]
 mod completion;
