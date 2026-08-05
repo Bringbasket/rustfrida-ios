@@ -1,3 +1,4 @@
+use crate::memory::finalize_code_cache_mapping;
 use common::{Error, Result};
 
 pub const MAX_ARM64_RELOCATION_INSTRUCTIONS: usize = 4096;
@@ -186,6 +187,7 @@ pub struct Arm64CodeCacheMaterialization {
     emission: Arm64CodeCacheEmission,
     mapping: *mut libc::c_void,
     mapping_size: usize,
+    executable: bool,
 }
 
 impl Arm64CodeCacheMaterialization {
@@ -199,6 +201,21 @@ impl Arm64CodeCacheMaterialization {
 
     pub const fn mapping_size(&self) -> usize {
         self.mapping_size
+    }
+
+    /// Flushes the instruction cache and transitions the owned mapping from
+    /// RW to RX. The operation is idempotent and leaves the mapping writable
+    /// when either step fails.
+    pub fn make_executable(&mut self) -> Result<bool> {
+        if self.mapping_size == 0 || self.mapping.is_null() {
+            return Err(Error::State("ARM64 code-cache mapping is not live".into()));
+        }
+        if self.executable {
+            return Ok(false);
+        }
+        finalize_code_cache_mapping(self.mapping_base(), self.mapping_size).map_err(Error::State)?;
+        self.executable = true;
+        Ok(true)
     }
 
     #[cfg(test)]
@@ -598,12 +615,16 @@ pub fn materialize_arm64_code_cache(bytes: &[u8], source_start: u64) -> Result<A
             .and_then(|size| size.checked_add(maximum_island_bytes))
             .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache materialization size overflowed".into()))?;
         let mapping_size = page_align_code_cache_len(maximum_output_bytes)?;
+        #[cfg(any(target_os = "ios", target_os = "macos"))]
+        let mmap_flags = libc::MAP_PRIVATE | libc::MAP_ANON | libc::MAP_JIT;
+        #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+        let mmap_flags = libc::MAP_PRIVATE | libc::MAP_ANON;
         let mapping = unsafe {
             libc::mmap(
                 std::ptr::null_mut(),
                 mapping_size,
                 libc::PROT_READ | libc::PROT_WRITE,
-                libc::MAP_PRIVATE | libc::MAP_ANON,
+                mmap_flags,
                 -1,
                 0,
             )
@@ -638,6 +659,7 @@ pub fn materialize_arm64_code_cache(bytes: &[u8], source_start: u64) -> Result<A
             emission,
             mapping,
             mapping_size,
+            executable: false,
         })
     }
 

@@ -683,6 +683,23 @@ unsafe fn stalker_capabilities_to_js_detailed(ctx: *mut ffi::JSContext) -> ffi::
         "codeCacheWritableMapping",
         JSValue::bool(arm64_code_cache_materialization_available()),
     );
+    result.set_property(
+        ctx,
+        "staticCodeCacheFinalization",
+        JSValue::bool(arm64_code_cache_materialization_available()),
+    );
+    result.set_property(
+        ctx,
+        "codeCacheFinalizationMode",
+        JSValue::string(
+            ctx,
+            if arm64_code_cache_materialization_available() {
+                "flush-and-rx"
+            } else {
+                "unavailable"
+            },
+        ),
+    );
     result.set_property(ctx, "codeCacheExecutionReady", JSValue::bool(false));
     result.set_property(
         ctx,
@@ -1244,6 +1261,7 @@ unsafe extern "C" fn js_stalker_code_cache_dispose(
     result.set_property(ctx, "codeCacheWritableMapping", JSValue::bool(false));
     result.set_property(ctx, "allocatesWritableMemory", JSValue::bool(false));
     result.set_property(ctx, "mappingProtection", JSValue::null());
+    result.set_property(ctx, "finalized", JSValue::bool(false));
     result.set_property(ctx, "owned", JSValue::bool(false));
     result.set_property(ctx, "disposed", JSValue::bool(true));
     result.set_property(ctx, "lifetime", JSValue::string(ctx, "disposed"));
@@ -1279,6 +1297,7 @@ unsafe fn stalker_code_cache_materialization_to_js(
     result.set_property(ctx, "allocatesExecutableMemory", JSValue::bool(false));
     result.set_property(ctx, "allocatesWritableMemory", JSValue::bool(true));
     result.set_property(ctx, "mappingProtection", JSValue::string(ctx, "rw-"));
+    result.set_property(ctx, "finalized", JSValue::bool(false));
     result.set_property(ctx, "owned", JSValue::bool(true));
     result.set_property(ctx, "disposed", JSValue::bool(false));
     result.set_property(ctx, "lifetime", JSValue::string(ctx, "quickjs-gc-owned"));
@@ -1293,6 +1312,41 @@ unsafe fn stalker_code_cache_materialization_to_js(
     result.set_property(ctx, "base", create_native_pointer(ctx, materialization.mapping_base()));
     add_cfunction_to_object(ctx, value, "dispose", js_stalker_code_cache_dispose, 0);
     value
+}
+
+unsafe extern "C" fn js_stalker_finalize_code_cache(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return js_throw_type_error(ctx, "Stalker.finalizeCodeCache(cache) requires a StalkerCodeCache");
+    }
+    let class_id = STALKER_CODE_CACHE_CLASS_ID.load(Ordering::Acquire);
+    if class_id == 0 {
+        return js_throw_type_error(ctx, "StalkerCodeCache receiver is invalid");
+    }
+    let cache = JSValue(*argv);
+    let opaque = ffi::JS_GetOpaque(cache.raw(), class_id);
+    if opaque.is_null() {
+        return js_throw_type_error(ctx, "Stalker.finalizeCodeCache() requires a live StalkerCodeCache");
+    }
+    let materialization = &mut *(opaque as *mut Arm64CodeCacheMaterialization);
+    match materialization.make_executable() {
+        Ok(changed) => {
+            if changed {
+                cache.set_property(ctx, "mode", JSValue::string(ctx, "rx-materialization"));
+                cache.set_property(ctx, "codeCacheWritableMapping", JSValue::bool(false));
+                cache.set_property(ctx, "executable", JSValue::bool(true));
+                cache.set_property(ctx, "allocatesWritableMemory", JSValue::bool(false));
+                cache.set_property(ctx, "mappingProtection", JSValue::string(ctx, "r-x"));
+                cache.set_property(ctx, "finalized", JSValue::bool(true));
+            }
+            JSValue::bool(changed).raw()
+        }
+        Err(error) => stalker_error(ctx, error),
+    }
 }
 
 unsafe fn stalker_generation_to_js(
@@ -2078,6 +2132,14 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         return native.stalkerMaterializeCodeCache(bytes, source);
     }
 
+    function finalizeCodeCache(cache) {
+        const native = nativeStalker();
+        if (typeof native.stalkerFinalizeCodeCache !== 'function') {
+            throw new Error('Stalker code-cache finalization is unavailable in this runtime');
+        }
+        return native.stalkerFinalizeCodeCache(cache);
+    }
+
     function generateEvents(bytes, start, execution, options) {
         if (start === undefined) {
             start = 0;
@@ -2199,6 +2261,7 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         layoutCodeCache: layoutCodeCache,
         emitCodeCache: emitCodeCache,
         materializeCodeCache: materializeCodeCache,
+        finalizeCodeCache: finalizeCodeCache,
         generateEvents: generateEvents,
         recordBlock: recordBlock,
         captureStart: captureStart,
@@ -2278,6 +2341,13 @@ pub(crate) fn register_stalker_api(ctx: &JSContext) -> Result<(), String> {
                 "stalkerMaterializeCodeCache",
                 js_stalker_materialize_code_cache,
                 2,
+            );
+            add_cfunction_to_object(
+                ctx.as_ptr(),
+                native.raw(),
+                "stalkerFinalizeCodeCache",
+                js_stalker_finalize_code_cache,
+                1,
             );
             add_cfunction_to_object(
                 ctx.as_ptr(),
@@ -2416,6 +2486,22 @@ mod tests {
         assert_eq!(
             result,
             r#"{"available":true,"capabilityMode":"rw-only","capabilityMaterialized":true,"method":"function","mode":"rw-materialization","materialized":true,"executable":false,"executionReady":false,"allocatesExecutable":false,"allocatesWritable":true,"writableMapping":true,"protection":"rw-","actualProtection":"rw-","owned":true,"disposed":false,"disposeMethod":"function","lifetime":"quickjs-gc-owned","destinationMatches":true,"mappingCoversOutput":true,"mappedBytes":80,"outputBytes":80,"outputLength":80,"fallbackBytes":8,"mappedWord":"335544324","baseRead":"function"}"#
+        );
+    }
+
+    #[test]
+    fn public_code_cache_finalization_flushes_and_transitions_mapping_to_rx() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const capabilities = Stalker.capabilities(); const cache = Stalker.materializeCodeCache([0x1f,0x20,0x03,0xd5], 0x1000); const first = Stalker.finalizeCodeCache(cache); const second = Stalker.finalizeCodeCache(cache); return JSON.stringify({available:capabilities.staticCodeCacheFinalization, mode:capabilities.codeCacheFinalizationMode, method:typeof Stalker.finalizeCodeCache, first:first, second:second, finalized:cache.finalized, executable:cache.executable, executionReady:cache.executionReady, writableMapping:cache.codeCacheWritableMapping, allocatesWritable:cache.allocatesWritableMemory, protection:cache.mappingProtection, actualProtection:Process.findRangeByAddress(cache.base).protection, readable:cache.base.readU32().toString()}); })()",
+            )
+            .expect("exercise executable code-cache finalization");
+        assert_eq!(
+            result,
+            r#"{"available":true,"mode":"flush-and-rx","method":"function","first":true,"second":false,"finalized":true,"executable":true,"executionReady":false,"writableMapping":false,"allocatesWritable":false,"protection":"r-x","actualProtection":"r-x","readable":"3573751839"}"#
         );
     }
 

@@ -760,6 +760,31 @@ unsafe fn flush_instruction_cache(address: u64, size: usize) -> Result<(), &'sta
     Err("instruction-cache invalidation is unsupported on this platform")
 }
 
+/// Finalizes a writable code-cache mapping for instruction fetch.
+///
+/// The cache is invalidated while the mapping is still writable, then the
+/// complete page-aligned range is transitioned to read/execute protection.
+/// `apply_region_protection()` keeps the operation transactional: if any
+/// region fails to change, already-changed regions are restored to their
+/// original protection.
+pub(crate) fn finalize_code_cache_mapping(address: u64, size: usize) -> Result<(), String> {
+    if checked_address_range(address, size).is_none() {
+        return Err("address range overflow or empty range".to_string());
+    }
+    unsafe {
+        flush_instruction_cache(address, size)
+            .map_err(|message| format!("instruction-cache invalidation failed: {message}"))?;
+    }
+
+    let page_size = system_page_size().ok_or_else(|| "unable to determine system page size".to_string())?;
+    let (page_start, page_length) = aligned_page_range(address, size, page_size).map_err(str::to_string)?;
+    let page_end = page_start
+        .checked_add(page_length)
+        .ok_or_else(|| "page range overflow".to_string())?;
+    let regions = query_protection_regions(page_start, page_end)?;
+    apply_region_protection(&regions, libc::PROT_READ | libc::PROT_EXEC)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct ProtectionRegion {
     start: usize,
