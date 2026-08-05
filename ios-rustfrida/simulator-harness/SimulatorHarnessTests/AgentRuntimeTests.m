@@ -341,7 +341,7 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
 
         NSDictionary *stalkerRelocationEval = @{
             @"kind" : @"js_eval",
-            @"script" : @"(function() { const bytes = [0x02,0x00,0x00,0x14]; const near = Stalker.relocate(bytes, 0x10000000, 0x10008000); const far = Stalker.relocate(bytes, 0x1000, 0x100000000); const layout = Stalker.layoutCodeCache([0x02,0x00,0x00,0x14,0x1f,0x20,0x03,0xd5], 0x1000, 0x100000000); return {available:Stalker.capabilities().directRelocationPlan, layoutAvailable:Stalker.capabilities().staticCodeCacheLayout, nearComplete:near.directlyRelocatable, nearStatus:near.instructions[0].status, nearTarget:near.instructions[0].target, nearOutput:near.output.length, farComplete:far.directlyRelocatable, farFallback:far.requiresFallback, farStatus:far.instructions[0].status, farOutput:far.output, layoutMode:layout.codeCacheLayoutMode, layoutMaterialized:layout.materialized, layoutExecutable:layout.executable, layoutBlockCount:layout.blockCount, layoutFirstBlockStatus:layout.blocks[0].status, layoutFallbackCount:layout.fallbackCount, layoutFallbackStrategy:layout.fallbacks[0].strategy, layoutIslandBytes:layout.islandByteCount, layoutTotalBytes:layout.totalByteCount, layoutOutput:layout.output}; })()"
+            @"script" : @"(function() { const bytes = [0x02,0x00,0x00,0x14]; const cacheBytes = [0x02,0x00,0x00,0x14,0xc0,0x03,0x5f,0xd6]; const near = Stalker.relocate(bytes, 0x10000000, 0x10008000); const far = Stalker.relocate(bytes, 0x1000, 0x100000000); const layout = Stalker.layoutCodeCache(cacheBytes, 0x1000, 0x100000000); const emission = Stalker.emitCodeCache(cacheBytes, 0x1000, 0x100000000); return {available:Stalker.capabilities().directRelocationPlan, layoutAvailable:Stalker.capabilities().staticCodeCacheLayout, emissionAvailable:Stalker.capabilities().staticCodeCacheEmission, nearComplete:near.directlyRelocatable, nearStatus:near.instructions[0].status, nearTarget:near.instructions[0].target, nearOutput:near.output.length, farComplete:far.directlyRelocatable, farFallback:far.requiresFallback, farStatus:far.instructions[0].status, farOutput:far.output, layoutMode:layout.codeCacheLayoutMode, layoutMaterialized:layout.materialized, layoutExecutable:layout.executable, layoutBlockCount:layout.blockCount, layoutFirstBlockStatus:layout.blocks[0].status, layoutFallbackCount:layout.fallbackCount, layoutFallbackStrategy:layout.fallbacks[0].strategy, layoutIslandBytes:layout.islandByteCount, layoutTotalBytes:layout.totalByteCount, layoutOutput:layout.output, emissionMode:emission.mode, emissionComplete:emission.emissionComplete, emissionExecutionReady:emission.executionReady, emissionScratchPolicy:emission.scratchRegisterPolicy, emissionMaterialized:emission.materialized, emissionExecutable:emission.executable, emissionFallbackBytes:emission.fallbackEmittedByteCounts[0], emissionOutputBytes:emission.outputByteCount, emissionPatchedBytes:emission.output.slice(0, 4)}; })()"
         };
         error = nil;
         if (!RFSendJSONCommand(sockets[0], stalkerRelocationEval, &error)) {
@@ -362,6 +362,7 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
             (@{
                 @"available" : @YES,
                 @"layoutAvailable" : @YES,
+                @"emissionAvailable" : @YES,
                 @"nearComplete" : @YES,
                 @"nearStatus" : @"relocated",
                 @"nearTarget" : @268435464,
@@ -380,6 +381,15 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
                 @"layoutIslandBytes" : @64,
                 @"layoutTotalBytes" : @80,
                 @"layoutOutput" : [NSNull null],
+                @"emissionMode" : @"static-emission",
+                @"emissionComplete" : @YES,
+                @"emissionExecutionReady" : @NO,
+                @"emissionScratchPolicy" : @"aapcs64-ip0-veneer",
+                @"emissionMaterialized" : @NO,
+                @"emissionExecutable" : @NO,
+                @"emissionFallbackBytes" : @8,
+                @"emissionOutputBytes" : @80,
+                @"emissionPatchedBytes" : (@[@4, @0, @0, @20]),
             })
         );
 

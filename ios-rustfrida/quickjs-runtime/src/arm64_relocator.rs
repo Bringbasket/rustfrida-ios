@@ -3,6 +3,7 @@ use common::{Error, Result};
 pub const MAX_ARM64_RELOCATION_INSTRUCTIONS: usize = 4096;
 pub const ARM64_CODE_CACHE_ISLAND_ALIGNMENT: u64 = 16;
 pub const ARM64_CODE_CACHE_ISLAND_SLOT_SIZE: u64 = 64;
+const ARM64_NOP_WORD: u32 = 0xd503_201f;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Arm64RelocationKind {
@@ -172,6 +173,14 @@ pub struct Arm64CodeCacheLayoutPlan {
     pub fallbacks: Vec<Arm64CodeCacheFallback>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Arm64CodeCacheEmission {
+    pub layout: Arm64CodeCacheLayoutPlan,
+    pub output: Vec<u8>,
+    pub emitted_words: Vec<u32>,
+    pub fallback_emitted_byte_counts: Vec<u64>,
+}
+
 impl Arm64CodeCacheLayoutPlan {
     pub const fn directly_relocatable(&self) -> bool {
         self.fallbacks.is_empty()
@@ -215,6 +224,16 @@ unsafe extern "C" {
         destination_pc: u64,
         instruction: u32,
         relocated_instruction: *mut u32,
+    ) -> i32;
+    fn rf_arm64_relocator_emit_fallback(
+        source_pc: u64,
+        destination_pc: u64,
+        instruction: u32,
+        island_pc: u64,
+        emitted_instruction: *mut u32,
+        island_output: *mut u8,
+        island_capacity: usize,
+        island_size: *mut usize,
     ) -> i32;
 }
 
@@ -412,6 +431,134 @@ pub fn plan_arm64_code_cache_layout(
         blocks,
         fallbacks,
     })
+}
+
+pub fn emit_arm64_code_cache(
+    bytes: &[u8],
+    source_start: u64,
+    destination_start: u64,
+) -> Result<Arm64CodeCacheEmission> {
+    let layout = plan_arm64_code_cache_layout(bytes, source_start, destination_start)?;
+
+    #[cfg(quickjs_arm64_relocator)]
+    {
+        let output_len = usize::try_from(layout.total_byte_count)
+            .map_err(|_| Error::InvalidArgument("ARM64 code-cache output length is too large".into()))?;
+        let mut output = vec![0u8; output_len];
+        for chunk in output.chunks_exact_mut(4) {
+            chunk.copy_from_slice(&ARM64_NOP_WORD.to_le_bytes());
+        }
+
+        let mut emitted_words = Vec::with_capacity(layout.entries.len());
+        let mut fallback_emitted_byte_counts = Vec::with_capacity(layout.fallbacks.len());
+        let mut fallback_index = 0usize;
+        for (instruction_index, entry) in layout.entries.iter().enumerate() {
+            let code_offset = code_cache_output_offset(
+                entry.destination_address,
+                layout.destination_start,
+                4,
+                output.len(),
+                "instruction",
+            )?;
+            let emitted_word = if let Some(word) = entry.relocated_word {
+                word
+            } else {
+                let fallback = layout.fallbacks.get(fallback_index).ok_or_else(|| {
+                    Error::State("ARM64 code-cache fallback metadata is missing for an instruction".into())
+                })?;
+                if fallback.instruction_index != instruction_index || fallback.reserved_bytes != 64 {
+                    return Err(Error::State(
+                        "ARM64 code-cache fallback metadata is inconsistent".into(),
+                    ));
+                }
+                let slot_len = usize::try_from(fallback.reserved_bytes)
+                    .map_err(|_| Error::InvalidArgument("ARM64 code-cache fallback slot is too large".into()))?;
+                let slot_offset = code_cache_output_offset(
+                    fallback.island_start,
+                    layout.destination_start,
+                    slot_len,
+                    output.len(),
+                    "fallback island",
+                )?;
+                let mut island = vec![0u8; slot_len];
+                for chunk in island.chunks_exact_mut(4) {
+                    chunk.copy_from_slice(&ARM64_NOP_WORD.to_le_bytes());
+                }
+                let mut word = 0u32;
+                let mut emitted_size = 0usize;
+                let result = unsafe {
+                    rf_arm64_relocator_emit_fallback(
+                        entry.source_address,
+                        entry.destination_address,
+                        entry.original_word,
+                        fallback.island_start,
+                        &mut word,
+                        island.as_mut_ptr(),
+                        island.len(),
+                        &mut emitted_size,
+                    )
+                };
+                if result != 0 {
+                    return Err(Error::State(format!(
+                        "ARM64 code-cache fallback emission failed with result {result}"
+                    )));
+                }
+                if emitted_size == 0 || emitted_size > island.len() || emitted_size % 4 != 0 {
+                    return Err(Error::State(
+                        "ARM64 code-cache fallback emitted an invalid byte count".into(),
+                    ));
+                }
+                output[slot_offset..slot_offset + slot_len].copy_from_slice(&island);
+                fallback_emitted_byte_counts.push(emitted_size as u64);
+                fallback_index += 1;
+                word
+            };
+            output[code_offset..code_offset + 4].copy_from_slice(&emitted_word.to_le_bytes());
+            emitted_words.push(emitted_word);
+        }
+        if fallback_index != layout.fallbacks.len() {
+            return Err(Error::State(
+                "ARM64 code-cache contains unconsumed fallback metadata".into(),
+            ));
+        }
+
+        Ok(Arm64CodeCacheEmission {
+            layout,
+            output,
+            emitted_words,
+            fallback_emitted_byte_counts,
+        })
+    }
+
+    #[cfg(not(quickjs_arm64_relocator))]
+    {
+        let _ = layout;
+        Err(Error::Unsupported(
+            "ARM64 code-cache emission is not compiled for this runtime target".into(),
+        ))
+    }
+}
+
+fn code_cache_output_offset(
+    address: u64,
+    base: u64,
+    byte_count: usize,
+    output_len: usize,
+    role: &str,
+) -> Result<usize> {
+    let offset = address
+        .checked_sub(base)
+        .and_then(|value| usize::try_from(value).ok())
+        .ok_or_else(|| Error::State(format!("ARM64 code-cache {role} offset is invalid")))?;
+    let end = offset
+        .checked_add(byte_count)
+        .ok_or_else(|| Error::State(format!("ARM64 code-cache {role} range overflowed")))?;
+    if end > output_len {
+        return Err(Error::State(format!(
+            "ARM64 code-cache {role} range exceeds the output image"
+        )));
+    }
+    Ok(offset)
 }
 
 fn build_code_cache_blocks(entries: &[Arm64RelocationEntry]) -> Result<Vec<Arm64CodeCacheBlock>> {
@@ -627,6 +774,10 @@ mod tests {
         word.to_le_bytes()
     }
 
+    fn word_at(bytes: &[u8], offset: usize) -> u32 {
+        u32::from_le_bytes(bytes[offset..offset + 4].try_into().expect("word"))
+    }
+
     #[test]
     fn direct_relocation_preserves_pc_relative_targets() {
         let source = 0x1000_0000;
@@ -762,5 +913,112 @@ mod tests {
             plan_arm64_code_cache_layout(&one_word(0x1400_0002), 0x1000, i64::MAX as u64 - 15),
             Err(Error::InvalidArgument(_))
         ));
+    }
+
+    #[test]
+    fn code_cache_emission_writes_direct_words_without_executable_memory() {
+        let mut input = Vec::new();
+        input.extend_from_slice(&one_word(ARM64_NOP_WORD));
+        input.extend_from_slice(&one_word(0xd65f_03c0));
+        let emission = emit_arm64_code_cache(&input, 0x1000, 0x2000).expect("emission");
+
+        assert!(emission.layout.directly_relocatable());
+        assert_eq!(emission.output, input);
+        assert_eq!(emission.emitted_words, vec![ARM64_NOP_WORD, 0xd65f_03c0]);
+        assert!(emission.fallback_emitted_byte_counts.is_empty());
+    }
+
+    #[test]
+    fn code_cache_emission_populates_branch_and_pc_relative_fallback_slots() {
+        let mut branch_input = Vec::new();
+        branch_input.extend_from_slice(&one_word(0x1400_0002));
+        branch_input.extend_from_slice(&one_word(0xd65f_03c0));
+        let branch = emit_arm64_code_cache(&branch_input, 0x1000, 0x1_0000_0000).expect("branch emission");
+
+        assert_eq!(branch.output.len() as u64, branch.layout.total_byte_count);
+        assert_eq!(branch.output.len(), 80);
+        assert_eq!(branch.fallback_emitted_byte_counts.len(), 1);
+        assert!(branch.fallback_emitted_byte_counts[0] <= ARM64_CODE_CACHE_ISLAND_SLOT_SIZE);
+        let patched = analyze_arm64_instruction(branch.layout.destination_start, word_at(&branch.output, 0))
+            .expect("patched branch");
+        assert_eq!(patched.kind, Arm64RelocationKind::Branch);
+        assert_eq!(patched.target, Some(branch.layout.fallbacks[0].island_start));
+        assert_eq!(word_at(&branch.output, 4), 0xd65f_03c0);
+
+        let address = emit_arm64_code_cache(&one_word(0x1000_0040), 0x1000, 0x1_0000_0000).expect("ADR emission");
+        assert_eq!(
+            address.layout.fallbacks[0].strategy,
+            Arm64CodeCacheFallbackStrategy::PcRelativeRewrite
+        );
+        assert!(address.fallback_emitted_byte_counts[0] > 0);
+        let patched = analyze_arm64_instruction(address.layout.destination_start, word_at(&address.output, 0))
+            .expect("patched ADR branch");
+        assert_eq!(patched.target, Some(address.layout.fallbacks[0].island_start));
+    }
+
+    #[test]
+    fn code_cache_emission_branch_link_returns_to_relocated_stream() {
+        let destination = 0x1_0000_0000;
+        let emission = emit_arm64_code_cache(&one_word(0x9400_0002), 0x1000, destination).expect("BL emission");
+        let island_offset =
+            usize::try_from(emission.layout.island_start - emission.layout.destination_start).expect("island offset");
+
+        assert_eq!(word_at(&emission.output, island_offset), 0xd280_009e);
+        assert_eq!(word_at(&emission.output, island_offset + 4), 0xf2c0_003e);
+    }
+
+    #[test]
+    fn code_cache_emission_covers_every_pc_relative_fallback_family() {
+        let cases = [
+            (0x1400_0002, Arm64RelocationKind::Branch),
+            (0x9400_0002, Arm64RelocationKind::BranchLink),
+            (0x5400_0040, Arm64RelocationKind::ConditionalBranch),
+            (0xb400_0040, Arm64RelocationKind::CompareAndBranchZero),
+            (0xb500_0041, Arm64RelocationKind::CompareAndBranchNonZero),
+            (0x3600_0040, Arm64RelocationKind::TestBitAndBranchZero),
+            (0x3700_0041, Arm64RelocationKind::TestBitAndBranchNonZero),
+            (0x1000_0040, Arm64RelocationKind::Address),
+            (0xb000_0000, Arm64RelocationKind::AddressPage),
+            (0x5800_0040, Arm64RelocationKind::LoadLiteral),
+            (0x9800_0040, Arm64RelocationKind::LoadSignedWordLiteral),
+            (0x1c00_0040, Arm64RelocationKind::LoadFloatingLiteral),
+            (0xd800_0040, Arm64RelocationKind::PrefetchLiteral),
+        ];
+
+        for (word, expected_kind) in cases {
+            let emission = emit_arm64_code_cache(&one_word(word), 0x1000, 0x10_0000_0000)
+                .unwrap_or_else(|error| panic!("emit {expected_kind:?}: {error}"));
+            assert_eq!(emission.layout.entries[0].info.kind, expected_kind);
+            assert_eq!(emission.layout.fallbacks.len(), 1);
+            assert_eq!(emission.output.len(), 80);
+            assert_eq!(emission.fallback_emitted_byte_counts.len(), 1);
+            assert!((4..=ARM64_CODE_CACHE_ISLAND_SLOT_SIZE).contains(&emission.fallback_emitted_byte_counts[0]));
+        }
+    }
+
+    #[test]
+    fn code_cache_emission_keeps_multiple_fallback_slots_ordered_and_disjoint() {
+        let mut input = Vec::new();
+        input.extend_from_slice(&one_word(0x1400_0002));
+        input.extend_from_slice(&one_word(0x9400_0002));
+        input.extend_from_slice(&one_word(0xd65f_03c0));
+        let emission = emit_arm64_code_cache(&input, 0x1000, 0x1_0000_0000).expect("multi emission");
+
+        assert_eq!(emission.layout.fallbacks.len(), 2);
+        assert_eq!(emission.fallback_emitted_byte_counts.len(), 2);
+        assert_eq!(emission.output.len(), 144);
+        assert_eq!(emission.layout.fallbacks[0].island_start, emission.layout.island_start);
+        assert_eq!(
+            emission.layout.fallbacks[1].island_start,
+            emission.layout.island_start + ARM64_CODE_CACHE_ISLAND_SLOT_SIZE
+        );
+        for (index, fallback) in emission.layout.fallbacks.iter().enumerate() {
+            let patched = analyze_arm64_instruction(
+                emission.layout.destination_start + (index as u64 * 4),
+                emission.emitted_words[index],
+            )
+            .expect("patched fallback branch");
+            assert_eq!(patched.target, Some(fallback.island_start));
+        }
     }
 }

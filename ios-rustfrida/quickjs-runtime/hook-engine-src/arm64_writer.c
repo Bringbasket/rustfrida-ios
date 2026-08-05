@@ -96,6 +96,7 @@ int arm64_writer_can_branch_directly_between(uint64_t from, uint64_t to) {
 
 int arm64_writer_flush(Arm64Writer* w) {
     Arm64LabelRef* ref = w->label_refs;
+    uint64_t base_pc = w->pc - arm64_writer_offset(w);
 
     while (ref) {
         Arm64Label* label = find_label(w, ref->label_id);
@@ -103,7 +104,8 @@ int arm64_writer_flush(Arm64Writer* w) {
 
         uint32_t* insn_ptr = (uint32_t*)ref->insn_addr;
         uint32_t insn = *insn_ptr;
-        int64_t offset = (int64_t)label->address - (int64_t)(uintptr_t)ref->insn_addr;
+        uint64_t ref_pc = base_pc + (uint64_t)(ref->insn_addr - w->base);
+        int64_t offset = (int64_t)label->address - (int64_t)ref_pc;
 
         switch (ref->type) {
             case ARM64_LABEL_REF_B:
