@@ -175,7 +175,7 @@ curl -X POST http://127.0.0.1:9191/rpc/1/add -d '[20,22]'
 - `Stalker.follow()` / `Stalker.pauseThread()` / `Stalker.resumeThread()` / `Stalker.unfollow()`
 - `Stalker.transform()` / `Stalker.transformBasicBlock()`
 - `Stalker.generateEvents()` / `Stalker.recordBlock()`
-- `Stalker.relocate()` / `Stalker.layoutCodeCache()` / `Stalker.emitCodeCache()` / `Stalker.materializeCodeCache()`
+- `Stalker.relocate()` / `Stalker.layoutCodeCache()` / `Stalker.emitCodeCache()` / `Stalker.materializeCodeCache()` / `Stalker.finalizeCodeCache()` / `Stalker.executeCodeCache()`
 - `CModule.capabilities()` / `CModule.status()` / `CModule.lastError()`
 - `Native.base(moduleName)`
 - `Native.findBase(moduleName)`

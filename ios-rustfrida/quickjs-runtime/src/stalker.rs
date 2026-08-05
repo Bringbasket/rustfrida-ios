@@ -1,8 +1,9 @@
 use crate::arm64_relocator::{
-    arm64_code_cache_materialization_available, arm64_relocator_available, emit_arm64_code_cache,
-    materialize_arm64_code_cache, plan_arm64_code_cache_layout, plan_arm64_relocation, Arm64CodeCacheBlock,
-    Arm64CodeCacheEmission, Arm64CodeCacheFallback, Arm64CodeCacheLayoutPlan, Arm64CodeCacheMaterialization,
-    Arm64RelocationEntry, Arm64RelocationPlan, ARM64_CODE_CACHE_ISLAND_ALIGNMENT, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE,
+    arm64_code_cache_direct_execution_available, arm64_code_cache_materialization_available, arm64_relocator_available,
+    emit_arm64_code_cache, materialize_arm64_code_cache, plan_arm64_code_cache_layout, plan_arm64_relocation,
+    Arm64CodeCacheBlock, Arm64CodeCacheEmission, Arm64CodeCacheFallback, Arm64CodeCacheLayoutPlan,
+    Arm64CodeCacheMaterialization, Arm64RelocationEntry, Arm64RelocationPlan, ARM64_CODE_CACHE_ISLAND_ALIGNMENT,
+    ARM64_CODE_CACHE_ISLAND_SLOT_SIZE,
 };
 use crate::context::JSContext;
 use crate::ffi;
@@ -700,6 +701,23 @@ unsafe fn stalker_capabilities_to_js_detailed(ctx: *mut ffi::JSContext) -> ffi::
             },
         ),
     );
+    result.set_property(
+        ctx,
+        "staticCodeCacheDirectExecution",
+        JSValue::bool(arm64_code_cache_direct_execution_available()),
+    );
+    result.set_property(
+        ctx,
+        "codeCacheDirectExecutionMode",
+        JSValue::string(
+            ctx,
+            if arm64_code_cache_direct_execution_available() {
+                "current-thread-direct"
+            } else {
+                "unavailable"
+            },
+        ),
+    );
     result.set_property(ctx, "codeCacheExecutionReady", JSValue::bool(false));
     result.set_property(
         ctx,
@@ -1344,6 +1362,65 @@ unsafe extern "C" fn js_stalker_finalize_code_cache(
                 cache.set_property(ctx, "finalized", JSValue::bool(true));
             }
             JSValue::bool(changed).raw()
+        }
+        Err(error) => stalker_error(ctx, error),
+    }
+}
+
+unsafe extern "C" fn js_stalker_execute_code_cache(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 1 {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.executeCodeCache(cache[, entryOffset]) requires a StalkerCodeCache",
+        );
+    }
+    let class_id = STALKER_CODE_CACHE_CLASS_ID.load(Ordering::Acquire);
+    if class_id == 0 {
+        return js_throw_type_error(ctx, "StalkerCodeCache receiver is invalid");
+    }
+    let cache = JSValue(*argv);
+    let opaque = ffi::JS_GetOpaque(cache.raw(), class_id);
+    if opaque.is_null() {
+        return js_throw_type_error(ctx, "Stalker.executeCodeCache() requires a live StalkerCodeCache");
+    }
+    let entry_offset = if argc > 1 {
+        let offset = match js_nonnegative_u64(
+            ctx,
+            JSValue(*argv.add(1)),
+            "Stalker.executeCodeCache entryOffset must be a non-negative integer",
+        ) {
+            Ok(offset) => offset,
+            Err(error) => return error,
+        };
+        match usize::try_from(offset) {
+            Ok(offset) => offset,
+            Err(_) => return js_throw_range_error(ctx, "Stalker.executeCodeCache entryOffset is too large"),
+        }
+    } else {
+        0
+    };
+
+    let materialization = &*(opaque as *mut Arm64CodeCacheMaterialization);
+    match materialization.execute_entry(entry_offset) {
+        Ok(return_value) => {
+            let result = JSValue(ffi::JS_NewObject(ctx));
+            result.set_property(ctx, "executed", JSValue::bool(true));
+            result.set_property(ctx, "executionMode", JSValue::string(ctx, "current-thread-direct"));
+            result.set_property(ctx, "targetThread", JSValue::bool(false));
+            result.set_property(ctx, "targetThreadExecution", JSValue::bool(false));
+            result.set_property(ctx, "executionReady", JSValue::bool(false));
+            set_js_u64_property(ctx, result.raw(), "entryOffset", entry_offset as u64);
+            result.set_property(
+                ctx,
+                "returnValue",
+                JSValue(js_u64_to_js_number_or_bigint(ctx, return_value)),
+            );
+            result.raw()
         }
         Err(error) => stalker_error(ctx, error),
     }
@@ -2140,6 +2217,17 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         return native.stalkerFinalizeCodeCache(cache);
     }
 
+    function executeCodeCache(cache, entryOffset) {
+        const native = nativeStalker();
+        if (typeof native.stalkerExecuteCodeCache !== 'function') {
+            throw new Error('Stalker code-cache direct execution is unavailable in this runtime');
+        }
+        if (entryOffset === undefined) {
+            return native.stalkerExecuteCodeCache(cache);
+        }
+        return native.stalkerExecuteCodeCache(cache, entryOffset);
+    }
+
     function generateEvents(bytes, start, execution, options) {
         if (start === undefined) {
             start = 0;
@@ -2262,6 +2350,7 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         emitCodeCache: emitCodeCache,
         materializeCodeCache: materializeCodeCache,
         finalizeCodeCache: finalizeCodeCache,
+        executeCodeCache: executeCodeCache,
         generateEvents: generateEvents,
         recordBlock: recordBlock,
         captureStart: captureStart,
@@ -2352,6 +2441,13 @@ pub(crate) fn register_stalker_api(ctx: &JSContext) -> Result<(), String> {
             add_cfunction_to_object(
                 ctx.as_ptr(),
                 native.raw(),
+                "stalkerExecuteCodeCache",
+                js_stalker_execute_code_cache,
+                2,
+            );
+            add_cfunction_to_object(
+                ctx.as_ptr(),
+                native.raw(),
                 "stalkerGenerateEvents",
                 js_stalker_generate_events,
                 4,
@@ -2385,6 +2481,7 @@ mod tests {
         assert_eq!(runtime.eval("typeof Stalker.layoutCodeCache").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.emitCodeCache").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.materializeCodeCache").unwrap(), "function");
+        assert_eq!(runtime.eval("typeof Stalker.executeCodeCache").unwrap(), "function");
         assert_eq!(
             runtime.eval("Stalker.capabilities().instructionLevel").unwrap(),
             "false"
@@ -2502,6 +2599,45 @@ mod tests {
         assert_eq!(
             result,
             r#"{"available":true,"mode":"flush-and-rx","method":"function","first":true,"second":false,"finalized":true,"executable":true,"executionReady":false,"writableMapping":false,"allocatesWritable":false,"protection":"r-x","actualProtection":"r-x","readable":"3573751839"}"#
+        );
+    }
+
+    #[test]
+    fn public_code_cache_direct_execution_is_aarch64_current_thread_only() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const capabilities = Stalker.capabilities(); const cache = Stalker.materializeCodeCache([0x40,0x05,0x80,0xd2,0xc0,0x03,0x5f,0xd6], 0x1000); let before; try { Stalker.executeCodeCache(cache); before = 'unexpected-success'; } catch (error) { before = error.message; } Stalker.finalizeCodeCache(cache); if (!capabilities.staticCodeCacheDirectExecution) { let after; try { Stalker.executeCodeCache(cache); after = 'unexpected-success'; } catch (error) { after = error.message; } return JSON.stringify({available:false, mode:capabilities.codeCacheDirectExecutionMode, method:typeof Stalker.executeCodeCache, before:before, after:after}); } const executed = Stalker.executeCodeCache(cache); return JSON.stringify({available:true, mode:capabilities.codeCacheDirectExecutionMode, method:typeof Stalker.executeCodeCache, before:before, executed:executed.executed, executionMode:executed.executionMode, targetThread:executed.targetThread, targetThreadExecution:executed.targetThreadExecution, executionReady:executed.executionReady, entryOffset:executed.entryOffset, returnValue:String(executed.returnValue)}); })()",
+            )
+            .expect("exercise direct code-cache execution boundary");
+
+        #[cfg(target_arch = "aarch64")]
+        assert_eq!(
+            result,
+            r#"{"available":true,"mode":"current-thread-direct","method":"function","before":"invalid state: ARM64 code-cache must be finalized before direct execution","executed":true,"executionMode":"current-thread-direct","targetThread":false,"targetThreadExecution":false,"executionReady":false,"entryOffset":0,"returnValue":"42"}"#
+        );
+        #[cfg(not(target_arch = "aarch64"))]
+        assert_eq!(
+            result,
+            r#"{"available":false,"mode":"unavailable","method":"function","before":"invalid state: ARM64 code-cache must be finalized before direct execution","after":"unsupported: ARM64 code-cache direct execution requires an AArch64 target"}"#
+        );
+    }
+
+    #[test]
+    fn direct_code_cache_execution_validates_entry_offsets_before_dispatch() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const cache = Stalker.materializeCodeCache([0x1f,0x20,0x03,0xd5], 0x1000); Stalker.finalizeCodeCache(cache); function message(offset) { try { Stalker.executeCodeCache(cache, offset); return 'unexpected-success'; } catch (error) { return error.message; } } return JSON.stringify({unaligned:message(2), outside:message(4), negative:message(-1)}); })()",
+            )
+            .expect("validate direct execution entry offsets");
+        assert_eq!(
+            result,
+            r#"{"unaligned":"ARM64 code-cache entry offset must be 4-byte aligned","outside":"ARM64 code-cache entry offset is outside the emitted image","negative":"Stalker.executeCodeCache entryOffset must be a non-negative integer"}"#
         );
     }
 

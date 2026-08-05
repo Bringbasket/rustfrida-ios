@@ -218,6 +218,46 @@ impl Arm64CodeCacheMaterialization {
         Ok(true)
     }
 
+    /// Invokes a no-argument AArch64 entry point in the finalized mapping.
+    ///
+    /// This is deliberately a current-thread direct call. It does not install
+    /// target-thread instrumentation or claim `executionReady` for Stalker.
+    pub fn execute_entry(&self, entry_offset: usize) -> Result<u64> {
+        if !self.executable {
+            return Err(Error::State(
+                "ARM64 code-cache must be finalized before direct execution".into(),
+            ));
+        }
+        if entry_offset % 4 != 0 {
+            return Err(Error::InvalidArgument(
+                "ARM64 code-cache entry offset must be 4-byte aligned".into(),
+            ));
+        }
+        let entry_end = entry_offset
+            .checked_add(4)
+            .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache entry offset overflowed".into()))?;
+        if entry_end > self.emission.output.len() {
+            return Err(Error::InvalidArgument(
+                "ARM64 code-cache entry offset is outside the emitted image".into(),
+            ));
+        }
+
+        #[cfg(target_arch = "aarch64")]
+        {
+            let entry = unsafe { self.mapping.cast::<u8>().add(entry_offset) };
+            let function: unsafe extern "C" fn() -> u64 = unsafe { std::mem::transmute(entry) };
+            return Ok(unsafe { function() });
+        }
+
+        #[cfg(not(target_arch = "aarch64"))]
+        {
+            let _ = entry_offset;
+            Err(Error::Unsupported(
+                "ARM64 code-cache direct execution requires an AArch64 target".into(),
+            ))
+        }
+    }
+
     #[cfg(test)]
     fn mapped_output(&self) -> &[u8] {
         unsafe { std::slice::from_raw_parts(self.mapping.cast::<u8>(), self.emission.output.len()) }
@@ -296,6 +336,10 @@ pub const fn arm64_relocator_available() -> bool {
 
 pub const fn arm64_code_cache_materialization_available() -> bool {
     cfg!(all(quickjs_arm64_relocator, unix))
+}
+
+pub const fn arm64_code_cache_direct_execution_available() -> bool {
+    cfg!(all(quickjs_arm64_relocator, unix, target_arch = "aarch64"))
 }
 
 pub fn analyze_arm64_instruction(address: u64, word: u32) -> Result<Arm64RelocationInfo> {
