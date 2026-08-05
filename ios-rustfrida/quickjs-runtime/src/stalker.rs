@@ -718,6 +718,23 @@ unsafe fn stalker_capabilities_to_js_detailed(ctx: *mut ffi::JSContext) -> ffi::
             },
         ),
     );
+    result.set_property(
+        ctx,
+        "targetThreadExecutionPlan",
+        JSValue::bool(arm64_relocator_available()),
+    );
+    result.set_property(
+        ctx,
+        "targetThreadExecutionPlanMode",
+        JSValue::string(
+            ctx,
+            if arm64_relocator_available() {
+                "followed-thread-static"
+            } else {
+                "unavailable"
+            },
+        ),
+    );
     result.set_property(ctx, "codeCacheExecutionReady", JSValue::bool(false));
     result.set_property(
         ctx,
@@ -1510,6 +1527,83 @@ unsafe extern "C" fn js_stalker_transform(
     stalker_transform_to_js(ctx, start, bytes.len(), max_instructions, event_mask, transformed)
 }
 
+unsafe extern "C" fn js_stalker_plan_target_thread_block(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 3 {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.planTargetThreadBlock(thread, bytes, start[, options]) requires thread, bytes and start",
+        );
+    }
+    let thread_id = match js_thread_id(ctx, argc, argv, 0) {
+        Ok(thread_id) => thread_id,
+        Err(error) => return error,
+    };
+    let bytes = match js_byte_input(ctx, JSValue(*argv.add(1))) {
+        Ok(bytes) => bytes,
+        Err(error) => return error,
+    };
+    let start = match js_nonnegative_u64(
+        ctx,
+        JSValue(*argv.add(2)),
+        "Stalker.planTargetThreadBlock start must be an address",
+    ) {
+        Ok(start) => start,
+        Err(error) => return error,
+    };
+    let options = if argc > 3 { Some(JSValue(*argv.add(3))) } else { None };
+    let (event_mask, max_instructions, _max_events) = match js_transform_options(ctx, options) {
+        Ok(options) => options,
+        Err(error) => return error,
+    };
+    let status = stalker_backend_status()
+        .threads
+        .into_iter()
+        .find(|status| status.thread_id == thread_id);
+    let Some(status) = status else {
+        return stalker_error(
+            ctx,
+            common::Error::State(format!("target thread {thread_id} is not followed")),
+        );
+    };
+    let transformed = match StalkerSession::transform_basic_block(start, &bytes, max_instructions) {
+        Ok(transformed) => transformed,
+        Err(error) => return stalker_error(ctx, error),
+    };
+    let result = JSValue(stalker_transform_to_js(
+        ctx,
+        start,
+        bytes.len(),
+        max_instructions,
+        event_mask,
+        transformed,
+    ));
+    result.set_property(ctx, "backend", JSValue::string(ctx, "apple-target-thread-static-plan"));
+    result.set_property(ctx, "source", JSValue::string(ctx, "followed-thread-static-transform"));
+    result.set_property(ctx, "mode", JSValue::string(ctx, "target-thread-static-plan"));
+    result.set_property(ctx, "planOnly", JSValue::bool(true));
+    result.set_property(ctx, "targetThreadFollowed", JSValue::bool(true));
+    result.set_property(
+        ctx,
+        "targetThreadState",
+        JSValue::string(
+            ctx,
+            match status.state {
+                StalkerSessionState::Idle => "idle",
+                StalkerSessionState::Following => "following",
+                StalkerSessionState::Deactivated => "deactivated",
+            },
+        ),
+    );
+    set_js_u64_property(ctx, result.raw(), "targetThreadId", thread_id);
+    result.set_property(ctx, "executionReady", JSValue::bool(false));
+    result.raw()
+}
+
 unsafe extern "C" fn js_stalker_relocate(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -2185,6 +2279,14 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         return nativeStalker().stalkerTransform(bytes, start, options || {});
     }
 
+    function planTargetThreadBlock(thread, bytes, start, options) {
+        const native = nativeStalker();
+        if (typeof native.stalkerPlanTargetThreadBlock !== 'function') {
+            throw new Error('Stalker target-thread static planning is unavailable in this runtime');
+        }
+        return native.stalkerPlanTargetThreadBlock(threadId(thread), bytes, start, options || {});
+    }
+
     function relocate(bytes, source, destination) {
         return nativeStalker().stalkerRelocate(bytes, source, destination);
     }
@@ -2345,6 +2447,7 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         parse: parseArm64,
         transform: transform,
         transformBasicBlock: transform,
+        planTargetThreadBlock: planTargetThreadBlock,
         relocate: relocate,
         layoutCodeCache: layoutCodeCache,
         emitCodeCache: emitCodeCache,
@@ -2409,6 +2512,13 @@ pub(crate) fn register_stalker_api(ctx: &JSContext) -> Result<(), String> {
                 0,
             );
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerTransform", js_stalker_transform, 3);
+            add_cfunction_to_object(
+                ctx.as_ptr(),
+                native.raw(),
+                "stalkerPlanTargetThreadBlock",
+                js_stalker_plan_target_thread_block,
+                4,
+            );
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerRelocate", js_stalker_relocate, 3);
             add_cfunction_to_object(
                 ctx.as_ptr(),
@@ -2483,6 +2593,10 @@ mod tests {
         assert_eq!(runtime.eval("typeof Stalker.materializeCodeCache").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.executeCodeCache").unwrap(), "function");
         assert_eq!(
+            runtime.eval("typeof Stalker.planTargetThreadBlock").unwrap(),
+            "function"
+        );
+        assert_eq!(
             runtime.eval("Stalker.capabilities().instructionLevel").unwrap(),
             "false"
         );
@@ -2506,6 +2620,22 @@ mod tests {
         assert_eq!(
             result,
             r#"{"paused":"deactivated","rejected":false,"resumed":"following","accepted":true,"count":1,"stopped":"idle","collected":true}"#
+        );
+    }
+
+    #[test]
+    fn public_target_thread_plan_requires_followed_thread_and_stays_non_instrumented() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const missing = (function() { try { Stalker.planTargetThreadBlock(901, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], 0x4000); return 'unexpected-success'; } catch (error) { return error.message; } })(); const followed = Stalker.follow(902, {events: 1}); const plan = Stalker.planTargetThreadBlock(902, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], 0x4000, {maxInstructions: 4}); const stopped = Stalker.unfollow(902); return JSON.stringify({available:Stalker.capabilities().targetThreadExecutionPlan, mode:Stalker.capabilities().targetThreadExecutionPlanMode, method:typeof Stalker.planTargetThreadBlock, missing:missing, followed:followed.state, backend:plan.backend, planMode:plan.mode, planOnly:plan.planOnly, targetThreadId:String(plan.targetThreadId), targetThreadFollowed:plan.targetThreadFollowed, targetThreadState:plan.targetThreadState, instrumented:plan.instrumented, targetThreadInstrumented:plan.targetThreadInstrumented, targetThreadInstructionRewrite:plan.targetThreadInstructionRewrite, rewritesTargetMemory:plan.rewritesTargetMemory, executionReady:plan.executionReady, instructionCount:plan.instructionCount, terminator:plan.terminator, stopped:stopped.state}); })()",
+            )
+            .expect("exercise target-thread static plan");
+        assert_eq!(
+            result,
+            r#"{"available":true,"mode":"followed-thread-static","method":"function","missing":"invalid state: target thread 901 is not followed","followed":"following","backend":"apple-target-thread-static-plan","planMode":"target-thread-static-plan","planOnly":true,"targetThreadId":"902","targetThreadFollowed":true,"targetThreadState":"following","instrumented":false,"targetThreadInstrumented":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"executionReady":false,"instructionCount":2,"terminator":"ret","stopped":"idle"}"#
         );
     }
 
