@@ -341,7 +341,7 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
 
         NSDictionary *stalkerRelocationEval = @{
             @"kind" : @"js_eval",
-            @"script" : @"(function() { const bytes = [0x02,0x00,0x00,0x14]; const cacheBytes = [0x02,0x00,0x00,0x14,0xc0,0x03,0x5f,0xd6]; const near = Stalker.relocate(bytes, 0x10000000, 0x10008000); const far = Stalker.relocate(bytes, 0x1000, 0x100000000); const layout = Stalker.layoutCodeCache(cacheBytes, 0x1000, 0x100000000); const emission = Stalker.emitCodeCache(cacheBytes, 0x1000, 0x100000000); return {available:Stalker.capabilities().directRelocationPlan, layoutAvailable:Stalker.capabilities().staticCodeCacheLayout, emissionAvailable:Stalker.capabilities().staticCodeCacheEmission, nearComplete:near.directlyRelocatable, nearStatus:near.instructions[0].status, nearTarget:near.instructions[0].target, nearOutput:near.output.length, farComplete:far.directlyRelocatable, farFallback:far.requiresFallback, farStatus:far.instructions[0].status, farOutput:far.output, layoutMode:layout.codeCacheLayoutMode, layoutMaterialized:layout.materialized, layoutExecutable:layout.executable, layoutBlockCount:layout.blockCount, layoutFirstBlockStatus:layout.blocks[0].status, layoutFallbackCount:layout.fallbackCount, layoutFallbackStrategy:layout.fallbacks[0].strategy, layoutIslandBytes:layout.islandByteCount, layoutTotalBytes:layout.totalByteCount, layoutOutput:layout.output, emissionMode:emission.mode, emissionComplete:emission.emissionComplete, emissionExecutionReady:emission.executionReady, emissionScratchPolicy:emission.scratchRegisterPolicy, emissionMaterialized:emission.materialized, emissionExecutable:emission.executable, emissionFallbackBytes:emission.fallbackEmittedByteCounts[0], emissionOutputBytes:emission.outputByteCount, emissionPatchedBytes:emission.output.slice(0, 4)}; })()"
+            @"script" : @"(function() { const bytes = [0x02,0x00,0x00,0x14]; const cacheBytes = [0x02,0x00,0x00,0x14,0xc0,0x03,0x5f,0xd6]; const capabilities = Stalker.capabilities(); const near = Stalker.relocate(bytes, 0x10000000, 0x10008000); const far = Stalker.relocate(bytes, 0x1000, 0x100000000); const layout = Stalker.layoutCodeCache(cacheBytes, 0x1000, 0x100000000); const emission = Stalker.emitCodeCache(cacheBytes, 0x1000, 0x100000000); const materialization = Stalker.materializeCodeCache(cacheBytes, 0x1000); const materializationMode = materialization.mode; const materializationMaterialized = materialization.materialized; const materializationExecutable = materialization.executable; const materializationExecutionReady = materialization.executionReady; const materializationProtection = materialization.mappingProtection; const materializationActualProtection = Process.findRangeByAddress(materialization.base).protection; const materializationOwned = materialization.owned; const materializationDestinationMatches = String(materialization.destinationStart) === String(materialization.mappingBase); const materializationMappingCoversOutput = materialization.mappingSize >= materialization.outputByteCount; const materializationMappedBytes = materialization.mappedByteCount; const materializationOutputBytes = materialization.outputByteCount; const materializationFallbackBytes = materialization.fallbackEmittedByteCounts[0]; const materializationMappedWord = Number(materialization.base.readU32()); const materializationReleased = materialization.dispose(); const materializationReleasedAgain = materialization.dispose(); return {available:capabilities.directRelocationPlan, layoutAvailable:capabilities.staticCodeCacheLayout, emissionAvailable:capabilities.staticCodeCacheEmission, materializationAvailable:capabilities.staticCodeCacheMaterialization, nearComplete:near.directlyRelocatable, nearStatus:near.instructions[0].status, nearTarget:near.instructions[0].target, nearOutput:near.output.length, farComplete:far.directlyRelocatable, farFallback:far.requiresFallback, farStatus:far.instructions[0].status, farOutput:far.output, layoutMode:layout.codeCacheLayoutMode, layoutMaterialized:layout.materialized, layoutExecutable:layout.executable, layoutBlockCount:layout.blockCount, layoutFirstBlockStatus:layout.blocks[0].status, layoutFallbackCount:layout.fallbackCount, layoutFallbackStrategy:layout.fallbacks[0].strategy, layoutIslandBytes:layout.islandByteCount, layoutTotalBytes:layout.totalByteCount, layoutOutput:layout.output, emissionMode:emission.mode, emissionComplete:emission.emissionComplete, emissionExecutionReady:emission.executionReady, emissionScratchPolicy:emission.scratchRegisterPolicy, emissionMaterialized:emission.materialized, emissionExecutable:emission.executable, emissionFallbackBytes:emission.fallbackEmittedByteCounts[0], emissionOutputBytes:emission.outputByteCount, emissionPatchedBytes:emission.output.slice(0, 4), materializationMode:materializationMode, materializationMaterialized:materializationMaterialized, materializationExecutable:materializationExecutable, materializationExecutionReady:materializationExecutionReady, materializationProtection:materializationProtection, materializationActualProtection:materializationActualProtection, materializationOwned:materializationOwned, materializationDestinationMatches:materializationDestinationMatches, materializationMappingCoversOutput:materializationMappingCoversOutput, materializationMappedBytes:materializationMappedBytes, materializationOutputBytes:materializationOutputBytes, materializationFallbackBytes:materializationFallbackBytes, materializationMappedWord:materializationMappedWord, materializationReleased:materializationReleased, materializationReleasedAgain:materializationReleasedAgain, materializationDisposed:materialization.disposed}; })()"
         };
         error = nil;
         if (!RFSendJSONCommand(sockets[0], stalkerRelocationEval, &error)) {
@@ -363,6 +363,7 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
                 @"available" : @YES,
                 @"layoutAvailable" : @YES,
                 @"emissionAvailable" : @YES,
+                @"materializationAvailable" : @YES,
                 @"nearComplete" : @YES,
                 @"nearStatus" : @"relocated",
                 @"nearTarget" : @268435464,
@@ -390,6 +391,22 @@ static BOOL RFConfigureSocket(int fd, NSError **error) {
                 @"emissionFallbackBytes" : @8,
                 @"emissionOutputBytes" : @80,
                 @"emissionPatchedBytes" : (@[@4, @0, @0, @20]),
+                @"materializationMode" : @"rw-materialization",
+                @"materializationMaterialized" : @YES,
+                @"materializationExecutable" : @NO,
+                @"materializationExecutionReady" : @NO,
+                @"materializationProtection" : @"rw-",
+                @"materializationActualProtection" : @"rw-",
+                @"materializationOwned" : @YES,
+                @"materializationDestinationMatches" : @YES,
+                @"materializationMappingCoversOutput" : @YES,
+                @"materializationMappedBytes" : @80,
+                @"materializationOutputBytes" : @80,
+                @"materializationFallbackBytes" : @8,
+                @"materializationMappedWord" : @335544324,
+                @"materializationReleased" : @YES,
+                @"materializationReleasedAgain" : @NO,
+                @"materializationDisposed" : @YES,
             })
         );
 

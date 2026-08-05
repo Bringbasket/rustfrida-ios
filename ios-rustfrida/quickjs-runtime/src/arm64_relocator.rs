@@ -181,6 +181,42 @@ pub struct Arm64CodeCacheEmission {
     pub fallback_emitted_byte_counts: Vec<u64>,
 }
 
+#[derive(Debug)]
+pub struct Arm64CodeCacheMaterialization {
+    emission: Arm64CodeCacheEmission,
+    mapping: *mut libc::c_void,
+    mapping_size: usize,
+}
+
+impl Arm64CodeCacheMaterialization {
+    pub const fn emission(&self) -> &Arm64CodeCacheEmission {
+        &self.emission
+    }
+
+    pub fn mapping_base(&self) -> u64 {
+        self.mapping as usize as u64
+    }
+
+    pub const fn mapping_size(&self) -> usize {
+        self.mapping_size
+    }
+
+    #[cfg(test)]
+    fn mapped_output(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.mapping.cast::<u8>(), self.emission.output.len()) }
+    }
+}
+
+impl Drop for Arm64CodeCacheMaterialization {
+    fn drop(&mut self) {
+        if self.mapping_size != 0 {
+            unsafe {
+                libc::munmap(self.mapping, self.mapping_size);
+            }
+        }
+    }
+}
+
 impl Arm64CodeCacheLayoutPlan {
     pub const fn directly_relocatable(&self) -> bool {
         self.fallbacks.is_empty()
@@ -239,6 +275,10 @@ unsafe extern "C" {
 
 pub const fn arm64_relocator_available() -> bool {
     cfg!(quickjs_arm64_relocator)
+}
+
+pub const fn arm64_code_cache_materialization_available() -> bool {
+    cfg!(all(quickjs_arm64_relocator, unix))
 }
 
 pub fn analyze_arm64_instruction(address: u64, word: u32) -> Result<Arm64RelocationInfo> {
@@ -537,6 +577,86 @@ pub fn emit_arm64_code_cache(
             "ARM64 code-cache emission is not compiled for this runtime target".into(),
         ))
     }
+}
+
+pub fn materialize_arm64_code_cache(bytes: &[u8], source_start: u64) -> Result<Arm64CodeCacheMaterialization> {
+    validate_relocation_input(bytes, source_start, 0)?;
+
+    #[cfg(all(quickjs_arm64_relocator, unix))]
+    {
+        let instruction_count = bytes.len() / 4;
+        let island_slot_size = usize::try_from(ARM64_CODE_CACHE_ISLAND_SLOT_SIZE)
+            .map_err(|_| Error::InvalidArgument("ARM64 code-cache island slot size is too large".into()))?;
+        let alignment_padding = usize::try_from(ARM64_CODE_CACHE_ISLAND_ALIGNMENT - 1)
+            .map_err(|_| Error::InvalidArgument("ARM64 code-cache alignment is too large".into()))?;
+        let maximum_island_bytes = instruction_count
+            .checked_mul(island_slot_size)
+            .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache materialization size overflowed".into()))?;
+        let maximum_output_bytes = bytes
+            .len()
+            .checked_add(alignment_padding)
+            .and_then(|size| size.checked_add(maximum_island_bytes))
+            .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache materialization size overflowed".into()))?;
+        let mapping_size = page_align_code_cache_len(maximum_output_bytes)?;
+        let mapping = unsafe {
+            libc::mmap(
+                std::ptr::null_mut(),
+                mapping_size,
+                libc::PROT_READ | libc::PROT_WRITE,
+                libc::MAP_PRIVATE | libc::MAP_ANON,
+                -1,
+                0,
+            )
+        };
+        if mapping == libc::MAP_FAILED {
+            return Err(Error::Io(std::io::Error::last_os_error()));
+        }
+
+        let destination_start = mapping as usize as u64;
+        let emission = match emit_arm64_code_cache(bytes, source_start, destination_start) {
+            Ok(emission) => emission,
+            Err(error) => {
+                unsafe {
+                    libc::munmap(mapping, mapping_size);
+                }
+                return Err(error);
+            }
+        };
+        if emission.output.len() > mapping_size {
+            unsafe {
+                libc::munmap(mapping, mapping_size);
+            }
+            return Err(Error::State(
+                "ARM64 code-cache emission exceeds its writable mapping".into(),
+            ));
+        }
+        unsafe {
+            std::ptr::copy_nonoverlapping(emission.output.as_ptr(), mapping.cast::<u8>(), emission.output.len());
+        }
+
+        Ok(Arm64CodeCacheMaterialization {
+            emission,
+            mapping,
+            mapping_size,
+        })
+    }
+
+    #[cfg(not(all(quickjs_arm64_relocator, unix)))]
+    {
+        Err(Error::Unsupported(
+            "ARM64 code-cache materialization is not compiled for this runtime target".into(),
+        ))
+    }
+}
+
+#[cfg(all(quickjs_arm64_relocator, unix))]
+fn page_align_code_cache_len(len: usize) -> Result<usize> {
+    let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+    let page_size = if page_size > 0 { page_size as usize } else { 4096 };
+    len.checked_add(page_size - 1)
+        .map(|value| value / page_size * page_size)
+        .filter(|value| *value != 0)
+        .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache mapping size overflowed".into()))
 }
 
 fn code_cache_output_offset(
@@ -1020,5 +1140,21 @@ mod tests {
             .expect("patched fallback branch");
             assert_eq!(patched.target, Some(fallback.island_start));
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn code_cache_materialization_uses_real_mapping_base_and_copies_emission() {
+        let mut input = Vec::new();
+        input.extend_from_slice(&one_word(0x1400_0002));
+        input.extend_from_slice(&one_word(0xd65f_03c0));
+        let materialization = materialize_arm64_code_cache(&input, 0x1000).expect("materialization");
+        let emission = materialization.emission();
+
+        assert_eq!(emission.layout.destination_start, materialization.mapping_base());
+        assert_eq!(materialization.mapped_output(), emission.output);
+        assert!(materialization.mapping_size() >= emission.output.len());
+        assert_eq!(materialization.mapping_base() % 4, 0);
+        assert_eq!(word_at(materialization.mapped_output(), 0), emission.emitted_words[0]);
     }
 }

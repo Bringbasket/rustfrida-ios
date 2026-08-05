@@ -1,10 +1,12 @@
 use crate::arm64_relocator::{
-    arm64_relocator_available, emit_arm64_code_cache, plan_arm64_code_cache_layout, plan_arm64_relocation,
-    Arm64CodeCacheBlock, Arm64CodeCacheEmission, Arm64CodeCacheFallback, Arm64CodeCacheLayoutPlan,
+    arm64_code_cache_materialization_available, arm64_relocator_available, emit_arm64_code_cache,
+    materialize_arm64_code_cache, plan_arm64_code_cache_layout, plan_arm64_relocation, Arm64CodeCacheBlock,
+    Arm64CodeCacheEmission, Arm64CodeCacheFallback, Arm64CodeCacheLayoutPlan, Arm64CodeCacheMaterialization,
     Arm64RelocationEntry, Arm64RelocationPlan, ARM64_CODE_CACHE_ISLAND_ALIGNMENT, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE,
 };
 use crate::context::JSContext;
 use crate::ffi;
+use crate::ptr::create_native_pointer;
 use crate::util::{
     add_cfunction_to_object, js_throw_internal_error, js_throw_range_error, js_throw_type_error,
     js_u64_to_js_number_or_bigint, set_js_u64_property,
@@ -16,11 +18,15 @@ use native_api::{
     stalker_resume_thread, stalker_unfollow_thread, StalkerConfig, StalkerEvent, StalkerEventMask, StalkerRange,
     StalkerSession, StalkerSessionState,
 };
+use std::ffi::c_void;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 const DEFAULT_TRANSFORM_MAX_INSTRUCTIONS: usize = 256;
 const MAX_TRANSFORM_INSTRUCTIONS: usize = 4096;
 const DEFAULT_GENERATED_EVENT_CAPACITY: usize = 4096;
 const MAX_GENERATED_EVENT_CAPACITY: usize = 1_000_000;
+const STALKER_CODE_CACHE_CLASS_NAME: &[u8] = b"StalkerCodeCache\0";
+static STALKER_CODE_CACHE_CLASS_ID: AtomicU32 = AtomicU32::new(0);
 
 fn stalker_error(ctx: *mut ffi::JSContext, error: common::Error) -> ffi::JSValue {
     match error {
@@ -655,8 +661,34 @@ unsafe fn stalker_capabilities_to_js_detailed(ctx: *mut ffi::JSContext) -> ffi::
         "codeCacheWriterEmission",
         JSValue::bool(arm64_relocator_available()),
     );
+    result.set_property(
+        ctx,
+        "staticCodeCacheMaterialization",
+        JSValue::bool(arm64_code_cache_materialization_available()),
+    );
+    result.set_property(
+        ctx,
+        "codeCacheMaterializationMode",
+        JSValue::string(
+            ctx,
+            if arm64_code_cache_materialization_available() {
+                "rw-only"
+            } else {
+                "unavailable"
+            },
+        ),
+    );
+    result.set_property(
+        ctx,
+        "codeCacheWritableMapping",
+        JSValue::bool(arm64_code_cache_materialization_available()),
+    );
     result.set_property(ctx, "codeCacheExecutionReady", JSValue::bool(false));
-    result.set_property(ctx, "codeCacheMaterialized", JSValue::bool(false));
+    result.set_property(
+        ctx,
+        "codeCacheMaterialized",
+        JSValue::bool(arm64_code_cache_materialization_available()),
+    );
     result.set_property(ctx, "codeCacheExecutable", JSValue::bool(false));
     result.set_property(
         ctx,
@@ -1000,8 +1032,11 @@ unsafe fn stalker_code_cache_fallback_to_js(
     result.raw()
 }
 
-unsafe fn stalker_code_cache_layout_to_js(ctx: *mut ffi::JSContext, plan: Arm64CodeCacheLayoutPlan) -> ffi::JSValue {
-    let result = JSValue(ffi::JS_NewObject(ctx));
+unsafe fn set_stalker_code_cache_layout_properties(
+    ctx: *mut ffi::JSContext,
+    result: JSValue,
+    plan: &Arm64CodeCacheLayoutPlan,
+) {
     result.set_property(ctx, "api", JSValue::string(ctx, "Stalker"));
     result.set_property(ctx, "backend", JSValue::string(ctx, "arm64-static-code-cache-layout"));
     result.set_property(ctx, "source", JSValue::string(ctx, "hook-engine-arm64-relocator"));
@@ -1074,14 +1109,20 @@ unsafe fn stalker_code_cache_layout_to_js(ctx: *mut ffi::JSContext, plan: Arm64C
         JSValue(js_u64_to_js_number_or_bigint(ctx, plan.fallbacks.len() as u64)),
     );
     result.set_property(ctx, "output", JSValue::null());
+}
+
+unsafe fn stalker_code_cache_layout_to_js(ctx: *mut ffi::JSContext, plan: Arm64CodeCacheLayoutPlan) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    set_stalker_code_cache_layout_properties(ctx, result, &plan);
     result.raw()
 }
 
-unsafe fn stalker_code_cache_emission_to_js(
+unsafe fn set_stalker_code_cache_emission_properties(
     ctx: *mut ffi::JSContext,
-    emission: Arm64CodeCacheEmission,
-) -> ffi::JSValue {
-    let result = JSValue(stalker_code_cache_layout_to_js(ctx, emission.layout.clone()));
+    result: JSValue,
+    emission: &Arm64CodeCacheEmission,
+) {
+    set_stalker_code_cache_layout_properties(ctx, result, &emission.layout);
     result.set_property(ctx, "backend", JSValue::string(ctx, "arm64-static-code-cache-emitter"));
     result.set_property(ctx, "mode", JSValue::string(ctx, "static-emission"));
     result.set_property(ctx, "staticCodeCacheEmission", JSValue::bool(true));
@@ -1128,7 +1169,130 @@ unsafe fn stalker_code_cache_emission_to_js(
         ffi::JS_SetPropertyUint32(ctx, bytes, index as u32, JSValue::int(*byte as i32).raw());
     }
     result.set_property(ctx, "output", JSValue(bytes));
+}
+
+unsafe fn stalker_code_cache_emission_to_js(
+    ctx: *mut ffi::JSContext,
+    emission: Arm64CodeCacheEmission,
+) -> ffi::JSValue {
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    set_stalker_code_cache_emission_properties(ctx, result, &emission);
     result.raw()
+}
+
+unsafe extern "C" fn stalker_code_cache_finalizer(_runtime: *mut ffi::JSRuntime, value: ffi::JSValue) {
+    let class_id = STALKER_CODE_CACHE_CLASS_ID.load(Ordering::Relaxed);
+    if class_id == 0 {
+        return;
+    }
+    let opaque = ffi::JS_GetOpaque(value, class_id);
+    if !opaque.is_null() {
+        drop(Box::from_raw(opaque as *mut Arm64CodeCacheMaterialization));
+    }
+}
+
+unsafe fn stalker_code_cache_class_id(ctx: *mut ffi::JSContext) -> Result<u32, &'static str> {
+    let mut class_id = STALKER_CODE_CACHE_CLASS_ID.load(Ordering::Acquire);
+    if class_id == 0 {
+        let mut candidate = 0;
+        candidate = ffi::JS_NewClassID(&mut candidate);
+        class_id = match STALKER_CODE_CACHE_CLASS_ID.compare_exchange(0, candidate, Ordering::AcqRel, Ordering::Acquire)
+        {
+            Ok(_) => candidate,
+            Err(existing) => existing,
+        };
+    }
+    let runtime = ffi::JS_GetRuntime(ctx);
+    if ffi::JS_IsRegisteredClass(runtime, class_id) == 0 {
+        let class_def = ffi::JSClassDef {
+            class_name: STALKER_CODE_CACHE_CLASS_NAME.as_ptr() as *const _,
+            finalizer: Some(stalker_code_cache_finalizer),
+            gc_mark: None,
+            call: None,
+            exotic: std::ptr::null_mut(),
+        };
+        if ffi::JS_NewClass(runtime, class_id, &class_def) != 0 {
+            return Err("failed to register QuickJS StalkerCodeCache class");
+        }
+    }
+    Ok(class_id)
+}
+
+unsafe extern "C" fn js_stalker_code_cache_dispose(
+    ctx: *mut ffi::JSContext,
+    this: ffi::JSValue,
+    _argc: i32,
+    _argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_id = STALKER_CODE_CACHE_CLASS_ID.load(Ordering::Acquire);
+    if class_id == 0 {
+        return js_throw_type_error(ctx, "StalkerCodeCache receiver is invalid");
+    }
+    let opaque = ffi::JS_GetOpaque(this, class_id);
+    if opaque.is_null() {
+        return JSValue::bool(false).raw();
+    }
+
+    ffi::JS_SetOpaque(this, std::ptr::null_mut());
+    drop(Box::from_raw(opaque as *mut Arm64CodeCacheMaterialization));
+    let result = JSValue(this);
+    result.set_property(ctx, "base", JSValue::null());
+    result.set_property(ctx, "mappingBase", JSValue::null());
+    result.set_property(ctx, "mappingSize", JSValue::int(0));
+    result.set_property(ctx, "mappedByteCount", JSValue::int(0));
+    result.set_property(ctx, "materialized", JSValue::bool(false));
+    result.set_property(ctx, "codeCacheWritableMapping", JSValue::bool(false));
+    result.set_property(ctx, "allocatesWritableMemory", JSValue::bool(false));
+    result.set_property(ctx, "mappingProtection", JSValue::null());
+    result.set_property(ctx, "owned", JSValue::bool(false));
+    result.set_property(ctx, "disposed", JSValue::bool(true));
+    result.set_property(ctx, "lifetime", JSValue::string(ctx, "disposed"));
+    JSValue::bool(true).raw()
+}
+
+unsafe fn stalker_code_cache_materialization_to_js(
+    ctx: *mut ffi::JSContext,
+    materialization: Box<Arm64CodeCacheMaterialization>,
+) -> ffi::JSValue {
+    let class_id = match stalker_code_cache_class_id(ctx) {
+        Ok(class_id) => class_id,
+        Err(error) => return js_throw_internal_error(ctx, error),
+    };
+    let value = ffi::JS_NewObjectClass(ctx, class_id as i32);
+    if ffi::qjs_is_exception(value) != 0 {
+        return value;
+    }
+
+    let raw = Box::into_raw(materialization);
+    let materialization = &*raw;
+    ffi::JS_SetOpaque(value, raw as *mut c_void);
+    let result = JSValue(value);
+    set_stalker_code_cache_emission_properties(ctx, result, materialization.emission());
+    result.set_property(ctx, "backend", JSValue::string(ctx, "arm64-rw-code-cache-materializer"));
+    result.set_property(ctx, "mode", JSValue::string(ctx, "rw-materialization"));
+    result.set_property(ctx, "staticCodeCacheMaterialization", JSValue::bool(true));
+    result.set_property(ctx, "codeCacheMaterializationMode", JSValue::string(ctx, "rw-only"));
+    result.set_property(ctx, "codeCacheWritableMapping", JSValue::bool(true));
+    result.set_property(ctx, "materialized", JSValue::bool(true));
+    result.set_property(ctx, "executable", JSValue::bool(false));
+    result.set_property(ctx, "executionReady", JSValue::bool(false));
+    result.set_property(ctx, "allocatesExecutableMemory", JSValue::bool(false));
+    result.set_property(ctx, "allocatesWritableMemory", JSValue::bool(true));
+    result.set_property(ctx, "mappingProtection", JSValue::string(ctx, "rw-"));
+    result.set_property(ctx, "owned", JSValue::bool(true));
+    result.set_property(ctx, "disposed", JSValue::bool(false));
+    result.set_property(ctx, "lifetime", JSValue::string(ctx, "quickjs-gc-owned"));
+    set_js_u64_property(ctx, value, "mappingBase", materialization.mapping_base());
+    set_js_u64_property(ctx, value, "mappingSize", materialization.mapping_size() as u64);
+    set_js_u64_property(
+        ctx,
+        value,
+        "mappedByteCount",
+        materialization.emission().output.len() as u64,
+    );
+    result.set_property(ctx, "base", create_native_pointer(ctx, materialization.mapping_base()));
+    add_cfunction_to_object(ctx, value, "dispose", js_stalker_code_cache_dispose, 0);
+    value
 }
 
 unsafe fn stalker_generation_to_js(
@@ -1321,6 +1485,36 @@ unsafe extern "C" fn js_stalker_emit_code_cache(
     };
     match emit_arm64_code_cache(&bytes, source, destination) {
         Ok(emission) => stalker_code_cache_emission_to_js(ctx, emission),
+        Err(error) => stalker_error(ctx, error),
+    }
+}
+
+unsafe extern "C" fn js_stalker_materialize_code_cache(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 2 {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.materializeCodeCache(bytes, source) requires bytes and source",
+        );
+    }
+    let bytes = match js_byte_input(ctx, JSValue(*argv)) {
+        Ok(bytes) => bytes,
+        Err(error) => return error,
+    };
+    let source = match js_nonnegative_u64(
+        ctx,
+        JSValue(*argv.add(1)),
+        "Stalker.materializeCodeCache source must be an address",
+    ) {
+        Ok(address) => address,
+        Err(error) => return error,
+    };
+    match materialize_arm64_code_cache(&bytes, source) {
+        Ok(materialization) => stalker_code_cache_materialization_to_js(ctx, Box::new(materialization)),
         Err(error) => stalker_error(ctx, error),
     }
 }
@@ -1748,6 +1942,9 @@ globalThis.Stalker = globalThis.Stalker || (function() {
                 staticCodeCacheEmission: false,
                 codeCacheEmissionMode: 'unavailable',
                 codeCacheWriterEmission: false,
+                staticCodeCacheMaterialization: false,
+                codeCacheMaterializationMode: 'unavailable',
+                codeCacheWritableMapping: false,
                 codeCacheExecutionReady: false,
                 codeCacheMaterialized: false,
                 codeCacheExecutable: false,
@@ -1776,6 +1973,9 @@ globalThis.Stalker = globalThis.Stalker || (function() {
             staticCodeCacheEmission: native.staticCodeCacheEmission === true,
             codeCacheEmissionMode: native.codeCacheEmissionMode || 'unavailable',
             codeCacheWriterEmission: native.codeCacheWriterEmission === true,
+            staticCodeCacheMaterialization: native.staticCodeCacheMaterialization === true,
+            codeCacheMaterializationMode: native.codeCacheMaterializationMode || 'unavailable',
+            codeCacheWritableMapping: native.codeCacheWritableMapping === true,
             codeCacheExecutionReady: native.codeCacheExecutionReady === true,
             codeCacheMaterialized: native.codeCacheMaterialized === true,
             codeCacheExecutable: native.codeCacheExecutable === true,
@@ -1868,6 +2068,14 @@ globalThis.Stalker = globalThis.Stalker || (function() {
             throw new Error('Stalker code-cache emission is unavailable in this runtime');
         }
         return native.stalkerEmitCodeCache(bytes, source, destination);
+    }
+
+    function materializeCodeCache(bytes, source) {
+        const native = nativeStalker();
+        if (typeof native.stalkerMaterializeCodeCache !== 'function') {
+            throw new Error('Stalker code-cache materialization is unavailable in this runtime');
+        }
+        return native.stalkerMaterializeCodeCache(bytes, source);
     }
 
     function generateEvents(bytes, start, execution, options) {
@@ -1990,6 +2198,7 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         relocate: relocate,
         layoutCodeCache: layoutCodeCache,
         emitCodeCache: emitCodeCache,
+        materializeCodeCache: materializeCodeCache,
         generateEvents: generateEvents,
         recordBlock: recordBlock,
         captureStart: captureStart,
@@ -2066,6 +2275,13 @@ pub(crate) fn register_stalker_api(ctx: &JSContext) -> Result<(), String> {
             add_cfunction_to_object(
                 ctx.as_ptr(),
                 native.raw(),
+                "stalkerMaterializeCodeCache",
+                js_stalker_materialize_code_cache,
+                2,
+            );
+            add_cfunction_to_object(
+                ctx.as_ptr(),
+                native.raw(),
                 "stalkerGenerateEvents",
                 js_stalker_generate_events,
                 4,
@@ -2098,6 +2314,7 @@ mod tests {
         assert_eq!(runtime.eval("typeof Stalker.relocate").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.layoutCodeCache").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.emitCodeCache").unwrap(), "function");
+        assert_eq!(runtime.eval("typeof Stalker.materializeCodeCache").unwrap(), "function");
         assert_eq!(
             runtime.eval("Stalker.capabilities().instructionLevel").unwrap(),
             "false"
@@ -2183,6 +2400,54 @@ mod tests {
         assert_eq!(
             result,
             r#"{"available":true,"method":"function","mode":"static-emission","emitted":true,"complete":true,"executionReady":false,"scratchPolicy":"aapcs64-ip0-veneer","scratchRegisters":["x16"],"materialized":false,"executable":false,"allocates":false,"fallbackCount":1,"fallbackBytes":8,"outputBytes":80,"outputLength":80,"patchedWord":335544324,"patchedBytes":[4,0,0,20]}"#
+        );
+    }
+
+    #[test]
+    fn public_code_cache_materialization_owns_rw_mapping_without_claiming_execution() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const capabilities = Stalker.capabilities(); const cache = Stalker.materializeCodeCache([0x02,0x00,0x00,0x14,0xc0,0x03,0x5f,0xd6], 0x1000); return JSON.stringify({available:capabilities.staticCodeCacheMaterialization, capabilityMode:capabilities.codeCacheMaterializationMode, capabilityMaterialized:capabilities.codeCacheMaterialized, method:typeof Stalker.materializeCodeCache, mode:cache.mode, materialized:cache.materialized, executable:cache.executable, executionReady:cache.executionReady, allocatesExecutable:cache.allocatesExecutableMemory, allocatesWritable:cache.allocatesWritableMemory, writableMapping:cache.codeCacheWritableMapping, protection:cache.mappingProtection, actualProtection:Process.findRangeByAddress(cache.base).protection, owned:cache.owned, disposed:cache.disposed, disposeMethod:typeof cache.dispose, lifetime:cache.lifetime, destinationMatches:String(cache.destinationStart) === String(cache.mappingBase), mappingCoversOutput:cache.mappingSize >= cache.outputByteCount, mappedBytes:cache.mappedByteCount, outputBytes:cache.outputByteCount, outputLength:cache.output.length, fallbackBytes:cache.fallbackEmittedByteCounts[0], mappedWord:cache.base.readU32().toString(), baseRead:typeof cache.base.readU32}); })()",
+            )
+            .expect("exercise writable code-cache materialization");
+        assert_eq!(
+            result,
+            r#"{"available":true,"capabilityMode":"rw-only","capabilityMaterialized":true,"method":"function","mode":"rw-materialization","materialized":true,"executable":false,"executionReady":false,"allocatesExecutable":false,"allocatesWritable":true,"writableMapping":true,"protection":"rw-","actualProtection":"rw-","owned":true,"disposed":false,"disposeMethod":"function","lifetime":"quickjs-gc-owned","destinationMatches":true,"mappingCoversOutput":true,"mappedBytes":80,"outputBytes":80,"outputLength":80,"fallbackBytes":8,"mappedWord":"335544324","baseRead":"function"}"#
+        );
+    }
+
+    #[test]
+    fn materialized_code_cache_dispose_is_idempotent_and_unmaps() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const cache = Stalker.materializeCodeCache([0x1f,0x20,0x03,0xd5], 0x1000); const base = cache.base; const first = cache.dispose(); const second = cache.dispose(); let readable = true; try { base.readU32(); } catch (_) { readable = false; } return JSON.stringify({first:first, second:second, readable:readable, materialized:cache.materialized, writableMapping:cache.codeCacheWritableMapping, allocatesWritable:cache.allocatesWritableMemory, protection:cache.mappingProtection, owned:cache.owned, disposed:cache.disposed, lifetime:cache.lifetime, base:cache.base, mappingBase:cache.mappingBase, mappingSize:cache.mappingSize, mappedBytes:cache.mappedByteCount}); })()",
+            )
+            .expect("dispose writable code-cache materialization");
+        assert_eq!(
+            result,
+            r#"{"first":true,"second":false,"readable":false,"materialized":false,"writableMapping":false,"allocatesWritable":false,"protection":null,"owned":false,"disposed":true,"lifetime":"disposed","base":null,"mappingBase":null,"mappingSize":0,"mappedBytes":0}"#
+        );
+    }
+
+    #[test]
+    fn materialization_wrapper_reports_stable_legacy_backend_error() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { delete Native.stalkerMaterializeCodeCache; try { Stalker.materializeCodeCache([0x1f,0x20,0x03,0xd5], 0x1000); return 'missing-error'; } catch (error) { return error.message; } })()",
+            )
+            .expect("exercise legacy materialization wrapper");
+        assert_eq!(
+            result,
+            "Stalker code-cache materialization is unavailable in this runtime"
         );
     }
 
@@ -2296,6 +2561,22 @@ mod tests {
         assert_eq!(
             runtime.eval("Stalker.capabilities().codeCacheEmissionMode").unwrap(),
             "static-only"
+        );
+        assert_eq!(
+            runtime
+                .eval("Stalker.capabilities().staticCodeCacheMaterialization")
+                .unwrap(),
+            "true"
+        );
+        assert_eq!(
+            runtime
+                .eval("Stalker.capabilities().codeCacheMaterializationMode")
+                .unwrap(),
+            "rw-only"
+        );
+        assert_eq!(
+            runtime.eval("Stalker.capabilities().codeCacheMaterialized").unwrap(),
+            "true"
         );
         assert_eq!(
             runtime.eval("Stalker.capabilities().codeCacheExecutable").unwrap(),
