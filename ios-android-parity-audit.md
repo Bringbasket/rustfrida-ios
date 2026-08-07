@@ -278,7 +278,11 @@ curl -fsS -X POST http://127.0.0.1:9191/rpc/1/ping -d '[]'
 
 真机验收必须记录：controller 与 agent commit、设备/OS/arch、jailbreak/rootful-rootless、codesign/trust 状态、目标 App、完整命令、JSON 输出、syslog/crash log。每个 `complete（静态）` 项至少需要一条成功和一条失败/清理路径后，才能升级为“真机已验证”。
 
-## 8. 关闭标准
+## 8. Stalker rewrite-plan 增量
+
+当前新增了 followed-thread static relocation/rewrite plan：它绑定已 follow 的线程，按 caller-supplied ARM64 bytes、source 和 destination 生成 code-cache layout，返回 fallback/island 元数据，并保持 planOnly=true、targetThreadInstructionRewrite=false、rewritesTargetMemory=false、rewriteReady=false、executionReady=false。该层为真实 target-thread instruction rewrite 提供事务前置检查，但尚未写入目标内存、暂停目标线程或安装 transformer/callout。
+
+## 9. 关闭标准
 
 1. P0 编译阻断消失，所有新文件被版本控制追踪，Apple CI 构建通过。
 2. 每个 `missing`/`partial` 项必须以注册表测试和行为测试关闭，不能只新增 status/info 占位。

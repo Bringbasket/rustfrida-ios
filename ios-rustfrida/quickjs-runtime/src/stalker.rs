@@ -735,6 +735,23 @@ unsafe fn stalker_capabilities_to_js_detailed(ctx: *mut ffi::JSContext) -> ffi::
             },
         ),
     );
+    result.set_property(
+        ctx,
+        "targetThreadRewritePlan",
+        JSValue::bool(arm64_relocator_available()),
+    );
+    result.set_property(
+        ctx,
+        "targetThreadRewritePlanMode",
+        JSValue::string(
+            ctx,
+            if arm64_relocator_available() {
+                "followed-thread-static-relocation"
+            } else {
+                "unavailable"
+            },
+        ),
+    );
     result.set_property(ctx, "codeCacheExecutionReady", JSValue::bool(false));
     result.set_property(
         ctx,
@@ -1604,6 +1621,94 @@ unsafe extern "C" fn js_stalker_plan_target_thread_block(
     result.raw()
 }
 
+unsafe extern "C" fn js_stalker_plan_target_thread_rewrite(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 4 {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.planTargetThreadRewrite(thread, bytes, start, destination[, options]) requires thread, bytes, start and destination",
+        );
+    }
+    let thread_id = match js_thread_id(ctx, argc, argv, 0) {
+        Ok(thread_id) => thread_id,
+        Err(error) => return error,
+    };
+    let bytes = match js_byte_input(ctx, JSValue(*argv.add(1))) {
+        Ok(bytes) => bytes,
+        Err(error) => return error,
+    };
+    let source = match js_nonnegative_u64(
+        ctx,
+        JSValue(*argv.add(2)),
+        "Stalker.planTargetThreadRewrite start must be an address",
+    ) {
+        Ok(source) => source,
+        Err(error) => return error,
+    };
+    let destination = match js_nonnegative_u64(
+        ctx,
+        JSValue(*argv.add(3)),
+        "Stalker.planTargetThreadRewrite destination must be an address",
+    ) {
+        Ok(destination) => destination,
+        Err(error) => return error,
+    };
+    let options = if argc > 4 { Some(JSValue(*argv.add(4))) } else { None };
+    let (_event_mask, max_instructions, _max_events) = match js_transform_options(ctx, options) {
+        Ok(options) => options,
+        Err(error) => return error,
+    };
+    if bytes.len() / 4 > max_instructions {
+        return js_throw_range_error(ctx, "Stalker.planTargetThreadRewrite input exceeds maxInstructions");
+    }
+    let status = stalker_backend_status()
+        .threads
+        .into_iter()
+        .find(|status| status.thread_id == thread_id);
+    let Some(status) = status else {
+        return stalker_error(
+            ctx,
+            common::Error::State(format!("target thread {thread_id} is not followed")),
+        );
+    };
+    let plan = match plan_arm64_code_cache_layout(&bytes, source, destination) {
+        Ok(plan) => plan,
+        Err(error) => return stalker_error(ctx, error),
+    };
+    let result = JSValue(stalker_code_cache_layout_to_js(ctx, plan));
+    result.set_property(
+        ctx,
+        "backend",
+        JSValue::string(ctx, "apple-target-thread-static-rewrite-plan"),
+    );
+    result.set_property(ctx, "source", JSValue::string(ctx, "followed-thread-static-relocation"));
+    result.set_property(ctx, "mode", JSValue::string(ctx, "target-thread-rewrite-plan"));
+    result.set_property(ctx, "planOnly", JSValue::bool(true));
+    result.set_property(ctx, "targetThreadFollowed", JSValue::bool(true));
+    result.set_property(ctx, "targetThreadInstructionRewrite", JSValue::bool(false));
+    result.set_property(ctx, "rewritesTargetMemory", JSValue::bool(false));
+    result.set_property(ctx, "rewriteReady", JSValue::bool(false));
+    result.set_property(ctx, "executionReady", JSValue::bool(false));
+    result.set_property(
+        ctx,
+        "targetThreadState",
+        JSValue::string(
+            ctx,
+            match status.state {
+                StalkerSessionState::Idle => "idle",
+                StalkerSessionState::Following => "following",
+                StalkerSessionState::Deactivated => "deactivated",
+            },
+        ),
+    );
+    set_js_u64_property(ctx, result.raw(), "targetThreadId", thread_id);
+    result.raw()
+}
+
 unsafe extern "C" fn js_stalker_relocate(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -2287,6 +2392,14 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         return native.stalkerPlanTargetThreadBlock(threadId(thread), bytes, start, options || {});
     }
 
+    function planTargetThreadRewrite(thread, bytes, start, destination, options) {
+        const native = nativeStalker();
+        if (typeof native.stalkerPlanTargetThreadRewrite !== 'function') {
+            throw new Error('Stalker target-thread rewrite planning is unavailable in this runtime');
+        }
+        return native.stalkerPlanTargetThreadRewrite(threadId(thread), bytes, start, destination, options || {});
+    }
+
     function relocate(bytes, source, destination) {
         return nativeStalker().stalkerRelocate(bytes, source, destination);
     }
@@ -2448,6 +2561,7 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         transform: transform,
         transformBasicBlock: transform,
         planTargetThreadBlock: planTargetThreadBlock,
+        planTargetThreadRewrite: planTargetThreadRewrite,
         relocate: relocate,
         layoutCodeCache: layoutCodeCache,
         emitCodeCache: emitCodeCache,
@@ -2518,6 +2632,13 @@ pub(crate) fn register_stalker_api(ctx: &JSContext) -> Result<(), String> {
                 "stalkerPlanTargetThreadBlock",
                 js_stalker_plan_target_thread_block,
                 4,
+            );
+            add_cfunction_to_object(
+                ctx.as_ptr(),
+                native.raw(),
+                "stalkerPlanTargetThreadRewrite",
+                js_stalker_plan_target_thread_rewrite,
+                5,
             );
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerRelocate", js_stalker_relocate, 3);
             add_cfunction_to_object(
@@ -2597,6 +2718,10 @@ mod tests {
             "function"
         );
         assert_eq!(
+            runtime.eval("typeof Stalker.planTargetThreadRewrite").unwrap(),
+            "function"
+        );
+        assert_eq!(
             runtime.eval("Stalker.capabilities().instructionLevel").unwrap(),
             "false"
         );
@@ -2636,6 +2761,22 @@ mod tests {
         assert_eq!(
             result,
             r#"{"available":true,"mode":"followed-thread-static","method":"function","missing":"invalid state: target thread 901 is not followed","followed":"following","backend":"apple-target-thread-static-plan","planMode":"target-thread-static-plan","planOnly":true,"targetThreadId":"902","targetThreadFollowed":true,"targetThreadState":"following","instrumented":false,"targetThreadInstrumented":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"executionReady":false,"instructionCount":2,"terminator":"ret","stopped":"idle"}"#
+        );
+    }
+
+    #[test]
+    fn public_target_thread_rewrite_plan_binds_followed_thread_without_patching_memory() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const t = 903; Stalker.follow(t, {events: 1}); const plan = Stalker.planTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], 0x4000, 0x8000, {maxInstructions: 4}); const stopped = Stalker.unfollow(t); return JSON.stringify({available:Stalker.capabilities().targetThreadRewritePlan, mode:Stalker.capabilities().targetThreadRewritePlanMode, method:typeof Stalker.planTargetThreadRewrite, backend:plan.backend, planMode:plan.mode, planOnly:plan.planOnly, targetThreadId:String(plan.targetThreadId), targetThreadFollowed:plan.targetThreadFollowed, targetThreadState:plan.targetThreadState, sourceStart:String(plan.sourceStart), destinationStart:String(plan.destinationStart), directlyRelocatable:plan.directlyRelocatable, instructionCount:plan.instructionCount, targetThreadInstructionRewrite:plan.targetThreadInstructionRewrite, rewritesTargetMemory:plan.rewritesTargetMemory, rewriteReady:plan.rewriteReady, executionReady:plan.executionReady, stopped:stopped.state}); })()",
+            )
+            .expect("exercise target-thread rewrite plan");
+        assert_eq!(
+            result,
+            r#"{"available":true,"mode":"followed-thread-static-relocation","method":"function","backend":"apple-target-thread-static-rewrite-plan","planMode":"target-thread-rewrite-plan","planOnly":true,"targetThreadId":"903","targetThreadFollowed":true,"targetThreadState":"following","sourceStart":"16384","destinationStart":"32768","directlyRelocatable":true,"instructionCount":2,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"stopped":"idle"}"#
         );
     }
 
