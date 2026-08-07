@@ -284,6 +284,8 @@ curl -fsS -X POST http://127.0.0.1:9191/rpc/1/ping -d '[]'
 
 下一层 `Stalker.prepareTargetThreadRewrite(thread, bytes, start[, options])` 已接入事务前置：它复用 followed-thread 校验，按真实 mapping base 发射 code cache，完成 flush+RX transition，并返回 QuickJS-owned `StalkerCodeCache`。该 owner 提供幂等 `rollback()`/`dispose()` 释放映射；准备层仍明确保持 `targetThreadInstructionRewrite=false`、`rewritesTargetMemory=false`、`rewriteReady=false`、`executionReady=false`，不暂停线程、不改写目标地址、不安装 transformer/callout。后续 commit 层需要在该 owner 之上接入 Apple thread suspend、目标内存 patch、quiescence 与失败回滚。
 
+`Stalker.preflightTargetThreadRewrite(thread, cache)` 现在把该 commit 层前置检查结构化为 `commit-blocker-report`：要求 cache 来自 prepare 且线程仍被 follow，报告 cache 是否 executable、线程暂停/目标 patch/quiescence 三项能力和稳定 `blockers` 数组。该 preflight 只读状态，始终保持 `commitReady=false`、`targetThreadInstructionRewrite=false`、`rewritesTargetMemory=false`、`rewriteReady=false` 与 `executionReady=false`，不修改 cache 或目标内存。
+
 ## 9. 关闭标准
 
 1. P0 编译阻断消失，所有新文件被版本控制追踪，Apple CI 构建通过。

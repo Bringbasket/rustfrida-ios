@@ -769,6 +769,12 @@ unsafe fn stalker_capabilities_to_js_detailed(ctx: *mut ffi::JSContext) -> ffi::
             },
         ),
     );
+    result.set_property(ctx, "targetThreadRewritePreflight", JSValue::bool(true));
+    result.set_property(
+        ctx,
+        "targetThreadRewritePreflightMode",
+        JSValue::string(ctx, "commit-blocker-report"),
+    );
     result.set_property(ctx, "codeCacheExecutionReady", JSValue::bool(false));
     result.set_property(
         ctx,
@@ -1843,6 +1849,129 @@ unsafe extern "C" fn js_stalker_prepare_target_thread_rewrite(
     result.raw()
 }
 
+unsafe extern "C" fn js_stalker_preflight_target_thread_rewrite(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 2 {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.preflightTargetThreadRewrite(thread, cache) requires thread and a prepared StalkerCodeCache",
+        );
+    }
+    let thread_id = match js_thread_id(ctx, argc, argv, 0) {
+        Ok(thread_id) => thread_id,
+        Err(error) => return error,
+    };
+    let class_id = STALKER_CODE_CACHE_CLASS_ID.load(Ordering::Acquire);
+    if class_id == 0 {
+        return js_throw_type_error(ctx, "StalkerCodeCache receiver is invalid");
+    }
+    let cache = JSValue(*argv.add(1));
+    let opaque = ffi::JS_GetOpaque(cache.raw(), class_id);
+    if opaque.is_null() {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache",
+        );
+    }
+    let prepared = match with_owned_js_value(ctx, cache.get_property(ctx, "prepared"), |value| {
+        Ok(value.to_bool() == Some(true))
+    }) {
+        Ok(prepared) => prepared,
+        Err(error) => return error,
+    };
+    if !prepared {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.preflightTargetThreadRewrite() requires a cache returned by prepareTargetThreadRewrite",
+        );
+    }
+    let cache_thread_id = match with_owned_js_value(ctx, cache.get_property(ctx, "targetThreadId"), |value| {
+        js_nonnegative_u64(ctx, value, "prepared StalkerCodeCache targetThreadId is invalid")
+    }) {
+        Ok(thread_id) => thread_id,
+        Err(error) => return error,
+    };
+    if cache_thread_id != thread_id {
+        return stalker_error(
+            ctx,
+            common::Error::State(format!(
+                "prepared StalkerCodeCache belongs to target thread {cache_thread_id}, not {thread_id}"
+            )),
+        );
+    }
+    let status = stalker_backend_status()
+        .threads
+        .into_iter()
+        .find(|status| status.thread_id == thread_id);
+    let Some(status) = status else {
+        return stalker_error(
+            ctx,
+            common::Error::State(format!("target thread {thread_id} is not followed")),
+        );
+    };
+    let materialization = &*(opaque as *mut Arm64CodeCacheMaterialization);
+    let result = JSValue(ffi::JS_NewObject(ctx));
+    result.set_property(
+        ctx,
+        "backend",
+        JSValue::string(ctx, "apple-target-thread-rewrite-commit-preflight"),
+    );
+    result.set_property(ctx, "source", JSValue::string(ctx, "prepared-rewrite-transaction"));
+    result.set_property(
+        ctx,
+        "mode",
+        JSValue::string(ctx, "target-thread-rewrite-commit-preflight"),
+    );
+    result.set_property(ctx, "planOnly", JSValue::bool(false));
+    result.set_property(ctx, "prepared", JSValue::bool(true));
+    result.set_property(ctx, "targetThreadFollowed", JSValue::bool(true));
+    result.set_property(ctx, "targetThreadInstructionRewrite", JSValue::bool(false));
+    result.set_property(ctx, "rewritesTargetMemory", JSValue::bool(false));
+    result.set_property(ctx, "rewriteReady", JSValue::bool(false));
+    result.set_property(ctx, "commitReady", JSValue::bool(false));
+    result.set_property(ctx, "executionReady", JSValue::bool(false));
+    result.set_property(ctx, "cacheExecutable", JSValue::bool(materialization.is_executable()));
+    result.set_property(ctx, "threadSuspendAvailable", JSValue::bool(false));
+    result.set_property(ctx, "targetMemoryPatchAvailable", JSValue::bool(false));
+    result.set_property(ctx, "quiescenceAvailable", JSValue::bool(false));
+    result.set_property(
+        ctx,
+        "targetThreadState",
+        JSValue::string(
+            ctx,
+            match status.state {
+                StalkerSessionState::Idle => "idle",
+                StalkerSessionState::Following => "following",
+                StalkerSessionState::Deactivated => "deactivated",
+            },
+        ),
+    );
+    let blockers = ffi::JS_NewArray(ctx);
+    for (index, blocker) in [
+        "apple-thread-suspend",
+        "target-memory-patch",
+        "target-thread-quiescence",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        ffi::JS_SetPropertyUint32(ctx, blockers, index as u32, JSValue::string(ctx, blocker).raw());
+    }
+    result.set_property(ctx, "blockers", JSValue(blockers));
+    set_js_u64_property(ctx, result.raw(), "targetThreadId", thread_id);
+    let source_start = with_owned_js_value(ctx, cache.get_property(ctx, "sourceStart"), |value| {
+        js_nonnegative_u64(ctx, value, "prepared StalkerCodeCache sourceStart is invalid")
+    });
+    if let Ok(source_start) = source_start {
+        set_js_u64_property(ctx, result.raw(), "sourceStart", source_start);
+    }
+    result.raw()
+}
+
 unsafe extern "C" fn js_stalker_relocate(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -2410,6 +2539,8 @@ globalThis.Stalker = globalThis.Stalker || (function() {
                 codeCacheMaterializationMode: 'unavailable',
                 targetThreadRewritePreparation: false,
                 targetThreadRewritePreparationMode: 'unavailable',
+                targetThreadRewritePreflight: false,
+                targetThreadRewritePreflightMode: 'unavailable',
                 codeCacheWritableMapping: false,
                 codeCacheExecutionReady: false,
                 codeCacheMaterialized: false,
@@ -2443,6 +2574,8 @@ globalThis.Stalker = globalThis.Stalker || (function() {
             codeCacheMaterializationMode: native.codeCacheMaterializationMode || 'unavailable',
             targetThreadRewritePreparation: native.targetThreadRewritePreparation === true,
             targetThreadRewritePreparationMode: native.targetThreadRewritePreparationMode || 'unavailable',
+            targetThreadRewritePreflight: native.targetThreadRewritePreflight === true,
+            targetThreadRewritePreflightMode: native.targetThreadRewritePreflightMode || 'unavailable',
             codeCacheWritableMapping: native.codeCacheWritableMapping === true,
             codeCacheExecutionReady: native.codeCacheExecutionReady === true,
             codeCacheMaterialized: native.codeCacheMaterialized === true,
@@ -2544,6 +2677,14 @@ globalThis.Stalker = globalThis.Stalker || (function() {
             throw new Error('Stalker target-thread rewrite preparation is unavailable in this runtime');
         }
         return native.stalkerPrepareTargetThreadRewrite(threadId(thread), bytes, start, options || {});
+    }
+
+    function preflightTargetThreadRewrite(thread, cache) {
+        const native = nativeStalker();
+        if (typeof native.stalkerPreflightTargetThreadRewrite !== 'function') {
+            throw new Error('Stalker target-thread rewrite preflight is unavailable in this runtime');
+        }
+        return native.stalkerPreflightTargetThreadRewrite(threadId(thread), cache);
     }
 
     function relocate(bytes, source, destination) {
@@ -2709,6 +2850,7 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         planTargetThreadBlock: planTargetThreadBlock,
         planTargetThreadRewrite: planTargetThreadRewrite,
         prepareTargetThreadRewrite: prepareTargetThreadRewrite,
+        preflightTargetThreadRewrite: preflightTargetThreadRewrite,
         relocate: relocate,
         layoutCodeCache: layoutCodeCache,
         emitCodeCache: emitCodeCache,
@@ -2793,6 +2935,13 @@ pub(crate) fn register_stalker_api(ctx: &JSContext) -> Result<(), String> {
                 "stalkerPrepareTargetThreadRewrite",
                 js_stalker_prepare_target_thread_rewrite,
                 4,
+            );
+            add_cfunction_to_object(
+                ctx.as_ptr(),
+                native.raw(),
+                "stalkerPreflightTargetThreadRewrite",
+                js_stalker_preflight_target_thread_rewrite,
+                2,
             );
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerRelocate", js_stalker_relocate, 3);
             add_cfunction_to_object(
@@ -2880,6 +3029,10 @@ mod tests {
             "function"
         );
         assert_eq!(
+            runtime.eval("typeof Stalker.preflightTargetThreadRewrite").unwrap(),
+            "function"
+        );
+        assert_eq!(
             runtime.eval("Stalker.capabilities().instructionLevel").unwrap(),
             "false"
         );
@@ -2951,6 +3104,22 @@ mod tests {
         assert_eq!(
             result,
             r#"{"available":true,"mode":"followed-thread-rx-cache-transaction","missing":"invalid state: target thread 904 is not followed","before":{"method":"function","backend":"apple-target-thread-rewrite-preparer","mode":"target-thread-rewrite-prepared","prepared":true,"targetThreadId":"905","targetThreadFollowed":true,"mappingProtection":"r-x","finalized":true,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false},"after":{"rolledBack":true,"disposed":true,"rollbackState":"rolled-back","mappingProtection":null},"stopped":"idle"}"#
+        );
+    }
+
+    #[test]
+    fn public_target_thread_rewrite_preflight_reports_commit_blockers_without_patching() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const t = 907; Stalker.follow(t, {events: 1}); const cache = Stalker.prepareTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], 0x4000, {maxInstructions: 4}); const missing = (function() { try { Stalker.preflightTargetThreadRewrite(906, {}); return 'unexpected-success'; } catch (error) { return error.message; } })(); const report = Stalker.preflightTargetThreadRewrite(t, cache); const rolledBack = cache.rollback(); const stopped = Stalker.unfollow(t); return JSON.stringify({available:Stalker.capabilities().targetThreadRewritePreflight, mode:Stalker.capabilities().targetThreadRewritePreflightMode, method:typeof Stalker.preflightTargetThreadRewrite, missing:missing, backend:report.backend, reportMode:report.mode, targetThreadId:String(report.targetThreadId), targetThreadFollowed:report.targetThreadFollowed, cacheExecutable:report.cacheExecutable, threadSuspendAvailable:report.threadSuspendAvailable, targetMemoryPatchAvailable:report.targetMemoryPatchAvailable, quiescenceAvailable:report.quiescenceAvailable, blockers:report.blockers, commitReady:report.commitReady, targetThreadInstructionRewrite:report.targetThreadInstructionRewrite, rewritesTargetMemory:report.rewritesTargetMemory, rewriteReady:report.rewriteReady, executionReady:report.executionReady, rolledBack:rolledBack, stopped:stopped.state}); })()",
+            )
+            .expect("exercise target-thread rewrite preflight");
+        assert_eq!(
+            result,
+            r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":false,"targetMemoryPatchAvailable":false,"quiescenceAvailable":false,"blockers":["apple-thread-suspend","target-memory-patch","target-thread-quiescence"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#
         );
     }
 
