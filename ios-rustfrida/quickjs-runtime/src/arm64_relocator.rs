@@ -203,6 +203,10 @@ impl Arm64CodeCacheMaterialization {
         self.mapping_size
     }
 
+    pub const fn is_executable(&self) -> bool {
+        self.executable
+    }
+
     /// Flushes the instruction cache and transitions the owned mapping from
     /// RW to RX. The operation is idempotent and leaves the mapping writable
     /// when either step fails.

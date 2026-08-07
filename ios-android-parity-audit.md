@@ -282,6 +282,8 @@ curl -fsS -X POST http://127.0.0.1:9191/rpc/1/ping -d '[]'
 
 当前新增了 followed-thread static relocation/rewrite plan：它绑定已 follow 的线程，按 caller-supplied ARM64 bytes、source 和 destination 生成 code-cache layout，返回 fallback/island 元数据，并保持 planOnly=true、targetThreadInstructionRewrite=false、rewritesTargetMemory=false、rewriteReady=false、executionReady=false。该层为真实 target-thread instruction rewrite 提供事务前置检查，但尚未写入目标内存、暂停目标线程或安装 transformer/callout。
 
+下一层 `Stalker.prepareTargetThreadRewrite(thread, bytes, start[, options])` 已接入事务前置：它复用 followed-thread 校验，按真实 mapping base 发射 code cache，完成 flush+RX transition，并返回 QuickJS-owned `StalkerCodeCache`。该 owner 提供幂等 `rollback()`/`dispose()` 释放映射；准备层仍明确保持 `targetThreadInstructionRewrite=false`、`rewritesTargetMemory=false`、`rewriteReady=false`、`executionReady=false`，不暂停线程、不改写目标地址、不安装 transformer/callout。后续 commit 层需要在该 owner 之上接入 Apple thread suspend、目标内存 patch、quiescence 与失败回滚。
+
 ## 9. 关闭标准
 
 1. P0 编译阻断消失，所有新文件被版本控制追踪，Apple CI 构建通过。

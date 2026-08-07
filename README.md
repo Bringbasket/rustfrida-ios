@@ -173,9 +173,10 @@ curl -X POST http://127.0.0.1:9191/rpc/1/add -d '[20,22]'
 - `Stalker.capabilities()` / `Stalker.status()` / `Stalker.info()`
 - `Stalker.functionLevelStatus()` / `Stalker.functionLevelStop()`
 - `Stalker.follow()` / `Stalker.pauseThread()` / `Stalker.resumeThread()` / `Stalker.unfollow()`
-- `Stalker.transform()` / `Stalker.transformBasicBlock()` / `Stalker.planTargetThreadBlock()` / `Stalker.planTargetThreadRewrite()`
+- `Stalker.transform()` / `Stalker.transformBasicBlock()` / `Stalker.planTargetThreadBlock()` / `Stalker.planTargetThreadRewrite()` / `Stalker.prepareTargetThreadRewrite()`
 - `Stalker.generateEvents()` / `Stalker.recordBlock()`
 - `Stalker.relocate()` / `Stalker.layoutCodeCache()` / `Stalker.emitCodeCache()` / `Stalker.materializeCodeCache()` / `Stalker.finalizeCodeCache()` / `Stalker.executeCodeCache()`
+- `Stalker.prepareTargetThreadRewrite()` binds a followed thread and owns a finalized RX code-cache transaction. Its `rollback()`/`dispose()` releases the mapping; it does not pause the thread, patch target memory, install a transformer/callout, or report target-thread execution readiness.
 - `CModule.capabilities()` / `CModule.status()` / `CModule.lastError()`
 - `Native.base(moduleName)`
 - `Native.findBase(moduleName)`
