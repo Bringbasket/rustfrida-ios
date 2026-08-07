@@ -1814,6 +1814,11 @@ unsafe extern "C" fn js_stalker_prepare_target_thread_rewrite(
         JSValue::string(ctx, "followed-thread-rewrite-transaction"),
     );
     result.set_property(ctx, "mode", JSValue::string(ctx, "target-thread-rewrite-prepared"));
+    result.set_property(
+        ctx,
+        "codeCacheMaterializationMode",
+        JSValue::string(ctx, "rw-to-rx-transaction"),
+    );
     result.set_property(ctx, "planOnly", JSValue::bool(false));
     result.set_property(ctx, "prepared", JSValue::bool(true));
     result.set_property(ctx, "targetThreadFollowed", JSValue::bool(true));
