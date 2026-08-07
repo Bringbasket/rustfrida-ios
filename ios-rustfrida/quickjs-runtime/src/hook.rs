@@ -1923,6 +1923,28 @@ fn hook_engine_quiescent(timeout_ms: u32) -> bool {
     unsafe { ffi::hook::hook_engine_wait_for_quiescence(timeout_ms) != 0 }
 }
 
+/// Report whether the hook engine exposes the callback/thunk quiescence wait
+/// used by Stalker commit transactions.
+pub(crate) const fn target_thread_quiescence_available() -> bool {
+    cfg!(quickjs_hook_engine)
+}
+
+/// Wait for in-flight Rust callbacks and generated hook thunks to quiesce.
+/// The target-thread Mach suspend lease remains a separate prerequisite.
+#[allow(dead_code)]
+pub(crate) fn wait_for_target_thread_quiescence(timeout_ms: u32) -> bool {
+    #[cfg(quickjs_hook_engine)]
+    {
+        wait_for_in_flight_callbacks(Duration::from_millis(timeout_ms as u64)) && hook_engine_quiescent(timeout_ms)
+    }
+
+    #[cfg(not(quickjs_hook_engine))]
+    {
+        let _ = timeout_ms;
+        false
+    }
+}
+
 #[cfg(quickjs_hook_engine)]
 fn push_native_hook_frame(ctx_ptr: *mut ffi::hook::HookContext, trampoline: u64) {
     native_hook_stack()

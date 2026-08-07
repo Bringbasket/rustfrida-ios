@@ -179,6 +179,7 @@ curl -X POST http://127.0.0.1:9191/rpc/1/add -d '[20,22]'
 - `Stalker.prepareTargetThreadRewrite()` binds a followed thread and owns a finalized RX code-cache transaction. Its `rollback()`/`dispose()` releases the mapping; it does not pause the thread, patch target memory, install a transformer/callout, or report target-thread execution readiness.
 - `Stalker.preflightTargetThreadRewrite(thread, cache)` reports the remaining commit blockers (`apple-thread-suspend`, `target-memory-patch`, and `target-thread-quiescence`) without changing the cache or target memory. The Apple build now probes the Mach suspend primitive; host builds keep that blocker explicit until the Apple runtime is present.
 - The commit-layer memory primitive now owns a same-length target patch transaction internally: it snapshots original bytes and page protections, applies through the existing W^X/flush path, and keeps rollback armed on failure. It is not yet exposed as `commitTargetThreadRewrite()`.
+- When the native hook engine is built, the preflight also detects its callback/thunk quiescence wait; stub and host builds keep `target-thread-quiescence` explicit until that engine is present.
 - `CModule.capabilities()` / `CModule.status()` / `CModule.lastError()`
 - `Native.base(moduleName)`
 - `Native.findBase(moduleName)`

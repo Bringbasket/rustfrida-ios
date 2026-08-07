@@ -288,6 +288,8 @@ curl -fsS -X POST http://127.0.0.1:9191/rpc/1/ping -d '[]'
 
 目标内存 patch primitive 已在 runtime 内部落地为 same-length owner：准备时保存原始字节与 page protection，应用时复用 W^X 切换和 instruction-cache flush，失败或 Drop 时保留回滚路径，并在写入前检测 mapping/protection 是否发生漂移。该 primitive 尚未接入公开 commit API，因此 `targetMemoryPatchAvailable` 仍保持 false。
 
+hook-engine quiescence primitive 现在也通过 Stalker preflight 暴露编译期能力：启用 native hook engine 时等待 in-flight callbacks 与 generated thunks，stub/host 构建继续保留 `target-thread-quiescence` blocker。它仍未与 suspend lease、目标 patch owner 组合为公开 commit 事务。
+
 ## 9. 关闭标准
 
 1. P0 编译阻断消失，所有新文件被版本控制追踪，Apple CI 构建通过。

@@ -7,6 +7,7 @@ use crate::arm64_relocator::{
 };
 use crate::context::JSContext;
 use crate::ffi;
+use crate::hook::target_thread_quiescence_available;
 use crate::ptr::create_native_pointer;
 use crate::util::{
     add_cfunction_to_object, js_throw_internal_error, js_throw_range_error, js_throw_type_error,
@@ -1915,6 +1916,7 @@ unsafe extern "C" fn js_stalker_preflight_target_thread_rewrite(
     };
     let materialization = &*(opaque as *mut Arm64CodeCacheMaterialization);
     let thread_suspend_available = stalker_thread_suspend_available();
+    let quiescence_available = target_thread_quiescence_available();
     let result = JSValue(ffi::JS_NewObject(ctx));
     result.set_property(
         ctx,
@@ -1938,7 +1940,7 @@ unsafe extern "C" fn js_stalker_preflight_target_thread_rewrite(
     result.set_property(ctx, "cacheExecutable", JSValue::bool(materialization.is_executable()));
     result.set_property(ctx, "threadSuspendAvailable", JSValue::bool(thread_suspend_available));
     result.set_property(ctx, "targetMemoryPatchAvailable", JSValue::bool(false));
-    result.set_property(ctx, "quiescenceAvailable", JSValue::bool(false));
+    result.set_property(ctx, "quiescenceAvailable", JSValue::bool(quiescence_available));
     result.set_property(
         ctx,
         "targetThreadState",
@@ -1962,9 +1964,17 @@ unsafe extern "C" fn js_stalker_preflight_target_thread_rewrite(
         );
         blocker_index += 1;
     }
-    for blocker in ["target-memory-patch", "target-thread-quiescence"] {
+    for blocker in ["target-memory-patch"] {
         ffi::JS_SetPropertyUint32(ctx, blockers, blocker_index, JSValue::string(ctx, blocker).raw());
         blocker_index += 1;
+    }
+    if !quiescence_available {
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            blockers,
+            blocker_index,
+            JSValue::string(ctx, "target-thread-quiescence").raw(),
+        );
     }
     result.set_property(ctx, "blockers", JSValue(blockers));
     set_js_u64_property(ctx, result.raw(), "targetThreadId", thread_id);
@@ -3122,9 +3132,13 @@ mod tests {
                 "(function() { const t = 907; Stalker.follow(t, {events: 1}); const cache = Stalker.prepareTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], 0x4000, {maxInstructions: 4}); const missing = (function() { try { Stalker.preflightTargetThreadRewrite(906, {}); return 'unexpected-success'; } catch (error) { return error.message; } })(); const report = Stalker.preflightTargetThreadRewrite(t, cache); const rolledBack = cache.rollback(); const stopped = Stalker.unfollow(t); return JSON.stringify({available:Stalker.capabilities().targetThreadRewritePreflight, mode:Stalker.capabilities().targetThreadRewritePreflightMode, method:typeof Stalker.preflightTargetThreadRewrite, missing:missing, backend:report.backend, reportMode:report.mode, targetThreadId:String(report.targetThreadId), targetThreadFollowed:report.targetThreadFollowed, cacheExecutable:report.cacheExecutable, threadSuspendAvailable:report.threadSuspendAvailable, targetMemoryPatchAvailable:report.targetMemoryPatchAvailable, quiescenceAvailable:report.quiescenceAvailable, blockers:report.blockers, commitReady:report.commitReady, targetThreadInstructionRewrite:report.targetThreadInstructionRewrite, rewritesTargetMemory:report.rewritesTargetMemory, rewriteReady:report.rewriteReady, executionReady:report.executionReady, rolledBack:rolledBack, stopped:stopped.state}); })()",
             )
             .expect("exercise target-thread rewrite preflight");
-        #[cfg(any(target_os = "ios", target_os = "macos"))]
+        #[cfg(all(any(target_os = "ios", target_os = "macos"), quickjs_hook_engine))]
+        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":true,"targetMemoryPatchAvailable":false,"quiescenceAvailable":true,"blockers":["target-memory-patch"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
+        #[cfg(all(any(target_os = "ios", target_os = "macos"), not(quickjs_hook_engine)))]
         let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":true,"targetMemoryPatchAvailable":false,"quiescenceAvailable":false,"blockers":["target-memory-patch","target-thread-quiescence"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
-        #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+        #[cfg(all(not(any(target_os = "ios", target_os = "macos")), quickjs_hook_engine))]
+        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":false,"targetMemoryPatchAvailable":false,"quiescenceAvailable":true,"blockers":["apple-thread-suspend","target-memory-patch"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
+        #[cfg(all(not(any(target_os = "ios", target_os = "macos")), not(quickjs_hook_engine)))]
         let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":false,"targetMemoryPatchAvailable":false,"quiescenceAvailable":false,"blockers":["apple-thread-suspend","target-memory-patch","target-thread-quiescence"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
         assert_eq!(result, expected);
     }
