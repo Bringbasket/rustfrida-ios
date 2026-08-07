@@ -286,6 +286,8 @@ curl -fsS -X POST http://127.0.0.1:9191/rpc/1/ping -d '[]'
 
 `Stalker.preflightTargetThreadRewrite(thread, cache)` 现在把该 commit 层前置检查结构化为 `commit-blocker-report`：要求 cache 来自 prepare 且线程仍被 follow，报告 cache 是否 executable、线程暂停/目标 patch/quiescence 三项能力和 blocker 数组。Apple 构建会探测并报告 Mach thread suspend 原语，host 构建继续显式报告 `apple-thread-suspend`。该 preflight 只读状态，始终保持 `commitReady=false`、`targetThreadInstructionRewrite=false`、`rewritesTargetMemory=false`、`rewriteReady=false` 与 `executionReady=false`，不修改 cache 或目标内存。
 
+目标内存 patch primitive 已在 runtime 内部落地为 same-length owner：准备时保存原始字节与 page protection，应用时复用 W^X 切换和 instruction-cache flush，失败或 Drop 时保留回滚路径，并在写入前检测 mapping/protection 是否发生漂移。该 primitive 尚未接入公开 commit API，因此 `targetMemoryPatchAvailable` 仍保持 false。
+
 ## 9. 关闭标准
 
 1. P0 编译阻断消失，所有新文件被版本控制追踪，Apple CI 构建通过。

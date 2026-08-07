@@ -793,6 +793,91 @@ struct ProtectionRegion {
     max_protection: Option<i32>,
 }
 
+/// Own a same-length target-memory rewrite until it is explicitly rolled back.
+///
+/// Construction snapshots both the original bytes and the page-region
+/// protections. Applying and rolling back use the existing W^X transition and
+/// instruction-cache flush path, so a failed write keeps the owner armed for a
+/// later retry instead of silently claiming that memory was restored.
+#[allow(dead_code)]
+pub(crate) struct TargetMemoryPatch {
+    address: u64,
+    original: Box<[u8]>,
+    replacement: Box<[u8]>,
+    regions: Vec<ProtectionRegion>,
+    applied: bool,
+}
+
+#[allow(dead_code)]
+impl TargetMemoryPatch {
+    pub(crate) fn prepare(address: u64, replacement: &[u8]) -> Result<Self, String> {
+        if replacement.is_empty() {
+            return Err("target-memory patch must not be empty".to_string());
+        }
+        let page_size = system_page_size().ok_or_else(|| "unable to determine system page size".to_string())?;
+        let (page_start, page_length) =
+            aligned_page_range(address, replacement.len(), page_size).map_err(str::to_string)?;
+        let page_end = page_start
+            .checked_add(page_length)
+            .ok_or_else(|| "page range overflow".to_string())?;
+        let regions = query_protection_regions(page_start, page_end)?;
+        if regions.iter().any(|region| region.protection & libc::PROT_READ == 0) {
+            return Err("target-memory patch requires readable target memory".to_string());
+        }
+        let mut original = vec![0_u8; replacement.len()];
+        unsafe {
+            std::ptr::copy_nonoverlapping(address as *const u8, original.as_mut_ptr(), original.len());
+        }
+        Ok(Self {
+            address,
+            original: original.into_boxed_slice(),
+            replacement: replacement.to_vec().into_boxed_slice(),
+            regions,
+            applied: false,
+        })
+    }
+
+    pub(crate) const fn address(&self) -> u64 {
+        self.address
+    }
+
+    pub(crate) const fn len(&self) -> usize {
+        self.replacement.len()
+    }
+
+    pub(crate) const fn is_applied(&self) -> bool {
+        self.applied
+    }
+
+    pub(crate) fn apply(&mut self) -> Result<bool, String> {
+        if self.applied {
+            return Ok(false);
+        }
+        self.applied = true;
+        write_patch_bytes(&self.regions, self.address, &self.replacement)
+            .map(|()| true)
+            .map_err(|error| error)
+    }
+
+    pub(crate) fn rollback(&mut self) -> Result<bool, String> {
+        if !self.applied {
+            return Ok(false);
+        }
+        write_patch_bytes(&self.regions, self.address, &self.original)?;
+        self.applied = false;
+        Ok(true)
+    }
+}
+
+#[allow(dead_code)]
+impl Drop for TargetMemoryPatch {
+    fn drop(&mut self) {
+        if self.applied {
+            let _ = self.rollback();
+        }
+    }
+}
+
 #[cfg(any(target_os = "linux", target_os = "android"))]
 fn query_protection_regions(start: usize, end: usize) -> Result<Vec<ProtectionRegion>, String> {
     let maps = read_proc_self_maps().ok_or_else(|| "unable to read /proc/self/maps".to_string())?;
@@ -1061,6 +1146,100 @@ fn apply_region_protection(regions: &[ProtectionRegion], protection: i32) -> Res
     Ok(())
 }
 
+fn regions_cover_range(regions: &[ProtectionRegion], address: u64, size: usize) -> bool {
+    let Some((start, end)) = checked_address_range(address, size) else {
+        return false;
+    };
+    let mut cursor = start;
+    for region in regions {
+        if region.end <= cursor {
+            continue;
+        }
+        if region.start > cursor {
+            return false;
+        }
+        cursor = region.end.min(end);
+        if cursor == end {
+            return true;
+        }
+    }
+    false
+}
+
+fn make_regions_writable(regions: &[ProtectionRegion]) -> Result<Vec<ProtectionRegion>, String> {
+    for region in regions {
+        if region.protection & libc::PROT_WRITE == 0
+            && region
+                .max_protection
+                .is_some_and(|maximum| maximum & libc::PROT_WRITE == 0)
+        {
+            return Err(format!(
+                "region {:#x}..{:#x} cannot be made writable",
+                region.start, region.end
+            ));
+        }
+    }
+
+    let mut changed = Vec::new();
+    for region in regions {
+        if region.protection & libc::PROT_WRITE != 0 {
+            continue;
+        }
+        let with_write = region.protection | libc::PROT_WRITE;
+        let changed_result = set_region_protection(*region, with_write).or_else(|first_error| {
+            if region.protection & libc::PROT_EXEC == 0 {
+                return Err(first_error);
+            }
+            let writable_non_executable = (region.protection | libc::PROT_READ | libc::PROT_WRITE) & !libc::PROT_EXEC;
+            set_region_protection(*region, writable_non_executable)
+                .map_err(|second_error| format!("{first_error}; W^X fallback failed: {second_error}"))
+        });
+        if let Err(error) = changed_result {
+            let rollback = restore_regions(&changed);
+            return Err(match rollback {
+                Ok(()) => format!(
+                    "unable to make region {:#x}..{:#x} writable: {error}",
+                    region.start, region.end
+                ),
+                Err(rollback_error) => format!(
+                    "unable to make region {:#x}..{:#x} writable: {error}; {rollback_error}",
+                    region.start, region.end
+                ),
+            });
+        }
+        changed.push(*region);
+    }
+    Ok(changed)
+}
+
+fn write_patch_bytes(regions: &[ProtectionRegion], address: u64, bytes: &[u8]) -> Result<(), String> {
+    if bytes.is_empty() {
+        return Err("target-memory patch must not be empty".to_string());
+    }
+    if !regions_cover_range(regions, address, bytes.len()) {
+        return Err("target-memory patch range is outside its prepared mapping".to_string());
+    }
+    let page_start = regions.first().map(|region| region.start).unwrap_or_default();
+    let page_end = regions.last().map(|region| region.end).unwrap_or_default();
+    let current_regions = query_protection_regions(page_start, page_end)?;
+    if current_regions != regions {
+        return Err("target-memory mapping or protection changed after preparation".to_string());
+    }
+    let changed = make_regions_writable(regions)?;
+    unsafe {
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), address as *mut u8, bytes.len());
+    }
+    let write_result = unsafe { flush_instruction_cache(address, bytes.len()) }
+        .map_err(|message| format!("instruction-cache invalidation failed: {message}"));
+    let restore_result = restore_regions(&changed);
+    match (write_result, restore_result) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(write_error), Ok(())) => Err(write_error),
+        (Ok(()), Err(restore_error)) => Err(restore_error),
+        (Err(write_error), Err(restore_error)) => Err(format!("{write_error}; {restore_error}")),
+    }
+}
+
 unsafe fn write_with_perm(address: u64, size: usize, write: impl FnOnce()) -> Result<(), String> {
     let page_size = system_page_size().ok_or_else(|| "unable to determine system page size".to_string())?;
     let (page_start, page_length) = aligned_page_range(address, size, page_size).map_err(str::to_string)?;
@@ -1229,7 +1408,7 @@ fn is_range_mapped(address: u64, size: usize) -> bool {
 mod tests {
     use super::{
         aligned_page_range, byte_from_number, checked_address_range, cleanup_memory_allocations, is_addr_accessible,
-        parse_protection, read_proc_self_maps, register_memory_api, AllocationRegistry,
+        parse_protection, read_proc_self_maps, register_memory_api, AllocationRegistry, TargetMemoryPatch,
     };
 
     #[test]
@@ -1330,5 +1509,23 @@ mod tests {
     #[test]
     fn null_address_is_not_accessible() {
         assert!(!is_addr_accessible(0, 1));
+    }
+
+    #[test]
+    fn target_memory_patch_applies_and_rolls_back_original_bytes() {
+        let mut target = vec![0x11_u8, 0x22, 0x33, 0x44].into_boxed_slice();
+        let address = target.as_mut_ptr() as u64;
+        let mut patch = TargetMemoryPatch::prepare(address, &[0xaa, 0xbb, 0xcc, 0xdd]).expect("prepare patch");
+        assert_eq!(patch.address(), address);
+        assert_eq!(patch.len(), 4);
+        assert!(!patch.is_applied());
+        assert!(patch.apply().expect("apply patch"));
+        assert!(patch.is_applied());
+        assert_eq!(&*target, &[0xaa, 0xbb, 0xcc, 0xdd]);
+        assert!(!patch.apply().expect("idempotent apply"));
+        assert!(patch.rollback().expect("rollback patch"));
+        assert!(!patch.is_applied());
+        assert_eq!(&*target, &[0x11, 0x22, 0x33, 0x44]);
+        assert!(!patch.rollback().expect("idempotent rollback"));
     }
 }
