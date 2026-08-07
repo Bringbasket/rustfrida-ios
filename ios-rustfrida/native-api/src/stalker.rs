@@ -55,6 +55,180 @@ pub fn current_stalker_thread_id() -> u64 {
     }
 }
 
+/// Report whether this build can acquire an Apple Mach thread suspend lease.
+///
+/// The host implementation deliberately reports false: its thread-follow
+/// registry is a deterministic contract and has no target-process Mach port.
+pub const fn stalker_thread_suspend_available() -> bool {
+    cfg!(any(target_os = "ios", target_os = "macos"))
+}
+
+/// Own one successful `thread_suspend` operation until it is resumed.
+///
+/// The send right is retained for the lifetime of the guard so a later resume
+/// does not depend on another thread-port lookup. Dropping the guard retries a
+/// pending resume before releasing that right.
+#[derive(Debug)]
+pub struct StalkerThreadSuspendGuard {
+    thread_id: u64,
+    suspended: bool,
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    task: libc::mach_port_t,
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    thread: libc::thread_act_t,
+}
+
+impl StalkerThreadSuspendGuard {
+    pub const fn thread_id(&self) -> u64 {
+        self.thread_id
+    }
+
+    pub const fn is_suspended(&self) -> bool {
+        self.suspended
+    }
+
+    /// Resume the thread exactly once. A failed resume leaves the lease owned
+    /// so callers can retry and Drop can make a final best-effort attempt.
+    pub fn resume(&mut self) -> Result<bool> {
+        if !self.suspended {
+            return Ok(false);
+        }
+
+        #[cfg(any(target_os = "ios", target_os = "macos"))]
+        {
+            let result = unsafe { thread_resume(self.thread) };
+            if result != 0 {
+                return Err(Error::State(format!(
+                    "thread_resume failed for target thread {}: kern_return={result}",
+                    self.thread_id
+                )));
+            }
+        }
+
+        self.suspended = false;
+        Ok(true)
+    }
+}
+
+impl Drop for StalkerThreadSuspendGuard {
+    fn drop(&mut self) {
+        #[cfg(any(target_os = "ios", target_os = "macos"))]
+        {
+            if self.suspended {
+                if unsafe { thread_resume(self.thread) } == 0 {
+                    self.suspended = false;
+                }
+            }
+            unsafe {
+                let _ = mach_port_deallocate(self.task, self.thread);
+            }
+        }
+    }
+}
+
+/// Suspend a live Apple thread identified by the same numeric id exposed by
+/// `Process.enumerateThreads()` and `Stalker.follow()`.
+///
+/// The lookup retains the matching thread port and deallocates every other
+/// port returned by `task_threads`. The current thread is rejected because a
+/// synchronous caller would otherwise suspend itself before it can commit or
+/// resume the transaction.
+pub fn suspend_stalker_thread(thread_id: u64) -> Result<StalkerThreadSuspendGuard> {
+    if thread_id == 0 {
+        return Err(Error::InvalidArgument("stalker thread id must be non-zero".into()));
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    {
+        let _ = thread_id;
+        return Err(Error::Unsupported(
+            "Apple Mach thread suspend is unavailable on this target".into(),
+        ));
+    }
+
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    {
+        let current = current_stalker_thread_id();
+        if current == thread_id {
+            return Err(Error::InvalidArgument(
+                "target thread suspend cannot target the current thread".into(),
+            ));
+        }
+
+        let task = unsafe { mach_task_self_ };
+        let mut thread_list: libc::thread_act_array_t = std::ptr::null_mut();
+        let mut thread_count: libc::mach_msg_type_number_t = 0;
+        let task_result = unsafe { libc::task_threads(task, &mut thread_list, &mut thread_count) };
+        if task_result != 0 || thread_list.is_null() {
+            return Err(Error::State(format!(
+                "task_threads failed while locating target thread {thread_id}: kern_return={task_result}"
+            )));
+        }
+
+        let ports = unsafe { std::slice::from_raw_parts(thread_list, thread_count as usize) };
+        let mut selected = None;
+        let mut suspend_error = None;
+        for &thread in ports {
+            let mut identifier = unsafe { std::mem::zeroed::<libc::thread_identifier_info_data_t>() };
+            let mut identifier_count = libc::THREAD_IDENTIFIER_INFO_COUNT;
+            let identifier_result = unsafe {
+                libc::thread_info(
+                    thread,
+                    libc::THREAD_IDENTIFIER_INFO as libc::thread_flavor_t,
+                    &mut identifier as *mut libc::thread_identifier_info_data_t as libc::thread_info_t,
+                    &mut identifier_count,
+                )
+            };
+            let matches = identifier_result == 0 && identifier.thread_id == thread_id;
+            let retain = if matches {
+                let result = unsafe { thread_suspend(thread) };
+                if result == 0 {
+                    selected = Some(thread);
+                    true
+                } else {
+                    suspend_error = Some(result);
+                    false
+                }
+            } else {
+                false
+            };
+            if !retain {
+                unsafe {
+                    let _ = mach_port_deallocate(task, thread);
+                }
+            }
+        }
+
+        let allocation_size = (thread_count as usize).saturating_mul(std::mem::size_of::<libc::thread_act_t>());
+        unsafe {
+            let _ = libc::vm_deallocate(task, thread_list as libc::vm_address_t, allocation_size);
+        }
+
+        if let Some(thread) = selected {
+            return Ok(StalkerThreadSuspendGuard {
+                thread_id,
+                suspended: true,
+                task,
+                thread,
+            });
+        }
+        if let Some(result) = suspend_error {
+            return Err(Error::State(format!(
+                "thread_suspend failed for target thread {thread_id}: kern_return={result}"
+            )));
+        }
+        Err(Error::State(format!("target thread {thread_id} is not live")))
+    }
+}
+
+#[cfg(any(target_os = "ios", target_os = "macos"))]
+extern "C" {
+    static mach_task_self_: libc::mach_port_t;
+    fn mach_port_deallocate(task: libc::mach_port_t, name: libc::mach_port_t) -> libc::kern_return_t;
+    fn thread_suspend(target_thread: libc::thread_act_t) -> libc::kern_return_t;
+    fn thread_resume(target_thread: libc::thread_act_t) -> libc::kern_return_t;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StalkerThreadStatus {
     pub thread_id: u64,
@@ -1155,6 +1329,23 @@ mod tests {
         assert!(!capabilities.target_thread_instruction_rewrite);
         assert!(!capabilities.instrumented);
         assert!(capabilities.missing_operations.contains(&"Transformer"));
+    }
+
+    #[test]
+    fn thread_suspend_capability_matches_the_compiled_platform() {
+        assert_eq!(
+            stalker_thread_suspend_available(),
+            cfg!(any(target_os = "ios", target_os = "macos"))
+        );
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[test]
+    fn thread_suspend_is_stable_unsupported_on_host() {
+        let zero = suspend_stalker_thread(0).expect_err("zero thread id must be rejected");
+        assert!(zero.to_string().contains("thread id must be non-zero"));
+        let unavailable = suspend_stalker_thread(1).expect_err("host has no Mach thread suspend");
+        assert!(unavailable.to_string().contains("Mach thread suspend is unavailable"));
     }
 
     #[test]
