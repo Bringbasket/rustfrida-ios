@@ -173,13 +173,13 @@ curl -X POST http://127.0.0.1:9191/rpc/1/add -d '[20,22]'
 - `Stalker.capabilities()` / `Stalker.status()` / `Stalker.info()`
 - `Stalker.functionLevelStatus()` / `Stalker.functionLevelStop()`
 - `Stalker.follow()` / `Stalker.pauseThread()` / `Stalker.resumeThread()` / `Stalker.unfollow()`
-- `Stalker.transform()` / `Stalker.transformBasicBlock()` / `Stalker.planTargetThreadBlock()` / `Stalker.planTargetThreadRewrite()` / `Stalker.prepareTargetThreadRewrite()` / `Stalker.preflightTargetThreadRewrite()`
+- `Stalker.transform()` / `Stalker.transformBasicBlock()` / `Stalker.planTargetThreadBlock()` / `Stalker.planTargetThreadRewrite()` / `Stalker.prepareTargetThreadRewrite()` / `Stalker.preflightTargetThreadRewrite()` / `Stalker.commitTargetThreadRewrite()`
 - `Stalker.generateEvents()` / `Stalker.recordBlock()`
 - `Stalker.relocate()` / `Stalker.layoutCodeCache()` / `Stalker.emitCodeCache()` / `Stalker.materializeCodeCache()` / `Stalker.finalizeCodeCache()` / `Stalker.executeCodeCache()`
 - `Stalker.prepareTargetThreadRewrite()` binds a followed thread and owns a finalized RX code-cache transaction. Its `rollback()`/`dispose()` releases the mapping; it does not pause the thread, patch target memory, install a transformer/callout, or report target-thread execution readiness.
-- `Stalker.preflightTargetThreadRewrite(thread, cache)` reports the remaining commit blockers (`apple-thread-suspend`, `target-memory-patch`, and `target-thread-quiescence`) without changing the cache or target memory. The Apple build now probes the Mach suspend primitive; host builds keep that blocker explicit until the Apple runtime is present.
-- The commit-layer memory primitive now owns a same-length target patch transaction internally: it snapshots original bytes and page protections, applies through the existing W^X/flush path, and keeps rollback armed on failure. It is not yet exposed as `commitTargetThreadRewrite()`.
-- When the native hook engine is built, the preflight also detects its callback/thunk quiescence wait; stub and host builds keep `target-thread-quiescence` explicit until that engine is present.
+- `Stalker.preflightTargetThreadRewrite(thread, cache)` reports the remaining commit blockers without changing the cache or target memory. It now reports target-memory patch support and the direct ARM64 branch-range check; the Apple build probes the Mach suspend primitive and native hook-engine quiescence.
+- `Stalker.commitTargetThreadRewrite(thread, cache[, options])` composes suspend, callback/thunk quiescence, a same-length ARM64 direct-branch patch, instruction-cache flush, resume, and a QuickJS-owned rollback owner. The direct branch requires the cache mapping to be within +/-128MB of the source; far mappings remain an explicit `target-thread-branch-range` blocker until a near allocator/veneer is added.
+- The commit owner keeps the RX cache alive, restores original bytes before releasing its lease on rollback, and preserves the prepared cache when a prerequisite is unavailable. Stub and host builds expose the method but keep the relevant capability blockers explicit.
 - `CModule.capabilities()` / `CModule.status()` / `CModule.lastError()`
 - `Native.base(moduleName)`
 - `Native.findBase(moduleName)`

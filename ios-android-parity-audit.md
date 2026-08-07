@@ -282,13 +282,13 @@ curl -fsS -X POST http://127.0.0.1:9191/rpc/1/ping -d '[]'
 
 当前新增了 followed-thread static relocation/rewrite plan：它绑定已 follow 的线程，按 caller-supplied ARM64 bytes、source 和 destination 生成 code-cache layout，返回 fallback/island 元数据，并保持 planOnly=true、targetThreadInstructionRewrite=false、rewritesTargetMemory=false、rewriteReady=false、executionReady=false。该层为真实 target-thread instruction rewrite 提供事务前置检查，但尚未写入目标内存、暂停目标线程或安装 transformer/callout。
 
-下一层 `Stalker.prepareTargetThreadRewrite(thread, bytes, start[, options])` 已接入事务前置：它复用 followed-thread 校验，按真实 mapping base 发射 code cache，完成 flush+RX transition，并返回 QuickJS-owned `StalkerCodeCache`。该 owner 提供幂等 `rollback()`/`dispose()` 释放映射；准备层仍明确保持 `targetThreadInstructionRewrite=false`、`rewritesTargetMemory=false`、`rewriteReady=false`、`executionReady=false`，不暂停线程、不改写目标地址、不安装 transformer/callout。后续 commit 层需要在该 owner 之上接入 Apple thread suspend、目标内存 patch、quiescence 与失败回滚。
+下一层 `Stalker.prepareTargetThreadRewrite(thread, bytes, start[, options])` 已接入事务前置：它复用 followed-thread 校验，按真实 mapping base 发射 code cache，完成 flush+RX transition，并返回 QuickJS-owned `StalkerCodeCache`。该 owner 提供幂等 `rollback()`/`dispose()` 释放映射；准备层仍明确保持 `targetThreadInstructionRewrite=false`、`rewritesTargetMemory=false`、`rewriteReady=false`、`executionReady=false`，不暂停线程、不改写目标地址、不安装 transformer/callout。
 
-`Stalker.preflightTargetThreadRewrite(thread, cache)` 现在把该 commit 层前置检查结构化为 `commit-blocker-report`：要求 cache 来自 prepare 且线程仍被 follow，报告 cache 是否 executable、线程暂停/目标 patch/quiescence 三项能力和 blocker 数组。Apple 构建会探测并报告 Mach thread suspend 原语，host 构建继续显式报告 `apple-thread-suspend`。该 preflight 只读状态，始终保持 `commitReady=false`、`targetThreadInstructionRewrite=false`、`rewritesTargetMemory=false`、`rewriteReady=false` 与 `executionReady=false`，不修改 cache 或目标内存。
+`Stalker.preflightTargetThreadRewrite(thread, cache)` 现在把该 commit 层前置检查结构化为 `commit-blocker-report`：要求 cache 来自 prepare 且线程仍被 follow，报告 cache 是否 executable、线程暂停/目标 patch/quiescence/branch-range 能力和 blocker 数组。Apple 构建会探测并报告 Mach thread suspend 原语，host 构建继续显式报告 `apple-thread-suspend`；远离 source 的 mmap 会报告 `target-thread-branch-range`。该 preflight 只读状态，不修改 cache 或目标内存。
 
-目标内存 patch primitive 已在 runtime 内部落地为 same-length owner：准备时保存原始字节与 page protection，应用时复用 W^X 切换和 instruction-cache flush，失败或 Drop 时保留回滚路径，并在写入前检测 mapping/protection 是否发生漂移。该 primitive 尚未接入公开 commit API，因此 `targetMemoryPatchAvailable` 仍保持 false。
+目标内存 patch primitive 已在 runtime 内部落地为 same-length owner：准备时保存原始字节与 page protection，应用时复用 W^X 切换和 instruction-cache flush，失败或 Drop 时保留回滚路径，并在写入前检测 mapping/protection 是否发生漂移。它现在由公开 commit 事务持有，preflight 会报告 `targetMemoryPatchAvailable=true`。
 
-hook-engine quiescence primitive 现在也通过 Stalker preflight 暴露编译期能力：启用 native hook engine 时等待 in-flight callbacks 与 generated thunks，stub/host 构建继续保留 `target-thread-quiescence` blocker。它仍未与 suspend lease、目标 patch owner 组合为公开 commit 事务。
+hook-engine quiescence primitive 现在也通过 Stalker preflight 暴露编译期能力：启用 native hook engine 时等待 in-flight callbacks 与 generated thunks，stub/host 构建继续保留 `target-thread-quiescence` blocker。公开 `Stalker.commitTargetThreadRewrite()` 已把 suspend lease、quiescence、目标 patch owner 和失败回滚串成一笔事务；远距 cache 的 veneer/near allocator 仍是后续缺口。
 
 ## 9. 关闭标准
 

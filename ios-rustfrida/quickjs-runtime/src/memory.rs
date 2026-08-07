@@ -808,6 +808,13 @@ pub(crate) struct TargetMemoryPatch {
     applied: bool,
 }
 
+/// The same-process W^X patch path is available whenever this runtime module
+/// is compiled. Public Stalker commit readiness still depends on its thread
+/// suspend, quiescence, and branch-range prerequisites.
+pub(crate) const fn target_memory_patch_available() -> bool {
+    true
+}
+
 #[allow(dead_code)]
 impl TargetMemoryPatch {
     pub(crate) fn prepare(address: u64, replacement: &[u8]) -> Result<Self, String> {
@@ -847,6 +854,10 @@ impl TargetMemoryPatch {
 
     pub(crate) const fn is_applied(&self) -> bool {
         self.applied
+    }
+
+    pub(crate) fn original_bytes(&self) -> &[u8] {
+        &self.original
     }
 
     pub(crate) fn apply(&mut self) -> Result<bool, String> {

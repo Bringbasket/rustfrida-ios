@@ -1,13 +1,14 @@
 use crate::arm64_relocator::{
     arm64_code_cache_direct_execution_available, arm64_code_cache_materialization_available, arm64_relocator_available,
-    emit_arm64_code_cache, materialize_arm64_code_cache, plan_arm64_code_cache_layout, plan_arm64_relocation,
-    Arm64CodeCacheBlock, Arm64CodeCacheEmission, Arm64CodeCacheFallback, Arm64CodeCacheLayoutPlan,
-    Arm64CodeCacheMaterialization, Arm64RelocationEntry, Arm64RelocationPlan, ARM64_CODE_CACHE_ISLAND_ALIGNMENT,
-    ARM64_CODE_CACHE_ISLAND_SLOT_SIZE,
+    emit_arm64_code_cache, encode_arm64_branch, materialize_arm64_code_cache, plan_arm64_code_cache_layout,
+    plan_arm64_relocation, Arm64CodeCacheBlock, Arm64CodeCacheEmission, Arm64CodeCacheFallback,
+    Arm64CodeCacheLayoutPlan, Arm64CodeCacheMaterialization, Arm64RelocationEntry, Arm64RelocationPlan,
+    ARM64_CODE_CACHE_ISLAND_ALIGNMENT, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE,
 };
 use crate::context::JSContext;
 use crate::ffi;
-use crate::hook::target_thread_quiescence_available;
+use crate::hook::{target_thread_quiescence_available, wait_for_target_thread_quiescence};
+use crate::memory::{target_memory_patch_available, TargetMemoryPatch};
 use crate::ptr::create_native_pointer;
 use crate::util::{
     add_cfunction_to_object, js_throw_internal_error, js_throw_range_error, js_throw_type_error,
@@ -17,8 +18,8 @@ use crate::value::JSValue;
 use native_api::{
     current_stalker_thread_id, ios_stalker_capabilities, stalker_backend_status, stalker_event_sink,
     stalker_flush_thread, stalker_follow_thread, stalker_garbage_collect_thread, stalker_pause_thread,
-    stalker_resume_thread, stalker_thread_suspend_available, stalker_unfollow_thread, StalkerConfig, StalkerEvent,
-    StalkerEventMask, StalkerRange, StalkerSession, StalkerSessionState,
+    stalker_resume_thread, stalker_thread_suspend_available, stalker_unfollow_thread, suspend_stalker_thread,
+    StalkerConfig, StalkerEvent, StalkerEventMask, StalkerRange, StalkerSession, StalkerSessionState,
 };
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -29,6 +30,9 @@ const DEFAULT_GENERATED_EVENT_CAPACITY: usize = 4096;
 const MAX_GENERATED_EVENT_CAPACITY: usize = 1_000_000;
 const STALKER_CODE_CACHE_CLASS_NAME: &[u8] = b"StalkerCodeCache\0";
 static STALKER_CODE_CACHE_CLASS_ID: AtomicU32 = AtomicU32::new(0);
+const STALKER_REWRITE_COMMIT_CLASS_NAME: &[u8] = b"StalkerTargetThreadRewriteCommit\0";
+static STALKER_REWRITE_COMMIT_CLASS_ID: AtomicU32 = AtomicU32::new(0);
+const TARGET_THREAD_QUIESCENCE_TIMEOUT_MS: u32 = 200;
 
 fn stalker_error(ctx: *mut ffi::JSContext, error: common::Error) -> ffi::JSValue {
     match error {
@@ -776,6 +780,28 @@ unsafe fn stalker_capabilities_to_js_detailed(ctx: *mut ffi::JSContext) -> ffi::
         "targetThreadRewritePreflightMode",
         JSValue::string(ctx, "commit-blocker-report"),
     );
+    let target_thread_rewrite_commit_available = arm64_code_cache_materialization_available()
+        && stalker_thread_suspend_available()
+        && target_memory_patch_available()
+        && target_thread_quiescence_available();
+    result.set_property(
+        ctx,
+        "targetThreadRewriteCommit",
+        JSValue::bool(target_thread_rewrite_commit_available),
+    );
+    result.set_property(
+        ctx,
+        "targetThreadRewriteCommitMode",
+        JSValue::string(
+            ctx,
+            if target_thread_rewrite_commit_available {
+                "suspend-quiesce-patch-resume"
+            } else {
+                "unavailable"
+            },
+        ),
+    );
+    result.set_property(ctx, "targetMemoryPatch", JSValue::bool(target_memory_patch_available()));
     result.set_property(ctx, "codeCacheExecutionReady", JSValue::bool(false));
     result.set_property(
         ctx,
@@ -1806,6 +1832,9 @@ unsafe extern "C" fn js_stalker_prepare_target_thread_rewrite(
         Ok(materialization) => materialization,
         Err(error) => return stalker_error(ctx, error),
     };
+    if let Err(error) = materialization.bind_target_thread(thread_id) {
+        return stalker_error(ctx, error);
+    }
     if let Err(error) = materialization.make_executable() {
         return stalker_error(ctx, error);
     }
@@ -1847,6 +1876,368 @@ unsafe extern "C" fn js_stalker_prepare_target_thread_rewrite(
     );
     set_js_u64_property(ctx, result.raw(), "targetThreadId", thread_id);
     set_js_u64_property(ctx, result.raw(), "sourceStart", source);
+    result.raw()
+}
+
+struct StalkerTargetThreadRewriteCommit {
+    thread_id: u64,
+    cache: Box<Arm64CodeCacheMaterialization>,
+    patch: TargetMemoryPatch,
+    active: bool,
+}
+
+impl StalkerTargetThreadRewriteCommit {
+    fn rollback_applied(&mut self) -> common::Result<bool> {
+        if !self.active || !self.patch.is_applied() {
+            self.active = false;
+            return Ok(false);
+        }
+        if !self.cache.is_executable() {
+            return Err(common::Error::State(
+                "committed StalkerCodeCache is no longer executable".into(),
+            ));
+        }
+        let mut lease = suspend_stalker_thread(self.thread_id)?;
+        if !wait_for_target_thread_quiescence(TARGET_THREAD_QUIESCENCE_TIMEOUT_MS) {
+            return Err(common::Error::State(
+                "target-thread quiescence wait timed out during rewrite rollback".into(),
+            ));
+        }
+        let changed = self.patch.rollback().map_err(common::Error::State)?;
+        self.active = false;
+        lease.resume()?;
+        Ok(changed)
+    }
+}
+
+impl Drop for StalkerTargetThreadRewriteCommit {
+    fn drop(&mut self) {
+        if self.patch.is_applied() {
+            let _ = self.rollback_applied();
+        }
+    }
+}
+
+unsafe extern "C" fn stalker_rewrite_commit_finalizer(_runtime: *mut ffi::JSRuntime, value: ffi::JSValue) {
+    let class_id = STALKER_REWRITE_COMMIT_CLASS_ID.load(Ordering::Relaxed);
+    if class_id == 0 {
+        return;
+    }
+    let opaque = ffi::JS_GetOpaque(value, class_id);
+    if !opaque.is_null() {
+        drop(Box::from_raw(opaque as *mut StalkerTargetThreadRewriteCommit));
+    }
+}
+
+unsafe fn stalker_rewrite_commit_class_id(ctx: *mut ffi::JSContext) -> Result<u32, &'static str> {
+    let mut class_id = STALKER_REWRITE_COMMIT_CLASS_ID.load(Ordering::Acquire);
+    if class_id == 0 {
+        let mut candidate = 0;
+        candidate = ffi::JS_NewClassID(&mut candidate);
+        class_id =
+            match STALKER_REWRITE_COMMIT_CLASS_ID.compare_exchange(0, candidate, Ordering::AcqRel, Ordering::Acquire) {
+                Ok(_) => candidate,
+                Err(existing) => existing,
+            };
+    }
+    let runtime = ffi::JS_GetRuntime(ctx);
+    if ffi::JS_IsRegisteredClass(runtime, class_id) == 0 {
+        let class_def = ffi::JSClassDef {
+            class_name: STALKER_REWRITE_COMMIT_CLASS_NAME.as_ptr() as *const _,
+            finalizer: Some(stalker_rewrite_commit_finalizer),
+            gc_mark: None,
+            call: None,
+            exotic: std::ptr::null_mut(),
+        };
+        if ffi::JS_NewClass(runtime, class_id, &class_def) != 0 {
+            return Err("failed to register QuickJS StalkerTargetThreadRewriteCommit class");
+        }
+    }
+    Ok(class_id)
+}
+
+unsafe fn set_rewrite_commit_disposed_properties(ctx: *mut ffi::JSContext, value: JSValue) {
+    value.set_property(ctx, "active", JSValue::bool(false));
+    value.set_property(ctx, "targetThreadInstructionRewrite", JSValue::bool(false));
+    value.set_property(ctx, "rewritesTargetMemory", JSValue::bool(false));
+    value.set_property(ctx, "rewriteReady", JSValue::bool(false));
+    value.set_property(ctx, "executionReady", JSValue::bool(false));
+    value.set_property(ctx, "owned", JSValue::bool(false));
+    value.set_property(ctx, "disposed", JSValue::bool(true));
+    value.set_property(ctx, "rollbackState", JSValue::string(ctx, "disposed"));
+    value.set_property(ctx, "lifetime", JSValue::string(ctx, "disposed"));
+    value.set_property(ctx, "cacheBase", JSValue::null());
+}
+
+unsafe extern "C" fn js_stalker_rewrite_commit_rollback(
+    ctx: *mut ffi::JSContext,
+    this: ffi::JSValue,
+    _argc: i32,
+    _argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_id = STALKER_REWRITE_COMMIT_CLASS_ID.load(Ordering::Acquire);
+    if class_id == 0 {
+        return js_throw_type_error(ctx, "StalkerTargetThreadRewriteCommit receiver is invalid");
+    }
+    let opaque = ffi::JS_GetOpaque(this, class_id);
+    if opaque.is_null() {
+        return JSValue::bool(false).raw();
+    }
+    let owner = &mut *(opaque as *mut StalkerTargetThreadRewriteCommit);
+    match owner.rollback_applied() {
+        Ok(changed) => {
+            let result = JSValue(this);
+            result.set_property(ctx, "active", JSValue::bool(false));
+            result.set_property(ctx, "targetThreadInstructionRewrite", JSValue::bool(false));
+            result.set_property(ctx, "rewritesTargetMemory", JSValue::bool(false));
+            result.set_property(ctx, "rewriteReady", JSValue::bool(false));
+            result.set_property(ctx, "executionReady", JSValue::bool(false));
+            result.set_property(ctx, "rollbackState", JSValue::string(ctx, "rolled-back"));
+            JSValue::bool(changed).raw()
+        }
+        Err(error) => stalker_error(ctx, error),
+    }
+}
+
+unsafe extern "C" fn js_stalker_rewrite_commit_dispose(
+    ctx: *mut ffi::JSContext,
+    this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    let class_id = STALKER_REWRITE_COMMIT_CLASS_ID.load(Ordering::Acquire);
+    if class_id == 0 {
+        return js_throw_type_error(ctx, "StalkerTargetThreadRewriteCommit receiver is invalid");
+    }
+    let opaque = ffi::JS_GetOpaque(this, class_id);
+    if opaque.is_null() {
+        return JSValue::bool(false).raw();
+    }
+    let owner = &mut *(opaque as *mut StalkerTargetThreadRewriteCommit);
+    if let Err(error) = owner.rollback_applied() {
+        return stalker_error(ctx, error);
+    }
+    ffi::JS_SetOpaque(this, std::ptr::null_mut());
+    drop(Box::from_raw(opaque as *mut StalkerTargetThreadRewriteCommit));
+    set_rewrite_commit_disposed_properties(ctx, JSValue(this));
+    let _ = (argc, argv);
+    JSValue::bool(true).raw()
+}
+
+unsafe extern "C" fn js_stalker_commit_target_thread_rewrite(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 2 {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.commitTargetThreadRewrite(thread, cache) requires thread and a prepared StalkerCodeCache",
+        );
+    }
+    let thread_id = match js_thread_id(ctx, argc, argv, 0) {
+        Ok(thread_id) => thread_id,
+        Err(error) => return error,
+    };
+    let cache_class_id = STALKER_CODE_CACHE_CLASS_ID.load(Ordering::Acquire);
+    if cache_class_id == 0 {
+        return js_throw_type_error(ctx, "StalkerCodeCache receiver is invalid");
+    }
+    let cache = JSValue(*argv.add(1));
+    let opaque = ffi::JS_GetOpaque(cache.raw(), cache_class_id);
+    if opaque.is_null() {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.commitTargetThreadRewrite() requires a live prepared StalkerCodeCache",
+        );
+    }
+    let prepared = match with_owned_js_value(ctx, cache.get_property(ctx, "prepared"), |value| {
+        Ok(value.to_bool() == Some(true))
+    }) {
+        Ok(prepared) => prepared,
+        Err(error) => return error,
+    };
+    if !prepared {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.commitTargetThreadRewrite() requires a cache returned by prepareTargetThreadRewrite",
+        );
+    }
+    let cache_thread_id = match with_owned_js_value(ctx, cache.get_property(ctx, "targetThreadId"), |value| {
+        js_nonnegative_u64(ctx, value, "prepared StalkerCodeCache targetThreadId is invalid")
+    }) {
+        Ok(thread_id) => thread_id,
+        Err(error) => return error,
+    };
+    if cache_thread_id != thread_id {
+        return stalker_error(
+            ctx,
+            common::Error::State(format!(
+                "prepared StalkerCodeCache belongs to target thread {cache_thread_id}, not {thread_id}"
+            )),
+        );
+    }
+    let status = stalker_backend_status()
+        .threads
+        .into_iter()
+        .find(|status| status.thread_id == thread_id);
+    if status.is_none() {
+        return stalker_error(
+            ctx,
+            common::Error::State(format!("target thread {thread_id} is not followed")),
+        );
+    }
+    let materialization = &*(opaque as *mut Arm64CodeCacheMaterialization);
+    if materialization.target_thread_id() != Some(thread_id) {
+        return stalker_error(
+            ctx,
+            common::Error::State("prepared StalkerCodeCache target thread binding is invalid".into()),
+        );
+    }
+    if !materialization.is_executable() {
+        return stalker_error(
+            ctx,
+            common::Error::State("prepared StalkerCodeCache must be executable before commit".into()),
+        );
+    }
+    let source_start = materialization.emission().layout.source_start;
+    let code_byte_count = materialization.emission().layout.code_byte_count;
+    if code_byte_count < 4 {
+        return stalker_error(
+            ctx,
+            common::Error::State("prepared StalkerCodeCache does not cover a patchable instruction".into()),
+        );
+    }
+    let cache_base = materialization.mapping_base();
+    let mut blockers = Vec::new();
+    if !stalker_thread_suspend_available() {
+        blockers.push("apple-thread-suspend");
+    }
+    if !target_memory_patch_available() {
+        blockers.push("target-memory-patch");
+    }
+    if !target_thread_quiescence_available() {
+        blockers.push("target-thread-quiescence");
+    }
+    if !blockers.is_empty() {
+        return stalker_error(
+            ctx,
+            common::Error::Unsupported(format!(
+                "target-thread rewrite commit is unavailable: {}",
+                blockers.join(", ")
+            )),
+        );
+    }
+    let replacement = match encode_arm64_branch(source_start, cache_base) {
+        Ok(bytes) => bytes,
+        Err(error) => return stalker_error(ctx, error),
+    };
+
+    let commit_class_id = match stalker_rewrite_commit_class_id(ctx) {
+        Ok(class_id) => class_id,
+        Err(error) => return js_throw_internal_error(ctx, error),
+    };
+    let result = ffi::JS_NewObjectClass(ctx, commit_class_id as i32);
+    if ffi::qjs_is_exception(result) != 0 {
+        return result;
+    }
+    let mut lease = match suspend_stalker_thread(thread_id) {
+        Ok(lease) => lease,
+        Err(error) => {
+            ffi::qjs_free_value(ctx, result);
+            return stalker_error(ctx, error);
+        }
+    };
+    if !wait_for_target_thread_quiescence(TARGET_THREAD_QUIESCENCE_TIMEOUT_MS) {
+        ffi::qjs_free_value(ctx, result);
+        return js_throw_internal_error(ctx, "target-thread quiescence wait timed out before rewrite commit");
+    }
+    let mut patch = match TargetMemoryPatch::prepare(source_start, &replacement) {
+        Ok(patch) => patch,
+        Err(error) => {
+            ffi::qjs_free_value(ctx, result);
+            return js_throw_internal_error(ctx, &error);
+        }
+    };
+    let expected_word = materialization
+        .emission()
+        .layout
+        .entries
+        .first()
+        .map(|entry| entry.original_word.to_le_bytes());
+    if expected_word.map_or(true, |expected| patch.original_bytes() != expected) {
+        ffi::qjs_free_value(ctx, result);
+        return js_throw_internal_error(ctx, "target-thread source bytes changed after cache preparation");
+    }
+    if let Err(error) = patch.apply() {
+        ffi::qjs_free_value(ctx, result);
+        return js_throw_internal_error(ctx, &error);
+    }
+    if let Err(error) = lease.resume() {
+        let rollback = patch.rollback();
+        let resume = lease.resume();
+        ffi::qjs_free_value(ctx, result);
+        if let Err(rollback_error) = rollback {
+            return js_throw_internal_error(
+                ctx,
+                &format!("rewrite commit resume failed ({error}); rollback failed ({rollback_error})"),
+            );
+        }
+        if let Err(resume_error) = resume {
+            return stalker_error(ctx, resume_error);
+        }
+        return stalker_error(ctx, error);
+    }
+
+    let materialization = Box::from_raw(opaque as *mut Arm64CodeCacheMaterialization);
+    ffi::JS_SetOpaque(cache.raw(), std::ptr::null_mut());
+    cache.set_property(ctx, "prepared", JSValue::bool(false));
+    cache.set_property(ctx, "owned", JSValue::bool(false));
+    cache.set_property(ctx, "disposed", JSValue::bool(true));
+    cache.set_property(ctx, "rollbackState", JSValue::string(ctx, "transferred"));
+    cache.set_property(ctx, "lifetime", JSValue::string(ctx, "commit-owner"));
+    cache.set_property(ctx, "base", JSValue::null());
+    cache.set_property(ctx, "mappingBase", JSValue::null());
+    cache.set_property(ctx, "mappingSize", JSValue::int(0));
+    cache.set_property(ctx, "mappedByteCount", JSValue::int(0));
+    cache.set_property(ctx, "mappingProtection", JSValue::null());
+    cache.set_property(ctx, "finalized", JSValue::bool(false));
+    let owner = Box::new(StalkerTargetThreadRewriteCommit {
+        thread_id,
+        cache: materialization,
+        patch,
+        active: true,
+    });
+    ffi::JS_SetOpaque(result, Box::into_raw(owner) as *mut c_void);
+    let result = JSValue(result);
+    result.set_property(
+        ctx,
+        "backend",
+        JSValue::string(ctx, "apple-target-thread-rewrite-committer"),
+    );
+    result.set_property(ctx, "source", JSValue::string(ctx, "suspend-quiesce-patch-resume"));
+    result.set_property(ctx, "mode", JSValue::string(ctx, "target-thread-rewrite-committed"));
+    result.set_property(ctx, "committed", JSValue::bool(true));
+    result.set_property(ctx, "active", JSValue::bool(true));
+    result.set_property(ctx, "prepared", JSValue::bool(true));
+    result.set_property(ctx, "targetThreadFollowed", JSValue::bool(true));
+    result.set_property(ctx, "targetThreadInstructionRewrite", JSValue::bool(true));
+    result.set_property(ctx, "rewritesTargetMemory", JSValue::bool(true));
+    result.set_property(ctx, "rewriteReady", JSValue::bool(true));
+    result.set_property(ctx, "executionReady", JSValue::bool(true));
+    result.set_property(ctx, "cacheExecutable", JSValue::bool(true));
+    result.set_property(ctx, "patchMode", JSValue::string(ctx, "arm64-direct-branch"));
+    result.set_property(ctx, "patchByteCount", JSValue::int(4));
+    result.set_property(ctx, "rollbackState", JSValue::string(ctx, "armed"));
+    result.set_property(ctx, "owned", JSValue::bool(true));
+    result.set_property(ctx, "disposed", JSValue::bool(false));
+    result.set_property(ctx, "lifetime", JSValue::string(ctx, "quickjs-gc-owned"));
+    set_js_u64_property(ctx, result.raw(), "targetThreadId", thread_id);
+    set_js_u64_property(ctx, result.raw(), "sourceStart", source_start);
+    set_js_u64_property(ctx, result.raw(), "cacheBase", cache_base);
+    add_cfunction_to_object(ctx, result.raw(), "rollback", js_stalker_rewrite_commit_rollback, 0);
+    add_cfunction_to_object(ctx, result.raw(), "dispose", js_stalker_rewrite_commit_dispose, 0);
     result.raw()
 }
 
@@ -1916,7 +2307,13 @@ unsafe extern "C" fn js_stalker_preflight_target_thread_rewrite(
     };
     let materialization = &*(opaque as *mut Arm64CodeCacheMaterialization);
     let thread_suspend_available = stalker_thread_suspend_available();
+    let memory_patch_available = target_memory_patch_available();
     let quiescence_available = target_thread_quiescence_available();
+    let source_start = materialization.emission().layout.source_start;
+    let branch_range_available = materialization.emission().layout.code_byte_count >= 4
+        && encode_arm64_branch(source_start, materialization.mapping_base()).is_ok();
+    let commit_ready =
+        thread_suspend_available && memory_patch_available && quiescence_available && branch_range_available;
     let result = JSValue(ffi::JS_NewObject(ctx));
     result.set_property(
         ctx,
@@ -1935,11 +2332,12 @@ unsafe extern "C" fn js_stalker_preflight_target_thread_rewrite(
     result.set_property(ctx, "targetThreadInstructionRewrite", JSValue::bool(false));
     result.set_property(ctx, "rewritesTargetMemory", JSValue::bool(false));
     result.set_property(ctx, "rewriteReady", JSValue::bool(false));
-    result.set_property(ctx, "commitReady", JSValue::bool(false));
+    result.set_property(ctx, "commitReady", JSValue::bool(commit_ready));
     result.set_property(ctx, "executionReady", JSValue::bool(false));
     result.set_property(ctx, "cacheExecutable", JSValue::bool(materialization.is_executable()));
     result.set_property(ctx, "threadSuspendAvailable", JSValue::bool(thread_suspend_available));
-    result.set_property(ctx, "targetMemoryPatchAvailable", JSValue::bool(false));
+    result.set_property(ctx, "targetMemoryPatchAvailable", JSValue::bool(memory_patch_available));
+    result.set_property(ctx, "branchRangeAvailable", JSValue::bool(branch_range_available));
     result.set_property(ctx, "quiescenceAvailable", JSValue::bool(quiescence_available));
     result.set_property(
         ctx,
@@ -1964,8 +2362,22 @@ unsafe extern "C" fn js_stalker_preflight_target_thread_rewrite(
         );
         blocker_index += 1;
     }
-    for blocker in ["target-memory-patch"] {
-        ffi::JS_SetPropertyUint32(ctx, blockers, blocker_index, JSValue::string(ctx, blocker).raw());
+    if !memory_patch_available {
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            blockers,
+            blocker_index,
+            JSValue::string(ctx, "target-memory-patch").raw(),
+        );
+        blocker_index += 1;
+    }
+    if !branch_range_available {
+        ffi::JS_SetPropertyUint32(
+            ctx,
+            blockers,
+            blocker_index,
+            JSValue::string(ctx, "target-thread-branch-range").raw(),
+        );
         blocker_index += 1;
     }
     if !quiescence_available {
@@ -1978,11 +2390,11 @@ unsafe extern "C" fn js_stalker_preflight_target_thread_rewrite(
     }
     result.set_property(ctx, "blockers", JSValue(blockers));
     set_js_u64_property(ctx, result.raw(), "targetThreadId", thread_id);
-    let source_start = with_owned_js_value(ctx, cache.get_property(ctx, "sourceStart"), |value| {
+    let reported_source_start = with_owned_js_value(ctx, cache.get_property(ctx, "sourceStart"), |value| {
         js_nonnegative_u64(ctx, value, "prepared StalkerCodeCache sourceStart is invalid")
     });
-    if let Ok(source_start) = source_start {
-        set_js_u64_property(ctx, result.raw(), "sourceStart", source_start);
+    if let Ok(reported_source_start) = reported_source_start {
+        set_js_u64_property(ctx, result.raw(), "sourceStart", reported_source_start);
     }
     result.raw()
 }
@@ -2556,6 +2968,9 @@ globalThis.Stalker = globalThis.Stalker || (function() {
                 targetThreadRewritePreparationMode: 'unavailable',
                 targetThreadRewritePreflight: false,
                 targetThreadRewritePreflightMode: 'unavailable',
+                targetThreadRewriteCommit: false,
+                targetThreadRewriteCommitMode: 'unavailable',
+                targetMemoryPatch: false,
                 codeCacheWritableMapping: false,
                 codeCacheExecutionReady: false,
                 codeCacheMaterialized: false,
@@ -2591,6 +3006,9 @@ globalThis.Stalker = globalThis.Stalker || (function() {
             targetThreadRewritePreparationMode: native.targetThreadRewritePreparationMode || 'unavailable',
             targetThreadRewritePreflight: native.targetThreadRewritePreflight === true,
             targetThreadRewritePreflightMode: native.targetThreadRewritePreflightMode || 'unavailable',
+            targetThreadRewriteCommit: native.targetThreadRewriteCommit === true,
+            targetThreadRewriteCommitMode: native.targetThreadRewriteCommitMode || 'unavailable',
+            targetMemoryPatch: native.targetMemoryPatch === true,
             codeCacheWritableMapping: native.codeCacheWritableMapping === true,
             codeCacheExecutionReady: native.codeCacheExecutionReady === true,
             codeCacheMaterialized: native.codeCacheMaterialized === true,
@@ -2700,6 +3118,14 @@ globalThis.Stalker = globalThis.Stalker || (function() {
             throw new Error('Stalker target-thread rewrite preflight is unavailable in this runtime');
         }
         return native.stalkerPreflightTargetThreadRewrite(threadId(thread), cache);
+    }
+
+    function commitTargetThreadRewrite(thread, cache, options) {
+        const native = nativeStalker();
+        if (typeof native.stalkerCommitTargetThreadRewrite !== 'function') {
+            throw new Error('Stalker target-thread rewrite commit is unavailable in this runtime');
+        }
+        return native.stalkerCommitTargetThreadRewrite(threadId(thread), cache, options || {});
     }
 
     function relocate(bytes, source, destination) {
@@ -2866,6 +3292,7 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         planTargetThreadRewrite: planTargetThreadRewrite,
         prepareTargetThreadRewrite: prepareTargetThreadRewrite,
         preflightTargetThreadRewrite: preflightTargetThreadRewrite,
+        commitTargetThreadRewrite: commitTargetThreadRewrite,
         relocate: relocate,
         layoutCodeCache: layoutCodeCache,
         emitCodeCache: emitCodeCache,
@@ -2958,6 +3385,13 @@ pub(crate) fn register_stalker_api(ctx: &JSContext) -> Result<(), String> {
                 js_stalker_preflight_target_thread_rewrite,
                 2,
             );
+            add_cfunction_to_object(
+                ctx.as_ptr(),
+                native.raw(),
+                "stalkerCommitTargetThreadRewrite",
+                js_stalker_commit_target_thread_rewrite,
+                3,
+            );
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerRelocate", js_stalker_relocate, 3);
             add_cfunction_to_object(
                 ctx.as_ptr(),
@@ -3048,6 +3482,10 @@ mod tests {
             "function"
         );
         assert_eq!(
+            runtime.eval("typeof Stalker.commitTargetThreadRewrite").unwrap(),
+            "function"
+        );
+        assert_eq!(
             runtime.eval("Stalker.capabilities().instructionLevel").unwrap(),
             "false"
         );
@@ -3133,14 +3571,30 @@ mod tests {
             )
             .expect("exercise target-thread rewrite preflight");
         #[cfg(all(any(target_os = "ios", target_os = "macos"), quickjs_hook_engine))]
-        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":true,"targetMemoryPatchAvailable":false,"quiescenceAvailable":true,"blockers":["target-memory-patch"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
+        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":true,"targetMemoryPatchAvailable":true,"quiescenceAvailable":true,"blockers":["target-thread-branch-range"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
         #[cfg(all(any(target_os = "ios", target_os = "macos"), not(quickjs_hook_engine)))]
-        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":true,"targetMemoryPatchAvailable":false,"quiescenceAvailable":false,"blockers":["target-memory-patch","target-thread-quiescence"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
+        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":true,"targetMemoryPatchAvailable":true,"quiescenceAvailable":false,"blockers":["target-thread-branch-range","target-thread-quiescence"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
         #[cfg(all(not(any(target_os = "ios", target_os = "macos")), quickjs_hook_engine))]
-        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":false,"targetMemoryPatchAvailable":false,"quiescenceAvailable":true,"blockers":["apple-thread-suspend","target-memory-patch"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
+        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":false,"targetMemoryPatchAvailable":true,"quiescenceAvailable":true,"blockers":["apple-thread-suspend","target-thread-branch-range"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
         #[cfg(all(not(any(target_os = "ios", target_os = "macos")), not(quickjs_hook_engine)))]
-        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":false,"targetMemoryPatchAvailable":false,"quiescenceAvailable":false,"blockers":["apple-thread-suspend","target-memory-patch","target-thread-quiescence"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
+        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":false,"targetMemoryPatchAvailable":true,"quiescenceAvailable":false,"blockers":["apple-thread-suspend","target-thread-branch-range","target-thread-quiescence"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn public_target_thread_rewrite_commit_preserves_cache_when_blocked() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const t = 909; Stalker.follow(t, {events: 1}); const cache = Stalker.prepareTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], 0x4000, {maxInstructions: 4}); let error = ''; try { Stalker.commitTargetThreadRewrite(t, cache); } catch (caught) { error = caught.message; } const stillPrepared = cache.prepared === true; const rolledBack = cache.rollback(); const stopped = Stalker.unfollow(t); return JSON.stringify({method:typeof Stalker.commitTargetThreadRewrite, blocked:error.indexOf('target-thread') >= 0, stillPrepared:stillPrepared, rolledBack:rolledBack, stopped:stopped.state}); })()",
+            )
+            .expect("exercise blocked target-thread rewrite commit");
+        assert_eq!(
+            result,
+            r#"{"method":"function","blocked":true,"stillPrepared":true,"rolledBack":true,"stopped":"idle"}"#
+        );
     }
 
     #[test]

@@ -188,6 +188,7 @@ pub struct Arm64CodeCacheMaterialization {
     mapping: *mut libc::c_void,
     mapping_size: usize,
     executable: bool,
+    target_thread_id: Option<u64>,
 }
 
 impl Arm64CodeCacheMaterialization {
@@ -205,6 +206,28 @@ impl Arm64CodeCacheMaterialization {
 
     pub const fn is_executable(&self) -> bool {
         self.executable
+    }
+
+    pub const fn target_thread_id(&self) -> Option<u64> {
+        self.target_thread_id
+    }
+
+    pub fn bind_target_thread(&mut self, thread_id: u64) -> Result<()> {
+        if thread_id == 0 {
+            return Err(Error::InvalidArgument(
+                "ARM64 code-cache target thread id must be non-zero".into(),
+            ));
+        }
+        if let Some(existing) = self.target_thread_id {
+            if existing != thread_id {
+                return Err(Error::State(format!(
+                    "ARM64 code-cache is already bound to target thread {existing}"
+                )));
+            }
+        } else {
+            self.target_thread_id = Some(thread_id);
+        }
+        Ok(())
     }
 
     /// Flushes the instruction cache and transitions the owned mapping from
@@ -344,6 +367,30 @@ pub const fn arm64_code_cache_materialization_available() -> bool {
 
 pub const fn arm64_code_cache_direct_execution_available() -> bool {
     cfg!(all(quickjs_arm64_relocator, unix, target_arch = "aarch64"))
+}
+
+/// Encode a direct AArch64 `B` from one instruction address to another.
+///
+/// The immediate is signed, 4-byte scaled, and has a 26-bit range. Keeping
+/// this check next to the relocator prevents a commit transaction from
+/// silently truncating a far cache address.
+pub fn encode_arm64_branch(source: u64, destination: u64) -> Result<[u8; 4]> {
+    validate_code_address(source, "ARM64 branch source address")?;
+    validate_code_address(destination, "ARM64 branch destination address")?;
+    let delta = i128::from(destination) - i128::from(source);
+    if delta % 4 != 0 {
+        return Err(Error::InvalidArgument(
+            "ARM64 branch target must be 4-byte aligned".into(),
+        ));
+    }
+    let immediate = delta / 4;
+    if immediate < -(1_i128 << 25) || immediate > ((1_i128 << 25) - 1) {
+        return Err(Error::Unsupported(
+            "ARM64 direct branch target is outside the +/-128MB range".into(),
+        ));
+    }
+    let word = 0x1400_0000_u32 | ((immediate as i64 as u32) & 0x03ff_ffff);
+    Ok(word.to_le_bytes())
 }
 
 pub fn analyze_arm64_instruction(address: u64, word: u32) -> Result<Arm64RelocationInfo> {
@@ -708,6 +755,7 @@ pub fn materialize_arm64_code_cache(bytes: &[u8], source_start: u64) -> Result<A
             mapping,
             mapping_size,
             executable: false,
+            target_thread_id: None,
         })
     }
 
@@ -966,6 +1014,23 @@ mod tests {
 
     fn word_at(bytes: &[u8], offset: usize) -> u32 {
         u32::from_le_bytes(bytes[offset..offset + 4].try_into().expect("word"))
+    }
+
+    #[test]
+    fn direct_branch_encoder_preserves_target_and_rejects_far_addresses() {
+        let bytes = encode_arm64_branch(0x1000_0000, 0x1000_8000).expect("encode branch");
+        let word = u32::from_le_bytes(bytes);
+        let info = analyze_arm64_instruction(0x1000_0000, word).expect("analyze branch");
+        assert_eq!(info.kind, Arm64RelocationKind::Branch);
+        assert_eq!(info.target, Some(0x1000_8000));
+        assert!(matches!(
+            encode_arm64_branch(0x1000, 0x1000 + (1 << 27)),
+            Err(Error::Unsupported(_))
+        ));
+        assert!(matches!(
+            encode_arm64_branch(0x1000, 0x1002),
+            Err(Error::InvalidArgument(_))
+        ));
     }
 
     #[test]
