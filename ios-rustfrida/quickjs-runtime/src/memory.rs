@@ -815,29 +815,41 @@ pub(crate) const fn target_memory_patch_available() -> bool {
     true
 }
 
+pub(crate) fn target_memory_matches(address: u64, expected: &[u8]) -> Result<bool, String> {
+    let (actual, _) = snapshot_target_memory(address, expected.len())?;
+    Ok(actual.as_ref() == expected)
+}
+
+fn snapshot_target_memory(address: u64, size: usize) -> Result<(Box<[u8]>, Vec<ProtectionRegion>), String> {
+    if size == 0 {
+        return Err("target-memory snapshot must not be empty".to_string());
+    }
+    let page_size = system_page_size().ok_or_else(|| "unable to determine system page size".to_string())?;
+    let (page_start, page_length) = aligned_page_range(address, size, page_size).map_err(str::to_string)?;
+    let page_end = page_start
+        .checked_add(page_length)
+        .ok_or_else(|| "page range overflow".to_string())?;
+    let regions = query_protection_regions(page_start, page_end)?;
+    if regions.iter().any(|region| region.protection & libc::PROT_READ == 0) {
+        return Err("target-memory snapshot requires readable target memory".to_string());
+    }
+    let mut bytes = vec![0_u8; size];
+    unsafe {
+        std::ptr::copy_nonoverlapping(address as *const u8, bytes.as_mut_ptr(), bytes.len());
+    }
+    Ok((bytes.into_boxed_slice(), regions))
+}
+
 #[allow(dead_code)]
 impl TargetMemoryPatch {
     pub(crate) fn prepare(address: u64, replacement: &[u8]) -> Result<Self, String> {
         if replacement.is_empty() {
             return Err("target-memory patch must not be empty".to_string());
         }
-        let page_size = system_page_size().ok_or_else(|| "unable to determine system page size".to_string())?;
-        let (page_start, page_length) =
-            aligned_page_range(address, replacement.len(), page_size).map_err(str::to_string)?;
-        let page_end = page_start
-            .checked_add(page_length)
-            .ok_or_else(|| "page range overflow".to_string())?;
-        let regions = query_protection_regions(page_start, page_end)?;
-        if regions.iter().any(|region| region.protection & libc::PROT_READ == 0) {
-            return Err("target-memory patch requires readable target memory".to_string());
-        }
-        let mut original = vec![0_u8; replacement.len()];
-        unsafe {
-            std::ptr::copy_nonoverlapping(address as *const u8, original.as_mut_ptr(), original.len());
-        }
+        let (original, regions) = snapshot_target_memory(address, replacement.len())?;
         Ok(Self {
             address,
-            original: original.into_boxed_slice(),
+            original,
             replacement: replacement.to_vec().into_boxed_slice(),
             regions,
             applied: false,
@@ -1419,7 +1431,8 @@ fn is_range_mapped(address: u64, size: usize) -> bool {
 mod tests {
     use super::{
         aligned_page_range, byte_from_number, checked_address_range, cleanup_memory_allocations, is_addr_accessible,
-        parse_protection, read_proc_self_maps, register_memory_api, AllocationRegistry, TargetMemoryPatch,
+        parse_protection, read_proc_self_maps, register_memory_api, target_memory_matches, AllocationRegistry,
+        TargetMemoryPatch,
     };
 
     #[test]
@@ -1538,5 +1551,16 @@ mod tests {
         assert!(!patch.is_applied());
         assert_eq!(&*target, &[0x11, 0x22, 0x33, 0x44]);
         assert!(!patch.rollback().expect("idempotent rollback"));
+    }
+
+    #[test]
+    fn target_memory_match_checks_the_complete_source_snapshot() {
+        let mut target = vec![0x1f_u8, 0x20, 0x03, 0xd5, 0xc0, 0x03, 0x5f, 0xd6].into_boxed_slice();
+        let address = target.as_mut_ptr() as u64;
+        let expected = target.to_vec();
+
+        assert!(target_memory_matches(address, &expected).expect("matching snapshot"));
+        target[4] ^= 0xff;
+        assert!(!target_memory_matches(address, &expected).expect("mismatched snapshot"));
     }
 }

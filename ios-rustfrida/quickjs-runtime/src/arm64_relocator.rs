@@ -167,6 +167,9 @@ pub struct Arm64CodeCacheLayoutPlan {
     pub code_start: u64,
     pub code_end: u64,
     pub code_byte_count: u64,
+    pub relocated_byte_count: u64,
+    pub continuation_address: Option<u64>,
+    pub continuation_target: Option<u64>,
     pub island_start: u64,
     pub island_end: u64,
     pub island_byte_count: u64,
@@ -181,12 +184,14 @@ pub struct Arm64CodeCacheEmission {
     pub layout: Arm64CodeCacheLayoutPlan,
     pub output: Vec<u8>,
     pub emitted_words: Vec<u32>,
+    pub continuation_word: Option<u32>,
     pub fallback_emitted_byte_counts: Vec<u64>,
 }
 
 #[derive(Debug)]
 pub struct Arm64CodeCacheMaterialization {
     emission: Arm64CodeCacheEmission,
+    source_snapshot: Box<[u8]>,
     mapping: *mut libc::c_void,
     mapping_size: usize,
     executable: bool,
@@ -196,6 +201,10 @@ pub struct Arm64CodeCacheMaterialization {
 impl Arm64CodeCacheMaterialization {
     pub const fn emission(&self) -> &Arm64CodeCacheEmission {
         &self.emission
+    }
+
+    pub fn source_snapshot(&self) -> &[u8] {
+        &self.source_snapshot
     }
 
     pub fn mapping_base(&self) -> u64 {
@@ -395,6 +404,10 @@ pub fn encode_arm64_branch(source: u64, destination: u64) -> Result<[u8; 4]> {
     Ok(word.to_le_bytes())
 }
 
+pub fn arm64_rewrite_branch_pair_reachable(source: u64, destination: u64) -> bool {
+    encode_arm64_branch(source, destination).is_ok() && encode_arm64_branch(destination, source).is_ok()
+}
+
 pub fn analyze_arm64_instruction(address: u64, word: u32) -> Result<Arm64RelocationInfo> {
     validate_code_address(address, "ARM64 instruction address")?;
 
@@ -519,10 +532,55 @@ pub fn plan_arm64_code_cache_layout(
     source_start: u64,
     destination_start: u64,
 ) -> Result<Arm64CodeCacheLayoutPlan> {
+    plan_arm64_code_cache_layout_internal(bytes, source_start, destination_start, false)
+}
+
+pub fn plan_arm64_target_rewrite_layout(
+    bytes: &[u8],
+    source_start: u64,
+    destination_start: u64,
+) -> Result<Arm64CodeCacheLayoutPlan> {
+    plan_arm64_code_cache_layout_internal(bytes, source_start, destination_start, true)
+}
+
+fn plan_arm64_code_cache_layout_internal(
+    bytes: &[u8],
+    source_start: u64,
+    destination_start: u64,
+    close_fallthrough: bool,
+) -> Result<Arm64CodeCacheLayoutPlan> {
     let relocation = plan_arm64_relocation(bytes, source_start, destination_start)?;
-    let code_byte_count = u64::try_from(bytes.len())
+    if close_fallthrough
+        && relocation.entries.iter().any(|entry| {
+            matches!(
+                entry.info.kind,
+                Arm64RelocationKind::BranchLink | Arm64RelocationKind::BranchLinkRegister
+            )
+        })
+    {
+        return Err(Error::Unsupported(
+            "ARM64 target-thread rewrite does not yet preserve LR for BL/BLR instructions".into(),
+        ));
+    }
+    if close_fallthrough && !arm64_rewrite_branch_pair_reachable(source_start, destination_start) {
+        return Err(Error::Unsupported(
+            "target-thread-branch-range: source and code cache require bidirectional direct-branch reachability".into(),
+        ));
+    }
+    let relocated_byte_count = u64::try_from(bytes.len())
         .map_err(|_| Error::InvalidArgument("ARM64 code-cache input length is too large".into()))?;
-    let source_end = checked_layout_end(source_start, code_byte_count, "source")?;
+    let source_end = checked_layout_end(source_start, relocated_byte_count, "source")?;
+    let continuation_address = close_fallthrough
+        .then(|| relocation.entries.last())
+        .flatten()
+        .filter(|entry| instruction_falls_through(entry.info.kind))
+        .map(|_| checked_layout_end(destination_start, relocated_byte_count, "continuation"))
+        .transpose()?;
+    let continuation_target = continuation_address.map(|_| source_end);
+    let continuation_byte_count = if continuation_address.is_some() { 4 } else { 0 };
+    let code_byte_count = relocated_byte_count
+        .checked_add(continuation_byte_count)
+        .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache continuation size overflowed".into()))?;
     let code_end = checked_layout_end(destination_start, code_byte_count, "code")?;
     let fallback_count = relocation
         .entries
@@ -577,6 +635,9 @@ pub fn plan_arm64_code_cache_layout(
         code_start: destination_start,
         code_end,
         code_byte_count,
+        relocated_byte_count,
+        continuation_address,
+        continuation_target,
         island_start,
         island_end,
         island_byte_count,
@@ -592,7 +653,28 @@ pub fn emit_arm64_code_cache(
     source_start: u64,
     destination_start: u64,
 ) -> Result<Arm64CodeCacheEmission> {
-    let layout = plan_arm64_code_cache_layout(bytes, source_start, destination_start)?;
+    emit_arm64_code_cache_internal(bytes, source_start, destination_start, false)
+}
+
+fn emit_arm64_target_rewrite_code_cache(
+    bytes: &[u8],
+    source_start: u64,
+    destination_start: u64,
+) -> Result<Arm64CodeCacheEmission> {
+    emit_arm64_code_cache_internal(bytes, source_start, destination_start, true)
+}
+
+fn emit_arm64_code_cache_internal(
+    bytes: &[u8],
+    source_start: u64,
+    destination_start: u64,
+    close_fallthrough: bool,
+) -> Result<Arm64CodeCacheEmission> {
+    let layout = if close_fallthrough {
+        plan_arm64_target_rewrite_layout(bytes, source_start, destination_start)?
+    } else {
+        plan_arm64_code_cache_layout(bytes, source_start, destination_start)?
+    };
 
     #[cfg(quickjs_arm64_relocator)]
     {
@@ -676,10 +758,33 @@ pub fn emit_arm64_code_cache(
             ));
         }
 
+        let continuation_word = match (layout.continuation_address, layout.continuation_target) {
+            (Some(address), Some(target)) => {
+                let bytes = encode_arm64_branch(address, target)?;
+                let word = u32::from_le_bytes(bytes);
+                let offset = code_cache_output_offset(
+                    address,
+                    layout.destination_start,
+                    bytes.len(),
+                    output.len(),
+                    "continuation",
+                )?;
+                output[offset..offset + bytes.len()].copy_from_slice(&bytes);
+                Some(word)
+            }
+            (None, None) => None,
+            _ => {
+                return Err(Error::State(
+                    "ARM64 code-cache continuation metadata is inconsistent".into(),
+                ))
+            }
+        };
+
         Ok(Arm64CodeCacheEmission {
             layout,
             output,
             emitted_words,
+            continuation_word,
             fallback_emitted_byte_counts,
         })
     }
@@ -698,9 +803,9 @@ pub fn materialize_arm64_code_cache(bytes: &[u8], source_start: u64) -> Result<A
 
     #[cfg(all(quickjs_arm64_relocator, unix))]
     {
-        let mapping_size = code_cache_mapping_size(bytes)?;
+        let mapping_size = code_cache_mapping_size(bytes, 0)?;
         let mapping = map_code_cache_mapping(std::ptr::null_mut(), mapping_size)?;
-        materialize_arm64_code_cache_in_mapping(bytes, source_start, mapping, mapping_size)
+        materialize_arm64_code_cache_in_mapping(bytes, source_start, mapping, mapping_size, false)
     }
 
     #[cfg(not(all(quickjs_arm64_relocator, unix)))]
@@ -720,9 +825,9 @@ pub fn materialize_arm64_code_cache_near(bytes: &[u8], source_start: u64) -> Res
 
     #[cfg(all(quickjs_arm64_relocator, unix))]
     {
-        let mapping_size = code_cache_mapping_size(bytes)?;
+        let mapping_size = code_cache_mapping_size(bytes, 4)?;
         let mapping = map_code_cache_mapping_near(source_start, mapping_size)?;
-        materialize_arm64_code_cache_in_mapping(bytes, source_start, mapping, mapping_size)
+        materialize_arm64_code_cache_in_mapping(bytes, source_start, mapping, mapping_size, true)
     }
 
     #[cfg(not(all(quickjs_arm64_relocator, unix)))]
@@ -734,7 +839,7 @@ pub fn materialize_arm64_code_cache_near(bytes: &[u8], source_start: u64) -> Res
 }
 
 #[cfg(all(quickjs_arm64_relocator, unix))]
-fn code_cache_mapping_size(bytes: &[u8]) -> Result<usize> {
+fn code_cache_mapping_size(bytes: &[u8], extra_code_bytes: usize) -> Result<usize> {
     let instruction_count = bytes.len() / 4;
     let island_slot_size = usize::try_from(ARM64_CODE_CACHE_ISLAND_SLOT_SIZE)
         .map_err(|_| Error::InvalidArgument("ARM64 code-cache island slot size is too large".into()))?;
@@ -745,7 +850,8 @@ fn code_cache_mapping_size(bytes: &[u8]) -> Result<usize> {
         .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache materialization size overflowed".into()))?;
     let maximum_output_bytes = bytes
         .len()
-        .checked_add(alignment_padding)
+        .checked_add(extra_code_bytes)
+        .and_then(|size| size.checked_add(alignment_padding))
         .and_then(|size| size.checked_add(maximum_island_bytes))
         .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache materialization size overflowed".into()))?;
     page_align_code_cache_len(maximum_output_bytes)
@@ -780,7 +886,7 @@ fn retain_mapping_if_branch_reachable(
     mapping: *mut libc::c_void,
     mapping_size: usize,
 ) -> Option<*mut libc::c_void> {
-    if encode_arm64_branch(source_start, mapping as usize as u64).is_ok() {
+    if arm64_rewrite_branch_pair_reachable(source_start, mapping as usize as u64) {
         return Some(mapping);
     }
     unsafe {
@@ -848,9 +954,14 @@ fn materialize_arm64_code_cache_in_mapping(
     source_start: u64,
     mapping: *mut libc::c_void,
     mapping_size: usize,
+    close_fallthrough: bool,
 ) -> Result<Arm64CodeCacheMaterialization> {
     let destination_start = mapping as usize as u64;
-    let emission = match emit_arm64_code_cache(bytes, source_start, destination_start) {
+    let emission = match if close_fallthrough {
+        emit_arm64_target_rewrite_code_cache(bytes, source_start, destination_start)
+    } else {
+        emit_arm64_code_cache(bytes, source_start, destination_start)
+    } {
         Ok(emission) => emission,
         Err(error) => {
             unsafe {
@@ -873,6 +984,7 @@ fn materialize_arm64_code_cache_in_mapping(
 
     Ok(Arm64CodeCacheMaterialization {
         emission,
+        source_snapshot: bytes.to_vec().into_boxed_slice(),
         mapping,
         mapping_size,
         executable: false,
@@ -987,6 +1099,13 @@ const fn terminates_basic_block(kind: Arm64RelocationKind) -> bool {
             | Arm64RelocationKind::TestBitAndBranchNonZero
             | Arm64RelocationKind::BranchRegister
             | Arm64RelocationKind::Return
+    )
+}
+
+const fn instruction_falls_through(kind: Arm64RelocationKind) -> bool {
+    !matches!(
+        kind,
+        Arm64RelocationKind::Branch | Arm64RelocationKind::BranchRegister | Arm64RelocationKind::Return
     )
 }
 
@@ -1156,6 +1275,23 @@ mod tests {
     }
 
     #[test]
+    fn rewrite_branch_pair_requires_both_directions_to_be_reachable() {
+        let source = 0x2000_0000;
+        let symmetric_limit = ARM64_DIRECT_BRANCH_RANGE_BYTES - 4;
+
+        assert!(arm64_rewrite_branch_pair_reachable(source, source + symmetric_limit));
+        assert!(arm64_rewrite_branch_pair_reachable(source, source - symmetric_limit));
+        assert!(!arm64_rewrite_branch_pair_reachable(
+            source,
+            source + ARM64_DIRECT_BRANCH_RANGE_BYTES
+        ));
+        assert!(!arm64_rewrite_branch_pair_reachable(
+            source,
+            source - ARM64_DIRECT_BRANCH_RANGE_BYTES
+        ));
+    }
+
+    #[test]
     fn direct_relocation_preserves_pc_relative_targets() {
         let source = 0x1000_0000;
         let destination = 0x1000_8000;
@@ -1302,7 +1438,128 @@ mod tests {
         assert!(emission.layout.directly_relocatable());
         assert_eq!(emission.output, input);
         assert_eq!(emission.emitted_words, vec![ARM64_NOP_WORD, 0xd65f_03c0]);
+        assert_eq!(emission.layout.relocated_byte_count, input.len() as u64);
+        assert_eq!(emission.layout.code_byte_count, input.len() as u64);
+        assert_eq!(emission.layout.continuation_address, None);
+        assert_eq!(emission.layout.continuation_target, None);
+        assert_eq!(emission.continuation_word, None);
         assert!(emission.fallback_emitted_byte_counts.is_empty());
+    }
+
+    #[test]
+    fn target_rewrite_emission_closes_non_terminal_fallthrough() {
+        let source = 0x1000_0000;
+        let destination = 0x1000_8000;
+        let mut input = Vec::new();
+        input.extend_from_slice(&one_word(ARM64_NOP_WORD));
+        input.extend_from_slice(&one_word(ARM64_NOP_WORD));
+
+        let emission = emit_arm64_target_rewrite_code_cache(&input, source, destination).expect("target emission");
+        assert_eq!(emission.layout.relocated_byte_count, 8);
+        assert_eq!(emission.layout.code_byte_count, 12);
+        assert_eq!(emission.layout.code_end, destination + 12);
+        assert_eq!(emission.layout.continuation_address, Some(destination + 8));
+        assert_eq!(emission.layout.continuation_target, Some(source + 8));
+        assert_eq!(&emission.output[..8], input);
+
+        let continuation_word = emission.continuation_word.expect("continuation word");
+        assert_eq!(word_at(&emission.output, 8), continuation_word);
+        let continuation = analyze_arm64_instruction(destination + 8, continuation_word).expect("continuation");
+        assert_eq!(continuation.kind, Arm64RelocationKind::Branch);
+        assert_eq!(continuation.target, Some(source + 8));
+    }
+
+    #[test]
+    fn target_rewrite_emission_uses_terminal_instruction_without_continuation() {
+        let source = 0x1000_0000;
+        let destination = 0x1000_8000;
+        let terminal_words = [0x1400_0002, 0xd61f_0000, 0xd65f_03c0];
+
+        for terminal_word in terminal_words {
+            let mut input = Vec::new();
+            input.extend_from_slice(&one_word(ARM64_NOP_WORD));
+            input.extend_from_slice(&one_word(terminal_word));
+            let emission = emit_arm64_target_rewrite_code_cache(&input, source, destination)
+                .unwrap_or_else(|error| panic!("terminal {terminal_word:#x}: {error}"));
+
+            assert_eq!(emission.layout.relocated_byte_count, 8);
+            assert_eq!(emission.layout.code_byte_count, 8);
+            assert_eq!(emission.layout.continuation_address, None);
+            assert_eq!(emission.layout.continuation_target, None);
+            assert_eq!(emission.continuation_word, None);
+            assert_eq!(emission.output.len(), 8);
+        }
+    }
+
+    #[test]
+    fn target_rewrite_conditional_branches_keep_taken_target_and_fallthrough() {
+        let source = 0x1000_0000;
+        let destination = 0x1000_8000;
+        let cases = [
+            (0x5400_0040, Arm64RelocationKind::ConditionalBranch),
+            (0xb400_0040, Arm64RelocationKind::CompareAndBranchZero),
+            (0xb500_0041, Arm64RelocationKind::CompareAndBranchNonZero),
+            (0x3600_0040, Arm64RelocationKind::TestBitAndBranchZero),
+            (0x3700_0041, Arm64RelocationKind::TestBitAndBranchNonZero),
+        ];
+
+        for (word, kind) in cases {
+            let emission = emit_arm64_target_rewrite_code_cache(&one_word(word), source, destination)
+                .unwrap_or_else(|error| panic!("conditional {kind:?}: {error}"));
+            let relocated =
+                analyze_arm64_instruction(destination, emission.emitted_words[0]).expect("relocated branch");
+            assert_eq!(relocated.kind, kind);
+            assert_eq!(relocated.target, Some(source + 8));
+            let continuation = analyze_arm64_instruction(
+                destination + 4,
+                emission.continuation_word.expect("fall-through continuation"),
+            )
+            .expect("continuation branch");
+            assert_eq!(continuation.kind, Arm64RelocationKind::Branch);
+            assert_eq!(continuation.target, Some(source + 4));
+        }
+    }
+
+    #[test]
+    fn target_rewrite_rejects_link_register_semantics_until_lr_is_preserved() {
+        for word in [0x9400_0002, 0xd63f_0000] {
+            assert!(matches!(
+                plan_arm64_target_rewrite_layout(&one_word(word), 0x1000_0000, 0x1000_8000),
+                Err(Error::Unsupported(message)) if message.contains("BL/BLR")
+            ));
+        }
+    }
+
+    #[test]
+    fn target_rewrite_rejects_unreachable_entry_and_continuation_pair() {
+        let source = 0x2000_0000;
+        let destination = source + ARM64_DIRECT_BRANCH_RANGE_BYTES;
+
+        assert!(matches!(
+            plan_arm64_target_rewrite_layout(&one_word(ARM64_NOP_WORD), source, destination),
+            Err(Error::Unsupported(message)) if message.contains("target-thread-branch-range")
+        ));
+        assert!(plan_arm64_code_cache_layout(&one_word(ARM64_NOP_WORD), source, destination).is_ok());
+    }
+
+    #[test]
+    fn target_rewrite_fallback_island_preserves_fallthrough_continuation() {
+        let source = 0x1000;
+        let destination = 0x20_0000;
+        let emission = emit_arm64_target_rewrite_code_cache(&one_word(0x1000_0040), source, destination)
+            .expect("fallback target emission");
+
+        assert_eq!(emission.layout.fallbacks.len(), 1);
+        assert_eq!(emission.layout.code_byte_count, 8);
+        assert_eq!(emission.layout.continuation_address, Some(destination + 4));
+        assert_eq!(emission.layout.continuation_target, Some(source + 4));
+        assert!(emission.layout.island_start >= emission.layout.code_end);
+        let continuation = analyze_arm64_instruction(
+            destination + 4,
+            emission.continuation_word.expect("fall-through continuation"),
+        )
+        .expect("continuation branch");
+        assert_eq!(continuation.target, Some(source + 4));
     }
 
     #[test]
@@ -1420,14 +1677,24 @@ mod tests {
     fn near_code_cache_materialization_is_directly_branch_reachable() {
         let source_start =
             (near_code_cache_materialization_is_directly_branch_reachable as *const () as usize as u64) & !3;
-        let input = one_word(0xd65f_03c0);
+        let mut input = Vec::new();
+        input.extend_from_slice(&one_word(ARM64_NOP_WORD));
+        input.extend_from_slice(&one_word(ARM64_NOP_WORD));
         let materialization = materialize_arm64_code_cache_near(&input, source_start).expect("near materialization");
 
-        assert!(encode_arm64_branch(source_start, materialization.mapping_base()).is_ok());
+        assert!(arm64_rewrite_branch_pair_reachable(
+            source_start,
+            materialization.mapping_base()
+        ));
         assert_eq!(
             materialization.emission().layout.destination_start,
             materialization.mapping_base()
         );
+        assert_eq!(
+            materialization.emission().layout.continuation_target,
+            Some(source_start + 8)
+        );
+        assert_eq!(materialization.source_snapshot(), input);
         assert_eq!(materialization.mapped_output(), materialization.emission().output);
     }
 

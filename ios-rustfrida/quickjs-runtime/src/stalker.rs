@@ -1,14 +1,15 @@
 use crate::arm64_relocator::{
     arm64_code_cache_direct_execution_available, arm64_code_cache_materialization_available, arm64_relocator_available,
-    emit_arm64_code_cache, encode_arm64_branch, materialize_arm64_code_cache, materialize_arm64_code_cache_near,
-    plan_arm64_code_cache_layout, plan_arm64_relocation, Arm64CodeCacheBlock, Arm64CodeCacheEmission,
-    Arm64CodeCacheFallback, Arm64CodeCacheLayoutPlan, Arm64CodeCacheMaterialization, Arm64RelocationEntry,
-    Arm64RelocationPlan, ARM64_CODE_CACHE_ISLAND_ALIGNMENT, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE,
+    arm64_rewrite_branch_pair_reachable, emit_arm64_code_cache, encode_arm64_branch, materialize_arm64_code_cache,
+    materialize_arm64_code_cache_near, plan_arm64_code_cache_layout, plan_arm64_relocation,
+    plan_arm64_target_rewrite_layout, Arm64CodeCacheBlock, Arm64CodeCacheEmission, Arm64CodeCacheFallback,
+    Arm64CodeCacheLayoutPlan, Arm64CodeCacheMaterialization, Arm64RelocationEntry, Arm64RelocationPlan,
+    ARM64_CODE_CACHE_ISLAND_ALIGNMENT, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE,
 };
 use crate::context::JSContext;
 use crate::ffi;
 use crate::hook::{target_thread_quiescence_available, wait_for_target_thread_quiescence};
-use crate::memory::{target_memory_patch_available, TargetMemoryPatch};
+use crate::memory::{target_memory_matches, target_memory_patch_available, TargetMemoryPatch};
 use crate::ptr::create_native_pointer;
 use crate::util::{
     add_cfunction_to_object, js_throw_internal_error, js_throw_range_error, js_throw_type_error,
@@ -1178,6 +1179,27 @@ unsafe fn set_stalker_code_cache_layout_properties(
     set_js_u64_property(ctx, result.raw(), "codeStart", plan.code_start);
     set_js_u64_property(ctx, result.raw(), "codeEnd", plan.code_end);
     set_js_u64_property(ctx, result.raw(), "codeByteCount", plan.code_byte_count);
+    set_js_u64_property(ctx, result.raw(), "relocatedByteCount", plan.relocated_byte_count);
+    let has_continuation = plan.continuation_address.is_some() && plan.continuation_target.is_some();
+    result.set_property(ctx, "hasContinuation", JSValue::bool(has_continuation));
+    set_js_u64_property(
+        ctx,
+        result.raw(),
+        "continuationByteCount",
+        if has_continuation { 4 } else { 0 },
+    );
+    match plan.continuation_address {
+        Some(address) => set_js_u64_property(ctx, result.raw(), "continuationAddress", address),
+        None => {
+            result.set_property(ctx, "continuationAddress", JSValue::null());
+        }
+    };
+    match plan.continuation_target {
+        Some(target) => set_js_u64_property(ctx, result.raw(), "continuationTarget", target),
+        None => {
+            result.set_property(ctx, "continuationTarget", JSValue::null());
+        }
+    };
     set_js_u64_property(ctx, result.raw(), "islandStart", plan.island_start);
     set_js_u64_property(ctx, result.raw(), "islandEnd", plan.island_end);
     set_js_u64_property(ctx, result.raw(), "islandByteCount", plan.island_byte_count);
@@ -1271,6 +1293,12 @@ unsafe fn set_stalker_code_cache_emission_properties(
         );
     }
     result.set_property(ctx, "emittedWords", JSValue(emitted_words));
+    match emission.continuation_word {
+        Some(word) => set_js_u64_property(ctx, result.raw(), "continuationWord", word as u64),
+        None => {
+            result.set_property(ctx, "continuationWord", JSValue::null());
+        }
+    };
 
     let fallback_byte_counts = ffi::JS_NewArray(ctx);
     for (index, count) in emission.fallback_emitted_byte_counts.iter().enumerate() {
@@ -1748,9 +1776,14 @@ unsafe extern "C" fn js_stalker_plan_target_thread_rewrite(
             common::Error::State(format!("target thread {thread_id} is not followed")),
         );
     };
-    let plan = match plan_arm64_code_cache_layout(&bytes, source, destination) {
+    let plan = match plan_arm64_target_rewrite_layout(&bytes, source, destination) {
         Ok(plan) => plan,
         Err(error) => return stalker_error(ctx, error),
+    };
+    let continuation_mode = if plan.continuation_address.is_some() {
+        "source-fallthrough"
+    } else {
+        "terminal-instruction"
     };
     let result = JSValue(stalker_code_cache_layout_to_js(ctx, plan));
     result.set_property(
@@ -1766,6 +1799,8 @@ unsafe extern "C" fn js_stalker_plan_target_thread_rewrite(
     result.set_property(ctx, "rewritesTargetMemory", JSValue::bool(false));
     result.set_property(ctx, "rewriteReady", JSValue::bool(false));
     result.set_property(ctx, "executionReady", JSValue::bool(false));
+    result.set_property(ctx, "controlFlowClosed", JSValue::bool(true));
+    result.set_property(ctx, "continuationMode", JSValue::string(ctx, continuation_mode));
     result.set_property(
         ctx,
         "targetThreadState",
@@ -1838,6 +1873,11 @@ unsafe extern "C" fn js_stalker_prepare_target_thread_rewrite(
     if let Err(error) = materialization.make_executable() {
         return stalker_error(ctx, error);
     }
+    let continuation_mode = if materialization.emission().layout.continuation_address.is_some() {
+        "source-fallthrough"
+    } else {
+        "terminal-instruction"
+    };
     let result = JSValue(stalker_code_cache_materialization_to_js(ctx, Box::new(materialization)));
     result.set_property(
         ctx,
@@ -1862,6 +1902,9 @@ unsafe extern "C" fn js_stalker_prepare_target_thread_rewrite(
     result.set_property(ctx, "rewritesTargetMemory", JSValue::bool(false));
     result.set_property(ctx, "rewriteReady", JSValue::bool(false));
     result.set_property(ctx, "executionReady", JSValue::bool(false));
+    result.set_property(ctx, "controlFlowClosed", JSValue::bool(true));
+    result.set_property(ctx, "continuationMode", JSValue::string(ctx, continuation_mode));
+    result.set_property(ctx, "sourceSnapshotVerified", JSValue::bool(false));
     result.set_property(
         ctx,
         "targetThreadState",
@@ -2102,8 +2145,18 @@ unsafe extern "C" fn js_stalker_commit_target_thread_rewrite(
         );
     }
     let source_start = materialization.emission().layout.source_start;
+    let source_end = materialization.emission().layout.source_end;
     let code_byte_count = materialization.emission().layout.code_byte_count;
-    if code_byte_count < 4 {
+    let relocated_byte_count = materialization.emission().layout.relocated_byte_count;
+    let continuation_address = materialization.emission().layout.continuation_address;
+    let continuation_target = materialization.emission().layout.continuation_target;
+    let has_continuation = continuation_address.is_some() && continuation_target.is_some();
+    let continuation_mode = if has_continuation {
+        "source-fallthrough"
+    } else {
+        "terminal-instruction"
+    };
+    if relocated_byte_count < 4 {
         return stalker_error(
             ctx,
             common::Error::State("prepared StalkerCodeCache does not cover a patchable instruction".into()),
@@ -2153,6 +2206,22 @@ unsafe extern "C" fn js_stalker_commit_target_thread_rewrite(
         ffi::qjs_free_value(ctx, result);
         return js_throw_internal_error(ctx, "target-thread quiescence wait timed out before rewrite commit");
     }
+    let source_snapshot = materialization.source_snapshot();
+    if source_snapshot.len() as u64 != relocated_byte_count {
+        ffi::qjs_free_value(ctx, result);
+        return js_throw_internal_error(ctx, "prepared StalkerCodeCache source snapshot length is inconsistent");
+    }
+    match target_memory_matches(source_start, source_snapshot) {
+        Ok(true) => {}
+        Ok(false) => {
+            ffi::qjs_free_value(ctx, result);
+            return js_throw_internal_error(ctx, "target-thread source bytes changed after cache preparation");
+        }
+        Err(error) => {
+            ffi::qjs_free_value(ctx, result);
+            return js_throw_internal_error(ctx, &error);
+        }
+    }
     let mut patch = match TargetMemoryPatch::prepare(source_start, &replacement) {
         Ok(patch) => patch,
         Err(error) => {
@@ -2160,13 +2229,7 @@ unsafe extern "C" fn js_stalker_commit_target_thread_rewrite(
             return js_throw_internal_error(ctx, &error);
         }
     };
-    let expected_word = materialization
-        .emission()
-        .layout
-        .entries
-        .first()
-        .map(|entry| entry.original_word.to_le_bytes());
-    if expected_word.map_or(true, |expected| patch.original_bytes() != expected) {
+    if patch.original_bytes() != &source_snapshot[..replacement.len()] {
         ffi::qjs_free_value(ctx, result);
         return js_throw_internal_error(ctx, "target-thread source bytes changed after cache preparation");
     }
@@ -2226,6 +2289,9 @@ unsafe extern "C" fn js_stalker_commit_target_thread_rewrite(
     result.set_property(ctx, "rewritesTargetMemory", JSValue::bool(true));
     result.set_property(ctx, "rewriteReady", JSValue::bool(true));
     result.set_property(ctx, "executionReady", JSValue::bool(true));
+    result.set_property(ctx, "controlFlowClosed", JSValue::bool(true));
+    result.set_property(ctx, "continuationMode", JSValue::string(ctx, continuation_mode));
+    result.set_property(ctx, "sourceSnapshotVerified", JSValue::bool(true));
     result.set_property(ctx, "cacheExecutable", JSValue::bool(true));
     result.set_property(ctx, "patchMode", JSValue::string(ctx, "arm64-direct-branch"));
     result.set_property(ctx, "patchByteCount", JSValue::int(4));
@@ -2235,6 +2301,28 @@ unsafe extern "C" fn js_stalker_commit_target_thread_rewrite(
     result.set_property(ctx, "lifetime", JSValue::string(ctx, "quickjs-gc-owned"));
     set_js_u64_property(ctx, result.raw(), "targetThreadId", thread_id);
     set_js_u64_property(ctx, result.raw(), "sourceStart", source_start);
+    set_js_u64_property(ctx, result.raw(), "sourceEnd", source_end);
+    set_js_u64_property(ctx, result.raw(), "codeByteCount", code_byte_count);
+    set_js_u64_property(ctx, result.raw(), "relocatedByteCount", relocated_byte_count);
+    result.set_property(ctx, "hasContinuation", JSValue::bool(has_continuation));
+    set_js_u64_property(
+        ctx,
+        result.raw(),
+        "continuationByteCount",
+        if has_continuation { 4 } else { 0 },
+    );
+    match continuation_address {
+        Some(address) => set_js_u64_property(ctx, result.raw(), "continuationAddress", address),
+        None => {
+            result.set_property(ctx, "continuationAddress", JSValue::null());
+        }
+    }
+    match continuation_target {
+        Some(target) => set_js_u64_property(ctx, result.raw(), "continuationTarget", target),
+        None => {
+            result.set_property(ctx, "continuationTarget", JSValue::null());
+        }
+    }
     set_js_u64_property(ctx, result.raw(), "cacheBase", cache_base);
     add_cfunction_to_object(ctx, result.raw(), "rollback", js_stalker_rewrite_commit_rollback, 0);
     add_cfunction_to_object(ctx, result.raw(), "dispose", js_stalker_rewrite_commit_dispose, 0);
@@ -2310,8 +2398,8 @@ unsafe extern "C" fn js_stalker_preflight_target_thread_rewrite(
     let memory_patch_available = target_memory_patch_available();
     let quiescence_available = target_thread_quiescence_available();
     let source_start = materialization.emission().layout.source_start;
-    let branch_range_available = materialization.emission().layout.code_byte_count >= 4
-        && encode_arm64_branch(source_start, materialization.mapping_base()).is_ok();
+    let branch_range_available = materialization.emission().layout.relocated_byte_count >= 4
+        && arm64_rewrite_branch_pair_reachable(source_start, materialization.mapping_base());
     let commit_ready =
         thread_suspend_available && memory_patch_available && quiescence_available && branch_range_available;
     let result = JSValue(ffi::JS_NewObject(ctx));
@@ -2334,6 +2422,20 @@ unsafe extern "C" fn js_stalker_preflight_target_thread_rewrite(
     result.set_property(ctx, "rewriteReady", JSValue::bool(false));
     result.set_property(ctx, "commitReady", JSValue::bool(commit_ready));
     result.set_property(ctx, "executionReady", JSValue::bool(false));
+    result.set_property(ctx, "controlFlowClosed", JSValue::bool(true));
+    result.set_property(
+        ctx,
+        "continuationMode",
+        JSValue::string(
+            ctx,
+            if materialization.emission().layout.continuation_address.is_some() {
+                "source-fallthrough"
+            } else {
+                "terminal-instruction"
+            },
+        ),
+    );
+    result.set_property(ctx, "sourceSnapshotVerified", JSValue::bool(false));
     result.set_property(ctx, "cacheExecutable", JSValue::bool(materialization.is_executable()));
     result.set_property(ctx, "threadSuspendAvailable", JSValue::bool(thread_suspend_available));
     result.set_property(ctx, "targetMemoryPatchAvailable", JSValue::bool(memory_patch_available));
@@ -3539,12 +3641,12 @@ mod tests {
         runtime.initialize().expect("init runtime");
         let result = runtime
             .eval(
-                "(function() { const t = 903; Stalker.follow(t, {events: 1}); const plan = Stalker.planTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], 0x4000, 0x8000, {maxInstructions: 4}); const stopped = Stalker.unfollow(t); return JSON.stringify({available:Stalker.capabilities().targetThreadRewritePlan, mode:Stalker.capabilities().targetThreadRewritePlanMode, method:typeof Stalker.planTargetThreadRewrite, backend:plan.backend, planMode:plan.mode, planOnly:plan.planOnly, targetThreadId:String(plan.targetThreadId), targetThreadFollowed:plan.targetThreadFollowed, targetThreadState:plan.targetThreadState, sourceStart:String(plan.sourceStart), destinationStart:String(plan.destinationStart), directlyRelocatable:plan.directlyRelocatable, instructionCount:plan.instructionCount, targetThreadInstructionRewrite:plan.targetThreadInstructionRewrite, rewritesTargetMemory:plan.rewritesTargetMemory, rewriteReady:plan.rewriteReady, executionReady:plan.executionReady, stopped:stopped.state}); })()",
+                "(function() { const t = 903; Stalker.follow(t, {events: 1}); const plan = Stalker.planTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0x1f,0x20,0x03,0xd5], 0x4000, 0x8000, {maxInstructions: 4}); const stopped = Stalker.unfollow(t); return JSON.stringify({available:Stalker.capabilities().targetThreadRewritePlan, mode:Stalker.capabilities().targetThreadRewritePlanMode, method:typeof Stalker.planTargetThreadRewrite, backend:plan.backend, planMode:plan.mode, planOnly:plan.planOnly, targetThreadId:String(plan.targetThreadId), targetThreadFollowed:plan.targetThreadFollowed, targetThreadState:plan.targetThreadState, sourceStart:String(plan.sourceStart), destinationStart:String(plan.destinationStart), directlyRelocatable:plan.directlyRelocatable, instructionCount:plan.instructionCount, relocatedByteCount:plan.relocatedByteCount, codeByteCount:plan.codeByteCount, hasContinuation:plan.hasContinuation, continuationAddress:String(plan.continuationAddress), continuationTarget:String(plan.continuationTarget), continuationByteCount:plan.continuationByteCount, controlFlowClosed:plan.controlFlowClosed, continuationMode:plan.continuationMode, targetThreadInstructionRewrite:plan.targetThreadInstructionRewrite, rewritesTargetMemory:plan.rewritesTargetMemory, rewriteReady:plan.rewriteReady, executionReady:plan.executionReady, stopped:stopped.state}); })()",
             )
             .expect("exercise target-thread rewrite plan");
         assert_eq!(
             result,
-            r#"{"available":true,"mode":"followed-thread-static-relocation","method":"function","backend":"apple-target-thread-static-rewrite-plan","planMode":"target-thread-rewrite-plan","planOnly":true,"targetThreadId":"903","targetThreadFollowed":true,"targetThreadState":"following","sourceStart":"16384","destinationStart":"32768","directlyRelocatable":true,"instructionCount":2,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"stopped":"idle"}"#
+            r#"{"available":true,"mode":"followed-thread-static-relocation","method":"function","backend":"apple-target-thread-static-rewrite-plan","planMode":"target-thread-rewrite-plan","planOnly":true,"targetThreadId":"903","targetThreadFollowed":true,"targetThreadState":"following","sourceStart":"16384","destinationStart":"32768","directlyRelocatable":true,"instructionCount":2,"relocatedByteCount":8,"codeByteCount":12,"hasContinuation":true,"continuationAddress":"32776","continuationTarget":"16392","continuationByteCount":4,"controlFlowClosed":true,"continuationMode":"source-fallthrough","targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"stopped":"idle"}"#
         );
     }
 
@@ -3554,7 +3656,7 @@ mod tests {
         let mut runtime = QuickJsRuntime::new();
         runtime.initialize().expect("init runtime");
         let script = format!(
-            "(function() {{ const source = 0x{:x}; const missing = (function() {{ try {{ Stalker.prepareTargetThreadRewrite(904, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], source); return 'unexpected-success'; }} catch (error) {{ return error.message; }} }})(); const t = 905; Stalker.follow(t, {{events: 1}}); const cache = Stalker.prepareTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], source, {{maxInstructions: 4}}); const before = {{method: typeof Stalker.prepareTargetThreadRewrite, backend: cache.backend, mode: cache.mode, prepared: cache.prepared, targetThreadId: String(cache.targetThreadId), targetThreadFollowed: cache.targetThreadFollowed, mappingProtection: cache.mappingProtection, finalized: cache.finalized, targetThreadInstructionRewrite: cache.targetThreadInstructionRewrite, rewritesTargetMemory: cache.rewritesTargetMemory, rewriteReady: cache.rewriteReady, executionReady: cache.executionReady}}; const rolledBack = cache.rollback(); const after = {{rolledBack: rolledBack, disposed: cache.disposed, rollbackState: cache.rollbackState, mappingProtection: cache.mappingProtection}}; const stopped = Stalker.unfollow(t); return JSON.stringify({{available: Stalker.capabilities().targetThreadRewritePreparation, mode: Stalker.capabilities().targetThreadRewritePreparationMode, missing: missing, before: before, after: after, stopped: stopped.state}}); }})()",
+            "(function() {{ const source = 0x{:x}; const missing = (function() {{ try {{ Stalker.prepareTargetThreadRewrite(904, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], source); return 'unexpected-success'; }} catch (error) {{ return error.message; }} }})(); const t = 905; Stalker.follow(t, {{events: 1}}); const cache = Stalker.prepareTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], source, {{maxInstructions: 4}}); const before = {{method: typeof Stalker.prepareTargetThreadRewrite, backend: cache.backend, mode: cache.mode, prepared: cache.prepared, targetThreadId: String(cache.targetThreadId), targetThreadFollowed: cache.targetThreadFollowed, mappingProtection: cache.mappingProtection, finalized: cache.finalized, relocatedByteCount: cache.relocatedByteCount, hasContinuation: cache.hasContinuation, controlFlowClosed: cache.controlFlowClosed, continuationMode: cache.continuationMode, sourceSnapshotVerified: cache.sourceSnapshotVerified, targetThreadInstructionRewrite: cache.targetThreadInstructionRewrite, rewritesTargetMemory: cache.rewritesTargetMemory, rewriteReady: cache.rewriteReady, executionReady: cache.executionReady}}; const rolledBack = cache.rollback(); const after = {{rolledBack: rolledBack, disposed: cache.disposed, rollbackState: cache.rollbackState, mappingProtection: cache.mappingProtection}}; const stopped = Stalker.unfollow(t); return JSON.stringify({{available: Stalker.capabilities().targetThreadRewritePreparation, mode: Stalker.capabilities().targetThreadRewritePreparationMode, missing: missing, before: before, after: after, stopped: stopped.state}}); }})()",
             rewrite_test_source()
         );
         let result = runtime
@@ -3562,7 +3664,7 @@ mod tests {
             .expect("exercise target-thread rewrite preparation");
         assert_eq!(
             result,
-            r#"{"available":true,"mode":"followed-thread-rx-cache-transaction","missing":"invalid state: target thread 904 is not followed","before":{"method":"function","backend":"apple-target-thread-rewrite-preparer","mode":"target-thread-rewrite-prepared","prepared":true,"targetThreadId":"905","targetThreadFollowed":true,"mappingProtection":"r-x","finalized":true,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false},"after":{"rolledBack":true,"disposed":true,"rollbackState":"rolled-back","mappingProtection":null},"stopped":"idle"}"#
+            r#"{"available":true,"mode":"followed-thread-rx-cache-transaction","missing":"invalid state: target thread 904 is not followed","before":{"method":"function","backend":"apple-target-thread-rewrite-preparer","mode":"target-thread-rewrite-prepared","prepared":true,"targetThreadId":"905","targetThreadFollowed":true,"mappingProtection":"r-x","finalized":true,"relocatedByteCount":8,"hasContinuation":false,"controlFlowClosed":true,"continuationMode":"terminal-instruction","sourceSnapshotVerified":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false},"after":{"rolledBack":true,"disposed":true,"rollbackState":"rolled-back","mappingProtection":null},"stopped":"idle"}"#
         );
     }
 
