@@ -5,6 +5,8 @@ pub const MAX_ARM64_RELOCATION_INSTRUCTIONS: usize = 4096;
 pub const ARM64_CODE_CACHE_ISLAND_ALIGNMENT: u64 = 16;
 pub const ARM64_CODE_CACHE_ISLAND_SLOT_SIZE: u64 = 64;
 const ARM64_NOP_WORD: u32 = 0xd503_201f;
+const ARM64_DIRECT_BRANCH_RANGE_BYTES: u64 = 1 << 27;
+const ARM64_NEAR_ALLOCATION_STEP_BYTES: u64 = 1 << 20;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Arm64RelocationKind {
@@ -696,67 +698,9 @@ pub fn materialize_arm64_code_cache(bytes: &[u8], source_start: u64) -> Result<A
 
     #[cfg(all(quickjs_arm64_relocator, unix))]
     {
-        let instruction_count = bytes.len() / 4;
-        let island_slot_size = usize::try_from(ARM64_CODE_CACHE_ISLAND_SLOT_SIZE)
-            .map_err(|_| Error::InvalidArgument("ARM64 code-cache island slot size is too large".into()))?;
-        let alignment_padding = usize::try_from(ARM64_CODE_CACHE_ISLAND_ALIGNMENT - 1)
-            .map_err(|_| Error::InvalidArgument("ARM64 code-cache alignment is too large".into()))?;
-        let maximum_island_bytes = instruction_count
-            .checked_mul(island_slot_size)
-            .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache materialization size overflowed".into()))?;
-        let maximum_output_bytes = bytes
-            .len()
-            .checked_add(alignment_padding)
-            .and_then(|size| size.checked_add(maximum_island_bytes))
-            .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache materialization size overflowed".into()))?;
-        let mapping_size = page_align_code_cache_len(maximum_output_bytes)?;
-        #[cfg(any(target_os = "ios", target_os = "macos"))]
-        let mmap_flags = libc::MAP_PRIVATE | libc::MAP_ANON | libc::MAP_JIT;
-        #[cfg(not(any(target_os = "ios", target_os = "macos")))]
-        let mmap_flags = libc::MAP_PRIVATE | libc::MAP_ANON;
-        let mapping = unsafe {
-            libc::mmap(
-                std::ptr::null_mut(),
-                mapping_size,
-                libc::PROT_READ | libc::PROT_WRITE,
-                mmap_flags,
-                -1,
-                0,
-            )
-        };
-        if mapping == libc::MAP_FAILED {
-            return Err(Error::Io(std::io::Error::last_os_error()));
-        }
-
-        let destination_start = mapping as usize as u64;
-        let emission = match emit_arm64_code_cache(bytes, source_start, destination_start) {
-            Ok(emission) => emission,
-            Err(error) => {
-                unsafe {
-                    libc::munmap(mapping, mapping_size);
-                }
-                return Err(error);
-            }
-        };
-        if emission.output.len() > mapping_size {
-            unsafe {
-                libc::munmap(mapping, mapping_size);
-            }
-            return Err(Error::State(
-                "ARM64 code-cache emission exceeds its writable mapping".into(),
-            ));
-        }
-        unsafe {
-            std::ptr::copy_nonoverlapping(emission.output.as_ptr(), mapping.cast::<u8>(), emission.output.len());
-        }
-
-        Ok(Arm64CodeCacheMaterialization {
-            emission,
-            mapping,
-            mapping_size,
-            executable: false,
-            target_thread_id: None,
-        })
+        let mapping_size = code_cache_mapping_size(bytes)?;
+        let mapping = map_code_cache_mapping(std::ptr::null_mut(), mapping_size)?;
+        materialize_arm64_code_cache_in_mapping(bytes, source_start, mapping, mapping_size)
     }
 
     #[cfg(not(all(quickjs_arm64_relocator, unix)))]
@@ -767,10 +711,188 @@ pub fn materialize_arm64_code_cache(bytes: &[u8], source_start: u64) -> Result<A
     }
 }
 
+/// Materializes a code cache that can be reached by a single AArch64 `B`
+/// instruction at `source_start`. Address hints are advisory on Apple
+/// platforms, so every returned mapping is checked and an out-of-range
+/// mapping is released before the next hint is attempted.
+pub fn materialize_arm64_code_cache_near(bytes: &[u8], source_start: u64) -> Result<Arm64CodeCacheMaterialization> {
+    validate_relocation_input(bytes, source_start, 0)?;
+
+    #[cfg(all(quickjs_arm64_relocator, unix))]
+    {
+        let mapping_size = code_cache_mapping_size(bytes)?;
+        let mapping = map_code_cache_mapping_near(source_start, mapping_size)?;
+        materialize_arm64_code_cache_in_mapping(bytes, source_start, mapping, mapping_size)
+    }
+
+    #[cfg(not(all(quickjs_arm64_relocator, unix)))]
+    {
+        Err(Error::Unsupported(
+            "near ARM64 code-cache materialization is not compiled for this runtime target".into(),
+        ))
+    }
+}
+
+#[cfg(all(quickjs_arm64_relocator, unix))]
+fn code_cache_mapping_size(bytes: &[u8]) -> Result<usize> {
+    let instruction_count = bytes.len() / 4;
+    let island_slot_size = usize::try_from(ARM64_CODE_CACHE_ISLAND_SLOT_SIZE)
+        .map_err(|_| Error::InvalidArgument("ARM64 code-cache island slot size is too large".into()))?;
+    let alignment_padding = usize::try_from(ARM64_CODE_CACHE_ISLAND_ALIGNMENT - 1)
+        .map_err(|_| Error::InvalidArgument("ARM64 code-cache alignment is too large".into()))?;
+    let maximum_island_bytes = instruction_count
+        .checked_mul(island_slot_size)
+        .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache materialization size overflowed".into()))?;
+    let maximum_output_bytes = bytes
+        .len()
+        .checked_add(alignment_padding)
+        .and_then(|size| size.checked_add(maximum_island_bytes))
+        .ok_or_else(|| Error::InvalidArgument("ARM64 code-cache materialization size overflowed".into()))?;
+    page_align_code_cache_len(maximum_output_bytes)
+}
+
+#[cfg(all(quickjs_arm64_relocator, unix))]
+fn map_code_cache_mapping(hint: *mut libc::c_void, mapping_size: usize) -> Result<*mut libc::c_void> {
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    let mmap_flags = libc::MAP_PRIVATE | libc::MAP_ANON | libc::MAP_JIT;
+    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    let mmap_flags = libc::MAP_PRIVATE | libc::MAP_ANON;
+    let mapping = unsafe {
+        libc::mmap(
+            hint,
+            mapping_size,
+            libc::PROT_READ | libc::PROT_WRITE,
+            mmap_flags,
+            -1,
+            0,
+        )
+    };
+    if mapping == libc::MAP_FAILED {
+        Err(Error::Io(std::io::Error::last_os_error()))
+    } else {
+        Ok(mapping)
+    }
+}
+
+#[cfg(all(quickjs_arm64_relocator, unix))]
+fn retain_mapping_if_branch_reachable(
+    source_start: u64,
+    mapping: *mut libc::c_void,
+    mapping_size: usize,
+) -> Option<*mut libc::c_void> {
+    if encode_arm64_branch(source_start, mapping as usize as u64).is_ok() {
+        return Some(mapping);
+    }
+    unsafe {
+        libc::munmap(mapping, mapping_size);
+    }
+    None
+}
+
+#[cfg(all(quickjs_arm64_relocator, unix))]
+fn map_code_cache_mapping_near(source_start: u64, mapping_size: usize) -> Result<*mut libc::c_void> {
+    let page_size = code_cache_page_size();
+    let page_size_u64 = u64::try_from(page_size)
+        .map_err(|_| Error::InvalidArgument("ARM64 code-cache page size is too large".into()))?;
+    let source_page = source_start / page_size_u64 * page_size_u64;
+    let step = ARM64_NEAR_ALLOCATION_STEP_BYTES.max(page_size_u64);
+    let max_offset = ARM64_DIRECT_BRANCH_RANGE_BYTES.saturating_sub(page_size_u64);
+    let mut offset = 0_u64;
+    let mut mapped_candidate = false;
+    let mut last_mapping_error = None;
+
+    while offset <= max_offset {
+        let upper = source_page.checked_add(offset);
+        let lower = if offset == 0 {
+            None
+        } else {
+            source_page.checked_sub(offset)
+        };
+        for candidate in [upper, lower].into_iter().flatten() {
+            let Ok(candidate) = usize::try_from(candidate) else {
+                continue;
+            };
+            if candidate.checked_add(mapping_size).is_none() {
+                continue;
+            }
+            let mapping = match map_code_cache_mapping(candidate as *mut libc::c_void, mapping_size) {
+                Ok(mapping) => mapping,
+                Err(error) => {
+                    last_mapping_error = Some(error);
+                    continue;
+                }
+            };
+            mapped_candidate = true;
+            if let Some(mapping) = retain_mapping_if_branch_reachable(source_start, mapping, mapping_size) {
+                return Ok(mapping);
+            }
+        }
+        let Some(next) = offset.checked_add(step) else {
+            break;
+        };
+        offset = next;
+    }
+
+    if !mapped_candidate {
+        return Err(last_mapping_error
+            .unwrap_or_else(|| Error::State("near ARM64 code-cache mapping produced no allocation attempt".into())));
+    }
+    Err(Error::Unsupported(
+        "target-thread-branch-range: no code-cache mapping is available within direct branch range".into(),
+    ))
+}
+
+#[cfg(all(quickjs_arm64_relocator, unix))]
+fn materialize_arm64_code_cache_in_mapping(
+    bytes: &[u8],
+    source_start: u64,
+    mapping: *mut libc::c_void,
+    mapping_size: usize,
+) -> Result<Arm64CodeCacheMaterialization> {
+    let destination_start = mapping as usize as u64;
+    let emission = match emit_arm64_code_cache(bytes, source_start, destination_start) {
+        Ok(emission) => emission,
+        Err(error) => {
+            unsafe {
+                libc::munmap(mapping, mapping_size);
+            }
+            return Err(error);
+        }
+    };
+    if emission.output.len() > mapping_size {
+        unsafe {
+            libc::munmap(mapping, mapping_size);
+        }
+        return Err(Error::State(
+            "ARM64 code-cache emission exceeds its writable mapping".into(),
+        ));
+    }
+    unsafe {
+        std::ptr::copy_nonoverlapping(emission.output.as_ptr(), mapping.cast::<u8>(), emission.output.len());
+    }
+
+    Ok(Arm64CodeCacheMaterialization {
+        emission,
+        mapping,
+        mapping_size,
+        executable: false,
+        target_thread_id: None,
+    })
+}
+
+#[cfg(all(quickjs_arm64_relocator, unix))]
+fn code_cache_page_size() -> usize {
+    let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+    if page_size > 0 {
+        page_size as usize
+    } else {
+        4096
+    }
+}
+
 #[cfg(all(quickjs_arm64_relocator, unix))]
 fn page_align_code_cache_len(len: usize) -> Result<usize> {
-    let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
-    let page_size = if page_size > 0 { page_size as usize } else { 4096 };
+    let page_size = code_cache_page_size();
     len.checked_add(page_size - 1)
         .map(|value| value / page_size * page_size)
         .filter(|value| *value != 0)
@@ -1291,5 +1413,40 @@ mod tests {
         assert!(materialization.mapping_size() >= emission.output.len());
         assert_eq!(materialization.mapping_base() % 4, 0);
         assert_eq!(word_at(materialization.mapped_output(), 0), emission.emitted_words[0]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn near_code_cache_materialization_is_directly_branch_reachable() {
+        let source_start =
+            (near_code_cache_materialization_is_directly_branch_reachable as *const () as usize as u64) & !3;
+        let input = one_word(0xd65f_03c0);
+        let materialization = materialize_arm64_code_cache_near(&input, source_start).expect("near materialization");
+
+        assert!(encode_arm64_branch(source_start, materialization.mapping_base()).is_ok());
+        assert_eq!(
+            materialization.emission().layout.destination_start,
+            materialization.mapping_base()
+        );
+        assert_eq!(materialization.mapped_output(), materialization.emission().output);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejected_far_code_cache_candidate_is_unmapped() {
+        let mapping_size = code_cache_page_size();
+        let mapping = map_code_cache_mapping(std::ptr::null_mut(), mapping_size).expect("candidate mapping");
+        let mapping_base = mapping as usize as u64;
+        let far_source = mapping_base
+            .checked_add(ARM64_DIRECT_BRANCH_RANGE_BYTES * 2)
+            .unwrap_or(mapping_base - ARM64_DIRECT_BRANCH_RANGE_BYTES * 2);
+
+        assert!(retain_mapping_if_branch_reachable(far_source, mapping, mapping_size).is_none());
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        let mut residency: libc::c_uchar = 0;
+        #[cfg(not(any(target_os = "linux", target_os = "android")))]
+        let mut residency: libc::c_char = 0;
+        let result = unsafe { libc::mincore(mapping, mapping_size, &mut residency) };
+        assert_eq!(result, -1);
     }
 }

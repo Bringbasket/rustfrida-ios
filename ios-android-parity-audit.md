@@ -284,11 +284,11 @@ curl -fsS -X POST http://127.0.0.1:9191/rpc/1/ping -d '[]'
 
 下一层 `Stalker.prepareTargetThreadRewrite(thread, bytes, start[, options])` 已接入事务前置：它复用 followed-thread 校验，按真实 mapping base 发射 code cache，完成 flush+RX transition，并返回 QuickJS-owned `StalkerCodeCache`。该 owner 提供幂等 `rollback()`/`dispose()` 释放映射；准备层仍明确保持 `targetThreadInstructionRewrite=false`、`rewritesTargetMemory=false`、`rewriteReady=false`、`executionReady=false`，不暂停线程、不改写目标地址、不安装 transformer/callout。
 
-`Stalker.preflightTargetThreadRewrite(thread, cache)` 现在把该 commit 层前置检查结构化为 `commit-blocker-report`：要求 cache 来自 prepare 且线程仍被 follow，报告 cache 是否 executable、线程暂停/目标 patch/quiescence/branch-range 能力和 blocker 数组。Apple 构建会探测并报告 Mach thread suspend 原语，host 构建继续显式报告 `apple-thread-suspend`；远离 source 的 mmap 会报告 `target-thread-branch-range`。该 preflight 只读状态，不修改 cache 或目标内存。
+`Stalker.preflightTargetThreadRewrite(thread, cache)` 现在把该 commit 层前置检查结构化为 `commit-blocker-report`：要求 cache 来自 prepare 且线程仍被 follow，报告 cache 是否 executable、线程暂停/目标 patch/quiescence/branch-range 能力和 blocker 数组。Apple 构建会探测并报告 Mach thread suspend 原语，host 构建继续显式报告 `apple-thread-suspend`。prepare 路径现在会围绕 source 扫描近地址 hint，对 `mmap` 实际返回地址逐个执行 ARM64 direct-branch range 校验，并立即释放远地址结果；近区间耗尽时稳定报告 `target-thread-branch-range`。该 preflight 只读状态，不修改 cache 或目标内存。
 
 目标内存 patch primitive 已在 runtime 内部落地为 same-length owner：准备时保存原始字节与 page protection，应用时复用 W^X 切换和 instruction-cache flush，失败或 Drop 时保留回滚路径，并在写入前检测 mapping/protection 是否发生漂移。它现在由公开 commit 事务持有，preflight 会报告 `targetMemoryPatchAvailable=true`。
 
-hook-engine quiescence primitive 现在也通过 Stalker preflight 暴露编译期能力：启用 native hook engine 时等待 in-flight callbacks 与 generated thunks，stub/host 构建继续保留 `target-thread-quiescence` blocker。公开 `Stalker.commitTargetThreadRewrite()` 已把 suspend lease、quiescence、目标 patch owner 和失败回滚串成一笔事务；远距 cache 的 veneer/near allocator 仍是后续缺口。
+hook-engine quiescence primitive 现在也通过 Stalker preflight 暴露编译期能力：启用 native hook engine 时等待 in-flight callbacks 与 generated thunks，stub/host 构建继续保留 `target-thread-quiescence` blocker。公开 `Stalker.commitTargetThreadRewrite()` 已把 suspend lease、quiescence、目标 patch owner 和失败回滚串成一笔事务；near allocator 已接入 prepare，后续仍需在 Apple runtime/真机验证 hint 分配、`MAP_JIT` 与 W^X 的组合行为。
 
 ## 9. 关闭标准
 

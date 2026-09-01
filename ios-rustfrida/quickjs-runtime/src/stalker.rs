@@ -1,9 +1,9 @@
 use crate::arm64_relocator::{
     arm64_code_cache_direct_execution_available, arm64_code_cache_materialization_available, arm64_relocator_available,
-    emit_arm64_code_cache, encode_arm64_branch, materialize_arm64_code_cache, plan_arm64_code_cache_layout,
-    plan_arm64_relocation, Arm64CodeCacheBlock, Arm64CodeCacheEmission, Arm64CodeCacheFallback,
-    Arm64CodeCacheLayoutPlan, Arm64CodeCacheMaterialization, Arm64RelocationEntry, Arm64RelocationPlan,
-    ARM64_CODE_CACHE_ISLAND_ALIGNMENT, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE,
+    emit_arm64_code_cache, encode_arm64_branch, materialize_arm64_code_cache, materialize_arm64_code_cache_near,
+    plan_arm64_code_cache_layout, plan_arm64_relocation, Arm64CodeCacheBlock, Arm64CodeCacheEmission,
+    Arm64CodeCacheFallback, Arm64CodeCacheLayoutPlan, Arm64CodeCacheMaterialization, Arm64RelocationEntry,
+    Arm64RelocationPlan, ARM64_CODE_CACHE_ISLAND_ALIGNMENT, ARM64_CODE_CACHE_ISLAND_SLOT_SIZE,
 };
 use crate::context::JSContext;
 use crate::ffi;
@@ -1828,7 +1828,7 @@ unsafe extern "C" fn js_stalker_prepare_target_thread_rewrite(
             common::Error::State(format!("target thread {thread_id} is not followed")),
         );
     };
-    let mut materialization = match materialize_arm64_code_cache(&bytes, source) {
+    let mut materialization = match materialize_arm64_code_cache_near(&bytes, source) {
         Ok(materialization) => materialization,
         Err(error) => return stalker_error(ctx, error),
     };
@@ -3452,6 +3452,10 @@ mod tests {
         crate::runtime::test_runtime_lock()
     }
 
+    fn rewrite_test_source() -> u64 {
+        (rewrite_test_source as *const () as usize as u64) & !3
+    }
+
     #[test]
     fn public_stalker_surface_reports_instruction_backend_boundary() {
         let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
@@ -3549,10 +3553,12 @@ mod tests {
         let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
         let mut runtime = QuickJsRuntime::new();
         runtime.initialize().expect("init runtime");
+        let script = format!(
+            "(function() {{ const source = 0x{:x}; const missing = (function() {{ try {{ Stalker.prepareTargetThreadRewrite(904, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], source); return 'unexpected-success'; }} catch (error) {{ return error.message; }} }})(); const t = 905; Stalker.follow(t, {{events: 1}}); const cache = Stalker.prepareTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], source, {{maxInstructions: 4}}); const before = {{method: typeof Stalker.prepareTargetThreadRewrite, backend: cache.backend, mode: cache.mode, prepared: cache.prepared, targetThreadId: String(cache.targetThreadId), targetThreadFollowed: cache.targetThreadFollowed, mappingProtection: cache.mappingProtection, finalized: cache.finalized, targetThreadInstructionRewrite: cache.targetThreadInstructionRewrite, rewritesTargetMemory: cache.rewritesTargetMemory, rewriteReady: cache.rewriteReady, executionReady: cache.executionReady}}; const rolledBack = cache.rollback(); const after = {{rolledBack: rolledBack, disposed: cache.disposed, rollbackState: cache.rollbackState, mappingProtection: cache.mappingProtection}}; const stopped = Stalker.unfollow(t); return JSON.stringify({{available: Stalker.capabilities().targetThreadRewritePreparation, mode: Stalker.capabilities().targetThreadRewritePreparationMode, missing: missing, before: before, after: after, stopped: stopped.state}}); }})()",
+            rewrite_test_source()
+        );
         let result = runtime
-            .eval(
-                "(function() { const missing = (function() { try { Stalker.prepareTargetThreadRewrite(904, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], 0x4000); return 'unexpected-success'; } catch (error) { return error.message; } })(); const t = 905; Stalker.follow(t, {events: 1}); const cache = Stalker.prepareTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], 0x4000, {maxInstructions: 4}); const before = {method: typeof Stalker.prepareTargetThreadRewrite, backend: cache.backend, mode: cache.mode, prepared: cache.prepared, targetThreadId: String(cache.targetThreadId), targetThreadFollowed: cache.targetThreadFollowed, mappingProtection: cache.mappingProtection, finalized: cache.finalized, targetThreadInstructionRewrite: cache.targetThreadInstructionRewrite, rewritesTargetMemory: cache.rewritesTargetMemory, rewriteReady: cache.rewriteReady, executionReady: cache.executionReady}; const rolledBack = cache.rollback(); const after = {rolledBack: rolledBack, disposed: cache.disposed, rollbackState: cache.rollbackState, mappingProtection: cache.mappingProtection}; const stopped = Stalker.unfollow(t); return JSON.stringify({available: Stalker.capabilities().targetThreadRewritePreparation, mode: Stalker.capabilities().targetThreadRewritePreparationMode, missing: missing, before: before, after: after, stopped: stopped.state}); })()",
-            )
+            .eval(&script)
             .expect("exercise target-thread rewrite preparation");
         assert_eq!(
             result,
@@ -3565,35 +3571,37 @@ mod tests {
         let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
         let mut runtime = QuickJsRuntime::new();
         runtime.initialize().expect("init runtime");
-        let result = runtime
-            .eval(
-                "(function() { const t = 907; Stalker.follow(t, {events: 1}); const cache = Stalker.prepareTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], 0x4000, {maxInstructions: 4}); const missing = (function() { try { Stalker.preflightTargetThreadRewrite(906, {}); return 'unexpected-success'; } catch (error) { return error.message; } })(); const report = Stalker.preflightTargetThreadRewrite(t, cache); const rolledBack = cache.rollback(); const stopped = Stalker.unfollow(t); return JSON.stringify({available:Stalker.capabilities().targetThreadRewritePreflight, mode:Stalker.capabilities().targetThreadRewritePreflightMode, method:typeof Stalker.preflightTargetThreadRewrite, missing:missing, backend:report.backend, reportMode:report.mode, targetThreadId:String(report.targetThreadId), targetThreadFollowed:report.targetThreadFollowed, cacheExecutable:report.cacheExecutable, threadSuspendAvailable:report.threadSuspendAvailable, targetMemoryPatchAvailable:report.targetMemoryPatchAvailable, quiescenceAvailable:report.quiescenceAvailable, blockers:report.blockers, commitReady:report.commitReady, targetThreadInstructionRewrite:report.targetThreadInstructionRewrite, rewritesTargetMemory:report.rewritesTargetMemory, rewriteReady:report.rewriteReady, executionReady:report.executionReady, rolledBack:rolledBack, stopped:stopped.state}); })()",
-            )
-            .expect("exercise target-thread rewrite preflight");
+        let script = format!(
+            "(function() {{ const source = 0x{:x}; const t = 907; Stalker.follow(t, {{events: 1}}); const cache = Stalker.prepareTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], source, {{maxInstructions: 4}}); const missing = (function() {{ try {{ Stalker.preflightTargetThreadRewrite(906, {{}}); return 'unexpected-success'; }} catch (error) {{ return error.message; }} }})(); const report = Stalker.preflightTargetThreadRewrite(t, cache); const rolledBack = cache.rollback(); const stopped = Stalker.unfollow(t); return JSON.stringify({{available:Stalker.capabilities().targetThreadRewritePreflight, mode:Stalker.capabilities().targetThreadRewritePreflightMode, method:typeof Stalker.preflightTargetThreadRewrite, missing:missing, backend:report.backend, reportMode:report.mode, targetThreadId:String(report.targetThreadId), targetThreadFollowed:report.targetThreadFollowed, cacheExecutable:report.cacheExecutable, threadSuspendAvailable:report.threadSuspendAvailable, targetMemoryPatchAvailable:report.targetMemoryPatchAvailable, quiescenceAvailable:report.quiescenceAvailable, blockers:report.blockers, commitReady:report.commitReady, targetThreadInstructionRewrite:report.targetThreadInstructionRewrite, rewritesTargetMemory:report.rewritesTargetMemory, rewriteReady:report.rewriteReady, executionReady:report.executionReady, rolledBack:rolledBack, stopped:stopped.state}}); }})()",
+            rewrite_test_source()
+        );
+        let result = runtime.eval(&script).expect("exercise target-thread rewrite preflight");
         #[cfg(all(any(target_os = "ios", target_os = "macos"), quickjs_hook_engine))]
-        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":true,"targetMemoryPatchAvailable":true,"quiescenceAvailable":true,"blockers":["target-thread-branch-range"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
+        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":true,"targetMemoryPatchAvailable":true,"quiescenceAvailable":true,"blockers":[],"commitReady":true,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
         #[cfg(all(any(target_os = "ios", target_os = "macos"), not(quickjs_hook_engine)))]
-        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":true,"targetMemoryPatchAvailable":true,"quiescenceAvailable":false,"blockers":["target-thread-branch-range","target-thread-quiescence"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
+        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":true,"targetMemoryPatchAvailable":true,"quiescenceAvailable":false,"blockers":["target-thread-quiescence"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
         #[cfg(all(not(any(target_os = "ios", target_os = "macos")), quickjs_hook_engine))]
-        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":false,"targetMemoryPatchAvailable":true,"quiescenceAvailable":true,"blockers":["apple-thread-suspend","target-thread-branch-range"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
+        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":false,"targetMemoryPatchAvailable":true,"quiescenceAvailable":true,"blockers":["apple-thread-suspend"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
         #[cfg(all(not(any(target_os = "ios", target_os = "macos")), not(quickjs_hook_engine)))]
-        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":false,"targetMemoryPatchAvailable":true,"quiescenceAvailable":false,"blockers":["apple-thread-suspend","target-thread-branch-range","target-thread-quiescence"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
+        let expected = r#"{"available":true,"mode":"commit-blocker-report","method":"function","missing":"Stalker.preflightTargetThreadRewrite() requires a live prepared StalkerCodeCache","backend":"apple-target-thread-rewrite-commit-preflight","reportMode":"target-thread-rewrite-commit-preflight","targetThreadId":"907","targetThreadFollowed":true,"cacheExecutable":true,"threadSuspendAvailable":false,"targetMemoryPatchAvailable":true,"quiescenceAvailable":false,"blockers":["apple-thread-suspend","target-thread-quiescence"],"commitReady":false,"targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"rolledBack":true,"stopped":"idle"}"#;
         assert_eq!(result, expected);
     }
 
     #[test]
-    fn public_target_thread_rewrite_commit_preserves_cache_when_blocked() {
+    fn public_target_thread_rewrite_commit_preserves_cache_when_commit_fails() {
         let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
         let mut runtime = QuickJsRuntime::new();
         runtime.initialize().expect("init runtime");
+        let script = format!(
+            "(function() {{ const source = 0x{:x}; const t = 909; Stalker.follow(t, {{events: 1}}); const cache = Stalker.prepareTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], source, {{maxInstructions: 4}}); let error = ''; try {{ Stalker.commitTargetThreadRewrite(t, cache); }} catch (caught) {{ error = caught.message; }} const stillPrepared = cache.prepared === true; const rolledBack = cache.rollback(); const stopped = Stalker.unfollow(t); return JSON.stringify({{method:typeof Stalker.commitTargetThreadRewrite, failed:error.length > 0, stillPrepared:stillPrepared, rolledBack:rolledBack, stopped:stopped.state}}); }})()",
+            rewrite_test_source()
+        );
         let result = runtime
-            .eval(
-                "(function() { const t = 909; Stalker.follow(t, {events: 1}); const cache = Stalker.prepareTargetThreadRewrite(t, [0x1f,0x20,0x03,0xd5,0xc0,0x03,0x5f,0xd6], 0x4000, {maxInstructions: 4}); let error = ''; try { Stalker.commitTargetThreadRewrite(t, cache); } catch (caught) { error = caught.message; } const stillPrepared = cache.prepared === true; const rolledBack = cache.rollback(); const stopped = Stalker.unfollow(t); return JSON.stringify({method:typeof Stalker.commitTargetThreadRewrite, blocked:error.indexOf('target-thread') >= 0, stillPrepared:stillPrepared, rolledBack:rolledBack, stopped:stopped.state}); })()",
-            )
-            .expect("exercise blocked target-thread rewrite commit");
+            .eval(&script)
+            .expect("exercise failed target-thread rewrite commit");
         assert_eq!(
             result,
-            r#"{"method":"function","blocked":true,"stillPrepared":true,"rolledBack":true,"stopped":"idle"}"#
+            r#"{"method":"function","failed":true,"stillPrepared":true,"rolledBack":true,"stopped":"idle"}"#
         );
     }
 
