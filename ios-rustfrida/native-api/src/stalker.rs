@@ -328,6 +328,39 @@ pub fn stalker_event_sink(thread_id: u64, event: StalkerEvent) -> Result<bool> {
     Ok(session.record(event))
 }
 
+/// Record a real function-level callout for the current OS thread.
+///
+/// This is intentionally a small native-only producer so hook-engine thunks
+/// can feed the bounded sink without entering QuickJS or allocating on the
+/// callback path. A missing, paused, or unfollowed session simply rejects the
+/// event.
+#[allow(dead_code)]
+pub fn stalker_record_call_for_current_thread(location: u64, target: u64) -> bool {
+    let thread_id = current_stalker_thread_id();
+    if thread_id == 0 {
+        return false;
+    }
+    let mut registry = registry_lock();
+    registry
+        .get_mut(&thread_id)
+        .map(|session| session.record_call(location, target))
+        .unwrap_or(false)
+}
+
+/// Record a real function-level return callout for the current OS thread.
+#[allow(dead_code)]
+pub fn stalker_record_return_for_current_thread(location: u64, target: u64) -> bool {
+    let thread_id = current_stalker_thread_id();
+    if thread_id == 0 {
+        return false;
+    }
+    let mut registry = registry_lock();
+    registry
+        .get_mut(&thread_id)
+        .map(|session| session.record_return(location, target))
+        .unwrap_or(false)
+}
+
 pub fn stalker_backend_status() -> StalkerBackendStatus {
     let registry = registry_lock();
     let threads = registry
@@ -1457,6 +1490,42 @@ mod tests {
         assert!(!stopped_backend.active);
         assert_eq!(stopped_backend.session_count, 0);
         assert!(stalker_garbage_collect_thread(thread_id).expect("collect registry thread"));
+    }
+
+    #[test]
+    fn current_thread_callout_producers_feed_followed_session() {
+        let thread_id = current_stalker_thread_id();
+        let followed = stalker_follow_thread(
+            thread_id,
+            StalkerConfig {
+                event_mask: StalkerEventMask::CALL.union(StalkerEventMask::RET),
+                ..StalkerConfig::default()
+            },
+        )
+        .expect("follow current thread");
+        assert_eq!(followed.state, StalkerSessionState::Following);
+
+        assert!(stalker_record_call_for_current_thread(0x1000, 0x2000));
+        assert!(stalker_record_return_for_current_thread(0x1000, 0x2000));
+        let events = stalker_flush_thread(thread_id).expect("flush current-thread callouts");
+        assert_eq!(
+            events,
+            vec![
+                StalkerEvent::Call {
+                    location: 0x1000,
+                    target: 0x2000,
+                    depth: 0,
+                },
+                StalkerEvent::Ret {
+                    location: 0x1000,
+                    target: 0x2000,
+                    depth: 0,
+                },
+            ]
+        );
+
+        assert!(stalker_unfollow_thread(thread_id).is_ok());
+        assert!(!stalker_record_call_for_current_thread(0x1000, 0x2000));
     }
 
     #[test]

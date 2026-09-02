@@ -8,9 +8,9 @@ use crate::arm64_relocator::{
 };
 use crate::context::JSContext;
 use crate::ffi;
-use crate::hook::{target_thread_quiescence_available, wait_for_target_thread_quiescence};
+use crate::hook::{install_stalker_callout, target_thread_quiescence_available, wait_for_target_thread_quiescence};
 use crate::memory::{target_memory_matches, target_memory_patch_available, TargetMemoryPatch};
-use crate::ptr::create_native_pointer;
+use crate::ptr::{create_native_pointer, get_native_pointer_addr};
 use crate::util::{
     add_cfunction_to_object, js_throw_internal_error, js_throw_range_error, js_throw_type_error,
     js_u64_to_js_number_or_bigint, set_js_u64_property,
@@ -605,6 +605,19 @@ unsafe fn stalker_capabilities_to_js_detailed(ctx: *mut ffi::JSContext) -> ffi::
         JSValue::bool(capabilities.target_function_hook),
     );
     result.set_property(ctx, "callReturnHook", JSValue::bool(capabilities.call_return_hook));
+    result.set_property(ctx, "functionCallout", JSValue::bool(cfg!(quickjs_hook_engine)));
+    result.set_property(
+        ctx,
+        "functionCalloutMode",
+        JSValue::string(
+            ctx,
+            if cfg!(quickjs_hook_engine) {
+                "native-hook-engine-call-return"
+            } else {
+                "unavailable"
+            },
+        ),
+    );
     result.set_property(ctx, "excludeRanges", JSValue::bool(capabilities.exclude_ranges));
     result.set_property(ctx, "flush", JSValue::bool(capabilities.flush));
     result.set_property(ctx, "garbageCollect", JSValue::bool(capabilities.garbage_collect));
@@ -2722,6 +2735,57 @@ unsafe extern "C" fn js_stalker_flush(
     array
 }
 
+unsafe extern "C" fn js_stalker_install_callout(
+    ctx: *mut ffi::JSContext,
+    _this: ffi::JSValue,
+    argc: i32,
+    argv: *mut ffi::JSValue,
+) -> ffi::JSValue {
+    if argc < 2 {
+        return js_throw_type_error(
+            ctx,
+            "Stalker.installCallout(thread, target[, stealth]) requires thread and target",
+        );
+    }
+    let thread_id = match js_thread_id(ctx, argc, argv, 0) {
+        Ok(value) => value,
+        Err(error) => return error,
+    };
+    let target_value = JSValue(*argv.add(1));
+    let target = match get_native_pointer_addr(target_value).or_else(|| target_value.to_u64(ctx)) {
+        Some(value) if value != 0 => value,
+        _ => return js_throw_type_error(ctx, "Stalker.installCallout target must be a non-zero pointer"),
+    };
+    let stealth = if argc > 2 {
+        let value = JSValue(*argv.add(2));
+        if let Some(mode) = value.to_i64(ctx) {
+            match mode {
+                0 => false,
+                1 => true,
+                _ => return js_throw_range_error(ctx, "Stalker.installCallout stealth must be 0 or 1"),
+            }
+        } else {
+            value.to_bool().unwrap_or(false)
+        }
+    } else {
+        false
+    };
+    let followed = stalker_backend_status()
+        .threads
+        .into_iter()
+        .any(|status| status.thread_id == thread_id && status.state == StalkerSessionState::Following);
+    if !followed {
+        return stalker_error(
+            ctx,
+            common::Error::State(format!("target thread {thread_id} is not actively followed")),
+        );
+    }
+    match install_stalker_callout(ctx, thread_id, target, stealth) {
+        Ok(handle) => handle,
+        Err(error) => js_throw_internal_error(ctx, &error),
+    }
+}
+
 unsafe extern "C" fn js_stalker_garbage_collect(
     ctx: *mut ffi::JSContext,
     _this: ffi::JSValue,
@@ -3047,6 +3111,8 @@ globalThis.Stalker = globalThis.Stalker || (function() {
                 threadFollow: true,
                 targetFunctionHook: true,
                 callReturnHook: true,
+                functionCallout: false,
+                functionCalloutMode: 'unavailable',
                 excludeRanges: true,
                 flush: true,
                 garbageCollect: true,
@@ -3146,6 +3212,14 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         const thread = hasThread ? threadOrOptions : undefined;
         const options = hasThread ? (maybeOptions || {}) : (threadOrOptions || {});
         return nativeStalker().stalkerFollow(threadId(thread), options);
+    }
+
+    function installCallout(thread, target, stealth) {
+        const native = nativeStalker();
+        if (typeof native.stalkerInstallCallout !== 'function') {
+            throw new Error('Stalker native callout is unavailable in this runtime');
+        }
+        return native.stalkerInstallCallout(threadId(thread), target, stealth === undefined ? false : stealth);
     }
 
     function unfollow(thread) {
@@ -3380,6 +3454,7 @@ globalThis.Stalker = globalThis.Stalker || (function() {
         info: status,
         lastError: function() { return null; },
         follow: follow,
+        installCallout: installCallout,
         unfollow: unfollow,
         pauseThread: pauseThread,
         resumeThread: resumeThread,
@@ -3420,6 +3495,13 @@ pub(crate) fn register_stalker_api(ctx: &JSContext) -> Result<(), String> {
         unsafe {
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerThreadId", js_stalker_thread_id, 0);
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerFollow", js_stalker_follow, 2);
+            add_cfunction_to_object(
+                ctx.as_ptr(),
+                native.raw(),
+                "stalkerInstallCallout",
+                js_stalker_install_callout,
+                3,
+            );
             add_cfunction_to_object(ctx.as_ptr(), native.raw(), "stalkerUnfollow", js_stalker_unfollow, 1);
             add_cfunction_to_object(
                 ctx.as_ptr(),
@@ -3564,6 +3646,7 @@ mod tests {
         let mut runtime = QuickJsRuntime::new();
         runtime.initialize().expect("init runtime");
         assert_eq!(runtime.eval("typeof Stalker.follow").unwrap(), "function");
+        assert_eq!(runtime.eval("typeof Stalker.installCallout").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.pauseThread").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.resumeThread").unwrap(), "function");
         assert_eq!(runtime.eval("typeof Stalker.relocate").unwrap(), "function");
@@ -3597,6 +3680,16 @@ mod tests {
         );
         assert_eq!(runtime.eval("Stalker.capabilities().threadFollow").unwrap(), "true");
         assert_eq!(runtime.eval("Stalker.capabilities().eventSink").unwrap(), "true");
+        assert_eq!(
+            runtime.eval("typeof Stalker.capabilities().functionCallout").unwrap(),
+            "boolean"
+        );
+        assert_eq!(
+            runtime
+                .eval("typeof Stalker.capabilities().functionCalloutMode")
+                .unwrap(),
+            "string"
+        );
         assert_eq!(runtime.eval("Stalker.status().api").unwrap(), "Stalker");
         assert!(runtime.eval("Stalker.follow(1).state").is_ok());
         assert!(runtime.eval("Stalker.unfollow(1).state").is_ok());
@@ -3647,6 +3740,22 @@ mod tests {
         assert_eq!(
             result,
             r#"{"available":true,"mode":"followed-thread-static-relocation","method":"function","backend":"apple-target-thread-static-rewrite-plan","planMode":"target-thread-rewrite-plan","planOnly":true,"targetThreadId":"903","targetThreadFollowed":true,"targetThreadState":"following","sourceStart":"16384","destinationStart":"32768","directlyRelocatable":true,"instructionCount":2,"relocatedByteCount":8,"codeByteCount":12,"hasContinuation":true,"continuationAddress":"32776","continuationTarget":"16392","continuationByteCount":4,"controlFlowClosed":true,"continuationMode":"source-fallthrough","targetThreadInstructionRewrite":false,"rewritesTargetMemory":false,"rewriteReady":false,"executionReady":false,"stopped":"idle"}"#
+        );
+    }
+
+    #[test]
+    fn public_stalker_callout_requires_hook_engine_and_active_follow() {
+        let _guard = test_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let mut runtime = QuickJsRuntime::new();
+        runtime.initialize().expect("init runtime");
+        let result = runtime
+            .eval(
+                "(function() { const missing = (function() { try { Stalker.installCallout(910, 0x4000); return 'unexpected-success'; } catch (error) { return error.message; } })(); const followed = Stalker.follow(911, {events: 3}); const active = (function() { try { Stalker.installCallout(911, 0x4000); return 'unexpected-success'; } catch (error) { return error.message; } })(); const stopped = Stalker.unfollow(911); return JSON.stringify({method:typeof Stalker.installCallout, functionCallout:Stalker.capabilities().functionCallout, missing:missing, active:active, stopped:stopped.state}); })()",
+            )
+            .expect("exercise stalker callout contract");
+        assert_eq!(
+            result,
+            r#"{"method":"function","functionCallout":false,"missing":"invalid state: target thread 910 is not actively followed","active":"Stalker.installCallout() requires the ARM64 native hook engine","stopped":"idle"}"#
         );
     }
 

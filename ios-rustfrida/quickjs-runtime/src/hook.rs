@@ -16,7 +16,10 @@ use native_api::{find_image_by_address, normalize_code_pointer};
 #[cfg(quickjs_hook_engine)]
 use crate::util::{get_js_u64_property, js_u64_to_js_number_or_bigint, set_js_cfunction_property, set_js_u64_property};
 #[cfg(quickjs_hook_engine)]
-use native_api::{detect_hook_environment, resolve_hook_strategy};
+use native_api::{
+    current_stalker_thread_id, detect_hook_environment, resolve_hook_strategy, stalker_record_call_for_current_thread,
+    stalker_record_return_for_current_thread,
+};
 #[cfg(any(quickjs_hook_engine, test))]
 use std::cell::RefCell;
 #[cfg(any(quickjs_hook_engine, test))]
@@ -273,6 +276,9 @@ enum HookMode {
     },
     NativeReplace,
     NativeAttach,
+    StalkerCallout {
+        thread_id: u64,
+    },
 }
 
 #[cfg(quickjs_hook_engine)]
@@ -1694,6 +1700,7 @@ fn free_hook_mode_callbacks(ctx: usize, mode: HookMode) {
             // Native callback storage is owned by HookData and handled below.
         }
         HookMode::NativeAttach => {}
+        HookMode::StalkerCallout { .. } => {}
     }
 }
 
@@ -1794,6 +1801,85 @@ unsafe fn build_attach_handle(ctx: *mut ffi::JSContext, target: u64) -> ffi::JSV
     set_js_u64_property(ctx, handle, "target", target);
     set_js_cfunction_property(ctx, handle, "detach", js_attach_handle_detach, 0);
     handle
+}
+
+/// Install a native-only callout used by the Stalker event sink.
+///
+/// The generated hook thunk invokes the producer directly; no QuickJS value is
+/// touched on the hot path. The returned handle uses the same detach and owner
+/// cleanup contract as `Interceptor.attach`.
+#[cfg(quickjs_hook_engine)]
+pub(crate) unsafe fn install_stalker_callout(
+    ctx: *mut ffi::JSContext,
+    thread_id: u64,
+    target: u64,
+    stealth: bool,
+) -> Result<ffi::JSValue, String> {
+    if thread_id == 0 || target == 0 {
+        return Err("Stalker.installCallout requires non-zero thread and target addresses".into());
+    }
+    let target = normalize_code_pointer(target as usize) as u64;
+    if hook_registry()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .contains_key(&target)
+    {
+        return Err("Stalker.installCallout target is already hooked".into());
+    }
+    enforce_hook_installation_policy()?;
+    initialize_hook_backend()?;
+
+    let dispatch_ptr = Box::into_raw(Box::new(HookDispatchData {
+        target,
+        ctx: ctx as usize,
+        mode: HookMode::StalkerCallout { thread_id },
+        trampoline: AtomicU64::new(0),
+    }));
+    let status = ffi::hook::hook_attach(
+        target as *mut c_void,
+        Some(stalker_callout_on_enter_wrapper),
+        Some(stalker_callout_on_leave_wrapper),
+        dispatch_ptr as *mut c_void,
+        if stealth { 1 } else { 0 },
+    );
+    if status != HOOK_OK {
+        drop(Box::from_raw(dispatch_ptr));
+        return Err(hook_error_message(status).into());
+    }
+
+    hook_registry().lock().unwrap_or_else(|e| e.into_inner()).insert(
+        target,
+        HookData {
+            target,
+            ctx: ctx as usize,
+            mode: HookMode::StalkerCallout { thread_id },
+            native_callback_data: 0,
+            dispatch_data: dispatch_ptr as usize,
+        },
+    );
+    let handle = build_attach_handle(ctx, target);
+    let result = JSValue(handle);
+    result.set_property(
+        ctx,
+        "backend",
+        JSValue::string(ctx, "arm64-hook-engine-stalker-callout"),
+    );
+    result.set_property(ctx, "mode", JSValue::string(ctx, "native-call-return-event-sink"));
+    result.set_property(ctx, "active", JSValue::bool(true));
+    result.set_property(ctx, "threadId", JSValue::string(ctx, &thread_id.to_string()));
+    result.set_property(ctx, "targetThreadInstrumentation", JSValue::bool(false));
+    result.set_property(ctx, "instructionLevel", JSValue::bool(false));
+    handle
+}
+
+#[cfg(not(quickjs_hook_engine))]
+pub(crate) unsafe fn install_stalker_callout(
+    _ctx: *mut ffi::JSContext,
+    _thread_id: u64,
+    _target: u64,
+    _stealth: bool,
+) -> Result<ffi::JSValue, String> {
+    Err("Stalker.installCallout() requires the ARM64 native hook engine".into())
 }
 
 #[cfg(quickjs_hook_engine)]
@@ -2077,6 +2163,36 @@ unsafe extern "C" fn native_hook_attach_on_leave_wrapper(
         callback(ctx_ptr, callbacks.user_data);
     }
     decrement_in_flight_callbacks();
+}
+
+#[cfg(quickjs_hook_engine)]
+unsafe extern "C" fn stalker_callout_on_enter_wrapper(ctx_ptr: *mut ffi::hook::HookContext, user_data: *mut c_void) {
+    if ctx_ptr.is_null() || user_data.is_null() {
+        return;
+    }
+    let _in_flight_guard = InFlightCallbackGuard::enter();
+    let dispatch = &*(user_data as *const HookDispatchData);
+    let HookMode::StalkerCallout { thread_id } = dispatch.mode else {
+        return;
+    };
+    if current_stalker_thread_id() == thread_id {
+        let _ = stalker_record_call_for_current_thread((*ctx_ptr).pc, dispatch.target);
+    }
+}
+
+#[cfg(quickjs_hook_engine)]
+unsafe extern "C" fn stalker_callout_on_leave_wrapper(ctx_ptr: *mut ffi::hook::HookContext, user_data: *mut c_void) {
+    if ctx_ptr.is_null() || user_data.is_null() {
+        return;
+    }
+    let _in_flight_guard = InFlightCallbackGuard::enter();
+    let dispatch = &*(user_data as *const HookDispatchData);
+    let HookMode::StalkerCallout { thread_id } = dispatch.mode else {
+        return;
+    };
+    if current_stalker_thread_id() == thread_id {
+        let _ = stalker_record_return_for_current_thread((*ctx_ptr).pc, dispatch.target);
+    }
 }
 
 #[cfg(quickjs_hook_engine)]
