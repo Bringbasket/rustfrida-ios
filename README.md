@@ -1,755 +1,1242 @@
+下面是一版可直接替换 `README.md` 的优化稿。重点是：把平台限制前置、按“快速开始 / 部署 / Controller / Runtime API / Hook 策略 / 注入 / 发布 / 边界”重组，并把大量历史性的“最近补了哪些字段”压缩为能力概览。更细的逐字段清单建议后续拆到 `docs/API_REFERENCE.md` 或 `CHANGELOG.md`。
+
+---
+
 # rustFrida iOS Branch
 
-这个分支只保留 iOS 越狱版实现。
+本分支只保留 iOS 越狱版实现。代码位于：
 
-代码位于 `ios-rustfrida/`：
+```text
+ios-rustfrida/
+├── common
+├── controller
+├── agent
+├── quickjs-runtime
+├── objc-api
+└── native-api
+```
 
-- `common`
-- `controller`
-- `agent`
-- `quickjs-runtime`
-- `objc-api`
-- `native-api`
+> Android 版目录和根 workspace 已从该分支移除。
 
-常用命令：
+---
+
+## 目录
+
+- [平台支持](#平台支持)
+- [快速开始](#快速开始)
+- [部署与打包](#部署与打包)
+- [Controller CLI](#controller-cli)
+- [iOS Runtime 能力概览](#ios-runtime-能力概览)
+- [Hook Backend 与策略](#hook-backend-与策略)
+- [注入、Preflight 与 Spawn](#注入preflight-与-spawn)
+- [JSON 输出与诊断](#json-输出与诊断)
+- [CI 与发布](#ci-与发布)
+- [已知边界与未完成项](#已知边界与未完成项)
+
+---
+
+## 平台支持
+
+| 能力 | Linux / 通用主机 | Apple Host |
+|---|---:|---:|
+| `cargo test` | ✅ | ✅ |
+| agent 打包 | ✅ | ✅ |
+| `.deb` 生成 | ✅ | ✅ |
+| `doctor-jailbreak.sh` | ✅ | ✅ |
+| `deploy-agent-jailbreak.sh` | ✅ | ✅ |
+| `install-agent-deb-jailbreak.sh` | ✅ | ✅ |
+| controller `--list-images` | ❌ | ✅ |
+| controller `--preflight-only` | ❌ | ✅ |
+| controller `--inject-json` | ❌ | ✅ |
+| controller `--command-json` | ❌ | ✅ |
+
+说明：
+
+- Linux 主机可做测试、agent 打包、`.deb` 生成、远端 doctor、部署和安装。
+- Linux 主机不能执行 controller 的 dyld / Mach 注入 / preflight / runtime command 路径。
+- 真机注入前体检、实际注入、一次性执行 runtime 命令，均需要 Apple host。
+- Linux 上即使能编译出 controller CLI，相关能力也会返回 `unsupported`。
+
+---
+
+## 快速开始
 
 ```bash
 cd ios-rustfrida
+```
 
-# Linux / 通用主机：单测、打包、doctor、部署
+### Linux / 通用主机
+
+```bash
+# 单测
 cargo test -p native-api --target x86_64-unknown-linux-gnu
 cargo test -p objc-api --target x86_64-unknown-linux-gnu
 cargo test -p quickjs-runtime --target x86_64-unknown-linux-gnu
 cargo test -p agent --target x86_64-unknown-linux-gnu
 cargo test -p controller --target x86_64-unknown-linux-gnu
+
+# 越狱设备体检
 scripts/doctor-jailbreak.sh root@iphone.local
 scripts/doctor-jailbreak.sh --json root@iphone.local
+
+# 部署 agent
 scripts/deploy-agent-jailbreak.sh root@iphone.local
 RUN_DOCTOR=json scripts/deploy-agent-jailbreak.sh root@iphone.local
+
+# 打包 .deb
 scripts/package-agent-deb.sh rootless
 scripts/package-agent-deb.sh rootful
-scripts/install-agent-deb-jailbreak.sh root@iphone.local
-BUILD_DEB=1 scripts/package-artifacts.sh
-scripts/check-apple-cross-build.sh
 
-# Apple host 才能跑：controller dyld / preflight / inject / command
+# 安装 .deb
+scripts/install-agent-deb-jailbreak.sh root@iphone.local
+
+# 打包发布产物
+BUILD_DEB=1 scripts/package-artifacts.sh
+
+# Apple cross build 检查
+scripts/check-apple-cross-build.sh
+```
+
+### Apple Host
+
+```bash
+# Preflight
 cargo run -p controller -- --pid 1234 --preflight-only
 cargo run -p controller -- --name SpringBoard --preflight-only
 cargo run -p controller -- --pid 1234 --preflight-only --preflight-json
+
+# dyld 镜像
 cargo run -p controller -- --list-images --list-images-json
+
+# 注入
 cargo run -p controller -- --pid 1234 --inject-json
+
+# 单条命令
 cargo run -p controller -- --pid 1234 --command "objc.classes UIView"
 cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-json
+
+# RPC
 cargo run -p controller -- --pid 1234 --script rpc.js --command "rpccall add [20,22]"
 cargo run -p controller -- --pid 1234 --script rpc.js --rpc-port 127.0.0.1:9191
 curl http://127.0.0.1:9191/sessions
 curl -X POST http://127.0.0.1:9191/rpc/1/add -d '[20,22]'
 ```
 
-主机平台要求：
+---
 
-- Linux 主机目前可做：`cargo test`、agent 打包、`.deb` 安装包生成、`doctor-jailbreak.sh`、`deploy-agent-jailbreak.sh`、`install-agent-deb-jailbreak.sh`。
-- Linux 主机目前不能做：controller 的 `--list-images`、`--preflight-only`、`--inject-json`、`--command-json`。这些路径底层依赖 dyld / Mach 注入实现，当前代码只在 Apple targets 上启用。
-- 也就是说，真机注入前体检、真正注入、一次性执行 runtime 命令这三类 controller 能力，目前都需要 Apple host。
-- 上面命令块里凡是 controller 直接对 iOS 目标做事的命令，都应在 macOS / Apple host 上运行；Linux 上即使能把 CLI 编出来，也会返回 `unsupported`。
+## 部署与打包
 
-最近补上的 iOS 运行时能力：
+### 默认 agent 路径
 
-- `ObjC.methods(className[, isClassMethod][, query])`
-- `ObjC.chooseSync(className[, options])`，支持 `includeSubclasses` / `maxCount`
-- `ObjC.choose(className, { onMatch, onComplete }[, options])`，支持 `onMatch` 返回 `"stop"`
-- `ObjC.findMethods(className, query[, isClassMethod])`
-- `ObjC.findMethodOwners(query[, isClassMethod])`
-- `ObjC.methodOwners(query[, isClassMethod])`
-- `ObjC.findClasses(query)`
-- `ObjC.classes([query])`
-- `ObjC.findProtocols([query])`
-- `ObjC.protocols([query])`
-- `ObjC.classConforms(className, protocolName)`
-- `ObjC.findClassConforms(className, protocolName)`
-- `ObjC.protocolConforms(protocolName, parentProtocolName)`
-- `ObjC.findProtocolConforms(protocolName, parentProtocolName)`
-- `ObjC.classProtocols(className[, query])`
-- `ObjC.findClassProtocols(className, query)`
-- `ObjC.protocolOwners(protocolName[, query])`
-- `ObjC.findProtocolOwners(protocolName, query)`
-- `ObjC.classExists(className)`
-- `ObjC.findClassExists(className)`
-- `ObjC.protocolExists(protocolName)`
-- `ObjC.findProtocolExists(protocolName)`
-- `ObjC.classInfo(className[, isMetaClass])`
-- `ObjC.findClassInfo(className[, isMetaClass])`
-- `ObjC.protocolInfo(protocolName)`
-- `ObjC.findProtocolInfo(protocolName)`
-- `ObjC.protocolProtocols(protocolName[, query])`
-- `ObjC.findProtocolProtocols(protocolName, query)`
-- `ObjC.protocolMethods(protocolName[, isRequired[, isInstanceMethod]][, query])`
-- `ObjC.findProtocolMethods(protocolName[, isRequired[, isInstanceMethod]], query)`
-- `ObjC.protocolMethodInfo(protocolName, selectorName[, isRequired[, isInstanceMethod]])`
-- `ObjC.findProtocolMethodInfo(protocolName, selectorName[, isRequired[, isInstanceMethod]])`
-- `ObjC.protocolProperties(protocolName[, query])`
-- `ObjC.findProtocolProperties(protocolName, query)`
-- `ObjC.protocolPropertyInfo(protocolName, propertyName)`
-- `ObjC.findProtocolPropertyInfo(protocolName, propertyName)`
-- `ObjC.superclass(className)`
-- `ObjC.findSuperclass(className)`
-- `ObjC.classChain(className)`
-- `ObjC.findClassChain(className)`
-- `ObjC.properties(className[, isClassProperty][, query])`
-- `ObjC.propertyInfo(className, propertyName[, isClassProperty])`
-- `ObjC.findPropertyInfo(className, propertyName[, isClassProperty])`
-- `ObjC.findProperties(className, query[, isClassProperty])`
-- `ObjC.ivars(className[, query])`
-- `ObjC.ivarInfo(className, ivarName)`
-- `ObjC.findIvarInfo(className, ivarName)`
-- `ObjC.findIvars(className, query)`
-- `ObjC.classImage(className)`
-- `ObjC.findClassImage(className)`
-- `ObjC.protocolImage(protocolName)`
-- `ObjC.findProtocolImage(protocolName)`
-- `ObjC.methodImp(className, selectorName[, isClassMethod])`
-- `ObjC.findMethodImp(className, selectorName[, isClassMethod])`
-- `ObjC.methodInfo(className, selectorName[, isClassMethod])`
-- `ObjC.findMethodInfo(className, selectorName[, isClassMethod])`
-- `ObjC.methodImage(className, selectorName[, isClassMethod])`
-- `ObjC.findMethodImage(className, selectorName[, isClassMethod])`
-- `ObjC.selector(selectorName)`
-- `ObjC.findSelector(selectorName)`
-- `ObjC.selectorName(selector)`
-- `ObjC.objectClassName(object)`
-- `ObjC.findSelectorName(selector)`
-- `ObjC.findObjectClassName(object)`
-- `Swift.demangle(symbolName)`
-- `Swift.findProtocols([query[, moduleName]])`
-- `Swift.protocols([query[, moduleName]])`
-- `Swift.protocolInfo(protocolName[, moduleName])`
-- `Swift.findProtocolInfo(protocolName[, moduleName])`
-- `Swift.conformanceInfo(typeName, protocolName[, moduleName])`
-- `Swift.findConformanceInfo(typeName, protocolName[, moduleName])`
-- `Swift.typeInfo(typeName[, moduleName])`
-- `Swift.findTypeInfo(typeName[, moduleName])`
-- `Swift.methodInfo(typeName, methodName[, moduleName])`
-- `Swift.findMethodInfo(typeName, methodName[, moduleName])`
-- `Swift.findConformances(typeName[, moduleName])`
-- `Swift.conformances(typeName[, moduleName])`
-- `Swift.findMetadata(typeName[, moduleName])`
-- `Swift.metadata(typeName[, moduleName])`
-- `Swift.metadataInfo(typeName[, moduleName])`
-- `Swift.findMetadataInfo(typeName[, moduleName])`
-- `Swift.findVtable(typeName[, moduleName])`
-- `Swift.vtable(typeName[, moduleName])`
-- `Swift.vtableInfo(typeName, memberName[, moduleName])`
-- `Swift.findVtableInfo(typeName, memberName[, moduleName])`
-- `Swift.findWitnessTable(query[, moduleName])`
-- `Swift.witnessTable(query[, moduleName])`
-- `Swift.witnessTableInfo(typeName, protocolName[, moduleName])`
-- `Swift.findWitnessTableInfo(typeName, protocolName[, moduleName])`
-- `Swift.findTypeLayout(typeName[, moduleName])`
-- `Swift.typeLayout(typeName[, moduleName])`
-- `Swift.typeLayoutInfo(typeName[, moduleName])`
-- `Swift.findTypeLayoutInfo(typeName[, moduleName])`
-- `Swift.findTypes(query[, moduleName])`
-- `Swift.types(query[, moduleName])`
-- `Swift.typeKinds()`
-- `Swift.findTypesOfKind(kind, query[, moduleName])`
-- `Swift.typesOfKind(kind, query[, moduleName])`
-- `Swift.findMethodOwners(query[, moduleName])`
-- `Swift.methodOwners(query[, moduleName])`
-- `Swift.findTypeMethods(query[, moduleName])`
-- `Swift.typeMethods(query[, moduleName])`
-- `Swift.findMethods(typeName, methodQuery[, moduleName])`
-- `Swift.methods(typeName, methodQuery[, moduleName])`
-- `Swift.findSymbols(query[, moduleName])`
-- `Swift.symbols(query[, moduleName])`
-- `Swift.findSymbolInfo(symbolName[, moduleName])`
-- `Swift.symbolInfo(symbolName[, moduleName])`
-- `Swift.status()` / `Swift.capabilities()` / `Swift.lastError()`
-- `Swift.typeRepresentation(typeName)`
-- `Swift.objectRepresentation(typeName)`
-- `Swift.classifyAbiArgument(typeName)` / `Swift.abiArgument(typeName)`
-- `Swift.classifyAbiArguments(typeNames)` / `Swift.abiArguments(typeNames)`
-- `Swift.object(pointer[, metadata[, options]])` / `Swift.metadataOf(object)`
-- `Swift.thinFunction(...)` / `Swift.invoke(...)` / `Swift.call(...)`
-- `Stalker.capabilities()` / `Stalker.status()` / `Stalker.info()`
-- `Stalker.functionLevelStatus()` / `Stalker.functionLevelStop()`
-- `Stalker.follow()` / `Stalker.pauseThread()` / `Stalker.resumeThread()` / `Stalker.unfollow()`
-- `Stalker.installCallout(thread, target[, stealth])` installs a native ARM64 hook-engine callout for a followed thread. The returned handle exposes `detach()`, `backend`, `mode: 'native-call-return-event-sink'`, `threadId`, `instructionLevel: false`, and `targetThreadInstrumentation: false`. Callouts emit function-level `Call`/`Ret` events into the bounded Stalker sink; detach handles explicitly before or after `unfollow()`.
-- `Stalker.transform()` / `Stalker.transformBasicBlock()` / `Stalker.planTargetThreadBlock()` / `Stalker.planTargetThreadRewrite()` / `Stalker.prepareTargetThreadRewrite()` / `Stalker.preflightTargetThreadRewrite()` / `Stalker.commitTargetThreadRewrite()`
-- `Stalker.generateEvents()` / `Stalker.recordBlock()`
-- `Stalker.relocate()` / `Stalker.layoutCodeCache()` / `Stalker.emitCodeCache()` / `Stalker.materializeCodeCache()` / `Stalker.finalizeCodeCache()` / `Stalker.executeCodeCache()`
-- `Stalker.prepareTargetThreadRewrite()` binds a followed thread and owns a finalized RX code-cache transaction. Target-rewrite emission appends `B sourceEnd` when the last relocated instruction falls through, while terminal `B/BR/RET` blocks need no continuation; `BL/BLR` is rejected until LR preservation is implemented. The prepared owner exposes `relocatedByteCount`, `continuation*`, `controlFlowClosed=true`, `continuationMode`, and `sourceSnapshotVerified=false`; its `rollback()`/`dispose()` releases the mapping without patching target memory.
-- `Stalker.preflightTargetThreadRewrite(thread, cache)` reports the remaining commit blockers without changing the cache or target memory. It checks target-memory patch support and bidirectional ARM64 direct-branch reachability, while Apple builds probe the Mach suspend primitive and native hook-engine quiescence.
-- `Stalker.commitTargetThreadRewrite(thread, cache[, options])` composes suspend, callback/thunk quiescence, full prepared-source snapshot verification, a 4-byte ARM64 entry branch, instruction-cache flush, resume, and a QuickJS-owned rollback owner. Near allocation scans address hints around the source, verifies each address actually returned by `mmap`, and immediately releases ignored/far hints; exhausting the range remains an explicit `target-thread-branch-range` preparation error.
-- A successful commit reports `controlFlowClosed=true`, the continuation metadata, and `sourceSnapshotVerified=true`. Its owner keeps the RX cache alive and restores original entry bytes on rollback; failed prerequisites or source mismatches preserve the prepared cache. Stub and host builds expose the methods while keeping platform blockers explicit. Function-level native callouts are available through `Stalker.installCallout()` when the ARM64 hook engine is compiled; production instruction-level transformers, automatic instruction events, and `BL`/`BLR` LR preservation remain separate work.
-- `CModule.capabilities()` / `CModule.status()` / `CModule.lastError()`
-- `Native.base(moduleName)`
-- `Native.findBase(moduleName)`
-- `Native.images([filter])`
-- `Native.export(moduleNameOrNull, symbolName)`
-- `Native.mainImage()`
-- `Native.findMainImage()`
-- `Native.image(address)`
-- `Native.findImage(address)`
-- `Native.symbol(address)`
-- `Native.findSymbol(address)`
-- `Native.findSymbols(query[, moduleName])`
-- `Native.symbols(query[, moduleName])`
-- `Native.findSymbolInfo(symbolName[, moduleName])`
-- `Native.symbolInfo(symbolName[, moduleName])`
-- `Native.findImageInfo(moduleName)`
-- `Native.imageInfo(moduleName)`
-- `Native.findExports(moduleName[, query])`
-- `Native.exports(moduleName[, query])`
-- `Native.findExportInfo(moduleName, symbolName)`
-- `Native.exportInfo(moduleName, symbolName)`
-- `Native.findDependencies(moduleName[, query])`
-- `Native.dependencies(moduleName[, query])`
-- `Native.findDependencyInfo(moduleName, pathOrName)`
-- `Native.dependencyInfo(moduleName, pathOrName)`
-- `Native.findEncryptionInfo(moduleName)`
-- `Native.encryptionInfo(moduleName)`
-- `Native.findEntryPoint(moduleName)`
-- `Native.entryPoint(moduleName)`
-- `Native.findDyldInfo(moduleName)`
-- `Native.dyldInfo(moduleName)`
-- `Native.findLinkedit(moduleName)`
-- `Native.linkedit(moduleName)`
-- `Native.findFunctionStarts(moduleName)`
-- `Native.functionStarts(moduleName)`
-- `Native.findCodeSignature(moduleName)`
-- `Native.codeSignature(moduleName)`
-- `Native.findDataInCode(moduleName)`
-- `Native.dataInCode(moduleName)`
-- `Native.findExportsTrie(moduleName)`
-- `Native.exportsTrie(moduleName)`
-- `Native.findChainedFixups(moduleName)`
-- `Native.chainedFixups(moduleName)`
-- `Native.findSourceVersion(moduleName)`
-- `Native.sourceVersion(moduleName)`
-- `Native.findBuildVersion(moduleName)`
-- `Native.buildVersion(moduleName)`
-- `Native.findDylinker(moduleName)`
-- `Native.dylinker(moduleName)`
-- `Native.findInstallName(moduleName)`
-- `Native.installName(moduleName)`
-- `Native.findUuid(moduleName)`
-- `Native.uuid(moduleName)`
-- `Native.findRpaths(moduleName[, query])`
-- `Native.rpaths(moduleName[, query])`
-- `Native.findRpathInfo(moduleName, path)`
-- `Native.rpathInfo(moduleName, path)`
-- `Native.findImports(moduleName[, query])`
-- `Native.imports(moduleName[, query])`
-- `Native.findImportInfo(moduleName, symbolName)`
-- `Native.importInfo(moduleName, symbolName)`
-- `Native.findSegments(moduleName)`
-- `Native.segments(moduleName)`
-- `Native.findSegmentInfo(moduleName, segmentName)`
-- `Native.segmentInfo(moduleName, segmentName)`
-- `Native.findSections(moduleName)`
-- `Native.sections(moduleName)`
-- `Native.findSectionInfo(moduleName, segmentName, sectionName)`
-- `Native.sectionInfo(moduleName, segmentName, sectionName)`
-- `Native.findLoadCommands(moduleName)`
-- `Native.loadCommands(moduleName)`
-- `Native.findLoadCommandInfo(moduleName, commandOrIndex)`
-- `Native.loadCommandInfo(moduleName, commandOrIndex)`
-- `Module.enumerateExports / enumerateImports / enumerateSymbols / enumerateRanges`
-- `Module.load(path)`（Apple target；handle 按 QuickJS runtime 清理）
-- `Memory.alloc / allocUtf8String / protect / flushCodeCache / writeBytes`
-- `NativePointer#read* / write* / writeBytes / protect / flushCodeCache`
-- `Memory.writest / NativePointer#writest`（iOS 上显式返回 Android RECOMP-only unsupported）
-- `new NativeFunction(address, returnType, argumentTypes)`（支持整数、bool、pointer、float、double；结构体/数组按值和 variadic 显式 unsupported，与 Android 参考实现的标量范围一致）
-- `hookNative(target, callbackPtr, userData?, mode?)`（native callback ABI：`void callback(HookContext *, void *)`；成功返回原函数 trampoline）
-- `attachNative(target, callbackPtr, userData?, mode?)`
-- `attachNative(target, { onEnter?, onLeave?, data?, mode? })`
-- `Interceptor.attach` 的 `onEnter(args)` / `onLeave(retval)` / 共享 invocation `this`
-- `Interceptor.flush()`
-- `new File(filePath, mode)`
-- `File#tell / seek / readBytes / readText / readLine / write / flush / close`
-- `File.readAllBytes / readAllText / writeAllBytes / writeAllText`
-- `File.SEEK_SET / File.SEEK_CUR / File.SEEK_END`
-- `rpc.exports = { method() { ... } }`
-- `rpc.export(name, fn)`
-- `rpccall <method> [args-json]`
-- `Process.id / arch / platform / pageSize / pointerSize / codeSigningPolicy / mainModule`
-- `Process.enumerateModules / findModuleByName / getModuleByName / findModuleByAddress / getModuleByAddress`
-- `Process.enumerateRanges / findRangeByAddress / getRangeByAddress / enumerateMallocRanges`
-- `Process.getCurrentDir / getHomeDir / getTmpDir / getCurrentThreadId / isDebuggerAttached / enumerateThreads`
-- `Hook.NORMAL / Hook.WXSHADOW / Hook.RECOMP`
-- `recompHook(ptr, callback)`（iOS 上显式返回 Android-only unsupported）
-- `diagAllocNear(ptr)`（iOS 上返回 ARM64 hook engine 兼容诊断）
-- `Java.available / Java.status() / Java.lastError()`（iOS 上显式返回 Android-only unsupported）
-- agent / controller CLI:
-  - `hfl <module> <offset>`
-  - `hfl status`
-  - `hfl stop`
-  - `hfl stop <module> <offset>`
-  - `jhook <class> <selector> [meta]`
-  - `jhook status`
-  - `jhook stop`
-  - `jhook stop <class> <selector> [meta]`
-  - `objc.methodImp <class> <selector> [meta]`
-  - `objc.findMethodImp <class> <selector> [meta]`
-  - `objc.methodInfo <class> <selector> [meta]`
-  - `objc.classImage <class>`
-  - `objc.methodImage <class> <selector> [meta]`
-  - `objc.methodOwners <selector> [meta]`
-  - `objc.findClasses <query>`
-  - `objc.methods <class> [meta] [filter]`
-  - `objc.superclass <class>`
-  - `objc.classChain <class>`
-  - `objc.properties <class> [meta] [filter]`
-  - `objc.propertyInfo <class> <property> [meta]`
-  - `objc.ivars <class> [filter]`
-  - `objc.ivarInfo <class> <ivar>`
-  - `objc.protocols [filter]`
-  - `objc.classConforms <class> <protocol>`
-  - `objc.findClassConforms <class> <protocol>`
-  - `objc.protocolConforms <protocol> <parent-protocol>`
-  - `objc.findProtocolConforms <protocol> <parent-protocol>`
-  - `objc.classProtocols <class>`
-  - `objc.findClassProtocols <class> <query>`
-  - `objc.protocolOwners <protocol> [filter]`
-  - `objc.findProtocolOwners <protocol> <query>`
-  - `objc.classExists <name>`
-  - `objc.findClassExists <name>`
-  - `objc.protocolExists <name>`
-  - `objc.findProtocolExists <name>`
-  - `objc.selector <name>`
-  - `objc.findSelector <name>`
-  - `objc.protocolImage <protocol>`
-  - `objc.findProtocolImage <protocol>`
-  - `objc.classInfo <class> [meta]`
-  - `objc.protocolInfo <protocol>`
-  - `objc.protocolProtocols <protocol>`
-  - `objc.findProtocolProtocols <protocol> <query>`
-  - `objc.protocolMethods <protocol> [required] [instance]`
-  - `objc.findProtocolMethods <protocol> [required] [instance] <query>`
-  - `objc.protocolMethodInfo <protocol> <selector> [required] [instance]`
-  - `objc.protocolProperties <protocol>`
-  - `objc.findProtocolProperties <protocol> <query>`
-  - `objc.protocolPropertyInfo <protocol> <property>`
-  - `objc.classes [filter]`
-  - `objc.selectorName <selector>`
-  - `objc.objectClassName <object>`
-  - `native.base <module>`
-  - `native.findBase <module>`
-  - `native.imageInfo <module>`
-  - `native.export <symbol>`
-  - `native.export <module> -- <symbol>`
-  - `native.exports <module>`
-  - `native.exports <module> -- <query>`
-  - `native.exportInfo <module> -- <symbol>`
-  - `native.dependencies <module>`
-  - `native.dependencies <module> -- <query>`
-  - `native.dependencyInfo <module> -- <path-or-name>`
-  - `native.encryptionInfo <module>`
-  - `native.entryPoint <module>`
-  - `native.dyldInfo <module>`
-  - `native.linkedit <module>`
-  - `native.functionStarts <module>`
-  - `native.codeSignature <module>`
-  - `native.dataInCode <module>`
-  - `native.exportsTrie <module>`
-  - `native.chainedFixups <module>`
-  - `native.sourceVersion <module>`
-  - `native.buildVersion <module>`
-  - `native.dylinker <module>`
-  - `native.installName <module>`
-  - `native.uuid <module>`
-  - `native.rpaths <module>`
-  - `native.rpaths <module> -- <query>`
-  - `native.rpathInfo <module> -- <path>`
-  - `native.imports <module>`
-  - `native.imports <module> -- <query>`
-  - `native.importInfo <module> -- <symbol>`
-  - `native.loadcmds <module>`
-  - `native.loadCommands <module>`
-  - `native.loadCommandInfo <module> -- <name|cmd|index>`
-  - `native.sections <module>`
-  - `native.sectionInfo <module> -- <segment> <section>`
-  - `native.segments <module>`
-  - `native.segmentInfo <module> -- <segment>`
-  - `native.symbolInfo <symbol>`
-  - `native.symbolInfo <module> -- <symbol>`
-  - `native.symbols <query>`
-  - `native.symbols <module> -- <query>`
-  - `native.images [filter]`
-  - `native.mainImage`
-  - `native.findMainImage`
-  - `native.instrumentation`
-  - `native.image <address>`
-  - `native.findImage <address>`
-  - `native.symbol <address>`
-  - `native.findSymbol <address>`
-  - `native.detectHookEnvironment`
-  - `pac.available`
-  - `pac.arm64e`
-  - `pac.isProcessArm64e`
-  - `pac.image <module>`
-  - `pac.isImageArm64e <module>`
-  - `pac.images [filter]`
-  - `pac.arm64eImages [filter]`
-  - `pac.strip <address>`
-  - `pac.stripdata <address>`
-  - `pac.stripData <address>`
-  - `qbdi.status`
-  - `qbdi.info`
-  - `qbdi.methods`
-  - `qbdi.lastError`
-  - `java.status`
-  - `java.info`
-  - `java.lastError`
-  - `jni.status`
-  - `jni.info`
-  - `jni.lastError`
-  - `shook <type> <method>`
-  - `shook <module> -- <type> <method>`
-  - `shook status`
-  - `shook stop`
-  - `shook stop <type> <method>`
-  - `shook stop <module> -- <type> <method>`
-  - `trace [filter]`
-  - `trace native [module] <symbol> [-- template]`
-  - `trace addr <address> [-- template]`
-  - `trace status`
-  - `trace stop`
-  - `trace stop [filter]`
-  - `trace stop native [module] <symbol>`
-  - `trace stop addr <address>`
-  - `stalker [filter]`
-  - `stalker native [module] <symbol> [-- template]`
-  - `stalker addr <address> [-- template]`
-  - `stalker status`
-  - `stalker stop`
-  - `stalker stop [filter]`
-  - `stalker stop native [module] <symbol>`
-  - `stalker stop addr <address>`
-  - `swift.types <query>`
-  - `swift.types <module> -- <query>`
-  - `swift.protocolInfo <protocol>`
-  - `swift.protocolInfo <module> -- <protocol>`
-  - `swift.conformanceInfo <type> <protocol>`
-  - `swift.conformanceInfo <module> -- <type> <protocol>`
-  - `swift.typeInfo <type>`
-  - `swift.typeInfo <module> -- <type>`
-  - `swift.methodInfo <type> <method>`
-  - `swift.methodInfo <module> -- <type> <method>`
-  - `swift.symbolInfo <symbol>`
-  - `swift.symbolInfo <module> -- <symbol>`
-  - `swift.protocols [query]`
-  - `swift.protocols <module> -- <query>`
-  - `swift.conformances <type>`
-  - `swift.conformances <module> -- <type>`
-  - `swift.metadata <type>`
-  - `swift.metadata <module> -- <type>`
-  - `swift.metadataInfo <type>`
-  - `swift.metadataInfo <module> -- <type>`
-  - `swift.vtable <type>`
-  - `swift.vtable <module> -- <type>`
-  - `swift.vtableInfo <type> <member>`
-  - `swift.vtableInfo <module> -- <type> <member>`
-  - `swift.witnessTable <type|protocol>`
-  - `swift.witnessTable <module> -- <type|protocol>`
-  - `swift.witnessTableInfo <type> <protocol>`
-  - `swift.witnessTableInfo <module> -- <type> <protocol>`
-  - `swift.typeLayout <type>`
-  - `swift.typeLayout <module> -- <type>`
-  - `swift.typeLayoutInfo <type>`
-  - `swift.typeLayoutInfo <module> -- <type>`
-  - `swift.typeKinds`
-  - `swift.typeSourceKinds`
-  - `swift.methodOwners <method>`
-  - `swift.methodOwners <module> -- <method>`
-  - `swift.typesOfKind <kind> <query>`
-  - `swift.typesOfKind <module> -- <kind> <query>`
-  - `swift.typeMethods <type>`
-  - `swift.typeMethods <module> -- <type>`
-  - `swift.methods <type> <method>`
-  - `swift.methods <module> -- <type> <method>`
-- `objc.find*` / `native.find*` / `swift.find*` 这批只读查询/信息别名现在也可直接走 controller CLI / REPL / `--command-json`，会映射到对应的 `objc.*` / `native.*` / `swift.*` 命令；其中 `objc.findClassInfo / objc.findProtocolInfo / objc.findProtocolMethodInfo / objc.findProtocolPropertyInfo / objc.findSuperclass / objc.findClassChain / objc.findClassExists / objc.findSelector / objc.findClassImage / objc.findMethodImp / objc.findMethodInfo / objc.findMethodImage / objc.findPropertyInfo / objc.findIvarInfo / objc.findSelectorName / objc.findObjectClassName`、`native.findBase / native.findMainImage / native.findImage / native.findSymbol / native.findImageInfo / native.findSymbolInfo / native.findExportInfo / native.findDependencyInfo / native.findRpathInfo / native.findImportInfo / native.findSegmentInfo / native.findSectionInfo / native.findLoadCommandInfo` 和 `swift.findSymbolInfo / swift.findProtocolInfo / swift.findConformanceInfo / swift.findTypeInfo / swift.findMethodInfo / swift.findMetadataInfo / swift.findVtableInfo / swift.findWitnessTableInfo / swift.findTypeLayoutInfo` 这三组单项 alias 现在也一并接好了。
+| 场景 | 路径 |
+|---|---|
+| rootless | `/var/jb/usr/lib/libagent.dylib` |
+| rootful | `/usr/lib/libagent.dylib` |
+| 旧路径 | `/usr/lib/agent.dylib`，已废弃 |
 
-说明：
+如果设备是 rootful 或 agent 放在别处，启动时显式传入：
 
-- Android 版目录和根 workspace 已从这个分支移除。
-- controller 默认 agent 路径现在按越狱 rootless 场景优先使用 `/var/jb/usr/lib/libagent.dylib`；rootful 默认对应 `/usr/lib/libagent.dylib`。旧路径 `/usr/lib/agent.dylib` 已废弃，如果设备是 rootful 或 agent 放在别处，启动时显式传 `--agent-path <path>` 即可。
-- `scripts/doctor-jailbreak.sh <user@device> [remote-agent-path]` 现在既支持文本输出，也支持 `--json` 结构化输出，便于直接接 CI 或自动化部署脚本。
-- 这份远端 doctor 除了 rootless/rootful 布局、agent 目录/文件、legacy 文件名、socket path 长度、常见 hook backend 文件之外，现在还会尽量检查 agent 是否像 Mach-O 动态库、以及远端二进制检查工具能否看见 `ios_agent_entry`。
-- `scripts/deploy-agent-jailbreak.sh` 现在默认会在推送 `libagent.dylib` 后自动跑一次 `doctor-jailbreak.sh`；如果只想推送不体检，可设 `RUN_DOCTOR=0`；如果想让部署阶段直接吐结构化结果，可设 `RUN_DOCTOR=json`，此时会输出单个 deploy+doctor JSON，而不是文本日志和 JSON 混杂。
-- `scripts/package-agent-deb.sh [rootless|rootful]` 现在可以直接把 `libagent.dylib` 打成越狱设备可安装的 `.deb`；默认 `rootless`，会安装到 `/var/jb/usr/lib/libagent.dylib`，`rootful` 则安装到 `/usr/lib/libagent.dylib`。
-- `scripts/install-agent-deb-jailbreak.sh <user@device> [deb-path]` 可以把本地 `.deb` 推到越狱设备并执行 `dpkg -i`；如果不手动给包路径，会按设备的 rootless/rootful 布局从 `dist/` 自动挑最新的匹配包。
-- `scripts/package-artifacts.sh` 现在在 `dpkg-deb` 可用时会顺手产出 `rootless/rootful` 两份 `.deb`；如果要显式控制，可用 `BUILD_DEB=1` 或 `BUILD_DEB=0`。
-- 根目录 release workflow 现在也会在 macOS runner 上补装 `dpkg`，把 tarball 和 `.deb` 一起作为 GitHub Release asset 输出。
-- `.deb` 产物拿到手后，rootless 设备装 `..._iphoneos-arm64_rootless.deb`，rootful 设备装 `..._iphoneos-arm_rootful.deb`；常见安装方式就是设备上执行 `dpkg -i <package>.deb`，装完后 controller 默认会去对应路径找 `libagent.dylib`。
-- 对 `dpkg --print-architecture` 是 `iphoneos-arm64e` 的 rootless 设备，现在也会额外产出并优先选择 `..._iphoneos-arm64e_rootless.deb`；如果不手动给包路径，`scripts/install-agent-deb-jailbreak.sh` 会先探测远端架构，再从 `dist/` 自动挑最匹配的 rootless/rootful 包。
-- 如果不想打 tag，GitHub Actions 里现在可以直接手动运行 `ios-rustfrida-package` workflow；它会在 macOS runner 上构建 agent/controller，并把 tarball 和 `.deb` 作为 `ios-rustfrida-package-bundles` artifact 上传。
-- 手动包工作流的默认产物里会包含：
-  - `ios-rustfrida-agent-aarch64-apple-ios.tar.gz`
-  - `ios-rustfrida-controller-<host-triple>.tar.gz`
-  - `ios-rustfrida-agent_<version>_iphoneos-arm64_rootless.deb`
-  - `ios-rustfrida-agent_<version>_iphoneos-arm64e_rootless.deb`
-  - `ios-rustfrida-agent_<version>_iphoneos-arm_rootful.deb`
-- GitHub Actions 需要放在仓库根目录 `.github/workflows/`；`ios-rustfrida/.github/workflows/` 里的文件仅作子 workspace 镜像参考，真正触发以根目录 workflow 为准。
-- `quickjs-runtime` 需要的 ARM64 hook engine 已 vendored 到 `ios-rustfrida/quickjs-runtime/hook-engine-src/`。
-- iOS 功能目前仍是持续迁移状态，不应视为和 Android 版完全对齐。
-- 当前已经补到可做 ObjC 类/selector/IMP/方法枚举、协议继承/属性查询、Swift 符号查找、PAC 查询、dyld 镜像枚举、基础 hook 环境探测。
-- `objc.classes` 列表结果现在也会额外补 `uniqueImagePathCount / classesWithImagePathCount / rootClassCount / classesWithProtocolsCount / classesWithPropertiesCount / classesWithIvarsCount / classesWithMethodsCount / imagePathList / imagePaths` 这类摘要，适合脚本先看类分布落在哪些镜像、以及这些类大致有没有协议/属性/方法，而不必自己逐个 `objc.classInfo`。
-- `objc.classChain` 结果现在也会额外补 `uniqueImagePathCount / classesWithImagePathCount / rootClassCount / classesWithProtocolsCount / classesWithPropertiesCount / classesWithIvarsCount / classesWithMethodsCount / totalProtocolCount / totalPropertyCount / totalIvarCount / totalMethodCount / totalInstanceSize / imagePathList / imagePaths`，方便脚本在看继承链时顺手判断整条链的大致结构复杂度，而不必再对链上每个类逐个 `objc.classInfo`。
-- `objc.protocols` / `objc.classProtocols` / `objc.protocolProtocols` 这三类协议列表结果现在也会额外补 `uniqueImagePathCount / protocolsWithImagePathCount / protocolsWithAdoptedProtocolsCount / protocolsWithRequiredMethodsCount / protocolsWithOptionalMethodsCount / protocolsWithInstanceMethodsCount / protocolsWithClassMethodsCount / protocolsWithPropertiesCount / totalAdoptedProtocolCount / totalRequiredMethodCount / totalOptionalMethodCount / totalPropertyCount / imagePathList / imagePaths`，便于脚本先看协议主要来自哪些镜像、以及大致声明了多少继承/方法/属性。
-- `objc.methods` / `objc.methodOwners` / `objc.protocolMethods` 这几类查询现在也会在结构化结果里稳定带出 `typeEncoding`，文本模式下若有编码也会附带 `types=...`，方便脚本侧直接消费 ObjC 方法签名。
-- `objc.methods` 列表结果现在也会额外补 `uniqueSelectorCount / uniqueReturnTypeCount / keywordSelectorCount / unarySelectorCount / explicitArgumentMethodCount / hiddenArgumentMethodCount / returnsVoidCount / returnsObjectCount / returnsBlockCount / totalExplicitArgumentCount / totalHiddenArgumentCount / maxSelectorPartCount / maxExplicitArgumentCount / selectorNameList / returnTypeNameList / selectorNames / returnTypeNames / selectors / returnTypes` 这类摘要，便于脚本先看某个类的方法分布、selector 形态和返回类型分布，而不必自己扫完整数组再聚合。
-- `objc.protocolMethods` 列表结果现在也会额外补 `uniqueSelectorCount / uniqueReturnTypeCount / keywordSelectorCount / unarySelectorCount / explicitArgumentMethodCount / hiddenArgumentMethodCount / returnsVoidCount / returnsObjectCount / returnsBlockCount / totalExplicitArgumentCount / totalHiddenArgumentCount / maxSelectorPartCount / maxExplicitArgumentCount / selectorNameList / returnTypeNameList / selectorNames / returnTypeNames / selectors / returnTypes` 这类摘要，便于脚本先看某个协议方法声明集的 selector 形态和返回类型分布，而不必自己扫完整数组再聚合。
-- `objc.classProtocols / objc.protocolProtocols / objc.protocolMethods / objc.protocolProperties` 这几类协议相关查询现在也会在结构化结果里补出 owner 解析状态和顶层摘要，例如 `hasClassInfo / hasProtocolInfo / resolved / resolvedClassPointer / resolvedProtocolPointer / resolvedHasImagePath / resolvedImagePath / resolvedAdoptedProtocolCount / resolvedProtocolTotalMethodCount / resolvedProtocolPropertyCount / resolvedOwnerHas* / declaredProtocolCount / protocolTotalMethodCount / protocolPropertyCount / ownerHasProtocols / ownerHasMethods / ownerHasProperties`；脚本侧在消费过滤后的协议/方法/属性列表时，可以区分“owner 没解析到”和“owner 已解析但值为 0/false”，不必再额外补一轮 `objc.classInfo / objc.protocolInfo`。
-- `objc.methods / objc.properties / objc.ivars` 这三类 class-owned 列表查询现在也统一补了同一套 owner 摘要字段，例如 `classInfo / hasClassInfo / resolved / resolvedClassPointer / resolvedHasImagePath / resolvedImagePath / resolvedDeclaredProtocolCount / resolvedOwnerHas* / resolvedOwnerIvarCount / resolvedOwnerTotalPropertyCount / resolvedOwnerTotalMethodCount / declaredProtocolCount / ownerHasProtocols / ownerHasProperties / ownerHasIvars / ownerHasMethods / ownerIvarCount / ownerTotalPropertyCount / ownerTotalMethodCount`；脚本侧在拿过滤结果的同时，就能直接知道宿主类的大致元数据规模，并区分“类不存在”和“类存在但对应项为空”。
-- `objc.protocolMethodInfo` 现在可以直接结构化返回单个 protocol method declaration 的 `typeEncoding / imagePath / isRequired / isInstanceMethod`，并补出解码后的 `returnTypeName / argumentTypeNames / argumentTypeNameList / hiddenArgumentTypeNames / hiddenArgumentTypeNameList / signature / methodTypeInfo`，后续排查某个协议方法声明时不必再先全量 `objc.protocolMethods` 再脚本过滤。
-- `objc.properties` / `objc.protocolProperties` 这几类查询现在除了原始 `attributes` 之外，也会在结构化结果里补出 `typeEncoding / ownership / getterName / setterName / ivarName / objectClassName / objectProtocols / attributeInfo` 等解析字段；列表结果还会额外补 `uniqueOwnershipCount / uniqueObjectClassCount / readonlyPropertyCount / readwritePropertyCount / atomicPropertyCount / nonatomicPropertyCount / dynamicPropertyCount / strongPropertyCount / copyPropertyCount / weakPropertyCount / assignPropertyCount / objectPropertyCount / blockPropertyCount / propertiesWithAccessorCustomizationCount / propertiesWithBackingIvarCount / propertiesWithObjectProtocolsCount / propertiesWithTypeInfoCount / propertiesWithParsedTokensCount / totalObjectProtocolCount / ownershipNameList / objectClassNameList / ownershipNames / objectClassNames / ownerships / objectClasses` 这类摘要，减少脚本二次拆 Objective-C property attributes 字符串后再自己聚合统计的成本。
-- `objc.protocolPropertyInfo` 现在可以直接结构化返回单个 protocol property 的 `propertyPointer / imagePath / attributes`，并复用同一套 `attributeInfo` 解析字段，后续排查某个协议属性时不必再先全量 `objc.protocolProperties` 再脚本过滤。
-- `objc.propertyInfo` 现在可以直接结构化返回单个 property 的 `propertyPointer / imagePath / attributes`，并复用同一套 `attributeInfo` 解析字段，后续排查某个属性时不必再先全量 `objc.properties` 再脚本过滤。
-- `objc.ivarInfo` 现在可以直接结构化返回单个 ivar 的 `ivarPointer / offset / imagePath / typeEncoding`，并补出解析后的 `typeName / typeInfo / qualifierNames / qualifierNameList / objectClassName / objectProtocols`，后续排查实例布局时不必再先全量 `objc.ivars` 再脚本筛选。
-- `objc.ivars` 列表结果现在也会额外补 `uniqueKindCount / uniqueObjectClassCount / totalQualifierCount / totalObjectProtocolCount / pointerIvarCount / arrayIvarCount / objectIvarCount / blockIvarCount / ivarsWithQualifiersCount / ivarsWithObjectProtocolsCount / ivarsWithObjectClassCount / ivarsWithPointeeTypeCount / ivarsWithMemberNameCount / minOffsetHex / maxOffsetHex / kindNameList / objectClassNameList / kindNames / objectClassNames / kinds / objectClasses` 这类摘要，便于脚本先看 ivar 布局大致由哪些类型构成、有没有对象/指针/数组，以及偏移大概落在哪个范围。
-- `objc.methods` / `objc.methodOwners` / `objc.protocolMethods` / `objc.ivars` 这几类查询现在也会在结构化结果里补出解码后的 `returnTypeName / argumentTypeNames / argumentTypeNameList / hiddenArgumentTypeNames / hiddenArgumentTypeNameList / signature / typeName / typeInfo / qualifierNames / qualifierNameList / methodTypeInfo` 等字段，不再只能盯着原始 type encoding 字符串自己拆。
-- `objc.methodOwners` 列表结果现在也会额外补 `uniqueOwnerCount / uniqueSelectorCount / ownerNameList / selectorNameList / ownerNames / selectorNames / owners / selectors`，以及 `keywordSelectorCount / explicitArgumentMethodCount / returnsObjectCount` 这类摘要，适合脚本先看某个 selector 被哪些类实现、以及这些实现的大致签名分布，而不必自己扫完整数组。
-- `objc.methodOwners` 现在也会补 owner 侧的类分布摘要，例如 `resolvedOwnerCount / unresolvedOwnerCount / hasResolvedOwners / firstImagePath / lastImagePath / uniqueImagePathCount / ownersWithImagePathCount / classesWithProtocolsCount / classesWithPropertiesCount / classesWithIvarsCount / classesWithMethodsCount / totalProtocolCount / totalPropertyCount / totalIvarCount / totalMethodCount / totalInstanceSize / imagePathList / imagePaths`，便于脚本反查某个 selector 时顺手判断这些 owner 类大致分布在哪些镜像、元数据规模如何，并区分“没有 owner 类解析成功”和“解析成功但统计值刚好为 0”。
-- `objc.classInfo` 现在可以直接结构化返回 class / metaclass 的 `classPointer / superclassName / superclassPointer / instanceSize / imagePath / isMetaClass`，后续排查 ObjC 类层级和 metaclass 边界时不必再手工拼多个命令。
-- `objc.protocolInfo` 现在可以直接结构化返回协议指针、adopted protocols、required/optional 的 instance/class method 计数、property 数量以及 image 路径，后续排查协议继承和声明面时不必再手工拼多条 `protocol*` 命令。
-- `objc.methodInfo` 现在可以直接结构化返回单个方法的 `methodPointer / imp / typeEncoding / imagePath / isClassMethod`，后续排查某个 selector 时不必再手工拼 `objc.methodImp`、`objc.methodImage` 和 `objc.methods`。
-- `objc.classInfo / objc.protocolInfo / objc.methodInfo / objc.propertyInfo / objc.ivarInfo / objc.protocolMethodInfo / objc.protocolPropertyInfo` 这组 ObjC 单项查询现在也补了统一顶层状态字段，例如 `has*Info / resolved / resolvedName / resolvedSelector / resolvedClassName / resolvedProtocolName / hasAccessorCustomization / hasTypeInfo / hasQualifiers / hasPointeeType / imagePath`，脚本侧做命中判断和读取常用摘要时不必每次先解包内层对象。
-- `objc.classInfo / objc.protocolInfo / objc.methodInfo / objc.propertyInfo / objc.ivarInfo / objc.protocolMethodInfo / objc.protocolPropertyInfo / objc.superclass / objc.classChain / objc.classImage / objc.protocolImage / objc.methodImp / objc.methodImage` 现在也会在精确查询未命中时复用列表查询的宽松匹配规则；类名、协议名、selector、属性名和 ivar 名支持大小写不敏感和子串查询，但只有唯一命中时才会自动落到具体条目，避免多候选时误选。
-- 在这之上，这组 ObjC 单项查询现在也继续补平了更直接的顶层摘要字段，例如 `resolvedClassPointer / resolvedSuperclassName / resolvedProtocolPointer / resolvedMethodPointer / resolvedPropertyPointer / resolvedIvarPointer / resolvedImp / resolvedOffsetHex / resolvedReturnTypeName / resolvedImagePath / getterName / setterName / ivarName / argumentCount / hiddenArgumentCount / objectProtocolCount / qualifierCount`；其中 `objc.classInfo` 会直接给出 `resolvedSuperclassName / resolvedImagePath`，`objc.protocolInfo` 也会直接给出 `resolvedImagePath`，脚本侧读单条 ObjC 结果时不必再反复解包内层 `classInfo / methodInfo / propertyInfo / ivarInfo`。
-- 在这之上，`objc.methodInfo / objc.protocolMethodInfo` 现在也继续补了更直接的顶层签名摘要字段，例如 `resolvedTypeEncoding / resolvedSignature / selectorPartCount / hasImagePath`，脚本侧排查单个 ObjC 方法声明或实现时不必再深入 `methodInfo` 内层对象。
-- 对应地，`objc.classInfo / objc.protocolInfo / objc.methodInfo / objc.protocolMethodInfo / objc.propertyInfo / objc.protocolPropertyInfo / objc.ivarInfo` 现在也继续补了 `resolvedHasSuperclass / resolvedHasProtocols / resolvedHasProperties / resolvedHasIvars / resolvedHasMethods / resolvedHasImagePath / resolvedHasAdoptedProtocols / resolvedHasRequiredMethods / resolvedHasOptionalMethods / resolvedHasInstanceMethods / resolvedHasClassMethods / resolvedHasSelectorArguments / resolvedIsUnarySelector / resolvedIsKeywordSelector / resolvedHasExplicitArguments / resolvedHasHiddenArguments / resolvedReturns* / resolvedHasAccessorCustomization / resolvedHasGetterName / resolvedHasSetterName / resolvedHasBackingIvar / resolvedHasObjectClassName / resolvedHasObjectProtocols / resolvedHasTypeInfo / resolvedIsObject / resolvedIsBlock / resolvedHasQualifiers / resolvedHasPointeeType / resolvedIsPointer / resolvedIsArray / resolvedHasMemberName`，以及对应的 `resolved*Count` 顶层摘要，脚本侧判定这些元数据是否真实存在时不必再回到内层对象。
-- 在这之上，`objc.propertyInfo / objc.protocolPropertyInfo / objc.ivarInfo` 现在也继续补了更直接的顶层类型摘要字段，例如 `resolvedTypeName / resolvedOwnership / resolvedObjectClassName / resolvedGetterName / resolvedSetterName / resolvedIvarName / resolvedKindName / resolvedMemberName / hasGetterName / hasSetterName / hasBackingIvar / hasObjectClassName`，脚本侧排查属性和 ivar 细节时不必再深入 `propertyInfo / ivarInfo` 内层对象。
-- `objc.superclass / objc.methodImp / objc.classImage / objc.methodImage / objc.selectorName / objc.objectClassName` 这组 ObjC 标量单项查询现在也补了统一顶层状态字段，例如 `resolved / classExists / resolvedSuperclassName / hasImp / resolvedImp / hasImagePath / resolvedImagePath / hasName / hasClassName`，脚本侧不必再只靠文本 `<null>` 判空。
-- `objc.classExists / objc.selector` 这类更基础的 ObjC 标量查询现在也补了统一顶层状态字段，例如 `resolved / resolvedClassName / resolvedSelectorName / resolvedPointer`，脚本侧拿 existence / selector pointer 时不必再只看纯文本。
-- `swift.protocolInfo` 现在可以直接结构化返回单个 Swift protocol 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName`；在这之上也会继续解析 protocol descriptor 的 demangle 语义，补出 `qualifiedName / signature / contextModuleName / detailKind / isDescriptor`，后续排查某个协议声明归属在哪个模块、是否确实命中 protocol descriptor 时不必再自己拆 demangle 文本。
-- `swift.conformanceInfo` 现在可以直接结构化返回单个 Swift conformance 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName / typeName / protocolName`；在这之上还会继续解析 demangled conformance/witness 语义，补出 `signature / relation / contextModuleName / whereClause / detailKind / isDescriptor / isWitnessTable / isWitnessAccessor / isWitness`，后续排查某个类型对某个协议的符合性、或区分 descriptor/witness table/accessor 时不必再自己拆 demangle 文本。
-- `swift.metadataInfo` 现在可以直接结构化返回单个 Swift metadata entry 的 `moduleBase / name / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName`；在这之上也会继续解析 metadata/descriptor 的 demangle 语义，补出 `qualifiedName / signature / contextModuleName / detailKind / isMetadata / isMetadataAccessor / isNominalDescriptor`，后续排查某个类型命中的是 metadata、metadata accessor 还是 nominal descriptor 时不必再自己拆 demangle 文本。
-- `swift.protocols / swift.conformances / swift.metadata` 这三类列表结果现在也会额外补 `uniqueModuleCount / uniqueSourceKindCount / sourceDemangledCount / sourceKinds` 这类摘要；其中 `swift.protocols` 还会补 `uniqueProtocolCount / moduleNameList / protocolNameList / moduleNames / protocolNames`，并继续补 `uniqueContextModuleCount / uniqueDetailKindCount / contextModuleNameList / detailKindList / sourceKindList / contextModules / detailKinds` 这类 protocol descriptor 语义摘要，`swift.conformances` 还会补 `uniqueTypeCount / typeNameList / moduleNameList / protocolNameList / typeNames / moduleNames / uniqueProtocolCount / protocols`，并继续补 `whereClauseCount / hasWhereClauses / uniqueContextModuleCount / uniqueDetailKindCount / contextModuleNameList / detailKindList / sourceKindList / contextModules / detailKinds` 这类 conformance 语义摘要，`swift.metadata` 还会补 `uniqueTypeCount / moduleNameList / typeNameList / moduleNames / typeNames`，并继续补 `uniqueContextModuleCount / uniqueDetailKindCount / contextModuleNameList / detailKindList / sourceKindList / contextModules / detailKinds` 这类 metadata/descriptor 语义摘要，适合脚本先看 Swift 符号来源以及协议/类型/模块分布，而不必自己扫完整数组。
-- `swift.typeInfo` 现在可以直接结构化返回单个 Swift type 的 `moduleBase / sourceSymbolName / sourceOffsetHex / sourceKind / sourceAddress / sourceDemangledName / name`；在这之上也会继续解析类型来源的 demangle 语义，补出 `qualifiedName / signature / contextModuleName / detailKind / isMetadata / isMetadataAccessor / isNominalDescriptor`，后续排查某个类型命中的是普通 nominal type、metadata accessor 还是 descriptor 时不必再自己拆 demangle 文本。
-- `swift.types` 列表结果现在也会额外补 `uniqueModuleCount / uniqueTypeCount / uniqueSourceKindCount / sourceDemangledCount / moduleNameList / typeNameList / moduleNames / typeNames / sourceKinds` 这类摘要；在这之上也会继续补 `uniqueContextModuleCount / uniqueDetailKindCount / contextModuleNameList / detailKindList / sourceKindList / contextModules / detailKinds` 这类类型来源语义摘要，适合脚本先看类型列表的模块分布、类型名聚合和 Swift 符号来源，而不必自己扫完整数组。
-- `swift.typeKinds` 结果现在也会额外补 `uniquePrefixCount / metadataKindCount / nominalKindCount / protocolKindCount / witnessKindCount / accessorKindCount / vtableKindCount / prefixList / prefixes` 这类摘要，便于脚本先看当前支持的 Swift kind 名字大致落在哪些类别，而不必自己按字符串前缀再聚合一次。
-- `swift.typeSourceKinds` 现在也已接到 controller CLI / REPL / `--command-json`，作为 `swift.typeKinds` 的别名，方便直接按 JS API 里的 `Swift.typeSourceKinds()` 名字调用。
-- `swift.typesOfKind` 列表结果现在也会额外补 `uniqueModuleCount / uniqueTypeCount / uniqueSourceKindCount / sourceDemangledCount / moduleNameList / typeNameList / moduleNames / typeNames / sourceKinds` 这类摘要；在这之上也会继续补 `uniqueContextModuleCount / uniqueDetailKindCount / contextModuleNameList / detailKindList / sourceKindList / contextModules / detailKinds` 这类类型来源语义摘要，适合脚本先看某一类 Swift 类型符号的模块分布、类型名聚合和来源，再决定是否展开完整数组。
-- `swift.methodInfo` 现在可以直接结构化返回单个 Swift method symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个类型里的目标方法时不必再先全量 `swift.methods` 再脚本过滤。
-- `swift.methodOwners` 列表结果现在也会额外补 `uniqueModuleCount / uniqueOwnerCount / uniqueSourceKindCount / sourceDemangledCount / ownerNameList / moduleNameList / ownerNames / moduleNames / sourceKinds` 这类摘要；在这之上也会继续补 `uniqueContextModuleCount / uniqueDetailKindCount / contextModuleNameList / detailKindList / sourceKindList / contextModules / detailKinds` 这类 owner 类型来源语义摘要，适合脚本先看某个方法名反查到的 owner 类型分布、模块分布和 Swift 符号来源，而不必自己扫完整数组。
-- `swift.typeMethods` 列表结果现在也会额外补 `uniqueModuleCount / uniqueMethodCount / demangledCount / moduleNameList / methodNameList / moduleNames / methodNames` 这类摘要，适合脚本先看某个类型查询命中的方法名分布、模块分布和 demangle 覆盖情况，而不必自己扫完整数组；在这之上也会继续补 `ownerTypeList / memberKindList / resultTypeList / ownerTypes / memberKinds / resultTypes` 这类成员语义摘要。
-- `swift.methods` 列表结果现在也会额外补 `uniqueModuleCount / uniqueMethodCount / demangledCount / moduleNameList / methodNameList / moduleNames / methodNames` 这类摘要，适合脚本先看某个类型下目标方法在不同模块里的分布和 demangle 覆盖情况，而不必自己扫完整数组；在这之上也会继续补 `ownerTypeList / memberKindList / resultTypeList / ownerTypes / memberKinds / resultTypes` 这类成员语义摘要。
-- `swift.symbols` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / demangledCount / moduleNameList / symbolNameList / moduleNames / symbolNames` 这类摘要，适合脚本先看 Swift 符号名在不同模块里的分布和 demangle 覆盖情况，而不必自己扫完整数组。
-- `swift.symbolInfo` 现在可以直接结构化返回单个 Swift symbol 的 `moduleBase / address / offsetHex / name / demangledName`，后续排查某个 Swift 符号时不必再先全量 `swift.symbols` 再脚本过滤。
-- 在这之上，`swift.symbolInfo / swift.methodInfo / swift.vtableInfo` 这组结果现在也会继续解析 demangled member 语义，补出 `ownerTypeName / memberName / memberKind / signature / resultTypeName / isAccessor / isGetter / isSetter / isConstructor / isDestructor / isStaticMember / isClassMember / isMutating / isAsync / isThrowing / throwsKind` 这类字段，后续脚本判断某个 Swift 符号到底是普通成员、property accessor、构造器还是 async/throws 成员时，不必再自己拆 demangle 文本。
-- 对应地，`swift.symbols / swift.typeMethods / swift.methods / swift.vtable` 这几类列表结果现在也会额外补 `parsedMemberCount / accessorCount / getterCount / setterCount / constructorCount / destructorCount / subscriptCount / operatorCount / closureCount / staticMemberCount / classMemberCount / mutatingMemberCount / asyncCount / throwingCount / uniqueOwnerTypeCount / uniqueMemberKindCount / uniqueResultTypeCount / ownerTypeList / memberKindList / resultTypeList / ownerTypes / memberKinds / resultTypes` 这类成员语义摘要，便于先看一个查询结果里 accessor / ctor / async-throws / owner type 的分布，再决定是否展开单条结果。
-- `native.symbolInfo` 现在可以直接结构化返回单个 native symbol 的 `moduleBase / address / offsetHex / name`，后续排查某个本地符号时不必再先全量 `native.symbols` 再脚本过滤。
-- `native.symbols` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / moduleNameList / symbolNameList / moduleNames / symbolNames` 这类摘要，适合脚本先看本地符号名在不同镜像里的分布，而不必自己扫完整数组。
-- `native.exports` 列表结果现在也会额外补 `uniqueModuleCount / uniqueSymbolCount / moduleNameList / symbolNameList / moduleNames / symbolNames` 这类摘要，适合脚本先看某个镜像导出符号名的分布，而不必自己扫完整数组。
-- 在这之上，`native.exports` 现在也补了统一的模块镜像摘要字段，例如 `image / hasImage / resolved / resolvedImageName / resolvedImagePath / resolvedDirectoryPath / resolvedPathKind / resolvedBase / resolvedSlide / resolvedSizeHex`；`native.symbols` 在传了 `moduleName` 过滤时也会带同一套镜像摘要，并补 `hasModuleFilter`，脚本侧可以区分“全局符号查询”和“按某个模块过滤但模块没解析到”。
-- `native.images` 列表结果现在也会额外补 `uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNameList / pathKindList / imageNames / pathKinds` 这类摘要，适合脚本先看镜像整体分布，再决定要不要展开完整列表。
-- `native.base / native.imageInfo / native.mainImage / native.image / native.export` 这组单项查询现在也补了更统一的状态字段，例如 `hasBase / hasImage / imageName / imagePath / hasAddress / hasSymbol / resolved`，脚本侧判空时不必再分别盯着 `null` 和文本 `<null>` 两套信号。
-- `native.imageInfo / native.mainImage / native.image / native.symbol / native.export` 这组基础单项查询现在也进一步补了统一顶层摘要字段，例如 `resolvedImageName / resolvedImagePath / resolvedDirectoryPath / resolvedPathKind / resolvedBase / resolvedSlide / resolvedSizeHex / resolvedName / resolvedModuleName / resolvedAddress / hasName / hasModuleName`；其中 image 这组还会把 `directoryPath / pathKind / slide / sizeHex / hasDirectoryPath / isSystemPath / isAppPath / isJailbreakPath` 直接抬到顶层，脚本侧取镜像和符号摘要时不必每次先钻进内层对象。
-- `native.base` 现在也补了 `resolvedBase` 顶层字段，脚本侧拿模块基址时不必同时分支处理 `base` 和“是否命中”的语义。
-- `native.symbolInfo / native.exportInfo / native.dependencyInfo / native.rpathInfo / native.importInfo / native.segmentInfo / native.sectionInfo / native.loadCommandInfo` 这组单项查询现在也补了统一顶层状态字段，例如 `has*Info / resolved / resolvedName / resolvedModuleName / resolvedAddress / resolvedPath / sourceKind / hasAddress`，脚本侧做命中判断和提取关键摘要时不必每次先解包内层对象；其中 `native.symbolInfo / native.exportInfo` 现在也把 `name / moduleBase / address / offsetHex` 这类高频字段直接平铺到顶层，`native.dependencyInfo / native.rpathInfo` 也把 `pathKind / moduleBase` 以及 dependency 的 `name / path / ordinal / currentVersion / compatibilityVersion / timestamp` 这些常用字段同步抬平，`native.importInfo` 则把 `name / normalizedName / moduleBase / dylibOrdinal / dylibName` 这些排查 import 归属时最常用的值也直接抬平，`native.segmentInfo` 也把 `name / moduleBase / vmaddr / vmEnd / fileoffHex / filesizeHex / initprotFlags / maxprotFlags` 直接抬到顶层，`native.sectionInfo` 则把 `name / fullName / moduleBase / addr / endAddr / offsetHex / alignmentBytesHex / sectionType / sectionTypeName` 这些定位字段同步抬平，`native.loadCommandInfo` 也把 `name / index / moduleBase / cmdHex / cmdBaseHex / offsetHex / endOffsetHex / detail` 直接抬到顶层；在这之上，`native.rpathInfo / native.importInfo / native.segmentInfo / native.sectionInfo / native.loadCommandInfo` 这批结果现在也继续补了更直接的 `resolved*` 摘要别名，例如 `resolvedPathKind / resolvedHasPath / resolvedIsTokenPath / resolvedUsesLoaderPath / resolvedSource / resolvedSourceKind / resolvedHasDylibName / resolvedVmsizeHex / resolvedFileEndHex / resolvedHasVmRange / resolvedHasData / resolvedIsZeroFillLike / resolvedIsReqDyld / resolvedToolCount / resolvedDyldRegionCount`，脚本侧不必再先解包内层对象才能区分“未解析到”和“已解析但值为空/为 false”。
-- 在这之上，`native.loadCommandInfo` 现在也会继续解析常见 Mach-O load command detail，补出 `commandFamily / path / pathKind / currentVersion / compatibilityVersion / timestamp / version / minOs / sdk / platform / tools / uuid / dataoffHex / datasizeHex / dataEndHex / entryoffHex / stacksizeHex / cryptoffHex / cryptsizeHex / cryptid / dyldRegions` 这类结构化字段；对应的 `native.loadCommands` 列表结果也补了 `uniqueCommandFamilyCount / pathCommandCount / versionedCommandCount / dataRangeCommandCount / dyldRegionCommandCount / commandFamilies` 这类摘要，脚本侧按 load command 家族、路径类、版本类、`__LINKEDIT` 数据区或 `LC_DYLD_INFO(_ONLY)` 区间做聚合时不必再自己拆 `detail` 文本。
-- Mach-O load command raw 值现在统一来自 `native-api/src/macho_load_commands.rs`，保留 `LC_REQ_DYLD` 高位并使用 exact raw 比较；`LC_MAIN / LC_SOURCE_VERSION / LC_BUILD_VERSION / LC_FUNCTION_STARTS / LC_DYLD_EXPORTS_TRIE / LC_DYLD_CHAINED_FIXUPS` 等旧错位值已修正。CI run `30764666695` 的 ARM64 macOS host 测试实际通过当前进程的生产 `find_image_*` 解析链，QuickJS fixture 同时断言 `cmdHex / cmdBaseHex / isReqDyld / reqDyldCommandCount`。
-- 在这之上，这组 native 单项查询现在也继续补了更直接的顶层摘要字段，例如 `resolvedModuleBase / resolvedOffsetHex / resolvedOrdinal / resolvedCurrentVersion / resolvedDylibOrdinal / resolvedDylibName / resolvedVmaddr / resolvedVmEnd / resolvedAddr / resolvedEndAddr / resolvedCmdHex / resolvedEndOffsetHex / resolvedPathKind / resolvedSlide / resolvedSizeHex`，脚本侧拿常用地址/版本/路径/段节/命令摘要时不必再深入内层 `image / symbolInfo / dependencyInfo / importInfo / segmentInfo / sectionInfo / loadCommandInfo`。
-- `native.dyldInfo / native.linkedit / native.functionStarts / native.codeSignature / native.dataInCode / native.exportsTrie / native.chainedFixups` 这组较重的单项查询现在也补了统一顶层状态字段和关键计数，例如 `has* / resolved / commandName / tableCount / startCount / blobKind / entryCount / segmentCount / importCount`；同时这组结果现在也会和 `native.exports / native.symbols(module)` 一样补统一模块镜像摘要字段，例如 `image / hasImage / resolvedImageName / resolvedImagePath / resolvedDirectoryPath / resolvedPathKind / resolvedBase / resolvedSlide / resolvedSizeHex`，脚本侧可以直接拿到“模块镜像是否解析到”和对应路径/slide/size 摘要，不必再额外补一轮 `native.imageInfo`；其中 `native.dyldInfo` 现在也会把 `moduleBase / commandHex / rebaseOffHex / rebaseSizeHex / rebaseEndHex / bindOffHex / bindSizeHex / bindEndHex / weakBind* / lazyBind* / exportOffHex / exportSizeHex / exportEndHex / nonEmptyRegionNames / nonEmptyRegionList / regions` 这批高频 dyld 区段字段直接抬到顶层，并继续补 `resolvedRebase* / resolvedBind* / resolvedWeakBind* / resolvedLazyBind* / resolvedExport* / resolvedFirstRegionName / resolvedLastRegionName / resolvedLargestRegion* / resolvedTotalSizeHex` 这类直达摘要；`native.linkedit` 现在也会把 `moduleBase / vmaddr / vmEnd / vmsizeHex / fileoffHex / filesizeHex / fileEndHex / computedBase / computedEnd / symoffHex / nsyms / symtabAddress / stroffHex / strsizeHex / strtabAddress / indirectsymoffHex / nindirectsyms / indirectsymAddress` 这批 `__LINKEDIT` 定位字段直接抬到顶层，并继续补 `resolvedVmEnd / resolvedFileEndHex / resolvedSymoffHex / resolvedNsyms / resolvedSymtabAddress / resolvedStroffHex / resolvedStrsizeHex / resolvedStrtabAddress / resolvedIndirectsymoffHex / resolvedNindirectsyms / resolvedIndirectsymAddress / resolvedFirstTableName / resolvedLastTableName` 这类直达摘要；`native.dataInCode` 现在也会把 `moduleBase / linkeditBase / dataoffHex / datasizeHex / dataAddress / dataEnd / totalEntryLength / firstEntryAddress / lastEntryAddress / largestEntryAddress / dataEntryCount / jumpTableEntryCount / unknownEntryCount` 这批 entry/数据段摘要直接抬到顶层，`native.exportsTrie` 现在也会把 `moduleBase / linkeditBase / dataoffHex / datasizeHex / dataAddress / dataEnd / longestExportNameLength / addressEntryCount / lowestAddress / highestAddress / offsetEntryCount / lowestOffsetHex / highestOffsetHex / importNameCount / resolverCount / reexportCount / stubAndResolverCount / weakDefinitionCount` 这批导出分布摘要直接抬到顶层，`native.chainedFixups` 现在也会把 `moduleBase / linkeditBase / dataoffHex / datasizeHex / dataAddress / dataEnd / fixupsVersion / startsOffsetHex / importsOffsetHex / symbolsOffsetHex / startsAddress / importsAddress / symbolsAddress / startsToImportsDeltaHex / importsToSymbolsDeltaHex / importsCount / importsFormat / importsFormatName / symbolsFormat / symbolsFormatName / firstSegmentIndex / lastSegmentIndex / totalMultiStartPageCount / largestSegmentIndex / largestSegmentSizeHex / firstImportName / lastImportName / firstLibOrdinal / lastLibOrdinal` 这批 fixups 布局和 import 摘要直接抬到顶层，`native.linkedit / native.chainedFixups` 也会把 `tableNames / tableNameList / nonEmptyTableNames / nonEmptyTableNameList / tables / pointerFormats / libOrdinals` 这类已聚合摘要直接抬到顶层，脚本侧先做快速判定、拿摘要数组或按 kind 分组时不必总是深入内层大对象。
-- 上面这组较重的 native 单项查询现在也进一步补了更统一的顶层摘要字段，例如 `resolvedModuleName / resolvedCommandName / resolvedComputedBase / firstStartAddress / resolvedMagicName / firstKindName / longestExportName / dominantPointerFormatName`，脚本侧要拿模块名和几个高频摘要时不必每次再钻进 `dyldInfo / linkedit / functionStarts / codeSignature / dataInCode / exportsTrie / chainedFixups` 内层对象。
-- 在这之上，这组较重的 native 单项查询现在也继续补了更直接的顶层定位字段，例如 `resolvedModuleBase / resolvedCommandHex / resolvedVmsizeHex / resolvedFileoffHex / resolvedFilesizeHex / resolvedDataoffHex / resolvedDatasizeHex / resolvedDataAddress / resolvedDataEnd / firstStartOffsetHex / lastStartOffsetHex / firstEntryOffsetHex / lastEntryOffsetHex / firstKind / lastKind / resolvedStartsOffsetHex / resolvedImportsOffsetHex / resolvedSymbolsOffsetHex`，脚本侧拿模块基址、__LINKEDIT 数据范围和 fixups 三段偏移时不必再深入内层对象；其中 `native.functionStarts` 现在也会把 `moduleBase / linkeditBase / dataoffHex / datasizeHex / dataAddress / dataEnd / firstGapHex / lastGapHex / firstGapFromOffsetHex / firstGapToOffsetHex / lastGapFromOffsetHex / lastGapToOffsetHex` 这批 gap/数据段定位字段直接抬到顶层，并继续补 `resolvedLinkeditBase / resolvedFirstStartOffsetHex / resolvedFirstStartAddress / resolvedLastStartOffsetHex / resolvedLastStartAddress / resolvedTotalSpanHex / resolvedFirstGapHex / resolvedLastGapHex / resolvedFirstGapFromOffsetHex / resolvedFirstGapToOffsetHex / resolvedLastGapFromOffsetHex / resolvedLastGapToOffsetHex / resolvedLargestGapHex` 这类直达摘要；`native.codeSignature` 现在也会把 `moduleBase / linkeditBase / dataoffHex / datasizeHex / dataAddress / dataEnd / magicHex / magicName / lengthHex / count / hasCount / blobLengthMatchesDataSize / blobLengthRelation` 这批签名 blob 定位字段直接抬到顶层，并继续补 `resolvedLinkeditBase / resolvedBlobKind / resolvedMagicCategory / resolvedKnownMagic / resolvedHasCount / resolvedHasBlobLength / resolvedBlobLengthMatchesDataSize / resolvedBlobLengthRelation / resolvedCountMatchesSuperBlob` 这类直达摘要；`native.dataInCode` 现在也会继续补 `resolvedLinkeditBase / resolvedTotalEntryLength / resolvedFirstEntryOffsetHex / resolvedFirstEntryAddress / resolvedFirstKindName / resolvedLastEntryOffsetHex / resolvedLastEntryAddress / resolvedLastKindName / resolvedLargestEntryOffsetHex / resolvedLargestEntryAddress / resolvedLargestEntryLength / resolvedTotalSpanHex` 这类 entry 分布直达摘要；`native.exportsTrie` 现在也会继续补 `resolvedLinkeditBase / resolvedFirstExportName / resolvedFirstKind / resolvedLastExportName / resolvedLastKind / resolvedLongestExportName / resolvedLongestExportNameLength / resolvedAddressSpanHex / resolvedOffsetSpanHex / resolvedAddressEntryCount / resolvedLowestAddress / resolvedHighestAddress / resolvedOffsetEntryCount / resolvedLowestOffsetHex / resolvedHighestOffsetHex / resolvedImportNameCount / resolvedResolverCount / resolvedReexportCount / resolvedStubAndResolverCount / resolvedWeakDefinitionCount` 这类导出分布直达摘要；`native.chainedFixups` 现在也会继续补 `resolvedLinkeditBase / resolvedFixupsVersion / resolvedStartsToImportsDeltaHex / resolvedImportsToSymbolsDeltaHex / resolvedImportsCount / resolvedImportsFormat / resolvedImportsFormatName / resolvedSymbolsFormat / resolvedSymbolsFormatName / resolvedFirstSegmentIndex / resolvedLastSegmentIndex / resolvedTotalMultiStartPageCount / resolvedLargestSegmentIndex / resolvedLargestSegmentSizeHex / resolvedDominantPointerFormatName / resolvedFirstImportName / resolvedLastImportName / resolvedFirstLibOrdinal / resolvedLastLibOrdinal` 这类 fixups 布局直达摘要。
-- `native.encryptionInfo / native.entryPoint / native.sourceVersion / native.buildVersion / native.dylinker / native.installName / native.uuid` 这组单项查询现在也补了统一顶层状态字段，例如 `has* / resolved / resolvedModuleName / cryptid / entryoffHex / version / platform / resolvedPath / resolvedPathKind / kindName / uuid`；同时这组结果现在也统一补了模块镜像摘要字段，例如 `image / hasImage / resolvedImageName / resolvedImagePath / resolvedDirectoryPath / resolvedPathKind / resolvedBase / resolvedSlide / resolvedSizeHex`，脚本侧做“模块是否解析到”和镜像路径/slide/size 摘要获取时不必再额外补 `native.imageInfo`。
-- 在这之上，这组 native 轻量单项查询现在也继续补了更直接的顶层摘要字段，例如 `resolvedModuleBase / resolvedCryptoffHex / resolvedCryptsizeHex / resolvedVersion / resolvedPlatform / resolvedMinOs / resolvedSdk / resolvedCurrentVersion / resolvedCompatibilityVersion / resolvedTimestamp / resolvedUuid`，脚本侧拿版本、入口、加密区和 UUID 摘要时不必再解包内层对象；其中 `native.sourceVersion` 现在也继续补了 `resolvedHasVersion / resolvedVersionPartCount / resolvedMajorVersion / resolvedMinorVersion / resolvedPatchVersion / resolvedExtraVersionCount` 这类版本段直达摘要，`native.buildVersion` 也继续补了 `resolvedHasMinOs / resolvedHasSdk / resolvedMinOsPartCount / resolvedSdkPartCount / resolvedHasTools / resolvedFirstTool / resolvedLastTool / resolvedFirstToolVersion / resolvedLastToolVersion / resolvedToolCount / resolvedUniqueToolCount / resolvedToolNames / resolvedToolNameList / resolvedTools` 这类平台和工具链直达摘要，`native.dylinker` 也继续补了 `resolvedKind / resolvedHasName / resolvedHasPath / resolvedIsTokenPath / resolvedUsesLoaderPath / resolvedUsesExecutablePath / resolvedUsesRpathToken / resolvedPathDepth / resolvedIsWeakDylinker / resolvedIsReexportDylinker / resolvedIsUpwardDylinker / resolvedIsLoadDylinker` 这类路径装载语义直达摘要，`native.installName` 也继续补了 `resolvedHasName / resolvedHasPath / resolvedIsTokenPath / resolvedUsesLoaderPath / resolvedUsesExecutablePath / resolvedUsesRpathToken / resolvedPathDepth / resolvedHasTimestamp / resolvedVersionMismatch` 这类路径和版本一致性直达摘要，`native.uuid` 也继续补了 `resolvedNormalizedUuid / resolvedHasUuid / resolvedUuidLength / resolvedUuidSegmentCount` 这类 UUID 规范化和分段直达摘要。
-- `swift.symbolInfo / swift.protocolInfo / swift.conformanceInfo / swift.metadataInfo / swift.typeInfo / swift.methodInfo` 这组单项查询现在也补了统一的顶层状态字段，例如 `has*Info / resolved / resolvedName / resolvedModuleName / sourceKind`，脚本侧做命中判断和取常用摘要时不必每次先钻进内层对象。
-- 上面这组 Swift 单项查询现在也进一步补了更统一的顶层摘要字段，例如 `resolvedSourceSymbolName / resolvedSourceAddress / resolvedSourceOffsetHex / resolvedSourceDemangledName / resolvedAddress / resolvedOffsetHex / hasDemangledName`，脚本侧取 source 符号来源、运行时地址和 demangle 命中状态时不必再深入内层对象。
-- 在这之上，这组 Swift 单项查询现在也继续补了更直接的顶层名称摘要字段，例如 `hasName / hasTypeName / hasMemberName / hasProtocolName / resolvedMemberKey / resolvedWitnessKey`，脚本侧做名称命中判定、直接拼成员键或 witness 键时不必再深入 `symbolInfo / conformanceInfo / vtableInfo / witnessTableInfo / typeLayout` 内层对象。
-- 在这之上，`swift.protocolInfo / swift.conformanceInfo / swift.metadataInfo / swift.typeInfo` 现在也继续补了 `resolvedHasName / resolvedHasTypeName / resolvedHasProtocolName / resolvedHasSourceKind / resolvedHasSourceSymbolName / resolvedHasSourceDemangledName / resolvedHasQualifiedName / resolvedHasSignature / resolvedHasRelation / resolvedHasContextModuleName / resolvedHasWhereClause / resolvedHasDetailKind / resolvedIsDescriptor / resolvedIsMetadata / resolvedIsMetadataAccessor / resolvedIsNominalDescriptor / resolvedIsWitness*` 这类顶层布尔摘要，脚本侧判断“命中了什么语义”和“哪些派生字段是真有值”时不必回到内层对象；同时这几类结果现在也继续补了更直接的值别名，例如 `resolvedQualifiedName / resolvedSignature / resolvedRelation / resolvedContextModuleName / resolvedWhereClause / resolvedDetailKind / resolvedSourceKind`，脚本侧不必再在 `resolved*` 判空之后回退去读非 `resolved` 字段。
-- 对应地，`swift.symbolInfo / swift.methodInfo / swift.vtableInfo / swift.witnessTableInfo` 现在也继续补了 `resolvedHasName / resolvedHasDemangledName / resolvedHasOwnerTypeName / resolvedHasMemberName / resolvedHasSignature / resolvedHasResultTypeName / resolvedIsMember / resolvedIsAccessor / resolvedIsGetter / resolvedIsSetter / resolvedIsModifyAccessor / resolvedIsReadAccessor / resolvedIsConstructor / resolvedIsDestructor / resolvedIsSubscript / resolvedIsOperator / resolvedIsClosure / resolvedIsStaticMember / resolvedIsClassMember / resolvedIsMutating / resolvedIsDispatchThunk / resolvedIsAsync / resolvedIsThrowing / resolvedThrowsKind / resolvedHasSourceKind / resolvedHasTypeName / resolvedHasProtocolName / resolvedHasRelation / resolvedHasWhereClause / resolvedIsWitness*` 这类顶层布尔摘要；在这之上，`swift.symbolInfo / swift.methodInfo / swift.vtableInfo / swift.witnessTableInfo` 现在也进一步补了更直接的直达字段，例如 `resolvedOwnerTypeName / resolvedMemberName / resolvedMemberKind / resolvedSignature / resolvedResultTypeName / resolvedSourceKind / resolvedRelation / resolvedContextModuleName / resolvedWhereClause / resolvedDetailKind`，脚本侧判断某个 Swift 符号/成员到底是哪一类入口时不必回到内层对象。
-- 在这之上，`swift.symbolInfo / swift.protocolInfo / swift.conformanceInfo / swift.metadataInfo / swift.typeInfo / swift.methodInfo / swift.vtableInfo / swift.witnessTableInfo / swift.typeLayoutInfo` 现在也补了 `resolvedModuleBase` 这类顶层字段；其中 `swift.typeLayoutInfo` 还补了 `first/lastMetadataCacheName` 和 `first/lastAssociatedTypeDescriptorName`，脚本侧拿模块基址和 layout 内部摘要时不必再解包内层对象。
-- `swift.symbolInfo / swift.methodInfo / swift.typeInfo / swift.protocolInfo / swift.conformanceInfo / swift.metadataInfo / swift.vtableInfo / swift.witnessTableInfo / swift.typeLayoutInfo` 这组单项查询现在也和列表查询共用宽松匹配规则，支持模块限定下按符号/demangle、类型/协议 basename、大小写不敏感/部分名称、成员名子串等方式命中，减少“列表能搜到但 Info 精确等号查不到”的情况。
-- `swift.vtableInfo / swift.witnessTableInfo / swift.typeLayoutInfo` 这组单项查询现在也补了统一顶层状态字段和关键计数，例如 `has*Info / resolved / resolvedTypeName / resolvedMemberName / resolvedProtocolName / sourceKind / isDispatchThunk / isAccessor / metadataCount / vtableCount / witnessTableCount`，脚本侧做快速过滤时不必先解包内层对象。
-- `swift.typeLayoutInfo` 现在也进一步把 `first/last MetadataAccessor / NominalDescriptor / VtableMember / WitnessProtocol` 这类首尾摘要平铺到了顶层，并补了对应的 `resolvedFirst* / resolvedLast* / resolvedHas* / resolved*Count` 直达字段；在这之上，`resolvedSourceKinds / resolvedContextModules / resolvedDetailKinds / resolvedVtableOwnerTypes / resolvedVtableMemberKinds / resolvedVtableResultTypes / resolvedWitnessProtocols / resolvedWitnessSourceKinds` 这批聚合数组，以及 `resolvedVtableGetterCount / resolvedVtableSetterCount / resolvedVtableModifyAccessorCount / resolvedVtableReadAccessorCount / resolvedVtableConstructorCount / resolvedVtableDestructorCount / resolvedVtableSubscriptCount / resolvedVtableOperatorCount / resolvedVtableClosureCount / resolvedVtableStaticMemberCount / resolvedVtableClassMemberCount / resolvedVtableMutatingMemberCount / resolvedVtableAsyncCount / resolvedVtableThrowingCount / resolvedVtableDispatchThunkCount / resolvedWitnessDemangledCount / resolvedUniqueVtableOwnerTypeCount / resolvedUniqueVtableResultTypeCount / resolvedUniqueWitnessSourceKindCount` 这类分布摘要也已经直接抬平，脚本侧先抓布局概览、判断哪些分组真命中、拿 type-source/vtable/witness 计数时不必每次再进 `typeLayout.*` 里取首个/末个名字。
-- `swift.available / swift.demangle` 这组基础 Swift 标量查询现在也补了统一顶层状态字段，例如 `resolved / resolvedSymbol`；脚本侧判断 demangle 是否命中时不必只和 `<unavailable>` 文本做字符串比较。
-- `swift.typeLayoutInfo` 现在可以直接结构化返回单个 Swift type layout 的 `metadata / metadataAccessors / nominalDescriptors / metadataCaches / associatedTypeDescriptors / vtableEntries / witnessTables` 以及对应计数，后续排查某个类型布局时不必再先全量 `swift.typeLayout` 再脚本过滤；在这之上，内部这几类 type-source 结果现在也会额外补 `typeSourceEntryCount / sourceDemangledCount / hasSourceDemangledTypes / uniqueSourceKindCount / uniqueContextModuleCount / uniqueDetailKindCount / contextModuleNameList / detailKindList / sourceKindList / sourceKinds / contextModules / detailKinds`，脚本侧先看 metadata/accessor/descriptor/cache 的来源分布时不必再自己把五组数组合并聚合。
-- 在这之上，`swift.typeLayoutInfo` 现在也会把内部 vtable/witness 语义摘要直接抬平，例如 `parsedVtableMemberCount / vtableAccessorCount / vtableGetterCount / vtableSetterCount / vtableConstructorCount / vtableDestructorCount / vtableAsyncCount / vtableThrowingCount / uniqueVtableMemberKindCount / vtableOwnerTypes / vtableMemberKinds / vtableResultTypes / witnessAccessorCount / uniqueWitnessProtocolCount / uniqueWitnessSourceKindCount / witnessProtocols / witnessSourceKinds`，脚本侧先看某个类型布局里的 accessor、async/throws 成员和 witness 分布时不必再自己扫内层数组聚合。
-- `swift.typeLayout` 列表结果现在也会额外补 `uniqueModuleCount / moduleNameList / typeNameList / moduleNames / typeNames`，以及 `layoutsWithMetadataCount / layoutsWithVtableEntriesCount / layoutsWithWitnessTablesCount` 这类“有多少个类型布局带某类块”的摘要，同时还会带 `metadataEntryCount / vtableEntryCount / witnessTableEntryCount` 这类总条目数，适合脚本先看整体布局分布和类型/模块聚合，再决定是否展开单个类型；对应的内部 type-source 聚合现在也补了 `typeSourceEntryCount / sourceDemangledCount / layoutsWithSourceDemangledTypesCount / uniqueSourceKindCount / uniqueContextModuleCount / uniqueDetailKindCount / contextModuleNameList / detailKindList / sourceKindList / sourceKinds / contextModules / detailKinds`，适合批量看一组类型布局里的 metadata/accessor/descriptor/cache 来源分布。
-- 对应地，`swift.typeLayout` 列表结果现在也会额外补 `vtableAccessorEntryCount / vtableGetterEntryCount / vtableSetterEntryCount / vtableConstructorEntryCount / vtableDestructorEntryCount / vtableStaticMemberEntryCount / vtableAsyncEntryCount / vtableThrowingEntryCount / witnessAccessorCount / layoutsWithAccessorVtableEntriesCount / layoutsWithAsyncVtableEntriesCount / layoutsWithThrowingVtableEntriesCount / layoutsWithWitnessAccessorsCount` 这类跨 layout 聚合计数，便于先看一批类型布局里有多少个 accessor/async/witness accessor，再决定要不要逐个展开。
-- `swift.vtableInfo` 现在可以直接结构化返回单个 Swift vtable entry 的 `moduleBase / typeName / memberName / sourceKind / address / offsetHex / isDispatchThunk`，后续排查某个类型的具体虚表成员时不必再先全量 `swift.vtable` 再脚本过滤。
-- `swift.witnessTableInfo` 现在可以直接结构化返回单个 Swift witness table entry 的 `moduleBase / typeName / protocolName / sourceKind / address / offsetHex / isAccessor`；在这之上也会继续解析 demangled conformance/witness 语义，补出 `signature / relation / contextModuleName / whereClause / detailKind / isDescriptor / isWitnessTable / isWitnessAccessor / isWitness`，后续排查某个类型对某个协议的 witness table / accessor 时不必再自己拆 demangle 文本。
-- `swift.vtable / swift.witnessTable` 这两类列表结果现在也会额外补 `uniqueTypeCount / uniqueModuleCount / uniqueSourceKindCount / demangledCount` 这类摘要；其中 `swift.vtable` 还会补 `uniqueMemberCount / dispatchThunkCount / moduleNameList / memberNameList / typeNameList / sourceKindList / moduleNames / memberNames / types / sourceKinds`，`swift.witnessTable` 还会补 `uniqueProtocolCount / uniqueWitnessKeyCount / accessorCount / moduleNameList / typeNameList / protocolNameList / witnessKeyList / typeNames / moduleNames / protocols / witnessKeys / sourceKinds`，并继续补 `whereClauseCount / hasWhereClauses / uniqueContextModuleCount / uniqueDetailKindCount / contextModuleNameList / detailKindList / sourceKindList / contextModules / detailKinds` 这类 witness 语义摘要，适合脚本先看虚表成员和 witness table 的类型/模块/协议/来源分布，而不必自己扫完整数组。
-- hook backend filesystem 探测现在同时覆盖 rootful 和 rootless 常见路径前缀；像 ElleKit / Substrate / Substitute / libhooker 这类生态，不再只认 `/usr/lib`，也会扫描 `/var/jb/...`。
-- `native.hookenv` / `Native.detectHookEnvironment()` 现在除了 backend / warning，还会补出面向当前 `hook_policy` 的建议动作，便于真机上快速判断该走 query-only、cleanup-only、fail-fast 还是继续冒险装 inline hook；返回里也会区分 `allowed` 和 `inlineHooksAllowed`，不再把“允许注入做查询”和“允许安装 inline hook”混成一个布尔值；同时还会额外带上 `conflictState / riskLevel / baseCommandMode / effectiveCommandMode / commandMode / preferredPath / autoDowngradedToQueryOnly / autoDowngradeReason / loadedBackendCount / loadedExternalBackendCount / filesystemOnlyBackendCount / loadedImageCount / filesystemPathCount / coexistenceLayerAvailable / singleExternalBackendLoaded / multipleExternalBackendsLoaded`，以及 `bootstrapInjectionAllowed / queryCommandsAllowed / hookInstallCommandsAllowed / hookStatusCommandsAllowed / hookStopCommandsAllowed / hookInstallAllowed / hookStatusAllowed / hookStopAllowed` 这组能力位；在这之上也新增了结构化 `recommendedActions`（按 `bootstrap/query/hook-install/hook-status/hook-stop` 分组给出 `actionKey/priority/allowed/status/recommendation/reason`，并按优先级稳定排序），同时补了 `recommendedActionCount / allowedActionCount / blockedActionCount / installBlockedBy / installRecommendation / nextAction / nextActionCommandGroup / nextActionKey / nextActionPriority / nextActionAllowed / nextActionBlockedBy / nextActionBranch / nextActionStatus / nextActionRecommendation / nextActionReason` 这组直达摘要；现在也继续补了 `hasSuggestedSequence / suggestedSequence / commandTemplates / backendAdaptation / backendAdaptationMode / backendAdaptationAlignment / backendAdaptationBias / backendAdaptationSummary / branchExecutionOrder / readyBranchCount / blockedBranchCount / actionBranches / nextActionTemplateCount / nextActionTemplates / nextActionCommandJsonTemplateCount / nextActionCommandJsonEligibleTemplateCount / nextActionCommandJsonTemplates / nextActionPlan / hasFallbackPlan / fallbackPlan / suggestedEscalationKey / escalationRecommendations / errorCodeRouting / errorCodeRoutingResolved / errorCodeRoutingEntries / routingDecision / routingDecision.ready.defaultCommandJsonTemplate* / routingDecision.ready.resolveIndex / routingDecision.ready.resolveDefault / routingDecision.ready.resolveExamples / routingDecision.ready.resolveExample* / routingDecision.ready.resolveKnown* / routingDecision.ready.resolveMissing* / routingDecision.ready.resolveErrorCodeCount / routingDecision.ready.resolve.queryOnly* / routingDecision.ready.phaseResolve / routingDecision.ready.phaseResolveIndex / routingDecision.ready.phaseResolveDefault / routingDecision.ready.phaseResolveExamples / routingDecision.ready.phaseResolveExample* / routingDecision.ready.phaseResolveKnown* / routingDecision.ready.phaseResolveMissing* / routingDecision.ready.phaseResolveKnownPhases / routingDecision.ready.phaseResolve.queryOnly* / routingDecision.ready.phaseIndex / routingDecision.ready.phases / routingDecision.ready.phaseQuery* / routingDecision.ready.phasePreflight* / routingDecision.ready.phaseDiagnose* / routingDecision.ready.phaseCleanup* / nextStep / nextStep* / nextStepCommandJsonTemplate* / nextStepCommandJsonTemplateEligible / nextStepReason / nextStepPreferredPath / nextStepChain / activeStep / activeStep* / activeStepCommandJsonTemplate* / activeStepCommandJsonTemplateEligible / activeStepReason / activeStepPreferredPath`，脚本可以直接拿“当前最建议执行的动作”、所有候选 branch 的 ready/block 状态、对应命令模板、可直接拼 controller `--command-json` 的模板，以及当前可执行的 next-action short chain；当首选 next-action 当前不可执行时，顶层 `nextStep / nextStepChain / activeStep` 也会自动切到 fallback short chain，不必先遍历整个 actions 数组再自己排序或手写模板。当前这份 `backendAdaptation` 先提供单进程视角的基础摘要：`topologyKind / source / preferredGroupKey / query* / preflight* / cleanup* / install* / preferred* / queryGroup / preflightGroup / cleanupGroup / installGroup / preferredGroup / *CommandJsonEligibleTemplateCount / *primaryCommandJsonTemplate* / executionSummary / execution* / nextStep / nextStep* / stepChain / stepChain* / activeStep / activeStep* / requiresQueryPhase / requiresPreflight / requiresCleanupPhase / inlineInstallReadyNow`；后续再继续往 controller 的双侧 conflict-resolution 结构靠拢。若同一进程同时命中多个已加载外部 backend（`conflictState=multiple-loaded`），即使 `hook_policy=warn` 也会自动降级到 query-only（`inlineHooksAllowed=false`），避免在未实现多 backend 共存层时继续冒险做 inline install。
-- 在这之上，`backendAdaptation` 现在也会补 backend family 维度的路由字段：`backendFamilyAlignment / backendFamilyRouteKey / backendFamilyRouteSummary`，以及 `loadedBackendFamilies / sharedLoadedBackendFamilies / controllerLoadedOnlyBackendFamilies / targetLoadedOnlyBackendFamilies / filesystemOnlyBackendFamilies / controllerLoadedBackendFamilies / targetLoadedBackendFamilies` 和对应计数；冲突对也会带 `backendFamilies / controllerBackendFamily / targetBackendFamily / familyConflictKind`，脚本侧可以直接按 family 拓扑做 query/preflight/cleanup 路由，不必只盯 backend id。
-- `native.detectHookEnvironment` 现在也已接到 controller CLI / REPL / `--command-json`，作为 `native.hookenv` 的别名，方便直接按 JS API 里的 `Native.detectHookEnvironment()` 名字调用。
-- `--preflight-json` / `--inject-json` / `--command-json` 里的 `environment.hookStrategy`、`environment.hookEnvironment`、`preflight.targetHookStrategy`、`preflight.targetHookEnvironment` 现在也已经对齐带上这批 hook capability / risk 字段；controller 文本模式下的 injection environment、target hook strategy、doctor 摘要也会直接打印 `query/install/status/stop` 能力位，不必再只从 `allowed/query-only/cleanup-only/blocked` 文案猜实际可做的命令类别。
-- `PAC.isImageArm64e(moduleName)` / `pac.image <module>` 现在可以直接判断单个镜像是否是 `arm64e`，比只看当前进程主镜像更适合排查某个目标 dylib 是否已经进入 PAC 风险面。
-- `PAC.arm64eImages([query])` / `pac.images [filter]` 现在可以直接列出当前进程里的 `arm64e` 镜像，适合先收敛 PAC 风险面，再决定具体看哪个模块。
-- `pac.isProcessArm64e` / `pac.isImageArm64e <module>` / `pac.arm64eImages [filter]` / `pac.stripData <address>` 现在也都已接到 controller CLI / REPL / `--command-json`，分别作为 `pac.arm64e` / `pac.image` / `pac.images` / `pac.stripdata` 的别名，方便直接按 JS API 里的 `PAC.*` 名字调用。
-- `pac.available / pac.arm64e / pac.image / pac.strip / pac.stripdata` 这组 PAC 单项查询现在也补了统一顶层状态字段，例如 `resolved / hasImage / resolvedModuleName / strippedAddress / changed`，脚本侧判定模块是否命中、以及 strip 前后地址是否变化时不必只看文本。
-- 在这之上，`pac.available / pac.arm64e / pac.image` 现在也继续补了 `resolvedAvailable / resolvedArm64e` 这类直接值字段，脚本侧做 capability / arm64e 判定时不必再在主字段和 resolved 语义之间自己对齐。
-- `pac.images` 结果现在也会额外补 `firstImagePath / lastImagePath / uniqueImageCount / uniquePathKindCount / systemImageCount / appImageCount / jailbreakImageCount / imageNameList / pathKindList / imageNames / pathKinds` 这类摘要，适合脚本先看当前 `arm64e` 风险面主要集中在哪类镜像路径，而不必自己再对 PAC 镜像列表做一轮聚合。
-- `quickjs-runtime` 里的 `callNative()` 和 `NativeFunction` 现在明确沿用 canonical code pointer 路径，避免 PAC 场景下把已规范化的入口又当成 raw 指针处理。Apple AArch64 在编译器启用 `paca/pacg` 时使用 `xpaci/xpacd`，默认 target 则与内置 hook engine 一致保守保留当前 Apple 用户态低 48 位；这仍需 arm64e 真机验证，不能等同于完整 authenticated branch 支持。
-- Mach 注入链路现在会回读远程 bootstrap 状态；可用 `IOS_RUSTFRIDA_BOOTSTRAP_WAIT_MS` 控制轮询等待时长，设为 `0` 表示关闭等待。
-- Mach bootstrap 远程内存现已拆成代码段和参数/状态段，分别走 `RX` / `RW` 权限，不再依赖单块 `RWX` payload。
-- 远程 Mach 内存分配现在按页对齐申请，并在 `mach_vm_protect` 上带降级处理，减少真机上因页粒度或 `set_maximum` 差异导致的失败。
-- controller / dry-run 输出里的远程 bootstrap 大小现在区分“实际使用字节数”和“页对齐后的实际分配字节数”，便于排查权限与页粒度问题。
-- 注入 trace / dry-run 输出现在会带上目标进程是否 `arm64e` 的探测结果，便于快速判断是否已经进入 PAC 风险区。
-- 如果目标进程是 `arm64e` 且线程 bootstrap 只能退化到 `pthread_create`，注入现在默认拒绝；确实要强制走 fallback 时需显式设置 `IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK=1`。
-- 注入 trace / bootstrap summary 现在会显式打印 `thread_bootstrap_kind`，直接区分 `pthread_create_from_mach_thread` 和 `pthread_create` fallback。
-- controller 在打印注入计划里的 loader symbols 时，也会对 `thread-bootstrap` 符号补出 `kind=...`，便于在真正开始远程写入前先看出是否会走 fallback。
-- controller 现在会在正式远程写入前先执行一次目标 preflight，提前打印目标是否 `arm64e`、thread bootstrap 模式、以及 thread bootstrap 地址是否经过 canonical 化。
-- 这份目标 preflight 现在还会带出目标进程 dyld 镜像摘要，包括主镜像路径/基址和当前镜像总数，方便先判断注入对象是否就是预期目标，以及后续 Swift / dyld / hook 冲突排查时的上下文是否一致。
-- 这份 preflight 现在还会直接带出目标进程的 dyld 镜像列表；文本模式默认预览前几条，`--preflight-json` 会给全量 `targetImages`。
-- `preflight-json` / `inject-json` 现在还会补 `loaderSymbolChecks`，直接检查 rebased loader symbol 是否在目标镜像列表里找到对应模块，以及 `address == image.base + offset` 是否成立。
-- controller 现在会把这次 preflight 结果直接复用到正式注入，减少一次重复的远端 loader symbol / arm64e 探测。
-- 如果只想先看目标 `arm64e / hook backend / loader symbol / dyld` 状态而不真的写远端内存，现在可以直接加 `--preflight-only`；controller 会输出完整 plan + preflight 后退出。
-- 如果后面要接自动化脚本，`--preflight-only --preflight-json` 会直接输出结构化 JSON，里面包含 `environment / doctor / plan / preflight` 四块。
-- 其中 `doctor` 会把注入前最常见的本地/配置问题单独收出来，例如 agent 路径布局、是否还在用旧的 `agent.dylib` 文件名、socket path 是否逼近 Darwin 长度限制、bootstrap script 是否可读、以及本地/目标 hook strategy 是否已经把注入挡住。
-- `--list-images --list-images-json` 会输出当前控制器进程可见的 dyld 镜像列表，字段和 `preflight.targetImages` 对齐。
-- `--inject-json` 会把正式注入链路的 `environment / plan / preflight / trace / handshake` 汇总成单个 JSON；如果当前平台不支持，也会返回结构化错误 JSON。
-- `--inject-json` 现在也会把同一份 `doctor` 结果一起带上，便于在注入失败时先分辨是“路径/脚本/socket 配置问题”，还是后面的 Mach/bootstrap/handshake 问题。
-- `--inject-json` 在注入或握手失败时，现在也会尽量保留 `environment / plan / preflight`，并额外补 `diagnostics.phase / diagnostics.code / diagnostics.hints`；对于 `hook-effective-blocked` 场景还会补 `diagnostics.hookActionKey / diagnostics.hookCommandGroup / diagnostics.hookBlockedBy / diagnostics.hookCommandMode / diagnostics.hookBaseCommandMode / diagnostics.hookEffectiveCommandMode / diagnostics.hookAutoDowngradedToQueryOnly / diagnostics.hookAutoDowngradeReason / diagnostics.hookRecommendation / diagnostics.coexistenceMode / diagnostics.backendPressure / diagnostics.fallbackActionKey / diagnostics.fallbackStepId / diagnostics.fallbackCommand / diagnostics.fallbackPhase / diagnostics.hookFallbackAvailable`，并新增汇总对象 `diagnostics.hook{actionKey,commandGroup,blockedBy,commandMode,baseCommandMode,effectiveCommandMode,autoDowngradedToQueryOnly,autoDowngradeReason,recommendation,coexistenceMode,backendPressure,fallbackActionKey,fallbackStepId,fallbackCommand,fallbackPhase,fallbackAvailable}`；非 hook policy 失败时该对象稳定为 `null`，方便脚本直接分流。旧格式的 `target/controller/both hook strateg(ies) blocked injection` 也会同步补 `diagnostics.hookBlockedBy` 与 `diagnostics.hook.blockedBy`，并尽量把冒号后的原因文本写入 `diagnostics.hookRecommendation` / `diagnostics.hook.recommendation`；若错误文本缺少 `actionKey / commandGroup / blockedBy / commandMode / coexistenceMode / backendPressure / fallbackActionKey / fallbackStepId / fallbackPhase` 或出现非标准值，会统一回落成 `unknown`（不再给 `null` 或脏值），且 `hookFallbackAvailable` 不会被标成可执行。
-- 对 hook-policy 失败，`diagnostics.hints` 现在还会补可执行导向提示：例如 `base/effective` mode 发生调整时会直接提示调整结果，命中 auto-downgrade 时会提示降级原因；若 `fallbackAvailable=true`，还会给出可直接执行的 `action/phase/command` 提示，方便脚本外人工快速排障。
-- Mach 侧常见失败现在也会细分出更明确的阶段码，例如 `mach-vm-allocate / mach-vm-write / mach-vm-protect / mach-vm-read / task-dyld-info / thread-create-running`，并在底层错误文本里附带更具体的 kernel hint，减少真机上看到一串 `state error` 却不知道该先查哪一步的情况。
-- `--inject-json` 里的 `handshake.stage` 现在也会直接标出当前卡在 `awaiting-hello / awaiting-ping / awaiting-hook-environment / awaiting-jsinit / awaiting-loadjs / completed` 哪一步；`hookEnvironmentChecked` 用来区分“这一步已经成功执行但没有 notice”与“这一步还没跑到”。
-- `--inject-json` 里的 `handshake.steps` 现在会把 `hello / ping / hookEnvironment / jsInit / loadJs` 分别标成 `pending / succeeded / skipped / failed` 之一；实际失败点也会同步体现在 `diagnostics.failedStep`，便于脚本直接定位。
-- `--inject-json` 里的 `handshake.errors` 现在会把 `hello / ping / hookEnvironment / jsInit / loadJs` 对应阶段的失败消息单独拆出来；如果某一步没有失败则该字段为 `null`。
-- `--inject-json` 现在连注入前的 `controller script read failed`、`controller socket bind failed` 这类错误也会尽量保留 `environment / plan / preflight` 并给出结构化 `diagnostics`，不再直接退化成只有顶层错误文本。
-- 现在也可以在一次性注入后直接跑单条命令：`--command "<cmd>"`。适合自动化里做单发查询或 hook 控制，不必先进 REPL。
-- 如果要给脚本消费结果，可以在 `--command` 基础上加 `--command-json`；输出单个 JSON，包含 `ok / command / kind / payload / payloadJson / items / error / logs`。
-- `--command-json` 会静默完成握手和可选 bootstrap script，不再把 plan / trace / hello/ping 文本混到命令结果前面；如果命令前阶段失败，也会返回结构化错误 JSON。
-- `--command-json` 在命令真正执行前就失败时，现在也会附带 `hook / environment / doctor / plan / preflight / trace / diagnostics / handshake` 上下文，方便脚本直接区分是注入前配置问题、hook policy 模式问题、bootstrap 问题，还是命令本身失败；其中顶层 `hook` 现在会同时给出 `hook.controller / hook.target / hook.effectiveActions / hook.effective`：前两者平铺 `commandMode / capabilities / recommendedActions`（含 `actionKey + priority`），`hook.effectiveActions` 会按同一 `actionKey` 汇总双端最终可执行性并补 `blockedBy(none/controller/target/both)`，`hook.effective` 则继续给命令模式汇总（`commandMode / capabilities / blockedBySummary`）；`diagnostics.hook` 也会同步给出 hook-policy 失败摘要，非 hook 失败时稳定为 `null`，脚本不必再自己遍历 action 数组或解析错误字符串。
-- command 前置 hook policy 拦截错误现在也会带稳定标记：`hook-effective-blocked actionKey=<...> commandGroup=<...> blockedBy=<none|controller|target|both> commandMode=<...> baseCommandMode=<...> effectiveCommandMode=<...> autoDowngradedToQueryOnly=<true|false> autoDowngradeReason=<...> coexistenceMode=<...> backendPressure=<...> fallbackActionKey=<...> fallbackStepId=<...> fallbackCommand=<...> fallbackPhase=<...>`；对应 `diagnostics.code` 也会按 `blockedBy` 映射到 `controller-hook-policy-blocked / target-hook-policy-blocked / both-hook-policies-blocked`，脚本可直接按来源分支，并能直接执行回退命令。
-- 顶层 `hook` 现在也新增 `backendMatrix` 和 `automation`：前者把 controller/target 两侧探测到的 backend 统一收敛成结构化矩阵（`entries / sharedBackendIds / controllerOnlyBackendIds / targetOnlyBackendIds / loadedIn* / loadedOnlyInControllerBackendIds / loadedOnlyInTargetBackendIds / filesystemOnly* / topology(kind/sharedVisibility/controllerOnlyVisibility/targetOnlyVisibility/sharedLoadedRuntime/controllerOnlyLoadedRuntime/targetOnlyLoadedRuntime/filesystemOnlyArtifacts)`），后者把 `effectiveActions + backendMatrix` 进一步汇总成自动化分支建议（`preferredPath / backendPressure / branchExecutionOrder / readyBranchCount / blockedBranchCount / nextActionKey / nextReadyActionKey / nextRunnableActionKey / nextBlockedActionKey / nextActionAllowed / nextActionBlockedBy / nextActionBranch / nextActionReadyToRun / hasFallbackPlan / fallbackPlan / nextActionPlan / actionBranches / suggestedSequence / commandTemplates / commandJsonTemplates / nextActionTemplates / nextActionCommandJsonTemplates`）；其中每条 `commandJsonTemplates` 还会补 `kind(runtime-command/controller-cli) / phase / errorCode / timeoutErrorCode / retryable / maxSuggestedRetries / retryDelayHintMs / timeoutHintMs / timeoutAction / commandJsonEligible / cliArgs / placeholders / risk`，`actionBranches` 也会带 `selectedAsNext / executionRank / executionIndex / prerequisiteActionKeys / blockedPrerequisiteActionKeys / readyToRun / templates / commandJsonTemplates / commandJsonEligibleTemplateCount`；当 `nextActionReadyToRun=false` 时，`fallbackPlan` 会直接给出可执行回退模板链（含 `phaseOrder / phaseRetryPolicies / phaseTimeoutPolicies / phaseErrorCodes / terminationPolicy / steps / retryableStepCount / totalRetryBudget / escalationRecommendations / errorCodeRouting / errorCodeRoutingResolved / errorCodeRoutingEntries / routingDecision / commandJsonTemplates`），并且 `errorCodeRoutingResolved` 会按 `errorCode` 直接给 `escalationKey / phase / effectiveEscalationKey / effectivePhase / templateCount / commandJsonTemplateCount` 摘要，脚本不必先遍历 `errorCodeRoutingEntries` 再做 join；`routingDecision.index/entries` 现在会统一补 `matchConfidence / resolvedFrom / effectivePhase / effectiveEscalationKey`，`routingDecision` 顶层也补了 `defaultRecommendedPhase / defaultEffectivePhase / defaultEffectiveEscalationKey / defaultRecommendedTemplateCount / defaultRecommendedCommandJsonTemplateCount`，同时新增 `routingDecision.default`（未命中 `errorCode` 时的默认分流建议，稳定为 `matchConfidence=default / resolvedFrom=defaultRecommendedEscalationKey`，并平铺 `effectivePhase / effectiveEscalationKey`）和 `routingDecision.ready`（把 `index/default` 收敛成 `escalationKey / effectiveEscalationKey / phase / effectivePhase / templates / commandJsonTemplates` 的 ready-to-run 视图，并在 ready 顶层平铺 `defaultEscalationKey / defaultEffectiveEscalationKey / defaultPhase / defaultEffectivePhase / defaultTemplateCount / defaultTemplate / defaultCommandJsonTemplateCount / defaultCommandJsonTemplate / defaultCommandJsonTemplateCommand / defaultCommandJsonTemplateRisk / defaultCommandJsonTemplatePlaceholderCount / defaultCommandJsonTemplatePlaceholders / defaultCommandJsonTemplateCliArgs / defaultCommandJsonTemplateKind / defaultCommandJsonTemplatePhase / defaultCommandJsonTemplateErrorCode / defaultCommandJsonTemplateTimeoutErrorCode / defaultCommandJsonTemplateRetryable / defaultCommandJsonTemplateMaxSuggestedRetries / defaultCommandJsonTemplateRetryDelayHintMs / defaultCommandJsonTemplateTimeoutHintMs / defaultCommandJsonTemplateTimeoutAction / defaultCommandJsonTemplateCommandJsonEligible / defaultMatchConfidence / defaultResolvedFrom / resolveLookupKey / resolvePolicy / resolveOutputShape / resolveIndex / resolveIndexEntries / resolveDefault / resolveExamples / resolveExampleKnownErrorCode / resolveExampleKnownResult / resolveExampleKnownResultEffective / resolveExampleKnownResultEffectivePhase / resolveExampleKnownResultEffectiveEscalationKey / resolveExampleKnownMatched / resolveExampleKnownUsedDefault / resolveExampleKnownReason / resolveExampleKnownEffectivePhase / resolveExampleKnownEffectiveEscalationKey / resolveExampleMissingErrorCode / resolveExampleMissingResult / resolveExampleMissingResultEffective / resolveExampleMissingResultEffectivePhase / resolveExampleMissingResultEffectiveEscalationKey / resolveExampleMissingMatched / resolveExampleMissingUsedDefault / resolveExampleMissingReason / resolveExampleMissingEffectivePhase / resolveExampleMissingEffectiveEscalationKey / resolveExampleQueryOnlyInstallFailure / resolveExampleQueryOnlyErrorCode / resolveExampleQueryOnlyBlockedBy / resolveExampleQueryOnlyBlockedBySource / resolveExampleQueryOnlyIsBlocked / resolveExampleQueryOnlyAvailable / resolveExampleQueryOnlyMatched / resolveExampleQueryOnlyUsedDefault / resolveExampleQueryOnlyReason / resolveExampleQueryOnlyEffectivePhase / resolveExampleQueryOnlyEffectiveEscalationKey / resolveExampleQueryOnlyWouldUsePath / resolveExampleQueryOnlyResult / resolveExampleQueryOnlyResultEffective / resolveExampleQueryOnlyResultMatched / resolveExampleQueryOnlyResultUsedDefault / resolveExampleQueryOnlyResultReason / resolveExampleQueryOnlyResultEffectivePhase / resolveExampleQueryOnlyResultEffectiveEscalationKey / resolveErrorCodeCount / resolveIndexCount / resolveKnownCount / resolveKnownTotal / resolveKnownAmount / resolveKnownVolume / resolveKnownMagnitude / resolveKnownSize / resolveKnownLength / resolveKnownErrorCodes / resolveKnownEntries / resolveKnownList / resolveKnownEntriesCount / resolveKnownErrorCodesCount / resolveKnownErrorCodeFirst / resolveKnownErrorCodesFirst / resolveKnownEntriesFirst / resolveKnownFirst / resolveIndexFirst / resolveKnownErrorCodeLast / resolveKnownErrorCodesLast / resolveKnownEntriesLast / resolveKnownLast / resolveIndexLast / resolveMissingErrorCodeHint / resolveMissingHint / resolveDefaultMatched / resolveDefaultUsedDefault / resolveDefaultReason / resolveDefaultEffective / resolveDefaultEffectivePhase / resolveDefaultEffectiveEscalationKey / phaseResolveLookupKey / phaseResolvePolicy / phaseResolveOutputShape / phaseResolveIndex / phaseResolveIndexEntries / phaseResolveDefault / phaseResolveExamples / phaseResolveExampleKnownPhase / phaseResolveExampleKnownResult / phaseResolveExampleKnownResultEffective / phaseResolveExampleKnownResultEffectivePhase / phaseResolveExampleKnownResultEffectiveEscalationKey / phaseResolveExampleKnownMatched / phaseResolveExampleKnownUsedDefault / phaseResolveExampleKnownReason / phaseResolveExampleKnownEffectivePhase / phaseResolveExampleKnownEffectiveEscalationKey / phaseResolveExampleMissingPhase / phaseResolveExampleMissingResult / phaseResolveExampleMissingResultEffective / phaseResolveExampleMissingResultEffectivePhase / phaseResolveExampleMissingResultEffectiveEscalationKey / phaseResolveExampleMissingMatched / phaseResolveExampleMissingUsedDefault / phaseResolveExampleMissingReason / phaseResolveExampleMissingEffectivePhase / phaseResolveExampleMissingEffectiveEscalationKey / phaseResolveExampleQueryOnlyInstallFailure / phaseResolveExampleQueryOnlySourceErrorCode / phaseResolveExampleQueryOnlyPhase / phaseResolveExampleQueryOnlyBlockedBy / phaseResolveExampleQueryOnlyBlockedBySource / phaseResolveExampleQueryOnlyIsBlocked / phaseResolveExampleQueryOnlyAvailable / phaseResolveExampleQueryOnlyMatched / phaseResolveExampleQueryOnlyUsedDefault / phaseResolveExampleQueryOnlyReason / phaseResolveExampleQueryOnlyEffectivePhase / phaseResolveExampleQueryOnlyEffectiveEscalationKey / phaseResolveExampleQueryOnlyWouldUsePhase / phaseResolveExampleQueryOnlyResult / phaseResolveExampleQueryOnlyResultEffective / phaseResolveExampleQueryOnlyResultMatched / phaseResolveExampleQueryOnlyResultUsedDefault / phaseResolveExampleQueryOnlyResultReason / phaseResolveExampleQueryOnlyResultEffectivePhase / phaseResolveExampleQueryOnlyResultEffectiveEscalationKey / phaseResolvePhaseCount / phaseResolveIndexCount / phaseResolveKnownCount / phaseResolveKnownTotal / phaseResolveKnownAmount / phaseResolveKnownVolume / phaseResolveKnownMagnitude / phaseResolveKnownSize / phaseResolveKnownLength / phaseResolveKnownPhases / phaseResolveKnownEntries / phaseResolveKnownList / phaseResolveKnownEntriesCount / phaseResolveKnownPhasesCount / phaseResolveKnownPhaseFirst / phaseResolveKnownPhasesFirst / phaseResolveKnownEntriesFirst / phaseResolveKnownFirst / phaseResolveIndexFirst / phaseResolveKnownPhaseLast / phaseResolveKnownPhasesLast / phaseResolveKnownEntriesLast / phaseResolveKnownLast / phaseResolveIndexLast / phaseResolveMissingPhaseHint / phaseResolveMissingHint / phaseResolveDefaultPhase / phaseResolveDefaultMatched / phaseResolveDefaultUsedDefault / phaseResolveDefaultReason / phaseResolveDefaultEffective / phaseResolveDefaultEffectivePhase / phaseResolveDefaultEffectiveEscalationKey / resolveKnownErrorCode / resolveKnownResult / resolveKnownResultEffective / resolveKnownEffective / resolveKnownMatched / resolveKnownUsedDefault / resolveKnownReason / resolveKnownEffectivePhase / resolveKnownEffectiveEscalationKey / resolveMissingErrorCode / resolveMissingResult / resolveMissingResultEffective / resolveMissingEffective / resolveMissingMatched / resolveMissingUsedDefault / resolveMissingReason / resolveMissingEffectivePhase / resolveMissingEffectiveEscalationKey / phaseResolveKnownPhase / phaseResolveKnownResult / phaseResolveKnownResultEffective / phaseResolveKnownEffective / phaseResolveKnownMatched / phaseResolveKnownUsedDefault / phaseResolveKnownReason / phaseResolveKnownEffectivePhase / phaseResolveKnownEffectiveEscalationKey / phaseResolveMissingPhase / phaseResolveMissingResult / phaseResolveMissingResultEffective / phaseResolveMissingEffective / phaseResolveMissingMatched / phaseResolveMissingUsedDefault / phaseResolveMissingReason / phaseResolveMissingEffectivePhase / phaseResolveMissingEffectiveEscalationKey / queryOnlyErrorCode / queryOnlySourceErrorCode / queryOnlyBlockedBy / queryOnlyResolveBlockedBy / queryOnlyBlockedBySource / queryOnlyResolveBlockedBySource / queryOnlyIsBlocked / queryOnlyResolveIsBlocked / queryOnlyPhase / queryOnlyPhaseResolveSourceErrorCode / queryOnlyPhaseResolvePhase / queryOnlyPhaseResolveBlockedBy / queryOnlyPhaseResolveBlockedBySource / queryOnlyPhaseResolveIsBlocked / queryOnlyPhaseResolveAvailable / queryOnlyPhaseResolveMatched / queryOnlyPhaseResolveUsedDefault / queryOnlyPhaseResolveReason / queryOnlyPhaseResolveEffectivePhase / queryOnlyPhaseResolveEffectiveEscalationKey / queryOnlyAvailable / queryOnlyResolveAvailable / queryOnlyMatched / queryOnlyResolveMatched / queryOnlyUsedDefault / queryOnlyResolveUsedDefault / queryOnlyReason / queryOnlyResolveReason / queryOnlyEffectivePhase / queryOnlyResolveEffectivePhase / queryOnlyEffectiveEscalationKey / queryOnlyResolveEffectiveEscalationKey / queryOnlyWouldUsePath / queryOnlyResolveWouldUsePath / queryOnlyWouldUsePhase / queryOnlyPhaseResolveWouldUsePhase / queryOnlyResult / queryOnlyResultEffective / queryOnlyResultMatched / queryOnlyResultUsedDefault / queryOnlyResultReason / queryOnlyResultEffectivePhase / queryOnlyResultEffectiveEscalationKey / queryOnlyResolveResult / queryOnlyResolveResultEffective / queryOnlyResolveResultMatched / queryOnlyResolveResultUsedDefault / queryOnlyResolveResultReason / queryOnlyResolveResultEffectivePhase / queryOnlyResolveResultEffectiveEscalationKey / queryOnlyPhaseResolveResult / queryOnlyPhaseResolveResultEffective / queryOnlyPhaseResolveResultMatched / queryOnlyPhaseResolveResultUsedDefault / queryOnlyPhaseResolveResultReason / queryOnlyPhaseResolveResultEffectivePhase / queryOnlyPhaseResolveResultEffectiveEscalationKey`，`lookupRule=index[errorCode] || default`，并额外给 `resolve(lookupKey/policy/outputShape/errorCodeCount/indexCount/knownCount/knownTotal/knownAmount/knownVolume/knownMagnitude/knownSize/knownLength/knownErrorCodes/knownEntries/knownList/knownEntriesCount/knownErrorCodesCount/knownErrorCodeFirst/knownErrorCodesFirst/knownEntriesFirst/knownFirst/knownErrorCodeLast/knownErrorCodesLast/knownEntriesLast/knownLast/missingErrorCodeHint/missingHint/index/indexEntries/default/examples/defaultMatched/defaultUsedDefault/defaultReason/defaultEffective/defaultEffectivePhase/defaultEffectiveEscalationKey/knownErrorCode/knownResult/knownEffective/knownEffectivePhase/knownEffectiveEscalationKey/missingErrorCode/missingResult/missingEffective/missingEffectivePhase/missingEffectiveEscalationKey/queryOnlyErrorCode/queryOnlyBlockedBy/queryOnlyBlockedBySource/queryOnlyIsBlocked/queryOnlyAvailable/queryOnlyMatched/queryOnlyUsedDefault/queryOnlyReason/queryOnlyEffectivePhase/queryOnlyEffectiveEscalationKey/queryOnlyWouldUsePath/queryOnlyResult/queryOnlyResultEffective/queryOnlyResultMatched/queryOnlyResultUsedDefault/queryOnlyResultReason/queryOnlyResultEffectivePhase/queryOnlyResultEffectiveEscalationKey)`、`phaseResolve(lookupKey/policy/outputShape/phaseCount/indexCount/knownCount/knownTotal/knownAmount/knownVolume/knownMagnitude/knownSize/knownLength/knownPhases/knownEntries/knownList/knownEntriesCount/knownPhasesCount/knownPhaseFirst/knownPhasesFirst/knownEntriesFirst/knownFirst/knownPhaseLast/knownPhasesLast/knownEntriesLast/knownLast/defaultPhase/missingPhaseHint/missingHint/index/indexEntries/default/examples/defaultMatched/defaultUsedDefault/defaultReason/defaultEffective/defaultEffectivePhase/defaultEffectiveEscalationKey/knownPhase/knownResult/knownEffective/knownEffectivePhase/knownEffectiveEscalationKey/missingPhase/missingResult/missingEffective/missingEffectivePhase/missingEffectiveEscalationKey/queryOnlySourceErrorCode/queryOnlyBlockedBy/queryOnlyBlockedBySource/queryOnlyIsBlocked/queryOnlyPhase/queryOnlyAvailable/queryOnlyMatched/queryOnlyUsedDefault/queryOnlyReason/queryOnlyEffectivePhase/queryOnlyEffectiveEscalationKey/queryOnlyWouldUsePhase/queryOnlyResult/queryOnlyResultEffective/queryOnlyResultMatched/queryOnlyResultUsedDefault/queryOnlyResultReason/queryOnlyResultEffectivePhase/queryOnlyResultEffectiveEscalationKey)`、`phaseCount / phases / phaseFirst / phaseLast / phaseIndex / phasePreflight / phasePreflightErrorCodeCount / phasePreflightErrorCodes / phasePreflightErrorCodeFirst / phasePreflightErrorCodeLast / phasePreflightEscalationKeyCount / phasePreflightEscalationKeys / phasePreflightPrimaryEscalationKey / phasePreflightTemplateCount / phasePreflightTemplates / phasePreflightTemplate / phasePreflightCommandJsonTemplateCount / phasePreflightCommandJsonTemplate / phasePreflightCommandJsonTemplateCommand / phasePreflightCommandJsonTemplateRisk / phasePreflightCommandJsonTemplatePlaceholderCount / phasePreflightCommandJsonTemplatePlaceholders / phasePreflightCommandJsonTemplateCliArgs / phasePreflightCommandJsonTemplates / phasePreflightCommandJsonTemplateKind / phasePreflightCommandJsonTemplatePhase / phasePreflightCommandJsonTemplateErrorCode / phasePreflightCommandJsonTemplateTimeoutErrorCode / phasePreflightCommandJsonTemplateRetryable / phasePreflightCommandJsonTemplateMaxSuggestedRetries / phasePreflightCommandJsonTemplateRetryDelayHintMs / phasePreflightCommandJsonTemplateTimeoutHintMs / phasePreflightCommandJsonTemplateTimeoutAction / phasePreflightCommandJsonTemplateCommandJsonEligible / phaseDiagnose / phaseDiagnoseErrorCodeCount / phaseDiagnoseErrorCodes / phaseDiagnoseErrorCodeFirst / phaseDiagnoseErrorCodeLast / phaseDiagnoseEscalationKeyCount / phaseDiagnoseEscalationKeys / phaseDiagnosePrimaryEscalationKey / phaseDiagnoseTemplateCount / phaseDiagnoseTemplates / phaseDiagnoseTemplate / phaseDiagnoseCommandJsonTemplateCount / phaseDiagnoseCommandJsonTemplate / phaseDiagnoseCommandJsonTemplateCommand / phaseDiagnoseCommandJsonTemplateRisk / phaseDiagnoseCommandJsonTemplatePlaceholderCount / phaseDiagnoseCommandJsonTemplatePlaceholders / phaseDiagnoseCommandJsonTemplateCliArgs / phaseDiagnoseCommandJsonTemplates / phaseDiagnoseCommandJsonTemplateKind / phaseDiagnoseCommandJsonTemplatePhase / phaseDiagnoseCommandJsonTemplateErrorCode / phaseDiagnoseCommandJsonTemplateTimeoutErrorCode / phaseDiagnoseCommandJsonTemplateRetryable / phaseDiagnoseCommandJsonTemplateMaxSuggestedRetries / phaseDiagnoseCommandJsonTemplateRetryDelayHintMs / phaseDiagnoseCommandJsonTemplateTimeoutHintMs / phaseDiagnoseCommandJsonTemplateTimeoutAction / phaseDiagnoseCommandJsonTemplateCommandJsonEligible / defaultPhase`，其中 `resolve.index.reason=matched-error-code`、`resolve.default.reason=missing-error-code`、`phaseResolve.index.reason=matched-phase`、`phaseResolve.default.reason=missing-phase`，并且 `resolve.index / resolve.default / phaseResolve.index / phaseResolve.default` 现在都会平铺 `effectivePhase / effectiveEscalationKey`；`resolve.examples` 还会给 `knownEffectivePhase/knownEffectiveEscalationKey/missingEffectivePhase/missingEffectiveEscalationKey`，并给 `queryOnlyInstallFailure(errorCode/blockedBy/blockedBySource/isBlocked/available/matched/usedDefault/reason/effectivePhase/effectiveEscalationKey/result/wouldUseQueryOnlyPath)`；`phaseResolve.examples` 也会给对应的 `knownEffective* / missingEffective*` 和 `queryOnlyInstallFailure(sourceErrorCode/blockedBy/blockedBySource/isBlocked/phase/available/matched/usedDefault/reason/effectivePhase/effectiveEscalationKey/result/wouldUseQueryPhase)`，并在示例不可用时回落到 `usedDefault=true + reason=missing-*`，脚本可以直接拿 `{matched, usedDefault, reason, effectivePhase, effectiveEscalationKey, effective}` 或按阶段批量执行），不必再手动 merge 两侧 `hookEnvironment.backends` 和 action 列表。
-- 顶层 `hook` 现在也新增 `coexistence`（共存策略摘要），会直接给 `mode / strategy / riskLevel / commandMode / backendPressure / externalBackend* / preferredPath`，并补 `nextAction*` 与 `nextActionCommandJsonTemplates`；自动化脚本不必再手动根据 `effective + backendMatrix + automation` 三段数据拼接出“当前该走 inline、query-only 还是 cleanup-only”的结论。
-- `hook.coexistence` / `hook.automation` 现在也都会补 `backendAdaptation`（以及顶层别名 `backendAdaptationMode / backendAdaptationAlignment / backendAdaptationBias / backendAdaptationSummary`），把 `backendMatrix.topology + preferredPath + commandMode` 收敛成稳定建议：例如 `no-adaptation-needed / preflight-before-inline / shared-runtime-query-first / side-specific-runtime-query-first / runtime-alignment-required`，并附 `requiresQueryPhase / requiresPreflight / requiresCleanupPhase / inlineInstallReadyNow` 以及 `sharedLoadedBackendIds / controllerLoadedOnlyBackendIds / targetLoadedOnlyBackendIds / filesystemOnlyBackendIds`，脚本不必再自己从矩阵计数推导“现在该先 query、preflight、cleanup 还是可以直接 install”。
-- 在这之上，`backendAdaptation` 现在也直接带 `query/preflight/cleanup/install` 四组模板摘要（每组都有 `templates / templateCount / commandJsonTemplates / commandJsonTemplateCount`，同时给 `queryGroup / preflightGroup / cleanupGroup / installGroup` 结构），并补 `preferredGroupKey / preferredGroup / preferredTemplates / preferredTemplateCount / preferredCommandJsonTemplates`；脚本如果要按当前 backend 拓扑直接执行建议动作，不必再自己从 `hook.query/hook.install/hook.stop` 模板重新拼组。
-- 这层现在会补 `backendSpecificRecommendations`，以及顶层 alias：`backendSpecificRecommendationCount / preferredBackendRecommendation / preferredBackendId / preferredBackendDisplayName / preferredBackendScope / preferredBackendReason / preferredBackendTemplates / preferredBackendTemplateCount / preferredBackendCommandJsonTemplates / preferredBackendCommandJsonTemplateCount / preferredBackendCommandJsonEligibleTemplateCount / preferredBackendPrimaryCommandJsonTemplate*`。当前 iOS runtime 版本还是单进程视角，`scope/state/loadedBy` 只按“当前进程已加载 runtime”或“仅看到文件系统痕迹”来给建议，不会伪装成 controller/target 双侧矩阵。
-- `backendSpecificRecommendations[*]` 现在也补了 `primaryCommandJsonTemplate / primaryCommandJsonTemplateCommand / primaryCommandJsonTemplateKind / primaryCommandJsonTemplateEligible`；脚本如果只是想拿每条 backend 推荐的第一条建议命令，不需要再先取模板数组第一个元素。
-- `conflictBackendPairCount / conflictBackendPairs` 现在也开始给真实冲突对，但仍然保持单进程口径：只有当当前进程里同时检测到多个已加载 backend runtime 时，才会导出 pair；pair 对象当前使用 `firstBackendId / secondBackendId / backendIds / scope=shared-process` 这组字段，而不是伪装成 controller/target 双侧冲突。
-- 同时顶层也补了 `preferredConflictBackendPair / preferredConflictBackendPairKey / preferredConflictBackendPairTemplates / preferredConflictBackendPairTemplateCount / preferredConflictBackendPairCommandJsonTemplates / preferredConflictBackendPairCommandJsonTemplateCount / preferredConflictBackendPairCommandJsonEligibleTemplateCount / preferredConflictBackendPairPrimaryCommandJsonTemplate* / preferredConflictResolutionGroupKey / preferredConflictResolutionReason / preferredConflictResolutionTemplates / preferredConflictResolutionTemplateCount / preferredConflictResolutionCommandJsonTemplates / preferredConflictResolutionCommandJsonTemplateCount / preferredConflictResolutionCommandJsonEligibleTemplateCount / preferredConflictResolutionChain / preferredConflictResolutionChainCount`；脚本如果只关心“当前最优先处理的那组 backend 冲突”，可以直接读这一层，不必先遍历 pair 数组。
-- 在这之上，顶层也补了 `preferredConflictResolutionPhaseOrder / preferredConflictResolutionRetryableStepCount / preferredConflictResolutionTotalRetryBudget / preferredConflictResolutionTerminationPolicy`；脚本如果要顺序执行整条冲突恢复链，已经可以直接拿阶段顺序、总重试预算和终止条件，不必再自己遍历 `preferredConflictResolutionChain[*]` 重新归纳。
-- 这块现在已经把 `preferredConflictResolutionRouting` 本体和顶层 controller 风格平铺 alias 一起补齐：除了 `phaseRetryPolicies / phaseTimeoutPolicies / phaseErrorCodes / escalationRecommendations / suggestedEscalationKey / errorCodeRouting / errorCodeRoutingResolved / errorCodeRoutingEntries`、`routingDecision.ready` 下的 `index / default / resolve / phaseResolve / phases / phaseIndex / phaseQuery / phasePreflight / phaseCleanup` 之外，顶层也能直接读到 `preferredConflictResolutionDefault* / Resolve* / QueryOnly* / QueryOnlyResolve* / PhaseResolve* / QueryOnlyPhaseResolve* / PhaseQuery* / PhasePreflight* / PhaseCleanup*` 这些 controller 同名字段，脚本不必再自己从 `routingDecision.ready` 往外抄一遍。
-- 同时 `preferredConflictResolutionNextStep / preferredConflictResolutionStepChain / preferredConflictResolutionActiveStep` 这组 controller 风格入口也已经补上，并带 `NextStepId / Source / Command / Reason / PreferredPath / Phase / CommandJsonTemplate* / Retryable* / Timeout* / ErrorCode*`、`StepChainSource / Limit / Count / Truncated`，以及更完整的 `ActiveStepAllowed / BlockedBy / Branch / Reason / PreferredPath / CommandGroup / ReadyToRun / RequiresFallback / Kind / Timeout* / Risk / Placeholder* / CliArgs` alias；脚本如果只想“拿冲突恢复链的下一步直接执行或直接做失败分流”，不必再自己从 `preferredConflictResolutionChain` 或通用 `nextStep / stepChain / activeStep` 里转抄。
-- `preferredConflictResolutionPhaseQuery*` 和 `preferredConflictResolutionPhasePreflight*` 现在也补齐到和 `PhaseCleanup*` 相同层级：除了 `*TemplateCount` 和主 `*CommandJsonTemplate*` 之外，也会直接给 `Templates / Template / CommandJsonTemplates / CommandJsonEligibleTemplateCount`，脚本不必再回到 `phaseQuery/phasePreflight` 对象里自己拆第一条模板或统计可直接 `--command-json` 的候选数。
-- 同一层的 `preferredConflictResolutionDefault*` 现在也补了 `DefaultTemplates / DefaultCommandJsonTemplates / DefaultCommandJsonEligibleTemplateCount`；脚本如果只想拿“未命中 errorCode/phase 时的默认回退模板链”，不必再深入 `routingDecision.ready.default` 取数组。
-- 在这之上，`preferredConflictResolutionResolve*` / `preferredConflictResolutionPhaseResolve*` 这两组现在也开始补核心对象直达别名：除了原来的计数和标量字段，还会直接给 `Resolve / ResolveIndex / ResolveIndexEntries / ResolveDefault / ResolveDefaultEffective / ResolveExamples / ResolveKnownResult / ResolveKnownResultEffective / ResolveKnownEffective / ResolveKnownMatched / ResolveKnownUsedDefault / ResolveKnownReason / ResolveKnownEffectivePhase / ResolveKnownEffectiveEscalationKey / ResolveMissingResult / ResolveMissingResultEffective / ResolveMissingEffective / ResolveMissingMatched / ResolveMissingUsedDefault / ResolveMissingReason / ResolveMissingEffectivePhase / ResolveMissingEffectiveEscalationKey / ResolveExampleKnownResult / ResolveExampleKnownResultEffective / ResolveExampleKnownMatched / ResolveExampleKnownUsedDefault / ResolveExampleKnownReason / ResolveExampleKnownEffectivePhase / ResolveExampleKnownEffectiveEscalationKey / ResolveExampleMissingResult / ResolveExampleMissingResultEffective / ResolveExampleMissingMatched / ResolveExampleMissingUsedDefault / ResolveExampleMissingEffectivePhase / ResolveExampleMissingEffectiveEscalationKey / ResolveExampleQueryOnlyInstallFailure / ResolveExampleQueryOnlyResult / ResolveExampleQueryOnlyResultEffective`，以及对应的 `PhaseResolve / PhaseResolveIndex / PhaseResolveIndexEntries / PhaseResolveDefault / PhaseResolveDefaultEffective / PhaseResolveExamples / PhaseResolveKnownResult / PhaseResolveKnownResultEffective / PhaseResolveKnownEffective / PhaseResolveKnownMatched / PhaseResolveKnownUsedDefault / PhaseResolveKnownReason / PhaseResolveKnownEffectivePhase / PhaseResolveKnownEffectiveEscalationKey / PhaseResolveMissingResult / PhaseResolveMissingResultEffective / PhaseResolveMissingEffective / PhaseResolveMissingMatched / PhaseResolveMissingUsedDefault / PhaseResolveMissingReason / PhaseResolveMissingEffectivePhase / PhaseResolveMissingEffectiveEscalationKey / PhaseResolveExampleKnownResult / PhaseResolveExampleKnownResultEffective / PhaseResolveExampleKnownMatched / PhaseResolveExampleKnownUsedDefault / PhaseResolveExampleKnownEffectivePhase / PhaseResolveExampleKnownEffectiveEscalationKey / PhaseResolveExampleMissingResult / PhaseResolveExampleMissingResultEffective / PhaseResolveExampleMissingMatched / PhaseResolveExampleMissingUsedDefault / PhaseResolveExampleMissingReason / PhaseResolveExampleMissingEffectivePhase / PhaseResolveExampleMissingEffectiveEscalationKey / PhaseResolveExampleQueryOnlyInstallFailure / PhaseResolveExampleQueryOnlyResult / PhaseResolveExampleQueryOnlyResultEffective`；脚本如果要直接复用 ready 视图里的核心分流对象，不必再从 `preferredConflictResolutionRouting.routingDecision.ready.*` 回取。
-- 在这之上，`backendAdaptation` 现在也补了统一执行入口：`nextStep / stepChain / activeStep` 以及同名 `nextStep* / stepChain* / activeStep*` 平铺字段；如果当前存在 `preferredConflictBackendPair`，这组入口会优先切到 `preferredConflictResolutionChain`，否则才回落到 `preferredGroup` 的模板链，脚本不必再自己判断“现在该走冲突恢复链还是普通建议链”。
-- 同一层的 `executionSummary` 现在也补了 controller 风格平铺字段：`executionSource / executionMode / executionAlignment / executionPreferredGroupKey / executionChainCount / executionPhaseOrder / executionRetryableStepCount / executionHasConflictPair`，连同已有的 `executionSelected* / executionRequires* / executionRetryBudget` 一起可直接从 `backendAdaptation` 顶层读取。
-- `Native.detectHookEnvironment()` 的单进程 `backendAdaptation` 现在也直接带 `sharedLoadedBackendIds / controllerLoadedOnlyBackendIds / targetLoadedOnlyBackendIds / filesystemOnlyBackendIds`。其中 runtime 口径没有“远端目标进程”，所以 `controllerLoadedOnlyBackendIds / targetLoadedOnlyBackendIds` 当前固定为空数组；`sharedLoadedBackendIds` 表示当前进程已加载的 backend，`filesystemOnlyBackendIds` 表示仅在文件系统上命中的 backend。
-- 对应的 `sharedLoadedBackendCount / controllerLoadedOnlyBackendCount / targetLoadedOnlyBackendCount / filesystemOnlyBackendCount` 也已经补上；单进程 runtime 下中间两项当前固定为 `0`。
-- 同一个单进程 runtime 口径下，顶层 `backendPressure` 也已补上，值域目前固定对齐 controller 的一部分：`controller / filesystem-only / none`。这里的 `controller` 表示“当前宿主进程已经加载外部 backend”，不是在声称 runtime 里真的存在 controller/target 两端拆分。
-- 顶层 `backendMatrix` 现在也提供了单进程兼容形状：会输出 `entries / entryCount / loadedInControllerCount / loadedInTargetCount / loadedInBothCount / filesystemOnlyInEitherCount / sharedBackendIds / controllerOnlyBackendIds / targetOnlyBackendIds / loadedInBothBackendIds / loadedOnlyInControllerBackendIds / loadedOnlyInTargetBackendIds / filesystemOnlyBackendIds / topology`。其中 `target* / shared* / loadedInBoth*` 在 runtime 口径下按单进程语义固定为 `0/[]/false`，`controller*` 表示当前宿主进程视角。
-- 这组 hook 环境根对象现在不只 runtime `Native.detectHookEnvironment()` 有，controller 的 `environment.hookEnvironment / preflight.targetHookEnvironment` 也已经对齐补了 `filesystemOnlyBackendIds / loadedBackendIds / backendCount / backendIds / activeBackendDisplayName / backendDisplayNames / loadedBackendDisplayNames / filesystemOnlyBackendDisplayNames / loadedExternalBackendCount / recommendations`；脚本在 runtime 单进程查询和 controller JSON 之间切换时，不必再维护两套 backend 摘要字段映射。
-- QuickJS runtime 现在已实际移植 Android 上游 `rustFrida-master/quickjs-hook/src/jsapi/file.rs` 的全局 `File` API；支持同步文本/二进制整文件读写、`ArrayBuffer / TypedArray / Array<number>` 字节输入，以及实例级 `tell / seek / readBytes / readText / readLine / write / flush / close` 和 `SEEK_SET / SEEK_CUR / SEEK_END` 常量。这是 iOS/Linux 通用的真实实现，不是 unsupported 兼容占位。
-- QuickJS runtime 现在也已实际移植 Android 上游 `rustFrida-master/quickjs-hook/src/jsapi/rpc.rs` 的 `rpc.exports / rpc.export / __rpc_dispatch` 核心语义，并补了 `QuickJsRuntime::dispatch_rpc()`、结构化 `AgentCommand::RpcCall` 和 controller `rpccall <method> [args-json]`；返回值按上游规则经过 `JSON.stringify`，`undefined` 返回 `null`，缺失方法和非 JSON array 参数会明确报错。controller 也已补上 Android 同名的 `--rpc-port <PORT|ADDR>` HTTP 包装层，支持 `GET /health`、`GET /sessions` 和 `POST /rpc/<session>/<method>`；`session.rs/server.rs` 提供有界并发 registry、单调稳定 ID、attach/detach 状态机、每 session 命令串行化、断开门控和后台 `ping` 健康探针自动回收，HTTP 已按 registry 路由。单 session HTTP RPC 还会通过 agent `Ping` 做 liveness 检查，transport failure 进入 registry reconcile/detach 路径；cleanup 保留可重试 owner，并在连续失败达到上限后有界退出，不再永久盲 park。`--server [--max-sessions N]` 持续 stdio 前端支持动态 `attach/spawn/list|sessions/use/detach/detachall` 管理和真实 launcher 接线；server `exit` 只有在本轮 detach 全部 clean 且 registry 为空时才关闭，运行摘要累计 health/exit 阶段的 clean detach 数量；`--rpc-port` 入口仍面向单目标 HTTP RPC。直接 `JsEval/LoadJs` 现在会把数组和普通对象渲染为 JSON，避免旧路径把它们压成逗号拼接或 `[object Object]`；字符串、标量、`undefined` 与 NativePointer 等原生 wrapper 继续保持原表示，复合值内的 `NaN/Infinity/undefined` 遵循 JSON 语义，循环引用和复合 `BigInt` 返回明确求值错误。agent 两条命令、HTTP 嵌套参数/响应和 Simulator 协议 harness 均已有对应结构化断言。
-- spawn 模式现在通过 `controller/src/suspended_spawn.rs` 持有明确的 `Suspending/Suspended/Running/Terminating/Terminated` 生命周期：未恢复时任一步失败都会终止目标；注入、agent handshake 和 `JsInit/LoadJs` 完成后才恢复。Apple executable 后端使用 `POSIX_SPAWN_START_SUSPENDED`，Linux host 用 fork-stop-exec 覆盖状态机测试；Simulator bundle-id 启动只使用 `xcrun simctl launch --wait-for-debugger`，并校验进程确实处于暂停状态。物理设备要求 v2 `runtime-dynamic` FrontBoard/scene provider 在 `before-first-user-instruction` 阶段交付 gate，状态严格校验 `held/released/terminated`；真实 provider 与真机验收仍待完成。
-- bundle suspended 协议现在把 bundle、PID、provider 和 gate ID 绑定，resume 后必须收到 provider 的 `released` 确认；失败、超时或未交付状态会终止目标。controller 已移除启动后 `SIGSTOP` 伪装和旧 helper 的兼容回退，避免把进程启动后的暂停窗口误写成真正的 start-suspended。
-- 外部 hook backend 适配现在新增了独立的保守决策模型：会标准化 ElleKit / Substrate / Substitute / libhooker，并覆盖 query/install/attach/uninstall/cleanup/replace、loaded/filesystem-only、冲突数量、arm64e、policy 和 override。决策会给出 capability、command mode、execution boundary、policy/executable 状态和稳定 reason code；`query-only` 保留查询/清理，`cleanup-only` 只保留内部 owned-hook cleanup。Apple FFI install/replace 会在 native 调用前分配唯一非零 token，并以 backend image lease 保持句柄存活；`release` 首次成功、重复调用幂等，未释放句柄的 uninstall 明确返回 `NativeUninstallUnavailable`，不宣称目标已恢复。controller/session/registry 现在已提供 `adopt_external_hook`、`release_external_hook`、`uninstall_external_hook`、`cleanup_external_hooks` 及 attach failure、health failure、detach、Drop 清理；agent 侧另有实际的 `ExternalHookExecute/Status/Release/Uninstall` command/receipt 路径。`Session::execute_external_hook`、`RemoteExternalHookLease`、`SessionRegistry::execute_external_hook` 和 injection entry 已完成源码/静态接线，controller tests 已通过；controller remote lease 的远程 command、receipt 转移和产品级调用链已完成源码/静态接线，待 Apple runtime/真机验收。四种已确认 ABI 没有公开 native uninstall。
-- agent-owned external-hook 状态现在由 `ExternalHookRegistry` 持有：execute request 使用 `request_id` 和 `owner_id`，重复 request 可 replay、冲突会拒绝，status 按 owner 过滤；receipt 保留 token/backend/operation/target/original/native result、`ownership=owned|released|orphaned`、`target_state=installed|restored|uncertain`、native uninstall 能力和最后错误。目标状态不确定时保留 orphan receipt 供 status/replay 继续观察；agent 侧命令/receipt 语义、controller remote lease 转移和产品级调用链已完成源码/静态接线，待 Apple runtime/真机验收。
-- QuickJS runtime 现在已对齐 Android 上游 `rustFrida-master/quickjs-hook/src/jsapi/module/process_api.rs` 的只读全局 `Process` API：模块、内存 range、目录、当前线程、线程枚举和 debugger 状态查询均已接入；Linux host 使用 `/proc/self/maps`、`/proc/self/task` 和 `TracerPid`，iOS/macOS 使用 dyld image、`mach_vm_region_recurse`、`task_threads/thread_info`、`pthread_threadid_np` 和 `csops(CS_OPS_STATUS)`。`Process.platform` 在 Apple 目标返回 Frida 兼容的 `darwin`；`enumerateMallocRanges()` 与当前 Android 上游一致暂时返回空数组。
-- controller 现在支持 `--name <PROCESS_NAME>` 按进程名 Attach：Apple 端通过 libproc 枚举并按 executable name、完整 path 或 path basename 精确匹配，唯一命中后会重新校验 PID identity；多命中、进程退出和 PID 复用都会拒绝并给出稳定错误。`--name` 与 `--pid/--bundle-id/--spawn` 互斥，非 Apple host 明确提示改用 `--pid`。
-- QuickJS runtime 现在已对齐 Android 上游 `rustFrida-master/quickjs-hook/src/jsapi/memory/` 的常用 Memory/NativePointer 表面：支持有界的 `alloc/allocUtf8String`、ArrayBuffer/TypedArray/number array `writeBytes`、严格权限字符串 `protect`、平台化 `flushCodeCache`，以及 NativePointer 实例读写方法。Apple 写入会按 Mach VM region 查询、临时改权、失败回滚并恢复原权限；`writest` 依赖 Android RECOMP stealth-2，因此保留同名入口并明确 unsupported。分配按 QuickJS runtime 隔离，在 runtime cleanup 时统一释放。
-- `Module` 现在已补 `enumerateExports/enumerateImports/enumerateSymbols/enumerateRanges/load`：Mach-O 地址会按 dyld slide 转成运行时地址，range 会保留 protection 和 file metadata，`Module.load` 使用 `dlopen(RTLD_NOW|RTLD_LOCAL)` 并按 runtime 逆序卸载。`Module.enumerateImports()` 以及 `Native.findImports/importInfo()` 现在会返回 Mach-O indirect symbol 对应的 GOT `slot`、当前解析 `address`、pointer 类型和 dylib ordinal。`enumerateSymbols` 已覆盖本地/非导出 `N_SECT` 符号，区分 `N_SECT/N_ABS/N_UNDF/N_PBUD/N_INDR`，对定义符号应用 dyld slide、按 instruction section flags 区分 function/variable、只移除一个 ABI 下划线并按规范化名称去重；load-command、segment、section、`__LINKEDIT`、nlist 和字符串表边界均已校验。Apple runtime 行为仍待真机验收。
-- `Interceptor.attach` 现在提供 Frida 风格的 `onEnter(args[0..7])`、`onLeave(retval)`、`retval.replace/toInt32/toUInt32/toString` 和 enter/leave 共享 `this`，并用 thread-local invocation 栈处理递归；`Interceptor.flush()` 与同步 ARM64 hook engine 语义一致为 no-op。当前 retval 与 Android 参考实现一样以整数/指针返回寄存器 `x0` 为核心；FPR、向量和结构体 hook 回调上下文不属于 `NativeFunction` 调用桥。
-- QuickJS runtime 的 `NativeFunction(address, returnType, argumentTypes)` 已静态对齐 Android 参考实现的标量类型：支持 `bool`、8/16/32/64 位有符号/无符号整数、pointer、float 和 double。整数/pointer 与浮点参数分别独立分配到 `x0..x7` 和 `v0..v7`，两类溢出参数按声明顺序使用 Apple arm64 的自然大小/对齐紧凑栈布局，最多允许 256 个栈参数；汇编桥同时捕获 `x0` 与 `v0`，64 位整数返回 BigInt，float/double 返回 Number。调用前仍会规范化 PAC code pointer 并检查目标页可执行。结构体/数组按值和 variadic 会明确拒绝，Android 参考仓库也未实现这两类签名；Apple 真机混合寄存器/栈调用仍待最终验收。
-- iOS 对标 Android QBDI 的口径现在也显式暴露在 `Native.instrumentation`、`Native.detectHookEnvironment().instrumentation`、controller `hookEnvironment.instrumentation` 里：`androidReferenceBackend=QBDI`，iOS 当前 `backend=arm64-hook-engine`，`qbdiCompatible/qbdiAvailable/qbdiApiPorted=false`，推荐路径是 `trace/stalker/hfl/jhook/shook`；这能让自动化脚本直接区分“Android QBDI VM API 尚未移植”和“iOS 走 ARM64 hook engine 控制命令”。
-- 为了兼容 Android 脚本的能力探测，iOS runtime 现在也提供全局 `qbdi` 对象；它会明确返回 `available=false / backend=unsupported-ios / iosAlternativeBackend=arm64-hook-engine`，并保留 Android 版同名的 `MEMORY_READ / MEMORY_WRITE / MEMORY_READ_WRITE / REG_RETURN / REG_BP / REG_LR / REG_SP / REG_FLAG / REG_PC` 常量以及 `newVM/run/call/getGPR/registerTraceCallbacks/lastError/shutdown/status/info` 等常见方法名。`qbdi.status()` / `qbdi.info()` 会返回结构化的常量、supported command 和 unsupported method 摘要，并额外给出 `qbdiVmAvailable=false / qbdiHelperAvailable=false / virtualStackAvailable=false / registerStateApiAvailable=false / memoryAccessTraceAvailable=false / traceBundleExportAvailable=false / supportedMethodCount=0`，方便脚本区分“Android QBDI VM/helper 未移植”和“iOS 应走 ARM64 hook engine 的 trace/stalker/HFL/JHook/Shook”。除 `lastError()`、`shutdown()`、`status()`、`info()` 外，QBDI VM 方法会抛出清晰的 unsupported 错误，避免旧脚本因为 `qbdi` 未定义而直接失败。
-- 对应命令面也补了只读查询：`qbdi.status` / `qbdi.info` 会输出 iOS 上 QBDI 的 unsupported 状态、Android 参考后端、iOS 替代后端、Android 兼容常量和不支持的方法列表；`qbdi.lastError` 直接输出同一条 unsupported 原因。这三条都按 query 命令处理，不会触发 inline hook。
-- Android hook API 里的 `Hook.NORMAL / Hook.WXSHADOW / Hook.RECOMP` 常量现在也在 iOS runtime 暴露出来；`hook(..., Hook.WXSHADOW)` 会继续映射到 iOS ARM64 hook engine 的 stealth 参数，`Hook.RECOMP` / `recompHook()` 会明确报 Android-only unsupported，`diagAllocNear()` 则返回一份 iOS 兼容诊断对象，避免 Android 脚本探测这些入口时直接遇到未定义。
-- ObjC object wrapper 现在新增 typed `getProperty(name, type)` / `setProperty(name, type, value)` 便利入口；getter 调用属性 selector，setter 按 Objective-C 规则生成 `setXxx:`，仍复用现有 scalar 类型检查和 bridge 错误契约。`ObjC.registerClass(spec)` 的动态属性 accessor 现在会按 type encoding 精确读写 1/2/4/8 字节标量和指针，property 支持显式 `getter` / `setter`、`atomic: true` 和 `kvo: 'automatic' | 'manual'`，KVO 默认 `automatic`，并生成 Objective-C runtime 的 `G` / `S` / `V` metadata；`N` metadata 仅为 nonatomic property 写入。resolver 会从对象动态类开始逐层调用 `class_copyPropertyList`，因此可解析继承属性和 KVO 动态子类。默认 setter 解析已修复大小写反推问题，`setTitle:` 现在会正确定位 `_title`；getter 必须为 0 个冒号、setter 必须仅含一个末尾冒号，`readOnly: true` 与显式 setter 的冲突、manual KVO 与 readonly 的冲突、selector 中的逗号以及与当前类或继承方法的 accessor selector collision 都会在 class mutation 前校验。manual KVO 使用 declaring-property instance marker、幂等安装的 metaclass `+automaticallyNotifiesObserversForKey:` override 和 declaring-metaclass TLS super 转发；每层嵌套 `will/did` TLS frame 复用同一枚 `+1 NSString` key，custom/atomic/weak property 均复用同一 setter wrapper。KVO capability 与 255-byte key 上限会前置校验；进入 runtime property/KVO mutation 后发生失败会 poison pending class 并阻止后续 registration。atomic retain/copy object 通过 `objc_getProperty` / `objc_setProperty` 访问，atomic scalar 与 assign pointer 的 1/2/4/8 字节读写通过 `objc_copyStruct` 完成；weak 继续使用 zeroing weak runtime。动态 object property 已支持 `assign/retain(strong)/copy/weak`，retain/copy/weak backing ivar 由每个动态类一次性合成的 `dealloc` 清理并沿 superclass 链转发，用户自定义 `dealloc` 冲突会返回稳定 class-mutation 错误。Apple exception shim 已包住 retain/release、message dispatch 和 ivar/property 访问，`ObjC.chooseSync` / `ObjC.choose` 已接入有界 heap enumeration、retained wrapper 和回调停止语义。KVO shim 已通过 arm64 iOS 与 x86_64 macOS 的 `-Werror` 编译，Apple Cargo cross 也已通过；ObjC property synthesis 已完成静态实现，atomic/KVO 真机 runtime 尚待验收。
-- `native-api/src/stalker.rs` 现在提供 Stalker 事件类型、mask、排除区间、follow/unfollow、内部 activate/deactivate、flush、GC、有限事件队列和丢弃计数，并新增 bounded basic-block static transform 与 caller-supplied execution trace 的 `Compile/Block/Exec/Call/Ret` event generation。QuickJS 新增线程事件队列扩展 `Native.stalkerPauseThread/Native.stalkerResumeThread` 与 `Stalker.pauseThread/resumeThread`，并保留 `Stalker.transform/transformBasicBlock/generateEvents/recordBlock`；暂停状态会拒收事件，恢复后继续进入同一有界队列。`Stalker.relocate(bytes, source, destination)` 复用现有 ARM64 writer/relocator 生成 direct-only 静态 relocation plan：逐指令返回 `copied/relocated/out-of-range`，只有整块均可直接重定位时才返回 output bytes，超范围时明确要求 fallback。`Stalker.layoutCodeCache(bytes, source, destination)` 在此基础上提供纯静态 code-cache layout：按终止指令切 basic blocks，规划 code 区、16-byte 对齐的 fallback island 区和每槽 64 bytes 的保守预留；结果继续固定 `materialized=false / executable=false / output=null`。新增的 `Stalker.emitCodeCache(bytes, source, destination)` 保持 layout 契约不变，在独立的离线 writer 阶段生成完整 image bytes：direct 项写入 relocated word，超范围的 branch、ADR/ADRP 和 literal 项把原位置改写为到 slot 的 `B`，并在 64-byte slot 内发射对应 trampoline；未使用 padding/slot 字节确定性填充 ARM64 NOP。emission 结果报告 `emitted=true / emissionComplete=true`，但仍固定 `executionReady=false / materialized=false / executable=false / allocatesExecutableMemory=false`；远目标 veneer 遵循 AAPCS64 `x16/IP0` scratch 约定，并通过 `scratchRegisterPolicy/scratchRegisters/preservesScratchRegisters` 显式暴露该边界。`Stalker.materializeCodeCache(bytes, source)` 提供 RW-only materialization；`Stalker.finalizeCodeCache()` 完成 instruction-cache flush 与事务式 RX transition，`Stalker.executeCodeCache()` 提供 AArch64 当前线程直接执行。target-thread 路径进一步提供 rewrite plan、near RX prepare、commit preflight 和 suspend/quiesce/patch/resume/rollback 事务；非终止 relocated block 会追加 `B sourceEnd`，提交前比较完整 source snapshot，成功结果报告 `controlFlowClosed=true / sourceSnapshotVerified=true`。普通 layout/emission/materialization 的输出语义保持不变。当前剩余边界是 `BL/BLR` 的 LR 保留、生产 transformer/callout、自动 instruction event backend 以及 Apple 真机运行验收。
-- Stalker 的函数级 native callout 已通过 `Stalker.installCallout(thread, target[, stealth])` 暴露：在 ARM64 hook engine 下将 enter/leave 记录写入现有 bounded Call/Ret sink，返回句柄负责显式 `detach()`；这项能力不代表指令级 transformer 或自动 instruction event backend。
-- QuickJS 现在提供全局 `CModule(source[, symbols])` 和 `CModule.capabilities/status/info/lastError`。Apple backend 已接入 TinyCC 编译、Mach-O linker、`MAP_JIT` executable mapping、imports/exports、`findSymbol`、finalizer 和 `dropMetadata`；源码、导入符号数量、名称、NUL、重复项和指针值仍先经过真实校验。CI run `30764666695` 在 ARM64 macOS host 上通过 TinyCC 编译、executable mapping、导出执行与释放测试，并在 ARM64 iOS Simulator 内通过 CModule + `NativeFunction` 调用返回 `42`。因此 CModule 的 macOS host 与 iOS Simulator 路径已完成运行验收；物理设备的 `MAP_JIT`/W^X 行为仍需单独验收，Linux 普通构建继续按平台报告 `unavailable`。
-- CI run `30805082247` 的完整 host 测试结果为 Linux `576 passed`、ARM64 macOS `518 passed`。Simulator harness 的 hosted XCTest 为 `1 passed`，通过 `dlopen/dlsym` 调用 `ios_agent_entry`，依次验证 `HELLO / Ping / JsInit / LoadJs / RPC / structured RPC / structured JsEval / CModule / Exit`；嵌套 object/array 会作为 JSON 结构跨 agent frame 保真，CModule 与标量 RPC 均返回 `42`，entry 最终返回 `0`。device agent dylib 与 ARM64 macOS controller 也已构建并上传；注入、hook、KVO、Swift ownership、真实 provider 和 controller remote lease 的物理设备时序仍按各自边界继续验收。
-- Swift 查询层现在新增保守的类型/对象/ABI 参数分类：`Swift.typeRepresentation/objectRepresentation/classifyAbiArgument(s)` 会区分 scalar、pointer、metatype、existential、thick-function、tuple、opaque-result 和 nominal metadata-dependent 形状。`Swift.metadataOf(object)` / `Swift.object(pointer, metadata?, options?)` 会先验证对象对齐、Mach VM 可读区域，并要求显式 metadata 与对象首字 metadata identity 一致；结果记录 `metadataInferred/metadataVerified` 与 `borrowed/adopt/retain` ownership。wrapper 提供 `metadata/isType/typeName/ownership/status/isDisposed/retain/dispose/toPointer`，`dispose()` 幂等且 finalizer 不重复释放。对经过 `abi: 'c-compatible', verified: true` 标记的 thin Swift/C ABI，`Swift.thinFunction()`、`Swift.invoke()`、`Swift.call()` 已复用 `NativeFunction` 支持标量、浮点和指针调用；泛型、async、throws、隐藏上下文、间接返回和 full object ABI 仍会明确拒绝。`Swift.status()` 会分别报告 `thinAbiCallAvailable`、`liveObjectWrapperAvailable` 与仍关闭的 full object ABI；`SwiftType` 结果也会携带 `typeRepresentation / objectRepresentation / abiArgumentKind / abiPassMode / abiCallSupported / abiCallReason`。
-- Android 的 `hookNative/attachNative` 表面现在也已接入 iOS QuickJS runtime：两者接收已有的 native callback pointer 和原样 `userData`，不会把 JS function 编译成 native closure，也不会额外虚构 Android 没有的 `NativeCallback` global。`hookNative` 返回 trampoline；`attachNative` 同时支持单个 onEnter 指针和 `{ onEnter, onLeave, data, mode }`。iOS 继续支持 `Hook.NORMAL/WXSHADOW`，`Hook.RECOMP` 明确返回 Android-only unsupported。native attach 会用内部 enter/leave wrapper 覆盖整个原函数调用周期；生成 thunk 在 C 入口维护原子活跃计数，最终 decrement + return/branch 已移到 dylib 常驻文本 helper，计数归零后不会再执行可能被复用或 `munmap` 的池内指令；redirect 尾调用也会保留原始 LR，不再对不经过本 thunk 返回的 LR 额外签名。JS callback 使用每次安装独立的 dispatch storage，卸载后的 thunk 先进入 retired 队列，等待完整 thunk 和 callback quiescence 后才允许复用。runtime cleanup 只清理当前 QuickJS runtime 所有的 hook，其他 runtime 仍有 hook 时保留 backend pool；Apple ARM64/arm64e 实际回调、并发 detach 和 WXSHADOW 仍待真机验收。
-- Android Java/ART API 也补了 iOS 兼容探测层：`Java.available=false`，`Java.status()` / `Java.info()` / `java.status` 会返回 `backend=unsupported-ios`、Android 参考路径 `rustFrida-master/quickjs-hook/src/jsapi/java`、iOS 替代路径 `ObjC/Swift/Native`，并明确给出 `artRuntimeAvailable=false / jniAvailable=false / hookApiAvailable=false / classLoaderEnumerationAvailable=false / methodEnumerationAvailable=false / fieldAccessAvailable=false / objectInvocationAvailable=false / deoptAvailable=false / supportedMethodCount=0 / unsupportedMethodCount` 这批能力位；`Java.use/perform/performNow/hook/deopt*`、Frida 风格入口 `Java.cast / Java.array / Java.retain / Java.dispose / Java.registerClass / Java.openClassFile / Java.enumerateMethods / Java.scheduleOnMainThread`，以及 Android 版内部入口 `_artRouterDebug / getField / _inspectArtMethod / _setForcedInterpretOnly / _initArtController / _updateClassLoader / _classLoaders / _findClassWithLoader / _setClassLoader` 等都会保留方法名并明确报 Android-only unsupported；这样 Android 脚本可以先做能力探测，不会因为 `Java` 未定义或内部探测入口缺失直接失败。
-- Android Jni/JNIEnv API 也补了 iOS 兼容探测层：`Jni.available=false`，`Jni.status()` / `Jni.info()` / `jni.status` 会返回 `backend=unsupported-ios`、Android 参考路径 `rustFrida-master/quickjs-hook/src/jsapi/jni`、iOS 替代路径 `ObjC/Swift/Native`；状态里会明确区分 `metadataTableAvailable=true` 和 `functionTableAvailable=false / functionAddressAvailable=false / helperEnvAvailable=false`，并给出 `jniFunctionCount / tableEntryCount / supportedFunctionCount / unsupportedFunctionCount`，方便脚本判断“JNI 名称/索引元数据可用，但真实 JNIEnv 调用不可用”。`Jni.entries()` / `Jni.functions()` / `Jni.find(name)` / `Jni.function(name)` / `Jni.table` 现在会返回 Android `jni_boot.js` 同名 JNI 函数元数据（含 vtable `index`、`address=null`、`available=false`），便于脚本复用 JNI 函数名和索引探测。`Jni._threadEnv / _className / addr / call` 等需要真实 Android JNIEnv 的入口保留方法名并明确报 Android-only unsupported；`Jni.FindClass / RegisterNatives / ExceptionCheck` 这类 Android `jni_boot.js` 通过 Proxy 暴露的 JNI 函数名也会作为 unsupported 函数存在。`Jni.helper.structs.JNINativeMethod.read/readArray` 和 `Jni.helper.structs.jvalue.read/readArray` 现在则会按 Android 版结构解析语义真实读取内存，方便复用 RegisterNatives 参数、jvalue 参数数组这类纯结构解析脚本。这样依赖 `Jni` 名字空间的 Android 脚本可以先做能力探测，不会因为全局对象缺失直接失败。
-- 同时 `backends[*]` 条目本身现在也开始统一字段名：runtime 补了 `displayName`，controller 补了 `name`，两边都带 `loaded / presentOnFilesystem / filesystemOnly / loadedImageCount / filesystemPathCount / loadedImages / filesystemPaths`；脚本不必再为 `name` 和 `displayName` 分两套兼容分支。
-- 对 `backendAdaptation.preferredConflictBackendPair`，controller 侧现在也补齐了 runtime 已有的 `firstBackendId / firstBackendDisplayName / secondBackendId / secondBackendDisplayName / backendIds / backendDisplayNames`，并额外平铺 `preferredConflictBackendIds / preferredConflictBackendDisplayNames`；脚本如果只想直接拿“当前最需要处理的冲突 backend 对”做展示或分流，不必再深入 pair 对象拆字段。
-- 在这之上，runtime 和 controller 现在都会平铺 `preferredConflictBackendPairScope / preferredConflictBackendPairReason`。当前 runtime 单进程冲突对的 `scope` 是 `shared-process`，controller 双端冲突对的 `scope` 是 `split-process`；脚本可以先按 scope 分流，再决定展示或执行哪条恢复链。
-- 同时 `preferredBackendRecommendation` 这层现在也开始平铺关键分流字段：`preferredBackendState / preferredBackendLoadedBy / preferredBackendVisibleInController / preferredBackendVisibleInTarget / preferredBackendSuggestedGroupKey / preferredBackendSuggestedPhase`。脚本如果只想知道“当前优先处理哪个 backend、它为什么被选中、下一步建议属于哪条组/阶段”，不必再深入推荐对象本体。
-- 这组 `backendAdaptation.nextStep / activeStep` 现在也已经补齐到和 `hook.automation.nextStep / activeStep` 更接近的口径，会直接给 `ActionKey / CommandGroup / Allowed / BlockedBy / Branch / CommandJsonEligible / Retryable / Timeout* / ErrorCode* / Risk / Placeholder* / CliArgs` 这批平铺字段；脚本在两层入口之间切换时不必再维护两套字段映射。
-- 在这之上，`backendAdaptation.nextStep / activeStep` 现在也补了 `nextStepCommandJsonTemplate / nextStepCommandJsonTemplateCommand / nextStepCommandJsonTemplateKind` 和对应的 `activeStep*` 别名；如果脚本已经走平铺字段模式，就不必再从对象里回取 `commandJsonTemplate.command/kind`。
-- 同时这组 `backendAdaptation.stepChain[*] / nextStep / activeStep` 现在也会稳定带 `reason / preferredPath`；脚本可以直接知道“为什么推荐这一步、它属于哪条适配路径”。
-- `backendAdaptation.stepChain[*]` 现在也补了 `commandJsonTemplateCommand / commandJsonTemplateKind / commandJsonTemplateEligible`；脚本顺序遍历链项时不必再额外解包 `commandJsonTemplate`。
-- 在这之上，`backendAdaptation` 现在也补了 `executionSummary` 和同名 `execution*` 顶层别名，会直接总结当前选中的执行面：`kind(preferred-group) / source / selectedId / selectedAllowed / selectedBlockedBy / selectedBranch / selectedPhase / selectedCommand / selectedReason / selectedPreferredPath / selectedErrorCode / selectedTimeoutErrorCode / selectedRetryDelayHintMs / selectedTimeoutHintMs / selectedCommandJsonTemplate / selectedCommandJsonTemplateCommand / selectedCommandJsonTemplateKind / retryableStepCount / phaseOrder / retryBudget / hasConflictPair`；当前 iOS runtime 侧这里稳定走 `preferred-group`，`hasConflictPair` 也稳定为 `false`，脚本可以直接据此判断当前还是单进程 backend-adaptation 路径。
-- 这份 `hook.coexistence` 现在也会补 `singleExternalBackendLoaded / multipleExternalBackendsLoaded / loadedExternalBackendCount / controllerMultipleExternalBackendsLoaded / targetMultipleExternalBackendsLoaded`，脚本侧不必再自己从 `loadedInControllerCount/loadedInTargetCount/loadedInBothCount` 反推“单后端还是多后端冲突”。
-- 当 `hook.effective.commandMode=allowed` 但 backend matrix 显示 controller/target 两侧都已加载外部 backend 且 `loadedInBothCount=0`（两侧 loaded backend 无交集）时，`hook.coexistence` / `hook.automation` 现在会自动把运行面降级到 `query-only`，并补 `baseCommandMode / effectiveCommandMode / autoDowngradedToQueryOnly / autoDowngradeReason`（`split-loaded-external-backends-without-shared-runtime`），避免在“跨 backend 分裂加载”场景误走 inline install。
-- `environment.hookEnvironment` / `preflight.targetHookEnvironment` 现在也补了 `coexistenceMode / coexistenceRecommendation / coexistenceLayerStatus / externalBackendLoaded / filesystemOnlyBackendDetected`，在还没进入 `hook.coexistence` 汇总前也能先拿到一致的共存提示；其中 `coexistenceLayerStatus` 不再固定 `not-implemented`，会按环境给稳定枚举：无外部 backend 时 `not-required`（仅文件落地未加载则 `not-required-filesystem-only`），已加载外部 backend 时会给 `missing-inline-risky / missing-query-only / missing-cleanup-only / missing-blocked / missing-unknown`，并与 `coexistenceLayerAvailable` 一起表达“是否真的需要/具备共存层”。
-- `hook.automation.commandTemplates` 里的 `hook.install` 分支现在也会按 `preferredPath` 自动收敛：`inline-safe / inline-cautious / inline-risky` 才会返回安装模板（其中 `inline-cautious` 会带 `cautious-filesystem-only-backend-artifacts` 风险标记）；`query-only / cleanup-only / blocked` 下该分支稳定是空模板（`templateCount=0`），避免脚本误执行当前策略下不可用的 install 命令。
-- `hook.automation` 现在也补了 `loadedExternalBackendCount / singleExternalBackendLoaded / multipleExternalBackendsLoaded`，脚本如果只关心“是否单后端/多后端冲突”可以直接在自动化分支对象里判定，不必再额外读取 `hook.coexistence` 或 `backendMatrix`。
-- `hook.coexistence` / `hook.automation` 现在都补了统一 `nextStep` 对象（`id / source / actionKey / commandGroup / allowed / blockedBy / branch / reason / preferredPath / command / phase / commandJsonEligible / commandJsonTemplate / readyToRun / requiresFallback`）；其中 `id` 稳定使用 `next-action:<actionKey>:0`，便于脚本做幂等跟踪；另外两侧对象也会平铺 `nextStepId / nextStepSource / nextStepActionKey / nextStepCommandGroup / nextStepAllowed / nextStepBlockedBy / nextStepBranch / nextStepCommand / nextStepPhase / nextStepCommandJsonEligible / nextStepKind / nextStepRetryable / nextStepMaxSuggestedRetries / nextStepRetryDelayHintMs / nextStepTimeoutHintMs / nextStepTimeoutAction / nextStepErrorCode / nextStepTimeoutErrorCode / nextStepRisk / nextStepPlaceholderCount / nextStepPlaceholders / nextStepCliArgs / nextStepReadyToRun / nextStepRequiresFallback` 这组顶层别名，脚本若只想拿“下一条最建议执行命令”，不必再先解包 `nextStep`。
-- `hook.coexistence` / `hook.automation` 在这之上也都补了简化执行链 `nextStepChain`（以及 `nextStepChainSource / nextStepChainLimit / nextStepChainCount / nextStepChainTruncated`）；每个链路条目还会带稳定 `id`（`next-action:<actionKey>:<index>` 或 `fallback-plan:<index>`），并补齐 `actionKey / commandGroup / allowed / blockedBy / branch / kind / retryable / maxSuggestedRetries / retryDelayHintMs / timeoutHintMs / timeoutAction / errorCode / timeoutErrorCode / risk / placeholderCount / placeholders / cliArgs`（无可映射 action 时为 `null`），便于脚本做去重、重试和幂等记录；`hook.coexistence` 会给 `next-action` 的模板切片（默认前 3 步），`hook.automation` 则会在 `nextStep.readyToRun=true` 时给单步 `next-action`，否则给优先级最高的 `fallback-plan` 步骤切片（默认前 3 步），脚本可直接顺序执行这条短链，不必解析完整大对象。
-- `hook.coexistence` 顶层的 next-action 摘要现在也补了 `nextActionBlockedBy`（`none/controller/target/both`）和 `nextActionReadyToRun`，与 `hook.automation` 的同名字段口径保持一致，脚本做来源分流时不必再读 `effectiveActions` 反推。
-- `hook.coexistence` 现在也补了 `nextActionPlan`（结构与 `hook.automation.nextActionPlan` 对齐，包含 `allowed/blockedBy/branch/templates/commandJsonTemplates` 等），脚本可以统一按 plan 对象读取下一步动作。
-- `hook.coexistence` / `hook.automation` 现在也都会给统一可执行入口 `activeStep`（对象）并平铺 `activeStep*`：`activeStepSource / activeStepAllowed / activeStepBlockedBy / activeStepBranch / activeStepActionKey / activeStepCommandGroup / activeStepId / activeStepCommand / activeStepPhase / activeStepReadyToRun / activeStepRequiresFallback / activeStepKind / activeStepCommandJsonEligible / activeStepRetryable / activeStepMaxSuggestedRetries / activeStepRetryDelayHintMs / activeStepTimeoutHintMs / activeStepTimeoutAction / activeStepErrorCode / activeStepTimeoutErrorCode / activeStepRisk / activeStepPlaceholderCount / activeStepPlaceholders / activeStepCliArgs`；`hook.coexistence` 固定指向 `nextStepChain[0]`，`hook.automation` 在 `nextStep.readyToRun=true` 时指向 `next-action`，否则自动指向 `fallback-plan` 第一条，脚本可直接拿这个入口执行，不必自己分支判断。
-- `hook.automation.fallbackPlan.steps[*]` 现在也会补稳定 `id`（`fallback-plan:<index>`），并补 `source / readyToRun / requiresFallback`（固定 `fallback-plan / true / true`）；和 `nextStepChain[*]` 保持同一命名与阶段语义，方便脚本在 plan 视图与短链视图之间做一致映射。
-- `hook.automation.fallbackPlan` 现在也会平铺第一条回退步骤的顶层别名：`nextStepId / nextStepSource / nextStepActionKey / nextStepCommandGroup / nextStepAllowed / nextStepBlockedBy / nextStepBranch / nextStepCommand / nextStepPhase / nextStepCommandJsonEligible / nextStepKind / nextStepRetryable / nextStepMaxSuggestedRetries / nextStepRetryDelayHintMs / nextStepTimeoutHintMs / nextStepTimeoutAction / nextStepErrorCode / nextStepTimeoutErrorCode / nextStepRisk / nextStepPlaceholderCount / nextStepPlaceholders / nextStepCliArgs`，并补统一 `activeStep` 对象和同名 `activeStep*` 平铺字段（包含 `activeStepAllowed / activeStepBlockedBy / activeStepBranch / activeStepActionKey / activeStepCommandGroup`，同 `nextStepChain[0]`），脚本侧不必先读取 `nextStepChain[0]` 再拆字段。
-- `hook.automation.commandJsonTemplates` / `hook.automation.fallbackPlan.commandJsonTemplates` 里的 `phase` 分类现在会把整组 `native.*` 运行时查询统一按 `query` 处理，不再只有 `native.images*` 会落到 query；因此像 `native.base / native.imageInfo / native.symbolInfo / native.dyldInfo` 这类命令的 `retryable / timeoutHintMs / errorCode / timeoutErrorCode` 现在也会稳定对齐 query 策略，不会再误落到 `general`。
-- `hook.query` 的自动化模板和 `query-only` 建议序列现在也把 `objc.methods <class> [meta] [filter]`、`objc.classInfo <class> [meta]`、`objc.superclass <class>`、`objc.classChain <class>`、`objc.classExists <name>`、`objc.selector <name>`、`objc.methodInfo <class> <selector> [meta]`、`objc.propertyInfo <class> <property> [meta]`、`objc.ivarInfo <class> <ivar>`、`objc.properties <class> [meta] [filter]`、`objc.ivars <class> [filter]`、`objc.protocols <filter>`、`objc.classProtocols <class> [filter]`、`objc.protocolInfo <protocol>`、`objc.protocolProtocols <protocol> [filter]`、`objc.protocolMethods <protocol> [required] [instance] [filter]`、`objc.protocolMethodInfo <protocol> <selector> [required] [instance]`、`objc.protocolProperties <protocol> [filter]`、`objc.protocolPropertyInfo <protocol> <property>`、`native.imageInfo <module>`、`native.export <symbol>`、`native.export <module> -- <symbol>`、`native.symbols <query>`、`native.symbolInfo <symbol>`、`native.symbols <module> -- <query>`、`native.symbolInfo <module> -- <symbol>`、`native.exports <module>`、`native.exports <module> -- <query>`、`native.exportInfo <module> -- <symbol>`、`native.dependencies <module>`、`native.dependencies <module> -- <query>`、`native.dependencyInfo <module> -- <path-or-name>`、`native.imports <module>`、`native.imports <module> -- <query>`、`native.importInfo <module> -- <symbol>`、`native.rpaths <module>`、`native.rpaths <module> -- <query>`、`native.rpathInfo <module> -- <path>`、`native.entryPoint <module>`、`native.uuid <module>`、`native.installName <module>`、`native.dylinker <module>`、`native.sourceVersion <module>`、`native.buildVersion <module>`、`native.encryptionInfo <module>`、`native.dyldInfo <module>`、`native.linkedit <module>`、`native.functionStarts <module>`、`native.codeSignature <module>`、`native.dataInCode <module>`、`native.exportsTrie <module>`、`native.chainedFixups <module>`、`native.loadcmds <module>`、`native.loadCommandInfo <module> -- <name|cmd|index>`、`native.sections <module>`、`native.sectionInfo <module> -- <segment> <section>`、`native.segments <module>`、`native.segmentInfo <module> -- <segment>`、`native.base <module>`、`native.image <address>`、`native.symbol <address>`、`objc.classImage <class>`、`objc.methodImage <class> <selector> [meta]`、`objc.methodImp <class> <selector> [meta]`、`objc.methodOwners <selector> [meta]`、`objc.selectorName <selector>`、`objc.objectClassName <object>`、`swift.available`、`swift.demangle <mangled-symbol>`、`swift.symbolInfo <symbol>`、`swift.symbolInfo <module> -- <symbol>`、`swift.methodInfo <type> <method>`、`swift.methodInfo <module> -- <type> <method>`、`swift.typeInfo <type>`、`swift.typeInfo <module> -- <type>`、`swift.protocolInfo <protocol>`、`swift.protocolInfo <module> -- <protocol>`、`swift.protocols <filter>`、`swift.protocols <module> -- <query>`、`swift.conformances <type>`、`swift.conformances <module> -- <type>`、`swift.conformanceInfo <type> <protocol>`、`swift.conformanceInfo <module> -- <type> <protocol>`、`swift.metadata <module> -- <type>`、`swift.vtable <module> -- <type>`、`swift.vtableInfo <type> <member>`、`swift.vtableInfo <module> -- <type> <member>`、`swift.witnessTable <filter>`、`swift.witnessTable <module> -- <type|protocol>`、`swift.witnessTableInfo <type> <protocol>`、`swift.witnessTableInfo <module> -- <type> <protocol>`、`swift.typeLayout <type>`、`swift.typeLayout <module> -- <type>`、`swift.typeLayoutInfo <type>`、`swift.typeLayoutInfo <module> -- <type>`、`swift.symbols <query>`、`swift.symbols <module> -- <query>`、`swift.metadataInfo <type>`、`swift.metadataInfo <module> -- <type>`、`swift.typeKinds`、`swift.types <module> -- <query>`、`swift.typesOfKind <kind> <query>`、`swift.typesOfKind <module> -- <kind> <query>`、`swift.typeMethods <type>`、`swift.typeMethods <module> -- <type>`、`swift.methodOwners <method>`、`swift.methodOwners <module> -- <method>`、`swift.methods <type> <method>`、`swift.methods <module> -- <type> <method>`、`pac.image <module>`、`pac.images <filter>`、`pac.available`、`pac.arm64e`、`pac.strip <address>`、`pac.stripdata <address>`、`native.mainImage` 纳入进来；当 inline install 被策略或 backend 压力挡住时，脚本除了 `objc.classes / native.images / swift.types` 之外，也能直接拿到 ObjC 类方法枚举、ObjC 类单项信息查询、ObjC 父类查询、ObjC 继承链查询、ObjC 类存在性查询、ObjC selector 解析查询、ObjC 方法单项信息查询、ObjC 属性单项信息查询、ObjC ivar 单项信息查询、ObjC 属性枚举、ObjC ivar 枚举、ObjC 协议检索、ObjC 类协议检索、ObjC 协议单项信息查询、ObjC 协议继承协议枚举、ObjC 协议方法声明枚举、ObjC 协议单个方法声明查询、ObjC 协议属性枚举、ObjC 协议单个属性查询、模块镜像信息查询、按导出名全局定位地址、按指定模块导出名定位地址、全局符号检索、全局符号单项信息查询、模块内符号检索、模块内符号单项信息查询、模块导出枚举、模块导出检索、模块导出单项信息查询、模块依赖树枚举、模块依赖树过滤查询、模块依赖单项信息查询、模块导入表枚举、模块导入表过滤查询、模块导入单项信息查询、模块 rpath 枚举、模块 rpath 过滤查询、模块 rpath 单项信息查询、模块入口点查询、模块 UUID 查询、模块 install name 查询、模块 dylinker 查询、模块 source version 查询、模块 build version 查询、模块 encryption info 查询、模块 dyld info 查询、模块 linkedit 查询、模块 function starts 查询、模块 code signature 查询、模块 data in code 查询、模块 exports trie 查询、模块 chained fixups 查询、Mach-O load command 枚举、Mach-O load command 单项信息查询、Mach-O section 枚举、Mach-O section 单项信息查询、Mach-O segment 枚举、Mach-O segment 单项信息查询、模块基址查询、地址到镜像反查、地址到符号反查、ObjC 类到镜像反查、ObjC 方法到镜像反查、ObjC 方法 IMP 查询、ObjC selector owner 反查、ObjC selector 名称解析、ObjC 对象类名解析、Swift 可用性判定、Swift demangle 查询、Swift 符号单项信息查询、模块内 Swift 符号单项信息查询、Swift 方法单项信息查询、模块内 Swift 方法单项信息查询、Swift 类型单项信息查询、模块内 Swift 类型单项信息查询、Swift 协议单项信息查询、模块内 Swift 协议单项信息查询、Swift 协议检索、模块内 Swift 协议检索、Swift conformance 检索、模块内 Swift conformance 检索、Swift conformance 单项信息查询、模块内 Swift conformance 单项信息查询、模块内 Swift metadata 检索、模块内 Swift vtable 检索、Swift vtable 单项信息查询、模块内 Swift vtable 单项信息查询、Swift witness table 检索、模块内 Swift witness table 检索、Swift witness table 单项信息查询、模块内 Swift witness table 单项信息查询、Swift type layout 检索、模块内 Swift type layout 检索、Swift type layout 单项信息查询、模块内 Swift type layout 单项信息查询、Swift 符号检索、模块内 Swift 符号检索、Swift metadata 单项信息查询、模块内 Swift metadata 单项信息查询、Swift vtable 检索、Swift kind 枚举、模块内 Swift 类型检索、Swift kind 过滤类型检索、模块内 Swift kind 过滤类型检索、Swift 类型方法枚举、模块内 Swift 类型方法枚举、Swift 方法 owner 检索、模块内 Swift 方法 owner 检索、Swift 方法检索、模块内 Swift 方法检索、单模块 PAC 风险查询、PAC 风险面枚举入口、PAC 可用性判定入口、进程级 arm64e 判定入口、PAC 代码指针 strip 入口、PAC data 指针 strip 入口和主镜像直查入口。
-- `Native.detectHookEnvironment()` / `native.hookenv` 现在也同步补了同名共存字段（并在文本模式增加 `coexistence_mode / coexistence_recommendation / coexistence_layer_status / external_backend_loaded / filesystem_only_backend_detected / recommended_action_count / allowed_action_count / blocked_action_count / next_action ... / next_action_command_json_template_count=...`），agent 与 controller 的 hook 环境语义保持一致。
-- 对 `objc.* / native.* / pac.* / swift.*` 这类 runtime 查询命令，`--command-json` 现在也会尽量回传稳定的 `payloadJson` 字段，里面直接带 `count / classes / methods / images / symbols / types / report / text` 等结构化内容，不再只能从换行文本里二次解析。
-- 这批 `payloadJson` 里的列表和嵌套集合现在也基本统一补了 `has* / first* / last*` 摘要字段；脚本如果只是想判断“有没有结果”“第一条/最后一条是谁”，通常不必再手动扫整个数组。
-- 对单值查询结果，这批 `payloadJson` 现在也继续统一补齐 `resolved* / has*` 顶层别名；像 `swift.available / swift.demangle / native.base / native.images / objc.classImage / objc.methodImage / objc.methodImp / objc.selectorName / objc.objectClassName` 这类结果，脚本侧不必再回到嵌套对象里取同一份规范化字段。
-- 其中 `native.symbols / native.exports / native.segments / native.sections / native.loadcmds / swift.symbols / swift.types / swift.methodOwners / swift.typeMethods / swift.methods` 这批结果现在也会补出更稳定的定位字段，例如 `moduleBase / offsetHex / sourceSymbolName / sourceOffsetHex`；`native.images / native.mainImage / pac.images` 里的镜像项也会顺手带 `name`，脚本侧不必再自己拆 basename。
-- `native.dependencies / native.rpaths / native.imports / native.segments / native.sections / native.loadcmds` 这几类 module-owned 列表结果现在也统一补了模块解析状态和镜像摘要字段，例如 `image / hasImage / resolved / resolvedImageName / resolvedImagePath / resolvedDirectoryPath / resolvedPathKind / resolvedBase / resolvedSlide / resolvedSizeHex`；脚本侧可以区分“模块没解析到”和“模块解析到了但列表恰好为空”，不必再额外补一轮 `native.imageInfo`。
-- `native.dependencies <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dependencies / ordinal / kind / path / currentVersion / compatibilityVersion / timestamp`，并额外补 `pathKind / isTokenPath / pathDepth` 这类 entry 摘要，以及 `uniquePathKindCount / uniqueKindCount / uniqueDependencyNameCount / weakDependencyCount / reexportDependencyCount / upwardDependencyCount / loadDependencyCount / timestampedDependencyCount / versionMismatchCount / pathKindNames / pathKindList / kindNames / kindList / dependencyNameList / pathKinds / kinds / dependencyNames` 这类汇总字段，适合先看一个镜像依赖树，再结合 `native.imports` 缩小目标符号来源；依赖过滤和 `native.dependencyInfo` 现在也会兼容 framework 名、dylib stem、去 `lib` 前缀和去版本段短名，例如 `libSystem.B.dylib` 可用 `System/system` 命中。
-- `native.dependencyInfo <module> -- <path-or-name>` 现在可以直接结构化返回单个 dependency entry 的 `moduleBase / ordinal / kind / path / currentVersion / compatibilityVersion / timestamp`，后续排查某个镜像依赖的具体 dylib 时不必再先全量 `native.dependencies` 再脚本过滤；匹配时也会同时看 full path、basename、`.framework` 名、`.dylib` stem 和去 `lib` 前缀后的名字，例如 `libobjc.A.dylib / libobjc.A / objc.A` 或 `UIKit.framework / UIKit` 都能命中同一个 dependency。
-- `native.encryptionInfo <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `encryptionInfo / cryptoff / cryptsize / cryptid`，并把 `cryptoffHex / cryptsizeHex / cryptid` 这些常用值同步平铺到顶层，适合快速确认目标 Mach-O 是否声明了加密区以及范围。
-- `native.entryPoint <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `entryPoint / entryoff / stacksize`，适合快速确认 `LC_MAIN` 指向的主入口偏移。
-- `native.dyldInfo <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dyldInfo / rebaseOff / bindOff / weakBindOff / lazyBindOff / exportOff` 这些平铺字段，以及按 `rebase/bind/weakBind/lazyBind/export` 拆好的 `regions / nonEmptyRegionNames / nonEmptyRegionList / largestRegionName` 摘要，适合脚本直接消费 `LC_DYLD_INFO(_ONLY)` 的区间布局。
-- `native.linkedit <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `linkedit / vmaddr / vmsize / fileoff / filesize / computedBase`，并把 `symtab / strtab / indirectsym` 收成 `tableNames / tableNameList / nonEmptyTableNames / nonEmptyTableNameList / tables / firstTableName` 这类摘要，而且这些聚合字段也会同步平铺到顶层，适合脚本先判断 __LINKEDIT 里哪些表实际存在，再继续钻 `functionStarts / codeSignature / exportsTrie / chainedFixups`。
-- `native.functionStarts <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `functionStarts / dataoff / datasize / linkeditBase / dataAddress / count / starts`，并补 `totalSpanHex / gapCount / largestGapHex` 这类摘要；`starts` 会给出解码后的函数起点偏移和运行时地址，适合快速确认 `LC_FUNCTION_STARTS` 记录的函数边界分布和稀疏度。
-- `native.codeSignature <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `codeSignature / dataoff / datasize / linkeditBase / dataAddress / magic / length / count`，并额外补 `blobKind / magicCategory / knownMagic / blobLengthRelation / countMatchesSuperBlob / isDetachedSignature / isBlobWrapper / isCodeDirectory / isEntitlements` 这类摘要字段，适合快速确认目标镜像是否带 embedded signature、当前 blob 属于哪一类，以及头部长度/计数字段是否自洽。
-- `native.dataInCode <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dataInCode / dataoff / datasize / linkeditBase / dataAddress / count / entries`，其中每条 entry 会补 `offset / endOffset / address / endAddress / length / kind / kindName / isData / isJumpTable`，汇总层还会给 `totalEntryLength / totalSpanHex / uniqueKindCount / kinds / dataEntryCount / jumpTableEntryCount / unknownEntryCount / largestEntry*`，适合快速确认 `LC_DATA_IN_CODE` 标出来的常量区、jump table 区和其它非指令片段分布。
-- `native.exportsTrie <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `exportsTrie / dataoff / datasize / linkeditBase / dataAddress / count / entries`，其中每条 entry 会补 `nameLength / hasAddress / hasOffset / hasOther / otherRole / hasImportName / isWeakDefinition / isReexport / isStubAndResolver`，汇总层还会给 `uniqueKindCount / kinds / addressEntryCount / offsetEntryCount / importNameCount / resolverCount / lowestAddress / highestAddress / addressSpanHex / lowestOffsetHex / highestOffsetHex / offsetSpanHex / longestExportName*`，适合直接查看 `LC_DYLD_EXPORTS_TRIE` 解码后的导出节点分布，而不必再手动解析 trie。
-- `native.chainedFixups <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `chainedFixups / dataoff / datasize / linkeditBase / dataAddress / fixupsVersion / startsOffset / importsOffset / symbolsOffset / importsFormat / symbolsFormat / segments / imports`，其中 page 会补 `hasPageStart / chainStartCount / effectiveStartCount`，segment 会补 `hasFixupPages / firstFixupPageIndex / lastFixupPageIndex / pageWithFixupsCount / multiStartPageCount / chainStartCount / largestPage*`，import 会补 `nameLength / addendSign`；汇总层还会给 `offsetsMonotonic / startsToImportsDeltaHex / importsToSymbolsDeltaHex / totalPageCount / totalFixupPageCount / totalChainStartCount / pointerFormats / namedImportCount / weakImportCount / addendImportCount / uniqueLibOrdinalCount / libOrdinals / dominantPointerFormatName`，其中 `pointerFormats / libOrdinals` 现在也会同步平铺到顶层，适合直接查看 `LC_DYLD_CHAINED_FIXUPS` 的 starts/imports/page usage 布局，不必再手拆 fixups blob。
-- `native.sourceVersion <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `sourceVersion / version`，并补 `hasVersion / versionPartCount / majorVersion / minorVersion / patchVersion / extraVersionCount`，适合快速对齐 Mach-O 自带的 source version 字段并直接按版本段做脚本判断。
-- `native.buildVersion <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `buildVersion / platform / minOs / sdk / tools`，并补 `hasMinOs / hasSdk / minOsPartCount / sdkPartCount / hasTools / firstTool / lastTool / firstToolVersion / lastToolVersion / uniqueToolCount / toolNames / toolNameList`，其中 `tools` 也会同步平铺到顶层，适合直接确认目标镜像的 build platform 和工具链版本。
-- `native.dylinker <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `dylinker / path / name / kind / hasPath`，并补 `name / path / pathKind / kind / hasName / isTokenPath / usesLoaderPath / usesExecutablePath / usesRpathToken / pathDepth / isWeakDylinker / isReexportDylinker / isUpwardDylinker / isLoadDylinker` 这些顶层直达字段，适合直接确认某个 Mach-O 记录的 dyld linker 路径和装载语义。
-- `native.installName <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `installName / path / name / currentVersion / compatibilityVersion / timestamp`，并补 `name / path / pathKind / currentVersion / compatibilityVersion / timestamp / hasName / hasPath / isTokenPath / usesLoaderPath / usesExecutablePath / usesRpathToken / pathDepth / hasTimestamp / versionMismatch` 这些顶层直达字段，适合快速确认某个 dylib 自身声明的 install name、路径类别和版本信息。
-- `native.uuid <module>` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `imageUuid / uuid`，并补 `normalizedUuid / uuidLength / uuidSegmentCount`，同时也会平铺 `resolvedNormalizedUuid / resolvedHasUuid / resolvedUuidLength / resolvedUuidSegmentCount`，适合把运行中镜像和 dSYM / 本地 Mach-O 做快速 UUID 对齐。
-- `native.imageInfo <module>` / `Native.imageInfo(moduleName)` 现在可以直接按模块名返回单条 image 记录的 `name / path / directoryPath / pathKind / base / slide / size / sizeHex`，不必再先 `native.images` 再手动筛一条，也比只看 `native.base` 更适合脚本直接拿模块上下文。
-- `Native.findImageInfo / findSymbolInfo / findExportInfo / findDependencyInfo / findRpathInfo / findImportInfo / findSegmentInfo / findSectionInfo / findLoadCommandInfo` 这组 JS alias 现在也和 CLI 上的 `native.find*Info` 对齐了；脚本如果统一偏好 `find*` 命名，不必在 `Native.*` 和 controller/REPL 两套入口之间切换心智模型。
-- `native.base <module>` / `Native.base(moduleName)` 现在统一走同一套 image lookup 语义；`native.findBase <module>` / `Native.findBase(moduleName)` 也映射到同一路径。`native.mainImage` / `Native.mainImage()`（及 `findMainImage` 别名）、`native.image <address>` / `Native.image(address)`（及 `findImage` 别名）也都有了同层级直连 API，后续脚本不必在 `Native` 和 `Module` 两套入口之间来回切。
-- `native.images [filter]` / `Native.images([filter])`、`native.symbol <address>` / `Native.symbol(address)`（及 `findSymbol` 别名）现在也都有了同层级直连 API；脚本如果只想走 `Native.*` 命名空间，已经不用再回退到 `Module.enumerateModules()` 或 `DebugSymbol.fromAddress()`。
-- `native.export <symbol>` / `native.export <module> -- <symbol>` 现在也可以统一走 `Native.export(moduleNameOrNull, symbolName)`；这样 `Native.*` 基础查询层已经把 images / export / base / symbol 这一组常用入口都收进来了。
-- `native.rpaths <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；结构化结果会带 `rpaths / path`，并额外补 `pathKind / isTokenPath / usesLoaderPath / usesExecutablePath / usesRpathToken / pathDepth` 这类 entry 摘要，以及 `uniqueRpathCount / uniquePathKindCount / tokenPathCount / loaderPathCount / executablePathCount / rpathTokenCount / longestRpath* / pathKindNames / pathKindList / rpathPathList / rpathPaths / pathKinds` 这类汇总字段，适合和 `native.dependencies` 一起排查运行时 dylib 查找路径。
-- `native.rpathInfo <module> -- <path>` / `Native.rpathInfo(moduleName, path)` 现在可以直接结构化返回单条 rpath 的 `moduleBase / path`，并兼容完整路径、去掉 `@loader_path/@executable_path/@rpath` token 后的路径、以及 basename 查询，不必先全量 `native.rpaths` 再二次过滤。
-- `native.exportInfo <module> -- <symbol>` / `Native.exportInfo(moduleName, symbolName)` 现在可以直接结构化返回单条 export entry 的 `moduleBase / name / address / offsetHex`；匹配时会兼容 `_foo` / `foo` 这类常见导出名差异，不必先全量 `native.exports` 再脚本过滤。
-- `native.imports <module> [-- <query>]` 现在也已接到 CLI / REPL / `--command-json`；当前实现基于 Mach-O undefined symbol 表，结构化结果会带 `imports / dylibOrdinal / dylibName / weakImport`，并额外补 `normalizedName / sourceKind / sourcePathKind / isSelfImport / isMainExecutableImport / isFlatLookupImport / isTokenSource / usesLoaderPath / usesExecutablePath / usesRpathToken` 这类 entry 摘要，以及 `weakImportCount / ordinalOnlyCount / mainExecutableImportCount / flatLookupImportCount / selfImportCount / tokenSourceCount / loaderPathImportCount / executablePathImportCount / rpathTokenImportCount / uniqueDylibOrdinalCount / uniqueSourceCount / uniqueSourceKindCount / uniqueSourcePathKindCount / uniqueImportNameCount / uniqueNormalizedNameCount / sourceKindNames / sourceKindList / sourcePathKindNames / sourcePathKindList / importNameList / normalizedNameList / dylibSources / sourceKinds / sourcePathKinds / importNames / normalizedNames / longestImportName*` 这类汇总字段，适合先看一个镜像依赖了哪些外部符号、主要来自哪些 dylib/source/token，再决定后续 trace/hook 目标。
-- `native.loadcmds <module>` 现在也会在 `--command-json` 里补更适合脚本消费的摘要：单条 command 会带 `cmdBaseHex / isReqDyld / hasPayload / endOffsetHex / hasDetail`，汇总层会补 `totalCommandSizeHex / averageCommandSize / largestCommand* / smallestCommand* / reqDyldCommandCount / detailedCommandCount / uniqueCommandNameCount / hasDuplicateCommandNames / commandFamilyNames / commandFamilyList / commandNameList / commandKindNames / commandKindList / commandNames / commandKinds`，适合快速看 Mach-O load command 布局和重复命令分布，而不必再手动遍历整个数组。
-- `native.loadCommands <module>` 现在也已接到 controller CLI / REPL / `--command-json`，作为 `native.loadcmds <module>` 的别名，方便直接按 JS API 里的 `Native.loadCommands(moduleName)` 名字调用。
-- `native.segments <module>` 现在也会在 `--command-json` 里补更适合脚本消费的摘要：单条 segment 会带 `vmEnd / fileEndHex / hasFileData / isZeroFillLike / vmSizeMatchesFileSize / maxprotFlags / initprotFlags / isReadable / isWritable / isExecutable`，汇总层会补 `totalVmSizeHex / totalFileSizeHex / largestVmSegment* / largestFileSegment* / fileBackedSegmentCount / zeroFillSegmentCount / readableSegmentCount / writableSegmentCount / executableSegmentCount / uniqueSegmentNameCount / uniqueProtectionCount / segmentNameList / protectionFlagList / segmentNames / protections`，适合快速看 Mach-O segment 布局、权限分布和 zero-fill 段情况。
-- `native.sections <module>` 现在也会在 `--command-json` 里补更适合脚本消费的摘要：单条 section 会带 `fullName / endAddr / alignPower / alignmentBytesHex / sectionType / sectionTypeName / sectionAttributesHex / hasData / isZeroFillLike / isCStringLike / isSymbolPointers`，汇总层会补 `totalSizeHex / nonEmptySectionCount / zeroFillSectionCount / cstringSectionCount / symbolPointerSectionCount / uniqueSegmentCount / uniqueSectionNameCount / uniqueSectionTypeCount / largestSection* / sectionNameList / segmentNameList / sectionTypeNameList / sectionNames / segments / sectionTypes`，适合快速看 Mach-O section 布局、segment 归属和类型分布。
-- `native.importInfo <module> -- <symbol>` 现在可以直接结构化返回单个 import entry 的 `moduleBase / name / dylibOrdinal / dylibName / weakImport`，后续排查某个镜像依赖的具体外部符号时不必再先全量 `native.imports` 再脚本过滤。
-- `native.loadCommandInfo <module> -- <name|cmd|index>` / `Native.loadCommandInfo(moduleName, commandOrIndex)` 现在可以直接返回单条 load command 的结构化结果；支持按 `LC_*` 名称、命令字值或命令索引定位，也兼容 `dyld_info_only` / `dyld-info-only` / 去掉 `LC_` 或 `_REQ_DYLD` 后缀的宽松名称，不必先全量 `native.loadcmds` 再筛；对应结构化结果里的 tool 摘要现在也补了 `toolNames / toolNameList / resolvedToolNames / resolvedToolNameList`，和 `native.buildVersion` 保持一致。
-- `native.sectionInfo <module> -- <segment> <section>` / `Native.sectionInfo(moduleName, segmentName, sectionName)` 现在可以直接返回单条 section 的结构化结果，并支持大小写不敏感匹配；JS 侧 section 参数也兼容 `__TEXT.__text` / `__TEXT,__text` 这类完整节名格式，不必先全量 `native.sections` 再脚本过滤。
-- `native.segmentInfo <module> -- <segment>` / `Native.segmentInfo(moduleName, segmentName)` 现在可以直接返回单条 segment 的结构化结果，并支持大小写不敏感匹配，不必先全量 `native.segments` 再脚本过滤。
-- 对 `hfl / jhook / shook / trace / stalker` 这类 controller dispatch 命令，`--command-json` 现在也会尽量回传结构化 `payloadJson`，包含 `action / kind / target / count / key / moduleName / selectorName / resolvedLabel / targetAddress / filter / replacedCount` 等字段；对应的 `*.status` 结果也会补出当前 active state 和 target 元数据，像 `hfl/jhook/shook` 不再只有 key/count；`*.stop` 结果现在也会把被回收的 key/target 一并带回，`trace.stop / stalker.stop` 也会继续带上实际 detach 计数。
-- 对同一批 `*.status` 控制命令，普通文本模式的 `--command` / REPL 输出现在也不再只回一行 `active: N`；会附带当前 target / filter / symbol / Swift 命中项摘要，真机交互排查时不必每次都切到 `--command-json`。
-- `hfl/jhook/shook` 现在除了 `stop` 全停，也支持按目标定向停止；对应的普通文本模式 `*.stop` 输出也会和 `*.status` 一样附带命中的 target 摘要，适合 REPL 下快速确认到底停掉了哪一个 hook。
-- `hfl/jhook/shook` 的 `install/status` 结构化结果现在也会补 `currentKey / currentTarget`；其中 install 结果还会补 `replacedCount / replacedTarget`，便于脚本直接知道“当前焦点 hook 是谁”和“这次是不是覆盖了旧 key”。
-- `hfl/jhook/shook stop` 的结构化结果现在也会补 `targetMatched / matchedTargetCount / matchedTargets / detachedTargetCount / detachedTargets`，脚本可以直接判断“这次 stop 是否命中了目标”和“实际拆掉了哪几个 hook”。
-- `trace/stalker` 现在也支持“带选择器”的 `stop`：可以按 objc filter、native export、native address 定向尝试停止；如果当前活动 hook 和选择器不匹配，会保留现有 hook 并返回 `selector mismatch` 提示。对应结构化结果现在也会补 `selectorMatched / matchedSessionCount / matchedSessions / detachedSessionCount / detachedSessions`，脚本不必再解析文本提示判断到底有没有命中。
-- `trace/stalker` 现在按目标 key 维护多会话 registry，不再只有单个活动槽位；`install/status` 的 `--command-json` 都会带回当前 `sessionCount / sessions / currentKey / currentSession`，其中 install 结果还会补 `replacedSession / replacedSessions`，方便脚本直接判断这次是否覆盖了旧会话；重复安装同一个 key 只替换该 key，本体不相关的会话会保留，裸 `stop` 则会一次回收当前全部会话。
-- loader symbol 解析现在会优先使用 canonical code pointer 计算模块偏移，减少 arm64e/PAC 场景下本地 `dlsym` 地址高位污染远端 rebasing 的风险。
-- 如果某个 loader symbol 的 raw 地址与 canonical 地址不同，controller 会在注入计划里同时打印两者，便于直接判断 PAC 是否介入了本地符号解析结果。
-- controller 里的 `hfl/jhook/shook/trace/stalker` 指令现在统一下沉到 `quickjs-runtime` 的 `__iosRustFridaControllerApi.dispatch(...)`，controller 只负责构造结构化 spec，后续继续迁移 runtime 能力时改动面会小很多。
-- 对应地，runtime 侧现在也补了 `__iosRustFridaControllerApi.dispatchResult(...)`；文本模式继续走 `dispatch(...)`，自动化模式则可以拿到结构化结果对象。
-- controller 侧这些 dispatch spec 现在改成标准 JSON 生成，不再继续手写 JS object 字符串，后续字段扩展和转义会更稳。
-- controller 里先前只供测试使用的遗留 `build_*_script` 包装路径也已经去掉，运行面和测试面现在都直接围绕结构化 spec 工作，不再保留第二套“拼 JS 再 dispatch”的兼容层。
-- agent 里的 `objc.*` / `native.images` / `native.hookenv` / `pac.*` / `swift.*` 查询现在也开始走 `quickjs-runtime` 的 `__iosRustFridaAgentApi.handle(...)`，agent 侧重复的 Rust 格式化逻辑又收掉了一段。
-- host-agent 协议现在开始补结构化命令帧：在原有字符串 `CMD` 之外新增了兼容保留的 `CMD_JSON`，controller 已经把 `ping/jsinit/loadjs/jseval/jscomplete/exit/runtime-handle` 这批自有路径切到 typed command。
-- agent 侧这批 runtime 查询命令现在也开始优先走 `RuntimeDispatch` 结构化 spec，对应 `__iosRustFridaAgentApi.handleSpec(...)`；只有解析失败或旧兼容路径才会回落到原先的字符串 `handle(...)`。
-- `quickjs-runtime` 里的 legacy `__iosRustFridaAgentApi.handle(...)` 现在也已经先转 spec 再复用 `handleSpec(...)`，ObjC / Native / PAC / Swift 查询不再维护两套独立执行逻辑，后续补字段时更不容易出现“structured 路径有，legacy 路径没补”的分叉。
-- 在这之上，runtime 侧现在也补了 `__iosRustFridaAgentApi.handleSpecResult(...)`；文本模式继续走 `handleSpec(...)`，自动化模式则可以直接拿结构化对象。
-- 在这之上，`trace/stalker/hfl/jhook/shook` 这批 controller 控制命令也已经开始走 `ControllerDispatch` 结构化 spec，不再通过 `JsEval` 把整段 dispatch JS 字符串塞给 agent。
-- 旧文本命令的兼容解析现在也集中到了 `common::AgentCommand::from_legacy(...)`，controller / agent 不再各自维护一份 `ping/jsinit/runtime-handle` 的识别分支。
-- controller / bootstrap 失败摘要现在会补齐代码段/数据段保护模式、线程 bootstrap 符号来源，以及失败/提前返回时远程线程是否已尝试终止。
-- controller 在注入前会打印注入环境摘要：`IOS_RUSTFRIDA_DRY_RUN`、bootstrap 等待时间、hook policy / strategy、已探测到的越狱 hook backend。
-- `IOS_RUSTFRIDA_HOOK_POLICY` 现在除了 `warn` / `deny-external-loaded`，还支持 `query-only-external-loaded`（可简写 `query-only`）；命中外部 backend 时，这个策略会继续允许注入、查询命令和 `status/stop` 这类非安装控制命令，但会显式禁止 `trace/stalker/jhook/shook/hfl` 的安装路径。
-- 如果当前 `IOS_RUSTFRIDA_HOOK_POLICY=deny-external-loaded` 且进程里已加载 ElleKit/Substrate/Substitute/libhooker 一类外部 backend，策略会进入 `cleanup-only`：继续允许建立注入会话并执行 `status/stop` 清理命令，但会拒绝 runtime 查询和 `trace/stalker/jhook/shook/hfl` 安装命令，并给出原因。
-- preflight 现在也会探测“目标进程”自身已加载的 hook backend，并打印 target hook strategy / backend 摘要；`deny-external-loaded` 不再只看 controller 当前进程，也会对目标进程生效。
-- hook strategy 被本地或目标进程的外部 backend 阻断时，错误信息现在会直接附带 hook environment 摘要：active backend、各 backend 的 loaded image / filesystem path 计数、warning 数量，减少真机上只看到 `blocked` 但不知道是谁在挡路的情况。
-- bootstrap 失败摘要现在会附带按状态映射的诊断提示，例如 `dlopen/dlsym/socket/connect/entry-returned/pending` 各自对应的优先排查方向，便于真机联调时快速定位是 dylib、导出符号、还是 controller socket 回连问题。
-- `task_for_pid` 失败时现在会追加常见排查方向：越狱/root 上下文、`task_for_pid` 相关 entitlement/exception、目标进程平台保护限制。
-- 还没完成的仍包括：物理设备 bundle/scene 的 v2 runtime-dynamic FrontBoard/scene provider 与真机 gate 验收、Swift full object ABI 与泛型/隐藏 ABI、真正的 target-thread 指令级 Stalker backend、物理设备上的 CModule `MAP_JIT`/W^X 运行验收，以及 controller remote lease 的 Apple runtime/真机验收和生产 token 回收时序。controller lease adoption/release/uninstall/cleanup API、agent-owned external-hook command/receipt 状态、remote lease 转移和产品级调用链、Stalker bounded static transform/event generation、Swift ownership/dispose/metadata identity wrapper 和 adapter FFI boundary 已完成源码/静态接线；四种已确认 external backend ABI 没有公开 native uninstall，当前保持明确的 `NativeUninstallUnavailable` 边界，不把它写成已实现能力。Simulator agent/CModule runtime、`simctl --wait-for-debugger` gate、CModule ARM64 macOS host runtime、Swift thin ABI 子集、ObjC typed property accessor/retain/copy/weak 生命周期/exception containment/动态类注册/有界 heap enumeration 核心、Module 本地/非导出 nlist 与 import slot/address 解析已经完成收口；完整越狱注入、arm64e/PAC、ObjC zeroing weak、ObjC automatic/manual KVO notification 与 super forwarding、hook callback/detach 和第三方 backend 真实运行仍待 Apple host/真机验收。
+```bash
+--agent-path <path>
+```
+
+### `.deb` 产物
+
+常见命名：
+
+```text
+ios-rustfrida-agent_<version>_iphoneos-arm64_rootless.deb
+ios-rustfrida-agent_<version>_iphoneos-arm64e_rootless.deb
+ios-rustfrida-agent_<version>_iphoneos-arm_rootful.deb
+```
+
+安装选择：
+
+- rootless 设备：优先 `..._iphoneos-arm64_rootless.deb`
+- `iphoneos-arm64e` rootless 设备：优先 `..._iphoneos-arm64e_rootless.deb`
+- rootful 设备：`..._iphoneos-arm_rootful.deb`
+
+设备上安装：
+
+```bash
+dpkg -i <package>.deb
+```
+
+`scripts/install-agent-deb-jailbreak.sh` 会自动探测远端架构，并从 `dist/` 中选择匹配包。
+
+### Doctor
+
+```bash
+scripts/doctor-jailbreak.sh <user@device> [remote-agent-path]
+scripts/doctor-jailbreak.sh --json <user@device>
+```
+
+检查内容：
+
+- rootless / rootful 布局
+- agent 目录与文件
+- legacy 文件名
+- socket path 长度
+- 常见 hook backend 文件
+- agent 是否像 Mach-O 动态库
+- 远端工具能否看见 `ios_agent_entry`
+
+### Deploy
+
+```bash
+scripts/deploy-agent-jailbreak.sh <user@device>
+```
+
+默认推送 `libagent.dylib` 后自动执行 doctor。
+
+```bash
+RUN_DOCTOR=0    # 只推送，不体检
+RUN_DOCTOR=json # 输出单个 deploy + doctor JSON
+```
+
+---
+
+## Controller CLI
+
+### Attach 目标
+
+controller 支持：
+
+```bash
+--pid <PID>
+--name <PROCESS_NAME>
+--bundle-id <BUNDLE_ID>
+--spawn
+```
+
+`--name` 与 `--pid` / `--bundle-id` / `--spawn` 互斥。Apple 端通过 libproc 枚举，并按 executable name、完整 path 或 basename 精确匹配；多命中、进程退出、PID 复用都会拒绝。非 Apple host 请使用 `--pid`。
+
+### 常用命令
+
+```bash
+# Preflight
+cargo run -p controller -- --pid 1234 --preflight-only
+cargo run -p controller -- --name SpringBoard --preflight-only
+cargo run -p controller -- --pid 1234 --preflight-only --preflight-json
+
+# dyld 镜像
+cargo run -p controller -- --list-images --list-images-json
+
+# 注入 JSON
+cargo run -p controller -- --pid 1234 --inject-json
+
+# 单次 runtime 命令
+cargo run -p controller -- --pid 1234 --command "objc.classes UIView"
+cargo run -p controller -- --pid 1234 --command "native.images UIKit" --command-json
+
+# RPC
+cargo run -p controller -- --pid 1234 --script rpc.js --command "rpccall add [20,22]"
+cargo run -p controller -- --pid 1234 --script rpc.js --rpc-port 127.0.0.1:9191
+```
+
+### HTTP RPC
+
+`--rpc-port <PORT|ADDR>` 提供 Android 同名 HTTP 包装层：
+
+```bash
+GET  /health
+GET  /sessions
+POST /rpc/<session>/<method>
+```
+
+示例：
+
+```bash
+curl http://127.0.0.1:9191/sessions
+curl -X POST http://127.0.0.1:9191/rpc/1/add -d '[20,22]'
+```
+
+支持：
+
+- 有界并发 session registry
+- 单调稳定 ID
+- attach / detach 状态机
+- 每 session 命令串行化
+- 断开门控
+- 后台 `ping` 健康探针自动回收
+- transport failure 进入 registry reconcile / detach
+- cleanup 可重试，连续失败达到上限后有界退出
+
+`--server [--max-sessions N]` 支持动态：
+
+```text
+attach
+spawn
+list | sessions
+use
+detach
+detachall
+```
+
+server `exit` 只有在本轮 detach 全部 clean 且 registry 为空时才关闭。
+
+---
+
+## iOS Runtime 能力概览
+
+> README 只保留稳定能力概览。完整命令和字段清单建议放到 `docs/API_REFERENCE.md`。
+
+### ObjC
+
+支持：
+
+- 类、selector、IMP、方法枚举
+- 协议继承、协议方法、协议属性
+- 属性、ivar、镜像、类链
+- `classInfo / protocolInfo / methodInfo / propertyInfo / ivarInfo`
+- `protocolMethodInfo / protocolPropertyInfo`
+- `chooseSync / choose`
+- `find*` 宽松匹配别名
+
+常用：
+
+```text
+ObjC.classes([query])
+ObjC.methods(className[, isClassMethod][, query])
+ObjC.chooseSync(className[, options])
+ObjC.choose(className, { onMatch, onComplete }[, options])
+ObjC.findMethods(className, query[, isClassMethod])
+ObjC.findMethodOwners(query[, isClassMethod])
+ObjC.methodOwners(query[, isClassMethod])
+ObjC.findClasses(query)
+ObjC.protocols([query])
+ObjC.classInfo(className[, isMetaClass])
+ObjC.protocolInfo(protocolName)
+ObjC.methodInfo(className, selectorName[, isClassMethod])
+ObjC.propertyInfo(className, propertyName[, isClassProperty])
+ObjC.ivarInfo(className, ivarName)
+ObjC.classImage(className)
+ObjC.methodImp(className, selectorName[, isClassMethod])
+ObjC.selector(selectorName)
+ObjC.selectorName(selector)
+ObjC.objectClassName(object)
+```
+
+CLI 示例：
+
+```text
+objc.classes [filter]
+objc.methods <class> [meta] [filter]
+objc.methodImp <class> <selector> [meta]
+objc.findMethodImp <class> <selector> [meta]
+objc.methodInfo <class> <selector> [meta]
+objc.classImage <class>
+objc.methodImage <class> <selector> [meta]
+objc.methodOwners <selector> [meta]
+objc.findClasses <query>
+objc.superclass <class>
+objc.classChain <class>
+objc.properties <class> [meta] [filter]
+objc.propertyInfo <class> <property> [meta]
+objc.ivars <class> [filter]
+objc.ivarInfo <class> <ivar>
+objc.protocols [filter]
+objc.classConforms <class> <protocol>
+objc.protocolConforms <protocol> <parent-protocol>
+objc.classProtocols <class>
+objc.protocolOwners <protocol> [filter]
+objc.classExists <name>
+objc.protocolExists <name>
+objc.selector <name>
+objc.protocolImage <protocol>
+objc.classInfo <class> [meta]
+objc.protocolInfo <protocol>
+objc.protocolProtocols <protocol>
+objc.protocolMethods <protocol> [required] [instance]
+objc.protocolMethodInfo <protocol> <selector> [required] [instance]
+objc.protocolProperties <protocol>
+objc.protocolPropertyInfo <protocol> <property>
+objc.selectorName <selector>
+objc.objectClassName <object>
+```
+
+列表结果通常带结构化摘要，例如：
+
+- `imagePathList / imagePaths`
+- `uniqueSelectorCount / returnTypeNameList`
+- `keywordSelectorCount / unarySelectorCount`
+- `readonlyPropertyCount / strongPropertyCount`
+- `uniqueKindCount / pointerIvarCount`
+- owner 解析状态、顶层 `resolved*`、`has*`
+
+### Swift
+
+支持：
+
+```text
+Swift.demangle(symbolName)
+Swift.protocols([query[, moduleName]])
+Swift.protocolInfo(protocolName[, moduleName])
+Swift.conformanceInfo(typeName, protocolName[, moduleName])
+Swift.typeInfo(typeName[, moduleName])
+Swift.methodInfo(typeName, methodName[, moduleName])
+Swift.conformances(typeName[, moduleName])
+Swift.metadata(typeName[, moduleName])
+Swift.metadataInfo(typeName[, moduleName])
+Swift.vtable(typeName[, moduleName])
+Swift.vtableInfo(typeName, memberName[, moduleName])
+Swift.witnessTable(query[, moduleName])
+Swift.witnessTableInfo(typeName, protocolName[, moduleName])
+Swift.typeLayout(typeName[, moduleName])
+Swift.typeLayoutInfo(typeName[, moduleName])
+Swift.types(query[, moduleName])
+Swift.typeKinds()
+Swift.typesOfKind(kind, query[, moduleName])
+Swift.methodOwners(query[, moduleName])
+Swift.typeMethods(query[, moduleName])
+Swift.methods(typeName, methodQuery[, moduleName])
+Swift.symbols(query[, moduleName])
+Swift.symbolInfo(symbolName[, moduleName])
+Swift.status() / Swift.capabilities() / Swift.lastError()
+Swift.typeRepresentation(typeName)
+Swift.objectRepresentation(typeName)
+Swift.classifyAbiArgument(typeName) / Swift.abiArgument(typeName)
+Swift.classifyAbiArguments(typeNames) / Swift.abiArguments(typeNames)
+Swift.object(pointer[, metadata[, options]]) / Swift.metadataOf(object)
+Swift.thinFunction(...) / Swift.invoke(...) / Swift.call(...)
+```
+
+CLI 示例：
+
+```text
+swift.types <query>
+swift.types <module> -- <query>
+swift.protocolInfo <protocol>
+swift.protocolInfo <module> -- <protocol>
+swift.conformanceInfo <type> <protocol>
+swift.conformanceInfo <module> -- <type> <protocol>
+swift.typeInfo <type>
+swift.typeInfo <module> -- <type>
+swift.methodInfo <type> <method>
+swift.methodInfo <module> -- <type> <method>
+swift.symbolInfo <symbol>
+swift.symbolInfo <module> -- <symbol>
+swift.protocols [query]
+swift.protocols <module> -- <query>
+swift.conformances <type>
+swift.conformances <module> -- <type>
+swift.metadata <type>
+swift.metadata <module> -- <type>
+swift.metadataInfo <type>
+swift.metadataInfo <module> -- <type>
+swift.vtable <type>
+swift.vtable <module> -- <type>
+swift.vtableInfo <type> <member>
+swift.vtableInfo <module> -- <type> <member>
+swift.witnessTable <type|protocol>
+swift.witnessTable <module> -- <type|protocol>
+swift.witnessTableInfo <type> <protocol>
+swift.witnessTableInfo <module> -- <type> <protocol>
+swift.typeLayout <type>
+swift.typeLayout <module> -- <type>
+swift.typeLayoutInfo <type>
+swift.typeLayoutInfo <module> -- <type>
+swift.typeKinds
+swift.typeSourceKinds
+swift.methodOwners <method>
+swift.methodOwners <module> -- <method>
+swift.typesOfKind <kind> <query>
+swift.typesOfKind <module> -- <kind> <query>
+swift.typeMethods <type>
+swift.typeMethods <module> -- <type>
+swift.methods <type> <method>
+swift.methods <module> -- <type> <method>
+```
+
+Swift 查询支持模块限定、basename、大小写不敏感、部分名称、成员名子串等宽松匹配。单项查询通常提供：
+
+- `resolved* / has*`
+- `moduleBase`
+- `sourceSymbolName / sourceOffsetHex / sourceDemangledName`
+- `qualifiedName / signature / contextModuleName / detailKind`
+- vtable / witness / type layout 的 accessor、ctor、async、throws 等摘要
+
+### Native / Module
+
+支持：
+
+```text
+Native.base(moduleName)
+Native.findBase(moduleName)
+Native.images([filter])
+Native.export(moduleNameOrNull, symbolName)
+Native.mainImage()
+Native.findMainImage()
+Native.image(address)
+Native.findImage(address)
+Native.symbol(address)
+Native.findSymbol(address)
+Native.findSymbols(query[, moduleName])
+Native.symbols(query[, moduleName])
+Native.findSymbolInfo(symbolName[, moduleName])
+Native.symbolInfo(symbolName[, moduleName])
+Native.findImageInfo(moduleName)
+Native.imageInfo(moduleName)
+Native.findExports(moduleName[, query])
+Native.exports(moduleName[, query])
+Native.findExportInfo(moduleName, symbolName)
+Native.exportInfo(moduleName, symbolName)
+Native.findDependencies(moduleName[, query])
+Native.dependencies(moduleName[, query])
+Native.findDependencyInfo(moduleName, pathOrName)
+Native.dependencyInfo(moduleName, pathOrName)
+Native.findEncryptionInfo(moduleName)
+Native.encryptionInfo(moduleName)
+Native.findEntryPoint(moduleName)
+Native.entryPoint(moduleName)
+Native.findDyldInfo(moduleName)
+Native.dyldInfo(moduleName)
+Native.findLinkedit(moduleName)
+Native.linkedit(moduleName)
+Native.findFunctionStarts(moduleName)
+Native.functionStarts(moduleName)
+Native.findCodeSignature(moduleName)
+Native.codeSignature(moduleName)
+Native.findDataInCode(moduleName)
+Native.dataInCode(moduleName)
+Native.findExportsTrie(moduleName)
+Native.exportsTrie(moduleName)
+Native.findChainedFixups(moduleName)
+Native.chainedFixups(moduleName)
+Native.findSourceVersion(moduleName)
+Native.sourceVersion(moduleName)
+Native.findBuildVersion(moduleName)
+Native.buildVersion(moduleName)
+Native.findDylinker(moduleName)
+Native.dylinker(moduleName)
+Native.findInstallName(moduleName)
+Native.installName(moduleName)
+Native.findUuid(moduleName)
+Native.uuid(moduleName)
+Native.findRpaths(moduleName[, query])
+Native.rpaths(moduleName[, query])
+Native.findRpathInfo(moduleName, path)
+Native.rpathInfo(moduleName, path)
+Native.findImports(moduleName[, query])
+Native.imports(moduleName[, query])
+Native.findImportInfo(moduleName, symbolName)
+Native.importInfo(moduleName, symbolName)
+Native.findSegments(moduleName)
+Native.segments(moduleName)
+Native.findSegmentInfo(moduleName, segmentName)
+Native.segmentInfo(moduleName, segmentName)
+Native.findSections(moduleName)
+Native.sections(moduleName)
+Native.findSectionInfo(moduleName, segmentName, sectionName)
+Native.sectionInfo(moduleName, segmentName, sectionName)
+Native.findLoadCommands(moduleName)
+Native.loadCommands(moduleName)
+Native.findLoadCommandInfo(moduleName, commandOrIndex)
+Native.loadCommandInfo(moduleName, commandOrIndex)
+```
+
+`Module` 支持：
+
+```text
+Module.enumerateExports
+Module.enumerateImports
+Module.enumerateSymbols
+Module.enumerateRanges
+Module.load(path)  // Apple target；handle 按 QuickJS runtime 清理
+```
+
+CLI 示例：
+
+```text
+native.base <module>
+native.findBase <module>
+native.imageInfo <module>
+native.export <symbol>
+native.export <module> -- <symbol>
+native.exports <module>
+native.exports <module> -- <query>
+native.exportInfo <module> -- <symbol>
+native.dependencies <module>
+native.dependencies <module> -- <query>
+native.dependencyInfo <module> -- <path-or-name>
+native.encryptionInfo <module>
+native.entryPoint <module>
+native.dyldInfo <module>
+native.linkedit <module>
+native.functionStarts <module>
+native.codeSignature <module>
+native.dataInCode <module>
+native.exportsTrie <module>
+native.chainedFixups <module>
+native.sourceVersion <module>
+native.buildVersion <module>
+native.dylinker <module>
+native.installName <module>
+native.uuid <module>
+native.rpaths <module>
+native.rpaths <module> -- <query>
+native.rpathInfo <module> -- <path>
+native.imports <module>
+native.imports <module> -- <query>
+native.importInfo <module> -- <symbol>
+native.loadcmds <module>
+native.loadCommands <module>
+native.loadCommandInfo <module> -- <name|cmd|index>
+native.sections <module>
+native.sectionInfo <module> -- <segment> <section>
+native.segments <module>
+native.segmentInfo <module> -- <segment>
+native.symbolInfo <symbol>
+native.symbolInfo <module> -- <symbol>
+native.symbols <query>
+native.symbols <module> -- <query>
+native.images [filter]
+native.mainImage
+native.findMainImage
+native.instrumentation
+native.image <address>
+native.findImage <address>
+native.symbol <address>
+native.findSymbol <address>
+native.detectHookEnvironment
+```
+
+Mach-O load command raw 值来自 `native-api/src/macho_load_commands.rs`，保留 `LC_REQ_DYLD` 高位并使用 exact raw 比较。`LC_MAIN / LC_SOURCE_VERSION / LC_BUILD_VERSION / LC_FUNCTION_STARTS / LC_DYLD_EXPORTS_TRIE / LC_DYLD_CHAINED_FIXUPS` 等旧错位值已修正。
+
+### Memory / NativePointer
+
+支持：
+
+```text
+Memory.alloc
+Memory.allocUtf8String
+Memory.protect
+Memory.flushCodeCache
+Memory.writeBytes
+NativePointer#read*
+NativePointer#write*
+NativePointer#writeBytes
+NativePointer#protect
+NativePointer#flushCodeCache
+```
+
+`Memory.writest / NativePointer#writest` 在 iOS 上明确返回 Android RECOMP-only unsupported。
+
+分配按 QuickJS runtime 隔离，runtime cleanup 时统一释放。Apple 写入会按 Mach VM region 查询、临时改权、失败回滚并恢复原权限。
+
+### NativeFunction / Interceptor / Native Hook
+
+支持：
+
+```text
+new NativeFunction(address, returnType, argumentTypes)
+hookNative(target, callbackPtr, userData?, mode?)
+attachNative(target, callbackPtr, userData?, mode?)
+attachNative(target, { onEnter?, onLeave?, data?, mode? })
+Interceptor.attach
+Interceptor.flush()
+Hook.NORMAL / Hook.WXSHADOW / Hook.RECOMP
+recompHook(ptr, callback)
+diagAllocNear(ptr)
+```
+
+`NativeFunction` 支持：
+
+- 整数
+- bool
+- pointer
+- float
+- double
+
+结构体 / 数组按值、variadic 显式 unsupported。
+
+`Interceptor.attach` 支持：
+
+- `onEnter(args)`
+- `onLeave(retval)`
+- 共享 invocation `this`
+- `retval.replace / toInt32 / toUInt32 / toString`
+- thread-local invocation 栈处理递归
+
+`Hook.RECOMP` / `recompHook()` 在 iOS 上明确返回 Android-only unsupported。`diagAllocNear()` 返回 iOS ARM64 hook engine 兼容诊断。
+
+### Stalker
+
+支持：
+
+```text
+Stalker.capabilities()
+Stalker.status()
+Stalker.info()
+Stalker.functionLevelStatus()
+Stalker.functionLevelStop()
+Stalker.follow()
+Stalker.pauseThread()
+Stalker.resumeThread()
+Stalker.unfollow()
+Stalker.installCallout(thread, target[, stealth])
+Stalker.transform()
+Stalker.transformBasicBlock()
+Stalker.planTargetThreadBlock()
+Stalker.planTargetThreadRewrite()
+Stalker.prepareTargetThreadRewrite()
+Stalker.preflightTargetThreadRewrite()
+Stalker.commitTargetThreadRewrite()
+Stalker.generateEvents()
+Stalker.recordBlock()
+Stalker.relocate()
+Stalker.layoutCodeCache()
+Stalker.emitCodeCache()
+Stalker.materializeCodeCache()
+Stalker.finalizeCodeCache()
+Stalker.executeCodeCache()
+```
+
+关键边界：
+
+- `installCallout()` 安装 native ARM64 hook-engine callout，返回句柄含 `detach()`。
+- 当前 callout 是函数级 `Call` / `Ret` 事件，不是指令级 transformer。
+- `prepareTargetThreadRewrite()` 绑定 followed thread，并拥有 finalized RX code-cache transaction。
+- 目标重写会在最后一个 relocated instruction 掉出时追加 `B sourceEnd`；terminal `B/BR/RET` 不需要 continuation。
+- `BL/BLR` 因 LR preservation 未实现而拒绝。
+- `preflightTargetThreadRewrite()` 报告 commit blockers，不改变 cache 或目标内存。
+- `commitTargetThreadRewrite()` 组合 suspend、quiescence、source snapshot 验证、4-byte ARM64 entry branch、icache flush、resume 和 rollback owner。
+- 普通 layout / emission / materialization 输出语义保持不变。
+- 剩余边界：`BL/BLR` LR preservation、生产 transformer/callout、自动 instruction event backend、Apple 真机验收。
+
+### CModule
+
+支持：
+
+```text
+CModule(source[, symbols])
+CModule.capabilities()
+CModule.status()
+CModule.info()
+CModule.lastError()
+```
+
+Apple backend 已接入：
+
+- TinyCC 编译
+- Mach-O linker
+- `MAP_JIT` executable mapping
+- imports / exports
+- `findSymbol`
+- finalizer
+- `dropMetadata`
+
+已验证：
+
+- ARM64 macOS host：TinyCC 编译、executable mapping、导出执行与释放。
+- ARM64 iOS Simulator：CModule + `NativeFunction` 调用返回 `42`。
+
+仍需验收：
+
+- 物理设备 `MAP_JIT` / W^X 行为。
+- Linux 普通构建继续按平台报告 `unavailable`。
+
+### Process / File / RPC
+
+`Process` 支持只读 API：
+
+```text
+Process.id / arch / platform / pageSize / pointerSize
+Process.codeSigningPolicy / mainModule
+Process.enumerateModules / findModuleByName / getModuleByName
+Process.findModuleByAddress / getModuleByAddress
+Process.enumerateRanges / findRangeByAddress / getRangeByAddress
+Process.enumerateMallocRanges
+Process.getCurrentDir / getHomeDir / getTmpDir
+Process.getCurrentThreadId / isDebuggerAttached / enumerateThreads
+```
+
+`File` 支持：
+
+```text
+new File(filePath, mode)
+File#tell / seek / readBytes / readText / readLine / write / flush / close
+File.readAllBytes / readAllText / writeAllBytes / writeAllText
+File.SEEK_SET / File.SEEK_CUR / File.SEEK_END
+```
+
+RPC 支持：
+
+```text
+rpc.exports = { method() { ... } }
+rpc.export(name, fn)
+rpccall <method> [args-json]
+```
+
+controller HTTP RPC 支持：
+
+```text
+GET  /health
+GET  /sessions
+POST /rpc/<session>/<method>
+```
+
+### Android 兼容探测层
+
+为了兼容 Android 脚本的能力探测，iOS runtime 提供：
+
+```text
+Java.available / Java.status() / Java.lastError()
+Jni.status / Jni.info / Jni.lastError
+qbdi.status / qbdi.info / qbdi.methods / qbdi.lastError
+Hook.NORMAL / Hook.WXSHADOW / Hook.RECOMP
+```
+
+这些入口在 iOS 上的语义：
+
+- `Java.available = false`
+- `Jni.available = false`
+- QBDI VM 方法抛 unsupported
+- `Hook.RECOMP` / `recompHook()` 抛 Android-only unsupported
+- `diagAllocNear()` 返回 iOS ARM64 hook engine 兼容诊断
+
+目标：让 Android 脚本先做能力探测，不因全局对象缺失直接失败。
+
+---
+
+## Hook Backend 与策略
+
+### 支持探测的 backend
+
+- ElleKit
+- Substrate
+- Substitute
+- libhooker
+
+文件系统探测同时覆盖 rootful 和 rootless 常见路径前缀，包括 `/usr/lib` 和 `/var/jb/...`。
+
+### 策略
+
+环境变量：
+
+```bash
+IOS_RUSTFRIDA_HOOK_POLICY=warn
+IOS_RUSTFRIDA_HOOK_POLICY=deny-external-loaded
+IOS_RUSTFRIDA_HOOK_POLICY=query-only-external-loaded
+IOS_RUSTFRIDA_HOOK_POLICY=query-only
+```
+
+行为：
+
+| 策略 | 行为 |
+|---|---|
+| `warn` | 命中外部 backend 时继续，但提示风险 |
+| `deny-external-loaded` | 命中外部 backend 时进入 `cleanup-only`，允许注入会话和 `status/stop`，拒绝查询和安装 |
+| `query-only-external-loaded` / `query-only` | 允许注入、查询、`status/stop`，禁止 `trace/stalker/jhook/shook/hfl` 安装路径 |
+
+如果同一进程同时命中多个已加载外部 backend，即使 `hook_policy=warn`，也会自动降级到 query-only，避免在未实现多 backend 共存层时做 inline install。
+
+### `native.hookenv` / `Native.detectHookEnvironment()`
+
+返回内容包括：
+
+- backend / warning
+- 当前 `hook_policy` 建议动作
+- `allowed` 与 `inlineHooksAllowed`
+- `conflictState / riskLevel`
+- `baseCommandMode / effectiveCommandMode / commandMode`
+- `preferredPath`
+- `autoDowngradedToQueryOnly / autoDowngradeReason`
+- `loadedBackendCount / loadedExternalBackendCount / filesystemOnlyBackendCount`
+- `loadedImageCount / filesystemPathCount`
+- `coexistenceLayerAvailable`
+- `singleExternalBackendLoaded / multipleExternalBackendsLoaded`
+- 能力位：`bootstrapInjectionAllowed / queryCommandsAllowed / hookInstallCommandsAllowed / hookStatusCommandsAllowed / hookStopCommandsAllowed`
+- `recommendedActions`
+- `nextAction / nextStep / activeStep`
+- `commandTemplates / commandJsonTemplates`
+- `backendMatrix`
+- `automation`
+- `coexistence`
+- `backendAdaptation`
+
+自动化脚本可直接读取 `nextActionKey / nextActionCommand / nextActionCommandJsonTemplate` 等字段，而不必遍历整个 action 数组。
+
+---
+
+## 注入、Preflight 与 Spawn
+
+### Mach 注入
+
+现状：
+
+- 注入链路会回读远程 bootstrap 状态。
+- `IOS_RUSTFRIDA_BOOTSTRAP_WAIT_MS` 控制轮询等待时长，`0` 表示关闭等待。
+- Mach bootstrap 远程内存拆成代码段和参数/状态段，分别走 `RX` / `RW`，不再依赖单块 `RWX`。
+- 远程 Mach 内存按页对齐申请，`mach_vm_protect` 带降级处理。
+- controller / dry-run 输出区分“实际使用字节数”和“页对齐后的实际分配字节数”。
+- 注入 trace / dry-run 输出带目标进程是否 `arm64e`。
+- 如果目标进程是 `arm64e` 且线程 bootstrap 只能退化到 `pthread_create`，默认拒绝；强制 fallback 需：
+
+```bash
+IOS_RUSTFRIDA_ALLOW_ARM64E_PTHREAD_FALLBACK=1
+```
+
+- 注入 trace / bootstrap summary 打印 `thread_bootstrap_kind`。
+- controller 在打印 loader symbols 时，对 `thread-bootstrap` 符号补 `kind=...`。
+- 正式远程写入前会执行目标 preflight。
+
+### Preflight
+
+`--preflight-only` 输出 plan + preflight 后退出。
+
+`--preflight-only --preflight-json` 输出结构化 JSON，包含：
+
+```text
+environment
+doctor
+plan
+preflight
+```
+
+目标 preflight 包含：
+
+- 目标是否 `arm64e`
+- thread bootstrap 模式
+- thread bootstrap 地址是否 canonical
+- 目标 dyld 镜像摘要
+- 主镜像路径 / 基址
+- 当前镜像总数
+- `targetImages`
+- `loaderSymbolChecks`
+- rebased loader symbol 是否在目标镜像列表中找到模块
+- `address == image.base + offset` 是否成立
+
+`doctor` 单独收集常见本地/配置问题：
+
+- agent 路径布局
+- 是否还在用旧 `agent.dylib`
+- socket path 是否接近 Darwin 长度限制
+- bootstrap script 是否可读
+- 本地/目标 hook strategy 是否挡住注入
+
+### `--inject-json`
+
+输出：
+
+```text
+environment
+plan
+preflight
+trace
+handshake
+doctor
+diagnostics
+```
+
+失败时尽量保留 `environment / plan / preflight`，并补：
+
+```text
+diagnostics.phase
+diagnostics.code
+diagnostics.hints
+diagnostics.failedStep
+diagnostics.hook
+```
+
+`handshake.stage` 会标出：
+
+```text
+awaiting-hello
+awaiting-ping
+awaiting-hook-environment
+awaiting-jsinit
+awaiting-loadjs
+completed
+```
+
+`handshake.steps` 标记：
+
+```text
+hello
+ping
+hookEnvironment
+jsInit
+loadJs
+```
+
+状态：
+
+```text
+pending / succeeded / skipped / failed
+```
+
+### Spawn
+
+spawn 模式通过 `controller/src/suspended_spawn.rs` 持有生命周期：
+
+```text
+Suspending
+Suspended
+Running
+Terminating
+Terminated
+```
+
+规则：
+
+- 未恢复时任一步失败都会终止目标。
+- 注入、agent handshake、`JsInit/LoadJs` 完成后才恢复。
+- Apple executable 后端使用 `POSIX_SPAWN_START_SUSPENDED`。
+- Linux host 用 fork-stop-exec 覆盖状态机测试。
+- Simulator bundle-id 启动只使用 `xcrun simctl launch --wait-for-debugger`，并校验进程确实处于暂停状态。
+- 物理设备要求 v2 `runtime-dynamic` FrontBoard/scene provider 在 `before-first-user-instruction` 阶段交付 gate。
+- 状态严格校验 `held/released/terminated`。
+- bundle suspended 协议绑定 bundle、PID、provider 和 gate ID。
+- resume 后必须收到 provider 的 `released` 确认。
+- 失败、超时或未交付状态会终止目标。
+- controller 已移除启动后 `SIGSTOP` 伪装和旧 helper 兼容回退。
+
+---
+
+## JSON 输出与诊断
+
+### `--command-json`
+
+输出单个 JSON：
+
+```text
+ok
+command
+kind
+payload
+payloadJson
+items
+error
+logs
+```
+
+会静默完成握手和可选 bootstrap script，不再把 plan / trace / hello/ping 文本混到命令结果前。
+
+如果命令前阶段失败，也会返回结构化错误 JSON，并附带：
+
+```text
+hook
+environment
+doctor
+plan
+preflight
+trace
+diagnostics
+handshake
+```
+
+### Hook policy 拦截错误
+
+command 前置 hook policy 拦截错误带稳定标记：
+
+```text
+hook-effective-blocked actionKey=<...> commandGroup=<...> blockedBy=<none|controller|target|both> commandMode=<...> baseCommandMode=<...> effectiveCommandMode=<...> autoDowngradedToQueryOnly=<true|false> autoDowngradeReason=<...> coexistenceMode=<...> backendPressure=<...> fallbackActionKey=<...> fallbackStepId=<...> fallbackCommand=<...> fallbackPhase=<...>
+```
+
+`diagnostics.code` 映射：
+
+```text
+controller-hook-policy-blocked
+target-hook-policy-blocked
+both-hook-policies-blocked
+```
+
+### `payloadJson`
+
+对以下 runtime 查询命令，`--command-json` 会尽量回传稳定 `payloadJson`：
+
+```text
+objc.*
+native.*
+pac.*
+swift.*
+```
+
+里面通常带：
+
+```text
+count
+classes
+methods
+images
+symbols
+types
+report
+text
+```
+
+列表和嵌套集合通常补：
+
+```text
+has*
+first*
+last*
+resolved*
+```
+
+单值查询通常补：
+
+```text
+resolved*
+has*
+```
+
+### 控制命令 JSON
+
+对以下命令，`--command-json` 也会尽量回传结构化 `payloadJson`：
+
+```text
+hfl
+jhook
+shook
+trace
+stalker
+```
+
+常见字段：
+
+```text
+action
+kind
+target
+count
+key
+moduleName
+selectorName
+resolvedLabel
+targetAddress
+filter
+replacedCount
+```
+
+`*.status` 会补当前 active state 和 target 元数据。`*.stop` 会带回被回收的 key / target。`trace.stop / stalker.stop` 会带实际 detach 计数。
+
+---
+
+## CI 与发布
+
+GitHub Actions 需要放在仓库根目录：
+
+```text
+.github/workflows/
+```
+
+`ios-rustfrida/.github/workflows/` 里的文件仅作子 workspace 镜像参考，真正触发以根目录 workflow 为准。
+
+### 手动打包 workflow
+
+GitHub Actions 里可手动运行：
+
+```text
+ios-rustfrida-package
+```
+
+它会在 macOS runner 上构建 agent/controller，并上传：
+
+```text
+ios-rustfrida-package-bundles
+```
+
+默认产物包括：
+
+```text
+ios-rustfrida-agent-aarch64-apple-ios.tar.gz
+ios-rustfrida-controller-<host-triple>.tar.gz
+ios-rustfrida-agent_<version>_iphoneos-arm64_rootless.deb
+ios-rustfrida-agent_<version>_iphoneos-arm64e_rootless.deb
+ios-rustfrida-agent_<version>_iphoneos-arm_rootful.deb
+```
+
+根目录 release workflow 会在 macOS runner 上补装 `dpkg`，并把 tarball 和 `.deb` 一起作为 GitHub Release asset 输出。
+
+### 已知 CI 验证
+
+- CI run `30764666695`：
+  - ARM64 macOS host 测试通过当前进程生产 `find_image_*` 解析链。
+  - QuickJS fixture 断言 `cmdHex / cmdBaseHex / isReqDyld / reqDyldCommandCount`。
+- CI run `30805082247`：
+  - Linux `576 passed`
+  - ARM64 macOS `518 passed`
+  - Simulator hosted XCTest `1 passed`
+  - 通过 `dlopen/dlsym` 调用 `ios_agent_entry`
+  - 验证 `HELLO / Ping / JsInit / LoadJs / RPC / structured RPC / structured JsEval / CModule / Exit`
+  - 嵌套 object/array 作为 JSON 结构跨 agent frame 保真
+  - CModule 与标量 RPC 均返回 `42`
+  - entry 最终返回 `0`
+
+---
+
+## 已知边界与未完成项
+
+iOS 功能仍处于持续迁移状态，不应视为与 Android 版完全对齐。
+
+当前已完成或基本完成：
+
+- ObjC 类 / selector / IMP / 方法枚举
+- 协议继承 / 属性查询
+- Swift 符号查找
+- PAC 查询
+- dyld 镜像枚举
+- 基础 hook 环境探测
+- File / RPC / Process 只读 API
+- Module enumerate / load
+- NativeFunction 标量调用
+- Interceptor.attach / hookNative / attachNative
+- CModule macOS host 与 iOS Simulator 路径
+- Stalker bounded static transform / event generation
+- ObjC typed property accessor、retain/copy/weak 生命周期、exception containment、动态类注册、有界 heap enumeration 核心
+- Module 本地/非导出 nlist 与 import slot/address 解析
+- Swift thin ABI 子集
+- Simulator agent/CModule runtime
+- `simctl --wait-for-debugger` gate
+- controller remote lease adoption/release/uninstall/cleanup API 源码/静态接线
+- agent-owned external-hook command/receipt 状态源码/静态接线
+
+仍需 Apple host / 真机验收：
+
+- 完整越狱注入
+- arm64e / PAC
+- ObjC zeroing weak
+- ObjC automatic/manual KVO notification 与 super forwarding
+- hook callback / detach
+- 第三方 backend 真实运行
+- 物理设备 bundle/scene 的 v2 runtime-dynamic FrontBoard/scene provider 与真机 gate
+- Swift full object ABI 与泛型 / 隐藏 ABI
+- 真正的 target-thread 指令级 Stalker backend
+- 物理设备上的 CModule `MAP_JIT` / W^X 运行验收
+- controller remote lease 的 Apple runtime / 真机验收和生产 token 回收时序
+
+明确保持的边界：
+
+- 四种已确认 external backend ABI 没有公开 native uninstall。
+- 当前保持明确的 `NativeUninstallUnavailable` 边界，不把它写成已实现能力。
+- `Java` / `Jni` / `QBDI` 在 iOS 上是兼容探测层，不是实际 Android 运行时。
+- `Hook.RECOMP` / `recompHook()` / `writest` 在 iOS 上明确 unsupported。
+- Swift 泛型、async、throws、隐藏上下文、间接返回和 full object ABI 仍会明确拒绝。
+- Stalker `BL/BLR` LR preservation、生产 transformer/callout、自动 instruction event backend 仍待完成。
+- CModule Linux 普通构建继续按平台报告 `unavailable`。
+
+---
+
+## 文档维护建议
+
+原 README 中大量“最近补上的字段 / alias / 摘要”内容更适合放在：
+
+```text
+CHANGELOG.md
+docs/API_REFERENCE.md
+docs/JSON_SCHEMA.md
+```
+
+README 建议只保留：
+
+- 快速开始
+- 平台支持
+- 核心命令
+- 稳定 API 概览
+- Hook 策略
+- 注入流程
+- 已知边界
+
+这样后续新增字段时，不必让 README 继续膨胀。
