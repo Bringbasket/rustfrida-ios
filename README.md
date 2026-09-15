@@ -1,6 +1,4 @@
-下面是一版可直接替换 `README.md` 的优化稿。重点是：把平台限制前置、按“快速开始 / 部署 / Controller / Runtime API / Hook 策略 / 注入 / 发布 / 边界”重组，并把大量历史性的“最近补了哪些字段”压缩为能力概览。更细的逐字段清单建议后续拆到 `docs/API_REFERENCE.md` 或 `CHANGELOG.md`。
 
----
 
 # rustFrida iOS Branch
 
